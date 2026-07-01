@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EventController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -23,6 +24,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
 
     Route::resource('projects.plotlines', PlotlineController::class)
+        ->only(['create', 'store', 'edit', 'update', 'destroy'])
+        ->shallow();
+
+    Route::resource('projects.events', EventController::class)
         ->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
 });

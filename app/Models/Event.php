@@ -7,20 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class Plotline extends Model
+class Event extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'name',
+        'title',
         'description',
-        'is_main',
+        'event_datetime',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_main' => 'boolean',
+            'event_datetime' => 'datetime',
         ];
     }
 
@@ -29,8 +29,8 @@ class Plotline extends Model
         return $this->belongsTo(Project::class);
     }
 
-    public function events(): BelongsToMany
+    public function plotlines(): BelongsToMany
     {
-        return $this->belongsToMany(Event::class);
+        return $this->belongsToMany(Plotline::class);
     }
 }

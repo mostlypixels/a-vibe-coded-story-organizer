@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Event;
+use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,7 +58,7 @@ class ProjectTest extends TestCase
         ]);
 
         $response->assertRedirect(route('projects.show', $project));
-        $this->assertSame(1, $project->plotlines()->count());
+        $this->assertSame(2, $project->plotlines()->count());
     }
 
     public function test_a_user_cannot_add_a_plotline_to_another_users_project(): void
@@ -68,5 +70,92 @@ class ProjectTest extends TestCase
         $this->actingAs($other)->post(route('projects.plotlines.store', $project), [
             'name' => 'A Plotline',
         ])->assertForbidden();
+    }
+
+    public function test_a_main_plotline_is_created_automatically_with_the_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->assertSame(1, $project->plotlines()->count());
+        $this->assertTrue($project->plotlines()->first()->is_main);
+        $this->assertSame('Main plotline', $project->plotlines()->first()->name);
+    }
+
+    public function test_the_main_plotline_cannot_be_deleted(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $mainPlotline = $project->plotlines()->first();
+
+        $this->actingAs($user)->delete(route('plotlines.destroy', $mainPlotline))->assertForbidden();
+        $this->assertNotNull($mainPlotline->fresh());
+    }
+
+    public function test_a_regular_plotline_can_be_deleted(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create();
+
+        $this->actingAs($user)->delete(route('plotlines.destroy', $plotline))
+            ->assertRedirect(route('projects.show', $project));
+
+        $this->assertNull($plotline->fresh());
+    }
+
+    public function test_a_user_can_create_an_event_attached_to_plotlines(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = $project->plotlines()->first();
+
+        $response = $this->actingAs($user)->post(route('projects.events.store', $project), [
+            'title' => 'The Battle',
+            'description' => 'A big fight',
+            'event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
+            'plotlines' => [$plotline->id],
+        ]);
+
+        $response->assertRedirect(route('projects.show', $project));
+        $event = Event::first();
+        $this->assertSame('The Battle', $event->title);
+        $this->assertTrue($event->plotlines->contains($plotline));
+    }
+
+    public function test_a_user_cannot_create_an_event_for_another_users_project(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+        $plotline = $project->plotlines()->first();
+
+        $this->actingAs($other)->post(route('projects.events.store', $project), [
+            'title' => 'The Battle',
+            'event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
+            'plotlines' => [$plotline->id],
+        ])->assertForbidden();
+    }
+
+    public function test_an_event_can_be_updated_and_deleted(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = $project->plotlines()->first();
+        $event = Event::factory()->for($project)->create();
+        $event->plotlines()->attach($plotline);
+
+        $this->actingAs($user)->put(route('events.update', $event), [
+            'title' => 'Updated Title',
+            'event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
+            'plotlines' => [$plotline->id],
+        ])->assertRedirect(route('projects.show', $project));
+
+        $this->assertSame('Updated Title', $event->fresh()->title);
+
+        $this->actingAs($user)->delete(route('events.destroy', $event))
+            ->assertRedirect(route('projects.show', $project));
+
+        $this->assertNull($event->fresh());
     }
 }

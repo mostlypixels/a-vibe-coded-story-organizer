@@ -38,11 +38,43 @@
                                 @endif
                             </div>
                             <div class="flex items-center gap-4 text-sm">
+                                @if ($plotline->is_main)
+                                    <span class="text-gray-400">{{ __('Main') }}</span>
+                                @endif
                                 <a href="{{ route('plotlines.edit', $plotline) }}" class="text-gray-500 hover:text-gray-700">{{ __('Edit') }}</a>
                             </div>
                         </div>
                     @empty
                         <p class="text-gray-500">{{ __('This project has no plotlines yet.') }}</p>
+                    @endforelse
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-lg text-gray-800">{{ __('Events') }}</h3>
+                <a href="{{ route('projects.events.create', $project) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                    {{ __('New Event') }}
+                </a>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    @forelse ($project->events->sortBy('event_datetime') as $event)
+                        <div class="flex items-center justify-between py-3 {{ !$loop->last ? 'border-b border-gray-200' : '' }}">
+                            <div>
+                                <div class="font-semibold text-gray-800">{{ $event->title }}</div>
+                                <div class="text-sm text-gray-500">{{ $event->event_datetime->format('M j, Y g:i A') }}</div>
+                                @if ($event->description)
+                                    <div class="text-sm text-gray-500">{{ $event->description }}</div>
+                                @endif
+                                <div class="text-sm text-gray-400">{{ $event->plotlines->pluck('name')->join(', ') }}</div>
+                            </div>
+                            <div class="flex items-center gap-4 text-sm">
+                                <a href="{{ route('events.edit', $event) }}" class="text-gray-500 hover:text-gray-700">{{ __('Edit') }}</a>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-gray-500">{{ __('This project has no events yet.') }}</p>
                     @endforelse
                 </div>
             </div>

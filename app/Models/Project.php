@@ -25,4 +25,19 @@ class Project extends Model
     {
         return $this->hasMany(Plotline::class);
     }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(Event::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (Project $project) {
+            $project->plotlines()->create([
+                'name' => 'Main plotline',
+                'is_main' => true,
+            ]);
+        });
+    }
 }

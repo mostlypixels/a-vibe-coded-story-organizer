@@ -43,6 +43,8 @@ class PlotlineController extends Controller
     {
         $this->authorize('update', $plotline->project);
 
+        abort_if($plotline->is_main, 403);
+
         $project = $plotline->project;
         $plotline->delete();
 
