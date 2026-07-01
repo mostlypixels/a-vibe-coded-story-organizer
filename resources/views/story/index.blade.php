@@ -58,12 +58,19 @@
                             </h3>
 
                             @forelse ($chapter->scenes as $scene)
-                                <section class="space-y-2 pb-4 border-b border-gray-200 last:border-b-0 last:pb-0">
-                                    <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-                                        {{ $scene->name }}
-                                    </h4>
+                                <section x-data="{ open: true }" class="space-y-2 pb-4 border-b border-gray-200 last:border-b-0 last:pb-0">
+                                    <div class="flex items-center justify-between">
+                                        <button type="button" @click="open = ! open" class="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                                            <svg class="h-4 w-4 fill-current text-gray-500 transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                            {{ $scene->name }}
+                                        </button>
 
-                                    <div class="prose prose-sm max-w-none text-gray-700">
+                                        <x-icon-edit-link :href="route('scenes.edit', $scene)" />
+                                    </div>
+
+                                    <div x-show="open" x-transition class="prose prose-sm max-w-none text-gray-700">
                                         {!! Str::markdown($scene->contents ?? '') !!}
                                     </div>
                                 </section>
