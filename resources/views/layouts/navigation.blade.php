@@ -58,6 +58,10 @@
                                 </x-slot>
 
                                 <x-slot name="content">
+                                    <x-dropdown-link :href="route('projects.story.index', $project)">
+                                        {{ __('Story Overview') }}
+                                    </x-dropdown-link>
+
                                     <x-dropdown-link :href="route('projects.acts.index', $project)">
                                         {{ __('Acts') }}
                                     </x-dropdown-link>
@@ -149,6 +153,10 @@
                 <div class="px-4 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                     {{ __('Story') }}
                 </div>
+
+                <x-responsive-nav-link :href="route('projects.story.index', $project)" :active="request()->routeIs('projects.story.*')">
+                    {{ __('Story Overview') }}
+                </x-responsive-nav-link>
 
                 <x-responsive-nav-link :href="route('projects.acts.index', $project)" :active="request()->routeIs('projects.acts.*') || request()->routeIs('acts.*')">
                     {{ __('Acts') }}

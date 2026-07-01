@@ -8,6 +8,7 @@ use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SceneController;
+use App\Http\Controllers\StoryController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -33,6 +34,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('projects.events', EventController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
+
+    Route::get('/projects/{project}/story', [StoryController::class, 'index'])->name('projects.story.index');
 
     Route::resource('projects.acts', ActController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])

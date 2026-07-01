@@ -26,6 +26,8 @@ This is a Laravel 12 app (Breeze auth scaffolding, Blade + Tailwind, Alpine.js, 
 
 **Plotline colors:** `App\Support\PlotlineColors::PRESETS` is the fixed palette (500/700 shades of 16 Tailwind color families) used by the `x-color-picker` component; new plotlines default to `PRESETS[0]`.
 
+**Story overview:** `StoryController@index` (`GET /projects/{project}/story`, route `projects.story.index`) is a read-only view combining the full act/chapter/scene tree into one page — chapters render as `<article>`, scenes as `<section>`, and `Scene::contents` is rendered as Markdown via `Illuminate\Support\Str::markdown()` (backed by `league/commonmark`, present in `composer.lock` as a transitive dependency of `laravel/framework` — not in `composer.json`'s own `require`, so don't assume it survives a dependency prune without checking). It's the first item in the "Story" nav dropdown, above Acts/Chapters/Scenes, and includes a collapsible table of contents (acts + chapters only, anchor-linked) above the rendered content.
+
 **Views:** Blade components live in `resources/views/components/` and are the reuse layer for list/table rows (e.g. `x-icon-edit-link`, `x-icon-delete-button`, `x-icon-move-up-button`, `x-icon-move-down-button`, `x-sortable-header`, `x-color-picker`). Index views for plotlines/events/acts/chapters/scenes support query-string sort (`sort`, `direction`) and search/filter (`search`, `plotline`/`act`/`chapter`) handled entirely in the controller's `index` method, not via query scopes on the model. Acts/chapters/scenes default-sort by `position` rather than `name`.
 
 ## Testing notes
