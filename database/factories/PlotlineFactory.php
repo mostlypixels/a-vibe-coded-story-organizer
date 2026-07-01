@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Plotline;
 use App\Models\Project;
+use App\Support\PlotlineColors;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -22,6 +23,7 @@ class PlotlineFactory extends Factory
             'project_id' => Project::factory(),
             'name' => fake()->words(3, true),
             'description' => fake()->sentence(),
+            'color' => fake()->randomElement(array_slice(PlotlineColors::PRESETS, 1)),
         ];
     }
 }

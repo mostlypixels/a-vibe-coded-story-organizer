@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PlotlineColors;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,7 @@ class Project extends Model
             $project->plotlines()->create([
                 'name' => 'Main plotline',
                 'is_main' => true,
+                'color' => PlotlineColors::PRESETS[0],
             ]);
         });
     }

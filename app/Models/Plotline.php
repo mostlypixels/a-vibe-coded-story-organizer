@@ -15,6 +15,7 @@ class Plotline extends Model
         'name',
         'description',
         'is_main',
+        'color',
     ];
 
     protected function casts(): array

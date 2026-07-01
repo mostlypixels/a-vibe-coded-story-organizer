@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\PlotlineColors;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -55,6 +56,7 @@ class ProjectTest extends TestCase
         $response = $this->actingAs($user)->post(route('projects.plotlines.store', $project), [
             'name' => 'A Plotline',
             'description' => 'Some description',
+            'color' => PlotlineColors::PRESETS[1],
         ]);
 
         $response->assertRedirect(route('projects.show', $project));
@@ -80,6 +82,51 @@ class ProjectTest extends TestCase
         $this->assertSame(1, $project->plotlines()->count());
         $this->assertTrue($project->plotlines()->first()->is_main);
         $this->assertSame('Main plotline', $project->plotlines()->first()->name);
+        $this->assertNotNull($project->plotlines()->first()->color);
+    }
+
+    public function test_a_plotline_requires_a_valid_preset_color(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)->post(route('projects.plotlines.store', $project), [
+            'name' => 'A Plotline',
+        ])->assertSessionHasErrors('color');
+
+        $this->actingAs($user)->post(route('projects.plotlines.store', $project), [
+            'name' => 'A Plotline',
+            'color' => '#000000',
+        ])->assertSessionHasErrors('color');
+    }
+
+    public function test_two_plotlines_in_the_same_project_cannot_share_a_color(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $usedColor = $project->plotlines()->first()->color;
+
+        $this->actingAs($user)->post(route('projects.plotlines.store', $project), [
+            'name' => 'A Plotline',
+            'color' => $usedColor,
+        ])->assertSessionHasErrors('color');
+    }
+
+    public function test_the_same_color_can_be_used_across_different_projects(): void
+    {
+        $user = User::factory()->create();
+        $projectA = Project::factory()->for($user)->create();
+        $projectB = Project::factory()->for($user)->create();
+        $color = PlotlineColors::PRESETS[5];
+
+        Plotline::factory()->for($projectA)->create(['color' => $color]);
+
+        $this->actingAs($user)->post(route('projects.plotlines.store', $projectB), [
+            'name' => 'A Plotline',
+            'color' => $color,
+        ])->assertRedirect(route('projects.show', $projectB));
+
+        $this->assertSame(2, $projectB->plotlines()->count());
     }
 
     public function test_the_main_plotline_cannot_be_deleted(): void

@@ -32,7 +32,10 @@
                     @forelse ($project->plotlines as $plotline)
                         <div class="flex items-center justify-between py-3 {{ !$loop->last ? 'border-b border-gray-200' : '' }}">
                             <div>
-                                <div class="font-semibold text-gray-800">{{ $plotline->name }}</div>
+                                <div class="font-semibold text-gray-800 flex items-center gap-2">
+                                    <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
+                                    {{ $plotline->name }}
+                                </div>
                                 @if ($plotline->description)
                                     <div class="text-sm text-gray-500">{{ $plotline->description }}</div>
                                 @endif
@@ -67,7 +70,14 @@
                                 @if ($event->description)
                                     <div class="text-sm text-gray-500">{{ $event->description }}</div>
                                 @endif
-                                <div class="text-sm text-gray-400">{{ $event->plotlines->pluck('name')->join(', ') }}</div>
+                                <div class="text-sm text-gray-400 flex items-center gap-3">
+                                    @foreach ($event->plotlines as $plotline)
+                                        <span class="inline-flex items-center gap-1">
+                                            <span class="inline-block h-2 w-2 rounded-full" style="background-color: {{ $plotline->color }}"></span>
+                                            {{ $plotline->name }}
+                                        </span>
+                                    @endforeach
+                                </div>
                             </div>
                             <div class="flex items-center gap-4 text-sm">
                                 <a href="{{ route('events.edit', $event) }}" class="text-gray-500 hover:text-gray-700">{{ __('Edit') }}</a>

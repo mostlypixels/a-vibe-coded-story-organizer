@@ -24,6 +24,12 @@
                             <x-input-error :messages="$errors->get('description')" class="mt-2" />
                         </div>
 
+                        <div>
+                            <x-input-label :value="__('Color')" />
+                            <x-color-picker name="color" :selected="old('color')" />
+                            <x-input-error :messages="$errors->get('color')" class="mt-2" />
+                        </div>
+
                         <div class="flex items-center gap-4">
                             <x-primary-button>{{ __('Create Plotline') }}</x-primary-button>
                         </div>

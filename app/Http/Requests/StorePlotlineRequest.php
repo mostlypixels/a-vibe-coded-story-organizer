@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Support\PlotlineColors;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePlotlineRequest extends FormRequest
 {
@@ -19,6 +21,12 @@ class StorePlotlineRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'color' => [
+                'required',
+                'string',
+                Rule::in(PlotlineColors::PRESETS),
+                Rule::unique('plotlines')->where('project_id', $this->route('project')->id),
+            ],
         ];
     }
 }

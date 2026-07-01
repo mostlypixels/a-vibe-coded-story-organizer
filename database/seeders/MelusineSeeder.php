@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\PlotlineColors;
 use Illuminate\Database\Seeder;
 
 class MelusineSeeder extends Seeder
@@ -27,24 +28,28 @@ class MelusineSeeder extends Seeder
                 'project_id' => $project->id,
                 'name' => 'Main plotline',
                 'is_main' => true,
+                'color' => PlotlineColors::PRESETS[0], // red-500
             ]);
 
         $curseOfPressine = Plotline::create([
             'project_id' => $project->id,
             'name' => 'The Curse of Pressine',
             'description' => "Pressine's marriage to Count Elinas, the broken oath, and the curse she lays on her daughters.",
+            'color' => PlotlineColors::PRESETS[8], // green-500
         ]);
 
         $melusineAndRaymondin = Plotline::create([
             'project_id' => $project->id,
             'name' => 'Melusine & Raymondin',
             'description' => 'The courtship, marriage, and eventual undoing of Melusine and Raymondin of Lusignan.',
+            'color' => PlotlineColors::PRESETS[16], // sky-500
         ]);
 
         $sonsOfLusignan = Plotline::create([
             'project_id' => $project->id,
             'name' => 'The Sons of Lusignan',
             'description' => "The conquests, triumphs, and tragedies of Melusine and Raymondin's nine sons.",
+            'color' => PlotlineColors::PRESETS[24], // purple-500
         ]);
 
         $events = [
