@@ -19,7 +19,7 @@ class SceneController extends Controller
     {
         $this->authorize('view', $project);
 
-        $sort = in_array($request->query('sort'), ['name']) ? $request->query('sort') : 'name';
+        $sort = in_array($request->query('sort'), ['name', 'position']) ? $request->query('sort') : 'position';
         $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
 
         $scenes = Scene::query()
@@ -27,6 +27,7 @@ class SceneController extends Controller
             ->with('chapter.act')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
             ->when($request->filled('chapter'), fn ($query) => $query->where('chapter_id', $request->query('chapter')))
+            ->when($sort === 'position', fn ($query) => $query->orderBy('chapter_id'))
             ->orderBy($sort, $direction)
             ->get();
 
@@ -92,6 +93,38 @@ class SceneController extends Controller
         $scene->delete();
 
         return redirect()->route('projects.scenes.index', $project);
+    }
+
+    public function moveUp(Scene $scene): RedirectResponse
+    {
+        $this->authorize('update', $scene->chapter->act->project);
+
+        $this->swapPosition($scene, '<', 'desc');
+
+        return redirect()->back();
+    }
+
+    public function moveDown(Scene $scene): RedirectResponse
+    {
+        $this->authorize('update', $scene->chapter->act->project);
+
+        $this->swapPosition($scene, '>', 'asc');
+
+        return redirect()->back();
+    }
+
+    private function swapPosition(Scene $scene, string $operator, string $direction): void
+    {
+        $sibling = Scene::where('chapter_id', $scene->chapter_id)
+            ->where('position', $operator, $scene->position)
+            ->orderBy('position', $direction)
+            ->first();
+
+        if ($sibling) {
+            [$scene->position, $sibling->position] = [$sibling->position, $scene->position];
+            $scene->save();
+            $sibling->save();
+        }
     }
 
     private function chapterQueryFor(Project $project): Builder

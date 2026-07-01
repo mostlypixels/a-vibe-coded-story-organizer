@@ -16,7 +16,7 @@ class ChapterController extends Controller
     {
         $this->authorize('view', $project);
 
-        $sort = in_array($request->query('sort'), ['name']) ? $request->query('sort') : 'name';
+        $sort = in_array($request->query('sort'), ['name', 'position']) ? $request->query('sort') : 'position';
         $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
 
         $chapters = Chapter::query()
@@ -25,6 +25,7 @@ class ChapterController extends Controller
             ->withCount('scenes')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
             ->when($request->filled('act'), fn ($query) => $query->where('act_id', $request->query('act')))
+            ->when($sort === 'position', fn ($query) => $query->orderBy('act_id'))
             ->orderBy($sort, $direction)
             ->get();
 
@@ -82,5 +83,37 @@ class ChapterController extends Controller
         $chapter->delete();
 
         return redirect()->route('projects.chapters.index', $project);
+    }
+
+    public function moveUp(Chapter $chapter): RedirectResponse
+    {
+        $this->authorize('update', $chapter->act->project);
+
+        $this->swapPosition($chapter, '<', 'desc');
+
+        return redirect()->back();
+    }
+
+    public function moveDown(Chapter $chapter): RedirectResponse
+    {
+        $this->authorize('update', $chapter->act->project);
+
+        $this->swapPosition($chapter, '>', 'asc');
+
+        return redirect()->back();
+    }
+
+    private function swapPosition(Chapter $chapter, string $operator, string $direction): void
+    {
+        $sibling = Chapter::where('act_id', $chapter->act_id)
+            ->where('position', $operator, $chapter->position)
+            ->orderBy('position', $direction)
+            ->first();
+
+        if ($sibling) {
+            [$chapter->position, $sibling->position] = [$sibling->position, $chapter->position];
+            $chapter->save();
+            $sibling->save();
+        }
     }
 }

@@ -143,7 +143,7 @@ class MelusineSeeder extends Seeder
 
         $acts = [
             [
-                'name' => 'Act I — The Curse of Pressine',
+                'name' => 'The Curse of Pressine',
                 'description' => "Pressine's marriage to Count Elinas, the broken oath, and the curse she lays on her daughters.",
                 'chapters' => [
                     [
@@ -189,7 +189,7 @@ class MelusineSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Act II — The Meeting at the Fountain of Thirst',
+                'name' => 'The Meeting at the Fountain of Thirst',
                 'description' => 'Raymondin accidentally kills his uncle, flees into the forest, and pledges himself to Melusine.',
                 'chapters' => [
                     [
@@ -225,7 +225,7 @@ class MelusineSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Act III — The Castle and the Sons',
+                'name' => 'The Castle and the Sons',
                 'description' => 'Melusine raises the Castle of Lusignan overnight, weds Raymondin, and bears eight sons — and a hidden ninth.',
                 'chapters' => [
                     [
@@ -240,7 +240,7 @@ class MelusineSeeder extends Seeder
                     ],
                     [
                         'name' => 'The Wedding',
-                        'description' => "Melusine and Raymondin marry, and she withdraws to her chamber every Saturday without explanation.",
+                        'description' => 'Melusine and Raymondin marry, and she withdraws to her chamber every Saturday without explanation.',
                         'scenes' => [
                             [
                                 'name' => 'Lord and Lady of Lusignan',
@@ -271,7 +271,7 @@ class MelusineSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Act IV — The Great Conquests',
+                'name' => 'The Great Conquests',
                 'description' => 'The sons of Melusine go to war, each in a different land, at the same time.',
                 'chapters' => [
                     [
@@ -291,7 +291,7 @@ class MelusineSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Act V — The Damned Deed',
+                'name' => 'The Damned Deed',
                 'description' => 'Geoffroy burns the abbey of Malliers, killing his own brother, and Horrible escapes into the castle.',
                 'chapters' => [
                     [
@@ -327,7 +327,7 @@ class MelusineSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Act VI — The Broken Oath',
+                'name' => 'The Broken Oath',
                 'description' => "Raymondin looks through the keyhole, sees Melusine's serpent form, and word arrives of Urien's death.",
                 'chapters' => [
                     [
@@ -367,7 +367,7 @@ class MelusineSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Act VII — The Transformation',
+                'name' => 'The Transformation',
                 'description' => 'Melusine transforms into a winged serpent before the court and flies from Lusignan forever.',
                 'chapters' => [
                     [
@@ -393,7 +393,7 @@ class MelusineSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Act VIII — The Haunting',
+                'name' => 'The Haunting',
                 'description' => 'Melusine remains bound to Lusignan in spirit; Raymondin dies a penitent, and Horrible grows wild in the mountains.',
                 'chapters' => [
                     [
@@ -429,7 +429,7 @@ class MelusineSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Act IX — The End of the Blood',
+                'name' => 'The End of the Blood',
                 'description' => 'The sons of Melusine fall one by one, and the line and castle of Lusignan pass into ruin and legend.',
                 'chapters' => [
                     [
@@ -476,20 +476,20 @@ class MelusineSeeder extends Seeder
             ],
         ];
 
-        foreach ($acts as $actData) {
+        foreach ($acts as $actPosition => $actData) {
             $chapters = $actData['chapters'];
             unset($actData['chapters']);
 
-            $act = $project->acts()->create($actData);
+            $act = $project->acts()->create($actData + ['position' => $actPosition + 1]);
 
-            foreach ($chapters as $chapterData) {
+            foreach ($chapters as $chapterPosition => $chapterData) {
                 $scenes = $chapterData['scenes'];
                 unset($chapterData['scenes']);
 
-                $chapter = $act->chapters()->create($chapterData);
+                $chapter = $act->chapters()->create($chapterData + ['position' => $chapterPosition + 1]);
 
-                foreach ($scenes as $sceneData) {
-                    $chapter->scenes()->create($sceneData);
+                foreach ($scenes as $scenePosition => $sceneData) {
+                    $chapter->scenes()->create($sceneData + ['position' => $scenePosition + 1]);
                 }
             }
         }

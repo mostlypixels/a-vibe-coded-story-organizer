@@ -14,6 +14,7 @@ class Chapter extends Model
     protected $fillable = [
         'name',
         'description',
+        'position',
     ];
 
     public function act(): BelongsTo
@@ -24,5 +25,14 @@ class Chapter extends Model
     public function scenes(): HasMany
     {
         return $this->hasMany(Scene::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Chapter $chapter) {
+            if (is_null($chapter->position)) {
+                $chapter->position = static::where('act_id', $chapter->act_id)->max('position') + 1;
+            }
+        });
     }
 }

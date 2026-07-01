@@ -14,10 +14,20 @@ class Scene extends Model
         'name',
         'description',
         'contents',
+        'position',
     ];
 
     public function chapter(): BelongsTo
     {
         return $this->belongsTo(Chapter::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Scene $scene) {
+            if (is_null($scene->position)) {
+                $scene->position = static::where('chapter_id', $scene->chapter_id)->max('position') + 1;
+            }
+        });
     }
 }

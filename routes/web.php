@@ -37,14 +37,20 @@ Route::middleware('auth')->group(function () {
     Route::resource('projects.acts', ActController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
+    Route::patch('/acts/{act}/move-up', [ActController::class, 'moveUp'])->name('acts.move-up');
+    Route::patch('/acts/{act}/move-down', [ActController::class, 'moveDown'])->name('acts.move-down');
 
     Route::resource('projects.chapters', ChapterController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
+    Route::patch('/chapters/{chapter}/move-up', [ChapterController::class, 'moveUp'])->name('chapters.move-up');
+    Route::patch('/chapters/{chapter}/move-down', [ChapterController::class, 'moveDown'])->name('chapters.move-down');
 
     Route::resource('projects.scenes', SceneController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
+    Route::patch('/scenes/{scene}/move-up', [SceneController::class, 'moveUp'])->name('scenes.move-up');
+    Route::patch('/scenes/{scene}/move-down', [SceneController::class, 'moveDown'])->name('scenes.move-down');
 });
 
 require __DIR__.'/auth.php';

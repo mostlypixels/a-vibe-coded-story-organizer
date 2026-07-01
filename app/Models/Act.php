@@ -14,6 +14,7 @@ class Act extends Model
     protected $fillable = [
         'name',
         'description',
+        'position',
     ];
 
     public function project(): BelongsTo
@@ -24,5 +25,14 @@ class Act extends Model
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Act $act) {
+            if (is_null($act->position)) {
+                $act->position = static::where('project_id', $act->project_id)->max('position') + 1;
+            }
+        });
     }
 }

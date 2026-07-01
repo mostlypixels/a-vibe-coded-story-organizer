@@ -24,8 +24,9 @@
                         </div>
 
                         <div>
-                            <x-input-label for="name" :value="__('Name')" />
-                            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $scene->name)" required autofocus />
+                            <x-input-label for="name" :value="__('Title')" />
+                            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $scene->name)" placeholder="{{ __('e.g. A Lady at the Fountain') }}" required autofocus />
+                            <p class="mt-1 text-sm text-gray-500">{{ __('Currently scene #:position within its chapter. Use the move up/down buttons on the list to reorder.', ['position' => $scene->position]) }}</p>
                             <x-input-error :messages="$errors->get('name')" class="mt-2" />
                         </div>
 

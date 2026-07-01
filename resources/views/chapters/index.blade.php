@@ -40,7 +40,8 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Name') }}</x-sortable-header>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('#') }}</th>
+                            <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('Act') }}</th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('Description') }}</th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('Scenes') }}</th>
@@ -50,12 +51,17 @@
                     <tbody>
                         @forelse ($chapters as $chapter)
                             <tr class="{{ $loop->even ? 'bg-gray-50' : 'bg-white' }}">
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $chapter->position }}</td>
                                 <td class="px-4 py-3 whitespace-nowrap font-semibold text-gray-800">{{ $chapter->name }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->act->name }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->description }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->scenes_count }}</td>
                                 <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-1">
+                                        @if ($sort === 'position' && request()->filled('act'))
+                                            <x-icon-move-up-button :action="route('chapters.move-up', $chapter)" :disabled="$loop->first" />
+                                            <x-icon-move-down-button :action="route('chapters.move-down', $chapter)" :disabled="$loop->last" />
+                                        @endif
                                         <x-icon-edit-link :href="route('chapters.edit', $chapter)" />
                                         <x-icon-delete-button :action="route('chapters.destroy', $chapter)" :confirm="__('Are you sure you want to delete this chapter?')" />
                                     </div>
@@ -63,7 +69,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+                                <td colspan="6" class="px-4 py-6 text-center text-gray-500">
                                     {{ __('No chapters match.') }}
                                 </td>
                             </tr>

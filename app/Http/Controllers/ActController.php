@@ -16,7 +16,7 @@ class ActController extends Controller
     {
         $this->authorize('view', $project);
 
-        $sort = in_array($request->query('sort'), ['name']) ? $request->query('sort') : 'name';
+        $sort = in_array($request->query('sort'), ['name', 'position']) ? $request->query('sort') : 'position';
         $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
 
         $acts = $project->acts()
@@ -69,5 +69,37 @@ class ActController extends Controller
         $act->delete();
 
         return redirect()->route('projects.acts.index', $project);
+    }
+
+    public function moveUp(Act $act): RedirectResponse
+    {
+        $this->authorize('update', $act->project);
+
+        $this->swapPosition($act, '<', 'desc');
+
+        return redirect()->back();
+    }
+
+    public function moveDown(Act $act): RedirectResponse
+    {
+        $this->authorize('update', $act->project);
+
+        $this->swapPosition($act, '>', 'asc');
+
+        return redirect()->back();
+    }
+
+    private function swapPosition(Act $act, string $operator, string $direction): void
+    {
+        $sibling = Act::where('project_id', $act->project_id)
+            ->where('position', $operator, $act->position)
+            ->orderBy('position', $direction)
+            ->first();
+
+        if ($sibling) {
+            [$act->position, $sibling->position] = [$sibling->position, $act->position];
+            $act->save();
+            $sibling->save();
+        }
     }
 }

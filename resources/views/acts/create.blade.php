@@ -13,8 +13,9 @@
                         @csrf
 
                         <div>
-                            <x-input-label for="name" :value="__('Name')" />
-                            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name')" required autofocus />
+                            <x-input-label for="name" :value="__('Title')" />
+                            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name')" placeholder="{{ __('e.g. The Curse of Pressine') }}" required autofocus />
+                            <p class="mt-1 text-sm text-gray-500">{{ __('The act number is assigned automatically and can be changed later by reordering.') }}</p>
                             <x-input-error :messages="$errors->get('name')" class="mt-2" />
                         </div>
 
