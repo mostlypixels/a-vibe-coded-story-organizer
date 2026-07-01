@@ -32,6 +32,11 @@ class Project extends Model
         return $this->hasMany(Event::class);
     }
 
+    public function acts(): HasMany
+    {
+        return $this->hasMany(Act::class);
+    }
+
     protected static function booted(): void
     {
         static::created(function (Project $project) {

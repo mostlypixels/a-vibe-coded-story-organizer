@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\ActController;
+use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\SceneController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -28,6 +31,18 @@ Route::middleware('auth')->group(function () {
         ->shallow();
 
     Route::resource('projects.events', EventController::class)
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->shallow();
+
+    Route::resource('projects.acts', ActController::class)
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->shallow();
+
+    Route::resource('projects.chapters', ChapterController::class)
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->shallow();
+
+    Route::resource('projects.scenes', SceneController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
 });
