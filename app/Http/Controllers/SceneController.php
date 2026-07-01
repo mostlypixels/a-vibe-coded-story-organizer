@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -95,20 +96,28 @@ class SceneController extends Controller
         return redirect()->route('projects.scenes.index', $project);
     }
 
-    public function moveUp(Scene $scene): RedirectResponse
+    public function moveUp(Request $request, Scene $scene): RedirectResponse|JsonResponse
     {
         $this->authorize('update', $scene->chapter->act->project);
 
         $this->swapPosition($scene, '<', 'desc');
 
+        if ($request->wantsJson()) {
+            return response()->json(['position' => $scene->position]);
+        }
+
         return redirect()->back();
     }
 
-    public function moveDown(Scene $scene): RedirectResponse
+    public function moveDown(Request $request, Scene $scene): RedirectResponse|JsonResponse
     {
         $this->authorize('update', $scene->chapter->act->project);
 
         $this->swapPosition($scene, '>', 'asc');
+
+        if ($request->wantsJson()) {
+            return response()->json(['position' => $scene->position]);
+        }
 
         return redirect()->back();
     }

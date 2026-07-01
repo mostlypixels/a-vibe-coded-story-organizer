@@ -67,7 +67,21 @@
                                             {{ $scene->name }}
                                         </button>
 
-                                        <x-icon-edit-link :href="route('scenes.edit', $scene)" />
+                                        <div class="flex items-center gap-1">
+                                            <button type="button" data-move="up" onclick="moveScene(this, '{{ route('scenes.move-up', $scene) }}', 'up')" @disabled($loop->first) class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:text-gray-200 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-200" title="{{ __('Move up') }}">
+                                                <span class="sr-only">{{ __('Move up') }}</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l4.25 4.5a.75.75 0 11-1.1 1.02L10.75 5.612V16.25a.75.75 0 01-1.5 0V5.612L6.3 8.76a.75.75 0 11-1.1-1.02l4.25-4.5A.75.75 0 0110 3z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <button type="button" data-move="down" onclick="moveScene(this, '{{ route('scenes.move-down', $scene) }}', 'down')" @disabled($loop->last) class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:text-gray-200 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-200" title="{{ __('Move down') }}">
+                                                <span class="sr-only">{{ __('Move down') }}</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.55-.24l-4.25-4.5a.75.75 0 111.1-1.02l2.95 3.148V3.75a.75.75 0 011.5 0v10.638l2.95-3.148a.75.75 0 111.1 1.02l-4.25 4.5A.75.75 0 0110 17z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <x-icon-edit-link :href="route('scenes.edit', $scene)" />
+                                        </div>
                                     </div>
 
                                     <div x-show="open" x-transition class="prose prose-sm max-w-none text-gray-700">
