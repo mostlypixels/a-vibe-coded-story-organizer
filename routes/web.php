@@ -24,11 +24,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
 
     Route::resource('projects.plotlines', PlotlineController::class)
-        ->only(['create', 'store', 'edit', 'update', 'destroy'])
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
 
     Route::resource('projects.events', EventController::class)
-        ->only(['create', 'store', 'edit', 'update', 'destroy'])
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
 });
 

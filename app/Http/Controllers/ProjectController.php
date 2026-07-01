@@ -26,7 +26,7 @@ class ProjectController extends Controller
     {
         $this->authorize('view', $project);
 
-        $project->load(['plotlines', 'events.plotlines']);
+        $project->loadCount(['plotlines', 'events']);
 
         return view('projects.show', ['project' => $project]);
     }

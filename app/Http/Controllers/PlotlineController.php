@@ -7,10 +7,31 @@ use App\Http\Requests\UpdatePlotlineRequest;
 use App\Models\Plotline;
 use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PlotlineController extends Controller
 {
+    public function index(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        $sort = in_array($request->query('sort'), ['name', 'color']) ? $request->query('sort') : 'name';
+        $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
+
+        $plotlines = $project->plotlines()
+            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
+            ->orderBy($sort, $direction)
+            ->get();
+
+        return view('plotlines.index', [
+            'project' => $project,
+            'plotlines' => $plotlines,
+            'sort' => $sort,
+            'direction' => $direction,
+        ]);
+    }
+
     public function create(Project $project): View
     {
         $this->authorize('update', $project);
@@ -22,7 +43,7 @@ class PlotlineController extends Controller
     {
         $project->plotlines()->create($request->validated());
 
-        return redirect()->route('projects.show', $project);
+        return redirect()->route('projects.plotlines.index', $project);
     }
 
     public function edit(Plotline $plotline): View
@@ -36,7 +57,7 @@ class PlotlineController extends Controller
     {
         $plotline->update($request->validated());
 
-        return redirect()->route('projects.show', $plotline->project);
+        return redirect()->route('projects.plotlines.index', $plotline->project);
     }
 
     public function destroy(Plotline $plotline): RedirectResponse
@@ -48,6 +69,6 @@ class PlotlineController extends Controller
         $project = $plotline->project;
         $plotline->delete();
 
-        return redirect()->route('projects.show', $project);
+        return redirect()->route('projects.plotlines.index', $project);
     }
 }

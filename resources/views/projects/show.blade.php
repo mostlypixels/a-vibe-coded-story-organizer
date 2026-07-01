@@ -20,73 +20,16 @@
                 </div>
             @endif
 
-            <div class="flex items-center justify-between">
-                <h3 class="font-semibold text-lg text-gray-800">{{ __('Plotlines') }}</h3>
-                <a href="{{ route('projects.plotlines.create', $project) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                    {{ __('New Plotline') }}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <a href="{{ route('projects.plotlines.index', $project) }}" class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 hover:bg-gray-50">
+                    <h3 class="font-semibold text-lg text-gray-800">{{ __('Plotlines') }}</h3>
+                    <p class="text-sm text-gray-500 mt-1">{{ trans_choice('{0} No plotlines|{1} :count plotline|[2,*] :count plotlines', $project->plotlines_count, ['count' => $project->plotlines_count]) }}</p>
                 </a>
-            </div>
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    @forelse ($project->plotlines as $plotline)
-                        <div class="flex items-center justify-between py-3 {{ !$loop->last ? 'border-b border-gray-200' : '' }}">
-                            <div>
-                                <div class="font-semibold text-gray-800 flex items-center gap-2">
-                                    <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
-                                    {{ $plotline->name }}
-                                </div>
-                                @if ($plotline->description)
-                                    <div class="text-sm text-gray-500">{{ $plotline->description }}</div>
-                                @endif
-                            </div>
-                            <div class="flex items-center gap-4 text-sm">
-                                @if ($plotline->is_main)
-                                    <span class="text-gray-400">{{ __('Main') }}</span>
-                                @endif
-                                <a href="{{ route('plotlines.edit', $plotline) }}" class="text-gray-500 hover:text-gray-700">{{ __('Edit') }}</a>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-gray-500">{{ __('This project has no plotlines yet.') }}</p>
-                    @endforelse
-                </div>
-            </div>
-
-            <div class="flex items-center justify-between">
-                <h3 class="font-semibold text-lg text-gray-800">{{ __('Events') }}</h3>
-                <a href="{{ route('projects.events.create', $project) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                    {{ __('New Event') }}
+                <a href="{{ route('projects.events.index', $project) }}" class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 hover:bg-gray-50">
+                    <h3 class="font-semibold text-lg text-gray-800">{{ __('Events') }}</h3>
+                    <p class="text-sm text-gray-500 mt-1">{{ trans_choice('{0} No events|{1} :count event|[2,*] :count events', $project->events_count, ['count' => $project->events_count]) }}</p>
                 </a>
-            </div>
-
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    @forelse ($project->events->sortBy('event_datetime') as $event)
-                        <div class="flex items-center justify-between py-3 {{ !$loop->last ? 'border-b border-gray-200' : '' }}">
-                            <div>
-                                <div class="font-semibold text-gray-800">{{ $event->title }}</div>
-                                <div class="text-sm text-gray-500">{{ $event->event_datetime->format('M j, Y g:i A') }}</div>
-                                @if ($event->description)
-                                    <div class="text-sm text-gray-500">{{ $event->description }}</div>
-                                @endif
-                                <div class="text-sm text-gray-400 flex items-center gap-3">
-                                    @foreach ($event->plotlines as $plotline)
-                                        <span class="inline-flex items-center gap-1">
-                                            <span class="inline-block h-2 w-2 rounded-full" style="background-color: {{ $plotline->color }}"></span>
-                                            {{ $plotline->name }}
-                                        </span>
-                                    @endforeach
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-4 text-sm">
-                                <a href="{{ route('events.edit', $event) }}" class="text-gray-500 hover:text-gray-700">{{ __('Edit') }}</a>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-gray-500">{{ __('This project has no events yet.') }}</p>
-                    @endforelse
-                </div>
             </div>
         </div>
     </div>

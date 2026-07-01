@@ -59,8 +59,52 @@ class ProjectTest extends TestCase
             'color' => PlotlineColors::PRESETS[1],
         ]);
 
-        $response->assertRedirect(route('projects.show', $project));
+        $response->assertRedirect(route('projects.plotlines.index', $project));
         $this->assertSame(2, $project->plotlines()->count());
+    }
+
+    public function test_a_user_can_view_the_plotlines_index_for_their_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create(['name' => 'A Named Plotline']);
+
+        $this->actingAs($user)->get(route('projects.plotlines.index', $project))
+            ->assertOk()
+            ->assertSee('A Named Plotline');
+    }
+
+    public function test_the_plotlines_index_can_be_sorted_by_name(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Plotline::factory()->for($project)->create(['name' => 'Zebra Plotline']);
+        Plotline::factory()->for($project)->create(['name' => 'Apple Plotline']);
+
+        $this->actingAs($user)->get(route('projects.plotlines.index', ['project' => $project, 'sort' => 'name', 'direction' => 'asc']))
+            ->assertSeeInOrder(['Apple Plotline', 'Main plotline', 'Zebra Plotline']);
+    }
+
+    public function test_the_plotlines_index_can_be_filtered_by_name(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Plotline::factory()->for($project)->create(['name' => 'Zebra Plotline']);
+        Plotline::factory()->for($project)->create(['name' => 'Apple Plotline']);
+
+        $response = $this->actingAs($user)->get(route('projects.plotlines.index', ['project' => $project, 'search' => 'Zebra']));
+
+        $response->assertSee('Zebra Plotline');
+        $response->assertDontSee('Apple Plotline');
+    }
+
+    public function test_a_user_cannot_view_the_plotlines_index_for_another_users_project(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+
+        $this->actingAs($other)->get(route('projects.plotlines.index', $project))->assertForbidden();
     }
 
     public function test_a_user_cannot_add_a_plotline_to_another_users_project(): void
@@ -124,7 +168,7 @@ class ProjectTest extends TestCase
         $this->actingAs($user)->post(route('projects.plotlines.store', $projectB), [
             'name' => 'A Plotline',
             'color' => $color,
-        ])->assertRedirect(route('projects.show', $projectB));
+        ])->assertRedirect(route('projects.plotlines.index', $projectB));
 
         $this->assertSame(2, $projectB->plotlines()->count());
     }
@@ -146,7 +190,7 @@ class ProjectTest extends TestCase
         $plotline = Plotline::factory()->for($project)->create();
 
         $this->actingAs($user)->delete(route('plotlines.destroy', $plotline))
-            ->assertRedirect(route('projects.show', $project));
+            ->assertRedirect(route('projects.plotlines.index', $project));
 
         $this->assertNull($plotline->fresh());
     }
@@ -164,10 +208,63 @@ class ProjectTest extends TestCase
             'plotlines' => [$plotline->id],
         ]);
 
-        $response->assertRedirect(route('projects.show', $project));
+        $response->assertRedirect(route('projects.events.index', $project));
         $event = Event::first();
         $this->assertSame('The Battle', $event->title);
         $this->assertTrue($event->plotlines->contains($plotline));
+    }
+
+    public function test_a_user_can_view_the_events_index_for_their_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create(['title' => 'A Named Event']);
+
+        $this->actingAs($user)->get(route('projects.events.index', $project))
+            ->assertOk()
+            ->assertSee('A Named Event');
+    }
+
+    public function test_the_events_index_can_be_sorted_by_title(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Event::factory()->for($project)->create(['title' => 'Zebra Event']);
+        Event::factory()->for($project)->create(['title' => 'Apple Event']);
+
+        $this->actingAs($user)->get(route('projects.events.index', ['project' => $project, 'sort' => 'title', 'direction' => 'asc']))
+            ->assertSeeInOrder(['Apple Event', 'Zebra Event']);
+    }
+
+    public function test_the_events_index_can_be_filtered_by_title_and_plotline(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotlineA = Plotline::factory()->for($project)->create();
+        $plotlineB = Plotline::factory()->for($project)->create();
+
+        $eventA = Event::factory()->for($project)->create(['title' => 'The Battle']);
+        $eventA->plotlines()->attach($plotlineA);
+
+        $eventB = Event::factory()->for($project)->create(['title' => 'The Wedding']);
+        $eventB->plotlines()->attach($plotlineB);
+
+        $bySearch = $this->actingAs($user)->get(route('projects.events.index', ['project' => $project, 'search' => 'Battle']));
+        $bySearch->assertSee('The Battle');
+        $bySearch->assertDontSee('The Wedding');
+
+        $byPlotline = $this->actingAs($user)->get(route('projects.events.index', ['project' => $project, 'plotline' => $plotlineB->id]));
+        $byPlotline->assertSee('The Wedding');
+        $byPlotline->assertDontSee('The Battle');
+    }
+
+    public function test_a_user_cannot_view_the_events_index_for_another_users_project(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+
+        $this->actingAs($other)->get(route('projects.events.index', $project))->assertForbidden();
     }
 
     public function test_a_user_cannot_create_an_event_for_another_users_project(): void
@@ -196,12 +293,12 @@ class ProjectTest extends TestCase
             'title' => 'Updated Title',
             'event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
             'plotlines' => [$plotline->id],
-        ])->assertRedirect(route('projects.show', $project));
+        ])->assertRedirect(route('projects.events.index', $project));
 
         $this->assertSame('Updated Title', $event->fresh()->title);
 
         $this->actingAs($user)->delete(route('events.destroy', $event))
-            ->assertRedirect(route('projects.show', $project));
+            ->assertRedirect(route('projects.events.index', $project));
 
         $this->assertNull($event->fresh());
     }

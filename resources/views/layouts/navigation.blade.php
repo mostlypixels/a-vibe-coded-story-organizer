@@ -30,11 +30,11 @@
                                 </x-slot>
 
                                 <x-slot name="content">
-                                    <x-dropdown-link :href="route('projects.show', $project)">
+                                    <x-dropdown-link :href="route('projects.plotlines.index', $project)">
                                         {{ __('Plotlines') }}
                                     </x-dropdown-link>
 
-                                    <x-dropdown-link :href="route('projects.show', $project)">
+                                    <x-dropdown-link :href="route('projects.events.index', $project)">
                                         {{ __('Events') }}
                                     </x-dropdown-link>
                                 </x-slot>
@@ -102,11 +102,11 @@
                     {{ __('Timeline') }}
                 </div>
 
-                <x-responsive-nav-link :href="route('projects.show', $project)" :active="request()->routeIs('projects.plotlines.*') || request()->routeIs('plotlines.*')">
+                <x-responsive-nav-link :href="route('projects.plotlines.index', $project)" :active="request()->routeIs('projects.plotlines.*') || request()->routeIs('plotlines.*')">
                     {{ __('Plotlines') }}
                 </x-responsive-nav-link>
 
-                <x-responsive-nav-link :href="route('projects.show', $project)" :active="request()->routeIs('projects.events.*') || request()->routeIs('events.*')">
+                <x-responsive-nav-link :href="route('projects.events.index', $project)" :active="request()->routeIs('projects.events.*') || request()->routeIs('events.*')">
                     {{ __('Events') }}
                 </x-responsive-nav-link>
             @endif

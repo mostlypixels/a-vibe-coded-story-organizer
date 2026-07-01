@@ -7,10 +7,36 @@ use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
 use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class EventController extends Controller
 {
+    public function index(Request $request, Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        $sort = in_array($request->query('sort'), ['title', 'event_datetime']) ? $request->query('sort') : 'event_datetime';
+        $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
+
+        $events = $project->events()
+            ->with('plotlines')
+            ->when($request->filled('search'), fn ($query) => $query->where('title', 'like', '%'.$request->query('search').'%'))
+            ->when($request->filled('plotline'), fn ($query) => $query->whereHas(
+                'plotlines',
+                fn ($plotlineQuery) => $plotlineQuery->where('plotlines.id', $request->query('plotline'))
+            ))
+            ->orderBy($sort, $direction)
+            ->get();
+
+        return view('events.index', [
+            'project' => $project->load('plotlines'),
+            'events' => $events,
+            'sort' => $sort,
+            'direction' => $direction,
+        ]);
+    }
+
     public function create(Project $project): View
     {
         $this->authorize('update', $project);
@@ -24,7 +50,7 @@ class EventController extends Controller
 
         $event->plotlines()->sync($request->validated('plotlines'));
 
-        return redirect()->route('projects.show', $project);
+        return redirect()->route('projects.events.index', $project);
     }
 
     public function edit(Event $event): View
@@ -45,7 +71,7 @@ class EventController extends Controller
 
         $event->plotlines()->sync($request->validated('plotlines'));
 
-        return redirect()->route('projects.show', $event->project);
+        return redirect()->route('projects.events.index', $event->project);
     }
 
     public function destroy(Event $event): RedirectResponse
@@ -55,6 +81,6 @@ class EventController extends Controller
         $project = $event->project;
         $event->delete();
 
-        return redirect()->route('projects.show', $project);
+        return redirect()->route('projects.events.index', $project);
     }
 }
