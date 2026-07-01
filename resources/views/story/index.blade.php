@@ -47,7 +47,7 @@
 
             @forelse ($acts as $act)
                 <div class="space-y-6">
-                    <h2 id="act-{{ $act->id }}" class="text-2xl font-bold text-gray-900 border-b border-gray-300 pb-2 scroll-mt-16">
+                    <h2 id="act-{{ $act->id }}" class="text-2xl font-bold text-white bg-gray-600 rounded-md px-4 py-2 scroll-mt-16">
                         {{ __('Act :number', ['number' => $act->position]) }} &mdash; {{ $act->name }}
                     </h2>
 
@@ -60,7 +60,7 @@
                             @forelse ($chapter->scenes as $scene)
                                 <section x-data="{ open: true }" class="space-y-2 pb-4 border-b border-gray-200 last:border-b-0 last:pb-0">
                                     <div class="flex items-center justify-between">
-                                        <button type="button" @click="open = ! open" class="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                                        <button type="button" @click="open = ! open" class="flex items-center gap-2 text-sm font-light text-gray-500">
                                             <svg class="h-4 w-4 fill-current text-gray-500 transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                             </svg>
@@ -84,7 +84,7 @@
                                         </div>
                                     </div>
 
-                                    <div x-show="open" x-transition class="prose prose-sm max-w-none text-gray-700">
+                                    <div x-show="open" x-transition class="prose prose-sm max-w-none text-gray-700 text-justify text-[0.8125rem] [&_p]:my-4">
                                         {!! Str::markdown($scene->contents ?? '') !!}
                                     </div>
                                 </section>
