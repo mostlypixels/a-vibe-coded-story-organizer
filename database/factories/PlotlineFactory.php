@@ -23,7 +23,16 @@ class PlotlineFactory extends Factory
             'project_id' => Project::factory(),
             'name' => fake()->words(3, true),
             'description' => fake()->sentence(),
-            'color' => fake()->randomElement(array_slice(PlotlineColors::PRESETS, 1)),
+            'color' => function (array $attributes) {
+                $available = array_slice(PlotlineColors::PRESETS, 1);
+
+                if ($projectId = $attributes['project_id'] ?? null) {
+                    $used = Plotline::where('project_id', $projectId)->pluck('color')->all();
+                    $available = array_values(array_diff($available, $used)) ?: $available;
+                }
+
+                return fake()->randomElement($available);
+            },
         ];
     }
 }

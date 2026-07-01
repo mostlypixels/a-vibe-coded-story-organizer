@@ -51,7 +51,12 @@
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ $plotline->description }}</td>
                                 <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
-                                    <a href="{{ route('plotlines.edit', $plotline) }}" class="text-gray-500 hover:text-gray-700">{{ __('Edit') }}</a>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <x-icon-edit-link :href="route('plotlines.edit', $plotline)" />
+                                        @unless ($plotline->is_main)
+                                            <x-icon-delete-button :action="route('plotlines.destroy', $plotline)" :confirm="__('Are you sure you want to delete this plotline?')" />
+                                        @endunless
+                                    </div>
                                 </td>
                             </tr>
                         @empty

@@ -64,7 +64,10 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
-                                    <a href="{{ route('events.edit', $event) }}" class="text-gray-500 hover:text-gray-700">{{ __('Edit') }}</a>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <x-icon-edit-link :href="route('events.edit', $event)" />
+                                        <x-icon-delete-button :action="route('events.destroy', $event)" :confirm="__('Are you sure you want to delete this event?')" />
+                                    </div>
                                 </td>
                             </tr>
                         @empty
