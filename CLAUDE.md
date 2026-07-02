@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Guidelines & documentation
+
+- **Coding guidelines:** [`.claude/guidelines.md`](.claude/guidelines.md) — architecture/style preferences, where logic lives, security, authorization, testing, and documentation rules. Read before planning or writing code.
+- **Project docs:** [`documentation/`](documentation/) — [architecture](documentation/architecture.md), [code style](documentation/code-style.md), [best practices](documentation/best-practices.md), and [glossary](documentation/glossary.md). Keep these in sync when architecture or workflows change.
+- **Changelog:** [`CHANGELOG.md`](CHANGELOG.md) — Keep a Changelog format; update the `[Unreleased]` section per feature/PR.
+
 ## Commands
 
 - Run full test suite: `composer test` (clears config cache, then `php artisan test`)
