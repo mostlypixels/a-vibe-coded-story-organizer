@@ -12,6 +12,12 @@ set belongs in its pull request description.
 
 ### Added
 
+- Reusable UI component library (Blade components in `resources/views/components/`):
+  `heading` (unified `<h1>`–`<h6>` scale), `button` (variant/size, renders `<a>` or
+  `<button>`), `card`, `badge`, `alert` (dismissible, contextual variants),
+  `breadcrumbs` (data-driven), `tooltip`, `popover`, and `dialog` (header/body/footer
+  modal built on the existing `modal` shell). Documented in
+  [`documentation/ui-components.md`](documentation/ui-components.md).
 - Scene status workflow: scenes now carry a `status` (`Draft`, `To Proofread`,
   `To Edit`, `Final`) backed by the `SceneStatus` enum, plus a freeform `notes`
   field. Status renders through a reusable `scene-status-badge` Blade component on
