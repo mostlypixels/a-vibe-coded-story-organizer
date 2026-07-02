@@ -12,6 +12,13 @@ set belongs in its pull request description.
 
 ### Added
 
+- Project theme palette registered in `tailwind.config.js`: `ocean` (#219EBC),
+  `aqua` (#8ECAE6), `navy` (#023047), plus `sun` (#FFB703) / `flame` (#FB8500)
+  accents, each as a full shade scale.
+- `x-table` component family for the striped, sortable index tables (plotlines, events,
+  acts, chapters, scenes): `x-table` (card + `<table>` + `head` slot), `x-table-heading`
+  (non-sortable header cell), `x-table-row` (striped body row), and `x-table-empty`
+  (no-results row). Documented in [`documentation/ui-components.md`](documentation/ui-components.md).
 - Reusable UI component library (Blade components in `resources/views/components/`):
   `heading` (unified `<h1>`–`<h6>` scale), `button` (variant/size, renders `<a>` or
   `<button>`), `card`, `badge`, `alert` (dismissible, contextual variants),
@@ -33,6 +40,20 @@ set belongs in its pull request description.
 
 ### Changed
 
+- Reskinned the app chrome to the theme palette: the Breeze default indigo accent
+  (focus rings, links, active nav, `badge` primary/indigo variants) is now `ocean`;
+  primary buttons fill with deep `navy` (higher contrast against their white label);
+  and the active-navigation indicator uses the `flame` orange accent. Body text and
+  semantic colors (info/success/warning/danger) are unchanged.
+- Banded the app header: the top navigation bar is now `navy` (with its logo, links,
+  dropdown triggers, and mobile menu lightened to `aqua`/white for contrast) and the
+  page-heading bar below it is `ocean-800` (its heading text and back/edit links
+  lightened to white/`aqua` via wrapper-scoped selectors in the app layout).
+- Index table headers (`<thead>` on plotlines/events/acts/chapters/scenes, plus the
+  `sortable-header` component) now use a `sun-400` background with `navy-900` cell
+  text for strong contrast.
+- Striped table rows are now `gray-100` (a step darker than the previous `gray-50`),
+  set once in the shared `x-table-row` component.
 - Reordered scenes in the story overview via AJAX (no full page reload).
 - Restyled the story overview typography and act headings.
 - Consolidated the `MelusineSeeder` chapters into fewer, denser chapters.

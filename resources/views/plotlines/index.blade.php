@@ -28,47 +28,38 @@
                 </a>
             </div>
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Name') }}</x-sortable-header>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('Description') }}</th>
-                            <th scope="col" class="px-4 py-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($plotlines as $plotline)
-                            <tr class="{{ $loop->even ? 'bg-gray-50' : 'bg-white' }}">
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <div class="font-semibold text-gray-800 flex items-center gap-2">
-                                        <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
-                                        {{ $plotline->name }}
-                                        @if ($plotline->is_main)
-                                            <span class="text-xs text-gray-400">({{ __('Main') }})</span>
-                                        @endif
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-500">{{ $plotline->description }}</td>
-                                <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
-                                    <div class="flex items-center justify-end gap-1">
-                                        <x-icon-edit-link :href="route('plotlines.edit', $plotline)" />
-                                        @unless ($plotline->is_main)
-                                            <x-icon-delete-button :action="route('plotlines.destroy', $plotline)" :confirm="__('Are you sure you want to delete this plotline?')" />
-                                        @endunless
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="3" class="px-4 py-6 text-center text-gray-500">
-                                    {{ __('No plotlines match.') }}
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+            <x-table>
+                <x-slot:head>
+                    <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Name') }}</x-sortable-header>
+                    <x-table-heading>{{ __('Description') }}</x-table-heading>
+                    <x-table-heading />
+                </x-slot:head>
+
+                @forelse ($plotlines as $plotline)
+                    <x-table-row :striped="$loop->even">
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="font-semibold text-gray-800 flex items-center gap-2">
+                                <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
+                                {{ $plotline->name }}
+                                @if ($plotline->is_main)
+                                    <span class="text-xs text-gray-400">({{ __('Main') }})</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-500">{{ $plotline->description }}</td>
+                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                            <div class="flex items-center justify-end gap-1">
+                                <x-icon-edit-link :href="route('plotlines.edit', $plotline)" />
+                                @unless ($plotline->is_main)
+                                    <x-icon-delete-button :action="route('plotlines.destroy', $plotline)" :confirm="__('Are you sure you want to delete this plotline?')" />
+                                @endunless
+                            </div>
+                        </td>
+                    </x-table-row>
+                @empty
+                    <x-table-empty :colspan="3">{{ __('No plotlines match.') }}</x-table-empty>
+                @endforelse
+            </x-table>
         </div>
     </div>
 </x-app-layout>

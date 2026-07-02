@@ -71,6 +71,40 @@ Surface container with an optional header and footer.
 </x-card>
 ```
 
+## Table
+
+Card-wrapped, striped, sortable data table — the shared skeleton behind the plotline / event /
+act / chapter / scene index pages. Four components work together:
+
+- **`x-table`** — the card wrapper + `<table>`. Header cells go in the `head` slot (rendered as one
+  `bg-sun-400` header row); body rows go in the default slot.
+- **`x-table-heading`** — a non-sortable header cell (themed `bg-sun-400` / `text-navy-900`). Render
+  it empty (`<x-table-heading />`) for a spacer column such as the trailing row-actions column. Its
+  sortable counterpart is [`x-sortable-header`](../resources/views/components/sortable-header.blade.php),
+  which shares the same cell styling and adds the sort link/arrow.
+- **`x-table-row`** — a body row. Pass `:striped="$loop->even"` for zebra striping; striped rows use
+  `bg-gray-100` (a step darker than the plain `bg-white` rows).
+- **`x-table-empty`** — the full-width "no results" row for the `@empty` branch; pass `:colspan`.
+
+```blade
+<x-table>
+    <x-slot:head>
+        <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Name') }}</x-sortable-header>
+        <x-table-heading>{{ __('Description') }}</x-table-heading>
+        <x-table-heading />
+    </x-slot:head>
+
+    @forelse ($plotlines as $plotline)
+        <x-table-row :striped="$loop->even">
+            <td class="px-4 py-3 …">{{ $plotline->name }}</td>
+            …
+        </x-table-row>
+    @empty
+        <x-table-empty :colspan="3">{{ __('No plotlines match.') }}</x-table-empty>
+    @endforelse
+</x-table>
+```
+
 ## Badge
 
 Small status/label pill. For scene status specifically, use the domain-aware
