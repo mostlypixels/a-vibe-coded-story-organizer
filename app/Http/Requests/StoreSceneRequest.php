@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\SceneStatus;
 use App\Rules\ValidMarkdown;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,6 +28,8 @@ class StoreSceneRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'contents' => ['nullable', 'string', new ValidMarkdown],
+            'notes' => ['nullable', 'string', new ValidMarkdown],
+            'status' => ['required', Rule::enum(SceneStatus::class)],
         ];
     }
 }

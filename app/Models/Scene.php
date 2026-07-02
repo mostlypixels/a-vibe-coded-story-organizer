@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SceneStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +15,13 @@ class Scene extends Model
         'name',
         'description',
         'contents',
+        'notes',
+        'status',
         'position',
+    ];
+
+    protected $casts = [
+        'status' => SceneStatus::class,
     ];
 
     public function chapter(): BelongsTo

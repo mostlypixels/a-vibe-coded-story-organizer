@@ -67,7 +67,8 @@
                                             {{ $scene->name }}
                                         </button>
 
-                                        <div class="flex items-center gap-1">
+                                        <div class="flex items-center gap-2">
+                                            <x-scene-status-badge :status="$scene->status" />
                                             <button type="button" data-move="up" onclick="moveScene(this, '{{ route('scenes.move-up', $scene) }}', 'up')" @disabled($loop->first) class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:text-gray-200 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-200" title="{{ __('Move up') }}">
                                                 <span class="sr-only">{{ __('Move up') }}</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

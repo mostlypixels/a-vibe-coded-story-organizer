@@ -31,6 +31,16 @@
                         </div>
 
                         <div>
+                            <x-input-label for="status" :value="__('Status')" />
+                            <select id="status" name="status" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                @foreach (\App\Enums\SceneStatus::cases() as $status)
+                                    <option value="{{ $status->value }}" @selected(old('status', $scene->status->value) === $status->value)>{{ $status->label() }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('status')" class="mt-2" />
+                        </div>
+
+                        <div>
                             <x-input-label for="description" :value="__('Description')" />
                             <textarea id="description" name="description" rows="4" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">{{ old('description', $scene->description) }}</textarea>
                             <x-input-error :messages="$errors->get('description')" class="mt-2" />
@@ -40,6 +50,12 @@
                             <x-input-label for="contents" :value="__('Contents (Markdown)')" />
                             <textarea id="contents" name="contents" rows="12" class="mt-1 block w-full font-mono text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">{{ old('contents', $scene->contents) }}</textarea>
                             <x-input-error :messages="$errors->get('contents')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="notes" :value="__('Notes (Markdown)')" />
+                            <textarea id="notes" name="notes" rows="6" class="mt-1 block w-full font-mono text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">{{ old('notes', $scene->notes) }}</textarea>
+                            <x-input-error :messages="$errors->get('notes')" class="mt-2" />
                         </div>
 
                         <div class="flex items-center gap-4">

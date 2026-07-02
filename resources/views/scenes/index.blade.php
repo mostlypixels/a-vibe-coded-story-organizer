@@ -44,6 +44,7 @@
                             <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('Chapter') }}</th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('Description') }}</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
                             <th scope="col" class="px-4 py-3"></th>
                         </tr>
                     </thead>
@@ -54,6 +55,7 @@
                                 <td class="px-4 py-3 whitespace-nowrap font-semibold text-gray-800">{{ $scene->name }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ $scene->description }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap"><x-scene-status-badge :status="$scene->status" /></td>
                                 <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-1">
                                         @if ($sort === 'position' && request()->filled('chapter'))
@@ -67,7 +69,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+                                <td colspan="6" class="px-4 py-6 text-center text-gray-500">
                                     {{ __('No scenes match.') }}
                                 </td>
                             </tr>
