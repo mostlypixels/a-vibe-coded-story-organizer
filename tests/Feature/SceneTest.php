@@ -342,7 +342,8 @@ class SceneTest extends TestCase
             ->get(route('projects.scenes.create', $project))
             ->assertOk()
             ->assertSee('Happens during')
-            ->assertSee('Mentions events');
+            ->assertSee('Mentions events')
+            ->assertSee('Search events by name or date', false);
 
         $this->actingAs($user)
             ->get(route('scenes.edit', $scene))

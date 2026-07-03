@@ -19,7 +19,9 @@ set belongs in its pull request description.
   as a checkbox list. Unassigned scenes (no "happens during" event) are flagged with a red
   border on the scenes index and Story overview. Deleting an event unassigns its scenes (via
   the FK) and drops its mention rows (pivot cascade); the event edit page lists the scenes
-  happening during / mentioning it.
+  happening during / mentioning it. The scene form's "mentions" input is a searchable,
+  chip-based event picker (`x-event-picker`, client-side Alpine filter by name/date) rather
+  than a checkbox list, so it scales to projects with many events.
 - Bookend timeline events: every project is auto-created with two fixed events, "Start"
   (first day of year 0000) and "End" (first day of year 3000), attached to the main
   plotline. Both carry `events.is_fixed` and cannot be deleted (delete button hidden in

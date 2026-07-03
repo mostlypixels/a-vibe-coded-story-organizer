@@ -90,14 +90,7 @@
                         <div>
                             <x-input-label :value="__('Mentions events')" />
                             <p class="text-sm text-gray-500">{{ __('Other events this scene refers to (optional).') }}</p>
-                            <div class="mt-2 space-y-2">
-                                @foreach ($events as $event)
-                                    <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="mentioned_events[]" value="{{ $event->id }}" @checked(in_array($event->id, old('mentioned_events', $scene->mentionedEvents->pluck('id')->all())))>
-                                        <span>{{ $event->title }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
+                            <x-event-picker name="mentioned_events" :events="$events" :selected="old('mentioned_events', $scene->mentionedEvents->pluck('id')->all())" />
                             <x-input-error :messages="$errors->get('mentioned_events')" class="mt-2" />
                         </div>
 
