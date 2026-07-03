@@ -31,9 +31,7 @@
                     @endif
                 </form>
 
-                <a href="{{ route('projects.events.create', $project) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                    {{ __('New Event') }}
-                </a>
+                <x-button variant="primary" :href="route('projects.events.create', $project)">{{ __('New Event') }}</x-button>
             </div>
 
             <x-table>
@@ -47,7 +45,14 @@
 
                 @forelse ($events as $event)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap font-semibold text-gray-800">{{ $event->title }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap font-semibold text-gray-800">
+                            <div class="flex items-center gap-2">
+                                {{ $event->title }}
+                                @if ($event->is_fixed)
+                                    <x-badge>{{ __('Fixed') }}</x-badge>
+                                @endif
+                            </div>
+                        </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $event->event_datetime->format('M j, Y g:i A') }}</td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $event->description }}</td>
                         <td class="px-4 py-3 text-sm text-gray-400">
@@ -63,7 +68,9 @@
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1">
                                 <x-icon-edit-link :href="route('events.edit', $event)" />
-                                <x-icon-delete-button :action="route('events.destroy', $event)" :confirm="__('Are you sure you want to delete this event?')" />
+                                @unless ($event->is_fixed)
+                                    <x-icon-delete-button :action="route('events.destroy', $event)" :confirm="__('Are you sure you want to delete this event?')" />
+                                @endunless
                             </div>
                         </td>
                     </x-table-row>

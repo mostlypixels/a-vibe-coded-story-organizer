@@ -78,6 +78,8 @@ class EventController extends Controller
     {
         $this->authorize('update', $event->project);
 
+        abort_if($event->is_fixed, 403);
+
         $project = $event->project;
         $event->delete();
 

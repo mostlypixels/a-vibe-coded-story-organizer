@@ -209,8 +209,8 @@ class ProjectTest extends TestCase
         ]);
 
         $response->assertRedirect(route('projects.events.index', $project));
-        $event = Event::first();
-        $this->assertSame('The Battle', $event->title);
+        $event = Event::where('title', 'The Battle')->first();
+        $this->assertNotNull($event);
         $this->assertTrue($event->plotlines->contains($plotline));
     }
 
@@ -301,5 +301,36 @@ class ProjectTest extends TestCase
             ->assertRedirect(route('projects.events.index', $project));
 
         $this->assertNull($event->fresh());
+    }
+
+    public function test_start_and_end_events_are_created_automatically_with_the_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $mainPlotline = $project->plotlines()->first();
+
+        $this->assertSame(2, $project->events()->count());
+
+        $start = $project->events()->where('title', 'Start')->first();
+        $end = $project->events()->where('title', 'End')->first();
+
+        $this->assertNotNull($start);
+        $this->assertNotNull($end);
+        $this->assertTrue($start->is_fixed);
+        $this->assertTrue($end->is_fixed);
+        $this->assertSame('0000', $start->event_datetime->format('Y'));
+        $this->assertSame('3000', $end->event_datetime->format('Y'));
+        $this->assertTrue($start->plotlines->contains($mainPlotline));
+        $this->assertTrue($end->plotlines->contains($mainPlotline));
+    }
+
+    public function test_a_fixed_event_cannot_be_deleted(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $start = $project->events()->where('title', 'Start')->first();
+
+        $this->actingAs($user)->delete(route('events.destroy', $start))->assertForbidden();
+        $this->assertNotNull($start->fresh());
     }
 }

@@ -15,12 +15,14 @@ class Event extends Model
         'title',
         'description',
         'event_datetime',
+        'is_fixed',
     ];
 
     protected function casts(): array
     {
         return [
             'event_datetime' => 'datetime',
+            'is_fixed' => 'boolean',
         ];
     }
 

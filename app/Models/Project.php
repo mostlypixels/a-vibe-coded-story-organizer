@@ -40,11 +40,19 @@ class Project extends Model
     protected static function booted(): void
     {
         static::created(function (Project $project) {
-            $project->plotlines()->create([
+            $mainPlotline = $project->plotlines()->create([
                 'name' => 'Main plotline',
                 'is_main' => true,
                 'color' => PlotlineColors::PRESETS[0],
             ]);
+
+            foreach ([
+                ['title' => 'Start', 'event_datetime' => '0000-01-01 00:00:00'],
+                ['title' => 'End', 'event_datetime' => '3000-01-01 00:00:00'],
+            ] as $data) {
+                $event = $project->events()->create($data + ['is_fixed' => true]);
+                $event->plotlines()->attach($mainPlotline);
+            }
         });
     }
 }

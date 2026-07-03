@@ -12,6 +12,12 @@ set belongs in its pull request description.
 
 ### Added
 
+- Bookend timeline events: every project is auto-created with two fixed events, "Start"
+  (first day of year 0000) and "End" (first day of year 3000), attached to the main
+  plotline. Both carry `events.is_fixed` and cannot be deleted (delete button hidden in
+  the events index/edit views, `abort_if` guard in `EventController@destroy`), mirroring
+  the un-deletable main plotline. `MelusineSeeder` creates them manually since seeding
+  runs with model events disabled.
 - Project theme palette registered in `tailwind.config.js`: `ocean` (#219EBC),
   `aqua` (#8ECAE6), `navy` (#023047), plus `sun` (#FFB703) / `flame` (#FB8500)
   accents, each as a full shade scale.

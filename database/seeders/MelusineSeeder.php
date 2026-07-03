@@ -52,6 +52,17 @@ class MelusineSeeder extends Seeder
             'color' => PlotlineColors::PRESETS[24], // purple-500
         ]);
 
+        foreach ([
+            ['title' => 'Start', 'event_datetime' => '0000-01-01 00:00:00'],
+            ['title' => 'End', 'event_datetime' => '3000-01-01 00:00:00'],
+        ] as $bookend) {
+            $bookendEvent = $project->events()->firstOrCreate(
+                ['title' => $bookend['title']],
+                $bookend + ['is_fixed' => true],
+            );
+            $bookendEvent->plotlines()->syncWithoutDetaching($mainPlotline->id);
+        }
+
         $events = [
             [
                 'title' => 'The Oath at the Fountain',
