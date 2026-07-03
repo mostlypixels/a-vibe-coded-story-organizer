@@ -31,9 +31,7 @@
                     @endif
                 </form>
 
-                <a href="{{ route('projects.scenes.create', $project) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                    {{ __('New Scene') }}
-                </a>
+                <x-button variant="primary" :href="route('projects.scenes.create', $project)">{{ __('New Scene') }}</x-button>
             </div>
 
             <x-table>

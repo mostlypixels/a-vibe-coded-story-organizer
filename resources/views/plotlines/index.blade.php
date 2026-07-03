@@ -23,9 +23,7 @@
                     @endif
                 </form>
 
-                <a href="{{ route('projects.plotlines.create', $project) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                    {{ __('New Plotline') }}
-                </a>
+                <x-button variant="primary" :href="route('projects.plotlines.create', $project)">{{ __('New Plotline') }}</x-button>
             </div>
 
             <x-table>
@@ -42,7 +40,7 @@
                                 <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
                                 {{ $plotline->name }}
                                 @if ($plotline->is_main)
-                                    <span class="text-xs text-gray-400">({{ __('Main') }})</span>
+                                    <x-badge>{{ __('Main') }}</x-badge>
                                 @endif
                             </div>
                         </td>

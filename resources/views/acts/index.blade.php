@@ -23,9 +23,7 @@
                     @endif
                 </form>
 
-                <a href="{{ route('projects.acts.create', $project) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                    {{ __('New Act') }}
-                </a>
+                <x-button variant="primary" :href="route('projects.acts.create', $project)">{{ __('New Act') }}</x-button>
             </div>
 
             <x-table>

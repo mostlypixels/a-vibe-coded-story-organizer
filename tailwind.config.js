@@ -12,7 +12,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Atkinson Hyperlegible Next', ...defaultTheme.fontFamily.sans],
             },
 
             // Project theme palette. `ocean` is the primary brand blue (replaces

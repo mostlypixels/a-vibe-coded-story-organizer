@@ -13,11 +13,9 @@
     <div class="py-12">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if ($project->description)
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900">
-                        {{ $project->description }}
-                    </div>
-                </div>
+                <x-card class="text-gray-900">
+                    {{ $project->description }}
+                </x-card>
             @endif
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">

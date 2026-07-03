@@ -7,8 +7,7 @@
 
     <div class="py-12">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
+            <x-card>
                     <form method="POST" action="{{ route('scenes.update', $scene) }}" class="space-y-6">
                         @csrf
                         @method('PUT')
@@ -68,8 +67,7 @@
                         @method('DELETE')
                         <x-danger-button>{{ __('Delete Scene') }}</x-danger-button>
                     </form>
-                </div>
-            </div>
+            </x-card>
         </div>
     </div>
 </x-app-layout>
