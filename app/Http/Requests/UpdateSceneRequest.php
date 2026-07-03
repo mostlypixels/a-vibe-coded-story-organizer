@@ -32,6 +32,11 @@ class UpdateSceneRequest extends FormRequest
             'contents' => ['nullable', 'string', new ValidMarkdown],
             'notes' => ['nullable', 'string', new ValidMarkdown],
             'status' => ['required', Rule::enum(SceneStatus::class)],
+            'event_id' => ['nullable', 'integer', Rule::exists('events', 'id')->where('project_id', $project->id)],
+            'new_event_title' => ['nullable', 'string', 'max:255', 'required_with:new_event_datetime'],
+            'new_event_datetime' => ['nullable', 'date', 'required_with:new_event_title'],
+            'mentioned_events' => ['nullable', 'array'],
+            'mentioned_events.*' => ['integer', Rule::exists('events', 'id')->where('project_id', $project->id)],
         ];
     }
 }

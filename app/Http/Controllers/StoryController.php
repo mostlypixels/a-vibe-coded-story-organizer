@@ -12,7 +12,7 @@ class StoryController extends Controller
         $this->authorize('view', $project);
 
         $acts = $project->acts()
-            ->with('chapters.scenes')
+            ->with('chapters.scenes.event')
             ->orderBy('position')
             ->get()
             ->each(function ($act) {

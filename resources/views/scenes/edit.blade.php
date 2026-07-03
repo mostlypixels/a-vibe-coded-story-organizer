@@ -22,6 +22,36 @@
                             <x-input-error :messages="$errors->get('chapter_id')" class="mt-2" />
                         </div>
 
+                        <div x-data="{ newEvent: {{ old('new_event_title') ? 'true' : 'false' }} }">
+                            <x-input-label for="event_id" :value="__('Happens during')" />
+                            <select id="event_id" name="event_id" x-bind:disabled="newEvent" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm disabled:bg-gray-100 disabled:text-gray-400">
+                                <option value="">{{ __('— Not assigned —') }}</option>
+                                @foreach ($events as $event)
+                                    <option value="{{ $event->id }}" @selected(old('event_id', $scene->event_id) == $event->id)>{{ $event->title }} &mdash; {{ $event->event_datetime->format('M j, Y') }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('event_id')" class="mt-2" />
+
+                            <button type="button" @click="newEvent = ! newEvent" class="mt-2 text-sm text-ocean-600 hover:text-ocean-800">
+                                <span x-show="! newEvent">{{ __('+ New event') }}</span>
+                                <span x-show="newEvent">{{ __('Cancel new event') }}</span>
+                            </button>
+
+                            <div x-show="newEvent" style="{{ old('new_event_title') ? '' : 'display: none;' }}" class="mt-3 space-y-3 border-l-2 border-ocean-200 pl-4">
+                                <div>
+                                    <x-input-label for="new_event_title" :value="__('New event title')" />
+                                    <x-text-input id="new_event_title" name="new_event_title" type="text" class="mt-1 block w-full" :value="old('new_event_title')" />
+                                    <p class="mt-1 text-sm text-gray-500">{{ __('Created and attached to the Main plotline.') }}</p>
+                                    <x-input-error :messages="$errors->get('new_event_title')" class="mt-2" />
+                                </div>
+                                <div>
+                                    <x-input-label for="new_event_datetime" :value="__('New event date & time')" />
+                                    <x-text-input id="new_event_datetime" name="new_event_datetime" type="datetime-local" class="mt-1 block w-full" :value="old('new_event_datetime')" />
+                                    <x-input-error :messages="$errors->get('new_event_datetime')" class="mt-2" />
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
                             <x-input-label for="name" :value="__('Title')" />
                             <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $scene->name)" placeholder="{{ __('e.g. A Lady at the Fountain') }}" required autofocus />
@@ -55,6 +85,20 @@
                             <x-input-label for="notes" :value="__('Notes (Markdown)')" />
                             <textarea id="notes" name="notes" rows="6" class="mt-1 block w-full font-mono text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm">{{ old('notes', $scene->notes) }}</textarea>
                             <x-input-error :messages="$errors->get('notes')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label :value="__('Mentions events')" />
+                            <p class="text-sm text-gray-500">{{ __('Other events this scene refers to (optional).') }}</p>
+                            <div class="mt-2 space-y-2">
+                                @foreach ($events as $event)
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" name="mentioned_events[]" value="{{ $event->id }}" @checked(in_array($event->id, old('mentioned_events', $scene->mentionedEvents->pluck('id')->all())))>
+                                        <span>{{ $event->title }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <x-input-error :messages="$errors->get('mentioned_events')" class="mt-2" />
                         </div>
 
                         <div class="flex items-center gap-4">

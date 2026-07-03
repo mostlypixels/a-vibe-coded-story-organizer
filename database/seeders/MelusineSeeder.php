@@ -144,13 +144,46 @@ class MelusineSeeder extends Seeder
             ],
         ];
 
+        $eventsByTitle = [];
+
         foreach ($events as $eventData) {
             $plotlines = $eventData['plotlines'];
             unset($eventData['plotlines']);
 
             $event = $project->events()->create($eventData);
             $event->plotlines()->attach(collect($plotlines)->pluck('id'));
+
+            $eventsByTitle[$event->title] = $event;
         }
+
+        // The timeline event each scene depicts ("happens during"), keyed by scene name.
+        // Scenes with no matching event are intentionally left unassigned (flagged in the UI).
+        $sceneEvents = [
+            'A Lady at the Fountain' => 'The Oath at the Fountain',
+            'Through the Keyhole' => 'The Broken Oath',
+            'The Branded Mountain' => 'The Vengeance',
+            "Pressine's Judgment" => 'The Second Curse',
+            'The Boar Hunt' => 'The Accidental Blow',
+            'A Meeting in the Clearing' => 'The Meeting at the Fountain of Thirst',
+            'The Vow' => 'The Meeting at the Fountain of Thirst',
+            'A Castle Raised in a Night' => 'The Building of Lusignan',
+            'Lord and Lady of Lusignan' => 'The Building of Lusignan',
+            'Eight Marked Sons' => 'The Birth of the Eight Sons',
+            'The Cellar Child' => 'The Birth of the Eight Sons',
+            'Four Ships Leave Poitou' => 'The Great Conquests',
+            'Melusine at the Spinning Wheel' => 'The Great Conquests',
+            "Geoffroy's Fire" => 'The Burning of Malliers',
+            'Breaking the Cage' => 'The Burning of Malliers',
+            'Two Messengers' => 'The Burning of Malliers',
+            'What Raymondin Saw' => 'The Keyhole',
+            'A Week of Silence' => 'The Keyhole',
+            'The Denouncement' => 'The Transformation',
+            'A Flower Opening' => 'The Transformation',
+            'Around the Towers' => 'The Transformation',
+            'Bound by Memory' => 'The Fall of Lusignan',
+            'A Heap of Broken Stone' => 'The Fall of Lusignan',
+            'Until the Next Lord Comes Home' => 'The Fall of Lusignan',
+        ];
 
         $acts = [
             [
@@ -338,7 +371,12 @@ class MelusineSeeder extends Seeder
                 $chapter = $act->chapters()->create($chapterData + ['position' => $chapterPosition + 1]);
 
                 foreach ($scenes as $scenePosition => $sceneData) {
-                    $chapter->scenes()->create($sceneData + ['position' => $scenePosition + 1]);
+                    $eventTitle = $sceneEvents[$sceneData['name']] ?? null;
+
+                    $chapter->scenes()->create($sceneData + [
+                        'position' => $scenePosition + 1,
+                        'event_id' => $eventTitle ? $eventsByTitle[$eventTitle]->id : null,
+                    ]);
                 }
             }
         }

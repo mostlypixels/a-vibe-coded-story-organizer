@@ -25,7 +25,7 @@ class SceneController extends Controller
 
         $scenes = Scene::query()
             ->whereHas('chapter.act', fn ($query) => $query->where('project_id', $project->id))
-            ->with('chapter.act')
+            ->with('chapter.act', 'event')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
             ->when($request->filled('chapter'), fn ($query) => $query->where('chapter_id', $request->query('chapter')))
             ->when($sort === 'position', fn ($query) => $query->orderBy('chapter_id'))
@@ -48,6 +48,7 @@ class SceneController extends Controller
         return view('scenes.create', [
             'project' => $project,
             'chapters' => $this->chaptersFor($project),
+            'events' => $this->eventsFor($project),
         ]);
     }
 
@@ -56,7 +57,11 @@ class SceneController extends Controller
         $validated = $request->validated();
         $chapter = $this->chapterQueryFor($project)->findOrFail($validated['chapter_id']);
 
-        $chapter->scenes()->create(collect($validated)->except('chapter_id')->all());
+        $scene = $chapter->scenes()->create(
+            $this->sceneAttributes($validated) + ['event_id' => $this->resolveHappensDuringEvent($project, $validated)]
+        );
+
+        $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
 
         return redirect()->route('projects.scenes.index', $project);
     }
@@ -67,10 +72,13 @@ class SceneController extends Controller
 
         $this->authorize('update', $project);
 
+        $scene->load('event', 'mentionedEvents');
+
         return view('scenes.edit', [
             'scene' => $scene,
             'project' => $project,
             'chapters' => $this->chaptersFor($project),
+            'events' => $this->eventsFor($project),
         ]);
     }
 
@@ -80,7 +88,12 @@ class SceneController extends Controller
         $validated = $request->validated();
         $chapter = $this->chapterQueryFor($project)->findOrFail($validated['chapter_id']);
 
-        $scene->update(collect($validated)->except('chapter_id')->all() + ['chapter_id' => $chapter->id]);
+        $scene->update(
+            $this->sceneAttributes($validated)
+            + ['chapter_id' => $chapter->id, 'event_id' => $this->resolveHappensDuringEvent($project, $validated)]
+        );
+
+        $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
 
         return redirect()->route('projects.scenes.index', $project);
     }
@@ -148,5 +161,46 @@ class SceneController extends Controller
             ->with('act')
             ->orderBy('name')
             ->get();
+    }
+
+    private function eventsFor(Project $project): Collection
+    {
+        return $project->events()->orderBy('event_datetime')->get();
+    }
+
+    /**
+     * Scene column values, stripped of the relationship/form-only keys handled separately.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function sceneAttributes(array $validated): array
+    {
+        return collect($validated)
+            ->except(['chapter_id', 'event_id', 'new_event_title', 'new_event_datetime', 'mentioned_events'])
+            ->all();
+    }
+
+    /**
+     * Resolve the "happens during" event id: create a new event from the inline form when
+     * provided (auto-attached to the main plotline), otherwise use the selected event (may
+     * be null, leaving the scene unassigned).
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveHappensDuringEvent(Project $project, array $validated): ?int
+    {
+        if (! empty($validated['new_event_title'])) {
+            $event = $project->events()->create([
+                'title' => $validated['new_event_title'],
+                'event_datetime' => $validated['new_event_datetime'],
+            ]);
+
+            $event->plotlines()->attach($project->plotlines()->where('is_main', true)->value('id'));
+
+            return $event->id;
+        }
+
+        return $validated['event_id'] ?? null;
     }
 }

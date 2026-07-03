@@ -12,6 +12,14 @@ set belongs in its pull request description.
 
 ### Added
 
+- Scene ↔ Event links, two relationships. **"Happens during"** — an optional
+  `scenes.event_id` foreign key (`nullOnDelete`) placing a scene during a single event;
+  chosen on the scene form via a select or an inline "New event" quick-create (auto-attached
+  to the Main plotline). **"Mentions"** — an optional `event_scene` many-to-many pivot, edited
+  as a checkbox list. Unassigned scenes (no "happens during" event) are flagged with a red
+  border on the scenes index and Story overview. Deleting an event unassigns its scenes (via
+  the FK) and drops its mention rows (pivot cascade); the event edit page lists the scenes
+  happening during / mentioning it.
 - Bookend timeline events: every project is auto-created with two fixed events, "Start"
   (first day of year 0000) and "End" (first day of year 3000), attached to the main
   plotline. Both carry `events.is_fixed` and cannot be deleted (delete button hidden in

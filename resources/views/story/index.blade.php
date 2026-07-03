@@ -58,7 +58,7 @@
                             </h3>
 
                             @forelse ($chapter->scenes as $scene)
-                                <section x-data="{ open: true }" class="space-y-2 pb-4 border-b border-gray-200 last:border-b-0 last:pb-0">
+                                <section x-data="{ open: true }" class="space-y-2 pb-4 border-b border-gray-200 last:border-b-0 last:pb-0 {{ $scene->event ? '' : 'border-l-4 border-l-red-500 pl-4' }}">
                                     <div class="flex items-center justify-between">
                                         <button type="button" @click="open = ! open" class="flex items-center gap-2 text-sm font-light text-gray-500">
                                             <svg class="h-4 w-4 fill-current text-gray-500 transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -68,6 +68,11 @@
                                         </button>
 
                                         <div class="flex items-center gap-2">
+                                            @if ($scene->event)
+                                                <span class="text-xs text-gray-500">{{ __('during') }} {{ $scene->event->title }}</span>
+                                            @else
+                                                <span class="inline-flex items-center rounded-md border border-red-500 px-2 py-0.5 text-xs font-medium text-red-600">{{ __('Unassigned') }}</span>
+                                            @endif
                                             <x-scene-status-badge :status="$scene->status" />
                                             <button type="button" data-move="up" onclick="moveScene(this, '{{ route('scenes.move-up', $scene) }}', 'up')" @disabled($loop->first) class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:text-gray-200 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-200" title="{{ __('Move up') }}">
                                                 <span class="sr-only">{{ __('Move up') }}</span>

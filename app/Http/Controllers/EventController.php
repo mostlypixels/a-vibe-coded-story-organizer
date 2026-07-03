@@ -57,7 +57,7 @@ class EventController extends Controller
     {
         $this->authorize('update', $event->project);
 
-        $event->load('plotlines');
+        $event->load('plotlines', 'scenes', 'mentioningScenes');
 
         return view('events.edit', [
             'event' => $event,

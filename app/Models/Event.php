@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Event extends Model
 {
@@ -34,5 +35,21 @@ class Event extends Model
     public function plotlines(): BelongsToMany
     {
         return $this->belongsToMany(Plotline::class);
+    }
+
+    /**
+     * Scenes that happen during this event.
+     */
+    public function scenes(): HasMany
+    {
+        return $this->hasMany(Scene::class);
+    }
+
+    /**
+     * Scenes that mention this event (many-to-many).
+     */
+    public function mentioningScenes(): BelongsToMany
+    {
+        return $this->belongsToMany(Scene::class);
     }
 }

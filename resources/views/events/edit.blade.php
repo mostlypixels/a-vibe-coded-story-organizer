@@ -48,6 +48,26 @@
                     </div>
                 </form>
 
+                <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 border-t border-gray-200 pt-6">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-800">{{ __('Scenes happening during') }}</h3>
+                        @forelse ($event->scenes as $scene)
+                            <a href="{{ route('scenes.edit', $scene) }}" class="mt-1 block text-sm text-ocean-600 hover:text-ocean-800">{{ $scene->name }}</a>
+                        @empty
+                            <p class="mt-1 text-sm text-gray-500">{{ __('None yet.') }}</p>
+                        @endforelse
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-800">{{ __('Mentioned in scenes') }}</h3>
+                        @forelse ($event->mentioningScenes as $scene)
+                            <a href="{{ route('scenes.edit', $scene) }}" class="mt-1 block text-sm text-ocean-600 hover:text-ocean-800">{{ $scene->name }}</a>
+                        @empty
+                            <p class="mt-1 text-sm text-gray-500">{{ __('None yet.') }}</p>
+                        @endforelse
+                    </div>
+                </div>
+
                 @unless ($event->is_fixed)
                     <form method="POST" action="{{ route('events.destroy', $event) }}" class="mt-6" onsubmit="return confirm('{{ __('Are you sure you want to delete this event?') }}')">
                         @csrf
