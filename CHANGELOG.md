@@ -56,6 +56,13 @@ set belongs in its pull request description.
 
 ### Changed
 
+- Index tables (plotlines/events/acts/chapters/scenes) now render each row's
+  description as small muted text beneath the title instead of a separate
+  Description column, and the ordered lists (acts/chapters/scenes) expose their
+  `#` position column as a sortable header.
+- Index-row edit/delete icon buttons (`x-icon-edit-link`, `x-icon-delete-button`)
+  are now outlined: transparent fill with a colored border and matching text —
+  `navy-500` for edit, `red-600` (danger) for delete.
 - Reskinned the app chrome to the theme palette: the Breeze default indigo accent
   (focus rings, links, active nav, `badge` primary/indigo variants) is now `ocean`;
   primary buttons fill with deep `navy` (higher contrast against their white label);
@@ -73,3 +80,9 @@ set belongs in its pull request description.
 - Reordered scenes in the story overview via AJAX (no full page reload).
 - Restyled the story overview typography and act headings.
 - Consolidated the `MelusineSeeder` chapters into fewer, denser chapters.
+
+### Fixed
+
+- The Home/Timeline/Story navigation menu no longer disappears on the event
+  edit page: the layout's `$project` resolution chain now also resolves from the
+  `event` route parameter (both the desktop bar and the responsive menu).

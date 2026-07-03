@@ -29,13 +29,12 @@
             <x-table>
                 <x-slot:head>
                     <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Name') }}</x-sortable-header>
-                    <x-table-heading>{{ __('Description') }}</x-table-heading>
                     <x-table-heading />
                 </x-slot:head>
 
                 @forelse ($plotlines as $plotline)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap">
+                        <td class="px-4 py-3">
                             <div class="font-semibold text-gray-800 flex items-center gap-2">
                                 <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
                                 {{ $plotline->name }}
@@ -43,8 +42,10 @@
                                     <x-badge>{{ __('Main') }}</x-badge>
                                 @endif
                             </div>
+                            @if ($plotline->description)
+                                <div class="mt-1 text-sm text-gray-500">{{ $plotline->description }}</div>
+                            @endif
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-500">{{ $plotline->description }}</td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1">
                                 <x-icon-edit-link :href="route('plotlines.edit', $plotline)" />
@@ -55,7 +56,7 @@
                         </td>
                     </x-table-row>
                 @empty
-                    <x-table-empty :colspan="3">{{ __('No plotlines match.') }}</x-table-empty>
+                    <x-table-empty :colspan="2">{{ __('No plotlines match.') }}</x-table-empty>
                 @endforelse
             </x-table>
         </div>

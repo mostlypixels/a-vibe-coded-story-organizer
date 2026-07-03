@@ -28,9 +28,8 @@
 
             <x-table>
                 <x-slot:head>
-                    <x-table-heading>{{ __('#') }}</x-table-heading>
+                    <x-sortable-header field="position" :sort="$sort" :direction="$direction">{{ __('#') }}</x-sortable-header>
                     <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
-                    <x-table-heading>{{ __('Description') }}</x-table-heading>
                     <x-table-heading>{{ __('Chapters') }}</x-table-heading>
                     <x-table-heading />
                 </x-slot:head>
@@ -38,8 +37,12 @@
                 @forelse ($acts as $act)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $act->position }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap font-semibold text-gray-800">{{ $act->name }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-500">{{ $act->description }}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-semibold text-gray-800">{{ $act->name }}</div>
+                            @if ($act->description)
+                                <div class="mt-1 text-sm text-gray-500">{{ $act->description }}</div>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $act->chapters_count }}</td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1">
@@ -53,7 +56,7 @@
                         </td>
                     </x-table-row>
                 @empty
-                    <x-table-empty :colspan="5">{{ __('No acts match.') }}</x-table-empty>
+                    <x-table-empty :colspan="4">{{ __('No acts match.') }}</x-table-empty>
                 @endforelse
             </x-table>
         </div>

@@ -36,10 +36,9 @@
 
             <x-table>
                 <x-slot:head>
-                    <x-table-heading>{{ __('#') }}</x-table-heading>
+                    <x-sortable-header field="position" :sort="$sort" :direction="$direction">{{ __('#') }}</x-sortable-header>
                     <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
                     <x-table-heading>{{ __('Chapter') }}</x-table-heading>
-                    <x-table-heading>{{ __('Description') }}</x-table-heading>
                     <x-table-heading>{{ __('Status') }}</x-table-heading>
                     <x-table-heading>{{ __('Event') }}</x-table-heading>
                     <x-table-heading />
@@ -48,9 +47,13 @@
                 @forelse ($scenes as $scene)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 {{ $scene->event ? '' : 'border-l-4 border-red-500' }}">{{ $scene->position }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap font-semibold text-gray-800">{{ $scene->name }}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-semibold text-gray-800">{{ $scene->name }}</div>
+                            @if ($scene->description)
+                                <div class="mt-1 text-sm text-gray-500">{{ $scene->description }}</div>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-500">{{ $scene->description }}</td>
                         <td class="px-4 py-3 whitespace-nowrap"><x-scene-status-badge :status="$scene->status" /></td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm">
                             @if ($scene->event)
@@ -71,7 +74,7 @@
                         </td>
                     </x-table-row>
                 @empty
-                    <x-table-empty :colspan="7">{{ __('No scenes match.') }}</x-table-empty>
+                    <x-table-empty :colspan="6">{{ __('No scenes match.') }}</x-table-empty>
                 @endforelse
             </x-table>
         </div>

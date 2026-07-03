@@ -38,23 +38,24 @@
                 <x-slot:head>
                     <x-sortable-header field="title" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
                     <x-sortable-header field="event_datetime" :sort="$sort" :direction="$direction">{{ __('Date') }}</x-sortable-header>
-                    <x-table-heading>{{ __('Description') }}</x-table-heading>
                     <x-table-heading>{{ __('Plotlines') }}</x-table-heading>
                     <x-table-heading />
                 </x-slot:head>
 
                 @forelse ($events as $event)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap font-semibold text-gray-800">
-                            <div class="flex items-center gap-2">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2 font-semibold text-gray-800">
                                 {{ $event->title }}
                                 @if ($event->is_fixed)
                                     <x-badge>{{ __('Fixed') }}</x-badge>
                                 @endif
                             </div>
+                            @if ($event->description)
+                                <div class="mt-1 text-sm text-gray-500">{{ $event->description }}</div>
+                            @endif
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $event->event_datetime->format('M j, Y g:i A') }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-500">{{ $event->description }}</td>
                         <td class="px-4 py-3 text-sm text-gray-400">
                             <div class="flex items-center gap-3 flex-wrap">
                                 @foreach ($event->plotlines as $plotline)
@@ -75,7 +76,7 @@
                         </td>
                     </x-table-row>
                 @empty
-                    <x-table-empty :colspan="5">{{ __('No events match.') }}</x-table-empty>
+                    <x-table-empty :colspan="4">{{ __('No events match.') }}</x-table-empty>
                 @endforelse
             </x-table>
         </div>

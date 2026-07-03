@@ -36,10 +36,9 @@
 
             <x-table>
                 <x-slot:head>
-                    <x-table-heading>{{ __('#') }}</x-table-heading>
+                    <x-sortable-header field="position" :sort="$sort" :direction="$direction">{{ __('#') }}</x-sortable-header>
                     <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
                     <x-table-heading>{{ __('Act') }}</x-table-heading>
-                    <x-table-heading>{{ __('Description') }}</x-table-heading>
                     <x-table-heading>{{ __('Scenes') }}</x-table-heading>
                     <x-table-heading />
                 </x-slot:head>
@@ -47,9 +46,13 @@
                 @forelse ($chapters as $chapter)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $chapter->position }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap font-semibold text-gray-800">{{ $chapter->name }}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-semibold text-gray-800">{{ $chapter->name }}</div>
+                            @if ($chapter->description)
+                                <div class="mt-1 text-sm text-gray-500">{{ $chapter->description }}</div>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->act->name }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->description }}</td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->scenes_count }}</td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1">
@@ -63,7 +66,7 @@
                         </td>
                     </x-table-row>
                 @empty
-                    <x-table-empty :colspan="6">{{ __('No chapters match.') }}</x-table-empty>
+                    <x-table-empty :colspan="5">{{ __('No chapters match.') }}</x-table-empty>
                 @endforelse
             </x-table>
         </div>

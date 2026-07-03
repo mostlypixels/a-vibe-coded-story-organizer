@@ -14,6 +14,7 @@
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     @if ($project = request()->route('project')
                             ?? request()->route('plotline')?->project
+                            ?? request()->route('event')?->project
                             ?? request()->route('act')?->project
                             ?? request()->route('chapter')?->act?->project
                             ?? request()->route('scene')?->chapter?->act?->project)
@@ -131,6 +132,7 @@
         <div class="pt-2 pb-3 space-y-1">
             @if ($project = request()->route('project')
                     ?? request()->route('plotline')?->project
+                    ?? request()->route('event')?->project
                     ?? request()->route('act')?->project
                     ?? request()->route('chapter')?->act?->project
                     ?? request()->route('scene')?->chapter?->act?->project)
