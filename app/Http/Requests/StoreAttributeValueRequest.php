@@ -29,7 +29,12 @@ class StoreAttributeValueRequest extends FormRequest
                 'integer',
                 Rule::exists('events', 'id')->where('project_id', $project->id),
             ],
-            'value' => ['required', 'string', 'max:255'],
+            // 'present' (not 'required'): an empty value is a first-class "recorded as blank"
+            // value (binding decision Q2) — required would make an empty baseline unsavable and
+            // prevent clearing a value back to blank. 'nullable' because the global
+            // ConvertEmptyStringsToNull middleware turns a blank text input's "" into null; the
+            // controller casts (string) back before upsertAt (its signature is string $value).
+            'value' => ['present', 'nullable', 'string', 'max:255'],
         ];
     }
 }

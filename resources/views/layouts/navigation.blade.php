@@ -61,17 +61,11 @@
                                 </x-slot>
 
                                 <x-slot name="content">
-                                    <x-dropdown-link :href="route('projects.codex.index', [$project, 'characters'])">
-                                        {{ __('Characters') }}
-                                    </x-dropdown-link>
-
-                                    <x-dropdown-link :href="route('projects.codex.index', [$project, 'locations'])">
-                                        {{ __('Locations') }}
-                                    </x-dropdown-link>
-
-                                    <x-dropdown-link :href="route('projects.codex.index', [$project, 'organizations'])">
-                                        {{ __('Organizations') }}
-                                    </x-dropdown-link>
+                                    @foreach (\App\Enums\CodexEntryType::cases() as $codexType)
+                                        <x-dropdown-link :href="route('projects.codex.index', [$project, $codexType->routeKey()])">
+                                            {{ __($codexType->pluralLabel()) }}
+                                        </x-dropdown-link>
+                                    @endforeach
 
                                     <x-dropdown-link :href="route('projects.codex-attributes.index', $project)">
                                         {{ __('Attributes') }}
@@ -192,17 +186,13 @@
                     {{ __('Codex') }}
                 </div>
 
-                <x-responsive-nav-link :href="route('projects.codex.index', [$project, 'characters'])" :active="request()->routeIs('projects.codex.*') || request()->routeIs('codex.*')">
-                    {{ __('Characters') }}
-                </x-responsive-nav-link>
-
-                <x-responsive-nav-link :href="route('projects.codex.index', [$project, 'locations'])">
-                    {{ __('Locations') }}
-                </x-responsive-nav-link>
-
-                <x-responsive-nav-link :href="route('projects.codex.index', [$project, 'organizations'])">
-                    {{ __('Organizations') }}
-                </x-responsive-nav-link>
+                @foreach (\App\Enums\CodexEntryType::cases() as $codexType)
+                    <x-responsive-nav-link
+                        :href="route('projects.codex.index', [$project, $codexType->routeKey()])"
+                        :active="request()->route('type') === $codexType->routeKey() || request()->route('codexEntry')?->type === $codexType">
+                        {{ __($codexType->pluralLabel()) }}
+                    </x-responsive-nav-link>
+                @endforeach
 
                 <x-responsive-nav-link :href="route('projects.codex-attributes.index', $project)" :active="request()->routeIs('projects.codex-attributes.*') || request()->routeIs('codex-attributes.*')">
                     {{ __('Attributes') }}

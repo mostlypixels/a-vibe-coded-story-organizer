@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CodexEntryType;
 use App\Http\Controllers\ActController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\CodexAttributeController;
@@ -59,17 +60,17 @@ Route::middleware('auth')->group(function () {
     Route::patch('/scenes/{scene}/move-down', [SceneController::class, 'moveDown'])->name('scenes.move-down');
 
     // Codex entries — nested index/create/store carry the {type} segment; edit/update/destroy
-    // only need the entry, so they are flat (manual shallow nesting). Unknown {type} 404s
-    // before the controller thanks to the whereIn constraint.
-    Route::get('/projects/{project}/codex/{type}', [CodexEntryController::class, 'index'])
-        ->whereIn('type', ['characters', 'locations', 'organizations'])
-        ->name('projects.codex.index');
-    Route::get('/projects/{project}/codex/{type}/create', [CodexEntryController::class, 'create'])
-        ->whereIn('type', ['characters', 'locations', 'organizations'])
-        ->name('projects.codex.create');
-    Route::post('/projects/{project}/codex/{type}', [CodexEntryController::class, 'store'])
-        ->whereIn('type', ['characters', 'locations', 'organizations'])
-        ->name('projects.codex.store');
+    // only need the entry, so they are flat (manual shallow nesting). The grouped whereIn
+    // constraint (derived from CodexEntryType) makes an unknown {type} 404 before the
+    // controller runs; keeping it local avoids binding {type} app-wide via a global pattern.
+    Route::whereIn('type', CodexEntryType::routeKeys())->group(function () {
+        Route::get('/projects/{project}/codex/{type}', [CodexEntryController::class, 'index'])
+            ->name('projects.codex.index');
+        Route::get('/projects/{project}/codex/{type}/create', [CodexEntryController::class, 'create'])
+            ->name('projects.codex.create');
+        Route::post('/projects/{project}/codex/{type}', [CodexEntryController::class, 'store'])
+            ->name('projects.codex.store');
+    });
     Route::get('/codex/{codexEntry}/edit', [CodexEntryController::class, 'edit'])->name('codex.edit');
     Route::put('/codex/{codexEntry}', [CodexEntryController::class, 'update'])->name('codex.update');
     Route::delete('/codex/{codexEntry}', [CodexEntryController::class, 'destroy'])->name('codex.destroy');

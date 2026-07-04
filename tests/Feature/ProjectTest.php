@@ -333,4 +333,105 @@ class ProjectTest extends TestCase
         $this->actingAs($user)->delete(route('events.destroy', $start))->assertForbidden();
         $this->assertNotNull($start->fresh());
     }
+
+    public function test_start_and_end_event_helpers_resolve_the_bookends(): void
+    {
+        $project = Project::factory()->create();
+
+        $start = $project->startEvent();
+        $end = $project->endEvent();
+
+        $this->assertTrue($start->is_fixed);
+        $this->assertTrue($end->is_fixed);
+        $this->assertSame('0000', $start->event_datetime->format('Y'));
+        $this->assertSame('3000', $end->event_datetime->format('Y'));
+        $this->assertSame('Start', $start->title);
+        $this->assertSame('End', $end->title);
+    }
+
+    public function test_the_bookend_helpers_break_datetime_ties_by_id(): void
+    {
+        $project = Project::factory()->create();
+
+        // Replace the auto-created bookends with two fixed events sharing one datetime,
+        // so only the id tie-break can distinguish them (delete at the model level —
+        // the is_fixed guard lives in the controller, not the DB).
+        $project->events()->delete();
+
+        $sharedDatetime = '1500-06-15 00:00:00';
+
+        $lower = Event::factory()->for($project)->create([
+            'event_datetime' => $sharedDatetime,
+            'is_fixed' => true,
+        ]);
+        $higher = Event::factory()->for($project)->create([
+            'event_datetime' => $sharedDatetime,
+            'is_fixed' => true,
+        ]);
+
+        $this->assertLessThan($higher->id, $lower->id);
+
+        // Both share a datetime, so only the id tie-break distinguishes them: lowest
+        // id wins startEvent(), highest id wins endEvent().
+        $this->assertSame($lower->id, $project->startEvent()->id);
+        $this->assertSame($higher->id, $project->endEvent()->id);
+    }
+
+    public function test_fixed_event_datetime_cannot_be_changed(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $start = $project->startEvent();
+        $mainPlotline = $project->plotlines()->first();
+        $originalDatetime = $start->event_datetime;
+
+        $this->actingAs($user)->put(route('events.update', $start), [
+            'title' => $start->title,
+            'event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
+            'plotlines' => [$mainPlotline->id],
+        ])->assertSessionHasErrors('event_datetime');
+
+        $this->assertTrue($originalDatetime->equalTo($start->fresh()->event_datetime));
+
+        // Regression: the frozen datetime keeps Start resolving to the same event.
+        $this->assertSame($start->id, $project->startEvent()->id);
+    }
+
+    public function test_a_fixed_event_can_be_edited_without_touching_its_datetime(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $start = $project->startEvent();
+        $mainPlotline = $project->plotlines()->first();
+        $originalDatetime = $start->event_datetime;
+
+        $this->actingAs($user)->put(route('events.update', $start), [
+            'title' => 'Beginning',
+            'plotlines' => [$mainPlotline->id],
+        ])->assertRedirect(route('projects.events.index', $project));
+
+        $fresh = $start->fresh();
+        $this->assertSame('Beginning', $fresh->title);
+        $this->assertTrue($originalDatetime->equalTo($fresh->event_datetime));
+        $this->assertSame($start->id, $project->startEvent()->id);
+    }
+
+    public function test_a_non_fixed_event_datetime_can_still_be_changed(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = $project->plotlines()->first();
+        $event = Event::factory()->for($project)->create();
+        $event->plotlines()->attach($plotline);
+
+        $newDatetime = now()->addWeek()->startOfMinute();
+
+        $this->actingAs($user)->put(route('events.update', $event), [
+            'title' => 'Updated Title',
+            'event_datetime' => $newDatetime->format('Y-m-d H:i:s'),
+            'plotlines' => [$plotline->id],
+        ])->assertRedirect(route('projects.events.index', $project));
+
+        $this->assertTrue($newDatetime->equalTo($event->fresh()->event_datetime));
+    }
 }

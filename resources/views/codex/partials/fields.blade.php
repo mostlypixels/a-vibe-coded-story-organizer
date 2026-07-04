@@ -5,6 +5,7 @@
     // Shared body for the create and edit entry forms. $entry is null on create.
     $entry = $entry ?? null;
     $attributes = $attributes ?? collect();
+    $projectTags = $projectTags ?? collect();
     $aliasValues = old('aliases', $entry?->aliases->pluck('alias')->values()->all() ?? []);
     $tagValues = old('tags', $entry?->tags->pluck('name')->values()->all() ?? []);
 
@@ -82,7 +83,7 @@
     <div class="lg:col-span-2 space-y-6">
         <x-card :title="__('Tags')">
             {{-- Autocomplete chip picker: existing project tags plus free-text new names. --}}
-            <x-tag-picker name="tags" :tags="$project->tags()->orderBy('name')->get()" :selected="$tagValues" />
+            <x-tag-picker name="tags" :tags="$projectTags" :selected="$tagValues" />
             <x-input-error :messages="$errors->get('tags')" class="mt-2" />
         </x-card>
     </div>
@@ -128,7 +129,7 @@
                 <input id="reference_images" name="reference_images[]" type="file" multiple accept="{{ CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
                 <p class="mt-1 text-xs text-gray-400">{{ CodexMediaRules::imageHint() }}</p>
                 <x-input-error :messages="$errors->get('reference_images')" class="mt-2" />
-                <x-input-error :messages="$errors->get('reference_images.0')" class="mt-2" />
+                <x-input-error :messages="$errors->get('reference_images.*')" class="mt-2" />
             </div>
         </x-card>
 
@@ -152,7 +153,7 @@
                 <input id="reference_files" name="reference_files[]" type="file" multiple accept="{{ CodexMediaRules::fileAccept() }}" class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
                 <p class="mt-1 text-xs text-gray-400">{{ CodexMediaRules::fileHint() }}</p>
                 <x-input-error :messages="$errors->get('reference_files')" class="mt-2" />
-                <x-input-error :messages="$errors->get('reference_files.0')" class="mt-2" />
+                <x-input-error :messages="$errors->get('reference_files.*')" class="mt-2" />
             </div>
         </x-card>
     </div>

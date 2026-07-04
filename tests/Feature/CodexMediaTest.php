@@ -128,6 +128,35 @@ class CodexMediaTest extends TestCase
         $this->assertSame(0, $entry->media()->count());
     }
 
+    public function test_second_invalid_reference_image_error_is_visible(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        // One valid image plus a second oversized one: the error keys on index .1,
+        // not .0, so the form must render reference_images.* to surface it.
+        $response = $this->actingAs($user)
+            ->from(route('codex.edit', $entry))
+            ->put(route('codex.update', $entry), [
+                'name' => 'Melusine',
+                'reference_images' => [
+                    UploadedFile::fake()->image('ok.jpg'),
+                    UploadedFile::fake()->image('huge.jpg')->size(6000),
+                ],
+            ]);
+
+        $response->assertSessionHasErrors('reference_images.1');
+
+        $message = session('errors')->get('reference_images.1')[0];
+
+        // The rendered edit form must display the .1 message (fails before the .* Blade fix).
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertSee($message);
+
+        $this->assertSame(0, $entry->media()->count());
+    }
+
     public function test_removing_media_deletes_the_row_and_the_file(): void
     {
         $user = User::factory()->create();
@@ -192,6 +221,162 @@ class CodexMediaTest extends TestCase
         foreach ($paths as $path) {
             Storage::disk('public')->assertMissing($path);
         }
+    }
+
+    public function test_destroying_a_project_removes_codex_media_files(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        // Two entries, each with a cover and a reference file, so purgeProject must
+        // sweep every entry's media in one pass (the FK cascade drops the rows silently).
+        $paths = [];
+
+        foreach (['Melusine', 'Raymondin'] as $name) {
+            $entry = CodexEntry::factory()->for($project)->character()->create(['name' => $name]);
+
+            $this->actingAs($user)->put(route('codex.update', $entry), [
+                'name' => $name,
+                'cover' => UploadedFile::fake()->image('cover.jpg'),
+                'reference_files' => [UploadedFile::fake()->create('notes.pdf', 100)],
+            ]);
+
+            $paths = array_merge($paths, $entry->media()->pluck('path')->all());
+        }
+
+        $this->assertCount(4, $paths);
+
+        $this->actingAs($user)->delete(route('projects.destroy', $project))->assertRedirect();
+
+        $this->assertNull($project->fresh());
+        $this->assertSame(0, CodexMedia::count());
+
+        foreach ($paths as $path) {
+            Storage::disk('public')->assertMissing($path);
+        }
+    }
+
+    public function test_deleting_the_account_removes_codex_media_files(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $paths = [];
+
+        foreach (['Melusine', 'Raymondin'] as $name) {
+            $entry = CodexEntry::factory()->for($project)->character()->create(['name' => $name]);
+
+            $this->actingAs($user)->put(route('codex.update', $entry), [
+                'name' => $name,
+                'cover' => UploadedFile::fake()->image('cover.jpg'),
+                'reference_files' => [UploadedFile::fake()->create('notes.pdf', 100)],
+            ]);
+
+            $paths = array_merge($paths, $entry->media()->pluck('path')->all());
+        }
+
+        $this->assertCount(4, $paths);
+
+        // Breeze account deletion deletes the user directly; the User hook Eloquent-
+        // deletes its projects so each Project hook purges its files.
+        $this->actingAs($user)
+            ->delete(route('profile.destroy'), ['password' => 'password'])
+            ->assertRedirect();
+
+        $this->assertNull($user->fresh());
+        $this->assertSame(0, CodexMedia::count());
+
+        foreach ($paths as $path) {
+            Storage::disk('public')->assertMissing($path);
+        }
+    }
+
+    public function test_update_with_removals_and_uploads_keeps_files_and_rows_consistent(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        // Seed one reference image we will remove in the same request that uploads another.
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melusine',
+            'reference_images' => [UploadedFile::fake()->image('old.jpg')],
+        ]);
+
+        $old = $entry->media()->firstOrFail();
+        Storage::disk('public')->assertExists($old->path);
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melusine',
+            'remove_media' => [$old->id],
+            'reference_images' => [UploadedFile::fake()->image('new.jpg')],
+        ])->assertRedirect();
+
+        $new = $entry->media()->firstOrFail();
+
+        // Removal took effect (old row + file gone), the upload landed, and every
+        // surviving row still points at a file that exists on disk.
+        $this->assertNull(CodexMedia::find($old->id));
+        Storage::disk('public')->assertMissing($old->path);
+        $this->assertSame(1, $entry->media()->count());
+        Storage::disk('public')->assertExists($new->path);
+    }
+
+    public function test_rollback_after_upload_failure_leaves_no_dangling_media_row(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        // Existing reference image A, created cleanly before the failure is armed.
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melusine',
+            'reference_images' => [UploadedFile::fake()->image('a.jpg')],
+        ]);
+
+        $imageA = $entry->media()->firstOrFail();
+        Storage::disk('public')->assertExists($imageA->path);
+
+        // Arm a failure on the *next* media row creation — i.e. the upload of image B.
+        CodexMedia::creating(function () {
+            throw new \RuntimeException('media row insert blew up');
+        });
+
+        // Remove A and upload B in one request: B's row insert throws.
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melusine',
+            'remove_media' => [$imageA->id],
+            'reference_images' => [UploadedFile::fake()->image('b.jpg')],
+        ])->assertStatus(500);
+
+        // The invariant the fix protects: no surviving media row may reference a file
+        // that is missing on disk. Pre-fix the rollback restored A's row while A's file
+        // was already deleted inside the transaction, so this loop would find a dangling row.
+        foreach (CodexMedia::all() as $row) {
+            Storage::disk('public')->assertExists($row->path);
+        }
+    }
+
+    public function test_a_failed_media_row_insert_unlinks_the_written_file(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        // Force every media row insert to throw *after* the file is written to disk.
+        CodexMedia::creating(function () {
+            throw new \RuntimeException('media row insert blew up');
+        });
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melusine',
+            'cover' => UploadedFile::fake()->image('cover.jpg'),
+        ])->assertStatus(500);
+
+        // The service's store() must unlink the just-written file on a row-insert
+        // failure: no row persisted, and no orphan file left behind.
+        $this->assertSame(0, CodexMedia::count());
+        $this->assertSame([], Storage::disk('public')->allFiles('codex-media'));
     }
 
     public function test_non_owner_cannot_upload_or_remove_media(): void

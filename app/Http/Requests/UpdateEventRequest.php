@@ -20,7 +20,11 @@ class UpdateEventRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'event_datetime' => ['required', 'date'],
+            // Start/End bookends anchor timeline resolution, so their datetime is frozen:
+            // tampering the field back into the payload yields a visible validation error.
+            'event_datetime' => $this->route('event')->is_fixed
+                ? ['prohibited']
+                : ['required', 'date'],
             'plotlines' => ['required', 'array', 'min:1'],
             'plotlines.*' => [
                 'integer',

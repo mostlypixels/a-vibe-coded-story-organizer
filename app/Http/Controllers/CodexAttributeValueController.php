@@ -8,7 +8,6 @@ use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
 use App\Services\AttributeTimeline;
 use Illuminate\Http\RedirectResponse;
-use RuntimeException;
 
 class CodexAttributeValueController extends Controller
 {
@@ -29,15 +28,18 @@ class CodexAttributeValueController extends Controller
         $validated = $request->validated();
         $startEvent = $codexEntry->project->events()->findOrFail($validated['start_event_id']);
 
-        (new AttributeTimeline($codexEntry, $codexAttribute))->upsertAt($startEvent, $validated['value']);
+        // ConvertEmptyStringsToNull turns a blank input into null; '' is a first-class "blank"
+        // value here, so cast back before the string-typed upsertAt.
+        (new AttributeTimeline($codexEntry, $codexAttribute))->upsertAt($startEvent, (string) $validated['value']);
 
         return redirect()->route('codex.edit', $codexEntry);
     }
 
     /**
-     * Remove a period. The service refuses to drop the Start baseline while other values
-     * exist (it would open a hole at the beginning of the timeline — invariant #1); we
-     * translate that refusal into a validation error rather than a hard failure.
+     * Remove a period. Dropping the Start baseline while other values exist would open a hole
+     * at the beginning of the timeline (invariant #1); the Blade already hides Remove on the
+     * baseline, so a disallowed request is hand-crafted — a 403 (matching the is_main /
+     * is_fixed guards) is the honest response, not a soft validation error.
      */
     public function destroy(CodexAttributeValue $codexAttributeValue): RedirectResponse
     {
@@ -47,12 +49,9 @@ class CodexAttributeValueController extends Controller
 
         $timeline = new AttributeTimeline($entry, $codexAttributeValue->attribute);
 
-        try {
-            $timeline->removeAt($codexAttributeValue->startEvent);
-        } catch (RuntimeException $exception) {
-            return redirect()->route('codex.edit', $entry)
-                ->withErrors(['attribute_value' => $exception->getMessage()]);
-        }
+        abort_if(! $timeline->canRemoveAt($codexAttributeValue->startEvent), 403);
+
+        $timeline->removeAt($codexAttributeValue->startEvent);
 
         return redirect()->route('codex.edit', $entry);
     }

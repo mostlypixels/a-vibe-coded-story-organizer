@@ -121,12 +121,22 @@ All three entity kinds live in a single `codex_entries` table with a `type` colu
 identical across types, and the *type-specific* data is exactly what the flexible attribute
 system handles — so one table stays DRY. A single `CodexEntryController` serves all three;
 the type is a **route segment** (`{type}` ∈ `characters|locations|organizations`), resolved
-via `CodexEntryType::fromRouteKey()`:
+via `CodexEntryType::fromRouteKey()`. The constraint, the nav links, and `fromRouteKey` all
+derive from the enum — there are no hardcoded route-key string lists to keep in sync:
 
 ```php
-Route::get('/projects/{project}/codex/{type}', [CodexEntryController::class, 'index'])
-    ->whereIn('type', ['characters', 'locations', 'organizations']);
+// One grouped constraint, from CodexEntryType::routeKeys(); an unknown {type}
+// 404s before the controller runs. Adding a fourth type needs no route edits.
+Route::whereIn('type', CodexEntryType::routeKeys())->group(function () {
+    Route::get('/projects/{project}/codex/{type}', [CodexEntryController::class, 'index'])
+        ->name('projects.codex.index');
+    // ...create, store...
+});
 ```
+
+The navigation dropdown (both the desktop and responsive menus) `@foreach`es
+`CodexEntryType::cases()` instead of listing three literal links, and highlights the
+**current** codex type rather than always the first link.
 
 `edit` / `update` / `destroy` are flat (`/codex/{codexEntry}`) — the entry alone resolves them.
 
@@ -157,6 +167,16 @@ because two events may share a datetime. When resolving *at an event*, an **anch
 match wins first**: a scene "during Halloween" sees the Halloween value even if another event
 shares its datetime.
 
+"The project's **Start** / **End** event" — the sentinels every timeline resolves against —
+has a **single definition**: `Project::startEvent()` / `Project::endEvent()` (the
+earliest / latest `is_fixed` event, in canonical `(event_datetime, id)` order). Everything
+that needs a bookend (`AttributeTimeline`, the entry controller) delegates to these methods
+rather than re-running the query. Because the resolution is datetime-ordered, the bookends'
+dates must be **stable**: `UpdateEventRequest` freezes `event_datetime` on `is_fixed` events
+(`['prohibited']`; title / description / plotlines stay editable) and the edit view
+hides the input. So the baseline anchor can be neither deleted (undeletable events) **nor
+re-ordered** (frozen dates) out from under the step function.
+
 All of this lives in **`App\Services\AttributeTimeline`** (constructed for one entry+attribute
 pair), not in the controller or a model hook:
 
@@ -164,14 +184,27 @@ pair), not in the controller or a model hook:
   thin `CodexEntry::attributeValueAt()` wrapper).
 - `ensureBaseline()` / `upsertAt()` / `removeAt()` — gap-free mutations. `upsertAt` is an
   **upsert** (`updateOrCreate` on the anchor), so the store endpoint has **no update route**:
-  editing an existing period posts the same route with the row's anchor. `removeAt` refuses to
-  delete the Start baseline while other values exist.
+  editing an existing period posts the same route with the row's anchor. **`upsertAt` enforces
+  the baseline itself** — when the anchor isn't Start it calls `ensureBaseline()` first, so
+  storing a mid-timeline period for a never-valued pair can't open a leading hole. The invariant
+  therefore holds on *every* write path (period store, seeder), not only entry-create; a caller
+  can't accidentally bypass it. `removeAt` refuses to delete the Start baseline while other
+  values exist, returning a **`403`** (`abort_if`) rather than throwing a `RuntimeException`.
+
+The store endpoint validates `value` as `['present', 'nullable', 'string', 'max:255']`, so an
+**empty value is a first-class "recorded as blank"** — an empty baseline is savable and a value
+can be cleared back to blank (`required` would forbid both). `nullable` is present because the
+global `ConvertEmptyStringsToNull` middleware rewrites a blank input's `""` to `null`; the
+controller casts it back with `(string)` before `upsertAt` (whose signature is `string $value`).
+The timeline editor renders validation errors under `value` / `start_event_id` and re-fills
+`old()` on failure, so a rejected save no longer silently does nothing.
 
 > [!IMPORTANT]
 > **Invariant — leading anchor at Start.** Every (entry, attribute) with any value has exactly
 > one value anchored at the project's *Start* event, so `valueAt(t)` is **total** for
-> `t ≥ Start` and callers never handle "no value". The Start/End events are `is_fixed` and
-> undeletable, so the anchor can never be orphaned. This invariant lives in
+> `t ≥ Start` and callers never handle "no value". The Start/End events are `is_fixed`,
+> undeletable, and datetime-frozen, so the anchor can be neither orphaned nor re-ordered.
+> `upsertAt` enforces this on every write (not just entry-create). This invariant lives in
 > `AttributeTimeline` (a service the seeder can call directly), **not** a `booted()` hook —
 > hooks are suppressed under `WithoutModelEvents`.
 
@@ -180,6 +213,31 @@ single-cover rule (replace the existing `Cover` row + its file), position assign
 critically — **deleting files off disk** on every removal path. `CodexEntry`'s `deleting` hook
 calls `purge()` *before* the FK cascade drops the rows, because `cascadeOnDelete` removes the
 DB rows but never the files.
+
+> [!WARNING]
+> **A DB cascade bypasses model hooks — so it bypasses file cleanup.** Deleting a *project*
+> (or a *user account*) cascades `project → codex_entries → codex_media` entirely at the
+> database level; `CodexEntry`'s `deleting` hook never fires, so on its own it would leak
+> every media file on disk. Two hooks close this: `Project::deleting` calls
+> `CodexMediaService::purgeProject()` (one query for the paths, delete the files, let the
+> cascade drop the rows), and `User::deleting` Eloquent-deletes its projects
+> (`$user->projects->each->delete()`) so the `Project` hook fires per project. That keeps
+> `purgeProject()` the **single** purge trigger for a project's files.
+
+The entry save flow (`CodexEntryController@store` / `@update`) keeps **disk I/O outside the
+`DB::transaction`**. The transaction does DB-only work and *returns the paths* of the media
+rows it removed; only after it commits does the controller delete those files
+(`CodexMediaService::deleteFiles`) and write the new uploads (`storeMediaUploads`, which
+unlinks a just-written file if its row insert throws).
+
+> [!WARNING]
+> **Why post-commit, and the trade-off.** Doing disk deletes/writes *inside* the transaction
+> is unsafe both ways: a rollback after a file delete leaves a surviving row pointing at a
+> missing file (404), and files written before a later failure survive the rollback as
+> orphans. Acting after commit fixes both — at the cost that a post-commit **upload** failure
+> yields a *saved entry with fewer media than requested* plus a 500. That is deliberately
+> accepted: a saved entry with one missing image beats a rolled-back edit with corrupted
+> disk state.
 
 ### Seeding caveat
 

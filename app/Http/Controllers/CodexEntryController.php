@@ -56,7 +56,9 @@ class CodexEntryController extends Controller
             'project' => $project,
             'type' => $entryType,
             'entries' => $entries,
-            'tags' => $project->tags()->orderBy('name')->get(),
+            // Only tags actually attached to at least one entry belong in the filter
+            // dropdown; a freshly created tag with no entries would otherwise linger.
+            'tags' => $project->tags()->whereHas('entries')->orderBy('name')->get(),
             'sort' => $sort,
             'direction' => $direction,
         ]);
@@ -74,6 +76,7 @@ class CodexEntryController extends Controller
             // On create only the Start-baseline value is captured per applicable attribute;
             // the full period editor appears on edit (periods need an entry id).
             'attributes' => $this->applicableAttributes($project, $entryType),
+            'projectTags' => $project->tags()->orderBy('name')->get(),
         ]);
     }
 
@@ -82,7 +85,10 @@ class CodexEntryController extends Controller
         $entryType = CodexEntryType::fromRouteKey($type);
         $validated = $request->validated();
 
-        DB::transaction(function () use ($request, $project, $entryType, $validated, $media) {
+        // The transaction does DB-only work and returns the paths of any media rows it
+        // dropped; the disk operations happen after commit (see storeMediaUploads /
+        // finding 3), so no file is written or deleted while the write could still roll back.
+        [$entry, $pathsToDelete] = DB::transaction(function () use ($request, $project, $entryType, $validated, $media) {
             $entry = $project->codexEntries()->create([
                 'type' => $entryType,
                 'name' => $validated['name'],
@@ -93,10 +99,11 @@ class CodexEntryController extends Controller
             $entry->tags()->sync($this->resolveTags($project, $validated['tags'] ?? []));
             $this->seedAttributeBaselines($entry, $entryType, $validated['attribute_baselines'] ?? []);
 
-            // Files written last so a failure in the steps above rolls back without
-            // leaving orphan files on disk.
-            $this->applyMediaChanges($entry, $request, $media);
+            return [$entry, $this->queueMediaRemovals($entry, $request, $media)];
         });
+
+        $media->deleteFiles($pathsToDelete);
+        $this->storeMediaUploads($entry, $request, $media);
 
         return redirect()->route('projects.codex.index', [$project, $entryType->routeKey()]);
     }
@@ -108,7 +115,7 @@ class CodexEntryController extends Controller
         $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent');
 
         $project = $codexEntry->project;
-        $startEvent = $this->startEvent($project);
+        $startEvent = $project->startEvent();
 
         return view('codex.edit', [
             'project' => $project,
@@ -119,6 +126,7 @@ class CodexEntryController extends Controller
             'startEvent' => $startEvent,
             // Anchor choices for the "Add period" row.
             'events' => $project->events()->orderBy('event_datetime')->orderBy('id')->get(),
+            'projectTags' => $project->tags()->orderBy('name')->get(),
         ]);
     }
 
@@ -127,7 +135,9 @@ class CodexEntryController extends Controller
         $project = $codexEntry->project;
         $validated = $request->validated();
 
-        DB::transaction(function () use ($request, $project, $codexEntry, $validated, $media) {
+        // DB-only inside the transaction; disk deletes/writes happen after commit
+        // (see store() / storeMediaUploads / finding 3).
+        $pathsToDelete = DB::transaction(function () use ($request, $project, $codexEntry, $validated, $media) {
             $codexEntry->update([
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
@@ -136,9 +146,11 @@ class CodexEntryController extends Controller
             $this->syncAliases($codexEntry, $validated['aliases'] ?? []);
             $codexEntry->tags()->sync($this->resolveTags($project, $validated['tags'] ?? []));
 
-            // Files written last (see store): removals then uploads.
-            $this->applyMediaChanges($codexEntry, $request, $media);
+            return $this->queueMediaRemovals($codexEntry, $request, $media);
         });
+
+        $media->deleteFiles($pathsToDelete);
+        $this->storeMediaUploads($codexEntry, $request, $media);
 
         return redirect()->route('projects.codex.index', [$project, $codexEntry->type->routeKey()]);
     }
@@ -202,21 +214,33 @@ class CodexEntryController extends Controller
     }
 
     /**
-     * Apply the form's media changes: process removals first (frees the cover slot and
-     * releases positions), then store the new cover and reference uploads. The service
-     * owns disk paths, naming and the single-cover rule.
+     * In-transaction phase of the media changes: drop the rows the form asked to remove
+     * (remove_media[] plus the old cover row when a new cover is uploaded) and return
+     * their disk paths for post-commit deletion. No disk I/O here — see finding 3.
+     *
+     * @return array<int, string>
      */
-    private function applyMediaChanges(CodexEntry $entry, FormRequest $request, CodexMediaService $media): void
+    private function queueMediaRemovals(CodexEntry $entry, FormRequest $request, CodexMediaService $media): array
     {
         // remove_media[] only exists on the update request; the ids were already
-        // validated to belong to this entry, so this is just the deletion pass.
+        // validated to belong to this entry.
         $idsToRemove = (array) $request->validated('remove_media', []);
 
-        if ($idsToRemove !== []) {
-            $entry->media()->whereIn('id', $idsToRemove)->get()
-                ->each(fn ($mediaRow) => $media->remove($mediaRow));
-        }
+        return $media->queueRemovals($entry, $idsToRemove, $request->hasFile('cover'));
+    }
 
+    /**
+     * Post-commit phase of the media changes: write the new uploads (cover, then
+     * reference images/files). Runs after DB::transaction() returns so a failed disk
+     * write cannot corrupt an already-committed entry.
+     *
+     * Accepted trade-off (finding 3): a late upload failure leaves the entry saved with
+     * fewer media than requested plus a visible 500, rather than rolling back the whole
+     * edit and corrupting the disk. The service unlinks a file whose row insert fails, so
+     * a partial failure never orphans a file either.
+     */
+    private function storeMediaUploads(CodexEntry $entry, FormRequest $request, CodexMediaService $media): void
+    {
         if ($request->hasFile('cover')) {
             $media->storeCover($entry, $request->file('cover'));
         }
@@ -283,17 +307,5 @@ class CodexEntryController extends Controller
                     'periods' => $periods->reject(fn ($period) => $period->start_event_id === $startEvent->id)->values(),
                 ];
             });
-    }
-
-    /**
-     * The project's Start event (earliest fixed event, year 0000) — the locked baseline anchor.
-     */
-    private function startEvent(Project $project): Event
-    {
-        return $project->events()
-            ->where('is_fixed', true)
-            ->orderBy('event_datetime')
-            ->orderBy('id')
-            ->firstOrFail();
     }
 }

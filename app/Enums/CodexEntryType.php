@@ -45,15 +45,26 @@ enum CodexEntryType: string
     }
 
     /**
+     * Every type's route key, for route constraints and nav iteration.
+     *
+     * @return array<int, string>
+     */
+    public static function routeKeys(): array
+    {
+        return array_map(fn (self $type) => $type->routeKey(), self::cases());
+    }
+
+    /**
      * Resolve a type from its route key (e.g. "characters" => Character).
      */
     public static function fromRouteKey(string $routeKey): self
     {
-        return match ($routeKey) {
-            'characters' => self::Character,
-            'locations' => self::Location,
-            'organizations' => self::Organization,
-            default => throw new \ValueError("Unknown codex entry type route key [{$routeKey}]."),
-        };
+        foreach (self::cases() as $type) {
+            if ($type->routeKey() === $routeKey) {
+                return $type;
+            }
+        }
+
+        throw new \ValueError("Unknown codex entry type route key [{$routeKey}].");
     }
 }

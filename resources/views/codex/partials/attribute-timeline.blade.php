@@ -13,7 +13,11 @@
             {{ __('Each attribute\'s value over time. A period runs from its event until the next change. Editing a value and pressing Save updates it in place.') }}
         </p>
 
-        <x-input-error :messages="$errors->get('attribute_value')" class="mt-2" />
+        {{-- Store failures land under these keys; the destroy guard is now a 403, so the old
+             'attribute_value' bag no longer feeds this card. Errors share the default bag
+             across the card's small forms (accepted at this scale — Q3). --}}
+        <x-input-error :messages="$errors->get('value')" class="mt-2" />
+        <x-input-error :messages="$errors->get('start_event_id')" class="mt-2" />
 
         <div class="mt-6 space-y-8">
             @foreach ($sheets as $sheet)
@@ -39,7 +43,7 @@
                                 name="value"
                                 type="text"
                                 class="flex-1 min-w-[10rem]"
-                                :value="$sheet['baseline']?->value"
+                                :value="old('value', $sheet['baseline']?->value)"
                                 :placeholder="__('Starting value')"
                             />
                             <x-secondary-button type="submit">{{ __('Save') }}</x-secondary-button>
@@ -61,7 +65,7 @@
                                         name="value"
                                         type="text"
                                         class="flex-1 min-w-[10rem]"
-                                        :value="$period->value"
+                                        :value="old('value', $period->value)"
                                     />
                                     <x-secondary-button type="submit">{{ __('Save') }}</x-secondary-button>
                                 </form>
@@ -86,7 +90,7 @@
                             >
                                 <option value="">{{ __('Add period at…') }}</option>
                                 @foreach ($events as $event)
-                                    <option value="{{ $event->id }}">{{ $event->title }} — {{ $event->event_datetime->format('M j, Y') }}</option>
+                                    <option value="{{ $event->id }}" @selected(old('start_event_id') == $event->id)>{{ $event->title }} — {{ $event->event_datetime->format('M j, Y') }}</option>
                                 @endforeach
                             </select>
                             <label class="sr-only" for="add_value_{{ $attribute->id }}">{{ __('New value') }}</label>
@@ -95,6 +99,7 @@
                                 name="value"
                                 type="text"
                                 class="flex-1 min-w-[10rem]"
+                                :value="old('value')"
                                 :placeholder="__('New value')"
                             />
                             <x-primary-button type="submit">{{ __('Add') }}</x-primary-button>

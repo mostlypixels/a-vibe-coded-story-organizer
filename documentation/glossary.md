@@ -18,6 +18,13 @@ gets on creation. It **cannot be deleted** and generally stays pinned first in l
 **Event** — a timeline event. Belongs to a project and can touch multiple plotlines
 (many-to-many).
 
+**Bookend events (Start / End)** — the two `is_fixed` events every project is auto-created
+with (year 0000 "Start" and year 3000 "End"). They are the sentinels the attribute step
+function resolves against, so their contract is stronger than the main plotline's: they
+**cannot be deleted** *and* their `event_datetime` is **frozen** (title/description/plotlines
+stay editable). Resolved through the single `Project::startEvent()` / `Project::endEvent()`
+methods in canonical `(event_datetime, id)` order — never re-queried elsewhere.
+
 **Act → Chapter → Scene** — the three-level manuscript hierarchy. An act has many chapters;
 a chapter has many scenes. Strictly nested (no many-to-many).
 
@@ -50,8 +57,10 @@ never datetime alone, since two events may share a datetime.
 
 **Baseline (Start-anchored value)** — the mandatory period every valued (entry, attribute)
 pair has anchored at the project's **Start** event. It guarantees no leading hole, so
-resolution is total for any moment ≥ Start. Created by `AttributeTimeline::ensureBaseline()`
-and, like the main plotline, it cannot be deleted while later periods exist.
+resolution is total for any moment ≥ Start. Created by `AttributeTimeline::ensureBaseline()`,
+and `upsertAt()` calls it automatically whenever a non-Start period is stored — so no write
+path can leave a leading hole. Like the main plotline, it cannot be deleted while later periods
+exist (the guard returns a `403`).
 
 ## Design patterns & Laravel concepts
 

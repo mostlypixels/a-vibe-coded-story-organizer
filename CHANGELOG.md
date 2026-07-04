@@ -99,9 +99,45 @@ set belongs in its pull request description.
 - Reordered scenes in the story overview via AJAX (no full page reload).
 - Restyled the story overview typography and act headings.
 - Consolidated the `MelusineSeeder` chapters into fewer, denser chapters.
+- Codex bookend events (Start/End) now have their `event_datetime` **frozen**: editing an
+  `is_fixed` event can change its title/description/plotlines but not its date
+  (`UpdateEventRequest` applies `prohibited`; the edit form hides the input). This keeps the
+  Start/End sentinels that anchor the attribute timeline from being re-ordered.
+- Removing an attribute period's Start baseline while later periods exist now returns a
+  `403` (`abort_if`) instead of surfacing a `RuntimeException`.
+- Codex route constraints, `CodexEntryType::fromRouteKey()`, and the navigation dropdown are
+  all **derived from `CodexEntryType`** — no hardcoded `characters|locations|organizations`
+  string lists remain, so adding a codex type no longer means editing five scattered lists.
+- The codex navigation now highlights the **current** codex type (characters/locations/
+  organizations) rather than always highlighting the first link.
+- The codex index tag-filter dropdown hides tags that have no entries (`whereHas('entries')`).
+- The attribute-definition form shows a hint that narrowing `applies_to` strands existing
+  values for the removed entry types (non-destructive; they simply stop being shown).
 
 ### Fixed
 
 - The Home/Timeline/Story navigation menu no longer disappears on the event
   edit page: the layout's `$project` resolution chain now also resolves from the
   `event` route parameter (both the desktop bar and the responsive menu).
+- The gap-free attribute-timeline invariant is now enforced on the period-store endpoint:
+  `AttributeTimeline::upsertAt()` creates the Start baseline itself when a mid-timeline period
+  is stored for a previously-unvalued (entry, attribute) pair, so `valueAt` stays total for
+  `t ≥ Start` on every write path — not just entry creation.
+- Codex media files no longer leak on disk when a **project** or **user account** is deleted:
+  those deletions cascade at the database level and bypassed `CodexEntry`'s cleanup hook, so
+  `Project` and `User` now have `deleting` hooks that purge the files (`purgeProject`) before
+  the row cascade.
+- Codex media disk I/O no longer runs inside the entry-save `DB::transaction`: file
+  deletes/writes happen after commit, so a rolled-back save can no longer leave a media row
+  pointing at a deleted file or orphan a written upload on disk.
+- The attribute-timeline editor now renders validation errors (under `value` /
+  `start_event_id`) and preserves typed input via `old()` on a failed save, which previously
+  looked like Save silently doing nothing.
+- Empty attribute values are now savable: `value` validates as `present`/`nullable` rather
+  than `required`, so an empty baseline can be saved and a value can be cleared back to blank
+  ("recorded as blank"), matching the create-form semantics.
+- Codex media upload validation errors now render for **any** failing file index, not only the
+  first (`reference_images.*` / `reference_files.*` instead of `.0`); the `x-input-error`
+  component flattens the wildcard message bag.
+- The codex entry form partial no longer runs a tag query at render time — the controller
+  passes `projectTags`, keeping the query out of Blade.

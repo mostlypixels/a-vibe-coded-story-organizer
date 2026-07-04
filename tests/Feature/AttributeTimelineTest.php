@@ -221,6 +221,43 @@ class AttributeTimelineTest extends TestCase
             'start_event_id' => $halloween->id,
             'value' => 'green',
         ]);
+
+        // Gap-free invariant: storing a mid-timeline period on a never-valued pair must also
+        // create the '' Start baseline, so the timeline has no hole before the new anchor.
+        $start = $project->startEvent();
+        $this->assertDatabaseHas('codex_attribute_values', [
+            'codex_entry_id' => $entry->id,
+            'codex_attribute_id' => $attribute->id,
+            'start_event_id' => $start->id,
+            'value' => '',
+        ]);
+    }
+
+    public function test_upsert_at_a_mid_timeline_event_seeds_a_start_baseline(): void
+    {
+        [$project, $entry, $attribute, $start] = $this->makePair();
+        $halloween = Event::factory()->for($project)->create(['event_datetime' => '2020-10-31 00:00:00']);
+
+        (new AttributeTimeline($entry, $attribute))->upsertAt($halloween, 'green');
+
+        // A moment before the mid-timeline anchor resolves to the '' baseline, not a hole.
+        $beforeHalloween = Carbon::parse('2020-10-30 00:00:00');
+        $resolved = (new AttributeTimeline($entry, $attribute))->valueAt($beforeHalloween);
+        $this->assertNotNull($resolved);
+        $this->assertSame($start->id, $resolved->start_event_id);
+        $this->assertSame('', $resolved->value);
+    }
+
+    public function test_upsert_at_the_start_event_does_not_double_write(): void
+    {
+        [, $entry, $attribute, $start] = $this->makePair();
+
+        (new AttributeTimeline($entry, $attribute))->upsertAt($start, 'blonde');
+
+        // The anchor is Start, so upsert is itself the baseline write: exactly one row, no
+        // stray '' baseline pinned first.
+        $this->assertSame(1, $entry->attributeValues()->count());
+        $this->assertSame('blonde', $entry->attributeValues()->sole()->value);
     }
 
     public function test_store_at_an_existing_anchor_updates_in_place(): void
@@ -245,6 +282,79 @@ class AttributeTimelineTest extends TestCase
         $response->assertSessionHasNoErrors();
         $this->assertSame(1, $entry->attributeValues()->where('start_event_id', $start->id)->count());
         $this->assertSame('green', $entry->attributeValues()->where('start_event_id', $start->id)->value('value'));
+    }
+
+    public function test_store_allows_an_empty_value(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->create();
+        $start = $project->events()->where('title', 'Start')->firstOrFail();
+
+        // '' is a first-class "recorded as blank" value (Q2): the Start baseline persists it
+        // and the submit reports no errors (would fail under the old 'required' rule).
+        $this->actingAs($user)
+            ->post(route('codex.attribute-values.store', [$entry, $attribute]), [
+                'start_event_id' => $start->id,
+                'value' => '',
+            ])
+            ->assertRedirect(route('codex.edit', $entry))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('codex_attribute_values', [
+            'codex_entry_id' => $entry->id,
+            'codex_attribute_id' => $attribute->id,
+            'start_event_id' => $start->id,
+            'value' => '',
+        ]);
+    }
+
+    public function test_store_can_clear_a_value_back_to_empty(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->create();
+        $halloween = Event::factory()->for($project)->create(['event_datetime' => '2020-10-31 00:00:00']);
+
+        (new AttributeTimeline($entry, $attribute))->upsertAt($halloween, 'green');
+
+        // Re-posting '' at the same anchor clears it (upsert), not blocked by validation.
+        $this->actingAs($user)
+            ->post(route('codex.attribute-values.store', [$entry, $attribute]), [
+                'start_event_id' => $halloween->id,
+                'value' => '',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            '',
+            $entry->attributeValues()->where('start_event_id', $halloween->id)->value('value')
+        );
+    }
+
+    public function test_store_without_an_event_shows_a_validation_error(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->create();
+
+        // Add-period submit with no anchor chosen fails on start_event_id...
+        $this->actingAs($user)
+            ->from(route('codex.edit', $entry))
+            ->post(route('codex.attribute-values.store', [$entry, $attribute]), [
+                'start_event_id' => '',
+                'value' => 'green',
+            ])
+            ->assertRedirect(route('codex.edit', $entry))
+            ->assertSessionHasErrors('start_event_id');
+
+        // ...and the message renders on the edit page (the partial now echoes it).
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('The start event id field is required.');
     }
 
     public function test_store_rejects_a_cross_project_anchor_event(): void
@@ -310,12 +420,33 @@ class AttributeTimelineTest extends TestCase
 
         $baseline = $entry->attributeValues()->where('start_event_id', $start->id)->firstOrFail();
 
+        // The Blade hides Remove on the baseline, so this is a hand-crafted request; the
+        // honest response is a 403 (matching the is_main / is_fixed guards), not a soft error.
         $this->actingAs($user)
             ->delete(route('codex.attribute-values.destroy', $baseline))
-            ->assertSessionHasErrors('attribute_value');
+            ->assertStatus(403);
 
         // The baseline row survives so the timeline stays gap-free at the start.
         $this->assertDatabaseHas('codex_attribute_values', ['id' => $baseline->id]);
+    }
+
+    public function test_destroy_removes_the_start_baseline_when_it_is_the_only_value(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->create();
+        $start = $project->events()->where('title', 'Start')->firstOrFail();
+
+        (new AttributeTimeline($entry, $attribute))->upsertAt($start, 'blonde');
+        $baseline = $entry->attributeValues()->where('start_event_id', $start->id)->firstOrFail();
+
+        // Sole value: removing the baseline leaves the pair unvalued rather than a hole.
+        $this->actingAs($user)
+            ->delete(route('codex.attribute-values.destroy', $baseline))
+            ->assertRedirect(route('codex.edit', $entry));
+
+        $this->assertDatabaseMissing('codex_attribute_values', ['id' => $baseline->id]);
     }
 
     public function test_non_owner_cannot_store_or_destroy_periods(): void

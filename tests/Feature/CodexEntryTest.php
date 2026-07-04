@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CodexEntryType;
 use App\Models\CodexAlias;
 use App\Models\CodexAttribute;
 use App\Models\CodexAttributeValue;
@@ -83,6 +84,41 @@ class CodexEntryTest extends TestCase
         $this->actingAs($user)->get(route('codex.edit', $entry))
             ->assertOk()
             ->assertSee('Melusine');
+    }
+
+    public function test_create_and_edit_forms_receive_project_tags_ordered_by_name(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Tag::factory()->for($project)->create(['name' => 'Nobility']);
+        Tag::factory()->for($project)->create(['name' => 'Fae']);
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $this->actingAs($user)->get(route('projects.codex.create', [$project, 'characters']))
+            ->assertOk()
+            ->assertViewHas('projectTags', fn ($projectTags) => $projectTags->pluck('name')->all() === ['Fae', 'Nobility']);
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertViewHas('projectTags', fn ($projectTags) => $projectTags->pluck('name')->all() === ['Fae', 'Nobility']);
+    }
+
+    public function test_index_tag_filter_omits_tags_with_no_entries(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $attached = Tag::factory()->for($project)->create(['name' => 'Fae']);
+        $orphan = Tag::factory()->for($project)->create(['name' => 'Unused']);
+
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+        $entry->tags()->attach($attached);
+
+        $this->actingAs($user)->get(route('projects.codex.index', [$project, 'characters']))
+            ->assertOk()
+            ->assertViewHas('tags', function ($tags) use ($attached, $orphan) {
+                return $tags->contains($attached) && ! $tags->contains($orphan);
+            });
     }
 
     public function test_owner_can_create_an_entry_with_aliases_and_tags(): void
@@ -182,6 +218,19 @@ class CodexEntryTest extends TestCase
         );
 
         $this->actingAs($user)->get($url)->assertNotFound();
+    }
+
+    public function test_navigation_lists_every_codex_type(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->get(route('projects.codex.index', [$project, 'characters']));
+        $response->assertOk();
+
+        foreach (CodexEntryType::cases() as $codexType) {
+            $response->assertSee($codexType->pluralLabel());
+        }
     }
 
     public function test_destroy_cascades_aliases_tags_and_attribute_values(): void

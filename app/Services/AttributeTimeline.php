@@ -8,6 +8,7 @@ use App\Models\CodexEntry;
 use App\Models\Event;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
@@ -113,17 +114,43 @@ class AttributeTimeline
      */
     public function upsertAt(Event $startEvent, string $value): CodexAttributeValue
     {
-        $period = $this->entry->attributeValues()->updateOrCreate(
-            [
-                'codex_attribute_id' => $this->attribute->id,
-                'start_event_id' => $startEvent->id,
-            ],
-            ['value' => $value],
-        );
+        return DB::transaction(function () use ($startEvent, $value) {
+            // Invariant: every valued pair has a Start-anchored baseline, so valueAt()
+            // is total for t >= Start. Adding a mid-timeline period to a pair that was
+            // never valued must not open a hole before the new anchor — ensure the '' baseline
+            // first. When the anchor IS Start, this upsert already is the baseline write, so
+            // skip ensureBaseline (calling it first would pin '' before updateOrCreate could
+            // overwrite it — a wasteful double write).
+            if ($startEvent->id !== $this->entry->project->startEvent()->id) {
+                $this->ensureBaseline();
+            }
 
-        $this->values = null;
+            $period = $this->entry->attributeValues()->updateOrCreate(
+                [
+                    'codex_attribute_id' => $this->attribute->id,
+                    'start_event_id' => $startEvent->id,
+                ],
+                ['value' => $value],
+            );
 
-        return $period;
+            $this->values = null;
+
+            return $period;
+        });
+    }
+
+    /**
+     * Whether the period anchored at the given event may be removed. Removing the Start
+     * baseline while other values exist would open a hole at the beginning of the timeline
+     * (invariant #1); it is allowed only when it is the sole value. Exposed so the controller
+     * can turn a disallowed request into a 403 (matching the is_main / is_fixed guard style)
+     * before calling removeAt.
+     */
+    public function canRemoveAt(Event $startEvent): bool
+    {
+        $isStartBaseline = $startEvent->id === $this->startEvent()->id;
+
+        return ! ($isStartBaseline && $this->orderedValues()->count() > 1);
     }
 
     /**
@@ -133,9 +160,7 @@ class AttributeTimeline
      */
     public function removeAt(Event $startEvent): void
     {
-        $isStartBaseline = $startEvent->id === $this->startEvent()->id;
-
-        if ($isStartBaseline && $this->orderedValues()->count() > 1) {
+        if (! $this->canRemoveAt($startEvent)) {
             throw new RuntimeException('The Start baseline cannot be removed while other values exist.');
         }
 
@@ -187,27 +212,19 @@ class AttributeTimeline
     }
 
     /**
-     * The project's Start event: the earliest fixed event (year 0000), matching how
-     * Project::booted() creates it.
+     * The project's Start event. Thin delegate to the single source of truth on
+     * Project so the (event_datetime, id) query lives in exactly one place.
      */
     private function startEvent(): Event
     {
-        return $this->entry->project->events()
-            ->where('is_fixed', true)
-            ->orderBy('event_datetime')
-            ->orderBy('id')
-            ->firstOrFail();
+        return $this->entry->project->startEvent();
     }
 
     /**
-     * The project's End event: the latest fixed event (year 3000).
+     * The project's End event. Thin delegate to Project::endEvent().
      */
     private function endEvent(): Event
     {
-        return $this->entry->project->events()
-            ->where('is_fixed', true)
-            ->orderByDesc('event_datetime')
-            ->orderByDesc('id')
-            ->firstOrFail();
+        return $this->entry->project->endEvent();
     }
 }

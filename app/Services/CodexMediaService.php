@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Enums\CodexMediaCollection;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
+use App\Models\Project;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 /**
  * Owns everything about Codex media files: where they live on disk, how they are
@@ -30,22 +32,16 @@ class CodexMediaService
     private const DIRECTORY = 'codex-media';
 
     /**
-     * Store (or replace) the entry's single cover image.
+     * Store the entry's single cover image (row + file), post-commit.
      *
-     * There is exactly one Cover row at all times: any existing cover — row *and*
-     * file — is removed before the new one is stored. The cover is identified by its
-     * collection, exposed via CodexEntry::cover(); there is no cover_media_id FK.
+     * The single-cover rule is settled *before* this runs: any old cover row is
+     * dropped in-transaction by queueRemovals() (with `replacingCover` true) and its
+     * file deleted by deleteFiles(), so by the time we write the new cover there is no
+     * competing Cover row. The cover is identified by its collection, exposed via
+     * CodexEntry::cover(); there is no cover_media_id FK.
      */
     public function storeCover(CodexEntry $entry, UploadedFile $file): CodexMedia
     {
-        $existingCover = $entry->media()
-            ->where('collection', CodexMediaCollection::Cover)
-            ->first();
-
-        if ($existingCover !== null) {
-            $this->remove($existingCover);
-        }
-
         return $this->store($entry, CodexMediaCollection::Cover, $file);
     }
 
@@ -65,13 +61,55 @@ class CodexMediaService
     }
 
     /**
-     * Delete a single media row and its file on disk.
+     * In-transaction: delete the media *rows* the save flow wants gone and return their
+     * disk paths for deletion *after* commit.
+     *
+     * Two sources of removals collapse here: the explicit remove_media[] ids, and the
+     * old cover row when a replacement cover is being uploaded (`$replacingCover`) — the
+     * single-cover rule is thus row-level and settles inside the transaction. No disk
+     * I/O happens here on purpose (finding 3): if the transaction rolls back the rows
+     * are restored and the files were never touched, so no url() can 404 a surviving row.
+     *
+     * @param  array<int, int>  $removeIds  ids already validated to belong to $entry
+     * @return array<int, string> paths to delete on disk once the transaction commits
      */
-    public function remove(CodexMedia $media): void
+    public function queueRemovals(CodexEntry $entry, array $removeIds, bool $replacingCover): array
     {
-        Storage::disk(self::DISK)->delete($media->path);
+        $paths = [];
 
-        $media->delete();
+        if ($removeIds !== []) {
+            $rows = $entry->media()->whereIn('id', $removeIds)->get();
+            $paths = array_merge($paths, $rows->pluck('path')->all());
+            $entry->media()->whereIn('id', $rows->modelKeys())->delete();
+        }
+
+        if ($replacingCover) {
+            $existingCover = $entry->media()
+                ->where('collection', CodexMediaCollection::Cover)
+                ->first();
+
+            if ($existingCover !== null) {
+                $paths[] = $existingCover->path;
+                $existingCover->delete();
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
+     * Post-commit: delete files whose rows were already dropped by queueRemovals().
+     *
+     * Runs after DB::transaction() returns, so a deleted file can never be resurrected
+     * as a dangling row by a rollback.
+     *
+     * @param  array<int, string>  $paths
+     */
+    public function deleteFiles(array $paths): void
+    {
+        if ($paths !== []) {
+            Storage::disk(self::DISK)->delete($paths);
+        }
     }
 
     /**
@@ -92,19 +130,51 @@ class CodexMediaService
     }
 
     /**
+     * Delete every codex media file under a project before a DB cascade drops the rows.
+     *
+     * Called from Project's `deleting` hook (and, transitively, from User's, which
+     * Eloquent-deletes its projects). The project → entries → codex_media FK cascade
+     * removes the rows but never the files, so without this a project deletion would
+     * leak an orphan file per media row. One query over codex_media joined through the
+     * project's entries; the rows themselves are left to the cascade, mirroring purge().
+     */
+    public function purgeProject(Project $project): void
+    {
+        $paths = CodexMedia::query()
+            ->whereIn('codex_entry_id', $project->codexEntries()->select('id'))
+            ->pluck('path')
+            ->all();
+
+        if ($paths !== []) {
+            Storage::disk(self::DISK)->delete($paths);
+        }
+    }
+
+    /**
      * Persist one uploaded file: store it on disk, then record the row.
      * Position is intentionally omitted so the model hook assigns it.
+     *
+     * Runs post-commit (see storeCover/storeMany callers), so the disk write is no
+     * longer protected by a transaction rollback. If the row insert fails after the
+     * file lands, unlink it before rethrowing so the failure never leaves an orphan
+     * file behind (finding 3).
      */
     private function store(CodexEntry $entry, CodexMediaCollection $collection, UploadedFile $file): CodexMedia
     {
         $path = $file->store(self::DIRECTORY, self::DISK);
 
-        return $entry->media()->create([
-            'collection' => $collection,
-            'path' => $path,
-            'original_name' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize(),
-        ]);
+        try {
+            return $entry->media()->create([
+                'collection' => $collection,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+            ]);
+        } catch (Throwable $e) {
+            Storage::disk(self::DISK)->delete($path);
+
+            throw $e;
+        }
     }
 }
