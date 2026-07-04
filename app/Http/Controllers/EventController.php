@@ -6,6 +6,7 @@ use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
 use App\Models\Project;
+use App\Services\CodexAsOfResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -53,7 +54,7 @@ class EventController extends Controller
         return redirect()->route('projects.events.index', $project);
     }
 
-    public function edit(Event $event): View
+    public function edit(Event $event, CodexAsOfResolver $codexAsOf): View
     {
         $this->authorize('update', $event->project);
 
@@ -62,6 +63,10 @@ class EventController extends Controller
         return view('events.edit', [
             'event' => $event,
             'project' => $event->project->load('plotlines'),
+            // Codex values resolved as of this event. The moment is the event itself, so the
+            // anchor-identity rule applies (its own anchored values win over datetime ties).
+            // Pre-computed here to keep resolution out of Blade and avoid N+1 across entries.
+            'codexAsOfGroups' => $codexAsOf->resolve($event->project, $event),
         ]);
     }
 

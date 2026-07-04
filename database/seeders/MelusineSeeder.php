@@ -2,9 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Enums\CodexEntryType;
+use App\Models\CodexAttribute;
+use App\Models\CodexEntry;
+use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\AttributeTimeline;
 use App\Support\PlotlineColors;
 use Illuminate\Database\Seeder;
 
@@ -379,6 +384,198 @@ class MelusineSeeder extends Seeder
                     ]);
                 }
             }
+        }
+
+        $this->seedCodex($project, $eventsByTitle);
+    }
+
+    /**
+     * Seed the Codex: attribute definitions, entries (characters/location/organization)
+     * with aliases and tags, and the temporal attribute values that tell the hair-color
+     * story end to end.
+     *
+     * Everything here is idempotent (firstOrCreate / upsert), and the temporal values are
+     * created by calling the AttributeTimeline service *directly* rather than through any
+     * model hook — DatabaseSeeder runs WithoutModelEvents, so hooks (position assignment,
+     * baseline creation) never fire. That is also why position is set explicitly on the
+     * attribute definitions below.
+     *
+     * @param  array<string, Event>  $eventsByTitle  named events keyed by title
+     */
+    private function seedCodex(Project $project, array $eventsByTitle): void
+    {
+        // Attribute definitions. `applies_to` picks which entry types show each attribute;
+        // "Reputation" is deliberately shared by characters and organizations to exercise
+        // the applies-to filtering. `position` is set by hand (the creating hook is off).
+        $hairColor = $project->codexAttributes()->firstOrCreate(
+            ['name' => 'Hair color'],
+            ['applies_to' => [CodexEntryType::Character], 'position' => 1],
+        );
+
+        $frescoes = $project->codexAttributes()->firstOrCreate(
+            ['name' => 'Frescoes'],
+            ['applies_to' => [CodexEntryType::Location], 'position' => 2],
+        );
+
+        $fortunes = $project->codexAttributes()->firstOrCreate(
+            ['name' => 'Fortunes'],
+            ['applies_to' => [CodexEntryType::Organization], 'position' => 3],
+        );
+
+        $reputation = $project->codexAttributes()->firstOrCreate(
+            ['name' => 'Reputation'],
+            ['applies_to' => [CodexEntryType::Character, CodexEntryType::Organization], 'position' => 4],
+        );
+
+        // --- Characters ---
+
+        $melusine = $this->seedEntry(
+            $project,
+            CodexEntryType::Character,
+            'Mélusine',
+            'A faerie of the greenwood, cursed to take a serpent form below the waist every Saturday. Wife of Raymondin and mother of the nine sons of Lusignan.',
+            ['Melusina', 'The Serpent Lady', 'Lady of Lusignan'],
+            ['Faerie', 'Protagonist', 'Cursed'],
+        );
+
+        // Mélusine's hair over time: raven black by default, curse-touched after Pressine's
+        // judgment, and loose and wild once she takes her winged serpent form.
+        $this->seedPeriods($melusine, $hairColor, [
+            [null, 'Raven black, falling to her waist'],
+            ['The Second Curse', 'Raven black, run through with silver on Saturdays'],
+            ['The Transformation', 'Wild and loose about her wings'],
+        ], $eventsByTitle);
+
+        $this->seedPeriods($melusine, $reputation, [
+            [null, 'An unknown faerie of the forest fountain'],
+            ['The Building of Lusignan', 'The beloved and generous Lady of Lusignan'],
+            ['The Transformation', 'Denounced before the court as a serpent-demon'],
+        ], $eventsByTitle);
+
+        $raymondin = $this->seedEntry(
+            $project,
+            CodexEntryType::Character,
+            'Raymondin of Lusignan',
+            'A young knight of Poitou who accidentally kills his uncle, weds Mélusine, and becomes the first Lord of Lusignan — until his broken oath undoes them both.',
+            ['Raymond', 'Lord of Lusignan'],
+            ['Knight', 'Protagonist'],
+        );
+
+        $this->seedPeriods($raymondin, $hairColor, [
+            [null, 'Chestnut brown'],
+            ['The Transformation', 'Gone grey with grief'],
+        ], $eventsByTitle);
+
+        $this->seedPeriods($raymondin, $reputation, [
+            [null, 'A minor nephew of the Count of Poitiers'],
+            ['The Building of Lusignan', 'The rising Lord of Lusignan'],
+            ['The Transformation', 'A broken, penitent widower'],
+        ], $eventsByTitle);
+
+        // --- Location ---
+
+        $castle = $this->seedEntry(
+            $project,
+            CodexEntryType::Location,
+            'The Castle of Lusignan',
+            'The great white-marble castle Mélusine raised in a single night on a thorned promontory above the river.',
+            ['Lusignan'],
+            ['Castle', 'Poitou'],
+        );
+
+        // The painted walls of the great hall, from bare rock to fresh marble to slow ruin.
+        $this->seedPeriods($castle, $frescoes, [
+            [null, 'None — a bare, thorned promontory of rock'],
+            ['The Building of Lusignan', 'White marble walls, newly raised and unadorned'],
+            ['The Transformation', 'Cracked walls weeping mortar where Mélusine circled'],
+        ], $eventsByTitle);
+
+        // --- Organization ---
+
+        $house = $this->seedEntry(
+            $project,
+            CodexEntryType::Organization,
+            'The House of Lusignan',
+            'The noble line founded by Mélusine and Raymondin, whose sons win crowns across Europe and the East before the house fades into other dynasties.',
+            ['The Lusignans'],
+            ['Noble house'],
+        );
+
+        $this->seedPeriods($house, $fortunes, [
+            [null, 'Not yet founded'],
+            ['The Building of Lusignan', 'Newly established lords of a castle raised by magic'],
+            ['The Great Conquests', 'Crowns and titles won across Europe and the East'],
+            ['The Fall of Lusignan', 'Faded into other houses; the castle fallen to ruin'],
+        ], $eventsByTitle);
+
+        $this->seedPeriods($house, $reputation, [
+            [null, 'An unknown name'],
+            ['The Great Conquests', 'Renowned throughout Christendom'],
+        ], $eventsByTitle);
+    }
+
+    /**
+     * Create (idempotently) one Codex entry with its aliases and tags.
+     *
+     * Aliases are firstOrCreate'd children; tags are firstOrCreate'd once per project name
+     * and attached without detaching, so entries can share tags (e.g. "Protagonist").
+     *
+     * @param  array<int, string>  $aliases
+     * @param  array<int, string>  $tagNames
+     */
+    private function seedEntry(
+        Project $project,
+        CodexEntryType $type,
+        string $name,
+        string $description,
+        array $aliases,
+        array $tagNames,
+    ): CodexEntry {
+        $entry = $project->codexEntries()->firstOrCreate(
+            ['type' => $type, 'name' => $name],
+            ['description' => $description],
+        );
+
+        foreach ($aliases as $alias) {
+            $entry->aliases()->firstOrCreate(['alias' => $alias]);
+        }
+
+        $tagIds = collect($tagNames)->map(
+            fn (string $tagName) => $project->tags()->firstOrCreate(['name' => $tagName])->id,
+        );
+
+        $entry->tags()->syncWithoutDetaching($tagIds);
+
+        return $entry;
+    }
+
+    /**
+     * Seed the temporal periods for one (entry, attribute) pair via AttributeTimeline.
+     *
+     * Each period is `[$eventTitle, $value]`. A null title is the Start-anchored baseline
+     * (invariant #1: every valued pair has exactly one Start value) created with
+     * `ensureBaseline`; a title anchors the value at that named event via `upsertAt`. Both
+     * service methods run fine WithoutModelEvents and are idempotent on re-seed.
+     *
+     * @param  array<int, array{0: ?string, 1: string}>  $periods
+     * @param  array<string, Event>  $eventsByTitle
+     */
+    private function seedPeriods(
+        CodexEntry $entry,
+        CodexAttribute $attribute,
+        array $periods,
+        array $eventsByTitle,
+    ): void {
+        $timeline = new AttributeTimeline($entry, $attribute);
+
+        foreach ($periods as [$eventTitle, $value]) {
+            if ($eventTitle === null) {
+                $timeline->ensureBaseline($value);
+
+                continue;
+            }
+
+            $timeline->upsertAt($eventsByTitle[$eventTitle], $value);
         }
     }
 }

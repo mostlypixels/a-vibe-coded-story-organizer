@@ -19,11 +19,19 @@ in its home:
 | Constant / reference data | `app/Support`, `app/Enums` |
 
 > [!NOTE]
-> There is no `app/Services` layer yet. Create one the first time an action needs
-> non-trivial, reusable logic. **Do not add abstraction before there is a second caller** —
-> a private controller method is fine until reuse is real. For example, the `swapPosition`
-> logic is currently duplicated across the Act/Chapter/Scene controllers; that duplication is
-> a legitimate future candidate to extract into a shared trait or service.
+> The `app/Services` layer was introduced by the Codex feature — `AttributeTimeline`
+> (temporal attribute resolution + gap-free mutations) and `CodexMediaService` (file storage,
+> single-cover rule, disk cleanup) — because both are non-trivial *and* have real second
+> callers (controllers, model helpers, and the seeder). **Still, do not add a service before
+> reuse is real** — a private controller method is fine until then. For example, the
+> `swapPosition` logic duplicated across the Act/Chapter/Scene controllers remains a
+> legitimate future candidate to extract into a shared trait or service.
+
+> [!WARNING]
+> Keep invariant-enforcing logic in a **service method, not only a `booted()` hook** when a
+> seeder must produce it: `DatabaseSeeder` runs `WithoutModelEvents`, so hooks never fire.
+> The Codex's Start-baseline invariant lives in `AttributeTimeline::ensureBaseline` precisely
+> so `MelusineSeeder` can call it directly.
 
 > [!WARNING]
 > "Keep logic out of models" has one deliberate exception: **invariants and lifecycle** belong

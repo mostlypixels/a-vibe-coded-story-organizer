@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateSceneRequest;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
+use App\Services\CodexAsOfResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -66,7 +67,7 @@ class SceneController extends Controller
         return redirect()->route('projects.scenes.index', $project);
     }
 
-    public function edit(Scene $scene): View
+    public function edit(Scene $scene, CodexAsOfResolver $codexAsOf): View
     {
         $project = $scene->chapter->act->project;
 
@@ -79,6 +80,10 @@ class SceneController extends Controller
             'project' => $project,
             'chapters' => $this->chaptersFor($project),
             'events' => $this->eventsFor($project),
+            // Codex values resolved as of the scene's "happens during" event (null when the
+            // scene is unassigned → the panel shows the undetermined state). Pre-computed here
+            // so no timeline math or N+1 resolution happens in Blade.
+            'codexAsOfGroups' => $codexAsOf->resolve($project, $scene->event),
         ]);
     }
 

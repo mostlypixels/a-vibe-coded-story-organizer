@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <x-card>
                     <form method="POST" action="{{ route('scenes.update', $scene) }}" class="space-y-6">
                         @csrf
@@ -105,6 +105,12 @@
                         <x-danger-button>{{ __('Delete Scene') }}</x-danger-button>
                     </form>
             </x-card>
+
+            @include('codex.partials.as-of', [
+                'title' => __('Codex as of this scene'),
+                'moment' => $scene->event,
+                'groups' => $codexAsOfGroups,
+            ])
         </div>
     </div>
 </x-app-layout>

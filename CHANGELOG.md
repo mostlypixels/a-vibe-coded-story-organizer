@@ -12,6 +12,25 @@ set belongs in its pull request description.
 
 ### Added
 
+- Codex: a project-scoped reference aggregate for the story's **characters, locations, and
+  organizations**. All three share one `codex_entries` table keyed by a `CodexEntryType`
+  enum and one `CodexEntryController`, with the kind carried as a `{type}` route segment
+  (`characters`/`locations`/`organizations`). Each entry has **aliases**, flat **tags**
+  (reusable per project), Markdown **descriptions**, and **media** (a single cover plus
+  reference images/files on the `public` disk; cover is the `codex_media` row with
+  `collection = Cover`, not a FK). **Temporal attributes** — attribute definitions
+  (`codex_attributes`, with an `applies_to` array of entry types) whose values form a
+  **start-anchored step function**: each period runs from its anchoring event until the next
+  (or the *End* event), so the timeline stays gap-free and a value can be resolved "as of"
+  any moment. The new `App\Services\AttributeTimeline` (the project's first `app/Services`
+  class) owns resolution and gap-free upserts/removals; `App\Services\CodexMediaService`
+  owns file storage, the single-cover rule, and on-disk cleanup. Scene and event pages gain
+  **"as of" panels** showing each entry's attribute values at that moment (e.g. a scene during
+  *Back to class* shows the character's hair as black). Authorization walks up to the owning
+  `Project` (no new policies); a Codex nav dropdown sits between Timeline and Story.
+  `MelusineSeeder` seeds a demo set (Mélusine with aliases/tags and a hair-color timeline,
+  Raymondin, the Castle of Lusignan, and the House of Lusignan) by calling the timeline
+  service directly, since seeding runs with model events disabled.
 - Scene ↔ Event links, two relationships. **"Happens during"** — an optional
   `scenes.event_id` foreign key (`nullOnDelete`) placing a scene during a single event;
   chosen on the scene form via a select or an inline "New event" quick-create (auto-attached

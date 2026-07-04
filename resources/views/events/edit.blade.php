@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <x-card>
                 <form method="POST" action="{{ route('events.update', $event) }}" class="space-y-6">
                     @csrf
@@ -76,6 +76,12 @@
                     </form>
                 @endunless
             </x-card>
+
+            @include('codex.partials.as-of', [
+                'title' => __('Values as of this event'),
+                'moment' => $event,
+                'groups' => $codexAsOfGroups,
+            ])
         </div>
     </div>
 </x-app-layout>

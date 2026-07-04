@@ -28,6 +28,31 @@ the displayed number; titles never encode it.
 **Story overview** — the read-only page (`projects.story.index`) that renders the whole
 act/chapter/scene tree with a table of contents and Markdown-rendered scene contents.
 
+**Codex entry** — a reference sheet for a story entity: a **character**, **location**, or
+**organization**. All three share one `codex_entries` table, distinguished by a `type` enum
+(`CodexEntryType`); an entry has aliases, tags, media, and temporal attribute values. The
+kind is a route segment (`/projects/{project}/codex/characters`, `.../locations`, `...`).
+
+**Attribute definition** — a named, reusable attribute (`codex_attributes`, e.g. "Hair
+color", "Frescoes") the project owner defines once. Its `applies_to` array decides which
+entry types show it on their sheet. Distinct from its *values*, which are temporal (below).
+
+**Attribute period / step function** — an attribute's value over time is a **start-anchored
+step function**: each `codex_attribute_values` row means *"from this event onward, the value
+is X."* A **period** runs from its anchor until the next one (or the *End* event); there is no
+stored end, so periods tile the timeline with no gaps or overlaps. The value "as of" a moment
+is the anchor whose datetime is the greatest ≤ that moment. See
+[attribute timeline](architecture.md#attribute-definitions-and-the-step-function).
+
+**Anchor event** — the `Event` a period is pinned to (`start_event_id`): the value takes
+effect *from* that event. Anchors are ordered canonically by `(event_datetime, events.id)` —
+never datetime alone, since two events may share a datetime.
+
+**Baseline (Start-anchored value)** — the mandatory period every valued (entry, attribute)
+pair has anchored at the project's **Start** event. It guarantees no leading hole, so
+resolution is total for any moment ≥ Start. Created by `AttributeTimeline::ensureBaseline()`
+and, like the main plotline, it cannot be deleted while later periods exist.
+
 ## Design patterns & Laravel concepts
 
 **Aggregate** (domain-driven design) — a cluster of related objects treated as a unit for data
@@ -45,6 +70,13 @@ controllers.
 
 **Custom validation rule** — a reusable rule object in `app/Rules` (e.g. `ValidMarkdown`) used
 inside a Form Request's rules array.
+
+**Service class** — a plain class in `app/Services` holding a reusable, multi-step domain
+workflow that is too involved for a controller and is not a model lifecycle invariant.
+Introduced with the Codex: `AttributeTimeline` (temporal value resolution + gap-free
+mutations) and `CodexMediaService` (file storage, single-cover rule, disk cleanup). Kept out
+of `booted()` hooks deliberately — the seeder runs `WithoutModelEvents` yet must call them.
+Follow the guideline: **don't add a service before there is a real second caller.**
 
 **Model lifecycle hook (`booted()`)** — Eloquent event listeners registered in a model's
 `booted()` method (`creating`, `created`, ...). Used here to enforce **invariants**:

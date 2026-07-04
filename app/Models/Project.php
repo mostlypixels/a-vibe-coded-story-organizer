@@ -37,6 +37,21 @@ class Project extends Model
         return $this->hasMany(Act::class);
     }
 
+    public function codexEntries(): HasMany
+    {
+        return $this->hasMany(CodexEntry::class);
+    }
+
+    public function codexAttributes(): HasMany
+    {
+        return $this->hasMany(CodexAttribute::class);
+    }
+
+    public function tags(): HasMany
+    {
+        return $this->hasMany(Tag::class);
+    }
+
     protected static function booted(): void
     {
         static::created(function (Project $project) {
