@@ -116,6 +116,9 @@ set belongs in its pull request description.
 
 ### Fixed
 
+- `php artisan db:seed` can now be re-run against a populated database: the admin
+  user is only created when missing, instead of aborting on the `users.email`
+  unique constraint before `MelusineSeeder` (already idempotent) was reached.
 - The Home/Timeline/Story navigation menu no longer disappears on the event
   edit page: the layout's `$project` resolution chain now also resolves from the
   `event` route parameter (both the desktop bar and the responsive menu).
