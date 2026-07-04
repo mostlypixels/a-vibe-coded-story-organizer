@@ -54,7 +54,12 @@ relevant. If `.specs/<name>/` doesn't exist, tell the user to run
    agent (`.claude/agents/plan-implementer.md`) already runs any feature's plan by
    taking the feature name as an argument — don't recreate a bespoke one.
 
-7. **Report** the created `plan/` folder, the task list with a one-line summary of
+7. **Stamp the source spec's status.** Set `status: planned` in the YAML frontmatter of
+   `.specs/<name>.md` (the lifecycle is `draft` → `expanded` → `planned` → `shipped`;
+   `mp-spec-expander` added the frontmatter — if it's missing, add it). Touch nothing
+   else in that file.
+
+8. **Report** the created `plan/` folder, the task list with a one-line summary of
    each, and flag any open question you left unresolved because it didn't block
    decomposition.
 

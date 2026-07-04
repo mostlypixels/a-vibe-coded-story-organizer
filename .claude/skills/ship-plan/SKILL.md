@@ -44,7 +44,15 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
 5. **Report** a summary: each task, what it built, its test counts, and any deviations
    the agent flagged along the way.
 
-6. **Ask before branching/committing.** Do not create a branch or commit automatically.
+6. **Stamp the source spec as shipped.** In `.specs/<name>.md`'s YAML frontmatter set
+   `status: shipped` and `shipped: <YYYY-MM-DD>` (lifecycle: `draft` → `expanded` →
+   `planned` → `shipped`). Do this before asking about the commit, so the stamp rides
+   in the implementation commit — the spec's git history then points at the commit that
+   shipped it, no hash field needed. Only add a `commit: <short-hash>` line when the
+   stamp is made *after* the implementation commit already exists (e.g. stamping
+   retroactively), where the history link is lost.
+
+7. **Ask before branching/committing.** Do not create a branch or commit automatically.
    Ask the user whether they want the accumulated changes committed (and to a new
    branch, or the current one) — this mirrors the manual confirm step used when the
    Codex feature shipped, and keeps a visible, hard-to-reverse git action as an explicit

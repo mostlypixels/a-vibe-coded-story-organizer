@@ -29,10 +29,16 @@ A single argument: the name of a Markdown file in the `.specs/` folder (with or 
 
 5. **Keep each file focused and actionable.** Prefer concrete file paths, method names, and route names over prose. Flag anything that conflicts with an existing invariant (main plotline, position ordering, authorization-via-project).
 
-6. **Report** the created folder and the list of files written, with a one-line summary of each.
+6. **Stamp the source spec's status.** Set `status: expanded` in YAML frontmatter at the
+   top of `.specs/<name>.md` (add the frontmatter block if the file has none; a spec
+   without frontmatter is implicitly `draft`). This is the only edit ever made to the
+   source spec. Lifecycle, one stamp per pipeline stage:
+   `draft` → `expanded` (this skill) → `planned` (`plan-tasks`) → `shipped` (`ship-plan`).
+
+7. **Report** the created folder and the list of files written, with a one-line summary of each.
 
 ## Notes
 
-- Don't modify the original `.specs/<name>.md`.
+- Don't modify the original `.specs/<name>.md`, except the frontmatter status stamp in step 6.
 - Don't implement the feature — this skill only produces specification/design documents.
 - Match the project's documented conventions rather than introducing new architecture unless the spec demands it (call it out in `open-questions.md` if so).

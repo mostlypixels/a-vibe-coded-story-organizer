@@ -1,3 +1,9 @@
+---
+status: shipped
+shipped: 2026-07-04
+commit: c338ca9
+---
+
 # Codex
 
 There will be a new entry in the menu: the codex.

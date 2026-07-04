@@ -1,3 +1,9 @@
+---
+status: shipped
+shipped: 2026-07-04
+commit: 772900f
+---
+
 # Codex feature — code review & refactor suggestions
 
 Review of commit `c338ca9` (branch `codex` vs `master`), the Codex implementation produced by the
