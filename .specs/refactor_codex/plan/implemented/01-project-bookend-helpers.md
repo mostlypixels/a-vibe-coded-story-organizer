@@ -28,7 +28,7 @@ Nothing — first task.
 
 ## Consult
 
-`.specs/refactor_codex/timeline-integrity.md` (§ Finding 8).
+`.specs/refactor_codex/expanded/timeline-integrity.md` (§ Finding 8).
 
 ## Tests
 

@@ -46,8 +46,8 @@ Nothing structurally; numbered after 07. (If run before 04/06, coordinate only o
 
 ## Consult
 
-`.specs/refactor_codex/ui-fixes.md` (§§ Findings 6, 7), `open-questions.md` Q5,
-`.specs/refactor_codex.md` lower-priority notes.
+`.specs/refactor_codex/expanded/ui-fixes.md` (§§ Findings 6, 7), `open-questions.md` Q5,
+`.specs/refactor_codex/spec.md` lower-priority notes.
 
 ## Tests
 

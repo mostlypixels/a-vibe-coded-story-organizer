@@ -42,7 +42,7 @@ only), or the purge hooks (task 05).
 
 ## Consult
 
-`.specs/refactor_codex/media-lifecycle.md` (§ Finding 3).
+`.specs/refactor_codex/expanded/media-lifecycle.md` (§ Finding 3).
 
 ## Tests
 

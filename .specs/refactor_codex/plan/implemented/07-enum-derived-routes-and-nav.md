@@ -38,7 +38,7 @@ Nothing (any time after 01 numerically; listed after the correctness tasks).
 
 ## Consult
 
-`.specs/refactor_codex/routes-and-navigation.md`, `open-questions.md` Q4.
+`.specs/refactor_codex/expanded/routes-and-navigation.md`, `open-questions.md` Q4.
 
 ## Tests
 

@@ -31,7 +31,7 @@ that is the point of the service-level fix.
 
 ## Consult
 
-`.specs/refactor_codex/timeline-integrity.md` (§ Finding 1), `testing.md` (§ Finding 1).
+`.specs/refactor_codex/expanded/timeline-integrity.md` (§ Finding 1), `testing.md` (§ Finding 1).
 
 ## Tests
 

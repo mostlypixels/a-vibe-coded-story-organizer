@@ -56,7 +56,7 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
    surface was verified, and the deviations/issues the agents logged along the way (point
    at `resolution-log.md`).
 
-7. **Stamp the source spec as shipped.** In `.specs/<name>.md`'s YAML frontmatter set
+7. **Stamp the source spec as shipped.** In `.specs/<name>/spec.md`'s YAML frontmatter set
    `status: shipped` and `shipped: <YYYY-MM-DD>` (lifecycle: `draft` → `expanded` →
    `planned` → `shipped`). Do this before asking about the commit, so the stamp rides
    in the implementation commit — the spec's git history then points at the commit that

@@ -1,6 +1,6 @@
 ---
 name: plan-tasks
-description: Decompose an already-expanded feature spec (.specs/<name>/, the output of mp-spec-expander) into an ordered, dependency-tracked implementation plan under .specs/<name>/plan/ — the step between "expanded spec" and running /ship-plan or the plan-implementer agent. Use when asked to plan, break down, or sequence an expanded spec into tasks.
+description: Decompose an already-expanded feature spec (.specs/<name>/expanded/, the output of mp-spec-expander) into an ordered, dependency-tracked implementation plan under .specs/<name>/plan/ — the step between "expanded spec" and running /ship-plan or the plan-implementer agent. Use when asked to plan, break down, or sequence an expanded spec into tasks.
 ---
 
 # plan-tasks
@@ -10,15 +10,15 @@ plan that `/ship-plan` and the `plan-implementer` agent consume.
 
 ## Argument
 
-A single argument: the feature name — a folder `.specs/<name>/` must already exist
-(typically produced by `mp-spec-expander`), containing whichever of `overview.md`,
+A single argument: the feature name — a folder `.specs/<name>/expanded/` must already
+exist (produced by `mp-spec-expander`), containing whichever of `overview.md`,
 `data-model.md`, `architecture.md`, `ui.md`, `testing.md`, `open-questions.md` are
-relevant. If `.specs/<name>/` doesn't exist, tell the user to run
-`/mp-spec-expander <name>` first (on a `.specs/<name>.md` source spec) and stop.
+relevant. If `.specs/<name>/expanded/` doesn't exist, tell the user to run
+`/mp-spec-expander <name>` first (on a `.specs/<name>/spec.md` source spec) and stop.
 
 ## Steps
 
-1. **Read every doc in `.specs/<name>/`.** Read `CLAUDE.md` and `.claude/guidelines.md`
+1. **Read every doc in `.specs/<name>/expanded/`.** Read `CLAUDE.md` and `.claude/guidelines.md`
    too, so task boundaries match this project's real architecture.
 
 2. **Resolve blocking ambiguity first.** If `open-questions.md` has items that would
@@ -47,7 +47,7 @@ relevant. If `.specs/<name>/` doesn't exist, tell the user to run
    - Depends on: task numbers that must be in `plan/implemented/` first.
    - Key decisions already made: binding choices from the spec docs, so the
      implementer doesn't re-decide them.
-   - Which `.specs/<name>/*.md` docs to consult for detail.
+   - Which `.specs/<name>/expanded/*.md` docs to consult for detail.
    - The tests this task should add.
 
 6. **Scaffold the resolution log.** Create `.specs/<name>/resolution-log.md` with the
@@ -80,7 +80,7 @@ relevant. If `.specs/<name>/` doesn't exist, tell the user to run
    taking the feature name as an argument — don't recreate a bespoke one.
 
 8. **Stamp the source spec's status.** Set `status: planned` in the YAML frontmatter of
-   `.specs/<name>.md` (the lifecycle is `draft` → `expanded` → `planned` → `shipped`;
+   `.specs/<name>/spec.md` (the lifecycle is `draft` → `expanded` → `planned` → `shipped`;
    `mp-spec-expander` added the frontmatter — if it's missing, add it). Touch nothing
    else in that file.
 

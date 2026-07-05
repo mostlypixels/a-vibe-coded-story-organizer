@@ -37,7 +37,7 @@ not change `AttributeTimeline` (task 03).
 
 ## Consult
 
-`.specs/refactor_codex/timeline-integrity.md` (§ Finding 4), `open-questions.md` Q1.
+`.specs/refactor_codex/expanded/timeline-integrity.md` (§ Finding 4), `open-questions.md` Q1.
 
 ## Tests
 

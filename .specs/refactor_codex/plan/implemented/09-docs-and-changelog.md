@@ -43,7 +43,7 @@ any.
 
 ## Consult
 
-Every `.specs/refactor_codex/*.md` doc (each ends with the doc-impact notes this task
+Every `.specs/refactor_codex/expanded/*.md` doc (each ends with the doc-impact notes this task
 executes), `.claude/guidelines.md` §§ Documentation/Changelog.
 
 ## Tests
