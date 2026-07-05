@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\SanitizeHtml;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +20,7 @@ class UpdateEventRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', new SanitizeHtml],
             // Start/End bookends anchor timeline resolution, so their datetime is frozen:
             // tampering the field back into the payload yields a visible validation error.
             'event_datetime' => $this->route('event')->is_fixed

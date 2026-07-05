@@ -49,7 +49,7 @@
                         <td class="px-4 py-3">
                             <div class="font-semibold text-gray-800">{{ $chapter->name }}</div>
                             @if ($chapter->description)
-                                <div class="mt-1 text-sm text-gray-500">{{ $chapter->description }}</div>
+                                <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$chapter->description" /></div>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->act->name }}</td>

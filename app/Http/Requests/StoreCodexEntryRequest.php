@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\CodexEntryType;
-use App\Rules\ValidMarkdown;
+use App\Rules\SanitizeHtml;
 use App\Support\CodexMediaRules;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -23,7 +23,7 @@ class StoreCodexEntryRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', new ValidMarkdown],
+            'description' => ['nullable', 'string', new SanitizeHtml],
             'aliases' => ['nullable', 'array'],
             'aliases.*' => ['nullable', 'string', 'max:255'],
             'tags' => ['nullable', 'array'],

@@ -43,7 +43,7 @@
                                 @endif
                             </div>
                             @if ($plotline->description)
-                                <div class="mt-1 text-sm text-gray-500">{{ $plotline->description }}</div>
+                                <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$plotline->description" /></div>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">

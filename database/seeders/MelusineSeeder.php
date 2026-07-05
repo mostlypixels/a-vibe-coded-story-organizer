@@ -22,10 +22,22 @@ class MelusineSeeder extends Seeder
     {
         $user = User::first() ?? User::factory()->create();
 
+        // Rich-HTML description: showcases the new format (a heading + a list) so the
+        // Story overview and detail pages render real markup. Every string is within the
+        // sanitizer allow-list; the set-mutator on Project::description cleans it on write
+        // regardless (see App\Models\Concerns\SanitizesRichHtml).
         $project = Project::create([
             'user_id' => $user->id,
             'name' => 'The Roman of Melusine',
-            'description' => 'A medieval legend of the faerie Melusine, her curse, her marriage to Raymondin of Lusignan, and the fates of their nine sons.',
+            'description' => <<<'HTML'
+                <p>A medieval legend of the faerie <strong>Melusine</strong>, her curse, her marriage to <em>Raymondin of Lusignan</em>, and the fates of their nine sons.</p>
+                <h3>The threads of the tale</h3>
+                <ul>
+                    <li>The curse Pressine lays upon her daughters.</li>
+                    <li>The bargain and marriage of Melusine and Raymondin.</li>
+                    <li>The conquests and tragedies of the sons of Lusignan.</li>
+                </ul>
+                HTML,
         ]);
 
         $mainPlotline = $project->plotlines()->firstWhere('is_main', true)
@@ -39,21 +51,21 @@ class MelusineSeeder extends Seeder
         $curseOfPressine = Plotline::create([
             'project_id' => $project->id,
             'name' => 'The Curse of Pressine',
-            'description' => "Pressine's marriage to Count Elinas, the broken oath, and the curse she lays on her daughters.",
+            'description' => "<p>Pressine's marriage to Count Elinas, the <strong>broken oath</strong>, and the curse she lays on her daughters.</p>",
             'color' => PlotlineColors::PRESETS[8], // green-500
         ]);
 
         $melusineAndRaymondin = Plotline::create([
             'project_id' => $project->id,
             'name' => 'Melusine & Raymondin',
-            'description' => 'The courtship, marriage, and eventual undoing of Melusine and Raymondin of Lusignan.',
+            'description' => '<p>The courtship, marriage, and eventual <em>undoing</em> of Melusine and Raymondin of Lusignan.</p>',
             'color' => PlotlineColors::PRESETS[16], // sky-500
         ]);
 
         $sonsOfLusignan = Plotline::create([
             'project_id' => $project->id,
             'name' => 'The Sons of Lusignan',
-            'description' => "The conquests, triumphs, and tragedies of Melusine and Raymondin's nine sons.",
+            'description' => "<p>The conquests, triumphs, and tragedies of Melusine and Raymondin's <strong>nine sons</strong>.</p>",
             'color' => PlotlineColors::PRESETS[24], // purple-500
         ]);
 
@@ -193,7 +205,7 @@ class MelusineSeeder extends Seeder
         $acts = [
             [
                 'name' => "Melusine's Youth",
-                'description' => "Pressine's marriage to Count Elinas, the broken oath, and the curse she lays on her daughters — culminating in the curse that will shape Melusine's own life.",
+                'description' => "<p>Pressine's marriage to Count Elinas, the broken oath, and the curse she lays on her daughters — culminating in the curse that will shape Melusine's own life.</p>",
                 'chapters' => [
                     [
                         'name' => "Pressine's Curse",
@@ -221,7 +233,7 @@ class MelusineSeeder extends Seeder
             ],
             [
                 'name' => 'Melusine & Raymondin',
-                'description' => 'Raymondin accidentally kills his uncle, pledges himself to Melusine, and together they raise Lusignan, marry, and bear nine sons — until his broken oath drives her from the castle forever.',
+                'description' => '<p>Raymondin accidentally kills his uncle, pledges himself to Melusine, and together they raise Lusignan, marry, and bear nine sons — until his broken oath drives her from the castle forever.</p>',
                 'chapters' => [
                     [
                         'name' => 'The Meeting and the Vow',
@@ -323,7 +335,7 @@ class MelusineSeeder extends Seeder
             ],
             [
                 'name' => 'After Melusine',
-                'description' => "In the wake of Melusine's flight, Raymondin dies a penitent, Horrible grows wild in the mountains, and the sons of Lusignan meet their fates one by one until the line and castle pass into ruin and legend.",
+                'description' => "<p>In the wake of Melusine's flight, Raymondin dies a penitent, Horrible grows wild in the mountains, and the sons of Lusignan meet their fates one by one until the line and castle pass into ruin and legend.</p>",
                 'chapters' => [
                     [
                         'name' => 'The Ruin of Lusignan',
@@ -433,7 +445,7 @@ class MelusineSeeder extends Seeder
             $project,
             CodexEntryType::Character,
             'Mélusine',
-            'A faerie of the greenwood, cursed to take a serpent form below the waist every Saturday. Wife of Raymondin and mother of the nine sons of Lusignan.',
+            '<p>A faerie of the greenwood, <strong>cursed</strong> to take a serpent form below the waist every Saturday. Wife of Raymondin and mother of the nine sons of Lusignan.</p>',
             ['Melusina', 'The Serpent Lady', 'Lady of Lusignan'],
             ['Faerie', 'Protagonist', 'Cursed'],
         );
@@ -456,7 +468,7 @@ class MelusineSeeder extends Seeder
             $project,
             CodexEntryType::Character,
             'Raymondin of Lusignan',
-            'A young knight of Poitou who accidentally kills his uncle, weds Mélusine, and becomes the first Lord of Lusignan — until his broken oath undoes them both.',
+            '<p>A young knight of Poitou who accidentally kills his uncle, weds Mélusine, and becomes the first <em>Lord of Lusignan</em> — until his broken oath undoes them both.</p>',
             ['Raymond', 'Lord of Lusignan'],
             ['Knight', 'Protagonist'],
         );
@@ -478,7 +490,7 @@ class MelusineSeeder extends Seeder
             $project,
             CodexEntryType::Location,
             'The Castle of Lusignan',
-            'The great white-marble castle Mélusine raised in a single night on a thorned promontory above the river.',
+            '<p>The great white-marble castle Mélusine raised in a <strong>single night</strong> on a thorned promontory above the river.</p>',
             ['Lusignan'],
             ['Castle', 'Poitou'],
         );
@@ -496,7 +508,7 @@ class MelusineSeeder extends Seeder
             $project,
             CodexEntryType::Organization,
             'The House of Lusignan',
-            'The noble line founded by Mélusine and Raymondin, whose sons win crowns across Europe and the East before the house fades into other dynasties.',
+            '<p>The noble line founded by Mélusine and Raymondin, whose sons win crowns across Europe and the East before the house fades into other dynasties.</p>',
             ['The Lusignans'],
             ['Noble house'],
         );

@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\ValidMarkdown;
+use App\Rules\SanitizeHtml;
 use App\Support\CodexMediaRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -22,7 +22,7 @@ class UpdateCodexEntryRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', new ValidMarkdown],
+            'description' => ['nullable', 'string', new SanitizeHtml],
             'aliases' => ['nullable', 'array'],
             'aliases.*' => ['nullable', 'string', 'max:255'],
             'tags' => ['nullable', 'array'],

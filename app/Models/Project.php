@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CodexMediaService;
 use App\Support\PlotlineColors;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Project extends Model
 {
     use HasFactory;
+    use SanitizesRichHtml;
 
     protected $fillable = [
         'name',

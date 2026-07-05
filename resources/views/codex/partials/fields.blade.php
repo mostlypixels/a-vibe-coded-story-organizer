@@ -29,8 +29,8 @@
                 </div>
 
                 <div>
-                    <x-input-label for="description" :value="__('Description (Markdown)')" />
-                    <textarea id="description" name="description" rows="10" class="mt-1 block w-full font-mono text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm">{{ old('description', $entry?->description) }}</textarea>
+                    <x-input-label for="description" :value="__('Description')" />
+                    <x-wysiwyg id="description" name="description" :value="old('description', $entry?->description)" :rows="10" />
                     <x-input-error :messages="$errors->get('description')" class="mt-2" />
                 </div>
 

@@ -247,6 +247,20 @@ by calling `AttributeTimeline::ensureBaseline` / `upsertAt` **directly** rather 
 any hook. It seeds the hair-color story (Mélusine: raven black → silver on Saturdays after the
 curse → wild once she transforms) end to end.
 
+## Rich text (WYSIWYG)
+
+Most free-text fields — every `description`, plus `Scene.notes` — are **rich HTML**, authored in
+a Tiptap-backed WYSIWYG editor (`x-wysiwyg`) and rendered through `x-rich-text`. The field list,
+the sanitizer allow-list, HTMLPurifier sanitization on write (per-field set-mutators, so the DB
+never holds unsafe HTML even under `WithoutModelEvents`), and the never-trust-client rendering
+rule are all covered in **[`documentation/rich-text.md`](rich-text.md)**.
+
+> [!WARNING]
+> Render rich HTML with `{!! !!}` **only** via `x-rich-text`, on already-sanitized data. Index
+> cells use the escaped `x-rich-text-excerpt`. `Scene.contents` is the one carve-out — it stays
+> Markdown-only (`ValidMarkdown` + `Str::markdown()`), never routed through the sanitizer or the
+> editor.
+
 ## Where things live
 
 | Concern | Location |

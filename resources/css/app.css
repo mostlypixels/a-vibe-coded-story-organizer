@@ -1,3 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * WYSIWYG editor (Tiptap) — kept minimal so it doesn't fight the Tailwind `prose`
+ * output that already styles the editable region. Only the placeholder needs custom
+ * CSS: the Placeholder extension marks the empty first paragraph, and we render its
+ * text via a ::before pseudo-element.
+ */
+.tiptap:focus {
+    outline: none;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: theme('colors.gray.400');
+}

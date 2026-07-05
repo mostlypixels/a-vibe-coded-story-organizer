@@ -40,7 +40,7 @@
                         <td class="px-4 py-3">
                             <div class="font-semibold text-gray-800">{{ $act->name }}</div>
                             @if ($act->description)
-                                <div class="mt-1 text-sm text-gray-500">{{ $act->description }}</div>
+                                <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$act->description" /></div>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $act->chapters_count }}</td>

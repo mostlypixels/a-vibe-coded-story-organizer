@@ -52,7 +52,7 @@
                                 @endif
                             </div>
                             @if ($event->description)
-                                <div class="mt-1 text-sm text-gray-500">{{ $event->description }}</div>
+                                <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$event->description" /></div>
                             @endif
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $event->event_datetime->format('M j, Y g:i A') }}</td>

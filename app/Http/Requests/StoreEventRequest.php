@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\SanitizeHtml;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +20,7 @@ class StoreEventRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', new SanitizeHtml],
             'event_datetime' => ['required', 'date'],
             'plotlines' => ['required', 'array', 'min:1'],
             'plotlines.*' => [

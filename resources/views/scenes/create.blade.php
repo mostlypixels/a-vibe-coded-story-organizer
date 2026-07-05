@@ -71,7 +71,7 @@
 
                         <div>
                             <x-input-label for="description" :value="__('Description')" />
-                            <textarea id="description" name="description" rows="4" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm">{{ old('description') }}</textarea>
+                            <x-wysiwyg id="description" name="description" :value="old('description')" :rows="4" />
                             <x-input-error :messages="$errors->get('description')" class="mt-2" />
                         </div>
 
@@ -82,8 +82,8 @@
                         </div>
 
                         <div>
-                            <x-input-label for="notes" :value="__('Notes (Markdown)')" />
-                            <textarea id="notes" name="notes" rows="6" class="mt-1 block w-full font-mono text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm">{{ old('notes') }}</textarea>
+                            <x-input-label for="notes" :value="__('Notes')" />
+                            <x-wysiwyg id="notes" name="notes" :value="old('notes')" :rows="6" />
                             <x-input-error :messages="$errors->get('notes')" class="mt-2" />
                         </div>
 

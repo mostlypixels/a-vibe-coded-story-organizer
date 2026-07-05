@@ -14,7 +14,7 @@
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if ($project->description)
                 <x-card class="text-gray-900">
-                    {{ $project->description }}
+                    <x-rich-text :html="$project->description" />
                 </x-card>
             @endif
 

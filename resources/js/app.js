@@ -1,8 +1,11 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { registerWysiwyg } from './wysiwyg';
 
 window.Alpine = Alpine;
+
+registerWysiwyg(Alpine);
 
 Alpine.start();
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\SanitizeHtml;
 use App\Support\PlotlineColors;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -20,7 +21,7 @@ class StorePlotlineRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', new SanitizeHtml],
             'color' => [
                 'required',
                 'string',

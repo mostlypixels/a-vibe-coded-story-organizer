@@ -200,3 +200,60 @@ dispatching browser events — `open-modal` with the dialog's `name`, and `close
 > [!NOTE]
 > Use `x-dialog` for informational or confirmation modals. The delete icon buttons in index tables
 > still use the simpler native `confirm()` dialog via `x-icon-delete-button`; both are fine.
+
+## Rich text (WYSIWYG)
+
+Three components make up the rich-HTML text feature. The full model — the field taxonomy, the
+HTMLPurifier allow-list, and the security rules — lives in
+[`documentation/rich-text.md`](rich-text.md); this is the component-level reference.
+
+> [!WARNING]
+> Rich HTML is safe to render only because it is sanitized **on write** (`HtmlSanitizer`
+> set-mutators). Echo it with `{!! !!}` **only** through `x-rich-text`; never point `{!! !!}` at a
+> rich field anywhere else. Index/list cells use the escaped `x-rich-text-excerpt`.
+
+### `x-wysiwyg`
+
+The rich-HTML editor input — a Tiptap editor with an always-visible formatting toolbar, layered
+over a real `<textarea>` as progressive enhancement (a JS-off submit still works and `old()`
+repopulates on failure). Replaces a plain `<textarea>` on every form with a rich-HTML field.
+
+| Prop         | Meaning                                                        | Default        |
+|--------------|----------------------------------------------------------------|----------------|
+| `name`       | Form field name (required)                                     | —              |
+| `id`         | Element id                                                     | `name`         |
+| `value`      | Initial HTML value (e.g. `old('description', $model->description)`) | `''`      |
+| `rows`       | Fallback textarea rows; also seeds the editor min-height       | `4`            |
+| `minHeight`  | Explicit editor min-height (CSS length)                        | derived from `rows` |
+| `placeholder`| Empty-state placeholder text                                   | `''`           |
+| `disabled`   | Read-only (hides the toolbar)                                  | `false`        |
+
+```blade
+<x-wysiwyg
+    name="description"
+    :value="old('description', $project->description)"
+    :placeholder="__('Describe this project…')"
+/>
+```
+
+### `x-rich-text`
+
+Renders sanitized rich HTML on detail/show pages — the **only** component that echoes a rich
+field with `{!! !!}`. Renders nothing when `html` is blank; its `prose` classes match the Story
+overview's Markdown output.
+
+```blade
+<x-rich-text :html="$project->description" />
+```
+
+### `x-rich-text-excerpt`
+
+A short, **plain-text** preview of a rich field for index/list table cells: strips tags,
+squishes whitespace, truncates, and renders escaped (`{{ }}`) — no markup leaks into a table row.
+
+- `html`: the rich HTML value
+- `limit`: max characters (default `120`)
+
+```blade
+<x-rich-text-excerpt :html="$plotline->description" :limit="80" />
+```

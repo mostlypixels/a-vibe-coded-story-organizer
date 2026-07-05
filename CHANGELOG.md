@@ -12,6 +12,16 @@ set belongs in its pull request description.
 
 ### Added
 
+- Rich-text (WYSIWYG) editing for the app's free-text fields. A Tiptap-backed editor component
+  (`x-wysiwyg`) with an always-visible formatting toolbar (headings, bold/italic/underline/
+  strike, lists, blockquote, inline/block code, links, horizontal rule) replaces the plain
+  `<textarea>` on every rich-HTML field, as **progressive enhancement** over a real textarea (a
+  JS-off submit still works and `old()` repopulates on validation failure). Content is sanitized
+  **server-side on write** by `App\Services\HtmlSanitizer` (HTMLPurifier, a strict allow-list
+  centralized in `App\Support\RichTextFields`) via per-field set-mutators, so the DB never holds
+  unsafe HTML; it is rendered back only through the `x-rich-text` component (`x-rich-text-excerpt`
+  gives index tables an escaped, tag-stripped preview). Image upload is intentionally **not** in
+  this version. Documented in [`documentation/rich-text.md`](documentation/rich-text.md).
 - Codex: a project-scoped reference aggregate for the story's **characters, locations, and
   organizations**. All three share one `codex_entries` table keyed by a `CodexEntryType`
   enum and one `CodexEntryController`, with the kind carried as a `{type}` route segment
@@ -75,6 +85,12 @@ set belongs in its pull request description.
 
 ### Changed
 
+- Free-text description fields (`Project`, `Act`, `Chapter`, `Plotline`, `Event`, `Scene`,
+  `CodexEntry`) and `Scene.notes` are now **rich HTML** rather than plain text — authored in the
+  new WYSIWYG editor, sanitized on write, and rendered with formatting. The codex `description` in
+  particular is **no longer Markdown**; it is now rich HTML like the others. **`Scene.contents` is
+  unchanged** — it stays Markdown-only (`ValidMarkdown` + `Str::markdown()` on the Story overview),
+  the one deliberate carve-out from the rich-text feature.
 - Index tables (plotlines/events/acts/chapters/scenes) now render each row's
   description as small muted text beneath the title instead of a separate
   Description column, and the ordered lists (acts/chapters/scenes) expose their

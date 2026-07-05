@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
+use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\AttributeTimeline;
 use App\Services\CodexMediaService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class CodexEntry extends Model
 {
     use HasFactory;
+    use SanitizesRichHtml;
 
     protected $fillable = [
         'project_id',
