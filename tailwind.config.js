@@ -1,5 +1,6 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
+import typography from '@tailwindcss/typography';
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -7,6 +8,9 @@ export default {
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
+        // The WYSIWYG editor sets its `prose` classes from JS (resources/js/wysiwyg.js),
+        // so scan the JS too or Tailwind purges those utilities from the build.
+        './resources/js/**/*.js',
     ],
 
     theme: {
@@ -77,5 +81,5 @@ export default {
         },
     },
 
-    plugins: [forms],
+    plugins: [forms, typography],
 };
