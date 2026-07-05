@@ -19,3 +19,42 @@
     pointer-events: none;
     color: theme('colors.gray.400');
 }
+
+/*
+ * The `/` slash-command menu. The @tiptap/suggestion plugin owns positioning (via
+ * floating-ui through props.mount); these rules only style the popup list itself,
+ * kept consistent with the editor toolbar's ocean/gray palette.
+ */
+.wysiwyg-slash {
+    z-index: 50;
+    max-height: 18rem;
+    width: 14rem;
+    overflow-y: auto;
+    border-radius: theme('borderRadius.md');
+    border: 1px solid theme('colors.gray.200');
+    background-color: theme('colors.white');
+    padding: theme('spacing.1');
+    box-shadow: theme('boxShadow.lg');
+}
+
+.wysiwyg-slash__item {
+    display: block;
+    width: 100%;
+    border-radius: theme('borderRadius.DEFAULT');
+    padding: theme('spacing.1') theme('spacing.2');
+    text-align: left;
+    font-size: theme('fontSize.sm');
+    color: theme('colors.gray.700');
+    cursor: pointer;
+}
+
+.wysiwyg-slash__item.is-selected {
+    background-color: theme('colors.ocean.100');
+    color: theme('colors.ocean.800');
+}
+
+.wysiwyg-slash__empty {
+    padding: theme('spacing.1') theme('spacing.2');
+    font-size: theme('fontSize.sm');
+    color: theme('colors.gray.400');
+}

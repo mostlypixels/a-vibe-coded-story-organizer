@@ -101,50 +101,77 @@ trusted HTML." Two display components exist:
 
 ## The `Scene.contents` Markdown carve-out
 
-`Scene.contents` — the actual manuscript prose — is **not** a rich-HTML field. It stays
-**Markdown-only**: validated with the `ValidMarkdown` rule and rendered via
+`Scene.contents` — the actual manuscript prose — is **not** a rich-HTML field. Its stored value
+stays **clean CommonMark**: validated with the `ValidMarkdown` rule and rendered via
 `Illuminate\Support\Str::markdown()` on the Story overview, exactly as before this feature. It is
 deliberately absent from `RichTextFields`, has no set-mutator (see the comment on
-`Scene::notes()`), and never touches `HtmlSanitizer` or the WYSIWYG editor.
+`Scene::notes()`), and never touches `HtmlSanitizer`.
 
-Why the difference: manuscript content is long-form prose that authors often paste, diff, and
+What *did* change is only the **editing UI**: `contents` now uses the same `x-wysiwyg` editor as
+the other fields, but in **`markdown` mode** — the editor hydrates from the stored Markdown and
+serializes back to Markdown on save (see "The editor" below). The storage contract is unchanged;
+the field just gained a WYSIWYG authoring experience over a Markdown value.
+
+Why Markdown at all: manuscript content is long-form prose that authors often paste, diff, and
 export; a plain-text Markdown source is the right storage format for it (portable, greppable,
-merge-friendly), whereas the shorter *descriptions* and *notes* benefit from inline WYSIWYG
-formatting. `Scene.notes` (a short annotation) **is** rich HTML; `Scene.contents` (the prose) is
-not — the two Scene text fields intentionally differ.
+merge-friendly), whereas the shorter *descriptions* and *notes* store HTML. `Scene.notes` (a
+short annotation) is **rich HTML**; `Scene.contents` (the prose) is **Markdown** — the two Scene
+text fields intentionally differ in both storage format and editor mode.
 
 ## The editor
 
 `x-wysiwyg` (`resources/views/components/wysiwyg.blade.php`) is the single reuse point that
-replaces a rich-HTML `<textarea>` on the forms. Props: `name`, `id`, `value`, `rows`,
-`minHeight`, `placeholder`, `disabled`.
+replaces a `<textarea>` on the forms. Props: `name`, `id`, `value`, `rows`, `minHeight`,
+`placeholder`, `disabled`, and **`markdown`** (a boolean that switches the field from HTML mode
+to Markdown mode — see below).
 
-**Progressive enhancement.** The component renders a real `<textarea>` holding the HTML value, so
-a JS-off submit still works and `old()` repopulates on validation failure. Alpine (see
+**Progressive enhancement.** The component renders a real `<textarea>` holding the value, so a
+JS-off submit still works and `old()` repopulates on validation failure. Alpine (see
 `resources/js/wysiwyg.js`, registered in `resources/js/app.js`) mounts the editor over the
 textarea, hydrates from it, and syncs edits back into it on every change and again on submit.
 Pre-mount state is hidden with `style="display:none"` (no `x-cloak`), matching the other
-interactive components. Placeholder styling lives in `resources/css/app.css`.
+interactive components. Placeholder + slash-menu styling live in `resources/css/app.css`.
 
-**Library: Tiptap** (`@tiptap/core` + `@tiptap/starter-kit` v3, plus `@tiptap/suggestion`). The
-integration is fully encapsulated behind `x-wysiwyg` and `resources/js/wysiwyg.js` — every view
-talks to the editor only through the Blade component, so swapping libraries never touches a view
-or a controller.
+**Library: Tiptap** (`@tiptap/core` + `@tiptap/starter-kit` v3, plus `@tiptap/suggestion` for the
+slash menu and `@tiptap/markdown` for the Markdown field). One editor framework only (anti-bloat)
+— the integration is fully encapsulated behind `x-wysiwyg` and `resources/js/wysiwyg.js`, so every
+view talks to the editor only through the Blade component and swapping libraries never touches a
+view or controller.
 
-**A toolbar, not a slash menu.** The shipped editor UI is an always-visible formatting toolbar
-(headings H1–H4, bold/italic/underline/strike, bullet/ordered lists, blockquote, inline code and
-code block, link, horizontal rule). A slash-command popup menu was considered but *not* shipped:
-it would require a popup-positioning dependency that isn't installed, and the anti-bloat
-constraint favours the toolbar. A slash menu remains a possible future layer over the same
-`wysiwyg.js` integration.
+**Two modes.**
+
+- **HTML mode (default).** The value is sanitized HTML; the editor serializes with `getHTML()`.
+  Used by every rich-HTML field in the taxonomy above.
+- **Markdown mode (`markdown` prop).** Used only by `Scene.contents`. The `@tiptap/markdown`
+  extension hydrates the editor from the stored Markdown (`contentType: 'markdown'`) and
+  serializes back with `editor.getMarkdown()` on write. Underline and Strike are **disabled** in
+  this mode (neither round-trips to clean CommonMark), so the toolbar and slash menu both hide
+  them. The stored value stays Markdown; `ValidMarkdown` + `Str::markdown()` remain the gate.
+
+**Toolbar + slash menu.** Two ways to format, both producing the same commands: an always-visible
+toolbar, and a Notion-style `/` slash command menu (headings H1–H4, bold/italic + underline/strike
+in HTML mode, bullet/ordered lists, blockquote, inline code and code block, link, horizontal
+rule). The slash menu reuses `@tiptap/suggestion` (already a dependency) for the trigger and its
+bundled `@floating-ui/dom` for popup positioning — **no extra dependency**. Because every slash
+item invokes the same StarterKit command the toolbar calls, the menu adds no new node/mark
+surface.
 
 > [!IMPORTANT]
-> **Editor output must stay ⊆ the allow-list.** Whatever the toolbar can produce must survive
-> `HtmlSanitizer` unchanged — otherwise formatting a user applies is silently stripped on save.
-> StarterKit v3 is configured to match `RichTextFields::ALLOWED_TAGS` exactly: headings capped at
-> levels 1–4, links restricted to `http`/`https`, and the link prompt rejects any other scheme.
-> The server sanitizer is the real gate; this client-side alignment is belt-and-braces. If you
-> extend the allow-list, extend the toolbar/StarterKit config to match, and vice versa.
+> **Editor output must stay ⊆ the allow-list.** Whatever the toolbar *or slash menu* can produce
+> must survive `HtmlSanitizer` unchanged — otherwise formatting a user applies is silently
+> stripped on save. StarterKit v3 is configured to match `RichTextFields::ALLOWED_TAGS` exactly:
+> headings capped at levels 1–4, links restricted to `http`/`https`, and the link prompt rejects
+> any other scheme. The server sanitizer is the real gate; this client-side alignment is
+> belt-and-braces. If you extend the allow-list, extend the StarterKit config **and** the slash
+> item list to match, and vice versa.
+
+> [!CAUTION]
+> **Never store the Tiptap `Editor` in Alpine reactive state.** Alpine wraps reactive properties
+> in a `@vue/reactivity` Proxy, and ProseMirror's view/state do not survive being proxied —
+> commands run through the proxied instance silently no-op (this once made the toolbar dead while
+> the slash menu, which uses the raw editor, still worked). `wysiwyg.js` keeps the editor in a
+> **non-reactive closure variable**; only `ready`/`tick` are reactive. Same rule for any stateful
+> third-party instance. See `.specs/wysiwig/resolution-log.md` for the full incident.
 
 > [!NOTE]
 > **Image upload is deferred to v2.** There is no upload endpoint and no `project_media` table;

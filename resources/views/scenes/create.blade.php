@@ -77,7 +77,7 @@
 
                         <div>
                             <x-input-label for="contents" :value="__('Contents (Markdown)')" />
-                            <textarea id="contents" name="contents" rows="12" class="mt-1 block w-full font-mono text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm">{{ old('contents') }}</textarea>
+                            <x-wysiwyg id="contents" name="contents" :value="old('contents')" :rows="12" markdown />
                             <x-input-error :messages="$errors->get('contents')" class="mt-2" />
                         </div>
 

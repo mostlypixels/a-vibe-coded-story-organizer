@@ -82,22 +82,48 @@ class WysiwygFormTest extends TestCase
         $this->assertHasTextarea(route('scenes.edit', $scene), $user, 'notes');
     }
 
-    public function test_scene_forms_keep_contents_as_a_markdown_textarea(): void
+    public function test_scene_contents_is_a_markdown_mode_wysiwyg(): void
     {
         [$user, $project, , , $scene] = $this->fixture();
 
-        // Hard spec requirement: Scene `contents` stays a plain Markdown textarea with
-        // its "(Markdown)" label and font-mono styling — never the WYSIWYG editor.
-        $this->actingAs($user)
-            ->get(route('projects.scenes.create', $project))
-            ->assertOk()
-            ->assertSee('Contents (Markdown)')
-            ->assertSee('name="contents"', false);
+        // Scene `contents` is now a WYSIWYG in markdown mode: it must render the
+        // progressive-enhancement <textarea name="contents"> (so a JS-off submit still
+        // works) AND be flagged data-format="markdown" (Underline/Strike dropped, value
+        // serialized to CommonMark). This is distinct from the HTML-mode fields above.
+        foreach ([route('projects.scenes.create', $project), route('scenes.edit', $scene)] as $url) {
+            $this->actingAs($user)
+                ->get($url)
+                ->assertOk()
+                ->assertSee('Contents (Markdown)')
+                ->assertSee('name="contents"', false)
+                ->assertSee('data-format="markdown"', false);
+        }
+    }
 
-        $this->actingAs($user)
-            ->get(route('scenes.edit', $scene))
-            ->assertOk()
-            ->assertSee('Contents (Markdown)')
-            ->assertSee('name="contents"', false);
+    public function test_scene_contents_is_stored_as_markdown_not_sanitized_html(): void
+    {
+        [$user, $project, $act, $chapter, $scene] = $this->fixture();
+
+        // Scene contents stays out of the HTML-sanitization pipeline: raw Markdown is
+        // stored verbatim (angle-bracket-free Markdown survives untouched), while a
+        // rich HTML field (description) is sanitized on write.
+        $markdown = "# Chapter one\n\nA **bold** claim and a [link](https://example.com).";
+
+        $response = $this->actingAs($user)->patch(route('scenes.update', $scene), [
+            'chapter_id' => $chapter->id,
+            'name' => $scene->name,
+            'status' => $scene->status->value,
+            'contents' => $markdown,
+            'description' => '<p>Hi</p><script>alert(1)</script>',
+        ]);
+
+        $response->assertRedirect();
+
+        $scene->refresh();
+
+        // Markdown preserved byte-for-byte (not converted to HTML, not sanitized).
+        $this->assertSame($markdown, $scene->contents);
+        // The rich HTML sibling field still gets sanitized on write.
+        $this->assertStringNotContainsString('<script>', (string) $scene->description);
     }
 }

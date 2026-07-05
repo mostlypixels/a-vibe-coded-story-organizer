@@ -6,6 +6,10 @@
     'minHeight' => null,
     'placeholder' => '',
     'disabled' => false,
+    // When true the field stores clean CommonMark (Scene contents) instead of
+    // sanitized HTML — Underline/Strike are dropped and the value serializes to
+    // Markdown. See resources/js/wysiwyg.js.
+    'markdown' => false,
 ])
 
 @php
@@ -15,22 +19,31 @@
     // it, and syncs edits back before submit. Pre-mount state is hidden with
     // style="display:none" (no x-cloak), matching the other interactive components.
     $id = $id ?? $name;
+    $format = $markdown ? 'markdown' : 'html';
     // Give the editable region roughly the height of the textarea it replaces.
     $resolvedMinHeight = $minHeight ?? (($rows * 1.5) + 1).'rem';
 
     // Simple toggle buttons: [label, command, active-name]. Headings, link and the
     // horizontal rule are handled separately below (they take arguments / prompts).
+    // Underline/Strike are omitted in markdown mode (no clean CommonMark equivalent),
+    // matching the slash menu's mode-aware item list.
     $toggles = [
         ['B', 'toggleBold', 'bold', __('Bold')],
         ['I', 'toggleItalic', 'italic', __('Italic')],
-        ['U', 'toggleUnderline', 'underline', __('Underline')],
-        ['S', 'toggleStrike', 'strike', __('Strikethrough')],
+    ];
+
+    if (! $markdown) {
+        $toggles[] = ['U', 'toggleUnderline', 'underline', __('Underline')];
+        $toggles[] = ['S', 'toggleStrike', 'strike', __('Strikethrough')];
+    }
+
+    $toggles = array_merge($toggles, [
         ['&bull;', 'toggleBulletList', 'bulletList', __('Bulleted list')],
         ['1.', 'toggleOrderedList', 'orderedList', __('Numbered list')],
         ['&rdquo;', 'toggleBlockquote', 'blockquote', __('Blockquote')],
         ['&lt;/&gt;', 'toggleCode', 'code', __('Inline code')],
         ['{ }', 'toggleCodeBlock', 'codeBlock', __('Code block')],
-    ];
+    ]);
 
     $btnBase = 'inline-flex min-w-[2rem] items-center justify-center rounded px-2 py-1 text-sm font-medium';
 @endphp
@@ -38,10 +51,12 @@
 <div
     x-data="wysiwyg({
         disabled: {{ $disabled ? 'true' : 'false' }},
+        format: @js($format),
         placeholder: @js($placeholder),
         minHeight: @js($resolvedMinHeight),
         linkPrompt: @js(__('Enter a URL (http:// or https://)')),
     })"
+    data-format="{{ $format }}"
     class="mt-1"
 >
     {{-- No-JS fallback: submits raw (still sanitized server-side); Alpine hides it once the editor mounts. --}}

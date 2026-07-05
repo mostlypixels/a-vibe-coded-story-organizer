@@ -13,15 +13,20 @@ set belongs in its pull request description.
 ### Added
 
 - Rich-text (WYSIWYG) editing for the app's free-text fields. A Tiptap-backed editor component
-  (`x-wysiwyg`) with an always-visible formatting toolbar (headings, bold/italic/underline/
-  strike, lists, blockquote, inline/block code, links, horizontal rule) replaces the plain
-  `<textarea>` on every rich-HTML field, as **progressive enhancement** over a real textarea (a
-  JS-off submit still works and `old()` repopulates on validation failure). Content is sanitized
-  **server-side on write** by `App\Services\HtmlSanitizer` (HTMLPurifier, a strict allow-list
-  centralized in `App\Support\RichTextFields`) via per-field set-mutators, so the DB never holds
-  unsafe HTML; it is rendered back only through the `x-rich-text` component (`x-rich-text-excerpt`
-  gives index tables an escaped, tag-stripped preview). Image upload is intentionally **not** in
-  this version. Documented in [`documentation/rich-text.md`](documentation/rich-text.md).
+  (`x-wysiwyg`) with both an always-visible formatting toolbar **and a Notion-style `/` slash
+  command menu** (headings, bold/italic/underline/strike, lists, blockquote, inline/block code,
+  links, horizontal rule) replaces the plain `<textarea>` on every rich field, as **progressive
+  enhancement** over a real textarea (a JS-off submit still works and `old()` repopulates on
+  validation failure). Rich-HTML content is sanitized **server-side on write** by
+  `App\Services\HtmlSanitizer` (HTMLPurifier, a strict allow-list centralized in
+  `App\Support\RichTextFields`) via per-field set-mutators, so the DB never holds unsafe HTML; it
+  is rendered back only through the `x-rich-text` component (`x-rich-text-excerpt` gives index
+  tables an escaped, tag-stripped preview). **`Scene.contents` uses the same editor in Markdown
+  mode** (`@tiptap/markdown`): it gains the WYSIWYG authoring experience while its stored value
+  stays clean CommonMark (`ValidMarkdown` + `Str::markdown()` unchanged). The slash menu reuses
+  `@tiptap/suggestion` + its bundled `@floating-ui/dom`, so it needs no extra dependency. Image
+  upload is intentionally **not** in this version. Documented in
+  [`documentation/rich-text.md`](documentation/rich-text.md).
 - Codex: a project-scoped reference aggregate for the story's **characters, locations, and
   organizations**. All three share one `codex_entries` table keyed by a `CodexEntryType`
   enum and one `CodexEntryController`, with the kind carried as a `{type}` route segment
