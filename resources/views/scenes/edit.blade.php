@@ -106,6 +106,81 @@
                     </form>
             </x-card>
 
+            @php
+                $shareDurations = config('sharing.scene_link_durations');
+                $shareDefaultKey = config('sharing.scene_link_default_duration');
+                $shareDefaultDuration = $shareDurations[$shareDefaultKey] ?? reset($shareDurations);
+            @endphp
+
+            <x-card :title="__('Share this scene')">
+                @if (! $scene->isShared())
+                    <form method="POST" action="{{ route('scenes.share.store', $scene) }}" class="space-y-4">
+                        @csrf
+
+                        <div>
+                            <x-input-label for="duration" :value="__('Link duration')" />
+                            <select id="duration" name="duration" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm">
+                                @foreach ($shareDurations as $label => $value)
+                                    <option value="{{ $value }}" @selected(old('duration', $shareDefaultDuration) === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-sm text-gray-500">
+                                {{ __('Creates a public, read-only link. Choose how long it stays valid: :choices.', ['choices' => implode(', ', array_keys($shareDurations))]) }}
+                            </p>
+                            <x-input-error :messages="$errors->get('duration')" class="mt-2" />
+                        </div>
+
+                        <x-primary-button>{{ __('Generate share link') }}</x-primary-button>
+                    </form>
+                @else
+                    <div class="space-y-4" x-data="{ copied: false }">
+                        <div>
+                            <x-input-label for="share_url" :value="__('Public link')" />
+                            <div class="mt-1 flex gap-2">
+                                <x-text-input
+                                    id="share_url"
+                                    type="text"
+                                    class="block w-full font-mono text-sm"
+                                    :value="$scene->shareUrl()"
+                                    readonly
+                                    x-ref="shareUrl"
+                                    @focus="$el.select()"
+                                />
+                                <x-secondary-button
+                                    type="button"
+                                    aria-label="{{ __('Copy share link to clipboard') }}"
+                                    x-on:click="navigator.clipboard.writeText($refs.shareUrl.value); copied = true; setTimeout(() => copied = false, 2000)"
+                                >
+                                    <span x-show="! copied">{{ __('Copy') }}</span>
+                                    <span x-show="copied" style="display: none;">{{ __('Copied!') }}</span>
+                                </x-secondary-button>
+                            </div>
+                        </div>
+
+                        <p class="text-sm text-gray-500">
+                            {{ __('Expires :relative (:absolute).', [
+                                'relative' => $scene->share_expires_at->diffForHumans(),
+                                'absolute' => $scene->share_expires_at->format('M j, Y H:i'),
+                            ]) }}
+                        </p>
+
+                        <div class="flex items-center gap-3">
+                            <form method="POST" action="{{ route('scenes.share.store', $scene) }}">
+                                @csrf
+                                <input type="hidden" name="duration" value="{{ $shareDefaultDuration }}">
+                                <x-secondary-button>{{ __('Regenerate') }}</x-secondary-button>
+                            </form>
+
+                            <form method="POST" action="{{ route('scenes.share.destroy', $scene) }}" onsubmit="return confirm('{{ __('Revoke this share link? The current URL will stop working.') }}')">
+                                @csrf
+                                @method('DELETE')
+                                <x-danger-button>{{ __('Revoke') }}</x-danger-button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+            </x-card>
+
             @include('codex.partials.as-of', [
                 'title' => __('Codex as of this scene'),
                 'moment' => $scene->event,

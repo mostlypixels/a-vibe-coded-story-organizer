@@ -12,12 +12,22 @@ use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SceneController;
+use App\Http\Controllers\SceneShareController;
+use App\Http\Controllers\SharedSceneController;
 use App\Http\Controllers\StoryController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// PUBLIC scene share view — deliberately OUTSIDE the auth group. The opaque
+// share_token is the only gate (no policy, no login); the controller resolves
+// the token manually so an unknown token 404s and an expired one renders a
+// friendly 410 page. This is the sole unauthenticated app route besides
+// `welcome` and the Breeze auth screens — do not widen the auth group below.
+Route::get('/shared/scenes/{token}', [SharedSceneController::class, 'show'])
+    ->name('shared.scenes.show');
 
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
@@ -58,6 +68,13 @@ Route::middleware('auth')->group(function () {
         ->shallow();
     Route::patch('/scenes/{scene}/move-up', [SceneController::class, 'moveUp'])->name('scenes.move-up');
     Route::patch('/scenes/{scene}/move-down', [SceneController::class, 'moveDown'])->name('scenes.move-down');
+
+    // Owner-facing scene share link management. Flat on {scene} (implicit binding),
+    // matching the shallow scene routes. store generates/rotates the link; destroy
+    // revokes it. The public view route (shared.scenes.show) lives outside this auth
+    // group — see task 03.
+    Route::post('/scenes/{scene}/share', [SceneShareController::class, 'store'])->name('scenes.share.store');
+    Route::delete('/scenes/{scene}/share', [SceneShareController::class, 'destroy'])->name('scenes.share.destroy');
 
     // Codex entries — nested index/create/store carry the {type} segment; edit/update/destroy
     // only need the entry, so they are flat (manual shallow nesting). The grouped whereIn

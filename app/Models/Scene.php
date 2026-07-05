@@ -27,6 +27,7 @@ class Scene extends Model
 
     protected $casts = [
         'status' => SceneStatus::class,
+        'share_expires_at' => 'datetime',
     ];
 
     public function chapter(): BelongsTo
@@ -59,6 +60,34 @@ class Scene extends Model
         return Attribute::make(
             set: fn (?string $value): ?string => $this->cleanRichHtml($value),
         );
+    }
+
+    /**
+     * Whether this scene currently has a live public share link.
+     *
+     * True only when a token is set AND its expiry is set and still in the
+     * future. Expired links are inert server-side — never trust the presence
+     * of a token alone.
+     */
+    public function isShared(): bool
+    {
+        return $this->share_token !== null
+            && $this->share_expires_at !== null
+            && $this->share_expires_at->isFuture();
+    }
+
+    /**
+     * The public URL for this scene's share link, or null when no token exists.
+     *
+     * Builds the URL by route name (`shared.scenes.show`, registered in the
+     * public-display task); returns null for an unshared scene. Note this does
+     * not check expiry — use isShared() to gate visibility.
+     */
+    public function shareUrl(): ?string
+    {
+        return $this->share_token
+            ? route('shared.scenes.show', $this->share_token)
+            : null;
     }
 
     protected static function booted(): void

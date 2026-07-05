@@ -12,6 +12,41 @@ set belongs in its pull request description.
 
 ### Added
 
+- Scene sharing (foundation): two nullable columns on `scenes` — `share_token` (unique, stored
+  raw) and `share_expires_at` — backing one revocable public share link per scene. `Scene` gains
+  a `share_expires_at` datetime cast and two helpers: `isShared()` (token set **and** expiry in
+  the future) and `shareUrl()` (public URL by route name, or null when unshared). Neither column
+  is mass-assignable — the token is set explicitly in the controller. Share-link lifetimes come
+  from a `config/sharing.php` whitelist (`scene_link_durations`: 24 hours / 7 days / 30 days) that
+  the owner picks from, never a hard-coded literal. Controllers, routes, and views follow in later
+  tasks.
+- Scene sharing (public page): an unauthenticated, read-only view of a shared scene at
+  `GET /shared/scenes/{token}` (`shared.scenes.show`), served by `SharedSceneController@show`
+  **outside** the `auth` group — the opaque token is the only gate (no policy; documented as the
+  single deliberate exception to "every action authorizes"). An unknown token returns 404 and an
+  expired/revoked token renders a friendly branded 410 page (`shared/scenes/expired.blade.php`)
+  rather than a bare error, checked via `Scene::isShared()` so a leaked-but-expired URL is inert.
+  The page uses a dedicated no-nav `<x-public-layout>` whose `<head>` carries a
+  `noindex, nofollow` robots meta, and renders only the scene title (Arabic `chapter.position`,
+  em-dash), the description (collapsed card via `x-rich-text`) and the Markdown `contents` — the
+  scene's `notes` are **never** exposed. The owner edit-page UI that generates these links follows
+  in the next task.
+- Scene sharing (owner management): `SceneShareController` with `store` (generate/rotate the link)
+  and `destroy` (revoke it), exposed as authenticated `POST`/`DELETE /scenes/{scene}/share`
+  (`scenes.share.store` / `scenes.share.destroy`). `StoreSceneShareRequest` validates the chosen
+  duration against the `config('sharing.scene_link_durations')` whitelist via `Rule::in`, and both
+  the request and controller authorize by walking up to the owning project (`ProjectPolicy@update`
+  — non-owners get 403). The token is `Str::random(48)`, set explicitly (never mass-assigned);
+  re-posting `store` rotates it and resets the expiry, invalidating the previous URL. The public
+  view route and the edit-page UI that posts to these endpoints follow in later tasks.
+- Scene sharing (owner UI): a "Share this scene" card on the scene edit page with two states driven
+  by `Scene::isShared()`. Unshared shows a duration `<select>` (populated from
+  `config('sharing.scene_link_durations')`, default preselected from `scene_link_default_duration`)
+  and a "Generate share link" button posting to `scenes.share.store`, surfacing `duration`
+  validation errors and preserving `old()`. Shared shows the public URL in a read-only field with an
+  accessible Copy button (inline Alpine `navigator.clipboard.writeText` + "Copied!" confirmation),
+  the expiry both absolute and relative, a Regenerate button (re-POST `store`) and a Revoke button
+  (`DELETE scenes.share.destroy`). Reuses existing components only — no new component or route.
 - Rich-text (WYSIWYG) editing for the app's free-text fields. A Tiptap-backed editor component
   (`x-wysiwyg`) with both an always-visible formatting toolbar **and a Notion-style `/` slash
   command menu** (headings, bold/italic/underline/strike, lists, blockquote, inline/block code,

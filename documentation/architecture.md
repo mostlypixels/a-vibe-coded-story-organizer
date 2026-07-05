@@ -97,6 +97,39 @@ full act/chapter/scene tree. Chapters render as `<article>`, scenes as `<section
 > dependency of `laravel/framework` (via `composer.lock`), not in `composer.json`'s own
 > `require`. Don't assume it survives a dependency prune without checking.
 
+## Scene sharing (public read-only links)
+
+A scene can be shared with someone who has **no account** via an opaque, revocable link.
+Two nullable columns on `scenes` back it: `share_token` (unique, stored raw) and
+`share_expires_at`. The owner generates/rotates the link from the scene edit page
+(`SceneShareController`, authenticated, authorizes up to the project like every other
+scene action); a visitor opens it at `GET /shared/scenes/{token}`.
+
+That public route is **the one deliberate exception** to "every action authorizes through
+the project" and "every route is authenticated":
+
+- It lives **outside** the `auth` middleware group (the only unauthenticated app route
+  besides `welcome` and the Breeze auth screens — do not widen the group to reach it).
+- `SharedSceneController@show` has **no `authorize()` call**. The token *is* the
+  authorization: whoever holds a live token may read the scene. This is commented in the
+  controller so a reviewer does not "fix" it.
+- The token is bound as a plain **string** (not route-model binding) so the controller
+  chooses the response: an unknown token → `404`, an expired/revoked token → a friendly
+  branded `410` page (`shared/scenes/expired.blade.php`), a live token → the read-only page.
+
+> [!WARNING]
+> **Validity is `Scene::isShared()`, never "a token exists".** A token alone is not access:
+> `isShared()` also requires the expiry to be in the future, so a leaked-but-expired URL is
+> inert server-side. The 410 page renders **no scene data** — an expired link must not leak
+> the title/description/contents it once granted.
+
+> [!IMPORTANT]
+> **`scene.notes` is private.** The public page renders only `name`, `description` (collapsed
+> card, via `x-rich-text`) and `contents` (`Str::markdown()`). It **never** renders `notes`,
+> the status, or the event/plotline links; a test asserts `notes` never appears in the HTML.
+> The page uses a dedicated no-nav `<x-public-layout>` whose `<head>` carries
+> `<meta name="robots" content="noindex, nofollow">` so forwarded links stay unindexed.
+
 ## Enum convention
 
 Enums live in `app/Enums`. The pattern (see `SceneStatus`):
