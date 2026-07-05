@@ -39,12 +39,24 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
 
 4. **Final sanity pass.** Once the loop empties, run this project's full test suite and
    linter once more (commands from `CLAUDE.md`'s Commands section) as a final check
-   across everything the loop built.
+   across everything the loop built. **If the feature has a UI/JS surface, a green suite
+   is not enough** — build the frontend and confirm the app serves the build (not a
+   stale `public/hot` dev-server pointer), and either drive the key flow in a browser or
+   hand the user the exact click-path to confirm. Frontend regressions (missing CSS
+   plugin, stale hot file, a reactive-proxy'd editor) routinely pass PHPUnit; see the
+   feature's `resolution-log.md`.
 
-5. **Report** a summary: each task, what it built, its test counts, and any deviations
-   the agent flagged along the way.
+5. **Consolidate the resolution log.** Ensure `.specs/<name>/resolution-log.md` exists
+   and captures the run's **deviations**, **issues → resolutions**, and
+   **feedback/decisions** (the `plan-implementer` agent appends per task; fold in any
+   feedback the *user* gave you during the loop, and any issue found in the final pass).
+   This is the canonical, reproducible place these are recorded.
 
-6. **Stamp the source spec as shipped.** In `.specs/<name>.md`'s YAML frontmatter set
+6. **Report** a summary: each task, what it built, its test counts, how any runtime
+   surface was verified, and the deviations/issues the agents logged along the way (point
+   at `resolution-log.md`).
+
+7. **Stamp the source spec as shipped.** In `.specs/<name>.md`'s YAML frontmatter set
    `status: shipped` and `shipped: <YYYY-MM-DD>` (lifecycle: `draft` → `expanded` →
    `planned` → `shipped`). Do this before asking about the commit, so the stamp rides
    in the implementation commit — the spec's git history then points at the commit that
@@ -52,7 +64,7 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
    stamp is made *after* the implementation commit already exists (e.g. stamping
    retroactively), where the history link is lost.
 
-7. **Ask before branching/committing.** Do not create a branch or commit automatically.
+8. **Ask before branching/committing.** Do not create a branch or commit automatically.
    Ask the user whether they want the accumulated changes committed (and to a new
    branch, or the current one) — this mirrors the manual confirm step used when the
    Codex feature shipped, and keeps a visible, hard-to-reverse git action as an explicit

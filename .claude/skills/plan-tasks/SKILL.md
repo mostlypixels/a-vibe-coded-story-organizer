@@ -50,16 +50,41 @@ relevant. If `.specs/<name>/` doesn't exist, tell the user to run
    - Which `.specs/<name>/*.md` docs to consult for detail.
    - The tests this task should add.
 
-6. **Do not generate a per-feature implementer agent.** A generic `plan-implementer`
+6. **Scaffold the resolution log.** Create `.specs/<name>/resolution-log.md` with the
+   three empty headings the pipeline fills in — this fixes *where* issues, resolutions,
+   and feedback get documented so it's the same for every feature:
+
+   ```markdown
+   # <Feature> — resolution log
+
+   The running record of feedback/decisions, deviations from the spec/plan, and
+   issues → resolutions found while implementing and verifying this feature. The
+   `plan-implementer` agent appends here per task; `ship-plan` consolidates it. Read it
+   before extending the feature.
+
+   ## Feedback & decisions
+
+   _None yet._
+
+   ## Deviations from the spec/plan
+
+   _None yet._
+
+   ## Issues → resolutions
+
+   _None yet._
+   ```
+
+7. **Do not generate a per-feature implementer agent.** A generic `plan-implementer`
    agent (`.claude/agents/plan-implementer.md`) already runs any feature's plan by
    taking the feature name as an argument — don't recreate a bespoke one.
 
-7. **Stamp the source spec's status.** Set `status: planned` in the YAML frontmatter of
+8. **Stamp the source spec's status.** Set `status: planned` in the YAML frontmatter of
    `.specs/<name>.md` (the lifecycle is `draft` → `expanded` → `planned` → `shipped`;
    `mp-spec-expander` added the frontmatter — if it's missing, add it). Touch nothing
    else in that file.
 
-8. **Report** the created `plan/` folder, the task list with a one-line summary of
+9. **Report** the created `plan/` folder, the task list with a one-line summary of
    each, and flag any open question you left unresolved because it didn't block
    decomposition.
 

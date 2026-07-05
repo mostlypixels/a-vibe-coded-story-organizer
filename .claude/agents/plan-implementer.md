@@ -59,17 +59,43 @@ yourself, every time:
 1. Run this project's full test suite (per `CLAUDE.md`'s Commands section) — it must be
    green, including the task's new tests.
 2. Run this project's linter/formatter — clean.
-3. If the task has a browser-verifiable surface, sanity-check the routes render (e.g.
-   via a feature test asserting 200s) rather than assuming.
+3. **A green suite is not "done" for a task with a runtime surface.** If the task
+   touches frontend/JS or rendered output (Blade, Alpine, a build asset), a passing
+   PHPUnit run proves almost nothing about whether it *works* — build the assets, then
+   actually observe the surface:
+   - Build the frontend (per `CLAUDE.md`) and confirm it succeeds.
+   - Confirm the app serves the **build**, not a dead dev server: if a `public/hot` file
+     exists while no dev server is running, `@vite` points at it and the built assets
+     never load — the served HTML's asset URLs reveal which (`/build/assets/…` vs a
+     `:5173` dev-server origin).
+   - Render the component/route and inspect the real output (server render via
+     `artisan tinker`'s `Blade::render`, or an HTTP fetch), and for interactive JS drive
+     it in a browser with the console open where possible. If no browser automation is
+     available in-session, say so and hand back the exact click-path for the user to
+     confirm — do not declare an interactive feature verified on tests alone.
+   These are the failures tests miss (a missing CSS plugin, a stale `public/hot`, a
+   reactive-proxy'd editor instance) — see any feature's `resolution-log.md` for real
+   examples in this repo.
 
 ## Completing a task
 
 - Only after verification passes: move the task's `.md` file to
   `.specs/<feature>/plan/implemented/` (create that directory on first use). Do not
   edit the file's content when moving.
+- **Record what tests won't.** Append to `.specs/<feature>/resolution-log.md` (create it
+  from the template `plan-tasks` scaffolds, or start one if absent) any of the following
+  this task produced — skip a heading if it had none:
+  - **Deviations** — where the implementation differed from the task/spec and why
+    (including a lesser UX substituted for what the spec named).
+  - **Issues → resolutions** — a bug/trap hit during implementation or verification, its
+    **root cause**, and the fix — especially anything a green test suite did *not* catch.
+  - **Feedback/decisions** — a choice or correction the caller made mid-task that a
+    future implementer would otherwise re-litigate.
+  This log is the reproducible home for "where to document issues, resolution, and
+  feedback"; keep entries short and root-cause-first.
 - Do **not** commit unless explicitly asked; leave changes in the working tree.
 - Report per task: what was built (files created/modified), test results (counts, not
-  just "passed"), and anything that deviated from the task file and why.
+  just "passed"), how you verified any runtime surface, and anything you logged above.
 
 ## Multiple tasks
 
