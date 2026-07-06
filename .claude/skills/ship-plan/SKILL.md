@@ -24,7 +24,19 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
    `plan/implemented/`. If none remain, report the feature is fully implemented and
    stop here.
 
-3. **Run strictly sequentially.** Tasks are dependency-ordered by number, so never
+3. **Light re-grill — only if the plan drifted.** The plan was already grilled at
+   `plan-tasks` time, so **do not** repeat that interview. Instead do a quick drift
+   check: skim `.specs/<name>/plan/` against `.specs/<name>/expanded/` and the
+   **Feedback & decisions** already in `resolution-log.md`, asking one question — has
+   anything material shifted since the plan was grilled? (a task added / dropped /
+   reordered, a binding decision reversed, or a fresh open question the implementer will
+   hit head-on). If nothing material drifted, say so in one line and go straight to
+   running. If something did, invoke the **`grilling`** skill but keep it **tight —
+   only the drifted points, not the whole design** — resolve them with the user, fold
+   the answers into the affected task files and `resolution-log.md`, then proceed. Never
+   silently implement over a divergence.
+
+4. **Run strictly sequentially.** Tasks are dependency-ordered by number, so never
    launch more than one at a time. For the lowest-numbered remaining task:
    - Launch the `plan-implementer` agent (`Agent` tool, `subagent_type:
      "plan-implementer"`) with a prompt naming the feature and, if useful, the specific
@@ -37,7 +49,7 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
      task on top of a broken one.
    - Otherwise, move to the next remaining task and repeat.
 
-4. **Final sanity pass.** Once the loop empties, run this project's full test suite and
+5. **Final sanity pass.** Once the loop empties, run this project's full test suite and
    linter once more (commands from `CLAUDE.md`'s Commands section) as a final check
    across everything the loop built. **If the feature has a UI/JS surface, a green suite
    is not enough** — build the frontend and confirm the app serves the build (not a
@@ -46,17 +58,17 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
    plugin, stale hot file, a reactive-proxy'd editor) routinely pass PHPUnit; see the
    feature's `resolution-log.md`.
 
-5. **Consolidate the resolution log.** Ensure `.specs/<name>/resolution-log.md` exists
+6. **Consolidate the resolution log.** Ensure `.specs/<name>/resolution-log.md` exists
    and captures the run's **deviations**, **issues → resolutions**, and
    **feedback/decisions** (the `plan-implementer` agent appends per task; fold in any
    feedback the *user* gave you during the loop, and any issue found in the final pass).
    This is the canonical, reproducible place these are recorded.
 
-6. **Report** a summary: each task, what it built, its test counts, how any runtime
+7. **Report** a summary: each task, what it built, its test counts, how any runtime
    surface was verified, and the deviations/issues the agents logged along the way (point
    at `resolution-log.md`).
 
-7. **Stamp the source spec as shipped.** In `.specs/<name>/spec.md`'s YAML frontmatter set
+8. **Stamp the source spec as shipped.** In `.specs/<name>/spec.md`'s YAML frontmatter set
    `status: shipped` and `shipped: <YYYY-MM-DD>` (lifecycle: `draft` → `expanded` →
    `planned` → `shipped`). Do this before asking about the commit, so the stamp rides
    in the implementation commit — the spec's git history then points at the commit that
@@ -64,7 +76,7 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
    stamp is made *after* the implementation commit already exists (e.g. stamping
    retroactively), where the history link is lost.
 
-8. **Ask before branching/committing.** Do not create a branch or commit automatically.
+9. **Ask before branching/committing.** Do not create a branch or commit automatically.
    Ask the user whether they want the accumulated changes committed (and to a new
    branch, or the current one) — this mirrors the manual confirm step used when the
    Codex feature shipped, and keeps a visible, hard-to-reverse git action as an explicit

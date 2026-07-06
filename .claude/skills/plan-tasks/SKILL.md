@@ -1,6 +1,6 @@
 ---
 name: plan-tasks
-description: Decompose an already-expanded feature spec (.specs/<name>/expanded/, the output of mp-spec-expander) into an ordered, dependency-tracked implementation plan under .specs/<name>/plan/ — the step between "expanded spec" and running /ship-plan or the plan-implementer agent. Use when asked to plan, break down, or sequence an expanded spec into tasks.
+description: Decompose an already-expanded feature spec (.specs/<name>/expanded/, the output of mp-spec-expander) into an ordered, dependency-tracked implementation plan under .specs/<name>/plan/ — the step between "expanded spec" and running /ship-plan or the plan-implementer agent. First grills the user on the expanded design (via the grilling skill) to resolve open questions before decomposing. Use when asked to plan, break down, or sequence an expanded spec into tasks.
 ---
 
 # plan-tasks
@@ -21,10 +21,22 @@ relevant. If `.specs/<name>/expanded/` doesn't exist, tell the user to run
 1. **Read every doc in `.specs/<name>/expanded/`.** Read `CLAUDE.md` and `.claude/guidelines.md`
    too, so task boundaries match this project's real architecture.
 
-2. **Resolve blocking ambiguity first.** If `open-questions.md` has items that would
-   change *which* tasks exist or their order (not just fine-grained detail within a
-   task), ask the user via `AskUserQuestion` before decomposing. Don't guess on
-   plan-shaping questions.
+2. **Grill the design before decomposing.** The expanded docs are a design that has
+   never been stress-tested against the user. Invoke the **`grilling`** skill (via the
+   `Skill` tool) on `.specs/<name>/expanded/` — especially `open-questions.md` — and
+   walk the user through it one question at a time until you reach shared understanding.
+   `grilling` is the single source of the grill behavior; don't reimplement it here.
+   Feed the grill from the whole expanded set (data model, architecture, UI, testing),
+   not just the open questions, since a design flaw surfaced here is far cheaper to fix
+   than after tasks are written. Two things to carry forward:
+   - Fold every resolved decision into the plan you're about to write (and, once
+     `resolution-log.md` exists in step 6, record them under **Feedback & decisions**).
+   - Any grill answer that changes *which* tasks exist or their order — not just
+     fine-grained detail within a task — is binding on the decomposition below. Don't
+     guess on plan-shaping questions; that's exactly what the grill is for.
+
+   Do not proceed to decomposition until the user confirms the grill has reached shared
+   understanding.
 
 3. **Decompose into an ordered sequence of tasks.** Each task should be independently
    implementable and independently testable — a `plan-implementer` run against it
