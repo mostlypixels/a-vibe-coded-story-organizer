@@ -4,8 +4,9 @@ This manual is never implemented or moved. It fixes the execution order, the bin
 decisions, and the invariants every task must preserve. Task files (`NN-*.md`) are moved to
 `plan/implemented/` as each is finished and verified.
 
-Detail lives in the sibling spec docs: `../overview.md`, `../data-model.md`, `../architecture.md`,
-`../ui.md`, `../testing.md`, `../open-questions.md`.
+Detail lives in the sibling spec docs: `../expanded/overview.md`, `../expanded/data-model.md`,
+`../expanded/architecture.md`, `../expanded/ui.md`, `../expanded/testing.md`,
+`../expanded/open-questions.md`.
 
 ## Execution order
 

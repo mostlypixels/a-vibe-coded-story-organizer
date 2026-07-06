@@ -1,8 +1,8 @@
 # refactor_codex — implementation plan (manual)
 
 This file is the plan's manual: never implemented, never moved to `implemented/`.
-Source spec: `.specs/refactor_codex.md` (code review, 9 ranked findings). Design docs:
-`.specs/refactor_codex/*.md`. Tasks live beside this file as `NN-<slug>.md` and move to
+Source spec: `.specs/refactor_codex/spec.md` (code review, 9 ranked findings). Design docs:
+`.specs/refactor_codex/expanded/*.md`. Tasks live beside this file as `NN-<slug>.md` and move to
 `plan/implemented/` when done.
 
 ## Execution order

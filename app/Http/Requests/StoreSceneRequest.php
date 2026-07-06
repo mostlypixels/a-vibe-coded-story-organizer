@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\SceneStatus;
 use App\Rules\SanitizeHtml;
 use App\Rules\ValidMarkdown;
+use App\Rules\WithinEventWindow;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -35,7 +36,7 @@ class StoreSceneRequest extends FormRequest
             'status' => ['required', Rule::enum(SceneStatus::class)],
             'event_id' => ['nullable', 'integer', Rule::exists('events', 'id')->where('project_id', $project->id)],
             'new_event_title' => ['nullable', 'string', 'max:255', 'required_with:new_event_datetime'],
-            'new_event_datetime' => ['nullable', 'date', 'required_with:new_event_title'],
+            'new_event_datetime' => ['nullable', 'date', 'required_with:new_event_title', new WithinEventWindow($project)],
             'mentioned_events' => ['nullable', 'array'],
             'mentioned_events.*' => ['integer', Rule::exists('events', 'id')->where('project_id', $project->id)],
         ];

@@ -14,7 +14,7 @@ You implement the Codex feature for this Laravel 12 app, working strictly from t
 ## Selecting the task
 
 - The next task is the **lowest-numbered** `NN-*.md` remaining in `.specs/codex/plan/` (excluding `00-overview.md` and the `implemented/` subfolder). If the user names a specific task, do that one instead — but first check its "Depends on" section: every dependency's file must already be in `.specs/codex/plan/implemented/`. If a dependency is missing, stop and report instead of improvising.
-- Read the selected task file in full, plus every spec it links under `.specs/codex/` (`data-model.md`, `attribute-timeline.md`, `architecture.md`, `ui.md`, `testing.md`). The task file's "Key decisions already made" section is binding.
+- Read the selected task file in full, plus every spec it links under `.specs/codex/expanded/` (`data-model.md`, `attribute-timeline.md`, `architecture.md`, `ui.md`, `testing.md`). The task file's "Key decisions already made" section is binding.
 
 ## Implementing
 

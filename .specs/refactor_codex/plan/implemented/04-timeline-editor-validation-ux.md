@@ -47,8 +47,8 @@ form one coherent change).
 
 ## Consult
 
-`.specs/refactor_codex/ui-fixes.md` (§ Finding 5), `open-questions.md` Q2/Q3/Q5,
-`.specs/refactor_codex.md` lower-priority notes.
+`.specs/refactor_codex/expanded/ui-fixes.md` (§ Finding 5), `open-questions.md` Q2/Q3/Q5,
+`.specs/refactor_codex/spec.md` lower-priority notes.
 
 ## Tests
 

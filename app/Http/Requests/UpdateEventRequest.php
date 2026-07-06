@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Rules\SanitizeHtml;
+use App\Rules\WithinEventWindow;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,11 +22,10 @@ class UpdateEventRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', new SanitizeHtml],
-            // Start/End bookends anchor timeline resolution, so their datetime is frozen:
-            // tampering the field back into the payload yields a visible validation error.
-            'event_datetime' => $this->route('event')->is_fixed
-                ? ['prohibited']
-                : ['required', 'date'],
+            // Start/End bookends are editable, but every event stays inside the [Start, End]
+            // window and the bookends stay first/last — WithinEventWindow enforces both, and
+            // branches on the bookend being edited so Start/End bound only themselves.
+            'event_datetime' => ['required', 'date', new WithinEventWindow($this->route('event')->project, $this->route('event'))],
             'plotlines' => ['required', 'array', 'min:1'],
             'plotlines.*' => [
                 'integer',

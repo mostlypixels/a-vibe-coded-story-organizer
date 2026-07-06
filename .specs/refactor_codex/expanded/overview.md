@@ -1,6 +1,6 @@
 # Codex refactor — overview
 
-Source spec: [`.specs/refactor_codex.md`](../refactor_codex.md) — a code review of the Codex
+Source spec: [`.specs/refactor_codex/spec.md`](../spec.md) — a code review of the Codex
 feature (commit `c338ca9`, branch `codex`) with 9 ranked findings plus lower-priority notes.
 This folder expands those findings into actionable design documents. Every location cited in
 the source spec was re-verified against the current working tree; all line references below

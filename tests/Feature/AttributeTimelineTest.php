@@ -84,7 +84,7 @@ class AttributeTimelineTest extends TestCase
         $timeline->upsertAt($start, 'blonde');
         $timeline->upsertAt($halloween, 'green');
 
-        foreach (['0000-01-01 00:00:00', '2020-10-31 00:00:00', '2999-12-31 23:59:59'] as $moment) {
+        foreach (['0001-01-01 00:00:00', '2020-10-31 00:00:00', '2999-12-31 23:59:59'] as $moment) {
             $this->assertNotNull(
                 $timeline->valueAt(Carbon::parse($moment)),
                 "valueAt({$moment}) must never be null when a baseline exists"

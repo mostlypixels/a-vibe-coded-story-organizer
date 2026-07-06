@@ -1,6 +1,6 @@
 # Codex — Overview
 
-Expanded from [`.specs/codex.md`](../codex.md). The **Codex** is a new top-level menu section (peer of *Timeline* and *Story*) that holds the story's reference entities — **Characters**, **Locations**, and **Organizations** — plus a project-wide system of **mutable, event-tied attributes** so a value (hair color, wall color, org size…) can change over the story's timeline and be resolved at any point in it.
+Expanded from [`.specs/codex/spec.md`](../spec.md). The **Codex** is a new top-level menu section (peer of *Timeline* and *Story*) that holds the story's reference entities — **Characters**, **Locations**, and **Organizations** — plus a project-wide system of **mutable, event-tied attributes** so a value (hair color, wall color, org size…) can change over the story's timeline and be resolved at any point in it.
 
 ## Problem statement
 

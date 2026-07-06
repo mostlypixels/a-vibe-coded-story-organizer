@@ -35,7 +35,7 @@ Nothing structurally (04 precedes it only by numbering; can run any time after 0
 
 ## Consult
 
-`.specs/refactor_codex/media-lifecycle.md` (§ Finding 2), `open-questions.md` Q6.
+`.specs/refactor_codex/expanded/media-lifecycle.md` (§ Finding 2), `open-questions.md` Q6.
 
 ## Tests
 

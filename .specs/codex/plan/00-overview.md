@@ -1,6 +1,6 @@
 # Codex plan — 00 · Overview & how to execute
 
-This folder breaks the Codex feature (specs in [`..`](../overview.md)) into ordered, commit/PR-sized tasks. Execute **01 → 09 in order**; each task leaves the suite green and the app working.
+This folder breaks the Codex feature (specs in [`../expanded`](../expanded/overview.md)) into ordered, commit/PR-sized tasks. Execute **01 → 09 in order**; each task leaves the suite green and the app working.
 
 ## Task list & dependencies
 

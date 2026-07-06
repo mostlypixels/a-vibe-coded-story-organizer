@@ -92,7 +92,7 @@ set belongs in its pull request description.
   chip-based event picker (`x-event-picker`, client-side Alpine filter by name/date) rather
   than a checkbox list, so it scales to projects with many events.
 - Bookend timeline events: every project is auto-created with two fixed events, "Start"
-  (first day of year 0000) and "End" (first day of year 3000), attached to the main
+  (first day of year 0001) and "End" (first day of year 3000), attached to the main
   plotline. Both carry `events.is_fixed` and cannot be deleted (delete button hidden in
   the events index/edit views, `abort_if` guard in `EventController@destroy`), mirroring
   the un-deletable main plotline. `MelusineSeeder` creates them manually since seeding
@@ -125,6 +125,17 @@ set belongs in its pull request description.
 
 ### Changed
 
+- Bookend **Start / End** event datetimes are now **editable** (previously frozen). In their
+  place the bookends form a **containment window**: every non-fixed event must satisfy
+  `Start ≤ event_datetime ≤ End` (inclusive), and a bookend edit may not swallow an existing
+  event — Start can't move past the earliest regular event or reach End, and End is the mirror.
+  A single rule (`App\Rules\WithinEventWindow`) enforces this on every event write path
+  (`StoreEventRequest`, `UpdateEventRequest`, and the Scene inline `new_event_datetime`), and the
+  datetime inputs carry `min`/`max` hints (`EventController::datetimeBounds()`,
+  `Project::earliestRegularEvent()` / `latestRegularEvent()`). Because Start stays the earliest
+  `is_fixed` event, the codex attribute-timeline baseline still resolves to the same row. The
+  default Start moved from year 0000 to **year 0001** (Laravel's `date` rule floors at year 1 via
+  `checkdate()`); End stays year 3000.
 - Free-text description fields (`Project`, `Act`, `Chapter`, `Plotline`, `Event`, `Scene`,
   `CodexEntry`) and `Scene.notes` are now **rich HTML** rather than plain text — authored in the
   new WYSIWYG editor, sanitized on write, and rendered with formatting. The codex `description` in

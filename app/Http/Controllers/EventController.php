@@ -42,7 +42,13 @@ class EventController extends Controller
     {
         $this->authorize('update', $project);
 
-        return view('events.create', ['project' => $project->load('plotlines')]);
+        [$windowMin, $windowMax] = $this->datetimeBounds($project, null);
+
+        return view('events.create', [
+            'project' => $project->load('plotlines'),
+            'windowMin' => $windowMin,
+            'windowMax' => $windowMax,
+        ]);
     }
 
     public function store(StoreEventRequest $request, Project $project): RedirectResponse
@@ -60,9 +66,13 @@ class EventController extends Controller
 
         $event->load('plotlines', 'scenes', 'mentioningScenes');
 
+        [$windowMin, $windowMax] = $this->datetimeBounds($event->project, $event);
+
         return view('events.edit', [
             'event' => $event,
             'project' => $event->project->load('plotlines'),
+            'windowMin' => $windowMin,
+            'windowMax' => $windowMax,
             // Codex values resolved as of this event. The moment is the event itself, so the
             // anchor-identity rule applies (its own anchored values win over datetime ties).
             // Pre-computed here to keep resolution out of Blade and avoid N+1 across entries.
@@ -89,5 +99,31 @@ class EventController extends Controller
         $event->delete();
 
         return redirect()->route('projects.events.index', $project);
+    }
+
+    /**
+     * datetime-local min/max hints for the event's editable window — the UI mirror of
+     * WithinEventWindow. A regular event (or a new one, $event === null) sits inside
+     * [Start, End]; a bookend is instead capped by the nearest regular event, falling
+     * back to the opposite bookend when the project holds only its two bookends. The
+     * server rule stays authoritative; these attributes are only a browser hint.
+     *
+     * @return array{0: ?string, 1: ?string} [min, max], each 'Y-m-d\TH:i' or null
+     */
+    private function datetimeBounds(Project $project, ?Event $event): array
+    {
+        $format = fn (?Event $bound) => $bound?->event_datetime->format('Y-m-d\TH:i');
+        $start = $project->startEvent();
+        $end = $project->endEvent();
+
+        if ($event?->is_fixed && $event->is($start)) {
+            return [null, $format($project->earliestRegularEvent() ?? $end)];
+        }
+
+        if ($event?->is_fixed && $event->is($end)) {
+            return [$format($project->latestRegularEvent() ?? $start), null];
+        }
+
+        return [$format($start), $format($end)];
     }
 }

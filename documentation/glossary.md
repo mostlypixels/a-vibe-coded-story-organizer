@@ -19,11 +19,14 @@ gets on creation. It **cannot be deleted** and generally stays pinned first in l
 (many-to-many).
 
 **Bookend events (Start / End)** — the two `is_fixed` events every project is auto-created
-with (year 0000 "Start" and year 3000 "End"). They are the sentinels the attribute step
+with (year 0001 "Start" and year 3000 "End"). They are the sentinels the attribute step
 function resolves against, so their contract is stronger than the main plotline's: they
-**cannot be deleted** *and* their `event_datetime` is **frozen** (title/description/plotlines
-stay editable). Resolved through the single `Project::startEvent()` / `Project::endEvent()`
-methods in canonical `(event_datetime, id)` order — never re-queried elsewhere.
+**cannot be deleted**, and their `event_datetime` is **editable but forms a containment
+window** — every non-fixed event must satisfy `Start ≤ event_datetime ≤ End`, and a bookend
+edit may not swallow an existing event (`App\Rules\WithinEventWindow`). Because Start stays
+the earliest `is_fixed` event, the timeline anchor never moves. Resolved through the single
+`Project::startEvent()` / `Project::endEvent()` methods in canonical `(event_datetime, id)`
+order — never re-queried elsewhere.
 
 **Act → Chapter → Scene** — the three-level manuscript hierarchy. An act has many chapters;
 a chapter has many scenes. Strictly nested (no many-to-many).

@@ -18,7 +18,7 @@ yourself, every time:
    decided design defaults (do **not** re-litigate them), and the invariants every task
    must preserve. `00-overview.md` is the manual, not a task: it is **never**
    implemented or moved.
-2. Read every doc it links under `.specs/<feature>/` (`data-model.md`,
+2. Read every doc it links under `.specs/<feature>/expanded/` (`data-model.md`,
    `architecture.md`, `ui.md`, `testing.md`, `open-questions.md` — whichever exist).
 3. List `.specs/<feature>/plan/implemented/` to see which tasks are already done.
 4. Skim the actual working tree for the files those completed tasks and the overview

@@ -204,11 +204,15 @@ shares its datetime.
 has a **single definition**: `Project::startEvent()` / `Project::endEvent()` (the
 earliest / latest `is_fixed` event, in canonical `(event_datetime, id)` order). Everything
 that needs a bookend (`AttributeTimeline`, the entry controller) delegates to these methods
-rather than re-running the query. Because the resolution is datetime-ordered, the bookends'
-dates must be **stable**: `UpdateEventRequest` freezes `event_datetime` on `is_fixed` events
-(`['prohibited']`; title / description / plotlines stay editable) and the edit view
-hides the input. So the baseline anchor can be neither deleted (undeletable events) **nor
-re-ordered** (frozen dates) out from under the step function.
+rather than re-running the query. Because the resolution is datetime-ordered, Start must stay
+the **earliest** `is_fixed` event — but its date need not be frozen to guarantee that. Instead
+the bookends form a **containment window**: `App\Rules\WithinEventWindow` (applied on every
+event write — store/update and the Scene inline `new_event_datetime`) requires every non-fixed
+event to satisfy `Start ≤ event_datetime ≤ End`, and forbids a bookend edit from swallowing an
+existing event (Start can't pass the earliest regular event nor reach End; End the mirror).
+Since `startEvent()`/`endEvent()` filter on `is_fixed`, regular events never compete for the
+anchor, so the baseline can be neither deleted (undeletable events) **nor re-ordered** (nothing
+sorts before Start) out from under the step function.
 
 All of this lives in **`App\Services\AttributeTimeline`** (constructed for one entry+attribute
 pair), not in the controller or a model hook:
@@ -235,8 +239,9 @@ The timeline editor renders validation errors under `value` / `start_event_id` a
 > [!IMPORTANT]
 > **Invariant — leading anchor at Start.** Every (entry, attribute) with any value has exactly
 > one value anchored at the project's *Start* event, so `valueAt(t)` is **total** for
-> `t ≥ Start` and callers never handle "no value". The Start/End events are `is_fixed`,
-> undeletable, and datetime-frozen, so the anchor can be neither orphaned nor re-ordered.
+> `t ≥ Start` and callers never handle "no value". The Start/End events are `is_fixed` and
+> undeletable, and the containment window keeps Start earliest, so the anchor can be neither
+> orphaned nor re-ordered.
 > `upsertAt` enforces this on every write (not just entry-create). This invariant lives in
 > `AttributeTimeline` (a service the seeder can call directly), **not** a `booted()` hook —
 > hooks are suppressed under `WithoutModelEvents`.

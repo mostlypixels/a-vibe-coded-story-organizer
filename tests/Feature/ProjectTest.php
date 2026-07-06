@@ -318,7 +318,7 @@ class ProjectTest extends TestCase
         $this->assertNotNull($end);
         $this->assertTrue($start->is_fixed);
         $this->assertTrue($end->is_fixed);
-        $this->assertSame('0000', $start->event_datetime->format('Y'));
+        $this->assertSame('0001', $start->event_datetime->format('Y'));
         $this->assertSame('3000', $end->event_datetime->format('Y'));
         $this->assertTrue($start->plotlines->contains($mainPlotline));
         $this->assertTrue($end->plotlines->contains($mainPlotline));
@@ -343,7 +343,7 @@ class ProjectTest extends TestCase
 
         $this->assertTrue($start->is_fixed);
         $this->assertTrue($end->is_fixed);
-        $this->assertSame('0000', $start->event_datetime->format('Y'));
+        $this->assertSame('0001', $start->event_datetime->format('Y'));
         $this->assertSame('3000', $end->event_datetime->format('Y'));
         $this->assertSame('Start', $start->title);
         $this->assertSame('End', $end->title);
@@ -377,27 +377,94 @@ class ProjectTest extends TestCase
         $this->assertSame($higher->id, $project->endEvent()->id);
     }
 
-    public function test_fixed_event_datetime_cannot_be_changed(): void
+    public function test_a_bookend_datetime_can_be_changed_within_the_window(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $start = $project->startEvent();
         $mainPlotline = $project->plotlines()->first();
-        $originalDatetime = $start->event_datetime;
 
+        // No regular events yet, so Start may move anywhere before End.
         $this->actingAs($user)->put(route('events.update', $start), [
             'title' => $start->title,
-            'event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
+            'event_datetime' => '1000-01-01 00:00:00',
             'plotlines' => [$mainPlotline->id],
-        ])->assertSessionHasErrors('event_datetime');
+        ])->assertRedirect(route('projects.events.index', $project));
 
-        $this->assertTrue($originalDatetime->equalTo($start->fresh()->event_datetime));
-
-        // Regression: the frozen datetime keeps Start resolving to the same event.
+        $this->assertSame('1000', $start->fresh()->event_datetime->format('Y'));
+        // Still the earliest fixed event, so it remains the Start anchor.
         $this->assertSame($start->id, $project->startEvent()->id);
     }
 
-    public function test_a_fixed_event_can_be_edited_without_touching_its_datetime(): void
+    public function test_the_start_bookend_cannot_move_past_an_existing_event(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $start = $project->startEvent();
+        $mainPlotline = $project->plotlines()->first();
+
+        // A regular event sits inside the window; Start may not jump past it.
+        Event::factory()->for($project)->create(['event_datetime' => '2020-01-01 00:00:00']);
+
+        $this->actingAs($user)->put(route('events.update', $start), [
+            'title' => $start->title,
+            'event_datetime' => '2021-01-01 00:00:00',
+            'plotlines' => [$mainPlotline->id],
+        ])->assertSessionHasErrors('event_datetime');
+
+        $this->assertSame('0001', $start->fresh()->event_datetime->format('Y'));
+    }
+
+    public function test_the_end_bookend_cannot_move_before_an_existing_event(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $end = $project->endEvent();
+        $mainPlotline = $project->plotlines()->first();
+
+        Event::factory()->for($project)->create(['event_datetime' => '2020-01-01 00:00:00']);
+
+        $this->actingAs($user)->put(route('events.update', $end), [
+            'title' => $end->title,
+            'event_datetime' => '2019-01-01 00:00:00',
+            'plotlines' => [$mainPlotline->id],
+        ])->assertSessionHasErrors('event_datetime');
+
+        $this->assertSame('3000', $end->fresh()->event_datetime->format('Y'));
+    }
+
+    public function test_a_regular_event_cannot_be_created_outside_the_window(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $mainPlotline = $project->plotlines()->first();
+
+        // Bring End in to 2020 so there is a ceiling to cross (set directly to bypass the form).
+        $project->endEvent()->update(['event_datetime' => '2020-01-01 00:00:00']);
+
+        $this->actingAs($user)->post(route('projects.events.store', $project), [
+            'title' => 'Too late',
+            'event_datetime' => '2021-01-01 00:00:00',
+            'plotlines' => [$mainPlotline->id],
+        ])->assertSessionHasErrors('event_datetime');
+
+        // Only the two bookends remain.
+        $this->assertSame(2, $project->events()->count());
+    }
+
+    public function test_the_bookend_edit_page_renders_an_editable_datetime_input(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $start = $project->startEvent();
+
+        $this->actingAs($user)->get(route('events.edit', $start))
+            ->assertOk()
+            ->assertSee('name="event_datetime"', false)
+            ->assertSee('type="datetime-local"', false);
+    }
+
+    public function test_a_fixed_event_title_can_be_edited_with_its_datetime_resubmitted(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -407,6 +474,7 @@ class ProjectTest extends TestCase
 
         $this->actingAs($user)->put(route('events.update', $start), [
             'title' => 'Beginning',
+            'event_datetime' => $start->event_datetime->format('Y-m-d H:i:s'),
             'plotlines' => [$mainPlotline->id],
         ])->assertRedirect(route('projects.events.index', $project));
 
