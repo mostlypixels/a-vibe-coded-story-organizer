@@ -50,6 +50,10 @@ class SceneController extends Controller
             'project' => $project,
             'chapters' => $this->chaptersFor($project),
             'events' => $this->eventsFor($project),
+            // Bounds for the inline "New event" datetime — always a regular event, so it
+            // sits inside [Start, End] (mirrors WithinEventWindow; server stays authoritative).
+            'windowMin' => $project->startEvent()->event_datetime->format('Y-m-d\TH:i'),
+            'windowMax' => $project->endEvent()->event_datetime->format('Y-m-d\TH:i'),
         ]);
     }
 
@@ -80,6 +84,8 @@ class SceneController extends Controller
             'project' => $project,
             'chapters' => $this->chaptersFor($project),
             'events' => $this->eventsFor($project),
+            'windowMin' => $project->startEvent()->event_datetime->format('Y-m-d\TH:i'),
+            'windowMax' => $project->endEvent()->event_datetime->format('Y-m-d\TH:i'),
             // Codex values resolved as of the scene's "happens during" event (null when the
             // scene is unassigned → the panel shows the undetermined state). Pre-computed here
             // so no timeline math or N+1 resolution happens in Blade.

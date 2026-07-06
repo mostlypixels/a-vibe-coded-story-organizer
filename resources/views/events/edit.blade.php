@@ -26,13 +26,11 @@
 
                     <div>
                         <x-input-label for="event_datetime" :value="__('Date & Time')" />
-                        @unless ($event->is_fixed)
-                            <x-text-input id="event_datetime" name="event_datetime" type="datetime-local" class="mt-1 block w-full" :value="old('event_datetime', $event->event_datetime->format('Y-m-d\TH:i'))" required />
-                            <x-input-error :messages="$errors->get('event_datetime')" class="mt-2" />
-                        @else
-                            <p class="mt-1 text-sm text-gray-600">{{ $event->event_datetime->format('Y-m-d H:i') }}</p>
-                            <p class="mt-1 text-xs text-gray-500">{{ __('This is a fixed bookend event; its date cannot be changed.') }}</p>
-                        @endunless
+                        <x-text-input id="event_datetime" name="event_datetime" type="datetime-local" class="mt-1 block w-full" :value="old('event_datetime', $event->event_datetime->format('Y-m-d\TH:i'))" min="{{ $windowMin }}" max="{{ $windowMax }}" required />
+                        @if ($event->is_fixed)
+                            <p class="mt-1 text-xs text-gray-500">{{ __('This bookend anchors the timeline; every other event must stay between Start and End.') }}</p>
+                        @endif
+                        <x-input-error :messages="$errors->get('event_datetime')" class="mt-2" />
                     </div>
 
                     <div>

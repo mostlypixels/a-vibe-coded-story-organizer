@@ -56,7 +56,7 @@ class Project extends Model
     }
 
     /**
-     * The project's Start bookend event (year 0000): the earliest is_fixed event,
+     * The project's Start bookend event (year 0001): the earliest is_fixed event,
      * created undeletable by booted() and the anchor for every attribute-timeline
      * baseline. Single source of truth for "the project's Start".
      *
@@ -87,6 +87,33 @@ class Project extends Model
             ->firstOrFail();
     }
 
+    /**
+     * The earliest non-bookend event, or null when the project holds only its
+     * Start/End bookends. Bounds how far the Start bookend may move (Start must
+     * stay first); ordered canonically by (event_datetime, id) like startEvent().
+     */
+    public function earliestRegularEvent(): ?Event
+    {
+        return $this->events()
+            ->where('is_fixed', false)
+            ->orderBy('event_datetime')
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * The latest non-bookend event, or null when only the bookends exist. The
+     * orderByDesc twin of earliestRegularEvent(); bounds how far End may move.
+     */
+    public function latestRegularEvent(): ?Event
+    {
+        return $this->events()
+            ->where('is_fixed', false)
+            ->orderByDesc('event_datetime')
+            ->orderByDesc('id')
+            ->first();
+    }
+
     protected static function booted(): void
     {
         static::created(function (Project $project) {
@@ -97,7 +124,7 @@ class Project extends Model
             ]);
 
             foreach ([
-                ['title' => 'Start', 'event_datetime' => '0000-01-01 00:00:00'],
+                ['title' => 'Start', 'event_datetime' => '0001-01-01 00:00:00'],
                 ['title' => 'End', 'event_datetime' => '3000-01-01 00:00:00'],
             ] as $data) {
                 $event = $project->events()->create($data + ['is_fixed' => true]);

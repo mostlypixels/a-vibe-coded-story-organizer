@@ -46,7 +46,7 @@
                                 </div>
                                 <div>
                                     <x-input-label for="new_event_datetime" :value="__('New event date & time')" />
-                                    <x-text-input id="new_event_datetime" name="new_event_datetime" type="datetime-local" class="mt-1 block w-full" :value="old('new_event_datetime')" />
+                                    <x-text-input id="new_event_datetime" name="new_event_datetime" type="datetime-local" class="mt-1 block w-full" :value="old('new_event_datetime')" min="{{ $windowMin }}" max="{{ $windowMax }}" />
                                     <x-input-error :messages="$errors->get('new_event_datetime')" class="mt-2" />
                                 </div>
                             </div>
