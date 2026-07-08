@@ -74,7 +74,13 @@
                         </td>
                     </x-table-row>
                 @empty
-                    <x-table-empty :colspan="5">{{ __('No entries match.') }}</x-table-empty>
+                    <x-table-empty
+                        :colspan="5"
+                        :filtered="request()->hasAny(['search', 'tag'])"
+                        :create-url="route('projects.codex.create', [$project, $type->routeKey()])"
+                        :create-label="__('New :label', ['label' => $type->label()])"
+                        :items="\Illuminate\Support\Str::lower($type->pluralLabel())"
+                    />
                 @endforelse
             </x-table>
         </div>

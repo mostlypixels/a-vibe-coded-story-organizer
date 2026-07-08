@@ -12,6 +12,12 @@ set belongs in its pull request description.
 
 ### Added
 
+- Friendly empty states on the index pages. The shared `x-table-empty` component now renders two
+  distinct messages instead of a single bare "no results" row: a genuinely empty collection shows
+  "No :items yet." with a primary button pointing at the create action, while a collection hidden by
+  an active search/filter shows "No :items match your search or filters." (the toolbar's *Clear*
+  link is the way back). Wired into the Codex (characters/locations/organizations) and the
+  events/acts/chapters/scenes indexes.
 - Dedicated feature tests for `PlotlineController` and `EventController` (`PlotlineTest`,
   `EventTest`), previously only covered indirectly through `ProjectTest`. Each covers the full
   CRUD surface, project authorization (owner succeeds, non-owner gets 403 on read and every write
