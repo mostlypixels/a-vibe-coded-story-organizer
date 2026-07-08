@@ -76,7 +76,13 @@
                         </td>
                     </x-table-row>
                 @empty
-                    <x-table-empty :colspan="4">{{ __('No events match.') }}</x-table-empty>
+                    <x-table-empty
+                        :colspan="4"
+                        :filtered="request()->hasAny(['search', 'plotline'])"
+                        :create-url="route('projects.events.create', $project)"
+                        :create-label="__('New Event')"
+                        :items="__('events')"
+                    />
                 @endforelse
             </x-table>
         </div>

@@ -66,7 +66,13 @@
                         </td>
                     </x-table-row>
                 @empty
-                    <x-table-empty :colspan="5">{{ __('No chapters match.') }}</x-table-empty>
+                    <x-table-empty
+                        :colspan="5"
+                        :filtered="request()->hasAny(['search', 'act'])"
+                        :create-url="route('projects.chapters.create', $project)"
+                        :create-label="__('New Chapter')"
+                        :items="__('chapters')"
+                    />
                 @endforelse
             </x-table>
         </div>

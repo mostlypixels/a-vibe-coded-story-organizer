@@ -12,6 +12,13 @@ set belongs in its pull request description.
 
 ### Added
 
+- Friendly empty states on the index pages. The shared `x-table-empty` component now renders two
+  distinct messages instead of a single bare "no results" row: a genuinely empty collection shows
+  "No :items yet." with a primary button pointing at the create action, while a collection hidden by
+  an active search/filter shows "No :items match your search or filters." (the toolbar's *Clear*
+  link is the way back). Wired into the Codex (characters/locations/organizations) and the
+  events/acts/chapters/scenes indexes.
+
 - Hidden from crawlers: a global toggle to hide the whole site from search engines, delivered as
   a dynamic `/robots.txt` plus a `noindex, nofollow` meta tag on every public-facing layout. The
   policy is one application-wide `CrawlerSetting` singleton (global — owned by no `Project`, read

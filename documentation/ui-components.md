@@ -84,7 +84,25 @@ act / chapter / scene index pages. Four components work together:
   which shares the same cell styling and adds the sort link/arrow.
 - **`x-table-row`** — a body row. Pass `:striped="$loop->even"` for zebra striping; striped rows use
   `bg-gray-100` (a step darker than the plain `bg-white` rows).
-- **`x-table-empty`** — the full-width "no results" row for the `@empty` branch; pass `:colspan`.
+- **`x-table-empty`** — the full-width empty-state row for the `@empty` branch. It renders one of two
+  messages so an empty table never reads as a bare "no results" line:
+  - **genuinely empty** (`:filtered="false"`, the default) — friendly "No :items yet." copy plus, when
+    `:create-url` and `:create-label` are given, a primary button pointing at the create action;
+  - **hidden by a filter** (`:filtered="true"`) — a "No :items match your search or filters." line,
+    with no call-to-action (the toolbar's own *Clear* link is the way back).
+
+  | Prop           | Meaning                                                             | Default        |
+  |----------------|--------------------------------------------------------------------|----------------|
+  | `colspan`      | Cell span, matching the table's column count                       | `1`            |
+  | `filtered`     | Whether a search/filter is currently applied (`request()->hasAny([...])`) | `false` |
+  | `createUrl`    | `href` to the resource's create action (drives the empty-state CTA) | `null`        |
+  | `createLabel`  | Already-translated CTA text, e.g. `__('New Act')`                   | `null`         |
+  | `items`        | Already-translated plural noun for the copy, e.g. `__('acts')`      | `null`         |
+
+  > [!NOTE]
+  > Pass `items` already translated (`:items="__('events')"`); for the Codex it is the lowercased
+  > type label, `\Illuminate\Support\Str::lower($type->pluralLabel())`. A slot overrides the default
+  > empty headline if you need bespoke copy.
 
 ```blade
 <x-table>
@@ -94,13 +112,19 @@ act / chapter / scene index pages. Four components work together:
         <x-table-heading />
     </x-slot:head>
 
-    @forelse ($plotlines as $plotline)
+    @forelse ($acts as $act)
         <x-table-row :striped="$loop->even">
-            <td class="px-4 py-3 …">{{ $plotline->name }}</td>
+            <td class="px-4 py-3 …">{{ $act->name }}</td>
             …
         </x-table-row>
     @empty
-        <x-table-empty :colspan="3">{{ __('No plotlines match.') }}</x-table-empty>
+        <x-table-empty
+            :colspan="3"
+            :filtered="request()->filled('search')"
+            :create-url="route('projects.acts.create', $project)"
+            :create-label="__('New Act')"
+            :items="__('acts')"
+        />
     @endforelse
 </x-table>
 ```
