@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
+    // The welcome page renders <x-robots-meta>, which reads the crawler_settings
+    // singleton — so even this smoke test needs a migrated database.
+    use RefreshDatabase;
+
     /**
      * A basic test example.
      */

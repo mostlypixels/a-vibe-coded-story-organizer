@@ -26,8 +26,17 @@ before extending the feature.
 
 ## Deviations from the spec/plan
 
-_None yet._
+- **None material.** All five tasks implemented as specified (singleton + config,
+  dynamic `/robots.txt` + generator with the static file removed, `x-robots-meta`
+  on all four layouts, authenticated settings screen + nav, docs).
 
 ## Issues → resolutions
 
-_None yet._
+- **Stock `ExampleTest` 500'd after wiring the meta component into `welcome`.**
+  `<x-robots-meta>` reads `CrawlerSetting::current()`, which queries
+  `crawler_settings`. `tests/Feature/ExampleTest.php` (the Breeze smoke test that
+  hits `/`) did **not** `use RefreshDatabase`, so the table was absent and the page
+  threw "no such table: crawler_settings". **Resolution:** added
+  `use RefreshDatabase` to `ExampleTest` (with a comment explaining why). Lesson:
+  every public-facing layout now performs a DB read on render — any test that hits
+  a page needs a migrated database. Full suite green: **229 passed**.

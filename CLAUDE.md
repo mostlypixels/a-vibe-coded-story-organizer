@@ -63,6 +63,20 @@ resolve the model → authorize → delegate → return a response. Concretely, 
 * Mirror the same check in the Form Request's `authorize()` (`$this->user()->can('update', ...)`).
 * Never rely on route model binding or hidden form fields alone for access control.
 * Always cover the negative case in tests: a non-owner must get a 403.
+* **The one exception** is the global "hidden from crawlers" setting: `CrawlerSetting` is a
+  singleton owned by no `Project`, so it does *not* use `ProjectPolicy`'s walk — it is behind
+  `auth` and `UpdateCrawlerSettingRequest::authorize()` is simply `$this->user() !== null` (any
+  authenticated user). Do not "fix" this into a project walk.
+
+### Hidden from crawlers (feature note)
+
+Whole-site search-engine visibility is one global `CrawlerSetting` singleton (read via
+`CrawlerSetting::current()`, lazily seeded from `config/crawlers.php`, **default hidden**). A
+dynamic public `/robots.txt` route (`RobotsTxtController` + `RobotsTxtGenerator`, outside the
+`auth` group) renders it live — the **static `public/robots.txt` was removed** so the route is
+reached; do not re-add it. The `x-robots-meta` component is the single source of the
+`noindex, nofollow` tag, wired into `app`/`guest`/`welcome` (toggle-governed) and `public`
+(forced). See `documentation/architecture.md` → *Hidden from crawlers* for the full rationale.
 
 ## Testing
 
