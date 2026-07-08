@@ -1,52 +1,148 @@
-# CLAUDE.md
+## Guidelines for architecture and code style
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Those are preferences to be taken into account during planning and development, but they can be questioned if better architecture options seem better.
 
-## Guidelines & documentation
+This code will be used by junior developers.
 
-- **Coding guidelines:** [`.claude/guidelines.md`](.claude/guidelines.md) — architecture/style preferences, where logic lives, security, authorization, testing, and documentation rules. Read before planning or writing code.
-- **Project docs:** [`documentation/`](documentation/) — [architecture](documentation/architecture.md), [code style](documentation/code-style.md), [best practices](documentation/best-practices.md), and [glossary](documentation/glossary.md). Keep these in sync when architecture or workflows change.
-- **Changelog:** [`CHANGELOG.md`](CHANGELOG.md) — Keep a Changelog format; update the `[Unreleased]` section per feature/PR.
+### General
 
-## Commands
+* Follow Laravel conventions unless there is a compelling architectural reason not to.
+* Favor domain-driven design with small aggregates
+* Use SOLID principles and DRY principles
+* KISS principle
+* Favor reusable components and templates
+* Configuration should be kept in a single place. Avoid hard-coded values.
+* Avoid magic numbers and magic strings. Use constants, enums or value objects.
+* Favor composition over inheritance. Traits are a good alternative to inheritance.
 
-- Run full test suite: `composer test` (clears config cache, then `php artisan test`)
-- Run a single test file: `php artisan test tests/Feature/ProjectTest.php`
-- Run a single test by name: `php artisan test --filter=test_method_name`
-- Local dev (server + queue + logs + vite, all concurrently): `composer dev`
-- Build frontend assets: `npm run build`
-- Frontend dev server only: `npm run dev`
-- Lint/format PHP (Laravel Pint): `vendor/bin/pint`
+### Where logic lives
 
-## Architecture
+Keep controllers, Blade templates, and Eloquent models thin. A controller action should read as:
+resolve the model → authorize → delegate → return a response. Concretely, put each kind of logic here:
 
-This is a Laravel 12 app (Breeze auth scaffolding, Blade + Tailwind, Alpine.js, no SPA framework) for tracking a writing project's plotlines, timeline events, and manuscript structure (acts/chapters/scenes).
+* **Input validation** → Form Requests (`app/Http/Requests`). Reusable rules → `app/Rules`
+  (see `ValidMarkdown`). Validate enums with `Rule::enum(...)`.
+* **Authorization** → Policies (`app/Policies`). See the Authorization rules below.
+* **Reusable / multi-step domain workflows** → a dedicated Service or Action class. There is no
+  `app/Services` layer yet; create one the first time an action needs non-trivial, reusable logic
+  (for example, the position-swap logic currently duplicated in the Act/Chapter/Scene controllers is
+  a candidate to extract into a shared trait or service). Do not add abstraction before there is a
+  second caller — prefer a private controller method until reuse is real.
+* **Model lifecycle invariants** legitimately live in `booted()` hooks — e.g. auto-assigning
+  `position` on create, and auto-creating the main plotline. This is the intended exception to
+  "no logic in models": *invariants and lifecycle* belong in the model; *application workflow* does not.
+* **Constant/reference data** → `app/Support` (see `PlotlineColors`) or `app/Enums`.
 
-**Domain model:** `User` has many `Project`s. Each `Project` has many `Plotline`s, `Event`s, and `Act`s. `Event` and `Plotline` have a many-to-many relationship (an event can touch multiple plotlines). `Act` has many `Chapter`s, `Chapter` has many `Scene`s (a strict three-level manuscript hierarchy — no many-to-many). A `Scene` also links to `Event` two ways (see Scene↔Event links below). Ownership/authorization flows from `Project`: `ProjectPolicy` checks `user_id === $project->user_id`, and child-resource controllers (`PlotlineController`, `EventController`, `ActController`, `ChapterController`, `SceneController`) authorize via the parent project (e.g. `$this->authorize('update', $plotline->project)`, `$this->authorize('update', $chapter->act->project)`) rather than having their own policies.
+## Planning and architecture
 
-**Main plotline invariant:** every `Project` auto-creates a special `Plotline` (`is_main = true`, name "Main plotline") in a `booted()` model event hook when the project is created. This plotline cannot be deleted — `PlotlineController@destroy` calls `abort_if($plotline->is_main, 403)`. Any UI or logic touching plotline lists must account for this plotline being un-deletable (and it should generally stay first/pinned in listings).
+* Reuse existing project conventions before creating new ones.
+* Do not introduce new patterns unless they provide clear value.
+* If technical debt is introduced, explain why and document it.
+*  Prefer maintainability and readability over clever or highly abstract solutions.
 
-**Bookend events invariant:** the same `Project::booted()` `created` hook also auto-creates two fixed `Event`s — "Start" (`event_datetime` = first day of year 0001) and "End" (first day of year 3000) — both flagged `is_fixed = true` and attached to the main plotline. Like the main plotline they cannot be deleted — `EventController@destroy` calls `abort_if($event->is_fixed, 403)`, and the events index/edit views hide the delete affordance for `is_fixed` events (`@unless ($event->is_fixed)`). Their **`event_datetime` is editable but constrained**: the bookends are a **containment window** — every non-fixed event must satisfy `Start ≤ event_datetime ≤ End` (inclusive), and editing a bookend may not swallow an existing event (Start can't pass the earliest regular event nor reach End; End can't precede the latest regular event nor reach Start). One rule, `App\Rules\WithinEventWindow`, enforces this on **every event write path** — `StoreEventRequest`, `UpdateEventRequest` (it branches on the bookend being edited so Start/End bound only themselves), and the Scene inline `new_event_datetime` in both scene requests. This preserves the timeline anchor without freezing dates: because Start stays the earliest `is_fixed` event and `startEvent()`/`endEvent()` filter on `is_fixed` (regular events never compete), the attribute-timeline baseline keeps resolving to the same row. `Project::earliestRegularEvent()` / `latestRegularEvent()` supply the bounds (used by both the rule and the controller's `datetimeBounds()`, which passes `min`/`max` hints to the datetime inputs — server validation stays authoritative). Start is **year 0001** (not 0000) because Laravel's `date` rule calls `checkdate()`, which floors at year 1; on a MySQL migration the `DATETIME` floor of year 1000 would still need revisiting. **Seeding caveat:** because `DatabaseSeeder` runs with `WithoutModelEvents`, `MelusineSeeder` creates the Start/End events manually (via `firstOrCreate`), the same fallback pattern it uses for the main plotline.
+### Code style
 
-**Scene↔Event links:** a `Scene` connects to `Event` through two independent relationships. (1) **"Happens during"** — a nullable `scenes.event_id` FK (`Scene::event()` belongsTo / `Event::scenes()` hasMany). It is **optional**, enforced only at the FormRequest level as `nullable` (no schema NOT NULL). The FK uses `nullOnDelete`, so deleting an event automatically unassigns its scenes — `EventController@destroy` needs no extra logic for this. On the scene form the user picks an existing event or fills the inline "New event" fields (`new_event_title`/`new_event_datetime`); `SceneController::resolveHappensDuringEvent` creates that event and attaches it to the project's **Main plotline** (bypassing the usual plotline picker). (2) **"Mentions"** — an `event_scene` many-to-many pivot (`Scene::mentionedEvents()` / `Event::mentioningScenes()`), optional, `sync()`ed from `mentioned_events[]`. The scene form uses the reusable `x-event-picker` component (`resources/views/components/event-picker.blade.php`): a searchable chip input that embeds all project events as JSON and filters them client-side with Alpine (submits hidden `mentioned_events[]` inputs — controller/validation unchanged; a server-side search would be the next step only at thousands of events). Pivot rows drop via `cascadeOnDelete`. Scenes with no "happens during" event are flagged with a **red border** in the scenes index (`x-table` row) and the Story overview. **Seeding caveat:** `event_id` is nullable, so `MelusineSeeder` (which runs with `WithoutModelEvents`) may leave scenes unassigned; set it explicitly if seeded scenes should be linked.
+* Use laravel code style conventions.
 
-**Act/Chapter/Scene ordering:** each of `Act`, `Chapter`, `Scene` has a `position` integer, auto-assigned (`max(position) + 1`, scoped to the parent — project for acts, act for chapters, chapter for scenes) via a `creating` model event hook in `booted()`. Titles are freeform and should not encode the number (e.g. no "Act 1" in the name) — the position is the number, rendered separately in a `#` column. Reordering happens via `moveUp`/`moveDown` controller actions that swap `position` with the adjacent sibling, exposed as `PATCH /acts/{act}/move-up` etc. (see Routing below); there's no drag-and-drop. Index views only show the move buttons when the list is genuinely ordered by position for a single parent — for chapters/scenes that means filtered to one act/chapter, since position numbering restarts per-parent and a flat "all acts" list interleaves independent sequences. **Seeding caveat:** `DatabaseSeeder` uses `WithoutModelEvents`, which suppresses the `creating` hook, so `MelusineSeeder` must set `position` explicitly when creating acts/chapters/scenes (same reason it has a manual fallback for main-plotline creation).
+## Security and validation of user input
 
-**Routing:** nested resource routes use Laravel's shallow nesting (`Route::resource('projects.plotlines', ...)->shallow()`, same for `projects.events`, `projects.acts`, `projects.chapters`, `projects.scenes`). This means `index`/`create`/`store` are nested under `/projects/{project}/...` but `edit`/`update`/`destroy` are flat (`/plotlines/{plotline}`, `/events/{event}`, `/acts/{act}`, `/chapters/{chapter}`, `/scenes/{scene}`) since the child model alone is enough to resolve the route. Acts/chapters/scenes additionally have flat `PATCH .../move-up` and `.../move-down` routes (`acts.move-up`, `chapters.move-down`, etc.) defined alongside their resource routes. All routes require `auth` middleware.
+* Never trust user input.
+* Escape output unless intentionally rendering trusted HTML.
+* Validate input as early as possible, both on the front-end and the back-end.
+* Validate all user input against business rules.
+* Infer the proper validation rules from the database schema and/or field names.
+* Avoid duplicated validation rules. Centralize them.
+* Always use Laravel's Query Builder or Eloquent parameter binding. Avoid string concatenation in SQL queries.
+* Validate uploaded files.
 
-**Plotline colors:** `App\Support\PlotlineColors::PRESETS` is the fixed palette (500/700 shades of 16 Tailwind color families) used by the `x-color-picker` component; new plotlines default to `PRESETS[0]`.
+### Authorization
 
-**Story overview:** `StoryController@index` (`GET /projects/{project}/story`, route `projects.story.index`) is a read-only view combining the full act/chapter/scene tree into one page — chapters render as `<article>`, scenes as `<section>`, and `Scene::contents` is rendered as Markdown via `Illuminate\Support\Str::markdown()` (backed by `league/commonmark`, present in `composer.lock` as a transitive dependency of `laravel/framework` — not in `composer.json`'s own `require`, so don't assume it survives a dependency prune without checking). It's the first item in the "Story" nav dropdown, above Acts/Chapters/Scenes, and includes a collapsible table of contents (acts + chapters only, anchor-linked) above the rendered content.
+* Every controller action that reads or writes a resource must authorize it. Authorization flows from
+  the owning `Project` via `ProjectPolicy` (`view` / `update` / `delete`); child resources authorize by
+  walking up to their project (e.g. `$this->authorize('update', $scene->chapter->act->project)`).
+* Mirror the same check in the Form Request's `authorize()` (`$this->user()->can('update', ...)`).
+* Never rely on route model binding or hidden form fields alone for access control.
+* Always cover the negative case in tests: a non-owner must get a 403.
+* **The one exception** is the global "hidden from crawlers" setting: `CrawlerSetting` is a
+  singleton owned by no `Project`, so it does *not* use `ProjectPolicy`'s walk — it is behind
+  `auth` and `UpdateCrawlerSettingRequest::authorize()` is simply `$this->user() !== null` (any
+  authenticated user). Do not "fix" this into a project walk.
 
-**Views:** Blade components live in `resources/views/components/` and are the reuse layer for list/table rows (e.g. `x-icon-edit-link`, `x-icon-delete-button`, `x-icon-move-up-button`, `x-icon-move-down-button`, `x-sortable-header`, `x-color-picker`). The index tables (plotlines/events/acts/chapters/scenes) share an `x-table` family — `x-table` (card + `<table>` + `head` slot), `x-table-heading` (non-sortable header cell, paired with `x-sortable-header`), `x-table-row` (striped body row via `:striped="$loop->even"`), and `x-table-empty` (no-results row via `:colspan`); the stripe/header colors live in those components, not the views. Index views for plotlines/events/acts/chapters/scenes support query-string sort (`sort`, `direction`) and search/filter (`search`, `plotline`/`act`/`chapter`) handled entirely in the controller's `index` method, not via query scopes on the model. Acts/chapters/scenes default-sort by `position` rather than `name`.
+### Hidden from crawlers (feature note)
 
-**Codex:** a project-scoped reference aggregate for the story's **characters, locations, and organizations** — all three in a single `codex_entries` table keyed by a `type` column cast to the `CodexEntryType` enum (`Character`/`Location`/`Organization`). One `CodexEntryController` serves all three; the type rides as a `{type}` **route segment** (`characters`/`locations`/`organizations`, resolved via `CodexEntryType::fromRouteKey()`). The nested routes sit in a `Route::whereIn('type', CodexEntryType::routeKeys())->group(...)` so an unknown `{type}` 404s before the controller — the constraint (and the nav links, and `fromRouteKey`) are all **derived from `CodexEntryType`**, no hardcoded `characters|locations|organizations` string lists anywhere. Nesting mirrors the shallow convention: `index`/`create`/`store` are nested under `/projects/{project}/codex/{type}`, while `edit`/`update`/`destroy` are flat (`/codex/{codexEntry}`). Authorization is the usual walk up to `Project` via `ProjectPolicy` (`$entry->project`, `$attribute->project`, `$value->entry->project`) — **no new policies**; the nav's `$project` resolver chain also derives from a bound `codexEntry` so the menu renders on codex edit pages. An entry has **aliases** (`codex_aliases`), flat **tags** (`tags` + `codex_entry_tag`, `firstOrCreate`d per project like `SceneController::resolveHappensDuringEvent`), and **media** (`codex_media`). There is deliberately **no `cover_media_id` column** — the cover is the single `codex_media` row with `collection = Cover`, exposed via a `CodexEntry::cover()` hasOne (single source of truth, avoids a circular FK). Media file cleanup happens in `CodexEntry`'s `deleting` hook via `CodexMediaService::purge` *before* the FK cascade (cascade drops rows but never the files on disk). The same must hold on **project and account deletion**: those cascade `project → codex_entries → codex_media` at the DB level and bypass `CodexEntry`'s hook, so `Project` has its own `deleting` hook calling `CodexMediaService::purgeProject`, and `User`'s `deleting` hook Eloquent-deletes its projects (`$user->projects->each->delete()`) so the `Project` hook fires per project — `purgeProject` is the single purge trigger. In the entry save flow (`CodexEntryController@store`/`update`) **disk I/O runs post-commit, not inside `DB::transaction`**: the transaction does DB-only work and returns the paths of removed media rows; after it commits, `CodexMediaService::deleteFiles` removes those files and `storeMediaUploads` writes the new ones (per-file: a failed row insert unlinks its just-written file). A post-commit upload failure yields a saved entry with fewer media plus a 500 — strictly better than a rolled-back edit with corrupted disk state.
+Whole-site search-engine visibility is one global `CrawlerSetting` singleton (read via
+`CrawlerSetting::current()`, lazily seeded from `config/crawlers.php`, **default hidden**). A
+dynamic public `/robots.txt` route (`RobotsTxtController` + `RobotsTxtGenerator`, outside the
+`auth` group) renders it live — the **static `public/robots.txt` was removed** so the route is
+reached; do not re-add it. The `x-robots-meta` component is the single source of the
+`noindex, nofollow` tag, wired into `app`/`guest`/`welcome` (toggle-governed) and `public`
+(forced). See `documentation/architecture.md` → *Hidden from crawlers* for the full rationale.
 
-**Codex attributes (temporal step function):** an attribute *definition* (`codex_attributes`: e.g. "Hair color") carries an `applies_to` JSON array of `CodexEntryType` values deciding which sheets show it. Its *values* (`codex_attribute_values`) are a **start-anchored step function**: each row means "from this event onward, the value is X" — no stored end event, so periods tile the timeline gap-free and deleting a middle anchor just lets the previous value extend (hence `start_event_id` can `cascadeOnDelete`). All resolution/mutation lives in **`App\Services\AttributeTimeline`** (the project's first `app/Services` class), never in the controller or a `booted()` hook. "The project's Start/End event" resolves through **`Project::startEvent()` / `Project::endEvent()`** — the single definition of the bookends (the earliest/latest `is_fixed` event, ordered canonically by `(event_datetime, id)`); `AttributeTimeline` and the controller delegate to it rather than re-querying. **Invariant:** every valued (entry, attribute) pair has exactly one value anchored at the project's **Start** event (`ensureBaseline`), so `valueAt` is total for `t ≥ Start`; the Start/End `is_fixed` events are undeletable, and although their datetime is now **editable**, `WithinEventWindow` keeps Start the earliest `is_fixed` event (nothing may sort before it), so the anchor can be neither orphaned nor re-ordered. Anchors order canonically by `(event_datetime, events.id)` — never datetime alone; resolving *at an Event* lets an anchor-identity match win first. The store endpoint is an **upsert** (`upsertAt`/`updateOrCreate`) that **enforces the baseline itself**: `upsertAt` calls `ensureBaseline()` whenever the anchor isn't Start, so adding a mid-timeline period to a never-valued pair can't open a leading hole — the gap-free invariant holds on every write path, not just entry create. There is **no update route** for values; editing a period re-posts the store route with the row's anchor, and the Form Request has **no `Rule::unique`** (the DB unique on `(entry, attribute, start_event)` is a backstop). The `value` rule is `['present', 'nullable', 'string', 'max:255']` — `present` (not `required`) so an empty value is a first-class "recorded as blank" (an empty baseline stays savable, a value can be cleared back to blank); `nullable` because the global `ConvertEmptyStringsToNull` middleware turns a blank input's `""` into `null`, which the controller casts back with `(string)` before `upsertAt` (its signature is `string $value`). The timeline editor renders errors under `value`/`start_event_id` and preserves `old()`; `removeAt` refusing to drop the Start baseline while siblings exist surfaces as a `403` (`abort_if`), not a `RuntimeException`. Scene/event "as of" panels resolve through `CodexEntry::attributeValueAt($attribute, $event)`. **Seeding caveat:** like plotlines/positions, `DatabaseSeeder` runs `WithoutModelEvents`, so `MelusineSeeder` sets `position` explicitly on `codex_attributes` and seeds temporal values by calling `AttributeTimeline::ensureBaseline`/`upsertAt` **directly** (it seeds the hair-color story end to end). The seeder does **not** seed `codex_media` (binary assets) — uploads are exercised in the browser.
+## Testing
 
-**Rich text / WYSIWYG:** most free-text fields are **rich HTML** — `Project`/`Act`/`Chapter`/`Plotline`/`Event`/`CodexEntry` `description`, plus `Scene.description` and `Scene.notes`. The one carve-out is **`Scene.contents`, whose stored value stays Markdown** (`ValidMarkdown` + `Str::markdown()` on the Story overview — never routed through the sanitizer); it's still edited in the WYSIWYG, but in **`markdown` mode** (serializes to CommonMark, not HTML — see Editor below). The field taxonomy **and** the sanitizer allow-list have one source of truth: `App\Support\RichTextFields` (no magic-string field lists scattered across views/requests). **Security model:** editor output is untrusted; every rich field is cleaned by `App\Services\HtmlSanitizer` (HTMLPurifier, strict allow-list — `p, h1–h4, strong, em, u, s, ul, ol, li, blockquote, code, pre, a[href http/https], br, hr`; no `<script>`/`<iframe>`/`<img>`/`style`) **on write** via per-field set-mutators in `App\Models\Concerns\SanitizesRichHtml` (a mutator, not a `booted()` hook, so it runs even under `WithoutModelEvents` — the DB never holds unsafe HTML). `App\Rules\SanitizeHtml` guards the Form Requests (mirrors `ValidMarkdown`). **Rendering rule:** rich HTML is echoed with `{!! !!}` **only** through `x-rich-text` (on already-sanitized data); index/list cells use the escaped, tag-stripped `x-rich-text-excerpt`. **Editor:** `x-wysiwyg` (`resources/views/components/wysiwyg.blade.php`, props name/id/value/rows/minHeight/placeholder/disabled/**markdown**) is progressive enhancement over a real `<textarea>` (JS-off submit works, `old()` repopulates); the editor is **Tiptap** (StarterKit v3), integrated only behind `resources/js/wysiwyg.js` (registered in `resources/js/app.js`, placeholder + slash-menu CSS in `resources/css/app.css`) so the library is swappable without touching a view. **Two modes:** default **HTML** (`getHTML()`, all rich fields) and **`markdown`** (the `markdown` prop; `Scene.contents` only — `@tiptap/markdown` hydrates via `contentType:'markdown'` and serializes with `getMarkdown()`; Underline/Strike disabled since they don't round-trip to clean CommonMark). **UI: an always-visible toolbar plus a Notion-style `/` slash menu** — the slash menu reuses `@tiptap/suggestion` (already installed) and its bundled `@floating-ui/dom` for positioning, **no extra dependency**, and every slash item invokes the same StarterKit command the toolbar does (so no new node/mark surface). StarterKit is configured to keep editor output ⊆ the allow-list. **Image upload is deferred to v2** — no upload endpoint, no `project_media` table, no `<img>`; orphaned-image GC is therefore N/A. Full detail: [`documentation/rich-text.md`](documentation/rich-text.md).
+* Every new endpoint, controller action, and bug fix ships with a feature test. A bug fix adds a test
+  that fails before the fix.
+* Follow the existing style (`tests/Feature/ProjectTest.php`): plain PHPUnit, `use RefreshDatabase`,
+  model factories, `actingAs($user)`, and the `route()` helper — never raw URLs.
+* Cover, at minimum: the happy path, authorization (owner succeeds, non-owner gets 403), validation
+  failures (`assertSessionHasErrors`), and any domain invariant touched (e.g. `position` assignment,
+  the un-deletable main plotline).
+* Tests run against in-memory SQLite; run the suite with `composer test`.
+* Known coverage gap to fill as these areas are touched: there are no feature tests yet for Scenes,
+  Acts, Chapters, or the Story overview — add `SceneTest` / `ActTest` / `ChapterTest` / `StoryTest`
+  when you work in them.
 
-## Testing notes
+### Documentation
 
-- Tests run against an in-memory SQLite DB (`tests/TestCase.php` + `phpunit.xml`), so migrations run fresh per test run.
-- `tests/Feature/ProjectTest.php` is the only feature test covering the project/plotline/event domain; there are currently no dedicated `PlotlineTest`/`EventTest`/`ActTest`/`ChapterTest`/`SceneTest` files even though those controllers exist — check there before assuming coverage exists.
+The code must be understandable by junior developers — the code, the architecture, the pitfalls to
+avoid, and the best practices to follow.
+
+* Comment the code. Complex methods should explain the logic and intent, not just restate the code.
+* Maintain a `documentation/` folder of **GitHub-flavored Markdown** files, at least:
+    * `best-practices.md`
+    * `code-style.md`
+    * `architecture.md`
+    * `glossary.md` — higher-level concepts and design patterns
+    * add pages as needed.
+* In `documentation/`: explain *why*, not only *what*, and include examples for complex concepts.
+  Use GFM alert callouts for emphasis, e.g. `> [!WARNING]` for pitfalls and `> [!NOTE]` for tips
+  (these render in color on GitHub and in the IDE; inline HTML `style=` is stripped by GitHub, so
+  prefer callouts).
+* Update documentation whenever architecture or workflows change; keep it synchronized with the code.
+
+#### Changelog
+
+* Every commit message body explains *why* the change was made and the intent behind it — this is the
+  per-commit record (git already links, blames, and diffs it; no separate per-commit files).
+* Maintain a single `CHANGELOG.md` at the repo root in [Keep a Changelog](https://keepachangelog.com)
+  format: group entries under `## [Unreleased]` by `Added` / `Changed` / `Fixed` / `Removed`. Update it
+  per feature or pull request (not per commit). Richer rationale for a change set belongs in the PR
+  description, which links its commits automatically.
+
+
+### Naming conventions
+
+* Variable, methods and class names should be descriptive and meaningful
+* Avoid abbreviations
+
+### Database
+
+* Add indexes deliberately based on query patterns.
+* Keep database queries readable.
+* Avoid raw SQL unless necessary.
+* Use database transactions for multi-step write operations, unless working on a database type that does not support transactions.
+* Eager-load the relations a view renders (`->with(...)`) to avoid N+1 queries — especially the nested
+  act → chapter → scene tree on the Story overview.
+* Keep index-page filtering, sorting, and search in the controller's `index` method (the existing
+  convention), not in Eloquent query scopes.
+
+### Tailwind
+
+* Create components for reusable parts of the UI, including buttons, titles, cards, tables, etc.
+* Reuse existing Tailwind components before creating new ones.
+
+### Frontend
+
+* Keep presentation logic out of Blade templates.
+* Prefer semantic HTML.
+* Ensure keyboard accessibility.

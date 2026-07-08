@@ -12,6 +12,18 @@ set belongs in its pull request description.
 
 ### Added
 
+- Hidden from crawlers: a global toggle to hide the whole site from search engines, delivered as
+  a dynamic `/robots.txt` plus a `noindex, nofollow` meta tag on every public-facing layout. The
+  policy is one application-wide `CrawlerSetting` singleton (global — owned by no `Project`, read
+  via `CrawlerSetting::current()`, lazily seeded from `config/crawlers.php`, default **hidden**).
+  `RobotsTxtGenerator` builds robots.txt from the setting: when hidden it emits one allow-group
+  per whitelisted crawler (a user-agent whitelist, one term per line, validated line-safe) then a
+  catch-all `Disallow: /`; when off it allows everyone. The `x-robots-meta` component is the single
+  source of the meta string, wired into `app`/`guest`/`welcome` (toggle-governed) and `public`
+  (forced — shared scenes stay hidden regardless). An authenticated settings screen
+  (`/settings/crawlers`, "Site settings" in the nav) edits the toggle and whitelist; it is the one
+  deliberate departure from project-scoped authorization — any authenticated user may edit the
+  global setting (no `is_admin` role).
 - Scene sharing (foundation): two nullable columns on `scenes` — `share_token` (unique, stored
   raw) and `share_expires_at` — backing one revocable public share link per scene. `Scene` gains
   a `share_expires_at` datetime cast and two helpers: `isShared()` (token set **and** expiry in

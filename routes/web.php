@@ -6,11 +6,13 @@ use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\CodexAttributeController;
 use App\Http\Controllers\CodexAttributeValueController;
 use App\Http\Controllers\CodexEntryController;
+use App\Http\Controllers\CrawlerSettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SceneShareController;
 use App\Http\Controllers\SharedSceneController;
@@ -29,6 +31,12 @@ Route::get('/', function () {
 Route::get('/shared/scenes/{token}', [SharedSceneController::class, 'show'])
     ->name('shared.scenes.show');
 
+// PUBLIC dynamic robots.txt — rendered live from the crawler settings singleton.
+// Deliberately OUTSIDE the auth group (crawlers are anonymous). The static
+// public/robots.txt was removed so this route is reached — a physical file in
+// public/ shadows the route under `artisan serve` and nginx `try_files`.
+Route::get('/robots.txt', RobotsTxtController::class)->name('robots.txt');
+
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
@@ -37,6 +45,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Global crawler policy (robots.txt + noindex). Any authenticated user may
+    // edit it — it is a singleton owned by no Project, the one deliberate
+    // departure from the project-scoped authorization convention.
+    Route::get('/settings/crawlers', [CrawlerSettingController::class, 'edit'])->name('crawler-settings.edit');
+    Route::patch('/settings/crawlers', [CrawlerSettingController::class, 'update'])->name('crawler-settings.update');
 
     Route::resource('projects', ProjectController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');

@@ -127,8 +127,54 @@ the project" and "every route is authenticated":
 > **`scene.notes` is private.** The public page renders only `name`, `description` (collapsed
 > card, via `x-rich-text`) and `contents` (`Str::markdown()`). It **never** renders `notes`,
 > the status, or the event/plotline links; a test asserts `notes` never appears in the HTML.
-> The page uses a dedicated no-nav `<x-public-layout>` whose `<head>` carries
-> `<meta name="robots" content="noindex, nofollow">` so forwarded links stay unindexed.
+> The page uses a dedicated no-nav `<x-public-layout>` whose `<head>` carries the
+> `<x-robots-meta :force="true" />` component (see *Hidden from crawlers* below) so forwarded
+> links stay unindexed regardless of the global toggle.
+
+## Hidden from crawlers (robots.txt + noindex)
+
+The whole site can be hidden from search engines through a single global toggle, plus a
+whitelist of crawlers that stay allowed while hidden. It is **advisory only** (robots.txt +
+`noindex` meta tags) — there is no request-layer bot blocking, firewall, or UA denylist.
+
+**The singleton.** `CrawlerSetting` is one application-wide row (one website → one robots
+policy). It has **no owning `Project` or `User`** — it is global. Always read it through
+`CrawlerSetting::current()`, which lazily creates the row from `config('crawlers.default_enabled')`
+on first read, so a fresh install with no row still behaves as **hidden** (the safe default).
+Never `new` a second row. `current()` is deliberately **not memoised** — the value can change
+within a request (settings update then robots fetch) and the single-row query is trivial.
+
+> [!NOTE]
+> The "default hidden" value lives in **two** places by design: the `crawler_settings.enabled`
+> column default and `config('crawlers.default_enabled')`. The config value is the documented
+> source of truth (seeds the lazy-create path); the column default is a backstop for direct
+> inserts. Keep the two equal.
+
+**Dynamic `/robots.txt`.** A public route (`RobotsTxtController`, outside the `auth` group,
+next to `shared.scenes.show`) renders robots.txt live from the settings via
+`RobotsTxtGenerator`. When hidden it emits one `User-agent: <term>` allow-group per whitelisted
+crawler, then a catch-all `User-agent: *` / `Disallow: /` block — exploiting that a compliant
+crawler obeys only its most specific matching group. When not hidden it allows everyone.
+
+> [!WARNING]
+> **The static `public/robots.txt` was removed** so the dynamic route is reached. A physical
+> file in `public/` shadows the route under `php artisan serve` and typical nginx `try_files`.
+> Do not re-add a static `robots.txt`. Whitelist terms are validated line-safe (no CR/LF, `:`,
+> or `#`) on the write path — that regex is the single guard the generator trusts, so it does
+> no escaping of its own.
+
+**The `x-robots-meta` component.** `resources/views/components/robots-meta.blade.php` emits
+`<meta name="robots" content="noindex, nofollow">` when the site is hidden (or when `:force`
+is set). It is the single source of that string, wired into the `<head>` of `layouts/app`,
+`layouts/guest`, `welcome` (all toggle-governed) and `layouts/public` (`:force="true"` — shared
+scenes stay hidden regardless of the global toggle).
+
+> [!WARNING]
+> **Authorization exception.** `CrawlerSetting` is the one setting **not** owned by a `Project`,
+> so it does **not** use `ProjectPolicy`'s walk. The settings screen sits behind `auth`, and
+> `UpdateCrawlerSettingRequest::authorize()` returns `$this->user() !== null` — **any**
+> authenticated user may edit it. This is deliberate (no `is_admin` role); do not "fix" it into
+> a project walk.
 
 ## Enum convention
 

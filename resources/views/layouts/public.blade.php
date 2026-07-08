@@ -5,8 +5,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         {{-- Shared links are private-by-link: keep them out of search engines
-             even if the URL is forwarded or posted somewhere public. --}}
-        <meta name="robots" content="noindex, nofollow">
+             even if the URL is forwarded or posted somewhere public. Forced on
+             regardless of the global crawler toggle. --}}
+        <x-robots-meta :force="true" />
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
