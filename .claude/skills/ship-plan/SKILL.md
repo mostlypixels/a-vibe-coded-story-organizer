@@ -1,23 +1,25 @@
 ---
 name: ship-plan
-description: Drive a feature's .specs/<name>/plan/ task-by-task through the plan-implementer agent until every task is implemented, then offer to branch and commit. Use when asked to "ship", "run", or "finish" a feature's plan, or to implement all remaining plan tasks for a named feature.
+description: Drive a feature's .specs/planned/<name>/plan/ task-by-task through the plan-implementer agent until every task is implemented, move the folder to .specs/shipped/, then offer to branch and commit. Use when asked to "ship", "run", or "finish" a feature's plan, or to implement all remaining plan tasks for a named feature.
 ---
 
 # ship-plan
 
-Automate running an entire feature plan (`.specs/<name>/plan/`) to completion, one
+Automate running an entire feature plan (`.specs/planned/<name>/plan/`) to completion, one
 task at a time, instead of launching the implementer agent by hand for each task.
 
 ## Argument
 
-A single argument: the feature name — the folder under `.specs/` whose `plan/`
-subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/plan/`.
+A single argument: the feature name. Locate the feature folder with the glob
+`.specs/*/<name>/` — a planned feature sits at `.specs/planned/<name>/` — and use its
+`plan/` subfolder. Example: `/ship-plan codex` → `.specs/planned/codex/plan/`. Below,
+**`<dir>`** means the matched feature folder.
 
 ## Steps
 
-1. **Validate.** Confirm `.specs/<name>/plan/00-overview.md` exists. If the `plan/`
-   folder doesn't exist at all, tell the user to run `/plan-tasks <name>` first (it
-   generates this folder from an expanded spec) and stop.
+1. **Validate.** Locate `<dir>` via `.specs/*/<name>/` and confirm `<dir>/plan/00-overview.md`
+   exists. If no folder matches or it has no `plan/`, tell the user to run
+   `/plan-tasks <name>` first (it generates this folder from an expanded spec) and stop.
 
 2. **List remaining tasks.** `NN-*.md` files directly under `plan/` (excluding
    `00-overview.md`), sorted numerically, that are not already present under
@@ -26,7 +28,7 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
 
 3. **Light re-grill — only if the plan drifted.** The plan was already grilled at
    `plan-tasks` time, so **do not** repeat that interview. Instead do a quick drift
-   check: skim `.specs/<name>/plan/` against `.specs/<name>/expanded/` and the
+   check: skim `<dir>/plan/` against `<dir>/expanded/` and the
    **Feedback & decisions** already in `resolution-log.md`, asking one question — has
    anything material shifted since the plan was grilled? (a task added / dropped /
    reordered, a binding decision reversed, or a fresh open question the implementer will
@@ -58,7 +60,7 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
    plugin, stale hot file, a reactive-proxy'd editor) routinely pass PHPUnit; see the
    feature's `resolution-log.md`.
 
-6. **Consolidate the resolution log.** Ensure `.specs/<name>/resolution-log.md` exists
+6. **Consolidate the resolution log.** Ensure `<dir>/resolution-log.md` exists
    and captures the run's **deviations**, **issues → resolutions**, and
    **feedback/decisions** (the `plan-implementer` agent appends per task; fold in any
    feedback the *user* gave you during the loop, and any issue found in the final pass).
@@ -68,12 +70,14 @@ subfolder holds the task files. Example: `/ship-plan codex` → `.specs/codex/pl
    surface was verified, and the deviations/issues the agents logged along the way (point
    at `resolution-log.md`).
 
-8. **Stamp the source spec as shipped.** In `.specs/<name>/spec.md`'s YAML frontmatter set
-   `status: shipped` and `shipped: <YYYY-MM-DD>` (lifecycle: `draft` → `expanded` →
-   `planned` → `shipped`). Do this before asking about the commit, so the stamp rides
-   in the implementation commit — the spec's git history then points at the commit that
-   shipped it, no hash field needed. Only add a `commit: <short-hash>` line when the
-   stamp is made *after* the implementation commit already exists (e.g. stamping
+8. **Stamp the source spec as shipped and move the folder.** In `<dir>/spec.md`'s YAML
+   frontmatter set `status: shipped` and `shipped: <YYYY-MM-DD>` (lifecycle: `draft` →
+   `expanded` → `planned` → `shipped`), then move the whole feature folder to
+   `.specs/shipped/<name>/` so its location matches the stamp (use `git mv`; create
+   `.specs/shipped/` if absent). Do both before asking about the commit, so the stamp and
+   the move ride in the implementation commit — the spec's git history then points at the
+   commit that shipped it, no hash field needed. Only add a `commit: <short-hash>` line
+   when the stamp is made *after* the implementation commit already exists (e.g. stamping
    retroactively), where the history link is lost.
 
 9. **Ask before branching/committing.** Do not create a branch or commit automatically.

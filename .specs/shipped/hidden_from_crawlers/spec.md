@@ -1,5 +1,7 @@
 ---
-status: planned
+status: shipped
+shipped: 2026-07-08
+commit: 4d7245c
 ---
 
 # Hidden from crawlers

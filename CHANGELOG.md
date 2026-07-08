@@ -137,6 +137,14 @@ set belongs in its pull request description.
 
 ### Changed
 
+- Developer tooling: `.specs/` is now organised by lifecycle status — each feature folder lives
+  under `.specs/<status>/<name>/` (`draft` / `expanded` / `planned` / `shipped`) and moves between
+  those subfolders as it advances. The pipeline skills (`mp-spec-expander`, `plan-tasks`,
+  `ship-plan`) and the `plan-implementer` agent locate a feature by name via the glob
+  `.specs/*/<name>/`, and each stage now moves the folder in the same step it stamps the new
+  `status:` frontmatter. `tests/Unit/SpecsStatusConsistencyTest` reconciles the two representations,
+  failing `composer test` if a `spec.md` `status:` disagrees with its status folder (this caught the
+  `hidden_from_crawlers` spec, which had shipped but was still stamped `planned`).
 - Bookend **Start / End** event datetimes are now **editable** (previously frozen). In their
   place the bookends form a **containment window**: every non-fixed event must satisfy
   `Start ≤ event_datetime ≤ End` (inclusive), and a bookend edit may not swallow an existing
