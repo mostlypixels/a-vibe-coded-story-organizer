@@ -12,6 +12,13 @@ set belongs in its pull request description.
 
 ### Added
 
+- Dedicated feature tests for `PlotlineController` and `EventController` (`PlotlineTest`,
+  `EventTest`), previously only covered indirectly through `ProjectTest`. Each covers the full
+  CRUD surface, project authorization (owner succeeds, non-owner gets 403 on read and every write
+  path), and the domain invariants: the `is_main` plotline and the `is_fixed` Start/End bookend
+  events are un-deletable (403), and `WithinEventWindow` is enforced on both the event store and
+  update paths.
+
 - Hidden from crawlers: a global toggle to hide the whole site from search engines, delivered as
   a dynamic `/robots.txt` plus a `noindex, nofollow` meta tag on every public-facing layout. The
   policy is one application-wide `CrawlerSetting` singleton (global — owned by no `Project`, read
@@ -137,6 +144,10 @@ set belongs in its pull request description.
 
 ### Changed
 
+- `ProjectTest` was trimmed to project-scoped concerns (dashboard, project CRUD/authorization,
+  and the project-creation invariants that seed the main plotline and the Start/End bookends). Its
+  plotline- and event-controller cases moved to the new dedicated `PlotlineTest` / `EventTest`, so
+  each controller's coverage now lives in one place rather than being duplicated.
 - Developer tooling: `.specs/` is now organised by lifecycle status — each feature folder lives
   under `.specs/<status>/<name>/` (`draft` / `expanded` / `planned` / `shipped`) and moves between
   those subfolders as it advances. The pipeline skills (`mp-spec-expander`, `plan-tasks`,
