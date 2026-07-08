@@ -19,7 +19,7 @@ use RuntimeException;
  * A period is implicit: it runs from its start event until the next anchor (or the
  * project's End). We deliberately do not store an end event, so the periods tile the
  * timeline with no holes or overlaps by construction. See
- * .specs/codex/expanded/attribute-timeline.md for the full rationale.
+ * .specs/shipped/codex/expanded/attribute-timeline.md for the full rationale.
  *
  * This is the project's first app/Services class: the resolution logic is non-trivial,
  * reusable (model helpers, controllers in later tasks, the seeder) and must stay outside
