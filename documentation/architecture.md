@@ -345,6 +345,31 @@ rule are all covered in **[`documentation/rich-text.md`](rich-text.md)**.
 > Markdown-only (`ValidMarkdown` + `Str::markdown()`), never routed through the sanitizer or the
 > editor.
 
+## Navigation active state
+
+The primary nav (`resources/views/layouts/navigation.blade.php`) highlights the section matching
+the current route in **both** menus: the desktop dropdowns (Timeline / Codex / Story) — their items
+and their collapsed trigger buttons — and the responsive (mobile) menu.
+
+- **The component.** `x-dropdown-link` mirrors `x-nav-link` / `x-responsive-nav-link`: pass
+  `:active` to get the light-panel highlight (`bg-aqua-50 text-navy-900 font-semibold`) plus
+  `aria-current="page"` on the `<a>`. The prop defaults to `false`, so existing menus that don't
+  pass it (the Settings dropdown) are visually unchanged. Active state is never colour-only — the
+  `aria-current` is what tests assert on.
+- **One source of truth for matching.** All the route-match booleans (`$storyActive`,
+  `$plotlinesActive`, `$codexActive`, …) live in a single `@php` block at the top of the
+  `@if ($project = …)` guard, and are reused by the desktop triggers, the desktop dropdown items,
+  **and** the responsive menu. A trigger is active when any of its child booleans is (using
+  `x-nav-link`'s look, `text-white border-flame-500`). Per-codex-type highlighting is enum-aware and
+  computed inline in the `CodexEntryType::cases()` loop. There is deliberately **no** `Nav` support
+  class or view composer — that would be new architecture for a pure styling tweak.
+
+> [!NOTE]
+> When you add a new nav section, add its matcher to that `@php` block (the desktop and responsive
+> copies stay identical) and reference the named boolean — do **not** scatter fresh inline
+> `request()->routeIs(...)` calls through the template. Reuse the exact `routeIs(...)` globs the
+> menu already uses so exactly one section is active at a time.
+
 ## Where things live
 
 | Concern | Location |
