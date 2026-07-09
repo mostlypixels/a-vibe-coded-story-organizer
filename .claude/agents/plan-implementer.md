@@ -56,6 +56,17 @@ yourself, every time:
 - Write the tests the task file lists, matching this project's existing test style.
   Cover the authorization/ownership edge case if the feature has one, matching how
   sibling resources in this codebase test it.
+- **Give state-toggling UI a stable test hook instead of asserting on cosmetic classes.**
+  When a task adds active/selected/toggled state to an element that has no semantic
+  attribute to assert on — e.g. a `<button>` whose only signal is a swapped Tailwind
+  class — add a real hook (`aria-current`, `aria-pressed`, `aria-selected`, or a
+  `data-active` attribute) and assert on *that*. Asserting on class-token substrings
+  (`assertSee('text-white border-flame-500')`) is brittle: the tokens aren't unique to
+  one element, so a later task testing a *second* instance of the same pattern can't tell
+  which one is active and has to rework the earlier task's assertions. Add the hook in the
+  **first** task that introduces the pattern so every sibling task reuses it. It doubles as
+  an accessibility win. Only fall back to a class-token assertion when the task file
+  explicitly sanctions it and scope the regex to a uniquely-identifying ancestor.
 
 ## Verifying (required before a task counts as done)
 
