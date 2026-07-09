@@ -152,8 +152,8 @@
                             {{ __('Profile') }}
                         </x-dropdown-link>
 
-                        <x-dropdown-link :href="route('crawler-settings.edit')">
-                            {{ __('Site settings') }}
+                        <x-dropdown-link :href="route('admin.index')">
+                            {{ __('Configuration') }}
                         </x-dropdown-link>
 
                         <!-- Authentication -->
@@ -278,8 +278,8 @@
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
 
-                <x-responsive-nav-link :href="route('crawler-settings.edit')">
-                    {{ __('Site settings') }}
+                <x-responsive-nav-link :href="route('admin.index')">
+                    {{ __('Configuration') }}
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->

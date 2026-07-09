@@ -2,13 +2,16 @@
 
 use App\Enums\CodexEntryType;
 use App\Http\Controllers\ActController;
+use App\Http\Controllers\AppearanceController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\CodexAttributeController;
 use App\Http\Controllers\CodexAttributeValueController;
 use App\Http\Controllers\CodexEntryController;
-use App\Http\Controllers\CrawlerSettingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DatabaseConfigurationController;
+use App\Http\Controllers\DataTransferController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -46,11 +49,26 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Global crawler policy (robots.txt + noindex). Any authenticated user may
-    // edit it — it is a singleton owned by no Project, the one deliberate
-    // departure from the project-scoped authorization convention.
-    Route::get('/settings/crawlers', [CrawlerSettingController::class, 'edit'])->name('crawler-settings.edit');
-    Route::patch('/settings/crawlers', [CrawlerSettingController::class, 'update'])->name('crawler-settings.update');
+    // Admin Configuration area. Every section sits behind `auth` (this group) AND
+    // the single `access-admin` Gate — the deliberate continuation of the
+    // CrawlerSetting any-authenticated-user posture, encoded once here so it can
+    // be tightened later without touching controllers. These routes are owned by
+    // no Project, so they do NOT use ProjectPolicy's walk.
+    Route::middleware('can:access-admin')->prefix('admin')->name('admin.')->group(function () {
+        // Landing -> first section.
+        Route::get('/', fn () => redirect()->route('admin.settings.edit'))->name('index');
+
+        // General settings = the relocated search-engine (crawler) form. The
+        // global crawler policy is a singleton owned by no Project; any
+        // authenticated user may edit it (the access-admin posture above),
+        // validated by UpdateCrawlerSettingRequest.
+        Route::get('/settings', [GeneralSettingsController::class, 'edit'])->name('settings.edit');
+        Route::patch('/settings', [GeneralSettingsController::class, 'update'])->name('settings.update');
+
+        Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance.edit');
+        Route::get('/data', [DataTransferController::class, 'index'])->name('data.index');
+        Route::get('/database', [DatabaseConfigurationController::class, 'edit'])->name('database.edit');
+    });
 
     Route::resource('projects', ProjectController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');

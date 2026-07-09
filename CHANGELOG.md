@@ -12,6 +12,19 @@ set belongs in its pull request description.
 
 ### Added
 
+- Admin Configuration area (`/admin`): a settings hub with a left sidebar switching between four
+  sections, every route behind `auth` plus a single `access-admin` Gate (returns true for any
+  authenticated user — the deliberate continuation of the `CrawlerSetting` no-`is_admin` posture,
+  encoded once on the route group so it can be tightened later without touching controllers). The
+  user-dropdown entry now reads **"Configuration"** and lands on General settings. Sections:
+  **General settings** (hosts the search-engine visibility form, see *Changed*), **Appearance &
+  accessibility** (placeholder for future graphical/accessibility options), **Export & import** (an
+  accessible inline-Alpine tab interface — WAI-ARIA `tablist`/`tab`/`tabpanel`, roving tabindex,
+  arrow-key navigation — stubbed "coming soon"; the backup/restore engine is a separate future
+  spec), and **Database configuration** (read-only display of the active connection — driver,
+  database name/path, host; the password is whitelisted out in the controller and never reaches the
+  view). Shared `<x-admin-layout>` + sidebar partial reuse the documented nav active-state pattern
+  (`aria-current="page"`, never colour-only).
 - Active-state highlighting for the **desktop** primary-nav dropdowns (Timeline, Codex, Story) and
   their collapsed trigger buttons: the item matching the current route now renders with the
   light-panel highlight (`bg-aqua-50 text-navy-900 font-semibold`) and carries `aria-current="page"`,
@@ -162,6 +175,14 @@ set belongs in its pull request description.
   transitively, so a dependency prune could have silently broken Markdown rendering.
 
 ### Changed
+
+- The search-engine visibility ("hidden from crawlers") settings screen moved out of its standalone
+  `/settings/crawlers` route into **Admin → General settings** (`/admin/settings`), under a "General
+  settings" heading. The form, validation (`UpdateCrawlerSettingRequest`), and the `CrawlerSetting`
+  singleton are unchanged — only the route (`crawler-settings.*` → `admin.settings.*`), the
+  controller (`CrawlerSettingController` → `GeneralSettingsController`), and the wrapping layout
+  changed. The old `/settings/crawlers` route was removed (no redirect alias); its behavioural tests
+  were relocated into `AdminConfigurationTest`.
 
 - The "no happens-during event" affordance on scenes is now explained: the red left border and the
   "Unassigned" badge on both the scenes index and the Story overview carry a `title` tooltip

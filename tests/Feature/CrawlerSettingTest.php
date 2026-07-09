@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\CrawlerSetting;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
@@ -136,73 +135,9 @@ class CrawlerSettingTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Task 04 — settings screen
+    // The authenticated settings screen has moved to Admin -> General settings
+    // (admin.settings.*). Its behavioural coverage now lives in
+    // AdminConfigurationTest; this file keeps the model, robots.txt, and
+    // meta-tag coverage above.
     // ---------------------------------------------------------------------
-
-    public function test_guest_is_redirected_to_login(): void
-    {
-        $this->get(route('crawler-settings.edit'))->assertRedirect(route('login'));
-    }
-
-    public function test_authenticated_user_sees_the_settings_form(): void
-    {
-        $user = User::factory()->create();
-        CrawlerSetting::current()->update([
-            'enabled' => true,
-            'user_agent_whitelist' => ['Googlebot'],
-        ]);
-
-        $response = $this->actingAs($user)->get(route('crawler-settings.edit'));
-
-        $response->assertOk();
-        $response->assertSee('Googlebot', false);
-    }
-
-    public function test_update_persists_toggle_and_whitelist_dropping_blanks_and_dupes(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->patch(route('crawler-settings.update'), [
-            'enabled' => '1',
-            'user_agent_whitelist' => "Googlebot\n\nGooglebot\n",
-        ]);
-
-        $response->assertRedirect(route('crawler-settings.edit'));
-
-        $setting = CrawlerSetting::current();
-        $this->assertTrue($setting->enabled);
-        $this->assertSame(['Googlebot'], $setting->user_agent_whitelist);
-    }
-
-    public function test_unchecked_box_disables_hidden_mode_end_to_end(): void
-    {
-        $user = User::factory()->create();
-        CrawlerSetting::current()->update(['enabled' => true]);
-
-        $this->actingAs($user)->patch(route('crawler-settings.update'), [
-            'user_agent_whitelist' => '',
-        ])->assertRedirect(route('crawler-settings.edit'));
-
-        $this->assertFalse(CrawlerSetting::current()->enabled);
-
-        // The dynamic route reflects the update: allow-all, no site-wide block.
-        $this->get(route('robots.txt'))->assertDontSee('Disallow: /', false);
-    }
-
-    public function test_line_unsafe_term_is_rejected_and_leaves_the_row_unchanged(): void
-    {
-        $user = User::factory()->create();
-        CrawlerSetting::current()->update([
-            'enabled' => true,
-            'user_agent_whitelist' => ['Googlebot'],
-        ]);
-
-        $response = $this->actingAs($user)->patch(route('crawler-settings.update'), [
-            'enabled' => '1',
-            'user_agent_whitelist' => 'Bad: Bot',
-        ]);
-
-        $response->assertSessionHasErrors('user_agent_whitelist.0');
-        $this->assertSame(['Googlebot'], CrawlerSetting::current()->user_agent_whitelist);
-    }
 }

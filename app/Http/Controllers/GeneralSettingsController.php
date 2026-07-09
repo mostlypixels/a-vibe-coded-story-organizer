@@ -8,17 +8,20 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 /**
- * The authenticated in-app screen for the global crawler policy. Thin: resolve
- * the singleton -> (authorize in the Form Request) -> update -> redirect.
+ * General settings section of the Admin Configuration area.
+ *
+ * Thin: resolve the CrawlerSetting singleton -> (authorize in the Form Request)
+ * -> update -> redirect. This is the relocated search-engine (crawler) form,
+ * formerly CrawlerSettingController; only the redirect route name changed.
  */
-class CrawlerSettingController extends Controller
+class GeneralSettingsController extends Controller
 {
     /**
-     * Show the settings form for the singleton.
+     * Show the search-engine visibility form for the singleton.
      */
     public function edit(): View
     {
-        return view('settings.crawlers.edit', [
+        return view('admin.settings.edit', [
             'setting' => CrawlerSetting::current(),
         ]);
     }
@@ -31,7 +34,7 @@ class CrawlerSettingController extends Controller
         CrawlerSetting::current()->update($request->validated());
 
         return redirect()
-            ->route('crawler-settings.edit')
+            ->route('admin.settings.edit')
             ->with('status', 'crawler-settings-updated');
     }
 }
