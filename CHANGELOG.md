@@ -12,6 +12,12 @@ set belongs in its pull request description.
 
 ### Added
 
+- Active-state highlighting for the **desktop** primary-nav dropdowns (Timeline, Codex, Story) and
+  their collapsed trigger buttons: the item matching the current route now renders with the
+  light-panel highlight (`bg-aqua-50 text-navy-900 font-semibold`) and carries `aria-current="page"`,
+  and a trigger reflects when any of its child routes is active (`text-white border-flame-500`,
+  matching the `x-nav-link` active look). Previously only the responsive (mobile) menu highlighted;
+  the desktop dropdowns highlighted nothing.
 - Friendly empty states on the index pages. The shared `x-table-empty` component now renders two
   distinct messages instead of a single bare "no results" row: a genuinely empty collection shows
   "No :items yet." with a primary button pointing at the create action, while a collection hidden by
@@ -150,6 +156,12 @@ set belongs in its pull request description.
 
 ### Changed
 
+- The `x-dropdown-link` component now accepts an optional `active` prop (default `false`), mirroring
+  `x-nav-link` / `x-responsive-nav-link`: pass `:active` to get the highlight plus `aria-current="page"`.
+  Untouched call sites (the Settings dropdown) are unaffected. The nav's route-match expressions were
+  consolidated into a single `@php` block at the top of the `navigation.blade.php` project guard — one
+  source of truth reused by the desktop triggers, the desktop dropdown items, and the responsive menu
+  (no `Nav` support class or view composer for a styling tweak).
 - `ProjectTest` was trimmed to project-scoped concerns (dashboard, project CRUD/authorization,
   and the project-creation invariants that seed the main plotline and the Start/End bookends). Its
   plotline- and event-controller cases moved to the new dedicated `PlotlineTest` / `EventTest`, so

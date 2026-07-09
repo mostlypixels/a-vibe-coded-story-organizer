@@ -20,6 +20,27 @@
                             ?? request()->route('scene')?->chapter?->act?->project
                             ?? request()->route('codexEntry')?->project
                             ?? request()->route('codexAttribute')?->project)
+                        @php
+                            // Consolidated route-match booleans, the single source of truth for
+                            // which nav section is active. Shared by the desktop triggers, the
+                            // desktop dropdown items, and (further down) the responsive menu.
+                            // Task 01 adds the Story booleans; task 02 appends Codex/Timeline.
+                            $storyOverviewActive = request()->routeIs('projects.story.*');
+                            $actsActive = request()->routeIs('projects.acts.*') || request()->routeIs('acts.*');
+                            $chaptersActive = request()->routeIs('projects.chapters.*') || request()->routeIs('chapters.*');
+                            $scenesActive = request()->routeIs('projects.scenes.*') || request()->routeIs('scenes.*');
+                            $storyActive = $storyOverviewActive || $actsActive || $chaptersActive || $scenesActive;
+
+                            // Timeline
+                            $plotlinesActive = request()->routeIs('projects.plotlines.*') || request()->routeIs('plotlines.*');
+                            $eventsActive = request()->routeIs('projects.events.*') || request()->routeIs('events.*');
+                            $timelineActive = $plotlinesActive || $eventsActive;
+
+                            // Codex — per-type active is computed inside the loop (enum-aware).
+                            $attributesActive = request()->routeIs('projects.codex-attributes.*') || request()->routeIs('codex-attributes.*');
+                            $codexActive = request()->routeIs('projects.codex.*') || request()->routeIs('codex.*') || $attributesActive;
+                        @endphp
+
                         <x-nav-link :href="route('projects.show', $project)" :active="request()->routeIs('projects.show')">
                             {{ __('Home') }}
                         </x-nav-link>
@@ -27,7 +48,7 @@
                         <div class="flex items-center">
                             <x-dropdown align="left" width="48">
                                 <x-slot name="trigger">
-                                    <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-aqua-100 hover:text-white focus:outline-none transition duration-150 ease-in-out">
+                                    <button class="inline-flex items-center px-1 pt-1 border-b-2 {{ $timelineActive ? 'text-white border-flame-500' : 'text-aqua-100 border-transparent' }} text-sm font-medium leading-5 hover:text-white focus:outline-none transition duration-150 ease-in-out">
                                         {{ __('Timeline') }}
 
                                         <svg class="ms-1 h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -37,11 +58,11 @@
                                 </x-slot>
 
                                 <x-slot name="content">
-                                    <x-dropdown-link :href="route('projects.plotlines.index', $project)">
+                                    <x-dropdown-link :href="route('projects.plotlines.index', $project)" :active="$plotlinesActive">
                                         {{ __('Plotlines') }}
                                     </x-dropdown-link>
 
-                                    <x-dropdown-link :href="route('projects.events.index', $project)">
+                                    <x-dropdown-link :href="route('projects.events.index', $project)" :active="$eventsActive">
                                         {{ __('Events') }}
                                     </x-dropdown-link>
                                 </x-slot>
@@ -51,7 +72,7 @@
                         <div class="flex items-center">
                             <x-dropdown align="left" width="48">
                                 <x-slot name="trigger">
-                                    <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-aqua-100 hover:text-white focus:outline-none transition duration-150 ease-in-out">
+                                    <button class="inline-flex items-center px-1 pt-1 border-b-2 {{ $codexActive ? 'text-white border-flame-500' : 'text-aqua-100 border-transparent' }} text-sm font-medium leading-5 hover:text-white focus:outline-none transition duration-150 ease-in-out">
                                         {{ __('Codex') }}
 
                                         <svg class="ms-1 h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -62,12 +83,14 @@
 
                                 <x-slot name="content">
                                     @foreach (\App\Enums\CodexEntryType::cases() as $codexType)
-                                        <x-dropdown-link :href="route('projects.codex.index', [$project, $codexType->routeKey()])">
+                                        <x-dropdown-link
+                                            :href="route('projects.codex.index', [$project, $codexType->routeKey()])"
+                                            :active="request()->route('type') === $codexType->routeKey() || request()->route('codexEntry')?->type === $codexType">
                                             {{ __($codexType->pluralLabel()) }}
                                         </x-dropdown-link>
                                     @endforeach
 
-                                    <x-dropdown-link :href="route('projects.codex-attributes.index', $project)">
+                                    <x-dropdown-link :href="route('projects.codex-attributes.index', $project)" :active="$attributesActive">
                                         {{ __('Attributes') }}
                                     </x-dropdown-link>
                                 </x-slot>
@@ -77,7 +100,7 @@
                         <div class="flex items-center">
                             <x-dropdown align="left" width="48">
                                 <x-slot name="trigger">
-                                    <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-aqua-100 hover:text-white focus:outline-none transition duration-150 ease-in-out">
+                                    <button class="inline-flex items-center px-1 pt-1 border-b-2 {{ $storyActive ? 'text-white border-flame-500' : 'text-aqua-100 border-transparent' }} text-sm font-medium leading-5 hover:text-white focus:outline-none transition duration-150 ease-in-out">
                                         {{ __('Story') }}
 
                                         <svg class="ms-1 h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -87,19 +110,19 @@
                                 </x-slot>
 
                                 <x-slot name="content">
-                                    <x-dropdown-link :href="route('projects.story.index', $project)">
+                                    <x-dropdown-link :href="route('projects.story.index', $project)" :active="$storyOverviewActive">
                                         {{ __('Story Overview') }}
                                     </x-dropdown-link>
 
-                                    <x-dropdown-link :href="route('projects.acts.index', $project)">
+                                    <x-dropdown-link :href="route('projects.acts.index', $project)" :active="$actsActive">
                                         {{ __('Acts') }}
                                     </x-dropdown-link>
 
-                                    <x-dropdown-link :href="route('projects.chapters.index', $project)">
+                                    <x-dropdown-link :href="route('projects.chapters.index', $project)" :active="$chaptersActive">
                                         {{ __('Chapters') }}
                                     </x-dropdown-link>
 
-                                    <x-dropdown-link :href="route('projects.scenes.index', $project)">
+                                    <x-dropdown-link :href="route('projects.scenes.index', $project)" :active="$scenesActive">
                                         {{ __('Scenes') }}
                                     </x-dropdown-link>
                                 </x-slot>
@@ -170,6 +193,25 @@
                     ?? request()->route('scene')?->chapter?->act?->project
                     ?? request()->route('codexEntry')?->project
                     ?? request()->route('codexAttribute')?->project)
+                @php
+                    // Same consolidated matchers as the desktop block above — one source of
+                    // truth for the active section, reused by the responsive links below.
+                    $storyOverviewActive = request()->routeIs('projects.story.*');
+                    $actsActive = request()->routeIs('projects.acts.*') || request()->routeIs('acts.*');
+                    $chaptersActive = request()->routeIs('projects.chapters.*') || request()->routeIs('chapters.*');
+                    $scenesActive = request()->routeIs('projects.scenes.*') || request()->routeIs('scenes.*');
+                    $storyActive = $storyOverviewActive || $actsActive || $chaptersActive || $scenesActive;
+
+                    // Timeline
+                    $plotlinesActive = request()->routeIs('projects.plotlines.*') || request()->routeIs('plotlines.*');
+                    $eventsActive = request()->routeIs('projects.events.*') || request()->routeIs('events.*');
+                    $timelineActive = $plotlinesActive || $eventsActive;
+
+                    // Codex — per-type active is computed inside the loop (enum-aware).
+                    $attributesActive = request()->routeIs('projects.codex-attributes.*') || request()->routeIs('codex-attributes.*');
+                    $codexActive = request()->routeIs('projects.codex.*') || request()->routeIs('codex.*') || $attributesActive;
+                @endphp
+
                 <x-responsive-nav-link :href="route('projects.show', $project)" :active="request()->routeIs('projects.show')">
                     {{ __('Home') }}
                 </x-responsive-nav-link>
@@ -178,11 +220,11 @@
                     {{ __('Timeline') }}
                 </div>
 
-                <x-responsive-nav-link :href="route('projects.plotlines.index', $project)" :active="request()->routeIs('projects.plotlines.*') || request()->routeIs('plotlines.*')">
+                <x-responsive-nav-link :href="route('projects.plotlines.index', $project)" :active="$plotlinesActive">
                     {{ __('Plotlines') }}
                 </x-responsive-nav-link>
 
-                <x-responsive-nav-link :href="route('projects.events.index', $project)" :active="request()->routeIs('projects.events.*') || request()->routeIs('events.*')">
+                <x-responsive-nav-link :href="route('projects.events.index', $project)" :active="$eventsActive">
                     {{ __('Events') }}
                 </x-responsive-nav-link>
 
@@ -198,7 +240,7 @@
                     </x-responsive-nav-link>
                 @endforeach
 
-                <x-responsive-nav-link :href="route('projects.codex-attributes.index', $project)" :active="request()->routeIs('projects.codex-attributes.*') || request()->routeIs('codex-attributes.*')">
+                <x-responsive-nav-link :href="route('projects.codex-attributes.index', $project)" :active="$attributesActive">
                     {{ __('Attributes') }}
                 </x-responsive-nav-link>
 
@@ -206,19 +248,19 @@
                     {{ __('Story') }}
                 </div>
 
-                <x-responsive-nav-link :href="route('projects.story.index', $project)" :active="request()->routeIs('projects.story.*')">
+                <x-responsive-nav-link :href="route('projects.story.index', $project)" :active="$storyOverviewActive">
                     {{ __('Story Overview') }}
                 </x-responsive-nav-link>
 
-                <x-responsive-nav-link :href="route('projects.acts.index', $project)" :active="request()->routeIs('projects.acts.*') || request()->routeIs('acts.*')">
+                <x-responsive-nav-link :href="route('projects.acts.index', $project)" :active="$actsActive">
                     {{ __('Acts') }}
                 </x-responsive-nav-link>
 
-                <x-responsive-nav-link :href="route('projects.chapters.index', $project)" :active="request()->routeIs('projects.chapters.*') || request()->routeIs('chapters.*')">
+                <x-responsive-nav-link :href="route('projects.chapters.index', $project)" :active="$chaptersActive">
                     {{ __('Chapters') }}
                 </x-responsive-nav-link>
 
-                <x-responsive-nav-link :href="route('projects.scenes.index', $project)" :active="request()->routeIs('projects.scenes.*') || request()->routeIs('scenes.*')">
+                <x-responsive-nav-link :href="route('projects.scenes.index', $project)" :active="$scenesActive">
                     {{ __('Scenes') }}
                 </x-responsive-nav-link>
             @endif

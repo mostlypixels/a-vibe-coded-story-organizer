@@ -86,6 +86,14 @@ A single argument: the feature name. Locate the feature folder with the glob
    Codex feature shipped, and keeps a visible, hard-to-reverse git action as an explicit
    choice rather than an assumption.
 
+   When you do stage the commit, remember step 8 **already moved** the feature folder to
+   `.specs/shipped/<name>/`, so the old `.specs/planned/<name>/` path no longer exists —
+   staging it (`git add .specs/planned/<name>`) fails with `fatal: pathspec … did not
+   match any files`. Stage the whole spec tree instead so git records the rename plus the
+   new `plan/implemented/`, `expanded/`, and `resolution-log.md` files in one go:
+   `git add -A .specs/` (the `.specs/` tree may be partly untracked, so `-A` is what
+   captures the move + the new files). Then stage the actual source/test/doc changes.
+
 ## Notes
 
 - This skill is the orchestration layer; all actual implementation happens inside
