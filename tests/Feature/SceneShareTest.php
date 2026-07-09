@@ -328,6 +328,37 @@ class SceneShareTest extends TestCase
         $response->assertDontSee('Secret Chapter Finale');
     }
 
+    public function test_the_expired_page_shows_how_long_ago_the_link_expired(): void
+    {
+        $scene = $this->sceneFor(User::factory()->create());
+        $scene->forceFill([
+            'share_token' => 'stale-token',
+            'share_expires_at' => now()->subDay(),
+        ])->save();
+
+        // Only a relative timestamp — never scene content — is surfaced.
+        $this->get(route('shared.scenes.show', 'stale-token'))
+            ->assertStatus(410)
+            ->assertSee('This link expired 1 day ago.');
+    }
+
+    public function test_the_expired_page_omits_the_time_hint_when_no_expiry_is_recorded(): void
+    {
+        // Defensive branch: a token present with a null expiry is still inert
+        // (isShared() is false) but has no timestamp to display, so the hint is
+        // omitted rather than rendering a broken "expired ." line.
+        $scene = $this->sceneFor(User::factory()->create());
+        $scene->forceFill([
+            'share_token' => 'no-expiry-token',
+            'share_expires_at' => null,
+        ])->save();
+
+        $this->get(route('shared.scenes.show', 'no-expiry-token'))
+            ->assertStatus(410)
+            ->assertSee('This share link has expired.')
+            ->assertDontSee('This link expired');
+    }
+
     public function test_the_public_page_works_without_authentication(): void
     {
         [, $token] = $this->sharedScene();

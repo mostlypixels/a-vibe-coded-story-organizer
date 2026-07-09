@@ -153,8 +153,20 @@ set belongs in its pull request description.
   `Act`, `Chapter`, and `Scene`.
 - Project coding guidelines (`.claude/guidelines.md`) and a `documentation/` folder
   (architecture, code style, best practices, glossary).
+- Scene sharing (polish): the expired/revoked 410 page now shows a "This link expired X ago"
+  relative-time hint (`share_expires_at->diffForHumans()`). The controller passes **only** the
+  expiry timestamp — never scene content — and the hint is omitted when no expiry is recorded, so
+  no data leaks. Covered by `SceneShareTest`.
+- Promoted `league/commonmark` to a direct dependency in `composer.json`'s `require`. The Story
+  overview renders `Scene.contents` via `Str::markdown()`, which relies on it; it was only present
+  transitively, so a dependency prune could have silently broken Markdown rendering.
 
 ### Changed
+
+- The "no happens-during event" affordance on scenes is now explained: the red left border and the
+  "Unassigned" badge on both the scenes index and the Story overview carry a `title` tooltip
+  ("This scene has no “happens during” event yet."). Previously the red border's meaning was
+  undocumented in the UI.
 
 - The `x-dropdown-link` component now accepts an optional `active` prop (default `false`), mirroring
   `x-nav-link` / `x-responsive-nav-link`: pass `:active` to get the highlight plus `aria-current="page"`.

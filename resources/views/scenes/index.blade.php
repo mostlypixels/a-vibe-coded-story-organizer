@@ -46,7 +46,7 @@
 
                 @forelse ($scenes as $scene)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 {{ $scene->event ? '' : 'border-l-4 border-red-500' }}">{{ $scene->position }}</td>
+                        <td @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 {{ $scene->event ? '' : 'border-l-4 border-red-500' }}">{{ $scene->position }}</td>
                         <td class="px-4 py-3">
                             <div class="font-semibold text-gray-800">{{ $scene->name }}</div>
                             @if ($scene->description)
@@ -59,7 +59,7 @@
                             @if ($scene->event)
                                 <span class="text-gray-500">{{ $scene->event->title }}</span>
                             @else
-                                <span class="inline-flex items-center rounded-md border border-red-500 px-2 py-0.5 text-xs font-medium text-red-600">{{ __('Unassigned') }}</span>
+                                <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-red-500 px-2 py-0.5 text-xs font-medium text-red-600">{{ __('Unassigned') }}</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">

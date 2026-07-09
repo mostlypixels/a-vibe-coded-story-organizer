@@ -12,5 +12,13 @@
         <p class="text-gray-600">
             {{ __('The link you followed is no longer active. Ask the person who shared it for a fresh link.') }}
         </p>
+
+        {{-- Only a relative timestamp — never scene content. Omitted when the
+             share was revoked outright (no expiry recorded). --}}
+        @isset($expiredAt)
+            <p class="text-sm text-gray-400">
+                {{ __('This link expired :time.', ['time' => $expiredAt->diffForHumans()]) }}
+            </p>
+        @endisset
     </div>
 </x-public-layout>

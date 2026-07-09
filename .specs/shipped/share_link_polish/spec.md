@@ -1,5 +1,6 @@
 ---
-status: planned
+status: shipped
+shipped: 2026-07-09
 ---
 
 # Share link polish

@@ -40,7 +40,12 @@ class SharedSceneController extends Controller
         // Never trust the mere presence of a token: isShared() also checks the
         // expiry is still in the future, so a leaked-but-expired URL is inert.
         if (! $scene->isShared()) {
-            return response()->view('shared.scenes.expired', status: 410);
+            // Pass ONLY the expiry timestamp (never scene content) so the 410 page
+            // can show a "link expired X ago" hint. A null expiry (revoked, never
+            // shared) simply omits the hint.
+            return response()->view('shared.scenes.expired', [
+                'expiredAt' => $scene->share_expires_at,
+            ], status: 410);
         }
 
         return view('shared.scenes.show', ['scene' => $scene]);
