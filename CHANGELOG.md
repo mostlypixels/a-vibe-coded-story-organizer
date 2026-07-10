@@ -16,33 +16,10 @@ set belongs in its pull request description.
   referenced by a single pointer line in `CLAUDE.md`. The rules select the shell by *tool
   availability* (never by OS name — no shell is privileged), forbid carrying one shell's syntax
   into the other's tool (the platform-independent rule that prevents the cross-shell bug class),
-  map lockfiles to package managers, single-source canonical commands (test = `composer test`),
-  and document the machine-local env-cache read protocol plus the per-OS machine-id recipe. This
-  is Claude-workflow tooling only — no application code, routes, or runtime behavior changes.
-  The machine-local env cache these rules consult is gitignored via the `.claude/env.*.local.md`
-  pattern (never committed), and its on-disk format — filename, self-stamp header, and dated
-  positive **and negative** facts — is documented in the conventions file beside the read protocol.
-  The env cache's copy-detection logic now lives in a unit-tested `ClaudeTooling\EnvCache`
-  (`.claude/hooks/EnvCache.php`, wired via `composer.json` `autoload-dev` — dev-only, never the
-  shipped app autoload): it derives the per-OS machine id (Windows registry `MachineGuid`, Linux
-  `/etc/machine-id`, macOS `ioreg`, with a hostname fallback), builds the cache filename and
-  self-stamp, and detects foreign (copied/cloned-in) caches by comparing the in-file stamp to the
-  live host+id — not the filename alone. Covered by `tests/Unit/EnvCacheTest`.
-  A thin `.claude/hooks/session-start.php` SessionStart hook orchestrates that logic at session
-  start: it prunes foreign-stamped caches, creates a header-only stamp for this machine when none
-  exists (identity-stamping only — it never scans for tools or touches the network), and injects
-  the current cache body into Claude's context (via SessionStart JSON `additionalContext`) so
-  cached facts are reused without re-probing. It is strictly **fail-open** — any error exits 0 with
-  no output and Claude falls back to the portable rules plus reactive probing. The hook is
-  registered as a `SessionStart` entry in **tracked** `.claude/settings.json` (`php .claude/hooks/session-start.php`)
-  so it fires for every checkout — safe to share because it is portable (PHP) and fail-open (if
-  `php` is not on PATH the command errors, the session still starts, and nothing is injected).
-  A filesystem-only `tests/Unit/ToolingConventionsTest` guards the durable, checked-in half of
-  the feature under `composer test`: the conventions file exists, `CLAUDE.md` points at it, the
-  file privileges no OS (asserts the absence of "prefer PowerShell"), the `.claude/env.*.local.md`
-  ignore pattern is present, and no env cache is ever tracked in git (`git ls-files`). The whole
-  layer is written up for junior developers in
-  [`documentation/tooling-conventions.md`](documentation/tooling-conventions.md).
+  map lockfiles to package managers, and single-source canonical commands (test = `composer test`).
+  This is Claude-workflow tooling only — no application code, routes, or runtime behavior changes.
+  (A machine-local env cache + SessionStart hook were explored alongside these rules and then
+  dropped as over-built for the payoff; see the feature's `resolution-log.md` and git history.)
 - Project export to a downloadable `.zip` from **Admin → Export & import → Export**. A signed-in
   user picks one of their own projects, chooses whether to include images & files, and downloads an
   archive built by the HTTP-agnostic, async-ready `App\Services\StaticSiteExporter`. The archive is

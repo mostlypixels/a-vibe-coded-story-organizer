@@ -24,6 +24,18 @@ before extending the feature.
   `tests/Unit/EnvCacheTest`.
 - **2026-07-10 — Feature developed on branch `feature/tooling-conventions`**, not master — per
   user, this is not going to main yet.
+- **2026-07-10 — Scope reduced post-ship: cache + hook removed, rules file kept.** After shipping,
+  the user judged the machine-local env cache and the PHP SessionStart hook over-built for the
+  payoff (the cache leaned on Claude reliably *appending* facts — the least reliable link — and on
+  this machine it stayed header-only, empty, immediately after install). Decision: keep Part 1
+  (the portable `.claude/conventions/tooling.md` rules + `CLAUDE.md` pointer), remove everything
+  else. Removed in a follow-up commit on this branch: `.claude/hooks/EnvCache.php`,
+  `.claude/hooks/session-start.php`, `.claude/settings.json` SessionStart entry, the
+  `.claude/env.*.local.md` gitignore pattern, the `ClaudeTooling` `autoload-dev` mapping,
+  `tests/Unit/EnvCacheTest`, `tests/Unit/ToolingConventionsTest`, and
+  `documentation/tooling-conventions.md`. The `tooling.md` file was trimmed to sections 1–5 (the
+  cache protocol + machine-id recipe sections were dropped). All of it remains recoverable from
+  git history (shipped in commit `d273397`) if the cache idea is revisited.
 
 ## Deviations from the spec/plan
 

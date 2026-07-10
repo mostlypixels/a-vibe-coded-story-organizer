@@ -14,7 +14,7 @@ This code will be used by junior developers.
 * Configuration should be kept in a single place. Avoid hard-coded values.
 * Avoid magic numbers and magic strings. Use constants, enums or value objects.
 * Favor composition over inheritance. Traits are a good alternative to inheritance.
-* **Toolchain & shell rules live in `.claude/conventions/tooling.md`** — select the shell by tool availability (not OS), never mix one shell's syntax into the other's tool, and consult the machine-local env cache before running any shell probe (append a fact after you learn it). Read it before running shell commands.
+* **Toolchain & shell rules live in `.claude/conventions/tooling.md`** — select the shell by tool availability (not OS), never mix one shell's syntax into the other's tool, and let the lockfile decide the package manager. Read it before running shell commands.
 
 ### Where logic lives
 
