@@ -5,6 +5,11 @@ issues → resolutions found while implementing and verifying this feature. The
 `plan-implementer` agent appends here per task; `ship-plan` consolidates it. Read it
 before extending the feature.
 
+> [!NOTE]
+> The `expanded/` design docs and the `plan/` task files this log references were removed from
+> master when the feature was slimmed post-ship (only the portable rules survive). They remain in
+> git history and under the `archive/tooling-conventions` tag.
+
 ## Feedback & decisions
 
 - **2026-07-10 — Six original open questions accepted as recommended** (Q1–Q6 in

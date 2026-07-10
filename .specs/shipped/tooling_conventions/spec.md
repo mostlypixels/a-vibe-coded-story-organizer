@@ -3,105 +3,50 @@ status: shipped
 shipped: 2026-07-10
 ---
 
-# Portable tooling conventions + a reactive, machine-local env cache
+# Portable tooling conventions
 
-> [!IMPORTANT]
-> **Mostly discarded — this spec is historical.** The feature shipped in full (commit
-> `d273397`) but was then pared back: only **Part 1** (the portable rule set in
-> `.claude/conventions/tooling.md`) survives. **Part 2** (the machine-local env cache) and
-> the PHP SessionStart hook that were added during implementation were removed as over-built
-> for the payoff. This `spec.md` is left as the original design record and is **no longer an
-> accurate description of what exists**. The **source of truth for what is actually in the
-> codebase — and why the cache/hook were dropped — is
-> [`resolution-log.md`](resolution-log.md)** (see its *Feedback & decisions*). Everything
-> removed remains recoverable from git history.
-
-Claude re-probes the same toolchain facts every session ("try all the things") and its
-shell guidance currently reads Windows-first, even though the repo is pulled — or copied
-— to other machines. This spec defines two artifacts that fix both: a **checked-in,
-portable rule set** and a **gitignored, self-stamped cache of facts learned by doing**.
-
-No code or config is written by this spec — it only records the design so a later pass
-can implement it.
+> [!NOTE]
+> **Scope as shipped is narrower than originally specced.** This feature began as a larger
+> design — portable rules **plus** a gitignored, self-stamped machine-local env cache and a PHP
+> SessionStart hook. The cache and hook were built and then removed as over-built for the payoff;
+> only the portable rule set survives. This `spec.md` describes what actually exists. The full
+> arc — what was explored, why it was dropped, and how to recover it — is in
+> [`resolution-log.md`](resolution-log.md), which is the source of truth. The discarded cache/hook
+> code remains recoverable from git history and the `archive/tooling-conventions` tag.
 
 ## Problem
 
-* Shell guidance phrased as "prefer PowerShell, fall back to Bash" privileges Windows.
-  On a Linux/macOS stack, Bash is native and PowerShell usually isn't installed.
-* Claude wastes turns re-detecting which package manager, test command, and binaries
-  exist, and repeats failed probes it already ran earlier.
-* A machine-local cache is the fix, but a naive one breaks when the repo is **copied**
-  (zip / rsync / cloned drive) rather than **pulled** — gitignore only guards the pull
-  path, so a copy carries one machine's facts onto another.
+* Shell guidance phrased as "prefer PowerShell, fall back to Bash" privileged Windows. On a
+  Linux/macOS checkout, Bash is native and PowerShell usually isn't installed, so the guidance
+  pointed at the wrong tool.
+* Nothing prevented one shell's syntax leaking into the other's tool (a PowerShell here-string in
+  the Bash tool, `&&` chains in the PowerShell tool) — the class of bug that motivated the audit.
+* Package-manager and workflow-command choices were guessed rather than read from the repo.
 
-## Part 1 — Portable rules (checked in, travel with the repo)
+## What shipped
 
-Home: `.claude/conventions/tooling.md`, referenced by one line from `CLAUDE.md`.
+A single checked-in, platform-independent rule set at **`.claude/conventions/tooling.md`**,
+referenced by one pointer line in `CLAUDE.md` and summarised for developers in
+`documentation/best-practices.md`. It travels with the repo and reads the same on any OS. Its five
+rules:
 
-* **Native shell by tool availability, not by name.** Use whichever shell tool the
-  environment exposes: PowerShell where available (typically Windows), otherwise
-  Bash/POSIX (typically Linux/macOS). No shell is privileged.
-* **Never carry one shell's syntax into the other's tool** (e.g. no PowerShell
-  here-strings in the Bash tool, no `&&` chains / `$VAR` in the PowerShell tool). This
-  is the platform-independent rule that prevents the class of bug that motivated the
-  audit.
-* **Prefer the dedicated file/search tools** (Read/Edit/Grep/Glob) over any shell,
-  regardless of platform — it sidesteps `\` vs `/` and quoting entirely.
-* **The lockfile decides the package manager** — never guess (npm ⇽ `package-lock.json`,
-  pnpm ⇽ `pnpm-lock.yaml`, yarn ⇽ `yarn.lock`; PHP ⇽ `composer.lock`).
-* **Canonical commands are defined once** (test = `composer test` per CLAUDE.md; build /
-  lint / serve likewise) — resolved values live in the local cache, not scattered.
-* **Consult the local env cache before probing; append to it after learning; re-verify
-  on failure.** (See Part 2.)
+1. **Native shell by tool availability, not by name** — no OS is privileged; use whichever shell
+   tool the environment exposes.
+2. **Never carry one shell's syntax into the other's tool** — the platform-independent rule that
+   prevents the cross-shell bug class.
+3. **Prefer dedicated file/search tools** (Read/Edit/Grep/Glob) over any shell, on every OS.
+4. **The lockfile decides the package manager** — never guess.
+5. **Canonical commands, defined once** (test = `composer test`).
 
-## Part 2 — Reactive, machine-local env cache (gitignored, self-stamped)
+This is Claude-workflow tooling only — no application code, routes, migrations, or runtime
+behaviour changed.
 
-Home: `.claude/env.<hostname>-<machineid8>.local.md`. Gitignore pattern:
-`.claude/env.*.local.md`.
+## Explored and dropped
 
-* **Learned by doing, not pre-scanned.** The file starts minimal; each time Claude
-  attempts a tool it records the outcome. **Negative results are cached too** — "pnpm is
-  unavailable, stop trying it" is what actually stops the thrash.
-* **Trust window.** Positive facts hold until a command using them fails (then drop and
-  re-detect). Negative facts carry a shorter window and are cleared when the user says
-  the toolchain changed — otherwise a later-installed tool would never be retried.
-* **Self-stamped identity.** The file header stamps the same hostname + machine-id +
-  `detected_on`. On read, Claude verifies the stamp matches the live machine; a mismatch
-  means the file is foreign (copied in) — ignore it and regenerate. Filename = fast
-  lookup; in-file stamp = correctness guarantee for the cloned-VM case where hostname,
-  machine-id, and the copied file all coincide.
-
-Example contents:
-
-```
-machine: DESKTOP-AB12 · id: 3f9c1a7b · detected_on: 2026-07-10
-shell:    powershell    (2026-07-10)
-composer: available 2.x (2026-07-10)
-npm:      available      (2026-07-10)
-pnpm:     unavailable    (2026-07-10)
-test:     composer test
-serve:    php artisan serve
-```
-
-## How to compute the machine id (include verbatim in the conventions file)
-
-Take the OS machine identifier, hash it, keep the first 8 hex chars for the filename;
-store the full readable value only if needed. Per OS:
-
-* **Windows (PowerShell):**
-  `(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name MachineGuid).MachineGuid`
-* **Linux:** `cat /etc/machine-id` (fallback `cat /var/lib/dbus/machine-id`)
-* **macOS:** `ioreg -rd1 -c IOPlatformExpertDevice | awk -F'"' '/IOPlatformUUID/{print $4}'`
-
-Hash to the short id (example, Bash): `printf '%s' "<id>" | sha256sum | cut -c1-8`
-(PowerShell equivalent via `Get-FileHash`/`[System.Security.Cryptography]`). Detecting
-the machine id is itself one cheap probe per session — the one probe that is always
-worth running because it names the cache file.
-
-## Out of scope
-
-* **A SessionStart hook** that auto-regenerates the cache (the `update-config` / hooks
-  path). Start file-only; add the hook later only if manual refresh proves annoying.
-* **Permission-prompt thrash** — already covered by the `fewer-permission-prompts`
-  skill; this cache complements it, not replaces it.
-* No behavior of the app changes; this is Claude-workflow tooling only.
+The machine-local env cache (`.claude/env.*.local.md`) and its portable PHP SessionStart hook
+(read/verify/inject, fail-open) were implemented, then removed: the cache leaned on Claude
+reliably *appending* learned facts — the least reliable link — and in practice sat empty right
+after install, adding a class, a hook, tests, settings wiring, and dev-only autoload for little
+payoff. See `resolution-log.md` → *Feedback & decisions* for the full reasoning; the code is in
+git history (shipped in commit `d273397`) and under the `archive/tooling-conventions` tag if the
+idea is ever revisited.
