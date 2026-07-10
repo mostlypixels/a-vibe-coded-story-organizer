@@ -12,6 +12,14 @@ set belongs in its pull request description.
 
 ### Added
 
+- Portable toolchain & shell conventions in [`.claude/conventions/tooling.md`](.claude/conventions/tooling.md),
+  referenced by a single pointer line in `CLAUDE.md`. The rules select the shell by *tool
+  availability* (never by OS name — no shell is privileged), forbid carrying one shell's syntax
+  into the other's tool (the platform-independent rule that prevents the cross-shell bug class),
+  map lockfiles to package managers, and single-source canonical commands (test = `composer test`).
+  This is Claude-workflow tooling only — no application code, routes, or runtime behavior changes.
+  (A machine-local env cache + SessionStart hook were explored alongside these rules and then
+  dropped as over-built for the payoff; see the feature's `resolution-log.md` and git history.)
 - Project export to a downloadable `.zip` from **Admin → Export & import → Export**. A signed-in
   user picks one of their own projects, chooses whether to include images & files, and downloads an
   archive built by the HTTP-agnostic, async-ready `App\Services\StaticSiteExporter`. The archive is

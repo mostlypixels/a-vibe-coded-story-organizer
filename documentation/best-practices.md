@@ -87,6 +87,14 @@ in its home:
   unless necessary.
 - Wrap multi-step writes in a database transaction.
 
+## Developer tooling (shells, package managers)
+
+- Choosing a shell, package manager, or workflow command portably (any OS) is governed by
+  [`.claude/conventions/tooling.md`](../.claude/conventions/tooling.md): pick tools by
+  **availability**, never by OS name; never mix one shell's syntax into the other's tool; the
+  **lockfile** decides the package manager; canonical commands are defined once
+  (test = `composer test`).
+
 ## Documentation & changelog
 
 - Keep this `documentation/` folder synchronized with the code — update it whenever
