@@ -24,10 +24,11 @@
             </div>
         @endif
 
-        {{-- Contents rendered as formatted HTML (Markdown → HTML), the same
-             render path as the Story overview. `notes` is NEVER rendered here. --}}
+        {{-- Contents rendered as formatted HTML (Markdown → HTML) via the single
+             Scene::renderedContents accessor, the same render path as the Story
+             overview and the book export. `notes` is NEVER rendered here. --}}
         <article class="prose prose-sm max-w-none text-gray-700 text-justify [&_p]:my-4">
-            {!! Str::markdown($scene->contents ?? '') !!}
+            {!! $scene->renderedContents !!}
         </article>
     </div>
 </x-public-layout>

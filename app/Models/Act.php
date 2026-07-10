@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Act extends Model
 {
     use HasFactory;
+    use HasSiblingPosition;
     use SanitizesRichHtml;
 
     protected $fillable = [
@@ -27,6 +29,14 @@ class Act extends Model
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class);
+    }
+
+    /**
+     * Acts are ordered within their project (see HasSiblingPosition).
+     */
+    protected function siblingScopeColumn(): string
+    {
+        return 'project_id';
     }
 
     protected static function booted(): void

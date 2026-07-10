@@ -12,6 +12,7 @@ use App\Models\Event;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\Tag;
+use App\Support\RichText;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -119,7 +120,7 @@ class StaticSiteExporter
 
         // The description is a stored sanitized HTML fragment; the README wants prose,
         // so strip it to plain text. Skip the block entirely when there is no description.
-        $description = $this->plainText($project->description);
+        $description = RichText::toPlainText($project->description);
         if ($description !== '') {
             $lines[] = '';
             $lines[] = $description;
@@ -136,30 +137,6 @@ class StaticSiteExporter
             .'archive. The `book/` folder is for reading only and is never the source of truth.';
 
         $this->addFromString($zip, 'README.md', implode("\n", $lines)."\n");
-    }
-
-    /**
-     * Reduce a stored HTML fragment to plain text for the README. Block boundaries
-     * (`</p>`, `<br>`) become line breaks so paragraphs survive, remaining tags are
-     * stripped, entities are decoded, and runs of blank lines are collapsed. A
-     * null/empty value yields an empty string (the caller then omits the block).
-     */
-    private function plainText(?string $html): string
-    {
-        if ($html === null || $html === '') {
-            return '';
-        }
-
-        // Turn paragraph/line-break boundaries into newlines before stripping tags, so
-        // multi-paragraph descriptions don't collapse into one run-on line.
-        $withBreaks = preg_replace('/<\/p>|<br\s*\/?>/i', "\n", $html);
-        $text = html_entity_decode(strip_tags($withBreaks), ENT_QUOTES | ENT_HTML5);
-
-        // Collapse 3+ newlines to a single blank line and trim trailing spaces per line.
-        $text = preg_replace('/[ \t]+\n/', "\n", $text);
-        $text = preg_replace('/\n{3,}/', "\n\n", $text);
-
-        return trim($text);
     }
 
     /**
@@ -531,7 +508,12 @@ class StaticSiteExporter
 
             $html = view('exports.book.chapter', [
                 'chapterTitle' => $chapter->name,
-                'scenesContents' => $chapter->scenes->pluck('contents')->all(),
+                // Render Markdown → HTML through the same Scene::renderedContents
+                // accessor the app's views use, so the reading layer and the app can
+                // never drift apart on how scene contents are rendered.
+                'renderedScenes' => $chapter->scenes->map(
+                    fn (Scene $scene): string => $scene->renderedContents
+                )->all(),
                 'prevHref' => $previous,
                 'nextHref' => $next,
             ])->render();

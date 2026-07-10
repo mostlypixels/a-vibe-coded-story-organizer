@@ -75,7 +75,7 @@ class ActController extends Controller
     {
         $this->authorize('update', $act->project);
 
-        $this->swapPosition($act, '<', 'desc');
+        $act->moveUp();
 
         return redirect()->back();
     }
@@ -84,22 +84,8 @@ class ActController extends Controller
     {
         $this->authorize('update', $act->project);
 
-        $this->swapPosition($act, '>', 'asc');
+        $act->moveDown();
 
         return redirect()->back();
-    }
-
-    private function swapPosition(Act $act, string $operator, string $direction): void
-    {
-        $sibling = Act::where('project_id', $act->project_id)
-            ->where('position', $operator, $act->position)
-            ->orderBy('position', $direction)
-            ->first();
-
-        if ($sibling) {
-            [$act->position, $sibling->position] = [$sibling->position, $act->position];
-            $act->save();
-            $sibling->save();
-        }
     }
 }

@@ -90,7 +90,10 @@ Route::resource('projects.scenes', SceneController::class)->shallow();
 
 `StoryController@index` (`GET /projects/{project}/story`) is a read-only page combining the
 full act/chapter/scene tree. Chapters render as `<article>`, scenes as `<section>`, and
-`Scene::contents` is rendered as Markdown via `Illuminate\Support\Str::markdown()`.
+`Scene::contents` is rendered as Markdown via the `Scene::renderedContents` accessor (which
+wraps `Illuminate\Support\Str::markdown()` and the null-guard). That accessor is the **single
+home** for the render choice: the Story overview, the public share view, and the book export
+all read `$scene->renderedContents` so they can never render scene contents differently.
 
 > [!NOTE]
 > `Str::markdown()` is backed by `league/commonmark`, which is present as a **transitive**
@@ -365,9 +368,12 @@ is the architectural overview.
   `include_images`).
 - **Two layers, one render boundary.** `data/` is **raw and lossless** — every field file holds the
   exact stored column value, never re-rendered or re-sanitized. `book/` is the **only** place the
-  export renders Markdown to HTML (`Str::markdown()` on scene `contents`), via Blade templates under
-  `resources/views/exports/book/` rendered to string (HTML is never string-built in the service).
-  Never blur the two.
+  export renders Markdown to HTML — through the shared `Scene::renderedContents` accessor (the same
+  render path the in-app views use), via Blade templates under `resources/views/exports/book/`
+  rendered to string (HTML is never string-built in the service). Never blur the two.
+- **The README's plain-text description** comes from `App\Support\RichText::toPlainText()`, the
+  rich-text module's home for stripping stored HTML to prose — the exporter calls it rather than
+  owning HTML-shape knowledge that has nothing to do with building a zip.
 
 > [!WARNING]
 > **Export authorization is ownership, not just the admin gate.** The route sits behind `auth` +

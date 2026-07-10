@@ -194,6 +194,17 @@ set belongs in its pull request description.
 
 ### Changed
 
+- Extracted three misplaced/duplicated helpers to the home the architecture already implies (pure
+  refactors, no behaviour change). (1) The move-up/move-down position-swap logic that was copied
+  verbatim across the Act/Chapter/Scene controllers now lives once in the `HasSiblingPosition` model
+  trait (each model declares its `siblingScopeColumn()`; the two-row swap runs in a transaction), and
+  the controllers call `$model->moveUp()` / `moveDown()`. (2) The HTML-to-plain-text converter that
+  had drifted into `StaticSiteExporter` moved to `App\Support\RichText::toPlainText()` beside the
+  rest of the rich-text module. (3) The `Str::markdown($scene->contents ?? '')` render duplicated in
+  three views (Story overview, public share view, book export) is now the single `Scene::renderedContents`
+  accessor, so the null-guard and renderer choice have one home. Each moved helper gained a direct
+  unit/feature test at its new home.
+
 - The search-engine visibility ("hidden from crawlers") settings screen moved out of its standalone
   `/settings/crawlers` route into **Admin → General settings** (`/admin/settings`), under a "General
   settings" heading. The form, validation (`UpdateCrawlerSettingRequest`), and the `CrawlerSetting`

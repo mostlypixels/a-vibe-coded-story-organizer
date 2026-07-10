@@ -23,9 +23,10 @@ in its home:
 > (temporal attribute resolution + gap-free mutations) and `CodexMediaService` (file storage,
 > single-cover rule, disk cleanup) — because both are non-trivial *and* have real second
 > callers (controllers, model helpers, and the seeder). **Still, do not add a service before
-> reuse is real** — a private controller method is fine until then. For example, the
-> `swapPosition` logic duplicated across the Act/Chapter/Scene controllers remains a
-> legitimate future candidate to extract into a shared trait or service.
+> reuse is real** — a private controller method is fine until then. The move-up/move-down
+> `swapPosition` logic that used to be copied across the Act/Chapter/Scene controllers is the
+> textbook example: once a real second (and third) caller existed, it was extracted into the
+> `HasSiblingPosition` model trait (each model just declares its `siblingScopeColumn()`).
 
 > [!WARNING]
 > Keep invariant-enforcing logic in a **service method, not only a `booted()` hook** when a

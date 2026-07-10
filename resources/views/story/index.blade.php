@@ -91,7 +91,7 @@
                                     </div>
 
                                     <div x-show="open" x-transition class="prose prose-sm max-w-none text-gray-700 text-justify text-[0.8125rem] [&_p]:my-4">
-                                        {!! Str::markdown($scene->contents ?? '') !!}
+                                        {!! $scene->renderedContents !!}
                                     </div>
                                 </section>
                             @empty

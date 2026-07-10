@@ -3,16 +3,19 @@
 namespace App\Models;
 
 use App\Enums\SceneStatus;
+use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 
 class Scene extends Model
 {
     use HasFactory;
+    use HasSiblingPosition;
     use SanitizesRichHtml;
 
     protected $fillable = [
@@ -60,6 +63,29 @@ class Scene extends Model
         return Attribute::make(
             set: fn (?string $value): ?string => $this->cleanRichHtml($value),
         );
+    }
+
+    /**
+     * The scene's Markdown `contents` rendered to HTML. This is the single home for
+     * the null-guard and the renderer choice (previously `Str::markdown($contents ?? '')`
+     * repeated across the Story overview, the public share view, and the book export).
+     * Rendering `contents` (unlike the rich-HTML fields) is safe by our convention:
+     * it is Markdown gated by ValidMarkdown, echoed with {!! !!} only here and in those
+     * views. Returns an empty string when there are no contents.
+     */
+    protected function renderedContents(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => Str::markdown($this->contents ?? ''),
+        );
+    }
+
+    /**
+     * Scenes are ordered within their chapter (see HasSiblingPosition).
+     */
+    protected function siblingScopeColumn(): string
+    {
+        return 'chapter_id';
     }
 
     /**

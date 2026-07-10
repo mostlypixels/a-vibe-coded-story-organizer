@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Chapter extends Model
 {
     use HasFactory;
+    use HasSiblingPosition;
     use SanitizesRichHtml;
 
     protected $fillable = [
@@ -27,6 +29,14 @@ class Chapter extends Model
     public function scenes(): HasMany
     {
         return $this->hasMany(Scene::class);
+    }
+
+    /**
+     * Chapters are ordered within their act (see HasSiblingPosition).
+     */
+    protected function siblingScopeColumn(): string
+    {
+        return 'act_id';
     }
 
     protected static function booted(): void

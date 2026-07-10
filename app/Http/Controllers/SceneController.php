@@ -124,7 +124,7 @@ class SceneController extends Controller
     {
         $this->authorize('update', $scene->chapter->act->project);
 
-        $this->swapPosition($scene, '<', 'desc');
+        $scene->moveUp();
 
         if ($request->wantsJson()) {
             return response()->json(['position' => $scene->position]);
@@ -137,27 +137,13 @@ class SceneController extends Controller
     {
         $this->authorize('update', $scene->chapter->act->project);
 
-        $this->swapPosition($scene, '>', 'asc');
+        $scene->moveDown();
 
         if ($request->wantsJson()) {
             return response()->json(['position' => $scene->position]);
         }
 
         return redirect()->back();
-    }
-
-    private function swapPosition(Scene $scene, string $operator, string $direction): void
-    {
-        $sibling = Scene::where('chapter_id', $scene->chapter_id)
-            ->where('position', $operator, $scene->position)
-            ->orderBy('position', $direction)
-            ->first();
-
-        if ($sibling) {
-            [$scene->position, $sibling->position] = [$sibling->position, $scene->position];
-            $scene->save();
-            $sibling->save();
-        }
     }
 
     private function chapterQueryFor(Project $project): Builder

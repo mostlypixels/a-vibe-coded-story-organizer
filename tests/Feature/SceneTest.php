@@ -366,4 +366,113 @@ class SceneTest extends TestCase
             ->assertSee('The Coronation')
             ->assertSee('Unassigned');
     }
+
+    // ---------------------------------------------------------------------
+    // Reordering — the swap logic extracted to HasSiblingPosition
+    // ---------------------------------------------------------------------
+
+    public function test_move_down_swaps_position_with_the_next_scene(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $first = Scene::factory()->for($chapter)->create(['position' => 1]);
+        $second = Scene::factory()->for($chapter)->create(['position' => 2]);
+
+        $this->actingAs($user)
+            ->patch(route('scenes.move-down', $first))
+            ->assertRedirect();
+
+        $this->assertSame(2, $first->fresh()->position);
+        $this->assertSame(1, $second->fresh()->position);
+    }
+
+    public function test_move_up_swaps_position_with_the_previous_scene(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $first = Scene::factory()->for($chapter)->create(['position' => 1]);
+        $second = Scene::factory()->for($chapter)->create(['position' => 2]);
+
+        $this->actingAs($user)
+            ->patch(route('scenes.move-up', $second))
+            ->assertRedirect();
+
+        $this->assertSame(2, $first->fresh()->position);
+        $this->assertSame(1, $second->fresh()->position);
+    }
+
+    public function test_move_down_at_the_end_of_the_chapter_is_a_no_op(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $first = Scene::factory()->for($chapter)->create(['position' => 1]);
+        $last = Scene::factory()->for($chapter)->create(['position' => 2]);
+
+        $this->actingAs($user)->patch(route('scenes.move-down', $last))->assertRedirect();
+
+        // Nothing to swap with — positions are untouched.
+        $this->assertSame(1, $first->fresh()->position);
+        $this->assertSame(2, $last->fresh()->position);
+    }
+
+    public function test_scenes_only_swap_with_siblings_in_the_same_chapter(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapterOne = Chapter::factory()->for($act)->create();
+        $chapterTwo = Chapter::factory()->for($act)->create();
+
+        $sceneOne = Scene::factory()->for($chapterOne)->create(['position' => 1]);
+        $sceneTwo = Scene::factory()->for($chapterTwo)->create(['position' => 2]);
+
+        // Moving the first chapter's only scene down finds no sibling to swap with,
+        // so the scene in the OTHER chapter is never touched (scope column matters).
+        $this->actingAs($user)->patch(route('scenes.move-down', $sceneOne))->assertRedirect();
+
+        $this->assertSame(1, $sceneOne->fresh()->position);
+        $this->assertSame(2, $sceneTwo->fresh()->position);
+    }
+
+    public function test_move_returns_the_new_position_as_json_when_requested(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $first = Scene::factory()->for($chapter)->create(['position' => 1]);
+        Scene::factory()->for($chapter)->create(['position' => 2]);
+
+        $this->actingAs($user)
+            ->patchJson(route('scenes.move-down', $first))
+            ->assertOk()
+            ->assertJson(['position' => 2]);
+    }
+
+    public function test_a_user_cannot_reorder_another_users_scene(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $chapter = $this->chapterFor($owner);
+        $scene = Scene::factory()->for($chapter)->create(['position' => 1]);
+        Scene::factory()->for($chapter)->create(['position' => 2]);
+
+        $this->actingAs($other)
+            ->patch(route('scenes.move-down', $scene))
+            ->assertForbidden();
+
+        $this->assertSame(1, $scene->fresh()->position);
+    }
+
+    public function test_rendered_contents_accessor_renders_markdown_to_html(): void
+    {
+        $scene = new Scene(['contents' => 'Prose with **bold** words.']);
+
+        $this->assertStringContainsString('<strong>bold</strong>', $scene->renderedContents);
+    }
+
+    public function test_rendered_contents_accessor_is_empty_for_null_contents(): void
+    {
+        $scene = new Scene(['contents' => null]);
+
+        $this->assertSame('', trim($scene->renderedContents));
+    }
 }

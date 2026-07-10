@@ -89,7 +89,7 @@ class ChapterController extends Controller
     {
         $this->authorize('update', $chapter->act->project);
 
-        $this->swapPosition($chapter, '<', 'desc');
+        $chapter->moveUp();
 
         return redirect()->back();
     }
@@ -98,22 +98,8 @@ class ChapterController extends Controller
     {
         $this->authorize('update', $chapter->act->project);
 
-        $this->swapPosition($chapter, '>', 'asc');
+        $chapter->moveDown();
 
         return redirect()->back();
-    }
-
-    private function swapPosition(Chapter $chapter, string $operator, string $direction): void
-    {
-        $sibling = Chapter::where('act_id', $chapter->act_id)
-            ->where('position', $operator, $chapter->position)
-            ->orderBy('position', $direction)
-            ->first();
-
-        if ($sibling) {
-            [$chapter->position, $sibling->position] = [$sibling->position, $chapter->position];
-            $chapter->save();
-            $sibling->save();
-        }
     }
 }

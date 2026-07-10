@@ -3,9 +3,9 @@
      joined by <hr> (no scene titles). Prev/next reading navigation sits at the top
      AND the bottom; at the ends it points back to the TOC.
 
-     $scenesContents is an ordered array of raw Markdown strings. This is the ONE
-     place the export renders Markdown to HTML — mirrors the app's render path
-     (Str::markdown on Scene.contents in story/index and shared/scenes/show). --}}
+     $renderedScenes is an ordered array of already-rendered HTML strings, produced
+     by the shared Scene::renderedContents accessor (the single render path also used
+     by story/index and shared/scenes/show), so the render choice lives in one place. --}}
 @extends('exports.book.layout', ['title' => $chapterTitle])
 
 @section('content')
@@ -16,11 +16,11 @@
 
     <h1>{{ $chapterTitle }}</h1>
 
-    @foreach ($scenesContents as $index => $contents)
+    @foreach ($renderedScenes as $index => $renderedContents)
         @if ($index > 0)
             <hr>
         @endif
-        {!! Str::markdown($contents ?? '') !!}
+        {!! $renderedContents !!}
     @endforeach
 
     <nav class="reading-nav">
