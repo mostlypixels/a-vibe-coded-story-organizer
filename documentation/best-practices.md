@@ -87,6 +87,16 @@ in its home:
   unless necessary.
 - Wrap multi-step writes in a database transaction.
 
+## Developer tooling (shells, package managers, the env cache)
+
+- Choosing a shell, package manager, or workflow command portably (any OS) is governed by
+  [tooling-conventions](tooling-conventions.md): pick tools by **availability**, never by OS
+  name; never mix one shell's syntax into the other's tool; the **lockfile** decides the package
+  manager; canonical commands are defined once (test = `composer test`).
+- The machine-local `env.*.local.md` cache is **gitignored and never committed** — if
+  `git status` shows one, the ignore pattern is broken. See tooling-conventions for the copy-safe
+  self-stamp and the fail-open SessionStart hook.
+
 ## Documentation & changelog
 
 - Keep this `documentation/` folder synchronized with the code — update it whenever

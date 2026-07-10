@@ -1,5 +1,6 @@
 ---
-status: draft
+status: shipped
+shipped: 2026-07-10
 ---
 
 # Portable tooling conventions + a reactive, machine-local env cache
