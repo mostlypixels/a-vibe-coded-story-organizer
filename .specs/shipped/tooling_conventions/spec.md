@@ -5,6 +5,17 @@ shipped: 2026-07-10
 
 # Portable tooling conventions + a reactive, machine-local env cache
 
+> [!IMPORTANT]
+> **Mostly discarded — this spec is historical.** The feature shipped in full (commit
+> `d273397`) but was then pared back: only **Part 1** (the portable rule set in
+> `.claude/conventions/tooling.md`) survives. **Part 2** (the machine-local env cache) and
+> the PHP SessionStart hook that were added during implementation were removed as over-built
+> for the payoff. This `spec.md` is left as the original design record and is **no longer an
+> accurate description of what exists**. The **source of truth for what is actually in the
+> codebase — and why the cache/hook were dropped — is
+> [`resolution-log.md`](resolution-log.md)** (see its *Feedback & decisions*). Everything
+> removed remains recoverable from git history.
+
 Claude re-probes the same toolchain facts every session ("try all the things") and its
 shell guidance currently reads Windows-first, even though the repo is pulled — or copied
 — to other machines. This spec defines two artifacts that fix both: a **checked-in,
