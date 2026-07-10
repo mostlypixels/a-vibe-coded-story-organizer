@@ -12,6 +12,24 @@ set belongs in its pull request description.
 
 ### Added
 
+- Project export to a downloadable `.zip` from **Admin → Export & import → Export**. A signed-in
+  user picks one of their own projects, chooses whether to include images & files, and downloads an
+  archive built by the HTTP-agnostic, async-ready `App\Services\StaticSiteExporter`. The archive is
+  two-layered. The **`data/`** layer is a lossless, machine-readable copy (source of truth for a
+  future import): the Story tree (project + acts → chapters → scenes), the Timeline (plotlines +
+  events, including the seeded main plotline and Start/End bookends), and the Codex (entries with
+  aliases/tags/attribute-values-over-time/media, plus flat attribute-definition and tag lists), every
+  entity a `<id>-slug` directory of JSON + raw field files. Content fields are stored verbatim — never
+  re-rendered or re-sanitized. The **`book/`** layer is the human reading version: a TOC `index.html`
+  plus one compiled HTML page per chapter (scene `contents` rendered Markdown → HTML, joined by `<hr>`,
+  with prev/next reading navigation crossing act boundaries) — the only place the export renders
+  Markdown. A top-level **`README.md`** greets whoever opens the zip: project name, export date, the
+  description as plain text, and a note pointing humans to `book/` and machines to `data/`. Media
+  **bytes** are governed by the "Include images & files" toggle; media metadata is
+  written regardless. Authorization walks `ProjectPolicy` on top of the admin gate, so a foreign
+  `project_id` 403s rather than silently exporting another user's project. `ext-zip` is now a declared
+  `composer.json` dependency. The export/import format contract lives in
+  [`documentation/export-format.md`](documentation/export-format.md).
 - Admin Configuration area (`/admin`): a settings hub with a left sidebar switching between four
   sections, every route behind `auth` plus a single `access-admin` Gate (returns true for any
   authenticated user — the deliberate continuation of the `CrawlerSetting` no-`is_admin` posture,

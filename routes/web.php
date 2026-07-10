@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseConfigurationController;
 use App\Http\Controllers\DataTransferController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\ExportController;
 use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
@@ -67,6 +68,11 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance.edit');
         Route::get('/data', [DataTransferController::class, 'index'])->name('data.index');
+        // Export a project to a downloadable .zip. POST (not GET): a non-idempotent,
+        // potentially expensive action that produces a download and carries CSRF +
+        // the include_images toggle. The admin gate is "any authenticated user"; the
+        // controller ALSO authorizes('view', $project) so a foreign project_id 403s.
+        Route::post('/data/export', [ExportController::class, 'store'])->name('data.export');
         Route::get('/database', [DatabaseConfigurationController::class, 'edit'])->name('database.edit');
     });
 

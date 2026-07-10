@@ -345,6 +345,36 @@ rule are all covered in **[`documentation/rich-text.md`](rich-text.md)**.
 > Markdown-only (`ValidMarkdown` + `Str::markdown()`), never routed through the sanitizer or the
 > editor.
 
+## Static file export
+
+**Admin → Export & import → Export** lets a signed-in user download one of their projects as a
+`.zip`. The archive has exactly two top-level folders — **`data/`** (a lossless machine copy, the
+source of truth for a future import) and **`book/`** (a human reading version of the manuscript).
+The full on-disk contract is **[`documentation/export-format.md`](export-format.md)**; this section
+is the architectural overview.
+
+- **One service, HTTP-agnostic and async-ready.** `App\Services\StaticSiteExporter::export(Project,
+  bool $includeMedia)` builds the whole archive and returns a finished temp-zip path — it takes no
+  `Request` and returns no `Response`, so a future queued Job can reuse it unchanged. It reads media
+  bytes with `Storage::disk('public')->get()` (never the `/storage` URL), so it needs no
+  `php artisan storage:link` or any CLI step. The zip is built to `storage/app/exports`, streamed with
+  `->deleteFileAfterSend(true)`, and the temp file is deleted on exception too, so a failed export
+  leaks no partial zip.
+- **The controller stays thin.** `ExportController@store` resolves the project, authorizes, delegates
+  to the service, and streams the download. `ExportRequest` validates the form (`project_id`,
+  `include_images`).
+- **Two layers, one render boundary.** `data/` is **raw and lossless** — every field file holds the
+  exact stored column value, never re-rendered or re-sanitized. `book/` is the **only** place the
+  export renders Markdown to HTML (`Str::markdown()` on scene `contents`), via Blade templates under
+  `resources/views/exports/book/` rendered to string (HTML is never string-built in the service).
+  Never blur the two.
+
+> [!WARNING]
+> **Export authorization is ownership, not just the admin gate.** The route sits behind `auth` +
+> `can:access-admin` (any authenticated user), so `ExportController@store` **must also**
+> `authorize('view', $project)`, mirrored in `ExportRequest::authorize()`. A foreign **or missing**
+> `project_id` is a **403**, never a silent export of another user's project.
+
 ## Navigation active state
 
 The primary nav (`resources/views/layouts/navigation.blade.php`) highlights the section matching

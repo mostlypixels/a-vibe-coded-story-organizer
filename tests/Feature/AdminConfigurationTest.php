@@ -175,14 +175,17 @@ class AdminConfigurationTest extends TestCase
         $response->assertSee('aria-controls="panel-import"', false);
     }
 
-    public function test_export_import_page_shows_both_coming_soon_panels(): void
+    public function test_export_import_page_shows_export_form_and_import_coming_soon(): void
     {
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->get(route('admin.data.index'));
 
         // Tab switching is client-side; both panels are present in the HTML.
-        $response->assertSee('Exporting your data will be available soon.');
+        // The Export panel now carries a real form (or its empty state — this
+        // user owns no project, so the empty-state prompt shows). The Import
+        // panel is still a future spec.
+        $response->assertSee('Create a project first to export it.');
         $response->assertSee('Importing a backup will be available soon.');
     }
 
