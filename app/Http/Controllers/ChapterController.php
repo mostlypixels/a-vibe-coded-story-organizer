@@ -70,7 +70,12 @@ class ChapterController extends Controller
         $validated = $request->validated();
         $act = $project->acts()->findOrFail($validated['act_id']);
 
-        $chapter->update(collect($validated)->except('act_id')->all() + ['act_id' => $act->id]);
+        // act_id is intentionally not mass-assignable (see Chapter::$fillable), so
+        // reparent through the relationship rather than the (silently ignored)
+        // fillable array — otherwise moving a chapter to another act is a no-op.
+        $chapter->fill(collect($validated)->except('act_id')->all());
+        $chapter->act()->associate($act);
+        $chapter->save();
 
         return redirect()->route('projects.chapters.index', $project);
     }

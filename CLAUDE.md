@@ -99,9 +99,9 @@ reached; do not re-add it. The `x-robots-meta` component is the single source of
   failures (`assertSessionHasErrors`), and any domain invariant touched (e.g. `position` assignment,
   the un-deletable main plotline).
 * Tests run against in-memory SQLite; run the suite with `composer test`.
-* Known coverage gap to fill as these areas are touched: there are no feature tests yet for Scenes,
-  Acts, Chapters, or the Story overview — add `SceneTest` / `ActTest` / `ChapterTest` / `StoryTest`
-  when you work in them.
+* Scenes, Acts, Chapters, and the Story overview each now have a dedicated feature test
+  (`SceneTest` / `ActTest` / `ChapterTest` / `StoryTest`) covering CRUD, authorization, validation,
+  the `position` invariant, and reordering. Keep them in step as you touch those controllers.
 
 ### Documentation
 

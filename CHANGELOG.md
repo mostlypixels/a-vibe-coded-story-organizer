@@ -63,6 +63,14 @@ set belongs in its pull request description.
   an active search/filter shows "No :items match your search or filters." (the toolbar's *Clear*
   link is the way back). Wired into the Codex (characters/locations/organizations) and the
   events/acts/chapters/scenes indexes.
+- Dedicated feature tests for `ActController`, `ChapterController`, and `StoryController`
+  (`ActTest`, `ChapterTest`, `StoryTest`), closing the last of the coverage gaps noted in
+  `CLAUDE.md` (Scenes were covered earlier by `SceneTest`). Each covers the index, the full CRUD
+  surface, project authorization (owner succeeds, non-owner gets 403 on read and every write path),
+  validation failures, the auto-assigned `position` invariant, and the move-up/move-down sibling
+  swap (including that it is scoped to the correct parent and is a no-op at the ends). `StoryTest`
+  additionally asserts the read-only overview renders the nested act → chapter → scene tree in
+  `position` order.
 - Dedicated feature tests for `PlotlineController` and `EventController` (`PlotlineTest`,
   `EventTest`), previously only covered indirectly through `ProjectTest`. Each covers the full
   CRUD surface, project authorization (owner succeeds, non-owner gets 403 on read and every write
@@ -302,6 +310,11 @@ set belongs in its pull request description.
 
 ### Fixed
 
+- Moving a chapter to a different act via the edit form now works. The edit view offered an act
+  selector and `ChapterController::update()` intended to honour it, but `act_id` is deliberately not
+  in `Chapter::$fillable`, so the mass-assignment silently dropped it and the chapter never moved.
+  Update now reparents through the `act()` relationship (keeping `act_id` guarded); regression
+  covered by `ChapterTest::test_a_chapter_can_be_moved_to_another_act_in_the_same_project`.
 - `php artisan db:seed` can now be re-run against a populated database: the admin
   user is only created when missing, instead of aborting on the `users.email`
   unique constraint before `MelusineSeeder` (already idempotent) was reached.
