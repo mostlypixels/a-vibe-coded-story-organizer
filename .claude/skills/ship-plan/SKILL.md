@@ -20,6 +20,9 @@ A single argument: the feature name. Locate the feature folder with the glob
 1. **Validate.** Locate `<dir>` via `.specs/*/<name>/` and confirm `<dir>/plan/00-overview.md`
    exists. If no folder matches or it has no `plan/`, tell the user to run
    `/plan-tasks <name>` first (it generates this folder from an expanded spec) and stop.
+   If the glob matches more than one folder (a name collision), work on the one in the
+   *earliest* lifecycle stage — the active feature; the collision is auto-resolved by the
+   suffix rule when it moves to `shipped/` in step 8.
 
 2. **List remaining tasks.** `NN-*.md` files directly under `plan/` (excluding
    `00-overview.md`), sorted numerically, that are not already present under
@@ -74,7 +77,11 @@ A single argument: the feature name. Locate the feature folder with the glob
    frontmatter set `status: shipped` and `shipped: <YYYY-MM-DD>` (lifecycle: `draft` →
    `expanded` → `planned` → `shipped`), then move the whole feature folder to
    `.specs/shipped/<name>/` so its location matches the stamp (use `git mv`; create
-   `.specs/shipped/` if absent). Do both before asking about the commit, so the stamp and
+   `.specs/shipped/` if absent). **Before the `git mv`, apply the name-collision suffix rule**
+   from `.specs/README.md` → *Name-collision handling*: if `.specs/*/<name>/` matches any other
+   folder (most often an earlier `shipped/<name>/` whose name this work reused), move to
+   `.specs/shipped/<name>-YYYY-MM-DD/` instead — the same date as the `shipped:` stamp
+   (datetime `-HHMM` on a same-day double collision). Do both before asking about the commit, so the stamp and
    the move ride in the implementation commit — the spec's git history then points at the
    commit that shipped it, no hash field needed. Only add a `commit: <short-hash>` line
    when the stamp is made *after* the implementation commit already exists (e.g. stamping

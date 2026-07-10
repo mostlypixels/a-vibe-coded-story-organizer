@@ -17,7 +17,7 @@ a fixed status. Example: `/mp-spec-expander plotline-merge` → reads
 
 ## Steps
 
-1. **Read the source spec.** Locate the feature folder with the glob `.specs/*/<name>/` and open its `spec.md`. If no folder matches, list the existing `.specs/*/*/spec.md` candidates and tell the user to create `.specs/draft/<name>/spec.md` first, then stop. Read `CLAUDE.md`, `.claude/guidelines.md`, and `documentation/` so expansions match this project's architecture and conventions. Below, **`<dir>`** means the matched feature folder.
+1. **Read the source spec.** Locate the feature folder with the glob `.specs/*/<name>/` and open its `spec.md`. If no folder matches, list the existing `.specs/*/*/spec.md` candidates and tell the user to create `.specs/draft/<name>/spec.md` first, then stop. **If the glob matches more than one folder** (a name collision — e.g. a fresh `draft/<name>/` beside an already-shipped `shipped/<name>/`), operate on the one in the *earliest* lifecycle stage — that's the new, un-advanced work; the collision is auto-resolved by the suffix rule when this folder moves in step 6. Read `CLAUDE.md`, `.claude/guidelines.md`, and `documentation/` so expansions match this project's architecture and conventions. Below, **`<dir>`** means the matched feature folder.
 
 2. **Explore relevant code.** Find the existing models, controllers, views, routes, and tests the feature touches. Ground every suggestion in what already exists — reference concrete files and patterns rather than inventing new ones.
 
@@ -41,8 +41,12 @@ a fixed status. Example: `/mp-spec-expander plotline-merge` → reads
    the top of `<dir>/spec.md` (add the frontmatter block if the file has none; a spec
    without frontmatter is implicitly `draft`). Then move the whole feature folder to
    `.specs/expanded/<name>/` so its location matches the stamp (use `git mv`; create
-   `.specs/expanded/` if absent). The frontmatter stamp is the only edit ever made to the
-   source spec's content. Lifecycle, one stamp + move per pipeline stage:
+   `.specs/expanded/` if absent). **Before the `git mv`, apply the name-collision suffix
+   rule** from `.specs/README.md` → *Name-collision handling*: if `.specs/*/<name>/` already
+   matches some other folder (e.g. a shipped `<name>`), the destination becomes
+   `<name>-YYYY-MM-DD` (date of the move; datetime `-HHMM` on a same-day double collision),
+   and that suffixed name is what you pass to `plan-tasks` next. The frontmatter stamp is the
+   only edit ever made to the source spec's content. Lifecycle, one stamp + move per pipeline stage:
    `draft` → `expanded` (this skill) → `planned` (`plan-tasks`) → `shipped` (`ship-plan`).
 
 7. **Report** the created `expanded/` folder, the folder's new location under `.specs/expanded/`, and the list of files written, with a one-line summary of each. Point the user at the next stage: `plan-tasks <name>`, which will **grill** them on this design (`open-questions.md` first) before decomposing it into a plan.

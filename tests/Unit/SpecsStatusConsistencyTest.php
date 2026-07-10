@@ -10,6 +10,8 @@ use PHPUnit\Framework\TestCase;
  * `status:`. The folder location and the frontmatter encode the lifecycle stage
  * redundantly, so they can drift — this test is the reconciler that catches it
  * (e.g. a feature implemented and moved to `shipped/` but left stamped `planned`).
+ * It also guards name uniqueness across the tree: locating a feature by name must resolve
+ * to one folder, so no feature name may appear under two different status subfolders.
  *
  * Plain filesystem assertions, no database — hence a Unit test that runs under
  * `composer test` (and therefore CI) with no extra wiring.
@@ -52,6 +54,41 @@ class SpecsStatusConsistencyTest extends TestCase
         }
 
         $this->assertTrue(true, 'No misplaced feature folders.');
+    }
+
+    public function test_no_feature_name_is_reused_across_status_folders(): void
+    {
+        // A feature is located by the glob `.specs/*/<name>/`, so that name must resolve to
+        // exactly one folder. The collision happens when new work reuses a name that already
+        // shipped (e.g. a fresh `draft/foo` beside an existing `shipped/foo`): the glob then
+        // matches two folders and every skill that locates by name silently picks the wrong
+        // one — or clobbers the shipped spec on the next `git mv`. Catch it here instead.
+        $foldersByName = [];
+
+        foreach (glob($this->specsRoot().'/*/*', GLOB_ONLYDIR) as $dir) {
+            $status = basename(dirname($dir));
+
+            // Only consider feature folders under a known status; unknown roots are already
+            // reported by test_specs_root_holds_only_status_subfolders.
+            if (! in_array($status, self::KNOWN_STATUSES, true)) {
+                continue;
+            }
+
+            $foldersByName[basename($dir)][] = $status;
+        }
+
+        foreach ($foldersByName as $name => $statuses) {
+            $this->assertCount(
+                1,
+                $statuses,
+                "Feature '$name' exists under multiple status folders (".implode(', ', $statuses).'). '
+                .'Feature names must be unique across the whole .specs/ tree so locating by name '
+                .'resolves to one folder. The pipeline auto-suffixes a colliding name with the move '
+                ."date ('$name-YYYY-MM-DD') when a stage moves the folder; if you created this "
+                .'collision by hand, rename the newer folder the same way (see .specs/README.md → '
+                .'Name-collision handling).'
+            );
+        }
     }
 
     public function test_every_spec_frontmatter_status_matches_its_status_folder(): void

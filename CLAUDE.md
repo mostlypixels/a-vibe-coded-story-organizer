@@ -40,6 +40,16 @@ resolve the model → authorize → delegate → return a response. Concretely, 
 * If technical debt is introduced, explain why and document it.
 *  Prefer maintainability and readability over clever or highly abstract solutions.
 
+### Feature specs live under `.specs/`
+
+When asked to **write / draft / create a spec** for a feature, always file it as a stage-1
+draft: `.specs/draft/<name>/spec.md`, starting with `---`/`status: draft`/`---` frontmatter.
+Prefer the `draft-spec` skill, which does this (and handles name collisions). Never leave a
+spec loose at the `.specs/` root or under the wrong status folder — the folder location and
+the `status:` frontmatter must agree, and `tests/Unit/SpecsStatusConsistencyTest` enforces it.
+The full lifecycle (`draft` → `expanded` → `planned` → `shipped`) and its skills are documented
+in `.specs/README.md`.
+
 ### Code style
 
 * Use laravel code style conventions.

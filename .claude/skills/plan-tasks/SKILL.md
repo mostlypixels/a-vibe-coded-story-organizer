@@ -16,7 +16,9 @@ and it must contain an `expanded/` subfolder holding whichever of `overview.md`,
 `data-model.md`, `architecture.md`, `ui.md`, `testing.md`, `open-questions.md` are
 relevant. If no folder matches or it has no `expanded/`, tell the user to run
 `/mp-spec-expander <name>` first (on a `.specs/draft/<name>/spec.md` source spec) and stop.
-Below, **`<dir>`** means the matched feature folder.
+If the glob matches more than one folder (a name collision), work on the one in the *earliest*
+lifecycle stage — that's the active feature; the collision is auto-resolved by the suffix rule
+when this folder moves in step 8. Below, **`<dir>`** means the matched feature folder.
 
 ## Steps
 
@@ -98,6 +100,10 @@ Below, **`<dir>`** means the matched feature folder.
    `mp-spec-expander` added the frontmatter — if it's missing, add it). Touch nothing
    else in that file. Then move the whole feature folder to `.specs/planned/<name>/` so
    its location matches the stamp (use `git mv`; create `.specs/planned/` if absent).
+   **Before the `git mv`, apply the name-collision suffix rule** from `.specs/README.md` →
+   *Name-collision handling*: if `.specs/*/<name>/` matches any other folder, the destination
+   becomes `<name>-YYYY-MM-DD` (datetime `-HHMM` on a same-day double collision), and that
+   suffixed name is what you pass to `ship-plan` next.
 
 9. **Report** the created `plan/` folder, the folder's new location under `.specs/planned/`,
    the task list with a one-line summary of each, and flag any open question you left

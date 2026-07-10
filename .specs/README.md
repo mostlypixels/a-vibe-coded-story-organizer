@@ -21,6 +21,37 @@ re-stamped in the same step — the folder location and the frontmatter must alw
 Because a feature can sit under any status subfolder, always locate one by name with the
 glob `.specs/*/<name>/`, not a hard-coded status.
 
+> [!WARNING]
+> **Feature names are unique across the *whole* tree, not just within one status.**
+> Because a feature is located by the glob `.specs/*/<name>/`, that glob must resolve to
+> **exactly one** folder. The trap: you start a new feature `foo` under `draft/` (or
+> `planned/`) while a `foo` was already shipped to `shipped/` — now `.specs/*/foo/` matches
+> two folders and every skill that locates by name silently picks the wrong one (or clobbers
+> the shipped spec on the next `git mv`).
+
+### Name-collision handling (auto-suffix on move)
+
+Collisions are resolved automatically **at the moment a pipeline stage moves a feature folder
+into its next status subfolder** — the pipeline never asks you to rename by hand. Each move
+(`mp-spec-expander` → `expanded/`, `plan-tasks` → `planned/`, `ship-plan` → `shipped/`)
+applies this procedure before its `git mv`:
+
+1. Take the destination name — normally `<name>`.
+2. Glob `.specs/*/<name>/` for **any folder other than the one being moved**. If none exists,
+   the name is free; move to `.specs/<newstatus>/<name>/` unchanged.
+3. If one exists (typically a `shipped/<name>/` from earlier work that reused the name), append
+   the **date of the move** as a suffix: move to `.specs/<newstatus>/<name>-YYYY-MM-DD/`.
+4. If *that* suffixed name is itself already taken — a second collision the same day — use the
+   **datetime** instead: `<name>-YYYY-MM-DD-HHMM`.
+
+From that move onward the feature is known by the new suffixed folder name; pass that name to
+the remaining pipeline stages. Example: expanding a fresh `draft/foo/` while `shipped/foo/`
+exists lands it at `.specs/expanded/foo-2026-07-10/`, leaving the shipped `foo` untouched.
+
+`tests/Unit/SpecsStatusConsistencyTest` fails `composer test` (and CI) whenever one name still
+appears under two status folders — the backstop for a collision created by hand (e.g. a
+manually-made `draft/<name>/`) that no move has yet auto-resolved.
+
 ## Per-feature layout
 
 ```
@@ -43,7 +74,7 @@ status subfolder:
 
 | Stage | Command | Reads | Writes | `status:` → folder |
 |-------|---------|-------|--------|--------------------|
-| 1. Draft | *(you)* | — | `.specs/draft/<name>/spec.md` | `draft` → `draft/` |
+| 1. Draft | `/draft-spec <name>` *(or by hand)* | your request | `.specs/draft/<name>/spec.md` | `draft` → `draft/` |
 | 2. Expand | `/mp-spec-expander <name>` | `spec.md` | `expanded/` | `expanded` → `expanded/` |
 | 3. Plan | `/plan-tasks <name>` | `expanded/` | `plan/` + `resolution-log.md` | `planned` → `planned/` |
 | 4. Ship | `/ship-plan <name>` | `plan/` | code + moves tasks to `plan/implemented/` | `shipped` → `shipped/` |
@@ -60,10 +91,24 @@ Step 4 drives the `plan-implementer` agent task-by-task; each agent run appends 
 
 ## Starting a new feature
 
+The simplest path is to ask for the draft — the `draft-spec` skill files it correctly:
+
 ```
-mkdir -p .specs/draft/<name>     # new features start life under draft/
-# write .specs/draft/<name>/spec.md  (a few paragraphs: problem, goals, rough approach)
+/draft-spec <name>               # writes .specs/draft/<name>/spec.md with status: draft
 /mp-spec-expander <name>         # moves the folder to expanded/ when done
 /plan-tasks <name>               # moves the folder to planned/ when done
 /ship-plan <name>                # moves the folder to shipped/ when done
 ```
+
+By hand instead of stage 1:
+
+```
+mkdir -p .specs/draft/<name>     # new features start life under draft/
+# write .specs/draft/<name>/spec.md, starting with `---\nstatus: draft\n---` frontmatter
+#   (a few paragraphs: problem, goals, rough approach)
+```
+
+Reusing a shipped name is fine — but note the auto-suffix fires on a *move*, and a draft has
+not moved yet, so a colliding `draft/<name>/` would trip the consistency test immediately.
+`/draft-spec` handles this: it suffixes (`<name>-YYYY-MM-DD`) or picks a distinct name at
+creation. Doing it by hand, choose a free name yourself.
