@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BookLanguage;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CodexMediaService;
 use App\Support\PlotlineColors;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
 {
@@ -18,6 +20,16 @@ class Project extends Model
     protected $fillable = [
         'name',
         'description',
+        'language',
+        'author',
+        'publisher',
+        'rights',
+        'isbn',
+        'cover_image',
+    ];
+
+    protected $casts = [
+        'language' => BookLanguage::class,
     ];
 
     public function user(): BelongsTo
@@ -138,6 +150,13 @@ class Project extends Model
         // project (or account) deletion would leak orphan files (media-lifecycle.md).
         static::deleting(function (Project $project) {
             app(CodexMediaService::class)->purgeProject($project);
+
+            // The cover is a plain path column (not a tracked codex_media row), so the
+            // FK cascade never touches its file. Delete it here before the row is gone,
+            // otherwise project deletion leaks an orphan cover on the public disk.
+            if ($project->cover_image !== null) {
+                Storage::disk('public')->delete($project->cover_image);
+            }
         });
     }
 }

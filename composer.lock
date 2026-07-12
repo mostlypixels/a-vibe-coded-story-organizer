@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "299ca0ca0da53534fad6ed946b311f2c",
+    "content-hash": "a3bd493f8ecebeae0e9ef4bc63189e21",
     "packages": [
         {
             "name": "brick/math",
@@ -3208,6 +3208,76 @@
             "time": "2019-03-08T08:55:37+00:00"
         },
         {
+            "name": "rampmaster/phpepub",
+            "version": "1.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/rampmaster/phpepub.git",
+                "reference": "e36f6f5dad352071ed8e92f2d61c8ec8f7722be6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/rampmaster/phpepub/zipball/e36f6f5dad352071ed8e92f2d61c8ec8f7722be6",
+                "reference": "e36f6f5dad352071ed8e92f2d61c8ec8f7722be6",
+                "shasum": ""
+            },
+            "require": {
+                "ext-dom": "*",
+                "ext-zip": "*",
+                "php": "^8.2",
+                "symfony/console": "^7.4",
+                "symfony/filesystem": "^7.4",
+                "symfony/process": "^7.4",
+                "symfony/uid": "^7.4"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^1.10",
+                "phpunit/phpunit": "^10.1",
+                "roave/security-advisories": "dev-latest",
+                "slevomat/coding-standard": "^8.12",
+                "squizlabs/php_codesniffer": "^3.7"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Rampmaster\\EPub\\": "src",
+                    "Rampmaster\\EPub\\Test\\": "tests"
+                },
+                "classmap": [
+                    "classmap/BinStringStatic.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-2.1"
+            ],
+            "authors": [
+                {
+                    "name": "A. Grandt",
+                    "email": "php@grandt.com",
+                    "homepage": "https://grandt.com",
+                    "role": "Developer"
+                },
+                {
+                    "name": "Roberto Moreno",
+                    "email": "rampmaster@gmail.com",
+                    "homepage": "https://rampmaster.dev",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Package to create and stream e-books in the ePub 2.0 and 3.0 formats.",
+            "homepage": "https://github.com/rampmaster/phpepub",
+            "keywords": [
+                "e-book",
+                "epub"
+            ],
+            "support": {
+                "issues": "https://github.com/rampmaster/phpepub/issues",
+                "source": "https://github.com/rampmaster/phpepub/tree/1.1.1"
+            },
+            "time": "2026-01-29T11:49:21+00:00"
+        },
+        {
             "name": "ramsey/collection",
             "version": "2.1.1",
             "source": {
@@ -3923,6 +3993,76 @@
                 }
             ],
             "time": "2026-06-05T06:23:12+00:00"
+        },
+        {
+            "name": "symfony/filesystem",
+            "version": "v7.4.11",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/filesystem.git",
+                "reference": "d721ea61b4a5fba8c5b6e7c1feda19efea144b50"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/filesystem/zipball/d721ea61b4a5fba8c5b6e7c1feda19efea144b50",
+                "reference": "d721ea61b4a5fba8c5b6e7c1feda19efea144b50",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/polyfill-ctype": "~1.8",
+                "symfony/polyfill-mbstring": "~1.8"
+            },
+            "require-dev": {
+                "symfony/process": "^6.4|^7.0|^8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\Filesystem\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Provides basic utilities for the filesystem",
+            "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/filesystem/tree/v7.4.11"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-05-11T16:38:44+00:00"
         },
         {
             "name": "symfony/finder",
@@ -8527,7 +8667,8 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.2"
+        "php": "^8.2",
+        "ext-zip": "*"
     },
     "platform-dev": [],
     "plugin-api-version": "2.3.0"

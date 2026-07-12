@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BookLanguage;
 use App\Models\Event;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -53,6 +56,191 @@ class ProjectTest extends TestCase
         $project = Project::factory()->for($owner)->create();
 
         $this->actingAs($other)->get(route('projects.show', $project))->assertForbidden();
+    }
+
+    // --- Publication metadata columns (epub export) ------------------------
+
+    public function test_language_defaults_to_en_when_not_set_explicitly(): void
+    {
+        $user = User::factory()->create();
+
+        $project = Project::factory()->for($user)->create(['name' => 'Untitled']);
+
+        $this->assertSame(BookLanguage::English, $project->fresh()->language);
+    }
+
+    public function test_the_epub_metadata_attributes_are_mass_assignable(): void
+    {
+        $user = User::factory()->create();
+
+        // fill() proves mass-assignability of the six new columns; the factory
+        // supplies only the non-fillable user_id association.
+        $project = Project::factory()->for($user)->create();
+        $project->fill([
+            'name' => 'My Novel',
+            'description' => 'A test project',
+            'language' => 'fr',
+            'author' => 'Jane Author',
+            'publisher' => 'Imaginary Press',
+            'rights' => '© 2026 Jane Author',
+            'isbn' => '978-0-306-40615-7',
+            'cover_image' => 'covers/my-novel.jpg',
+        ])->save();
+
+        $project = $project->fresh();
+
+        $this->assertSame(BookLanguage::French, $project->language);
+        $this->assertSame('Jane Author', $project->author);
+        $this->assertSame('Imaginary Press', $project->publisher);
+        $this->assertSame('© 2026 Jane Author', $project->rights);
+        $this->assertSame('978-0-306-40615-7', $project->isbn);
+        $this->assertSame('covers/my-novel.jpg', $project->cover_image);
+    }
+
+    // --- Project edit form: book metadata + cover upload -------------------
+
+    public function test_owner_can_update_a_project_with_all_book_metadata_and_a_cover(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'Old Name']);
+
+        $response = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'description' => 'A test project',
+            'language' => 'fr',
+            'author' => 'Jane Author',
+            'publisher' => 'Imaginary Press',
+            'rights' => '© 2026 Jane Author',
+            'isbn' => '978-0-306-40615-7',
+            'cover_image' => UploadedFile::fake()->image('cover.jpg'),
+        ]);
+
+        $response->assertRedirect(route('projects.show', $project));
+
+        $project = $project->fresh();
+        $this->assertSame('My Novel', $project->name);
+        $this->assertSame(BookLanguage::French, $project->language);
+        $this->assertSame('Jane Author', $project->author);
+        $this->assertSame('Imaginary Press', $project->publisher);
+        $this->assertSame('© 2026 Jane Author', $project->rights);
+        $this->assertSame('978-0-306-40615-7', $project->isbn);
+        $this->assertNotNull($project->cover_image);
+        Storage::disk('public')->assertExists($project->cover_image);
+    }
+
+    public function test_a_non_owner_cannot_update_a_project(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+
+        $this->actingAs($other)->put(route('projects.update', $project), [
+            'name' => 'Hijacked',
+            'language' => 'en',
+        ])->assertForbidden();
+    }
+
+    public function test_updating_a_project_with_an_invalid_isbn_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'language' => 'en',
+            'isbn' => '978-0-306-40615-0', // bad checksum
+        ]);
+
+        $response->assertSessionHasErrors('isbn');
+    }
+
+    public function test_updating_a_project_with_an_unsupported_language_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'language' => 'ja', // not a supported BookLanguage case
+        ]);
+
+        $response->assertSessionHasErrors('language');
+    }
+
+    public function test_updating_a_project_with_an_invalid_cover_fails_validation(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        // Wrong mime type (a PDF, not an image).
+        $wrongType = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'language' => 'en',
+            'cover_image' => UploadedFile::fake()->create('cover.pdf', 100, 'application/pdf'),
+        ]);
+        $wrongType->assertSessionHasErrors('cover_image');
+
+        // Oversized image (over the 5 MB / 5120 KB cover limit).
+        $oversized = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'language' => 'en',
+            'cover_image' => UploadedFile::fake()->image('huge.jpg')->size(6000),
+        ]);
+        $oversized->assertSessionHasErrors('cover_image');
+    }
+
+    public function test_replacing_the_cover_deletes_the_old_file_and_stores_the_new_one(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $oldPath = 'project-covers/old-cover.jpg';
+        Storage::disk('public')->put($oldPath, 'old contents');
+        $project = Project::factory()->for($user)->create(['cover_image' => $oldPath]);
+
+        $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'language' => 'en',
+            'cover_image' => UploadedFile::fake()->image('new-cover.jpg'),
+        ])->assertRedirect();
+
+        $project = $project->fresh();
+        $this->assertNotSame($oldPath, $project->cover_image);
+        Storage::disk('public')->assertMissing($oldPath);
+        Storage::disk('public')->assertExists($project->cover_image);
+    }
+
+    public function test_removing_the_cover_clears_the_column_and_deletes_the_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $oldPath = 'project-covers/old-cover.jpg';
+        Storage::disk('public')->put($oldPath, 'old contents');
+        $project = Project::factory()->for($user)->create(['cover_image' => $oldPath]);
+
+        $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'language' => 'en',
+            'remove_cover_image' => '1',
+        ])->assertRedirect();
+
+        $this->assertNull($project->fresh()->cover_image);
+        Storage::disk('public')->assertMissing($oldPath);
+    }
+
+    public function test_deleting_a_project_removes_its_cover_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $coverPath = 'project-covers/doomed-cover.jpg';
+        Storage::disk('public')->put($coverPath, 'contents');
+        $project = Project::factory()->for($user)->create(['cover_image' => $coverPath]);
+
+        $this->actingAs($user)->delete(route('projects.destroy', $project))
+            ->assertRedirect(route('dashboard'));
+
+        Storage::disk('public')->assertMissing($coverPath);
     }
 
     // --- Project-creation invariants ---------------------------------------

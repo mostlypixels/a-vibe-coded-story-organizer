@@ -10,6 +10,7 @@ use App\Http\Controllers\CodexEntryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseConfigurationController;
 use App\Http\Controllers\DataTransferController;
+use App\Http\Controllers\EpubExportController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\GeneralSettingsController;
@@ -73,6 +74,11 @@ Route::middleware('auth')->group(function () {
         // the include_images toggle. The admin gate is "any authenticated user"; the
         // controller ALSO authorizes('view', $project) so a foreign project_id 403s.
         Route::post('/data/export', [ExportController::class, 'store'])->name('data.export');
+        // Export a project as a downloadable .epub. Same POST posture and ownership
+        // guard as the .zip export above; the EpubExporter owns tree filtering,
+        // rendering, packaging, and structural validation. A project with nothing to
+        // export redirects back with an error (EpubExportException), never a 500.
+        Route::post('/data/export/epub', [EpubExportController::class, 'store'])->name('data.export.epub');
         Route::get('/database', [DatabaseConfigurationController::class, 'edit'])->name('database.edit');
     });
 

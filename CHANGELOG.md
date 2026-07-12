@@ -12,6 +12,39 @@ set belongs in its pull request description.
 
 ### Added
 
+- Epub export from **Admin → Export & import → Export**, alongside (not replacing) the existing
+  `.zip` export. A signed-in project owner picks a project and downloads a standard `.epub` file
+  built by `App\Services\EpubExporter` via `rampmaster/phpepub`. Acts render as their own divider
+  page ("Act N" + the act's name, blank names omitted, no description); Chapters start new pages
+  ("Chapter N: title") with their Scenes' Markdown compiled to clean HTML and joined by `<hr>`, no
+  per-scene titles or descriptions. Chapters with zero Scenes, and Acts left with zero surviving
+  Chapters, are silently omitted from the book, TOC, and spine; a project with nothing left after
+  that filtering fails with a clear error instead of downloading a broken file. Every export opens
+  with a story title page (the Project's name, centered and set larger) followed by an in-book
+  table of contents page — a real, readable spine page distinct from the reader's own EPUB 3 nav
+  chrome — listing every surviving Act with its surviving Chapters nested underneath, each linking
+  straight to its page; both front-matter pages precede the story itself in reading order. Act
+  headings (the "Act N" number and the act's name) are likewise centered and set larger than body
+  text. The table of contents (both the nav and the in-book page) is two-level (Acts nesting their
+  Chapters). A dedicated, epub-only CommonMark pass
+  converts `--`/`---` to en/em dashes, `...` to an ellipsis, and straight quotes to curly quotes —
+  `Scene::renderedContents` (used by the Story overview, share page, and the existing `book/`
+  export) is deliberately untouched. `Project` gained six new optional book-metadata fields
+  (`language` — required, defaults `en`; `author`; `publisher`; `rights`; `isbn`, validated as a
+  real ISBN-13 via the new `App\Rules\ValidIsbn`; and `cover_image`, uploaded via the Project edit
+  form reusing `CodexMediaRules`' validation and the `public` disk), editable from the Project edit
+  screen and mapped onto the epub's OPF metadata (Dublin Core fields, a generated
+  `urn:imagoldfish:project:{id}` identifier plus a second `urn:isbn:` identifier when set, and
+  EPUB accessibility metadata — `accessibilityFeature`/`accessMode`/`accessibilitySummary`). Every
+  generated document declares `lang` from `Project.language`. Generated OPF documents are
+  structurally validated against a RelaxNG schema vendored from the `epubcheck` project (converted
+  from its `.rnc` sources at build time — no JVM at runtime); content/nav XHTML is validated for
+  well-formedness. The export page links to the official
+  [epubcheck](https://www.w3.org/publishing/epubcheck/) tool for authors who want full conformance
+  verification. Authorization mirrors the existing export (`ProjectPolicy@view`, a foreign
+  `project_id` 403s). See `.specs/shipped/epub_export_v1/resolution-log.md` for the library
+  research (the spec's originally-implied `grandt/phpepub` is dead since 2016) and several
+  epub-library quirks worked around along the way.
 - Portable toolchain & shell conventions in [`.claude/conventions/tooling.md`](.claude/conventions/tooling.md),
   referenced by a single pointer line in `CLAUDE.md`. The rules select the shell by *tool
   availability* (never by OS name — no shell is privileged), forbid carrying one shell's syntax

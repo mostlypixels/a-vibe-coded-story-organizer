@@ -125,6 +125,54 @@
 
                     <x-primary-button>{{ __('Export') }}</x-primary-button>
                 </form>
+
+                {{--
+                    Epub export (task 07). A second, fully independent form/picker from the
+                    zip export above (grilled decision: two forms, no shared Alpine picker —
+                    simplicity over deduplicating one <select>). Posts to a different route;
+                    its project selector uses a distinct id (`epub_project_id`) so the page
+                    keeps unique element ids while both forms reuse the `project_id` name.
+                    The empty-project error is surfaced here because task 06 keys the
+                    EpubExportException redirect to the `project_id` error bag.
+                --}}
+                <section class="mt-10 border-t border-gray-200 pt-8" aria-labelledby="epub-export-heading">
+                    <h3 id="epub-export-heading" class="text-base font-medium text-gray-900">
+                        {{ __('Epub export') }}
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-600">
+                        {{ __('Download one of your projects as an EPUB e-book, ready to open in any e-reader.') }}
+                    </p>
+
+                    <form method="POST" action="{{ route('admin.data.export.epub') }}" class="mt-6 space-y-6 max-w-lg">
+                        @csrf
+
+                        <div>
+                            <x-input-label for="epub_project_id" :value="__('Project')" />
+                            <select
+                                id="epub_project_id"
+                                name="project_id"
+                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+                            >
+                                @foreach ($projects as $project)
+                                    <option value="{{ $project->id }}" @selected(old('project_id') == $project->id)>
+                                        {{ $project->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('project_id')" class="mt-2" />
+                        </div>
+
+                        <x-primary-button>{{ __('Download EPUB') }}</x-primary-button>
+                    </form>
+
+                    <p class="mt-4 text-xs text-gray-500">
+                        {{ __('For full EPUB conformance verification, validate the downloaded file with the official') }}
+                        <a href="https://www.w3.org/publishing/epubcheck/" class="text-ocean-600 underline hover:text-ocean-800 focus:outline-none focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-sm" target="_blank" rel="noopener">
+                            {{ __('epubcheck') }}
+                        </a>
+                        {{ __('tool.') }}
+                    </p>
+                </section>
             @endif
         </div>
 

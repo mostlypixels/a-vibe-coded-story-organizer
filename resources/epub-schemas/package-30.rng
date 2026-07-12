@@ -1,0 +1,686 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grammar ns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns="http://relaxng.org/ns/structure/1.0">
+  <include href="datatypes.rng"/>
+  <include href="epub-prefix-attr.rng"/>
+  <start>
+    <element name="package">
+      <interleave>
+        <ref name="opf.package.attlist"/>
+        <ref name="opf.package.content"/>
+      </interleave>
+    </element>
+  </start>
+  <define name="opf.package.attlist" combine="interleave">
+    <interleave>
+      <ref name="opf.version.attr"/>
+      <ref name="opf.unique.identifier.attr"/>
+      <optional>
+        <ref name="opf.id.attr"/>
+      </optional>
+      <optional>
+        <ref name="epub.prefix.attr"/>
+      </optional>
+      <ref name="opf.i18n.attrs"/>
+    </interleave>
+  </define>
+  <define name="opf.version.attr">
+    <attribute name="version">
+      <value>3.0</value>
+    </attribute>
+  </define>
+  <define name="opf.unique.identifier.attr">
+    <attribute name="unique-identifier">
+      <ref name="datatype.IDREF"/>
+    </attribute>
+  </define>
+  <define name="opf.package.content">
+    <ref name="opf.metadata"/>
+    <ref name="opf.manifest"/>
+    <ref name="opf.spine"/>
+    <optional>
+      <ref name="opf.guide"/>
+    </optional>
+    <optional>
+      <ref name="opf.bindings"/>
+    </optional>
+    <zeroOrMore>
+      <ref name="opf.collection"/>
+    </zeroOrMore>
+  </define>
+  <define name="opf.metadata">
+    <element name="metadata">
+      <interleave>
+        <optional>
+          <ref name="opf.id.attr"/>
+        </optional>
+        <ref name="opf.i18n.attrs"/>
+        <ref name="opf.metadata.content"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.metadata.content">
+    <interleave>
+      <ref name="opf.dc.elems"/>
+      <zeroOrMore>
+        <ref name="opf.meta"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.link"/>
+      </zeroOrMore>
+    </interleave>
+  </define>
+  <define name="opf.meta">
+    <element name="meta">
+      <choice>
+        <ref name="opf.epub3.meta.content"/>
+        <ref name="opf.epub2.meta.content"/>
+      </choice>
+    </element>
+  </define>
+  <define name="opf.epub3.meta.content">
+    <interleave>
+      <ref name="opf.property.attr"/>
+      <optional>
+        <ref name="opf.refines.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.id.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.scheme.attr"/>
+      </optional>
+      <ref name="opf.i18n.attrs"/>
+      <ref name="datatype.string.nonempty"/>
+    </interleave>
+  </define>
+  <define name="opf.epub2.meta.content">
+    <interleave>
+      <attribute name="name"/>
+      <attribute name="content"/>
+    </interleave>
+  </define>
+  <!-- legacy -->
+  <define name="opf.link">
+    <element name="link">
+      <interleave>
+        <ref name="opf.href.attr"/>
+        <optional>
+          <ref name="opf.hreflang.attr"/>
+        </optional>
+        <ref name="opf.rel.attr"/>
+        <optional>
+          <ref name="opf.id.attr"/>
+        </optional>
+        <optional>
+          <ref name="opf.refines.attr"/>
+        </optional>
+        <optional>
+          <ref name="opf.media-type.attr"/>
+        </optional>
+        <optional>
+          <ref name="opf.properties.attr"/>
+        </optional>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.property.attr">
+    <attribute name="property">
+      <ref name="datatype.property"/>
+    </attribute>
+  </define>
+  <define name="opf.rel.attr">
+    <attribute name="rel">
+      <ref name="datatype.properties"/>
+    </attribute>
+  </define>
+  <define name="opf.hreflang.attr">
+    <attribute name="hreflang">
+      <choice>
+        <value/>
+        <ref name="datatype.languagecode"/>
+      </choice>
+    </attribute>
+  </define>
+  <define name="opf.scheme.attr">
+    <attribute name="scheme">
+      <ref name="datatype.property"/>
+    </attribute>
+  </define>
+  <define name="opf.refines.attr">
+    <attribute name="refines">
+      <ref name="datatype.URI"/>
+    </attribute>
+  </define>
+  <define name="opf.dc.identifier">
+    <element name="dc:identifier">
+      <interleave>
+        <optional>
+          <ref name="opf.id.attr"/>
+        </optional>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.title">
+    <element name="dc:title">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.language">
+    <element name="dc:language">
+      <interleave>
+        <optional>
+          <ref name="opf.id.attr"/>
+        </optional>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.date">
+    <element name="dc:date">
+      <interleave>
+        <optional>
+          <ref name="opf.id.attr"/>
+        </optional>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.source">
+    <element name="dc:source">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.type">
+    <element name="dc:type">
+      <interleave>
+        <optional>
+          <ref name="opf.id.attr"/>
+        </optional>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.format">
+    <element name="dc:format">
+      <interleave>
+        <optional>
+          <ref name="opf.id.attr"/>
+        </optional>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.creator">
+    <element name="dc:creator">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.subject">
+    <element name="dc:subject">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.description">
+    <element name="dc:description">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.publisher">
+    <element name="dc:publisher">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.contributor">
+    <element name="dc:contributor">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.relation">
+    <element name="dc:relation">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.coverage">
+    <element name="dc:coverage">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.rights">
+    <element name="dc:rights">
+      <interleave>
+        <ref name="opf.dc.attlist"/>
+        <ref name="datatype.string.nonempty"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.dc.elems">
+    <interleave>
+      <oneOrMore>
+        <ref name="opf.dc.identifier"/>
+      </oneOrMore>
+      <oneOrMore>
+        <ref name="opf.dc.title"/>
+      </oneOrMore>
+      <oneOrMore>
+        <ref name="opf.dc.language"/>
+      </oneOrMore>
+      <optional>
+        <ref name="opf.dc.date"/>
+      </optional>
+      <zeroOrMore>
+        <ref name="opf.dc.source"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.type"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.format"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.creator"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.subject"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.description"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.publisher"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.contributor"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.relation"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.coverage"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.rights"/>
+      </zeroOrMore>
+    </interleave>
+  </define>
+  <define name="opf.dc.attlist">
+    <interleave>
+      <optional>
+        <ref name="opf.id.attr"/>
+      </optional>
+      <ref name="opf.i18n.attrs"/>
+    </interleave>
+  </define>
+  <define name="opf.manifest">
+    <element name="manifest">
+      <interleave>
+        <ref name="opf.manifest.attlist"/>
+        <ref name="opf.manifest.content"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.manifest.attlist" combine="interleave">
+    <optional>
+      <ref name="opf.id.attr"/>
+    </optional>
+  </define>
+  <define name="opf.manifest.content">
+    <oneOrMore>
+      <ref name="opf.item"/>
+    </oneOrMore>
+  </define>
+  <define name="opf.item">
+    <element name="item">
+      <ref name="opf.item.attlist"/>
+    </element>
+  </define>
+  <define name="opf.item.attlist" combine="interleave">
+    <interleave>
+      <ref name="opf.id.attr"/>
+      <ref name="opf.href.attr"/>
+      <ref name="opf.media-type.attr"/>
+      <optional>
+        <ref name="opf.fallback.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.media-overlay.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.properties.attr"/>
+      </optional>
+    </interleave>
+  </define>
+  <define name="opf.fallback.attr">
+    <attribute name="fallback">
+      <ref name="datatype.IDREF"/>
+    </attribute>
+  </define>
+  <define name="opf.media-overlay.attr">
+    <attribute name="media-overlay">
+      <ref name="datatype.IDREF"/>
+    </attribute>
+  </define>
+  <define name="opf.properties.attr">
+    <attribute name="properties">
+      <ref name="datatype.properties"/>
+    </attribute>
+  </define>
+  <define name="opf.spine">
+    <element name="spine">
+      <interleave>
+        <ref name="opf.spine.attlist"/>
+        <ref name="opf.spine.content"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.spine.attlist" combine="interleave">
+    <interleave>
+      <optional>
+        <ref name="opf.id.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.spine.toc.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.ppd.attr"/>
+      </optional>
+    </interleave>
+  </define>
+  <define name="opf.spine.toc.attr">
+    <attribute name="toc">
+      <ref name="datatype.IDREF"/>
+    </attribute>
+  </define>
+  <define name="opf.ppd.attr">
+    <attribute name="page-progression-direction">
+      <choice>
+        <value>ltr</value>
+        <value>rtl</value>
+        <value>default</value>
+      </choice>
+    </attribute>
+  </define>
+  <define name="opf.spine.content">
+    <oneOrMore>
+      <ref name="opf.itemref"/>
+    </oneOrMore>
+  </define>
+  <define name="opf.itemref">
+    <element name="itemref">
+      <ref name="opf.itemref.attlist"/>
+    </element>
+  </define>
+  <define name="opf.itemref.attlist" combine="interleave">
+    <interleave>
+      <ref name="opf.itemref.idref.attr"/>
+      <optional>
+        <ref name="opf.itemref.linear.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.id.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.properties.attr"/>
+      </optional>
+    </interleave>
+  </define>
+  <define name="opf.itemref.idref.attr">
+    <attribute name="idref">
+      <ref name="datatype.IDREF"/>
+    </attribute>
+  </define>
+  <define name="opf.itemref.linear.attr">
+    <attribute name="linear">
+      <choice>
+        <value>yes</value>
+        <value>no</value>
+      </choice>
+    </attribute>
+  </define>
+  <define name="opf.guide">
+    <element name="guide">
+      <oneOrMore>
+        <ref name="opf.reference"/>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="opf.reference">
+    <element name="reference">
+      <interleave>
+        <ref name="opf.href.attr"/>
+        <attribute name="type">
+          <ref name="datatype.text"/>
+        </attribute>
+        <optional>
+          <attribute name="title">
+            <ref name="datatype.text"/>
+          </attribute>
+        </optional>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.bindings">
+    <element name="bindings">
+      <oneOrMore>
+        <ref name="opf.bindings.mediaType"/>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="opf.bindings.mediaType">
+    <element name="mediaType">
+      <ref name="opf.bindings.mediaType.attlist"/>
+    </element>
+  </define>
+  <define name="opf.bindings.mediaType.attlist" combine="interleave">
+    <interleave>
+      <ref name="opf.media-type.attr"/>
+      <attribute name="handler">
+        <ref name="datatype.IDREF"/>
+      </attribute>
+    </interleave>
+  </define>
+  <define name="opf.collection">
+    <element name="collection">
+      <ref name="opf.collection.attlist"/>
+      <ref name="opf.collection.content"/>
+    </element>
+  </define>
+  <define name="opf.collection.attlist" combine="interleave">
+    <interleave>
+      <optional>
+        <ref name="opf.id.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.dir.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.xml.lang.attr"/>
+      </optional>
+      <ref name="opf.collection.role.attr"/>
+    </interleave>
+  </define>
+  <define name="opf.collection.role.attr">
+    <attribute name="role">
+      <ref name="datatype.space.separated.tokens"/>
+    </attribute>
+  </define>
+  <define name="opf.collection.content">
+    <optional>
+      <ref name="opf.collection.metadata"/>
+    </optional>
+    <choice>
+      <oneOrMore>
+        <ref name="opf.collection"/>
+      </oneOrMore>
+      <group>
+        <zeroOrMore>
+          <ref name="opf.collection"/>
+        </zeroOrMore>
+        <oneOrMore>
+          <ref name="opf.collection.link"/>
+        </oneOrMore>
+      </group>
+    </choice>
+  </define>
+  <define name="opf.collection.metadata">
+    <element name="metadata">
+      <interleave>
+        <optional>
+          <ref name="opf.id.attr"/>
+        </optional>
+        <ref name="opf.i18n.attrs"/>
+        <ref name="opf.collection.metadata.content"/>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.collection.metadata.content">
+    <interleave>
+      <ref name="opf.collection.dc.elems"/>
+      <zeroOrMore>
+        <ref name="opf.collection.meta"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.link"/>
+      </zeroOrMore>
+    </interleave>
+  </define>
+  <define name="opf.collection.dc.elems">
+    <interleave>
+      <zeroOrMore>
+        <ref name="opf.dc.identifier"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.title"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.language"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.date"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.source"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.type"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.format"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.creator"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.subject"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.description"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.publisher"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.contributor"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.relation"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.coverage"/>
+      </zeroOrMore>
+      <zeroOrMore>
+        <ref name="opf.dc.rights"/>
+      </zeroOrMore>
+    </interleave>
+  </define>
+  <define name="opf.collection.meta">
+    <element name="meta">
+      <ref name="opf.epub3.meta.content"/>
+    </element>
+  </define>
+  <define name="opf.collection.link">
+    <element name="link">
+      <interleave>
+        <ref name="opf.href.attr"/>
+        <optional>
+          <ref name="opf.rel.attr"/>
+        </optional>
+        <optional>
+          <ref name="opf.id.attr"/>
+        </optional>
+        <optional>
+          <ref name="opf.media-type.attr"/>
+        </optional>
+      </interleave>
+    </element>
+  </define>
+  <define name="opf.media-type.attr">
+    <attribute name="media-type">
+      <ref name="datatype.mimetype"/>
+    </attribute>
+  </define>
+  <define name="opf.href.attr">
+    <attribute name="href">
+      <ref name="datatype.URI"/>
+    </attribute>
+  </define>
+  <define name="opf.id.attr">
+    <attribute name="id">
+      <ref name="datatype.ID"/>
+    </attribute>
+  </define>
+  <define name="opf.i18n.attrs">
+    <interleave>
+      <optional>
+        <ref name="opf.xml.lang.attr"/>
+      </optional>
+      <optional>
+        <ref name="opf.dir.attr"/>
+      </optional>
+    </interleave>
+  </define>
+  <define name="opf.xml.lang.attr">
+    <attribute name="xml:lang">
+      <choice>
+        <value/>
+        <ref name="datatype.languagecode"/>
+      </choice>
+    </attribute>
+  </define>
+  <define name="opf.dir.attr">
+    <attribute name="dir">
+      <choice>
+        <value>ltr</value>
+        <value>rtl</value>
+        <value>auto</value>
+      </choice>
+    </attribute>
+  </define>
+</grammar>

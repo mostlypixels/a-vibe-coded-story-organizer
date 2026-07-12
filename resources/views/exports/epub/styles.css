@@ -1,0 +1,32 @@
+/*
+ * The one and only epub stylesheet. Beyond the page-break rules from the grilled
+ * "semantic HTML + minimal page-break CSS only" decision, it holds one explicit
+ * exception: the story title page and every Act heading are centered and set larger,
+ * per a direct follow-up request. Nothing else (chapter headings, body text, colors)
+ * is styled. `break-before` is the modern property; `page-break-before` is kept for
+ * older reader engines.
+ */
+section.title-page,
+section.toc,
+section.act,
+section.chapter {
+    break-before: page;
+    page-break-before: always;
+}
+
+section.title-page,
+section.act {
+    text-align: center;
+}
+
+section.title-page .story-title {
+    font-size: 2em;
+}
+
+section.act h1 {
+    font-size: 1.75em;
+}
+
+section.act .act-name {
+    font-size: 1.25em;
+}
