@@ -5,8 +5,7 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="space-y-6">
             <div class="flex justify-end">
                 <x-button variant="primary" :href="route('projects.create')">{{ __('New Project') }}</x-button>
             </div>
@@ -23,6 +22,5 @@
                     <p class="text-gray-500">{{ __('You have no projects yet.') }}</p>
                 @endforelse
             </x-card>
-        </div>
     </div>
 </x-app-layout>

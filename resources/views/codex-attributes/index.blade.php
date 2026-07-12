@@ -10,8 +10,7 @@
         </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="space-y-6">
             <div class="flex items-center justify-end">
                 <x-button variant="primary" :href="route('projects.codex-attributes.create', $project)">{{ __('New Attribute') }}</x-button>
             </div>
@@ -48,6 +47,5 @@
                     <x-table-empty :colspan="3">{{ __('No attributes yet.') }}</x-table-empty>
                 @endforelse
             </x-table>
-        </div>
     </div>
 </x-app-layout>

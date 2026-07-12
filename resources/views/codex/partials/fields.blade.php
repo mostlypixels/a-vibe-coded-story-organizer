@@ -17,70 +17,66 @@
     $referenceFiles = $mediaItems->where('collection', CodexMediaCollection::ReferenceFile)->sortBy('position')->values();
 @endphp
 
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-    {{-- Left column: main content --}}
-    <div class="lg:col-span-9 space-y-6">
-        <x-card>
-            <div class="space-y-6">
-                <div>
-                    <x-input-label for="name" :value="__('Name')" />
-                    <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $entry?->name)" required autofocus />
-                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                </div>
+<x-edit-layout>
+    <x-card>
+        <div class="space-y-6">
+            <div>
+                <x-input-label for="name" :value="__('Name')" />
+                <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $entry?->name)" required autofocus />
+                <x-input-error :messages="$errors->get('name')" class="mt-2" />
+            </div>
 
-                <div>
-                    <x-input-label for="description" :value="__('Description')" />
-                    <x-wysiwyg id="description" name="description" :value="old('description', $entry?->description)" :rows="10" />
-                    <x-input-error :messages="$errors->get('description')" class="mt-2" />
-                </div>
+            <div>
+                <x-input-label for="description" :value="__('Description')" />
+                <x-wysiwyg id="description" name="description" :value="old('description', $entry?->description)" :rows="10" />
+                <x-input-error :messages="$errors->get('description')" class="mt-2" />
+            </div>
 
-                {{-- Aliases: a small add/remove-row repeater of free-text inputs (x-string-list). --}}
-                <div>
-                    <x-input-label :value="__('Aliases')" />
-                    <p class="text-sm text-gray-500">{{ __('Other names this entry is known by (optional).') }}</p>
+            {{-- Aliases: a small add/remove-row repeater of free-text inputs (x-string-list). --}}
+            <div>
+                <x-input-label :value="__('Aliases')" />
+                <p class="text-sm text-gray-500">{{ __('Other names this entry is known by (optional).') }}</p>
 
-                    <x-string-list
-                        name="aliases"
-                        :values="$aliasValues"
-                        :placeholder="__('e.g. The Serpent Lady')"
-                        :add-label="__('+ Add alias')"
-                        :remove-label="__('Remove alias')"
-                    />
-                    <x-input-error :messages="$errors->get('aliases')" class="mt-2" />
-                </div>
+                <x-string-list
+                    name="aliases"
+                    :values="$aliasValues"
+                    :placeholder="__('e.g. The Serpent Lady')"
+                    :add-label="__('+ Add alias')"
+                    :remove-label="__('Remove alias')"
+                />
+                <x-input-error :messages="$errors->get('aliases')" class="mt-2" />
+            </div>
+        </div>
+    </x-card>
+
+    {{-- Attribute baselines: create only. Each applicable attribute captures its Start value;
+         later periods are added on the edit page once the entry (and its id) exist. --}}
+    @if ($entry === null && $attributes->isNotEmpty())
+        <x-card :title="__('Attributes')">
+            <p class="text-sm text-gray-500">{{ __('Starting value for each attribute (from the Start of the timeline). You can add later changes after saving.') }}</p>
+
+            <div class="mt-4 space-y-4">
+                @foreach ($attributes as $attribute)
+                    <div>
+                        <x-input-label
+                            for="attribute_baselines_{{ $attribute->id }}"
+                            :value="__(':name (from Start)', ['name' => $attribute->name])"
+                        />
+                        <x-text-input
+                            id="attribute_baselines_{{ $attribute->id }}"
+                            name="attribute_baselines[{{ $attribute->id }}]"
+                            type="text"
+                            class="mt-1 block w-full"
+                            :value="old('attribute_baselines.'.$attribute->id)"
+                        />
+                        <x-input-error :messages="$errors->get('attribute_baselines.'.$attribute->id)" class="mt-2" />
+                    </div>
+                @endforeach
             </div>
         </x-card>
+    @endif
 
-        {{-- Attribute baselines: create only. Each applicable attribute captures its Start value;
-             later periods are added on the edit page once the entry (and its id) exist. --}}
-        @if ($entry === null && $attributes->isNotEmpty())
-            <x-card :title="__('Attributes')">
-                <p class="text-sm text-gray-500">{{ __('Starting value for each attribute (from the Start of the timeline). You can add later changes after saving.') }}</p>
-
-                <div class="mt-4 space-y-4">
-                    @foreach ($attributes as $attribute)
-                        <div>
-                            <x-input-label
-                                for="attribute_baselines_{{ $attribute->id }}"
-                                :value="__(':name (from Start)', ['name' => $attribute->name])"
-                            />
-                            <x-text-input
-                                id="attribute_baselines_{{ $attribute->id }}"
-                                name="attribute_baselines[{{ $attribute->id }}]"
-                                type="text"
-                                class="mt-1 block w-full"
-                                :value="old('attribute_baselines.'.$attribute->id)"
-                            />
-                            <x-input-error :messages="$errors->get('attribute_baselines.'.$attribute->id)" class="mt-2" />
-                        </div>
-                    @endforeach
-                </div>
-            </x-card>
-        @endif
-    </div>
-
-    {{-- Right column: cover above tags. --}}
-    <div class="lg:col-span-3 space-y-6">
+    <x-slot:sidebar>
         <x-card :title="__('Cover')">
             @if ($cover)
                 <img src="{{ $cover->url() }}" alt="{{ $entry->name }}" class="w-full rounded-md border border-gray-200 object-cover">
@@ -104,8 +100,8 @@
             <x-tag-picker name="tags" :tags="$projectTags" :selected="$tagValues" />
             <x-input-error :messages="$errors->get('tags')" class="mt-2" />
         </x-card>
-    </div>
-</div>
+    </x-slot:sidebar>
+</x-edit-layout>
 
 {{--
     Reference media: full-width block below the two columns, above the Save button.

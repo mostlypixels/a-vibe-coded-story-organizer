@@ -10,8 +10,7 @@
         </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="space-y-6">
             @if ($project->description)
                 <x-card class="text-gray-900">
                     <x-rich-text :html="$project->description" />
@@ -29,6 +28,5 @@
                     <p class="text-sm text-gray-500 mt-1">{{ trans_choice('{0} No events|{1} :count event|[2,*] :count events', $project->events_count, ['count' => $project->events_count]) }}</p>
                 </a>
             </div>
-        </div>
     </div>
 </x-app-layout>

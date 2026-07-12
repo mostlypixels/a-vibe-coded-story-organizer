@@ -10,8 +10,7 @@
         </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="space-y-6">
             <div class="flex items-center justify-between gap-4">
                 <form method="GET" class="flex items-center gap-2">
                     <input type="hidden" name="sort" value="{{ $sort }}">
@@ -75,6 +74,5 @@
                     />
                 @endforelse
             </x-table>
-        </div>
     </div>
 </x-app-layout>
