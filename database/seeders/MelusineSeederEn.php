@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\BookLanguage;
 use App\Enums\CodexEntryType;
 use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
@@ -13,10 +14,10 @@ use App\Services\AttributeTimeline;
 use App\Support\PlotlineColors;
 use Illuminate\Database\Seeder;
 
-class MelusineSeeder extends Seeder
+class MelusineSeederEn extends Seeder
 {
     /**
-     * Seed a sample "Roman of Melusine" project with plotlines and events.
+     * Seed a sample "Roman of Melusine" project (English) with plotlines and events.
      */
     public function run(): void
     {
@@ -29,6 +30,7 @@ class MelusineSeeder extends Seeder
         $project = Project::create([
             'user_id' => $user->id,
             'name' => 'The Roman of Melusine',
+            'language' => BookLanguage::English,
             'description' => <<<'HTML'
                 <p>A medieval legend of the faerie <strong>Melusine</strong>, her curse, her marriage to <em>Raymondin of Lusignan</em>, and the fates of their nine sons.</p>
                 <h3>The threads of the tale</h3>
