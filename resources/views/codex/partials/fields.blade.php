@@ -226,7 +226,7 @@
                                 >
                                     {{ $file->original_name }}
                                 </button>
-                                <a href="{{ $file->url() }}" class="shrink-0 text-xs text-gray-500 hover:text-gray-700" download="{{ $file->original_name }}">{{ __('Download') }}</a>
+                                <x-icon-download-button :href="$file->url()" :download="$file->original_name" class="shrink-0" />
                             </span>
                             <label class="flex shrink-0 items-center gap-1 text-xs text-gray-600">
                                 <input type="checkbox" name="remove_media[]" value="{{ $file->id }}" class="rounded border-gray-300 text-ocean-600 focus:ring-ocean-500">
@@ -261,13 +261,7 @@
         <div class="fixed inset-0 bg-gray-500 opacity-75" @click="lightbox = null"></div>
 
         <div class="relative mx-auto max-w-3xl">
-            <button
-                type="button"
-                @click="lightbox = null"
-                class="absolute -top-10 right-0 text-sm font-medium text-white hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-white rounded-sm"
-            >
-                {{ __('Close') }}
-            </button>
+            <x-icon-close-button @click="lightbox = null" variant="light" class="absolute -top-10 right-0" />
             <img :src="lightbox?.url" :alt="lightbox?.alt" class="w-full rounded-lg shadow-xl">
         </div>
     </div>
@@ -290,15 +284,9 @@
         <div class="relative mx-auto flex h-full max-w-4xl flex-col">
             <div class="flex items-center justify-between rounded-t-lg bg-white px-4 py-2 shadow-xl">
                 <span class="truncate text-sm font-medium text-gray-700" x-text="filePreview?.name"></span>
-                <span class="flex shrink-0 items-center gap-3">
-                    <a :href="filePreview?.url" :download="filePreview?.name" class="text-sm text-ocean-600 hover:text-ocean-800">{{ __('Download') }}</a>
-                    <button
-                        type="button"
-                        @click="filePreview = null"
-                        class="text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-ocean-500 rounded-sm"
-                    >
-                        {{ __('Close') }}
-                    </button>
+                <span class="flex shrink-0 items-center gap-1">
+                    <x-icon-download-button x-bind:href="filePreview?.url" x-bind:download="filePreview?.name" />
+                    <x-icon-close-button @click="filePreview = null" />
                 </span>
             </div>
             <iframe :src="filePreview?.url" :title="filePreview?.name" class="flex-1 rounded-b-lg border-0 bg-white shadow-xl"></iframe>

@@ -95,14 +95,14 @@
                         </div>
 
                         <div class="flex items-center gap-4">
-                            <x-primary-button>{{ __('Save') }}</x-primary-button>
+                            <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
                         </div>
                     </form>
 
                     <form method="POST" action="{{ route('scenes.destroy', $scene) }}" class="mt-6" onsubmit="return confirm('{{ __('Are you sure you want to delete this scene?') }}')">
                         @csrf
                         @method('DELETE')
-                        <x-danger-button>{{ __('Delete Scene') }}</x-danger-button>
+                        <x-danger-button :icon="true">{{ __('Delete Scene') }}</x-danger-button>
                     </form>
             </x-card>
 
@@ -174,7 +174,7 @@
                             <form method="POST" action="{{ route('scenes.share.destroy', $scene) }}" onsubmit="return confirm('{{ __('Revoke this share link? The current URL will stop working.') }}')">
                                 @csrf
                                 @method('DELETE')
-                                <x-danger-button>{{ __('Revoke') }}</x-danger-button>
+                                <x-danger-button :icon="true">{{ __('Revoke') }}</x-danger-button>
                             </form>
                         </div>
                     </div>

@@ -47,7 +47,7 @@
                     </div>
 
                     <div class="flex items-center gap-4">
-                        <x-primary-button>{{ __('Save') }}</x-primary-button>
+                        <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
                     </div>
                 </form>
 
@@ -75,7 +75,7 @@
                     <form method="POST" action="{{ route('events.destroy', $event) }}" class="mt-6" onsubmit="return confirm('{{ __('Are you sure you want to delete this event?') }}')">
                         @csrf
                         @method('DELETE')
-                        <x-danger-button>{{ __('Delete Event') }}</x-danger-button>
+                        <x-danger-button :icon="true">{{ __('Delete Event') }}</x-danger-button>
                     </form>
                 @endunless
             </x-card>

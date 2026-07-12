@@ -6,9 +6,13 @@
 
     $sheets: collection of ['attribute' => CodexAttribute, 'baseline' => ?CodexAttributeValue, 'periods' => Collection]
     $startEvent: the locked Start anchor.  $events: anchor choices for "Add period".
+
+    The outer border-t + pt-10 mark this as its own section, separate from the entry
+    form above (which sits directly on the page, not inside a card).
 --}}
 @if ($sheets->isNotEmpty())
-    <x-card :title="__('Attribute timeline')">
+    <div class="border-t border-gray-200 pt-10">
+        <x-card :title="__('Attribute timeline')">
         <p class="text-sm text-gray-500">
             {{ __('Each attribute\'s value over time. A period runs from its event until the next change. Editing a value and pressing Save updates it in place.') }}
         </p>
@@ -46,7 +50,7 @@
                                 :value="old('value', $sheet['baseline']?->value)"
                                 :placeholder="__('Starting value')"
                             />
-                            <x-secondary-button type="submit">{{ __('Save') }}</x-secondary-button>
+                            <x-icon-save-button />
                         </form>
 
                         {{-- Later periods: each editable (upsert) with a separate remove form. --}}
@@ -67,13 +71,9 @@
                                         class="flex-1 min-w-[10rem]"
                                         :value="old('value', $period->value)"
                                     />
-                                    <x-secondary-button type="submit">{{ __('Save') }}</x-secondary-button>
+                                    <x-icon-save-button />
                                 </form>
-                                <form method="POST" action="{{ route('codex.attribute-values.destroy', $period) }}" onsubmit="return confirm('{{ __('Remove this period?') }}')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <x-danger-button type="submit">{{ __('Remove') }}</x-danger-button>
-                                </form>
+                                <x-icon-delete-button :action="route('codex.attribute-values.destroy', $period)" :confirm="__('Remove this period?')" />
                             </div>
                         @endforeach
 
@@ -109,4 +109,5 @@
             @endforeach
         </div>
     </x-card>
+    </div>
 @endif

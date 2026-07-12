@@ -11,7 +11,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-10">
             <form method="POST" action="{{ route('codex.update', $entry) }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf
                 @method('PUT')
@@ -19,7 +19,7 @@
                 @include('codex.partials.fields')
 
                 <div class="flex items-center gap-4">
-                    <x-primary-button>{{ __('Save') }}</x-primary-button>
+                    <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
                     <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cancel') }}</a>
                 </div>
             </form>
@@ -31,7 +31,7 @@
             <form method="POST" action="{{ route('codex.destroy', $entry) }}" onsubmit="return confirm('{{ __('Are you sure you want to delete this entry?') }}')">
                 @csrf
                 @method('DELETE')
-                <x-danger-button>{{ __('Delete :label', ['label' => $type->label()]) }}</x-danger-button>
+                <x-danger-button :icon="true">{{ __('Delete :label', ['label' => $type->label()]) }}</x-danger-button>
             </form>
         </div>
     </div>

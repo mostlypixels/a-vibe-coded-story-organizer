@@ -12,6 +12,14 @@ set belongs in its pull request description.
 
 ### Changed
 
+- Consolidated edit/delete/save/remove/close/download controls across the site onto a small set of
+  shared button components instead of ad hoc text buttons. Row-level actions (list rows, the Codex
+  attribute-timeline period editor) are small outline icon-only buttons; main entity actions (Save,
+  Delete/Revoke on each entity's edit page) are full-size labelled buttons with a matching icon
+  (`x-primary-button`/`x-danger-button` gained an `:icon` prop). The Codex attribute-timeline period
+  "Remove" button now reuses `x-icon-delete-button` instead of a separate labelled danger button.
+- Codex entry edit page: added a `border-t` divider and extra spacing above the Attribute timeline
+  section so it reads as its own section rather than a continuation of the entry form.
 - Codex entry create/edit form now uses a two-column layout (main content 9/12, a Cover-above-Tags
   sidebar 3/12) instead of three columns. Reference images and reference files moved out of the
   sidebar into a full-width tabbed block ("Reference images" / "Reference files") above the Save
@@ -20,6 +28,10 @@ set belongs in its pull request description.
 
 ### Added
 
+- Installed `secondnetwork/blade-tabler-icons` (Composer, vendored SVGs — no CDN, works airgapped)
+  and migrated every icon button on the site to it. New shared components `x-icon-save-button`
+  (outline, for row-level saves), `x-icon-close-button` (outline, with a `light` variant for
+  on-dark overlays), and `x-icon-download-button` (outline).
 - Epub export from **Admin → Export & import → Export**, alongside (not replacing) the existing
   `.zip` export. A signed-in project owner picks a project and downloads a standard `.epub` file
   built by `App\Services\EpubExporter` via `rampmaster/phpepub`. Acts render as their own divider
