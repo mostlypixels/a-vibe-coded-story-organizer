@@ -10,6 +10,14 @@ set belongs in its pull request description.
 
 ## [Unreleased]
 
+### Changed
+
+- Codex entry create/edit form now uses a two-column layout (main content 9/12, a Cover-above-Tags
+  sidebar 3/12) instead of three columns. Reference images and reference files moved out of the
+  sidebar into a full-width tabbed block ("Reference images" / "Reference files") above the Save
+  button. Reference image thumbnails are clickable and open in a lightbox; reference files show a
+  "View" trigger that previews the file in a modal iframe alongside an explicit "Download" link.
+
 ### Added
 
 - Epub export from **Admin → Export & import → Export**, alongside (not replacing) the existing
