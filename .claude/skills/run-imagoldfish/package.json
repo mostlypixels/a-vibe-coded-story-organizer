@@ -1,0 +1,9 @@
+{
+  "name": "run-imagoldfish-driver",
+  "private": true,
+  "type": "module",
+  "description": "Headless-browser driver used only by the run-imagoldfish skill. Not a dependency of the app itself.",
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
