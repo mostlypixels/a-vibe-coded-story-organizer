@@ -47,7 +47,7 @@
                     <x-table-row :striped="$loop->even">
                         <td @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 {{ $scene->event ? '' : 'border-l-4 border-red-500' }}">{{ $scene->position }}</td>
                         <td class="px-4 py-3">
-                            <div class="font-semibold text-gray-800">{{ $scene->name }}</div>
+                            <a href="{{ route('scenes.edit', $scene) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $scene->name }}</a>
                             @if ($scene->description)
                                 <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$scene->description" /></div>
                             @endif

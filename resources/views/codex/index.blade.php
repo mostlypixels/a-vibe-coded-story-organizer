@@ -44,14 +44,16 @@
                 @forelse ($entries as $entry)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3">
-                            @if ($entry->cover)
-                                <img src="{{ $entry->cover->url() }}" alt="{{ $entry->name }}" class="h-10 w-10 rounded object-cover border border-gray-200">
-                            @else
-                                <div class="h-10 w-10 rounded bg-gray-100 border border-gray-200" aria-hidden="true"></div>
-                            @endif
+                            <a href="{{ route('codex.edit', $entry) }}">
+                                @if ($entry->cover)
+                                    <img src="{{ $entry->cover->url() }}" alt="{{ $entry->name }}" class="h-10 w-10 rounded object-cover border border-gray-200">
+                                @else
+                                    <div class="h-10 w-10 rounded bg-gray-100 border border-gray-200" aria-hidden="true"></div>
+                                @endif
+                            </a>
                         </td>
                         <td class="px-4 py-3">
-                            <div class="font-semibold text-gray-800">{{ $entry->name }}</div>
+                            <a href="{{ route('codex.edit', $entry) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $entry->name }}</a>
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-500">
                             {{ $entry->aliases->pluck('alias')->join(', ') ?: '—' }}

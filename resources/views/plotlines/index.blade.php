@@ -34,13 +34,13 @@
                 @forelse ($plotlines as $plotline)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3">
-                            <div class="font-semibold text-gray-800 flex items-center gap-2">
+                            <a href="{{ route('plotlines.edit', $plotline) }}" class="font-semibold text-gray-800 hover:text-ocean-600 flex items-center gap-2">
                                 <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
                                 {{ $plotline->name }}
                                 @if ($plotline->is_main)
                                     <x-badge>{{ __('Main') }}</x-badge>
                                 @endif
-                            </div>
+                            </a>
                             @if ($plotline->description)
                                 <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$plotline->description" /></div>
                             @endif

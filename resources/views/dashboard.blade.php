@@ -50,14 +50,16 @@
                     @forelse ($projects as $project)
                         <x-table-row :striped="$loop->even">
                             <td class="px-4 py-3">
-                                @if ($project->cover_image)
-                                    <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-10 w-10 rounded object-cover border border-gray-200">
-                                @else
-                                    <div class="h-10 w-10 rounded bg-gray-100 border border-gray-200" aria-hidden="true"></div>
-                                @endif
+                                <a href="{{ route('projects.edit', $project) }}">
+                                    @if ($project->cover_image)
+                                        <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-10 w-10 rounded object-cover border border-gray-200">
+                                    @else
+                                        <div class="h-10 w-10 rounded bg-gray-100 border border-gray-200" aria-hidden="true"></div>
+                                    @endif
+                                </a>
                             </td>
                             <td class="px-4 py-3">
-                                <a href="{{ route('projects.show', $project) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $project->name }}</a>
+                                <a href="{{ route('projects.edit', $project) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $project->name }}</a>
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-500">
                                 @if ($project->description)
@@ -84,7 +86,7 @@
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4">
                     @endif
 
-                    <a href="{{ route('projects.show', $project) }}" class="block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <a href="{{ route('projects.edit', $project) }}" class="block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
                         @if ($project->cover_image)
                             <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-24 w-full object-cover">
                         @else

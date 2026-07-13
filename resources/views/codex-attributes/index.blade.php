@@ -25,7 +25,7 @@
                 @forelse ($attributes as $attribute)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3">
-                            <div class="font-semibold text-gray-800">{{ $attribute->name }}</div>
+                            <a href="{{ route('codex-attributes.edit', $attribute) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $attribute->name }}</a>
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex flex-wrap gap-1">

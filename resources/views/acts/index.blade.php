@@ -37,7 +37,7 @@
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $act->position }}</td>
                         <td class="px-4 py-3">
-                            <div class="font-semibold text-gray-800">{{ $act->name }}</div>
+                            <a href="{{ route('acts.edit', $act) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $act->name }}</a>
                             @if ($act->description)
                                 <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$act->description" /></div>
                             @endif

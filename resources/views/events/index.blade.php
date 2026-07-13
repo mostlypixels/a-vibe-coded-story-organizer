@@ -44,12 +44,12 @@
                 @forelse ($events as $event)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3">
-                            <div class="flex items-center gap-2 font-semibold text-gray-800">
+                            <a href="{{ route('events.edit', $event) }}" class="flex items-center gap-2 font-semibold text-gray-800 hover:text-ocean-600">
                                 {{ $event->title }}
                                 @if ($event->is_fixed)
                                     <x-badge>{{ __('Fixed') }}</x-badge>
                                 @endif
-                            </div>
+                            </a>
                             @if ($event->description)
                                 <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$event->description" /></div>
                             @endif
