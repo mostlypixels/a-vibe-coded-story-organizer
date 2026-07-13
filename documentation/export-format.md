@@ -1,8 +1,9 @@
 # Export format — the `data/` contract
 
-This page is the growing specification for a project **export**, and therefore the
-spec a future **import** feature reads. A `.zip` produced from **Admin → Export &
-import → Export** contains a top-level `README.md` plus two folders:
+This page is the specification for a project **export**, and therefore the contract
+the **import** feature reads (built — see [`architecture.md` → Static site import](architecture.md#static-site-import)).
+A `.zip` produced from **Admin → Export & import → Export** contains a top-level
+`README.md` plus two folders:
 
 - **`README.md`** — the archive's front door: the project name, the export date, the
   project description as plain text (the stored HTML stripped to prose), and a short note
@@ -11,7 +12,7 @@ import → Export** contains a top-level `README.md` plus two folders:
   only; never the source of truth. Specified in [The `book/` reading layer](#the-book-reading-layer)
   below.
 - **`data/`** — a **lossless**, machine-readable copy of the project, built to be
-  reconstructed exactly by a future import. This document specifies `data/`.
+  reconstructed exactly by import. This document specifies `data/`.
 
 > [!IMPORTANT]
 > `data/` is **raw and lossless**. Every field file carries the **exact stored column
@@ -21,7 +22,7 @@ import → Export** contains a top-level `README.md` plus two folders:
 ## Stable identifiers
 
 Every entity's identity is its **database primary key**, written into its JSON and
-used for every cross-reference (`event_id`, `chapter_id`, `plotline_ids`, …). A future
+used for every cross-reference (`event_id`, `chapter_id`, `plotline_ids`, …). An
 import remaps these ids to freshly-inserted rows. Directory-name slugs (`<id>-slug`)
 are **cosmetic** — never rely on a slug or filename for identity.
 
@@ -181,11 +182,11 @@ data/timeline/events/<id>-slug/
 
 > [!NOTE]
 > **Import-time dedup concern.** The app auto-creates the main plotline and the Start/End
-> bookends whenever a project is created (`Project::booted()`). A future import therefore
-> **must match those seeded rows rather than duplicate them** — e.g. reuse the existing
+> bookends whenever a project is created (`Project::booted()`). Import therefore
+> **matches those seeded rows rather than duplicating them** — it reuses the existing
 > `is_main` plotline and the earliest/latest `is_fixed` events instead of inserting new
-> ones — and remap the archive's ids onto them. The export just records them faithfully;
-> reconciliation is the importer's job.
+> ones — and remaps the archive's ids onto them. The export just records them faithfully;
+> reconciliation is the importer's job (`App\Services\Import\ProjectGraphImporter::importTimeline`).
 
 ## The Codex branch
 
@@ -304,7 +305,7 @@ never collide (`reference-images/01-sketch.png`, `reference-files/01-notes.pdf`)
 
 Everything above specifies `data/` — the raw, lossless machine layer. `book/` is the other
 top-level folder: the **human reading version** of the manuscript. It is deliberately narrow —
-just the prose, readable — and is **not** a source of truth. A future import ignores it entirely
+just the prose, readable — and is **not** a source of truth. Import ignores it entirely
 and reconstructs the project from `data/`.
 
 > [!IMPORTANT]

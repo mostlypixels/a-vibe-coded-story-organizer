@@ -53,6 +53,16 @@ class User extends Authenticatable
         return $this->hasMany(Project::class);
     }
 
+    /**
+     * The user's import attempts (checkpoint records). ProjectImporter creates
+     * them through this relation because Import.user_id is deliberately not
+     * mass-assignable — same ownership rule as projects().
+     */
+    public function imports(): HasMany
+    {
+        return $this->hasMany(Import::class);
+    }
+
     protected static function booted(): void
     {
         // Eloquent-delete the user's projects so Project's `deleting` hook fires for

@@ -14,6 +14,8 @@ use App\Http\Controllers\EpubExportController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\GeneralSettingsController;
+use App\Http\Controllers\ImportController;
+use App\Http\Controllers\ImportSettingController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -79,6 +81,21 @@ Route::middleware('auth')->group(function () {
         // rendering, packaging, and structural validation. A project with nothing to
         // export redirects back with an error (EpubExportException), never a 500.
         Route::post('/data/export/epub', [EpubExportController::class, 'store'])->name('data.export.epub');
+
+        // Import a project from an uploaded export .zip. Each import creates a
+        // BRAND-NEW project for the current user (never merges/updates), so store
+        // uses the any-authenticated-user gate (no existing project to walk up to,
+        // like CrawlerSetting). resume/destroy act on an existing Import row that
+        // DOES have an owner, so they use the real ImportPolicy — the two postures
+        // are intentional and must not be collapsed.
+        Route::post('/data/import', [ImportController::class, 'store'])->name('data.import');
+        Route::post('/data/imports/{import}/resume', [ImportController::class, 'resume'])->name('data.imports.resume');
+        Route::delete('/data/imports/{import}', [ImportController::class, 'destroy'])->name('data.imports.destroy');
+        // Global import settings (archive size cap + background mode) — a singleton
+        // owned by no Project, edited the same any-authenticated-user way as the
+        // crawler settings (see ImportSettingController / UpdateImportSettingRequest).
+        Route::patch('/data/import-settings', [ImportSettingController::class, 'update'])->name('data.import-settings');
+
         Route::get('/database', [DatabaseConfigurationController::class, 'edit'])->name('database.edit');
     });
 

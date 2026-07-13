@@ -352,7 +352,7 @@ rule are all covered in **[`documentation/rich-text.md`](rich-text.md)**.
 
 **Admin → Export & import → Export** lets a signed-in user download one of their projects as a
 `.zip`. The archive has exactly two top-level folders — **`data/`** (a lossless machine copy, the
-source of truth for a future import) and **`book/`** (a human reading version of the manuscript).
+source of truth for import) and **`book/`** (a human reading version of the manuscript).
 The full on-disk contract is **[`documentation/export-format.md`](export-format.md)**; this section
 is the architectural overview.
 
@@ -380,6 +380,63 @@ is the architectural overview.
 > `can:access-admin` (any authenticated user), so `ExportController@store` **must also**
 > `authorize('view', $project)`, mirrored in `ExportRequest::authorize()`. A foreign **or missing**
 > `project_id` is a **403**, never a silent export of another user's project.
+
+## Static site import
+
+**Admin → Export & import → Import** reads an export `.zip` back into a **brand-new** `Project` owned
+by the importing user. Import is a reconstruction from `data/` only — `book/` and `README.md` are
+allowed to be present (real exports have them) but are **never read**. The on-disk contract it consumes
+is the same **[`documentation/export-format.md`](export-format.md)** the exporter writes.
+
+- **Untrusted input, validated before anything is written.** A `.zip` claiming to be an export is
+  never trusted. `App\Services\Import\ArchiveValidator` is a six-check security gate — real zip,
+  no zip-slip / absolute / drive-letter entry names, every entry inside the allow-listed arborescence
+  (`App\Support\ImportRules`), a supported `data/manifest.json` `version`, every JSON descriptor's
+  required keys, and every declared media file's **content-sniffed** type matching its declaration
+  (a renamed `.php` masquerading as a `.png` fails here). `App\Services\Import\ContentSanitizer` then
+  runs every `description.html` / `notes.html` / rendered `contents.md` through the app's existing
+  rich-text allow-list, but **rejects the whole archive** on any violation rather than silently
+  stripping it — deliberately stricter than a normal form save. Nothing reaches the disk or the
+  database until both gates pass.
+- **Ids are always remapped.** The archive's ids belong to the *exporting* installation; every new
+  row gets a fresh id, and every reference (`event_id`, `plotline_ids`, attribute-value anchors, …) is
+  resolved through an id map built during import. A reference that doesn't resolve is a validation
+  failure, never a silently dropped relationship. `position` is replayed **verbatim** from the JSON,
+  never re-derived from insertion order.
+- **Anchors are reconciled, not duplicated.** Creating the `Project` fires `Project::booted()`, which
+  seeds the main plotline and the Start/End bookend events. `ProjectGraphImporter` **updates those rows
+  in place** with the archive's recorded fields and maps the archive's ids onto them — so the invariant
+  (exactly one `is_main` plotline, exactly two `is_fixed` events) holds before and after import. A name
+  collision only ever renames the *new* project (a timestamp suffix); it never blocks creation or merges
+  into an existing project.
+- **Checkpointed for resumability.** `App\Services\ProjectImporter` (`start()` / `run()` / `discard()`)
+  ties the gate, the graph importer, and an `Import` tracking record together. Validation is **always**
+  synchronous (so a bad upload is an immediate form error). The four graph phases — `project → timeline
+  → story → codex` — each commit in their **own** DB transaction, checkpointing `phase` + the
+  accumulated `id_maps` onto the `Import` row after each commit. A crash mid-import therefore leaves the
+  row at its last completed phase with the uploaded zip + extraction kept on disk, so the user can
+  **resume** (re-run only the remaining phases) or **discard** (roll back the partial `Project`, delete
+  the working files, and remove the row) — never an orphaned half-import with no recovery path. See
+  `.specs/planned/import/expanded/data-model.md` for the full checkpoint contract.
+- **Synchronous by default, queued by opt-in.** `ImportSetting` (a singleton, same shape as
+  `CrawlerSetting`) carries `max_archive_kilobytes` and `run_in_background`. With background mode off
+  (the default, for installs with no queue worker) the whole import runs inline in the request and
+  redirects to the finished project. With it on, `ImportController` dispatches `ProjectImportJob` and
+  redirects with a "queued" status; only `run()` is ever deferred — validation still runs inline.
+- **Two intentional authorization postures.** `POST admin.data.import` and
+  `PATCH admin.data.import-settings` use the **any-authenticated-user** exception (like `CrawlerSetting`):
+  there is no project yet to walk up to, so `ImportProjectRequest::authorize()` is simply
+  `$this->user() !== null`. Once an `Import` row exists it has an owner, so `resume` / `destroy` go
+  through a real `ImportPolicy` (`$user->id === $import->user_id`) — a non-owner gets a **403**. Do not
+  collapse these two into one pattern.
+
+> [!NOTE]
+> The whole pipeline is covered end-to-end by `tests/Feature/ImportRoundTripTest.php`: it seeds a
+> non-trivial project, exports it through the real `StaticSiteExporter`, imports the resulting zip
+> through the real HTTP route with nothing mocked, and asserts the new project matches the source on
+> every axis — plus a second import of the same zip proving disambiguation. The HTTP layer, service
+> orchestration, and security gate also have their own focused suites (`ImportTest`,
+> `tests/Unit/Import/*`).
 
 ## Navigation active state
 

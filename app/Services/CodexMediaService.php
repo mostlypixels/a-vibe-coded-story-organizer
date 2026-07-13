@@ -6,6 +6,7 @@ use App\Enums\CodexMediaCollection;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\Project;
+use Illuminate\Http\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -61,6 +62,28 @@ class CodexMediaService
     }
 
     /**
+     * Copy an already-validated file from an extracted import archive onto the
+     * media disk at a freshly generated (hashed) path, returning that path.
+     *
+     * The archive's own relative path is never reused as the stored `path` —
+     * it is meaningless outside the archive — and the naming/disk knowledge
+     * stays here so the importer never learns where media lives. The caller
+     * (ProjectGraphImporter) creates the row itself, because import replays
+     * `position` verbatim from the archive instead of letting the creating()
+     * hook derive it.
+     */
+    public function storeImportedFile(string $absolutePath): string
+    {
+        $path = Storage::disk(self::DISK)->putFile(self::DIRECTORY, new File($absolutePath));
+
+        if ($path === false) {
+            throw new \RuntimeException("Unable to copy the imported media file \"{$absolutePath}\" to storage.");
+        }
+
+        return $path;
+    }
+
+    /**
      * In-transaction: delete the media *rows* the save flow wants gone and return their
      * disk paths for deletion *after* commit.
      *
@@ -79,7 +102,8 @@ class CodexMediaService
 
         if ($removeIds !== []) {
             $rows = $entry->media()->whereIn('id', $removeIds)->get();
-            $paths = array_merge($paths, $rows->pluck('path')->all());
+            // filter(): a metadata-only imported row has a null path — no file to delete.
+            $paths = array_merge($paths, $rows->pluck('path')->filter()->values()->all());
             $entry->media()->whereIn('id', $rows->modelKeys())->delete();
         }
 
@@ -122,7 +146,8 @@ class CodexMediaService
      */
     public function purge(CodexEntry $entry): void
     {
-        $paths = $entry->media()->pluck('path')->all();
+        // whereNotNull: metadata-only imported rows have no file to delete.
+        $paths = $entry->media()->whereNotNull('path')->pluck('path')->all();
 
         if ($paths !== []) {
             Storage::disk(self::DISK)->delete($paths);
@@ -142,6 +167,8 @@ class CodexMediaService
     {
         $paths = CodexMedia::query()
             ->whereIn('codex_entry_id', $project->codexEntries()->select('id'))
+            // whereNotNull: metadata-only imported rows have no file to delete.
+            ->whereNotNull('path')
             ->pluck('path')
             ->all();
 

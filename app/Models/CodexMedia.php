@@ -34,12 +34,29 @@ class CodexMedia extends Model
     }
 
     /**
-     * Public URL of the stored file (needs `php artisan storage:link` locally).
-     * Kept on the model so views/index thumbnails don't build the path by hand.
+     * Whether this media row has a stored file at all.
+     *
+     * False only for rows created by importing a metadata-only export archive
+     * (bytes were never shipped, so `path` is null). Views must check this
+     * before rendering an <img>/download link and show a "file not included in
+     * this import" placeholder instead (task 08).
      */
-    public function url(): string
+    public function hasFile(): bool
     {
-        return Storage::disk('public')->url($this->path);
+        return $this->path !== null;
+    }
+
+    /**
+     * Public URL of the stored file (needs `php artisan storage:link` locally),
+     * or null for a metadata-only imported row with no backing file — gate on
+     * hasFile() before rendering. Kept on the model so views/index thumbnails
+     * don't build the path by hand.
+     */
+    public function url(): ?string
+    {
+        return $this->path !== null
+            ? Storage::disk('public')->url($this->path)
+            : null;
     }
 
     protected static function booted(): void

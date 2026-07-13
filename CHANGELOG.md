@@ -12,6 +12,21 @@ set belongs in its pull request description.
 
 ### Added
 
+- **Project import.** **Admin → Export & import → Import** now reads an export `.zip` back into a
+  brand-new project owned by the importing user (the tab previously just said import was "coming soon").
+  Import reconstructs the full graph from the archive's lossless `data/` layer — Project, Acts/Chapters/
+  Scenes, the Timeline (plotlines + events), and the Codex (entries, aliases, tags, attributes,
+  event-anchored attribute values, and media) — remapping every archived id onto fresh rows and replaying
+  `position` verbatim. The upload is treated as untrusted: a six-check security gate
+  (`ArchiveValidator` — zip validity, zip-slip, an allow-listed arborescence, manifest version, JSON
+  shape, and content-sniffed media types) plus a reject-on-violation content sanitizer run before
+  anything is written, and the auto-created main plotline / Start/End bookends are reconciled rather than
+  duplicated. A name collision only ever renames the new project (timestamp suffix); import never merges
+  or overwrites. The import is checkpointed per phase onto an `Import` tracking record so a crashed import
+  can be **resumed** or **discarded**, runs synchronously by default (no queue worker required) with an
+  opt-in `run_in_background` toggle on the new `ImportSetting` singleton, and — like export — is behind
+  the admin gate with resume/discard guarded by a per-owner `ImportPolicy`. See
+  `documentation/architecture.md` → *Static site import*.
 - New `x-delete-button` component: the labelled, full-form sibling of `x-icon-delete-button`
   (`<form>` + `@csrf` + `@method('DELETE')` + native `confirm()` dialog around a
   `x-button variant="danger" :icon="true"`). Replaces 9 hand-written `onsubmit="return confirm(...)"`
