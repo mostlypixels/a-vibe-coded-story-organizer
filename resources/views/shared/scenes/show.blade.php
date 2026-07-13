@@ -2,10 +2,10 @@
     <div class="max-w-3xl mx-auto px-4 py-10 space-y-6">
         {{-- Formatted title: "Chapter 1 — Chapter title: Scene title".
              Arabic chapter.position + em-dash, matching the Story overview. --}}
-        <h1 class="text-3xl font-bold text-gray-900">
+        <x-heading level="1">
             {{ __('Chapter :number', ['number' => $scene->chapter->position]) }}
             &mdash; {{ $scene->chapter->name }}: {{ $scene->name }}
-        </h1>
+        </x-heading>
 
         {{-- Description in a COLLAPSED card (starts closed, per spec). The body
              is already-sanitized rich HTML, rendered only via x-rich-text. --}}

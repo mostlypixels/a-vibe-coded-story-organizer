@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <x-heading level="2">
             {{ __('Edit Scene') }}
-        </h2>
+        </x-heading>
     </x-slot>
 
     @php
@@ -100,15 +100,13 @@
                     </div>
 
                     <div class="flex items-center gap-4">
-                        <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
+                        <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
                     </div>
                 </form>
 
-                <form method="POST" action="{{ route('scenes.destroy', $scene) }}" class="mt-6" onsubmit="return confirm('{{ __('Are you sure you want to delete this scene?') }}')">
-                    @csrf
-                    @method('DELETE')
-                    <x-danger-button :icon="true">{{ __('Delete Scene') }}</x-danger-button>
-                </form>
+                <x-delete-button :action="route('scenes.destroy', $scene)" :confirm="__('Are you sure you want to delete this scene?')" class="mt-6">
+                    {{ __('Delete Scene') }}
+                </x-delete-button>
         </x-card>
 
         <x-slot:sidebar>
@@ -130,7 +128,7 @@
                             <x-input-error :messages="$errors->get('duration')" class="mt-2" />
                         </div>
 
-                        <x-primary-button>{{ __('Generate share link') }}</x-primary-button>
+                        <x-button variant="primary">{{ __('Generate share link') }}</x-button>
                     </form>
                 @else
                     <div class="space-y-4" x-data="{ copied: false }">
@@ -146,14 +144,15 @@
                                     x-ref="shareUrl"
                                     @focus="$el.select()"
                                 />
-                                <x-secondary-button
+                                <x-button
+                                    variant="secondary"
                                     type="button"
                                     aria-label="{{ __('Copy share link to clipboard') }}"
                                     x-on:click="navigator.clipboard.writeText($refs.shareUrl.value); copied = true; setTimeout(() => copied = false, 2000)"
                                 >
                                     <span x-show="! copied">{{ __('Copy') }}</span>
                                     <span x-show="copied" style="display: none;">{{ __('Copied!') }}</span>
-                                </x-secondary-button>
+                                </x-button>
                             </div>
                         </div>
 
@@ -168,14 +167,12 @@
                             <form method="POST" action="{{ route('scenes.share.store', $scene) }}">
                                 @csrf
                                 <input type="hidden" name="duration" value="{{ $shareDefaultDuration }}">
-                                <x-secondary-button>{{ __('Regenerate') }}</x-secondary-button>
+                                <x-button variant="secondary" type="button">{{ __('Regenerate') }}</x-button>
                             </form>
 
-                            <form method="POST" action="{{ route('scenes.share.destroy', $scene) }}" onsubmit="return confirm('{{ __('Revoke this share link? The current URL will stop working.') }}')">
-                                @csrf
-                                @method('DELETE')
-                                <x-danger-button :icon="true">{{ __('Revoke') }}</x-danger-button>
-                            </form>
+                            <x-delete-button :action="route('scenes.share.destroy', $scene)" :confirm="__('Revoke this share link? The current URL will stop working.')">
+                                {{ __('Revoke') }}
+                            </x-delete-button>
                         </div>
                     </div>
                 @endif

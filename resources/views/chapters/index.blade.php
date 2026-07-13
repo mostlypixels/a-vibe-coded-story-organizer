@@ -1,9 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Chapters') }}
-            </h2>
+            </x-heading>
             <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
                 {{ __('Back to Project') }}
             </a>
@@ -24,7 +24,7 @@
                         @endforeach
                     </select>
 
-                    <x-secondary-button type="submit">{{ __('Filter') }}</x-secondary-button>
+                    <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search') || request()->filled('act'))
                         <a href="{{ route('projects.chapters.index', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Clear') }}</a>
                     @endif

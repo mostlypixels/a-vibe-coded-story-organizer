@@ -10,8 +10,40 @@ set belongs in its pull request description.
 
 ## [Unreleased]
 
+### Added
+
+- New `x-delete-button` component: the labelled, full-form sibling of `x-icon-delete-button`
+  (`<form>` + `@csrf` + `@method('DELETE')` + native `confirm()` dialog around a
+  `x-button variant="danger" :icon="true"`). Replaces 9 hand-written `onsubmit="return confirm(...)"`
+  delete forms at the bottom of entity edit pages (Act, Chapter, Plotline, Scene, Event, Project,
+  Codex entry, Codex attribute, and the scene share-link "Revoke" action).
+
 ### Changed
 
+- Migrated the 9 admin (`admin/settings`, `admin/database`, `admin/appearance`, `admin/data`) and
+  profile (`profile/partials/*`) settings panels from the hand-rolled Breeze
+  `p-4 sm:p-8 bg-white shadow sm:rounded-lg` panel to `x-card`, using its `header` slot for each
+  panel's title + description. `profile/edit.blade.php` no longer wraps each `@include` in its own
+  panel `<div>` — each partial now owns its `x-card` directly. Also resolved two more of the
+  previously-unmigrated `x-heading` gaps: the profile/admin panel titles now use level 3, the
+  `admin/data` Epub-export subsection heading uses level 4, and the public "share link expired" page's
+  `<h1>` uses level 1.
+- Migrated every call site off the legacy `x-primary-button` / `x-danger-button` / `x-secondary-button`
+  Breeze components onto `x-button` (`variant="primary|secondary|danger"`), then deleted the three
+  legacy components. Gave `x-button` an `icon` prop (leading floppy-disk icon for `primary`, trash for
+  `danger`) to carry over the `:icon="true"` behaviour those components had gained. `x-button` defaults
+  `type` to `submit` for every variant (the old `x-secondary-button` defaulted to `type="button"`), so
+  every migrated secondary "Cancel"/"Copy"/"Regenerate"-style button that relied on that implicit
+  default now sets `type="button"` explicitly to keep its original non-submitting behaviour.
+- Migrated page-header and section titles across the app to the shared `x-heading` component instead
+  of hand-styled `<h1>`–`<h6>` tags, for the instances whose existing classes matched one of the
+  component's scale levels exactly. Redefined the scale's level 2 to `text-xl font-semibold
+  text-gray-800` (the app's actual page-header size) and added a new level 6 for the smallest
+  uppercase group labels; levels 3–5 shifted down accordingly. See `documentation/ui-components.md`
+  for the full scale and why level 2 is pinned to the header-title size. A few headings with no exact
+  match to any level (the profile/admin `text-lg font-medium text-gray-900` panel headings, the Story
+  overview's act/chapter anchor headings, and a couple of one-off labels) were intentionally left
+  unmigrated rather than force a visual change.
 - Consolidated edit/delete/save/remove/close/download controls across the site onto a small set of
   shared button components instead of ad hoc text buttons. Row-level actions (list rows, the Codex
   attribute-timeline period editor) are small outline icon-only buttons; main entity actions (Save,

@@ -5,9 +5,9 @@
     <div class="max-w-3xl mx-auto px-4 py-20 text-center space-y-4">
         <x-application-logo class="mx-auto w-16 h-16 fill-current text-gray-400" />
 
-        <h1 class="text-2xl font-bold text-gray-900">
+        <x-heading level="1">
             {{ __('This share link has expired.') }}
-        </h1>
+        </x-heading>
 
         <p class="text-gray-600">
             {{ __('The link you followed is no longer active. Ask the person who shared it for a fresh link.') }}

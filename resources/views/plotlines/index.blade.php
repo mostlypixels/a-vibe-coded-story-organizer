@@ -1,9 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Plotlines') }}
-            </h2>
+            </x-heading>
             <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
                 {{ __('Back to Project') }}
             </a>
@@ -16,7 +16,7 @@
                     <input type="hidden" name="sort" value="{{ $sort }}">
                     <input type="hidden" name="direction" value="{{ $direction }}">
                     <x-text-input type="text" name="search" placeholder="{{ __('Search by name...') }}" class="text-sm" :value="request('search')" />
-                    <x-secondary-button type="submit">{{ __('Filter') }}</x-secondary-button>
+                    <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search'))
                         <a href="{{ route('projects.plotlines.index', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Clear') }}</a>
                     @endif

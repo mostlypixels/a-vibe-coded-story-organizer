@@ -3,6 +3,7 @@
     'size' => 'md',
     'href' => null,
     'type' => 'submit',
+    'icon' => false,
 ])
 
 @php
@@ -29,14 +30,29 @@
     ][$size];
 
     $classes = "$base $variants $sizes";
+
+    // `icon` only has a defined glyph for the two variants that historically shipped one
+    // (Save / Delete). Other variants silently render without an icon rather than erroring,
+    // since a decorative leading icon is optional everywhere else.
+    $icons = [
+        'primary' => 'tabler-device-floppy',
+        'danger'  => 'tabler-trash',
+    ];
+    $iconComponent = $icon ? ($icons[$variant] ?? null) : null;
 @endphp
 
 @if ($href)
     <a href="{{ $href }}" {{ $attributes->merge(['class' => $classes]) }}>
+        @if ($iconComponent)
+            <x-dynamic-component :component="$iconComponent" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        @endif
         {{ $slot }}
     </a>
 @else
     <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>
+        @if ($iconComponent)
+            <x-dynamic-component :component="$iconComponent" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        @endif
         {{ $slot }}
     </button>
 @endif

@@ -24,7 +24,7 @@
                 <div class="space-y-6">
                     @foreach ($groups as $group)
                         <div>
-                            <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $group['type']->pluralLabel() }}</h4>
+                            <x-heading level="6">{{ $group['type']->pluralLabel() }}</x-heading>
                             <div class="mt-2 space-y-3">
                                 @foreach ($group['entries'] as $row)
                                     <div>

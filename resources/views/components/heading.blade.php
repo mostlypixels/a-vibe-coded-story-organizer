@@ -8,11 +8,11 @@
 
     $styles = [
         1 => 'text-3xl font-bold text-gray-900 leading-tight',
-        2 => 'text-2xl font-bold text-gray-900 leading-tight',
-        3 => 'text-xl font-semibold text-gray-800',
-        4 => 'text-lg font-semibold text-gray-800',
-        5 => 'text-base font-semibold text-gray-700',
-        6 => 'text-sm font-semibold uppercase tracking-wider text-gray-500',
+        2 => 'text-xl font-semibold text-gray-800 leading-tight',
+        3 => 'text-lg font-semibold text-gray-800',
+        4 => 'text-base font-semibold text-gray-700',
+        5 => 'text-sm font-semibold uppercase tracking-wider text-gray-500',
+        6 => 'text-xs font-semibold uppercase tracking-wide text-gray-500',
     ][$level];
 @endphp
 

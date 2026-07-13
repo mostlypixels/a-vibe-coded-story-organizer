@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <x-heading level="2">
             {{ __('New Act') }}
-        </h2>
+        </x-heading>
     </x-slot>
 
     <x-edit-layout>
@@ -24,7 +24,7 @@
                 </div>
 
                 <div class="flex items-center gap-4">
-                    <x-primary-button>{{ __('Create Act') }}</x-primary-button>
+                    <x-button variant="primary">{{ __('Create Act') }}</x-button>
                 </div>
             </form>
         </x-card>

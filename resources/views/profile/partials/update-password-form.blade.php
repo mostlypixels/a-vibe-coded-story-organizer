@@ -1,15 +1,12 @@
-<section>
-    <header>
-        <h2 class="text-lg font-medium text-gray-900">
-            {{ __('Update Password') }}
-        </h2>
-
+<x-card class="max-w-xl">
+    <x-slot name="header">
+        <x-heading level="3">{{ __('Update Password') }}</x-heading>
         <p class="mt-1 text-sm text-gray-600">
             {{ __('Ensure your account is using a long, random password to stay secure.') }}
         </p>
-    </header>
+    </x-slot>
 
-    <form method="post" action="{{ route('password.update') }}" class="mt-6 space-y-6">
+    <form method="post" action="{{ route('password.update') }}" class="space-y-6">
         @csrf
         @method('put')
 
@@ -32,7 +29,7 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
+            <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
 
             @if (session('status') === 'password-updated')
                 <p
@@ -45,4 +42,4 @@
             @endif
         </div>
     </form>
-</section>
+</x-card>

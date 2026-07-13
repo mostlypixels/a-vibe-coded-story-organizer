@@ -1,19 +1,16 @@
-<section>
-    <header>
-        <h2 class="text-lg font-medium text-gray-900">
-            {{ __('Profile Information') }}
-        </h2>
-
+<x-card class="max-w-xl">
+    <x-slot name="header">
+        <x-heading level="3">{{ __('Profile Information') }}</x-heading>
         <p class="mt-1 text-sm text-gray-600">
             {{ __("Update your account's profile information and email address.") }}
         </p>
-    </header>
+    </x-slot>
 
     <form id="send-verification" method="post" action="{{ route('verification.send') }}">
         @csrf
     </form>
 
-    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
+    <form method="post" action="{{ route('profile.update') }}" class="space-y-6">
         @csrf
         @method('patch')
 
@@ -48,7 +45,7 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
+            <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
 
             @if (session('status') === 'profile-updated')
                 <p
@@ -61,4 +58,4 @@
             @endif
         </div>
     </form>
-</section>
+</x-card>

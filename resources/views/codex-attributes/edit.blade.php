@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <x-heading level="2">
             {{ __('Edit Attribute') }}
-        </h2>
+        </x-heading>
     </x-slot>
 
     <x-edit-layout>
@@ -14,18 +14,15 @@
                 @include('codex-attributes.partials.fields')
 
                 <div class="flex items-center gap-4">
-                    <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
+                    <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
                     <a href="{{ route('projects.codex-attributes.index', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cancel') }}</a>
                 </div>
             </form>
 
             <div class="mt-8 border-t border-gray-200 pt-6">
-                <form method="POST" action="{{ route('codex-attributes.destroy', $attribute) }}"
-                      onsubmit="return confirm('{{ __('Delete this attribute? Every timeline value recorded for it will be permanently removed.') }}')">
-                    @csrf
-                    @method('DELETE')
-                    <x-danger-button :icon="true">{{ __('Delete Attribute') }}</x-danger-button>
-                </form>
+                <x-delete-button :action="route('codex-attributes.destroy', $attribute)" :confirm="__('Delete this attribute? Every timeline value recorded for it will be permanently removed.')">
+                    {{ __('Delete Attribute') }}
+                </x-delete-button>
             </div>
         </x-card>
     </x-edit-layout>

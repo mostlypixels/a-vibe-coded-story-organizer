@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <x-heading level="2">
             {{ __('Edit Act') }}
-        </h2>
+        </x-heading>
     </x-slot>
 
     <x-edit-layout>
@@ -25,15 +25,13 @@
                 </div>
 
                 <div class="flex items-center gap-4">
-                    <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
+                    <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
                 </div>
             </form>
 
-            <form method="POST" action="{{ route('acts.destroy', $act) }}" class="mt-6" onsubmit="return confirm('{{ __('Are you sure you want to delete this act?') }}')">
-                @csrf
-                @method('DELETE')
-                <x-danger-button :icon="true">{{ __('Delete Act') }}</x-danger-button>
-            </form>
+            <x-delete-button :action="route('acts.destroy', $act)" :confirm="__('Are you sure you want to delete this act?')" class="mt-6">
+                {{ __('Delete Act') }}
+            </x-delete-button>
         </x-card>
     </x-edit-layout>
 </x-app-layout>

@@ -10,9 +10,9 @@
 
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <x-heading level="2">
             {{ __('Edit Project') }}
-        </h2>
+        </x-heading>
     </x-slot>
 
     <x-edit-layout>
@@ -34,15 +34,13 @@
                 </div>
 
                 <div class="flex items-center gap-4">
-                    <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
+                    <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
                 </div>
             </form>
 
-            <form method="POST" action="{{ route('projects.destroy', $project) }}" class="mt-6" onsubmit="return confirm('{{ __('Are you sure you want to delete this project?') }}')">
-                @csrf
-                @method('DELETE')
-                <x-danger-button :icon="true">{{ __('Delete Project') }}</x-danger-button>
-            </form>
+            <x-delete-button :action="route('projects.destroy', $project)" :confirm="__('Are you sure you want to delete this project?')" class="mt-6">
+                {{ __('Delete Project') }}
+            </x-delete-button>
         </x-card>
 
         <x-slot:sidebar>

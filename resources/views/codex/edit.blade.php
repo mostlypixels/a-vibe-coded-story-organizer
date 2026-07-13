@@ -1,9 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <x-heading level="2">
                 {{ __('Edit :label', ['label' => $type->label()]) }} &mdash; {{ $entry->name }}
-            </h2>
+            </x-heading>
             <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-gray-500 hover:text-gray-700">
                 {{ __('Back to :label', ['label' => $type->pluralLabel()]) }}
             </a>
@@ -18,7 +18,7 @@
             @include('codex.partials.fields')
 
             <div class="flex items-center gap-4">
-                <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
+                <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
                 <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cancel') }}</a>
             </div>
         </form>
@@ -27,10 +27,8 @@
              upsert/destroy routes independently (nested forms are invalid HTML). --}}
         @include('codex.partials.attribute-timeline')
 
-        <form method="POST" action="{{ route('codex.destroy', $entry) }}" onsubmit="return confirm('{{ __('Are you sure you want to delete this entry?') }}')">
-            @csrf
-            @method('DELETE')
-            <x-danger-button :icon="true">{{ __('Delete :label', ['label' => $type->label()]) }}</x-danger-button>
-        </form>
+        <x-delete-button :action="route('codex.destroy', $entry)" :confirm="__('Are you sure you want to delete this entry?')">
+            {{ __('Delete :label', ['label' => $type->label()]) }}
+        </x-delete-button>
     </div>
 </x-app-layout>

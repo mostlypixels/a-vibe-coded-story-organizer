@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <x-heading level="2">
             {{ __('Edit Event') }}
-        </h2>
+        </x-heading>
     </x-slot>
 
     <x-edit-layout>
@@ -46,16 +46,14 @@
                 </div>
 
                 <div class="flex items-center gap-4">
-                    <x-primary-button :icon="true">{{ __('Save') }}</x-primary-button>
+                    <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
                 </div>
             </form>
 
             @unless ($event->is_fixed)
-                <form method="POST" action="{{ route('events.destroy', $event) }}" class="mt-6" onsubmit="return confirm('{{ __('Are you sure you want to delete this event?') }}')">
-                    @csrf
-                    @method('DELETE')
-                    <x-danger-button :icon="true">{{ __('Delete Event') }}</x-danger-button>
-                </form>
+                <x-delete-button :action="route('events.destroy', $event)" :confirm="__('Are you sure you want to delete this event?')" class="mt-6">
+                    {{ __('Delete Event') }}
+                </x-delete-button>
             @endunless
         </x-card>
 

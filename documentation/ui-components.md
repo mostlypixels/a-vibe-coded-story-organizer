@@ -24,10 +24,27 @@ alerts, breadcrumbs, tooltips, popovers, modals) plus a unified heading scale.
 Renders `<h1>`–`<h6>` on one shared typographic scale. Choose the level for **document semantics**
 (the outline screen readers use); the size follows from the scale.
 
+| Level | Classes | Typical use |
+|-------|---------|-------------|
+| 1 | `text-3xl font-bold text-gray-900 leading-tight` | Top-of-page title (e.g. Story Overview, a public shared-scene page) |
+| 2 | `text-xl font-semibold text-gray-800 leading-tight` | The `x-slot name="header"` page title in `app`/`admin` layouts |
+| 3 | `text-lg font-semibold text-gray-800` | Card/section heading within a page |
+| 4 | `text-base font-semibold text-gray-700` | Sub-section heading |
+| 5 | `text-sm font-semibold uppercase tracking-wider text-gray-500` | Small label heading |
+| 6 | `text-xs font-semibold uppercase tracking-wide text-gray-500` | Smallest grouping label (e.g. codex "as of" attribute-type groups) |
+
 ```blade
 <x-heading level="1">Story Overview</x-heading>
-<x-heading level="3">Chapter title</x-heading>
+<x-heading level="2">{{ $project->name }} &mdash; {{ __('Acts') }}</x-heading>
 ```
+
+> [!WARNING]
+> Level 2 renders an `<h2>` and is deliberately sized to match the existing page-header convention,
+> not a generic "second largest" heading — `layouts/app.blade.php`'s header bar scopes
+> `[&_h2]:text-white` to force readable text on the dark `ocean-800` background. Don't reach for a
+> different level for a `x-slot name="header"` title just because it "looks like" a different size;
+> level 2 *is* the header-title level by definition, and any other level renders a different tag
+> that CSS selector won't reach.
 
 ## Button
 
@@ -39,11 +56,36 @@ One button for every style. Renders an `<a>` when `href` is given, otherwise a `
 | `size`    | `sm`, `md`, `lg`                                                             | `md`        |
 | `href`    | URL — renders an `<a>` instead of a `<button>`                               | `null`      |
 | `type`    | `submit`, `button`, `reset` (buttons only)                                   | `submit`    |
+| `icon`    | `true` adds a small leading icon — only `primary` (save/floppy) and `danger` (trash) define one; other variants ignore it | `false` |
+
+> [!WARNING]
+> `type` defaults to `submit`, matching a plain `<button>`. A `variant="secondary"` button next to a
+> form submit button (Cancel, Copy, a modal's dismiss action) almost always needs an explicit
+> `type="button"` so it doesn't accidentally submit the enclosing form — the component does not
+> infer this from `variant` the way the old `x-secondary-button` used to.
 
 ```blade
 <x-button variant="danger">Delete</x-button>
 <x-button variant="secondary" type="button">Cancel</x-button>
 <x-button variant="primary" size="lg" :href="route('projects.acts.create', $project)">New Act</x-button>
+```
+
+### Delete button (labelled, with confirm)
+
+`x-delete-button` is the full-size sibling of the row-level
+[`x-icon-delete-button`](../resources/views/components/icon-delete-button.blade.php): it wraps the
+whole `<form>` (`@csrf`, `@method('DELETE')`, the native `confirm()` dialog) around a
+`x-button variant="danger" :icon="true"`. Used at the bottom of an entity's edit page, where
+`x-icon-delete-button` is used in index table rows instead.
+
+- `action`: the delete route (required)
+- `confirm`: already-translated confirmation message (required)
+- extra attributes (e.g. `class="mt-6"`) pass through to the `<form>`
+
+```blade
+<x-delete-button :action="route('acts.destroy', $act)" :confirm="__('Are you sure you want to delete this act?')" class="mt-6">
+    {{ __('Delete Act') }}
+</x-delete-button>
 ```
 
 ## Card

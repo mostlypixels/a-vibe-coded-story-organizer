@@ -1,9 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Story Overview') }}
-            </h2>
+            </x-heading>
             <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
                 {{ __('Back to Project') }}
             </a>
@@ -11,7 +11,7 @@
     </x-slot>
 
     <div class="space-y-6">
-        <h1 class="text-3xl font-bold text-gray-900">{{ __('Story Overview') }}</h1>
+        <x-heading level="1">{{ __('Story Overview') }}</x-heading>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {{-- Left column: Table of Contents, sticky so it stays in view while the

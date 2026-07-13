@@ -102,7 +102,7 @@
                                 :value="old('value')"
                                 :placeholder="__('New value')"
                             />
-                            <x-primary-button type="submit">{{ __('Add') }}</x-primary-button>
+                            <x-button variant="primary" type="submit">{{ __('Add') }}</x-button>
                         </form>
                     </div>
                 </div>

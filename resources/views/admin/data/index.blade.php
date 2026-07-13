@@ -1,8 +1,8 @@
 <x-admin-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <x-heading level="2">
             {{ __('Configuration') }}
-        </h2>
+        </x-heading>
     </x-slot>
 
     {{--
@@ -17,12 +17,12 @@
         order), and Left/Right arrow keys move between tabs. `activeTab` is the
         single source of truth for which tab/panel shows.
     --}}
-    <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg" x-data="{ activeTab: 'export' }">
-        <h2 class="text-lg font-medium text-gray-900">
-            {{ __('Export & import') }}
-        </h2>
+    <x-card x-data="{ activeTab: 'export' }">
+        <x-slot name="header">
+            <x-heading level="3">{{ __('Export & import') }}</x-heading>
+        </x-slot>
 
-        <div class="mt-6 border-b border-gray-200">
+        <div class="border-b border-gray-200">
             <div
                 role="tablist"
                 aria-label="{{ __('Export and import') }}"
@@ -123,7 +123,7 @@
                         <x-input-error :messages="$errors->get('include_images')" class="mt-2" />
                     </div>
 
-                    <x-primary-button>{{ __('Export') }}</x-primary-button>
+                    <x-button variant="primary">{{ __('Export') }}</x-button>
                 </form>
 
                 {{--
@@ -136,9 +136,7 @@
                     EpubExportException redirect to the `project_id` error bag.
                 --}}
                 <section class="mt-10 border-t border-gray-200 pt-8" aria-labelledby="epub-export-heading">
-                    <h3 id="epub-export-heading" class="text-base font-medium text-gray-900">
-                        {{ __('Epub export') }}
-                    </h3>
+                    <x-heading level="4" id="epub-export-heading">{{ __('Epub export') }}</x-heading>
                     <p class="mt-1 text-sm text-gray-600">
                         {{ __('Download one of your projects as an EPUB e-book, ready to open in any e-reader.') }}
                     </p>
@@ -162,7 +160,7 @@
                             <x-input-error :messages="$errors->get('project_id')" class="mt-2" />
                         </div>
 
-                        <x-primary-button>{{ __('Download EPUB') }}</x-primary-button>
+                        <x-button variant="primary">{{ __('Download EPUB') }}</x-button>
                     </form>
 
                     <p class="mt-4 text-xs text-gray-500">
@@ -191,5 +189,5 @@
                 {{ __('Importing a backup will be available soon.') }}
             </p>
         </div>
-    </div>
+    </x-card>
 </x-admin-layout>
