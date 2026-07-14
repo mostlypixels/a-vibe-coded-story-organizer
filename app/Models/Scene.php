@@ -55,6 +55,16 @@ class Scene extends Model
     }
 
     /**
+     * Codex entries whose name or an alias appears as a whole word in this scene's
+     * contents. A derived cache maintained by SceneReferenceMatcher — never edited by
+     * hand. The pivot has no columns of its own (plain belongsToMany, no pivot model).
+     */
+    public function codexReferences(): BelongsToMany
+    {
+        return $this->belongsToMany(CodexEntry::class, 'scene_codex_entry');
+    }
+
+    /**
      * Sanitize the `notes` rich-HTML field on write. `contents` deliberately has no
      * mutator: it stays Markdown-only (ValidMarkdown + Str::markdown() rendering).
      */

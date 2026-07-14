@@ -68,6 +68,7 @@ class ProjectImporter
     public function __construct(
         private ArchiveValidator $archiveValidator,
         private ProjectGraphImporter $graphImporter,
+        private SceneReferenceMatcher $matcher,
     ) {}
 
     /**
@@ -162,6 +163,22 @@ class ProjectImporter
                 'failure_message' => null,
             ])->save();
         }
+
+        // Regenerate the derived scene_codex_entry cache once, now that BOTH
+        // halves the matcher needs exist: scenes (with their final contents,
+        // from the Story phase) and codex entries/aliases (from the Codex
+        // phase). The archive never carries this pivot — it is recomputed here
+        // so an imported project ends up with exactly the references a native
+        // save would have produced (architecture.md → Import/export interaction).
+        //
+        // This is deliberately NOT a fifth ImportPhase: it accumulates no
+        // id_map and nothing in the archive maps onto it. It sits after the
+        // remainingPhases() loop and before marking Completed — a point reached
+        // exactly once per finishing import, on whichever run() call gets there,
+        // including a resume whose loop is empty. syncProject() is a full
+        // resync (idempotent), so a crash between here and Completed simply
+        // retries it safely on the next run().
+        $this->matcher->syncProject($import->project);
 
         $import->update(['phase' => ImportPhase::Completed]);
 

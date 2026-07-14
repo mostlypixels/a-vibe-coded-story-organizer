@@ -131,8 +131,9 @@ The scene share-link columns (`share_token`, `share_expires_at`) are **deliberat
 > references*) is a derived cache, not source-of-truth content: it is fully recomputed from
 > `contents` and the Codex branch's aliases/names, so the exporter never writes it, and an
 > archive predating this feature imports and re-derives references identically to a newer one.
-> Do not add `codex_entry_ids` to `scene.json` — see `ProjectGraphImporter::importCodex()` for
-> where the recomputation happens after import.
+> Do not add `codex_entry_ids` to `scene.json` — see `ProjectImporter::run()`, which calls
+> `SceneReferenceMatcher::syncProject()` once after the graph-import phases, for where the
+> recomputation happens after import.
 
 ## The Timeline branch
 

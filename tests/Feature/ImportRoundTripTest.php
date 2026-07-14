@@ -20,6 +20,9 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\Import\ProjectGraphImporter;
+use App\Services\ProjectImporter;
+use App\Services\SceneReferenceMatcher;
 use App\Services\StaticSiteExporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -257,8 +260,205 @@ class ImportRoundTripTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Codex reference regeneration (task 07)
+    // ------------------------------------------------------------------
+
+    /**
+     * The archive NEVER carries scene_codex_entry (a derived cache). Proving
+     * regeneration, not copying: the source project's pivot row comes from a
+     * native save (the matcher), the exporter writes none, and the imported
+     * project's row can therefore only exist because run() recomputed it after
+     * the graph-import phases.
+     */
+    public function test_import_regenerates_scene_codex_references_that_the_archive_never_carried(): void
+    {
+        $owner = User::factory()->create();
+        [$project, $chapter] = $this->seedReferenceSkeleton($owner);
+
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Alice Harker']);
+        $entry->aliases()->create(['alias' => 'Ally']);
+
+        $scene = Scene::factory()->for($chapter)->create([
+            'name' => 'A Meeting', 'position' => 1,
+            'contents' => 'Ally arrives at dawn and everything changes.',
+        ]);
+
+        // Native-save equivalent: the source gets its pivot row from the matcher.
+        app(SceneReferenceMatcher::class)->syncProject($project);
+        $this->assertTrue(
+            $scene->codexReferences()->whereKey($entry->id)->exists(),
+            'the source scene must reference the entry from its native save',
+        );
+
+        // The exported archive carries no reference data — the imported row can
+        // only come from regeneration.
+        $zipPath = $this->exportZip($project, includeMedia: false);
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertSessionHasNoErrors();
+
+        $imported = $importer->projects()->sole();
+        $importedScene = $imported->acts()->firstOrFail()
+            ->chapters()->firstOrFail()
+            ->scenes()->where('name', 'A Meeting')->firstOrFail();
+        $importedEntry = $imported->codexEntries()->where('name', 'Alice Harker')->firstOrFail();
+
+        $this->assertTrue(
+            $importedScene->codexReferences()->whereKey($importedEntry->id)->exists(),
+            'the imported scene must reference the imported entry, regenerated after import',
+        );
+        $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
+    }
+
+    /**
+     * Overlapping-alias scenario: one term ("Robin") is BOTH one entry's name
+     * and another entry's alias. A scene mentioning it must link to BOTH after
+     * import — exactly as a native save produces (both entries link
+     * independently, no precedence).
+     */
+    public function test_import_regenerates_overlapping_alias_references_to_every_matching_entry(): void
+    {
+        $owner = User::factory()->create();
+        [$project, $chapter] = $this->seedReferenceSkeleton($owner);
+
+        $namedRobin = CodexEntry::factory()->for($project)->character()->create(['name' => 'Robin']);
+        $aliasedRobin = CodexEntry::factory()->for($project)->character()->create(['name' => 'Marian']);
+        $aliasedRobin->aliases()->create(['alias' => 'Robin']);
+
+        Scene::factory()->for($chapter)->create([
+            'name' => 'The Forest', 'position' => 1,
+            'contents' => 'Robin steps out of the shadows.',
+        ]);
+
+        $zipPath = $this->exportZip($project, includeMedia: false);
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertSessionHasNoErrors();
+
+        $imported = $importer->projects()->sole();
+        $importedScene = $imported->acts()->firstOrFail()
+            ->chapters()->firstOrFail()
+            ->scenes()->where('name', 'The Forest')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            ['Robin', 'Marian'],
+            $importedScene->codexReferences()->pluck('name')->all(),
+            'a scene mentioning an overlapping term must link to every matching entry',
+        );
+    }
+
+    /**
+     * Resumability: the regeneration hook sits AFTER the remainingPhases() loop,
+     * so it must fire even on a resumed run() whose loop is empty. Simulate a
+     * crash right after the Codex phase committed (phase = Codex, no pivot rows
+     * yet) and prove the references appear and the import completes.
+     */
+    public function test_regeneration_fires_on_a_resumed_run_whose_phase_loop_is_empty(): void
+    {
+        $owner = User::factory()->create();
+        [$project, $chapter] = $this->seedReferenceSkeleton($owner);
+
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Alice Harker']);
+        $scene = Scene::factory()->for($chapter)->create([
+            'name' => 'A Meeting', 'position' => 1,
+            'contents' => 'Alice Harker walks the long road.',
+        ]);
+
+        // The graph is fully on disk (Codex committed) but the derived cache was
+        // never written — exactly the state a crash between the Codex checkpoint
+        // and Completed leaves. No pivot rows yet.
+        $this->assertDatabaseCount('scene_codex_entry', 0);
+
+        // A resumed run() re-extracts only if the extraction dir is missing; a
+        // real crash-resume keeps it, so we recreate it (empty is fine — the
+        // empty phase loop reads nothing from disk).
+        $extractionDir = 'imports/'.$project->getKey().'-resume';
+        Storage::disk('local')->makeDirectory($extractionDir);
+
+        $import = $owner->imports()->create([
+            'project_id' => $project->id,
+            'archive_path' => $extractionDir.'.zip',
+            'archive_original_name' => 'resume.zip',
+            'phase' => ImportPhase::Codex,
+        ]);
+
+        app(ProjectImporter::class)->run($import->refresh());
+
+        $this->assertTrue(
+            $scene->codexReferences()->whereKey($entry->id)->exists(),
+            'the post-loop hook must regenerate references on a resumed, empty-loop run',
+        );
+        $this->assertSame(ImportPhase::Completed, $import->refresh()->phase);
+    }
+
+    /**
+     * An import that fails before the Codex phase never reaches the regeneration
+     * hook, so it leaves no partial/stale reference rows — nothing to sync yet,
+     * nothing to clean up.
+     */
+    public function test_an_import_that_fails_before_codex_writes_no_reference_rows(): void
+    {
+        $owner = User::factory()->create();
+        [$project, $chapter] = $this->seedReferenceSkeleton($owner);
+
+        CodexEntry::factory()->for($project)->character()->create(['name' => 'Alice Harker']);
+        Scene::factory()->for($chapter)->create([
+            'name' => 'A Meeting', 'position' => 1,
+            'contents' => 'Alice Harker walks the long road.',
+        ]);
+
+        // Extraction dir present so run() reaches the phase loop rather than
+        // re-extracting from a (non-existent) archive.
+        $extractionDir = 'imports/'.$project->getKey().'-fail';
+        Storage::disk('local')->makeDirectory($extractionDir);
+
+        // Sit at Timeline so the next phase is Story; make Story throw before
+        // the Codex phase (and thus before the regeneration hook) is ever run.
+        $import = $owner->imports()->create([
+            'project_id' => $project->id,
+            'archive_path' => $extractionDir.'.zip',
+            'archive_original_name' => 'fail.zip',
+            'phase' => ImportPhase::Timeline,
+        ]);
+
+        $graphImporter = $this->mock(ProjectGraphImporter::class);
+        $graphImporter->shouldReceive('importStory')->once()
+            ->andThrow(new \RuntimeException('boom during story'));
+
+        try {
+            app(ProjectImporter::class)->run($import->refresh());
+            $this->fail('run() should have rethrown the Story-phase failure');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('boom during story', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('scene_codex_entry', 0);
+        $this->assertNotSame(ImportPhase::Completed, $import->refresh()->phase);
+    }
+
+    // ------------------------------------------------------------------
     // Fixtures & helpers
     // ------------------------------------------------------------------
+
+    /**
+     * A minimal exportable project skeleton (project → act → chapter) for the
+     * reference-regeneration tests, which add their own scenes and codex
+     * entries. Returns [Project, Chapter].
+     *
+     * @return array{0: Project, 1: Chapter}
+     */
+    private function seedReferenceSkeleton(User $owner): array
+    {
+        $project = Project::factory()->for($owner)->create();
+        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $chapter = Chapter::factory()->for($act)->create(['position' => 1]);
+
+        return [$project, $chapter];
+    }
 
     /**
      * Seed one non-trivial project covering every round-trip axis. Returns the

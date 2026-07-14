@@ -12,6 +12,55 @@ set belongs in its pull request description.
 
 ### Added
 
+- **Scene edit page shows which codex entries it references.** The edit form's sidebar gains a
+  **"Codex references"** card listing every codex entry whose name or an alias whole-word-matches the
+  scene's contents (as of the last save), a flat list ordered by `(type, name)`; each row links to
+  the entry's edit page and shows its type label. A "Detected from the scene contents on last save."
+  caption makes the no-AJAX, save-time refresh behaviour explicit. Read-only view of the derived
+  `scene_codex_entry` cache; never rendered on the public scene share page.
+- **Codex entry edit page shows where each entry is referenced.** The edit form's sidebar gains a
+  **"Referenced in scenes"** card listing every scene whose contents match the entry's name or an
+  alias, in event-timeline order `(event_datetime, id)`; scenes with no assigned event sort last and
+  are labelled "No event assigned". Each row links to the scene's edit page. The aliases field gains
+  help text explaining that matching is case-sensitive, whole-word, ignores aliases under 3
+  characters, and can be ambiguous when aliases overlap — so a writer can understand why a name
+  silently never links. Read-only view of the derived `scene_codex_entry` cache; no AJAX, refreshed
+  on save.
+- **Codex entry saves now recompute scene references.** Creating a codex entry always runs
+  `SceneReferenceMatcher::syncProject()` (a new entry's name/alias set is trivially new), so a scene
+  whose contents already mention the entry links immediately with no scene re-save. Editing an entry
+  runs the project-wide rescan **only when its matching terms (name plus aliases) actually change** —
+  an unrelated edit (new cover image, description tweak) skips the O(scenes) recompute. The
+  before/after comparison and the rescan both run inside the entry's existing `DB::transaction`, so
+  aliases and references stay atomic. Entry deletion needs no code: `cascadeOnDelete` already drops
+  the pivot rows.
+- **Scene saves now record codex references.** Creating or updating a scene runs
+  `SceneReferenceMatcher::syncScene()` after the row is saved, so the `scene_codex_entry` pivot
+  always reflects which codex entries the scene's current `contents` reference (a full resync — no
+  stale rows). No "did contents change" skip: a scene save always recomputes its own references,
+  mirroring the adjacent `mentionedEvents()->sync()` call.
+- **Project import regenerates scene ↔ codex references.** `ProjectImporter::run()` recomputes the
+  `scene_codex_entry` cache once via `SceneReferenceMatcher::syncProject()` after the graph-import
+  phases finish and before the import is marked completed — the archive never carries this derived
+  data, so an imported project ends up with exactly the references a native save would have produced
+  (including overlapping-alias links to every matching entry). The hook is not a fifth import phase:
+  it runs at the post-loop fall-through reached exactly once per finishing import, and being a full
+  idempotent resync it is safe to retry on a resumed run. Confirms the exporter still writes no
+  reference data.
+- **Scene ↔ Codex reference matcher.** New `App\Services\SceneReferenceMatcher` computes which
+  codex entries a scene's `contents` reference — a whole-word, **case-sensitive**, Unicode-aware
+  (NFC-normalized) match of each entry's `name` and eligible aliases (aliases shorter than 3
+  characters are ignored), persisted as a full `sync()` into the `scene_codex_entry` pivot. Hyphen
+  is part of the word ("Jean" does not match inside "Jean-Luc"), and malformed UTF-8 in a scene is
+  logged and skipped rather than allowed to block the save. Declares the previously-implicit
+  `ext-intl` requirement in `composer.json`. Controller wiring and UI arrive in later tasks.
+- **Scene ↔ Codex reference links (data model).** New `scene_codex_entry` pivot table
+  (plain link table, composite PK, `cascadeOnDelete` on both FKs — matching the
+  `codex_entry_tag` / `event_scene` convention) with `Scene::codexReferences()` and
+  `CodexEntry::referencingScenes()` relations. This is the persisted, derived cache of
+  "which codex entries a scene's contents reference"; matching logic, controller wiring,
+  and UI arrive in later alias-references tasks.
+
 - **Project import.** **Admin → Export & import → Import** now reads an export `.zip` back into a
   brand-new project owned by the importing user (the tab previously just said import was "coming soon").
   Import reconstructs the full graph from the archive's lossless `data/` layer — Project, Acts/Chapters/

@@ -55,6 +55,16 @@ class CodexEntry extends Model
         return $this->belongsToMany(Tag::class);
     }
 
+    /**
+     * Scenes whose contents reference this entry by name or alias (whole-word match).
+     * A derived cache maintained by SceneReferenceMatcher — never edited by hand.
+     * The pivot has no columns of its own (plain belongsToMany, no pivot model).
+     */
+    public function referencingScenes(): BelongsToMany
+    {
+        return $this->belongsToMany(Scene::class, 'scene_codex_entry');
+    }
+
     public function media(): HasMany
     {
         return $this->hasMany(CodexMedia::class);
