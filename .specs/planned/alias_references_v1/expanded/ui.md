@@ -7,11 +7,13 @@
 
    ```blade
    <p class="text-sm text-gray-500">{{ __('Other names this entry is known by (optional).') }}</p>
-   <p class="text-sm text-gray-500">{{ __('Scenes are scanned for these names automatically when saved. If aliases overlap with another entry\'s name or alias, matches can be ambiguous.') }}</p>
+   <p class="text-sm text-gray-500">{{ __('Scenes are scanned for these names automatically when saved. Matching is case-sensitive and whole-word only, and aliases under 3 characters are ignored. If aliases overlap with another entry\'s name or alias, matches can be ambiguous.') }}</p>
    ```
 
    (Two short `<p>` tags, or combine into one — match whatever reads better; no component needed
-   for static help text elsewhere in this file.)
+   for static help text elsewhere in this file.) The case-sensitivity and length-floor mention is
+   not decorative — without it a writer who names a character "Luck" or adds a 2-character alias
+   has no way to discover why it silently never links.
 
 2. **"Referenced in scenes" sidebar card** — `codex/partials/fields.blade.php` currently only
    renders its `<x-slot:sidebar>` on the shared create/edit partial, with `$entry === null` on
@@ -53,7 +55,22 @@
 
 Add a new sidebar card, inside the existing `<x-slot:sidebar>` (after "Share this scene", before
 the `codex.partials.as-of` include — reference material before "as of" state, matching reading
-order top-to-bottom: share link → what this scene references → codex state at this moment):
+order top-to-bottom: share link → what this scene references → codex state at this moment).
+
+**Terminology, so this doesn't get confused with two already-existing, differently-named
+things on the same page:**
+- The main form already has a **"Mentions events"** field (`x-event-picker`) — that's the
+  `mentioned_events` pivot, a manually-curated list of *events*, unrelated to codex entries.
+- The sidebar already has a **"Codex as of this scene"** card (`codex.partials.as-of`) — that's
+  `CodexAsOfResolver`'s *attribute values resolved at a moment in time*, unrelated to text
+  scanning.
+- The new card is **"Codex references"** — automatically detected codex *entities* mentioned in
+  `contents`. Three distinct concepts; keep the labels as specified, don't rename any of them to
+  something that reads as more similar to another.
+
+**Never on the public share page** (`shared/scenes/show.blade.php`, rendered by
+`SharedSceneController@show`): that view has no sidebar at all today and must not gain this
+card — see `architecture.md` → *Never appears on the public scene share page*.
 
 ```blade
 <x-card :title="__('Codex references')">

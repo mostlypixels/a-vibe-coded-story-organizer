@@ -62,6 +62,20 @@ There is no scenario where a row is added/removed one at a time; every recompute
 "what should match" and "what's stored") at the cost of redoing work that didn't change — the
 performance section addresses that cost, not the correctness model.
 
+## Export/import impact
+
+**Never exported.** The pivot is a derived cache (see *Invariant* above) — `StaticSiteExporter`
+never writes `scene_codex_entry` to the archive at all (`addScene()`'s `scene.json` has no
+`codex_entry_ids` key, and none should be added). It carries no lossless-content obligation the
+way `contents`/`description`/`notes` do, because it can always be rebuilt from them.
+
+**Regenerated once on import, after the graph exists.** `ProjectGraphImporter` builds scenes in
+its Story phase and codex entries/aliases in its Codex phase (the last of the four); the matcher
+needs both, so the resync can only happen after Codex commits — see `architecture.md` → *Import/
+export interaction* for exactly where. This means an archive exported **before** this feature
+existed (no `scene_codex_entry` concept at all) imports identically to one exported after — the
+references are always freshly derived on import, never read from the archive either way.
+
 ## Seeding impact
 
 `MelusineSeeder` uses `WithoutModelEvents`, so if the recompute lives in a model `booted()`

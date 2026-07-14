@@ -9,7 +9,14 @@ integration/HTTP paths.
 
 - Whole-word match: alias `Mel` matches "Mel said hello" but not "melody" (the exact case from
   the source spec).
-- Case-insensitive: alias `Mel` matches "MEL was there".
+- Case-sensitive: an entry named "Luck" matches exact-case "Luck" but not lowercase "luck"; alias
+  `Mel` does not match "MEL was there" (wrong case).
+- Alias length floor: an alias shorter than 3 characters (e.g. "Al") never matches, even in
+  isolation; `name` has no such floor.
+- Unicode normalization: an NFC-encoded alias matches NFD-encoded scene contents for the same
+  accented text (e.g. "Mélusine"), and vice versa.
+- Malformed UTF-8 in `contents` doesn't throw or block the sync — it logs a warning and results
+  in zero matches for that scene.
 - Matches the entry's `name` as well as its aliases.
 - Punctuation-adjacent match: alias matches when directly followed/preceded by punctuation
   (`"Mel," she said` / `(Mel)`), per whatever boundary rule is settled in `open-questions.md`.
@@ -29,6 +36,10 @@ integration/HTTP paths.
   the existing "renders X" test style in this file).
 - A non-owner's attempt to view another user's scene edit page still gets `403` (no new gap —
   regression guard).
+- A scene with a live share link and at least one codex reference, fetched via
+  `SharedSceneController@show`'s public route, never renders the referenced entry's name or a
+  "Codex references" card in the response HTML — same style as the existing `notes`-never-leaks
+  assertion.
 
 ## Feature: `CodexEntryTest.php` additions
 

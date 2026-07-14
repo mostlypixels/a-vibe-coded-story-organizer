@@ -125,6 +125,15 @@ data/acts/<id>-slug/
 The scene share-link columns (`share_token`, `share_expires_at`) are **deliberately excluded**
 — they are per-deployment secrets, not manuscript content.
 
+> [!NOTE]
+> **Codex references are excluded too, for a different reason.** `scene_codex_entry` (which
+> codex entries a scene's contents mention — see `documentation/architecture.md` → *Scene
+> references*) is a derived cache, not source-of-truth content: it is fully recomputed from
+> `contents` and the Codex branch's aliases/names, so the exporter never writes it, and an
+> archive predating this feature imports and re-derives references identically to a newer one.
+> Do not add `codex_entry_ids` to `scene.json` — see `ProjectGraphImporter::importCodex()` for
+> where the recomputation happens after import.
+
 ## The Timeline branch
 
 The project's chronology — every **plotline** and **event**, grouped by type under

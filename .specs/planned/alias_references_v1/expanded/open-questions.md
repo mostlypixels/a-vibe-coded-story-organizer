@@ -7,6 +7,43 @@ Each question states the recommended answer first.
 > confirmed as their stated recommendation, with one scope change: Q4's "queue rescans for
 > large projects" question was split out into a separate future spec,
 > `.specs/draft/alias_references_asynchronous/spec.md` — v1 stays fully synchronous.
+>
+> A second pass (plan-tasks stage) surfaced an eighth question, also resolved: **does matching
+> include the entry's own `name`, or literally only its `aliases` list** (the source spec's
+> wording says "aliases" and never mentions name)? Confirmed: **name + aliases both match**,
+> consistent with the codex index page's existing name-or-alias search. See `architecture.md`'s
+> *Matching rule* section.
+>
+> A third pass raised two more, both resolved:
+> - **Matching is case-sensitive**, not case-insensitive as originally drafted — a character
+>   named "Luck" must not match the common noun "luck". This reverses the `i`-flag assumption in
+>   the first `architecture.md` draft, which was never actually grilled as its own decision.
+> - **Aliases shorter than 3 characters are excluded from matching** (the entry `name` has no
+>   such floor, regardless of length) — a guard against short-alias false positives (e.g. an
+>   alias "Al" matching constantly). This is a matching-time filter, not a validation rule — a
+>   short alias can still be saved and displayed.
+>
+> A regex-size safety guard for projects with pathologically many entries/aliases was
+> considered and explicitly deferred — see
+> `.specs/draft/alias_references_asynchronous/spec.md`, which now also owns that question
+> alongside the async-rescan one.
+>
+> A fourth pass (locale/Unicode review, prompted by this app's existing French/Italian seed
+> content) resolved two more:
+> - **Normalize both alias/name terms and scene contents to Unicode NFC before matching**, via
+>   `ext-intl`'s `Normalizer` — fixes accented French/Italian names (e.g. "Mélusine") silently
+>   failing to match when the alias and the scene text were typed/pasted from sources using
+>   different Unicode normalization forms (NFC vs NFD), which look identical but aren't
+>   byte-equal. `ext-intl` must be added to `composer.json`'s `require` (it was previously an
+>   undeclared, environment-provided extension).
+> - **Malformed UTF-8 in scene contents degrades gracefully**: `preg_match_all` with the `u`
+>   modifier returns `false` (not zero matches) on invalid UTF-8 input. The matcher must detect
+>   this and log a warning rather than let it look like "no references found" — and it must never
+>   block the scene save itself.
+>
+> Curly/straight quotes, French guillemets (« »), ligatures (œ/æ), and other Unicode punctuation
+> were checked and need **no special handling** — they're already correctly treated as
+> non-letter word boundaries by the `\p{L}`/`\p{N}` lookaround.
 
 1. **Word-boundary definition for accented/Unicode names.** Recommend: PCRE `u` modifier with
    `\b`-equivalent Unicode boundaries (letters/digits vs. everything else), so "Mélusine" doesn't

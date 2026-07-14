@@ -27,14 +27,21 @@ drives what's searched for) and the two read-only displays below.
 
 - No live/AJAX re-scan while typing in the scene editor — recomputation happens on save only
   (explicit in the source spec).
-- No fuzzy/partial matching, no stemming, no plural handling — literal, case-insensitive,
-  whole-word matching only.
+- No fuzzy/partial matching, no stemming, no plural handling — literal, **case-sensitive**,
+  whole-word matching only. Aliases under 3 characters are never matched. Matching **is**
+  locale-robust in one specific sense worth calling out as in-scope, not a non-goal: both sides
+  are normalized to Unicode NFC before comparison, so accented French/Italian names match
+  regardless of which normalization form the source text used (see `architecture.md`).
 - No cross-project matching — an entry only matches scenes in its own project.
 - No matching inside `Scene.description` or `Scene.notes` — only `Scene.contents` (the
   manuscript text) is scanned. `description`/`notes` are rich HTML, not prose content, and
   `notes` is explicitly private (architecture.md).
 - No UI to browse "all references" globally — only the two per-record sidebars the spec asks
   for (codex edit page, scene edit page).
+- **Not exported.** `scene_codex_entry` is a derived cache (see the *Invariant* in
+  `data-model.md`), so `StaticSiteExporter` never writes it to `scene.json` — an export archive
+  carries no reference data at all. Import instead **regenerates** it once, after the graph is
+  fully rebuilt (see `architecture.md` → *Import/export interaction*).
 
 ## User stories
 
