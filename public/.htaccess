@@ -5,6 +5,11 @@
 
     RewriteEngine On
 
+    # Force HTTPS (staging/production sit behind Apache terminating plain http;
+    # redirect before anything else so no request is ever served over http)
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

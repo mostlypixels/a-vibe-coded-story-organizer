@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use App\Services\HtmlSanitizer;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,5 +33,13 @@ class AppServiceProvider extends ServiceProvider
         // keeps the check in ONE place — tightening it later (e.g. an is_admin
         // role) is a one-line change instead of editing every admin controller.
         Gate::define('access-admin', fn (User $user) => true);
+
+        // Staging/production sit behind a proxy that terminates TLS, so Laravel
+        // sees the request as plain http unless told otherwise; force https so
+        // generated URLs (route(), asset(), password reset links, etc.) and the
+        // session cookie's Secure flag are correct instead of silently downgrading.
+        if (! $this->app->environment('local', 'testing')) {
+            URL::forceScheme('https');
+        }
     }
 }
