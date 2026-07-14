@@ -326,6 +326,50 @@ unlinks a just-written file if its row insert throws).
 > accepted: a saved entry with one missing image beats a rolled-back edit with corrupted
 > disk state.
 
+### Scene references (`SceneReferenceMatcher`)
+
+`App\Services\SceneReferenceMatcher` is the third Codex service. It owns the whole-word,
+**case-sensitive**, Unicode-aware rule that decides which codex entries a scene's `contents`
+mention, and persists the result in the derived `scene_codex_entry` pivot (see the data-model
+doc). A term is an entry's `name` **or** any of its aliases (aliases shorter than 3 characters
+are excluded — a false-positive guard; `name` has no floor). Matching runs on the raw Markdown
+`contents`, never `description`/`notes`, and never on rendered HTML.
+
+- `syncScene(Scene $scene)` recomputes one scene's links; `syncProject(Project $project)`
+  recomputes every scene's, reusing one per-project regex it builds once.
+- **Every call is a full `sync()`** for its scope — never an incremental attach/detach. This is
+  the invariant that keeps the pivot from ever drifting from "what should match": there is no
+  code path that adds or removes a single row. A stale row is always dropped on the next sync.
+- Both sides are normalized to Unicode **NFC** (`ext-intl`'s `Normalizer`) before matching so
+  visually-identical accented text (French/Italian names) from different input sources compares
+  byte-equal. Malformed UTF-8 in a scene's `contents` is caught, logged via `Log::warning`, and
+  degrades that scene to "no references" — it never throws and never blocks the scene's save.
+- Hyphens are part of the word: "Jean" does not match inside "Jean-Luc". The boundary lookaround
+  includes `-` alongside `\p{L}\p{N}`, and there is deliberately **no `i` flag** (a character
+  named "Luck" must not match the common noun "luck").
+
+> [!IMPORTANT]
+> **It is a service, not a `booted()` hook** — for the same reason as `AttributeTimeline`. The
+> codex-entry update path only rescans when the alias set or `name` actually changed (a
+> before/after comparison a hook cannot express), the project-wide rescan touches records well
+> beyond the model being saved, and a service can be called directly by a seeder or the importer
+> without `WithoutModelEvents` silently suppressing it. Do **not** move this into a model hook.
+
+> [!NOTE]
+> This is **not** the codex index page's name-or-alias search. `CodexEntryController::index` does
+> a case-insensitive SQL `LIKE` substring match to help a writer *find* an entry;
+> `SceneReferenceMatcher` answers a different question (does this exact term appear as a whole,
+> case-sensitive word in this prose). Keep the two separate — their semantics differ on purpose.
+
+Normal editing never needs a manual resync — scene and codex entry saves call `syncScene`/
+`syncProject` themselves. Two escape hatches exist for everything else: the
+`codex:sync-references {project?}` artisan command (every project, or one by id) and, per
+project, a **"Resync codex references"** footer form on the project edit page
+(`ProjectController::syncCodexReferences`, `update` authorization) — its own form, separate from
+the main project-fields form, since it isn't part of that resource's own data. Both call
+`syncProject()` and exist to backfill scenes that predate this feature or recover from a
+suspected drift.
+
 ### Seeding caveat
 
 Like acts/chapters and the main plotline, the Codex is subject to `WithoutModelEvents`:

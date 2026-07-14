@@ -8,6 +8,7 @@ use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CodexAsOfResolver;
+use App\Services\SceneReferenceMatcher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -57,7 +58,7 @@ class SceneController extends Controller
         ]);
     }
 
-    public function store(StoreSceneRequest $request, Project $project): RedirectResponse
+    public function store(StoreSceneRequest $request, Project $project, SceneReferenceMatcher $matcher): RedirectResponse
     {
         $validated = $request->validated();
         $chapter = $this->chapterQueryFor($project)->findOrFail($validated['chapter_id']);
@@ -67,6 +68,11 @@ class SceneController extends Controller
         );
 
         $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
+
+        // Recompute which codex entries this scene's contents reference. A save always
+        // resyncs the single scene (no "did contents change" skip — contents changing is
+        // the point), mirroring the mentionedEvents()->sync() call above.
+        $matcher->syncScene($scene);
 
         return redirect()->route('projects.scenes.index', $project);
     }
@@ -90,10 +96,14 @@ class SceneController extends Controller
             // scene is unassigned → the panel shows the undetermined state). Pre-computed here
             // so no timeline math or N+1 resolution happens in Blade.
             'codexAsOfGroups' => $codexAsOf->resolve($project, $scene->event),
+            // Codex entries whose name/alias whole-word-matches this scene's contents, as of
+            // the last save. A read-only view of the scene_codex_entry pivot maintained by
+            // SceneReferenceMatcher — the sidebar renders this flat list ordered by (type, name).
+            'referencedEntries' => $scene->codexReferences()->with('cover')->orderBy('type')->orderBy('name')->get(),
         ]);
     }
 
-    public function update(UpdateSceneRequest $request, Scene $scene): RedirectResponse
+    public function update(UpdateSceneRequest $request, Scene $scene, SceneReferenceMatcher $matcher): RedirectResponse
     {
         $project = $scene->chapter->act->project;
         $validated = $request->validated();
@@ -105,6 +115,9 @@ class SceneController extends Controller
         );
 
         $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
+
+        // Recompute references against the scene's now-saved contents (see store()).
+        $matcher->syncScene($scene);
 
         return redirect()->route('projects.scenes.index', $project);
     }

@@ -178,6 +178,25 @@
                 @endif
             </x-card>
 
+            <x-card :title="__('Codex references')">
+                <p class="text-sm text-gray-500">{{ __('Detected from the scene contents on last save.') }}</p>
+
+                @if ($referencedEntries->isEmpty())
+                    <p class="mt-2 text-sm text-gray-500">{{ __('No codex entries referenced yet.') }}</p>
+                @else
+                    <ul class="mt-2 space-y-1">
+                        @foreach ($referencedEntries as $entry)
+                            <li>
+                                <a href="{{ route('codex.edit', $entry) }}" class="text-sm text-ocean-600 hover:text-ocean-800">
+                                    {{ $entry->name }}
+                                </a>
+                                <span class="text-xs text-gray-400">({{ $entry->type->label() }})</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </x-card>
+
             @include('codex.partials.as-of', [
                 'title' => __('Codex as of this scene'),
                 'moment' => $scene->event,

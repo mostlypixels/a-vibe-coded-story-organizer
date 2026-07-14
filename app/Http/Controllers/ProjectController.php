@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
+use App\Services\SceneReferenceMatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -95,6 +96,23 @@ class ProjectController extends Controller
         $project->delete();
 
         return redirect()->route('dashboard');
+    }
+
+    /**
+     * Manual escape hatch for the derived `scene_codex_entry` pivot: rebuild every scene's
+     * codex entry references for this project from scratch. Normal saves keep the pivot in
+     * sync automatically (SceneReferenceMatcher); this exists for pre-existing data that
+     * predates the feature, or if the pivot is ever suspected to have drifted. Same
+     * `update` authorization as the rest of project editing — it's a project-scoped write,
+     * not a destructive one, but it isn't part of the main edit form's own data.
+     */
+    public function syncCodexReferences(Project $project, SceneReferenceMatcher $matcher): RedirectResponse
+    {
+        $this->authorize('update', $project);
+
+        $matcher->syncProject($project);
+
+        return redirect()->route('projects.edit', $project)->with('status', 'codex-references-synced');
     }
 
     /**

@@ -3,13 +3,18 @@
 namespace Tests\Feature;
 
 use App\Enums\CodexEntryType;
+use App\Models\Act;
+use App\Models\Chapter;
 use App\Models\CodexAlias;
 use App\Models\CodexAttribute;
 use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
+use App\Models\Event;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -194,6 +199,130 @@ class CodexEntryTest extends TestCase
         $this->assertSame(['Reworked'], $entry->tags->pluck('name')->all());
     }
 
+    // ---------------------------------------------------------------------
+    // Codex reference matching on save (SceneReferenceMatcher wiring)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Seed a scene with the given contents inside a fresh act -> chapter chain in $project.
+     * Optionally name it and assign it to an event (for the timeline-order sidebar tests).
+     */
+    private function sceneIn(Project $project, string $contents, ?string $name = null, ?Event $event = null): Scene
+    {
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        $attributes = ['contents' => $contents];
+
+        if ($name !== null) {
+            $attributes['name'] = $name;
+        }
+
+        if ($event !== null) {
+            $attributes['event_id'] = $event->id;
+        }
+
+        return Scene::factory()->for($chapter)->create($attributes);
+    }
+
+    public function test_creating_an_entry_links_scenes_whose_contents_already_match(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $scene = $this->sceneIn($project, 'Mel walked into the room.');
+
+        // A brand-new entry always rescans the project — the existing scene links with no
+        // scene re-save required.
+        $this->actingAs($user)->post(route('projects.codex.store', [$project, 'characters']), [
+            'name' => 'Melchior',
+            'aliases' => ['Mel'],
+        ])->assertRedirect();
+
+        $entry = CodexEntry::where('name', 'Melchior')->firstOrFail();
+        $this->assertDatabaseHas('scene_codex_entry', [
+            'scene_id' => $scene->id,
+            'codex_entry_id' => $entry->id,
+        ]);
+    }
+
+    public function test_editing_an_entry_to_add_a_matching_alias_links_the_scene(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $scene = $this->sceneIn($project, 'Then Mel arrived.');
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melchior']);
+
+        // No alias yet matched "Mel", so the scene is unlinked to start.
+        $this->assertDatabaseMissing('scene_codex_entry', [
+            'scene_id' => $scene->id,
+            'codex_entry_id' => $entry->id,
+        ]);
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melchior',
+            'aliases' => ['Mel'],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('scene_codex_entry', [
+            'scene_id' => $scene->id,
+            'codex_entry_id' => $entry->id,
+        ]);
+    }
+
+    public function test_editing_an_entry_so_it_no_longer_matches_removes_the_row(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $scene = $this->sceneIn($project, 'Then Mel arrived.');
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melchior']);
+
+        // Establish the link via a first save that newly adds the matching alias (a term
+        // change, so it rescans and links the scene).
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melchior',
+            'aliases' => ['Mel'],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('scene_codex_entry', [
+            'scene_id' => $scene->id,
+            'codex_entry_id' => $entry->id,
+        ]);
+
+        // Drop the matching alias → the stale pivot row is removed by the full resync.
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melchior',
+            'aliases' => ['Balthazar'],
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('scene_codex_entry', [
+            'scene_id' => $scene->id,
+            'codex_entry_id' => $entry->id,
+        ]);
+    }
+
+    public function test_editing_an_entry_without_changing_terms_does_not_rescan(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melchior']);
+        $entry->aliases()->create(['alias' => 'Mel']);
+
+        // A project rescan is O(scenes); an edit that leaves the name and alias set untouched
+        // (only the description here) must never trigger one — assert on the service directly.
+        $this->mock(SceneReferenceMatcher::class)
+            ->shouldReceive('syncProject')
+            ->never();
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melchior',
+            'description' => 'A newly written description.',
+            'aliases' => ['Mel'],
+        ])->assertRedirect();
+
+        $entry->refresh();
+        $this->assertSame('A newly written description.', $entry->description);
+    }
+
     public function test_store_requires_a_name(): void
     {
         $user = User::factory()->create();
@@ -245,6 +374,10 @@ class CodexEntryTest extends TestCase
         $attribute = CodexAttribute::factory()->for($project)->create();
         $value = CodexAttributeValue::factory()->for($entry, 'entry')->create(['codex_attribute_id' => $attribute->id]);
 
+        // A referencing scene's pivot row must cascade too (DB-level cascadeOnDelete, task 01).
+        $scene = $this->sceneIn($project, 'Contents.');
+        $scene->codexReferences()->attach($entry);
+
         $this->actingAs($user)->delete(route('codex.destroy', $entry))
             ->assertRedirect(route('projects.codex.index', [$project, 'characters']));
 
@@ -252,6 +385,84 @@ class CodexEntryTest extends TestCase
         $this->assertNull(CodexAlias::find($alias->id));
         $this->assertNull(CodexAttributeValue::find($value->id));
         $this->assertDatabaseMissing('codex_entry_tag', ['codex_entry_id' => $entry->id, 'tag_id' => $tag->id]);
+        $this->assertDatabaseMissing('scene_codex_entry', ['codex_entry_id' => $entry->id]);
+    }
+
+    // ---------------------------------------------------------------------
+    // Edit-page "Referenced in scenes" sidebar (read side of scene_codex_entry)
+    // ---------------------------------------------------------------------
+
+    public function test_edit_page_shows_the_alias_matching_help_text(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('Matching is case-sensitive and whole-word only', false);
+    }
+
+    public function test_edit_page_lists_referencing_scenes_in_event_timeline_order(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        // Two events, deliberately created in the opposite order to their datetimes, so a
+        // creation-order render would fail this test — only the (event_datetime, id) sort passes.
+        $laterEvent = Event::factory()->for($project)->create([
+            'title' => 'The Coronation',
+            'event_datetime' => now()->addDays(10),
+        ]);
+        $earlierEvent = Event::factory()->for($project)->create([
+            'title' => 'The Betrothal',
+            'event_datetime' => now()->addDays(2),
+        ]);
+
+        // Seed the scenes in the "wrong" order too, and attach the pivot rows directly — this
+        // read path renders whatever is in scene_codex_entry, independent of the matcher.
+        $laterScene = $this->sceneIn($project, 'Contents.', 'Scene at the coronation', $laterEvent);
+        $earlierScene = $this->sceneIn($project, 'Contents.', 'Scene at the betrothal', $earlierEvent);
+        $entry->referencingScenes()->attach([$laterScene->id, $earlierScene->id]);
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSeeInOrder(['Scene at the betrothal', 'Scene at the coronation']);
+    }
+
+    public function test_edit_page_lists_scenes_without_an_event_last_and_labelled(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $event = Event::factory()->for($project)->create([
+            'title' => 'The Betrothal',
+            'event_datetime' => now()->addDays(2),
+        ]);
+        $assignedScene = $this->sceneIn($project, 'Contents.', 'Scene with an event', $event);
+        $unassignedScene = $this->sceneIn($project, 'Contents.', 'Scene without an event');
+
+        // Attach the unassigned scene first, so a naive "as attached" order would put it first —
+        // the sort must still push it after the assigned scene.
+        $entry->referencingScenes()->attach([$unassignedScene->id, $assignedScene->id]);
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSeeInOrder(['Scene with an event', 'Scene without an event'])
+            ->assertSee('No event assigned');
+    }
+
+    public function test_edit_page_shows_empty_state_when_no_scenes_reference_the_entry(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('No scenes reference this entry yet.');
     }
 
     public function test_non_owner_is_forbidden_from_every_action(): void

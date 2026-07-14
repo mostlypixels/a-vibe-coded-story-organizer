@@ -471,7 +471,9 @@ class MelusineSeederIt extends Seeder
             CodexEntryType::Character,
             'Raimondino di Lusignano',
             "<p>Un giovane cavaliere del Poitou che uccide accidentalmente suo zio, sposa Melusina, e diventa il primo <em>signore di Lusignano</em> — fino a quando il suo giuramento tradito li perde entrambi.</p>",
-            ['Raimondo', 'Signore di Lusignano'],
+            // 'Raimondo' is a substring of 'Raimondino', not a separate word, so it never
+            // whole-word-matches the scenes — they use 'Raimondino' throughout.
+            ['Raimondo', 'Raimondino', 'Signore di Lusignano'],
             ['Cavaliere', 'Protagonista'],
         );
 

@@ -11,8 +11,10 @@ use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Services\AttributeTimeline;
 use App\Services\CodexMediaService;
+use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,7 +82,7 @@ class CodexEntryController extends Controller
         ]);
     }
 
-    public function store(StoreCodexEntryRequest $request, Project $project, string $type, CodexMediaService $media): RedirectResponse
+    public function store(StoreCodexEntryRequest $request, Project $project, string $type, CodexMediaService $media, SceneReferenceMatcher $matcher): RedirectResponse
     {
         $entryType = CodexEntryType::fromRouteKey($type);
         $validated = $request->validated();
@@ -88,7 +90,7 @@ class CodexEntryController extends Controller
         // The transaction does DB-only work and returns the paths of any media rows it
         // dropped; the disk operations happen after commit (see storeMediaUploads /
         // finding 3), so no file is written or deleted while the write could still roll back.
-        [$entry, $pathsToDelete] = DB::transaction(function () use ($request, $project, $entryType, $validated, $media) {
+        [$entry, $pathsToDelete] = DB::transaction(function () use ($request, $project, $entryType, $validated, $media, $matcher) {
             $entry = $project->codexEntries()->create([
                 'type' => $entryType,
                 'name' => $validated['name'],
@@ -98,6 +100,11 @@ class CodexEntryController extends Controller
             $this->syncAliases($entry, $validated['aliases'] ?? []);
             $entry->tags()->sync($this->resolveTags($project, $validated['tags'] ?? []));
             $this->seedAttributeBaselines($entry, $entryType, $validated['attribute_baselines'] ?? []);
+
+            // A new entry's name/alias set is trivially "changed" from nothing, so a create
+            // always rescans every scene in the project. Inside the transaction so the
+            // recomputed references stay atomic with the aliases just written.
+            $matcher->syncProject($project);
 
             return [$entry, $this->queueMediaRemovals($entry, $request, $media)];
         });
@@ -127,17 +134,58 @@ class CodexEntryController extends Controller
             // Anchor choices for the "Add period" row.
             'events' => $project->events()->orderBy('event_datetime')->orderBy('id')->get(),
             'projectTags' => $project->tags()->orderBy('name')->get(),
+            // Scenes referencing this entry, in timeline (event) order. Scenes with no assigned
+            // event sort last, tiebroken by manuscript position among themselves. This is the
+            // read side of the derived scene_codex_entry cache — see the sidebar card in
+            // codex/partials/fields.blade.php.
+            'referencingScenes' => $this->referencingScenesInTimelineOrder($codexEntry),
         ]);
     }
 
-    public function update(UpdateCodexEntryRequest $request, CodexEntry $codexEntry, CodexMediaService $media): RedirectResponse
+    /**
+     * The scenes that reference this entry, ordered for the edit-page sidebar.
+     *
+     * "Timeline order" here means the canonical event ordering `(event_datetime, id)` used
+     * everywhere else in the app (see AttributeTimeline) — never manuscript position. Scenes
+     * with no assigned event can't be placed on that timeline, so they sort *after* every
+     * assigned scene and tiebreak among themselves by manuscript position
+     * `(act.position, chapter.position, position)`.
+     *
+     * The leading `event === null` flag in the sort key forces all unassigned scenes last;
+     * the remaining components only decide ties within each group.
+     *
+     * @return Collection<int, Scene>
+     */
+    private function referencingScenesInTimelineOrder(CodexEntry $codexEntry): Collection
+    {
+        return $codexEntry->referencingScenes()
+            ->with('chapter.act', 'event')
+            ->get()
+            ->sortBy(fn (Scene $scene) => [
+                $scene->event === null ? 1 : 0,
+                $scene->event?->event_datetime?->timestamp ?? 0,
+                $scene->event?->id ?? 0,
+                $scene->chapter->act->position,
+                $scene->chapter->position,
+                $scene->position,
+            ])
+            ->values();
+    }
+
+    public function update(UpdateCodexEntryRequest $request, CodexEntry $codexEntry, CodexMediaService $media, SceneReferenceMatcher $matcher): RedirectResponse
     {
         $project = $codexEntry->project;
         $validated = $request->validated();
 
         // DB-only inside the transaction; disk deletes/writes happen after commit
         // (see store() / storeMediaUploads / finding 3).
-        $pathsToDelete = DB::transaction(function () use ($request, $project, $codexEntry, $validated, $media) {
+        $pathsToDelete = DB::transaction(function () use ($request, $project, $codexEntry, $validated, $media, $matcher) {
+            // Snapshot the name and alias set BEFORE the save so we can tell whether the
+            // matching terms actually changed. A project-wide rescan is O(scenes) work, so
+            // it must be skipped when an unrelated edit (e.g. only a new cover image or a
+            // description tweak) leaves the terms untouched.
+            $termsBefore = $this->referenceTerms($codexEntry->name, $codexEntry->aliases()->pluck('alias')->all());
+
             $codexEntry->update([
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
@@ -145,6 +193,14 @@ class CodexEntryController extends Controller
 
             $this->syncAliases($codexEntry, $validated['aliases'] ?? []);
             $codexEntry->tags()->sync($this->resolveTags($project, $validated['tags'] ?? []));
+
+            // Compare inside the transaction so "aliases saved" and "references recomputed"
+            // stay atomic — no window where the DB has new aliases but stale references.
+            $termsAfter = $this->referenceTerms($codexEntry->name, $codexEntry->aliases()->pluck('alias')->all());
+
+            if ($termsBefore !== $termsAfter) {
+                $matcher->syncProject($project);
+            }
 
             return $this->queueMediaRemovals($codexEntry, $request, $media);
         });
@@ -190,6 +246,36 @@ class CodexEntryController extends Controller
         if ($rows !== []) {
             $entry->aliases()->createMany($rows);
         }
+    }
+
+    /**
+     * The set of terms that drive reference matching for one entry — its name plus every
+     * alias — trimmed, de-duplicated and sorted into a canonical, order-independent list.
+     *
+     * Used to decide whether an update actually changed anything the matcher cares about:
+     * if the before/after lists are identical, no scene's match set can differ, so the
+     * expensive project-wide rescan is skipped. The comparison is case-SENSITIVE on purpose
+     * — matching itself is case-sensitive (a character named "Luck" must not match the noun
+     * "luck"), so a case-only edit ("Luck" → "luck") genuinely changes results and must
+     * still trigger a rescan; lowercasing here would silently drop that recompute.
+     *
+     * Combining name and aliases into one set is deliberate: swapping which of the two
+     * carries a given string leaves the union unchanged, and an unchanged union of terms
+     * cannot change any match — so treating them as one set is both correct and precise.
+     *
+     * @param  array<int, string>  $aliases
+     * @return array<int, string>
+     */
+    private function referenceTerms(string $name, array $aliases): array
+    {
+        return collect($aliases)
+            ->push($name)
+            ->map(fn ($term) => trim((string) $term))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
     }
 
     /**

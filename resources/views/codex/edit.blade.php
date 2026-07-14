@@ -27,6 +27,30 @@
              upsert/destroy routes independently (nested forms are invalid HTML). --}}
         @include('codex.partials.attribute-timeline')
 
+        {{-- Referenced in scenes: read-only view of the derived scene_codex_entry cache, in
+             timeline (event) order. Scenes with no assigned event are labelled distinctly, not
+             hidden. Full-width, below the timeline rather than in the sidebar. --}}
+        <x-card :title="__('Referenced in scenes')">
+            @if ($referencingScenes->isEmpty())
+                <p class="text-sm text-gray-500">{{ __('No scenes reference this entry yet.') }}</p>
+            @else
+                <ul class="space-y-2">
+                    @foreach ($referencingScenes as $scene)
+                        <li>
+                            <a href="{{ route('scenes.edit', $scene) }}" class="text-sm text-ocean-600 hover:text-ocean-800">
+                                {{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }} &mdash; {{ $scene->name }}
+                            </a>
+                            @if ($scene->event)
+                                <span class="block text-xs text-gray-400">{{ $scene->event->title }} &mdash; {{ $scene->event->event_datetime->format('M j, Y') }}</span>
+                            @else
+                                <span class="block text-xs text-gray-400">{{ __('No event assigned') }}</span>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </x-card>
+
         <x-delete-button :action="route('codex.destroy', $entry)" :confirm="__('Are you sure you want to delete this entry?')">
             {{ __('Delete :label', ['label' => $type->label()]) }}
         </x-delete-button>

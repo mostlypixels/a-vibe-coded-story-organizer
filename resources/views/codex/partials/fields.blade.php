@@ -36,6 +36,7 @@
             <div>
                 <x-input-label :value="__('Aliases')" />
                 <p class="text-sm text-gray-500">{{ __('Other names this entry is known by (optional).') }}</p>
+                <p class="text-sm text-gray-500">{{ __('Scenes are scanned for these names automatically when saved. Matching is case-sensitive and whole-word only, and aliases under 3 characters are ignored. If aliases overlap with another entry\'s name or alias, matches can be ambiguous.') }}</p>
 
                 <x-string-list
                     name="aliases"

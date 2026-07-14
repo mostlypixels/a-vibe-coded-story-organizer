@@ -16,6 +16,12 @@
     </x-slot>
 
     <x-edit-layout>
+        @if (session('status') === 'codex-references-synced')
+            <div class="mb-6 rounded-md bg-green-50 p-4 text-sm text-green-700">
+                {{ __('Codex references resynced for every scene in this project.') }}
+            </div>
+        @endif
+
         <x-card>
             <form id="project-edit-form" method="POST" action="{{ route('projects.update', $project) }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
@@ -102,4 +108,14 @@
             </x-card>
         </x-slot:sidebar>
     </x-edit-layout>
+
+    <x-card :title="__('Codex references')" class="mt-6">
+        <p class="text-sm text-gray-500">
+            {{ __('Rebuild which codex entries every scene in this project references, from scratch. Scenes and codex entries keep this in sync automatically as you edit them — use this only to backfill existing scenes or recover from a suspected mismatch.') }}
+        </p>
+        <form method="POST" action="{{ route('projects.codex-references.sync', $project) }}" class="mt-3">
+            @csrf
+            <x-button variant="secondary">{{ __('Resync codex references') }}</x-button>
+        </form>
+    </x-card>
 </x-app-layout>

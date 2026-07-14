@@ -12,6 +12,7 @@ use App\Services\Import\ArchiveValidator;
 use App\Services\Import\ContentSanitizer;
 use App\Services\Import\ProjectGraphImporter;
 use App\Services\ProjectImporter;
+use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -263,6 +264,7 @@ class ProjectImporterTest extends TestCase
         return new ProjectImporter(
             app(ArchiveValidator::class),
             new ProjectGraphImporter(app(ContentSanitizer::class), app(CodexMediaService::class)),
+            app(SceneReferenceMatcher::class),
         );
     }
 
