@@ -471,7 +471,9 @@ class MelusineSeederFr extends Seeder
             CodexEntryType::Character,
             'Raymondin de Lusignan',
             "<p>Un jeune chevalier du Poitou qui tue accidentellement son oncle, épouse Mélusine, et devient le premier <em>seigneur de Lusignan</em> — jusqu'à ce que son serment brisé les perde tous deux.</p>",
-            ['Raymond', 'Seigneur de Lusignan'],
+            // 'Raymond' is a substring of 'Raymondin', not a separate word, so it never
+            // whole-word-matches the scenes — they use 'Raymondin' throughout.
+            ['Raymond', 'Raymondin', 'Seigneur de Lusignan'],
             ['Chevalier', 'Protagoniste'],
         );
 

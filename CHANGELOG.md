@@ -10,8 +10,32 @@ set belongs in its pull request description.
 
 ## [Unreleased]
 
+### Fixed
+
+- **English demo data (`MelusineSeederEn`) was missing the aliases scenes actually use.** Mélusine's
+  entry only had the accented `Mélusine` name and `Melusina`/`The Serpent Lady`/`Lady of Lusignan`
+  aliases, but every scene spells the name **without** the accent (`Melusine`) — a different letter,
+  not a normalization difference, so it could never match. Raymondin's entry had `Raymond` as an
+  alias, but `Raymond` is a substring of `Raymondin` (the spelling scenes use), not a separate word,
+  so whole-word matching correctly refused it. Added `Melusine` and `Raymondin` as aliases so the
+  demo project's own scenes link the way a reader would expect (`codex:sync-references` picks up
+  existing seeded scenes once these land).
+- **French and Italian demo data had the same gap for their Raymondin/Raimondino entries.**
+  `Raymond`/`Raimondo` are substrings of the `Raymondin`/`Raimondino` spelling the French and
+  Italian scenes actually use, so whole-word matching never linked them (same class of bug as the
+  English fix above; the French/Italian Mélusine entries were unaffected — their scenes already
+  spell the accented name consistently). Added `Raymondin` to `MelusineSeederFr` and `Raimondino`
+  to `MelusineSeederIt`.
+
 ### Added
 
+- **Manual codex reference resync.** New `codex:sync-references {project?}` artisan command
+  rebuilds the `scene_codex_entry` pivot from scratch (every project, or one via the optional
+  argument) — needed to backfill scenes that existed before `SceneReferenceMatcher` shipped, since
+  normal saves keep the pivot in sync automatically and nothing else ever touches pre-existing data.
+  The project edit page gains a matching **"Resync codex references"** button: its own footer form
+  (`POST /projects/{project}/codex-references/sync`), separate from the main project-fields form so
+  it submits independently, same `update` authorization as the rest of project editing.
 - **Scene edit page shows which codex entries it references.** The edit form's sidebar gains a
   **"Codex references"** card listing every codex entry whose name or an alias whole-word-matches the
   scene's contents (as of the last save), a flat list ordered by `(type, name)`; each row links to

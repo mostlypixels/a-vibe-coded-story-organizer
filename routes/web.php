@@ -101,6 +101,11 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('projects', ProjectController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+    // Manual rebuild of the derived scene_codex_entry pivot for one project — a footer
+    // form on the edit page, separate from the main project-fields form (see
+    // ProjectController::syncCodexReferences).
+    Route::post('/projects/{project}/codex-references/sync', [ProjectController::class, 'syncCodexReferences'])
+        ->name('projects.codex-references.sync');
 
     Route::resource('projects.plotlines', PlotlineController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])

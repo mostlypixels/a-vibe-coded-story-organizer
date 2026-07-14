@@ -448,7 +448,9 @@ class MelusineSeederEn extends Seeder
             CodexEntryType::Character,
             'Mélusine',
             '<p>A faerie of the greenwood, <strong>cursed</strong> to take a serpent form below the waist every Saturday. Wife of Raymondin and mother of the nine sons of Lusignan.</p>',
-            ['Melusina', 'The Serpent Lady', 'Lady of Lusignan'],
+            // 'Melusine' (unaccented) is the spelling every scene actually uses in prose —
+            // the accented 'Mélusine' name alone never whole-word-matches that text.
+            ['Melusina', 'Melusine', 'The Serpent Lady', 'Lady of Lusignan'],
             ['Faerie', 'Protagonist', 'Cursed'],
         );
 
@@ -471,7 +473,9 @@ class MelusineSeederEn extends Seeder
             CodexEntryType::Character,
             'Raymondin of Lusignan',
             '<p>A young knight of Poitou who accidentally kills his uncle, weds Mélusine, and becomes the first <em>Lord of Lusignan</em> — until his broken oath undoes them both.</p>',
-            ['Raymond', 'Lord of Lusignan'],
+            // 'Raymond' is a substring of 'Raymondin', not a separate word, so it never
+            // whole-word-matches the scenes — they use 'Raymondin' throughout.
+            ['Raymond', 'Raymondin', 'Lord of Lusignan'],
             ['Knight', 'Protagonist'],
         );
 

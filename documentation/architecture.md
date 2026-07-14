@@ -361,6 +361,15 @@ are excluded — a false-positive guard; `name` has no floor). Matching runs on 
 > `SceneReferenceMatcher` answers a different question (does this exact term appear as a whole,
 > case-sensitive word in this prose). Keep the two separate — their semantics differ on purpose.
 
+Normal editing never needs a manual resync — scene and codex entry saves call `syncScene`/
+`syncProject` themselves. Two escape hatches exist for everything else: the
+`codex:sync-references {project?}` artisan command (every project, or one by id) and, per
+project, a **"Resync codex references"** footer form on the project edit page
+(`ProjectController::syncCodexReferences`, `update` authorization) — its own form, separate from
+the main project-fields form, since it isn't part of that resource's own data. Both call
+`syncProject()` and exist to backfill scenes that predate this feature or recover from a
+suspected drift.
+
 ### Seeding caveat
 
 Like acts/chapters and the main plotline, the Codex is subject to `WithoutModelEvents`:

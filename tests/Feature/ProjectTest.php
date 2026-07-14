@@ -3,8 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\BookLanguage;
+use App\Models\Act;
+use App\Models\Chapter;
+use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -139,6 +143,42 @@ class ProjectTest extends TestCase
             'name' => 'Hijacked',
             'language' => 'en',
         ])->assertForbidden();
+    }
+
+    public function test_the_edit_page_footer_form_resyncs_codex_references_for_the_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create(['contents' => 'Mélusine walked into the room.']);
+        $entry = CodexEntry::factory()->for($project)->create(['name' => 'Mélusine']);
+
+        // The pivot starts empty: nothing has scanned this pre-existing scene yet.
+        $this->assertDatabaseMissing('scene_codex_entry', [
+            'scene_id' => $scene->id,
+            'codex_entry_id' => $entry->id,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('projects.codex-references.sync', $project));
+
+        $response->assertRedirect(route('projects.edit', $project));
+        $response->assertSessionHas('status', 'codex-references-synced');
+        $this->assertDatabaseHas('scene_codex_entry', [
+            'scene_id' => $scene->id,
+            'codex_entry_id' => $entry->id,
+        ]);
+    }
+
+    public function test_a_non_owner_cannot_resync_codex_references(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+
+        $this->actingAs($other)
+            ->post(route('projects.codex-references.sync', $project))
+            ->assertForbidden();
     }
 
     public function test_updating_a_project_with_an_invalid_isbn_fails_validation(): void

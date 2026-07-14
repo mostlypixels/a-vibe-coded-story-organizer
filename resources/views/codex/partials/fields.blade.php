@@ -6,9 +6,6 @@
     $entry = $entry ?? null;
     $attributes = $attributes ?? collect();
     $projectTags = $projectTags ?? collect();
-    // Only the edit view passes this; the "Referenced in scenes" card is @if ($entry)-gated so
-    // create never renders it, but default to an empty collection to keep the contract explicit.
-    $referencingScenes = $referencingScenes ?? collect();
     $aliasValues = old('aliases', $entry?->aliases->pluck('alias')->values()->all() ?? []);
     $tagValues = old('tags', $entry?->tags->pluck('name')->values()->all() ?? []);
 
@@ -104,32 +101,6 @@
             <x-tag-picker name="tags" :tags="$projectTags" :selected="$tagValues" />
             <x-input-error :messages="$errors->get('tags')" class="mt-2" />
         </x-card>
-
-        {{-- Referenced in scenes: read-only view of the derived scene_codex_entry cache, in
-             timeline (event) order. Edit-only — a not-yet-created entry has no possible
-             references. Scenes with no assigned event are labelled distinctly, not hidden. --}}
-        @if ($entry)
-            <x-card :title="__('Referenced in scenes')">
-                @if ($referencingScenes->isEmpty())
-                    <p class="text-sm text-gray-500">{{ __('No scenes reference this entry yet.') }}</p>
-                @else
-                    <ul class="space-y-2">
-                        @foreach ($referencingScenes as $scene)
-                            <li>
-                                <a href="{{ route('scenes.edit', $scene) }}" class="text-sm text-ocean-600 hover:text-ocean-800">
-                                    {{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }} &mdash; {{ $scene->name }}
-                                </a>
-                                @if ($scene->event)
-                                    <span class="block text-xs text-gray-400">{{ $scene->event->title }} &mdash; {{ $scene->event->event_datetime->format('M j, Y') }}</span>
-                                @else
-                                    <span class="block text-xs text-gray-400">{{ __('No event assigned') }}</span>
-                                @endif
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
-            </x-card>
-        @endif
     </x-slot:sidebar>
 </x-edit-layout>
 
