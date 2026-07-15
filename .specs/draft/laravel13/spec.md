@@ -10,8 +10,10 @@ version first, then bump the framework.
 
 ## Goals
 
-* Move WAMP's active PHP from 8.2 to 8.3 or later (8.5 is available upstream; confirm WAMP has
-  a prebuilt binary before committing to a specific minor).
+* Move WAMP's active PHP from 8.2 to a version that satisfies both Laravel 12's `^8.2` and
+  Laravel 13's `^8.3` constraints — PHP 8.3, 8.4, or 8.5. A compatible build is already
+  available locally in the WAMP PHP install directory; switching WAMP's active version to it
+  requires no new download.
 * Bump `composer.json`'s `"php"` constraint and `laravel/framework` to `^13.0`.
 * Keep the app fully working after both bumps — no behavior change is intended, this is a
   maintenance upgrade.
@@ -24,8 +26,9 @@ version first, then bump the framework.
 
 ## Rough approach
 
-1. **PHP first.** Switch WAMP's active PHP module to 8.3+ while still on Laravel 12, and run
-   `composer test` to isolate any PHP-only deprecations/breakage from the framework bump.
+1. **PHP first.** Switch WAMP's active PHP module to the 8.3+ build already installed while
+   still on Laravel 12, and run `composer test` to isolate any PHP-only
+   deprecations/breakage from the framework bump.
 2. **Then Laravel.** Run `composer require laravel/framework:^13.0` (and let Composer resolve
    any transitively-required package bumps — Symfony 7.4/8.0, etc.) and follow the official
    [Laravel 13 upgrade guide](https://laravel.com/docs/13.x/upgrade).
