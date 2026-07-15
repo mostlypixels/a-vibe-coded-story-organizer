@@ -7,7 +7,7 @@
 
     <x-edit-layout>
         <x-card>
-            <form method="POST" action="{{ route('events.update', $event) }}" class="space-y-6">
+            <form id="event-edit-form" method="POST" action="{{ route('events.update', $event) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
@@ -45,19 +45,18 @@
                     <x-input-error :messages="$errors->get('plotlines')" class="mt-2" />
                 </div>
 
-                <div class="flex items-center gap-4">
-                    <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
-                </div>
             </form>
-
-            @unless ($event->is_fixed)
-                <x-delete-button :action="route('events.destroy', $event)" :confirm="__('Are you sure you want to delete this event?')" class="mt-6">
-                    {{ __('Delete Event') }}
-                </x-delete-button>
-            @endunless
         </x-card>
 
         <x-slot:sidebar>
+            <x-edit-actions
+                form="event-edit-form"
+                :delete-action="$event->is_fixed ? null : route('events.destroy', $event)"
+                :delete-confirm="__('Are you sure you want to delete this event?')"
+            >
+                {{ __('Delete Event') }}
+            </x-edit-actions>
+
             <x-card>
                 <div>
                     <h3 class="text-sm font-semibold text-gray-800">{{ __('Scenes happening during') }}</h3>

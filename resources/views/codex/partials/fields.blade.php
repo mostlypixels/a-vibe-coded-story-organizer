@@ -78,6 +78,16 @@
     @endif
 
     <x-slot:sidebar>
+        @if ($entry !== null)
+            <x-edit-actions
+                form="codex-entry-edit-form"
+                :delete-action="route('codex.destroy', $entry)"
+                :delete-confirm="__('Are you sure you want to delete this entry?')"
+            >
+                {{ __('Delete :label', ['label' => $type->label()]) }}
+            </x-edit-actions>
+        @endif
+
         <x-card :title="__('Cover')">
             @if ($cover)
                 <img src="{{ $cover->url() }}" alt="{{ $entry->name }}" class="w-full rounded-md border border-gray-200 object-cover">

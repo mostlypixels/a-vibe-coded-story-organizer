@@ -86,7 +86,9 @@ class ProjectController extends Controller
             $this->deleteCoverImage($previousCover);
         }
 
-        return redirect()->route('projects.show', $project);
+        return $request->boolean('stay')
+            ? redirect()->route('projects.edit', $project)->with('status', 'saved')
+            : redirect()->route('projects.show', $project);
     }
 
     public function destroy(Project $project): RedirectResponse

@@ -7,7 +7,7 @@
 
     <x-edit-layout>
         <x-card>
-            <form method="POST" action="{{ route('chapters.update', $chapter) }}" class="space-y-6">
+            <form id="chapter-edit-form" method="POST" action="{{ route('chapters.update', $chapter) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
@@ -34,14 +34,17 @@
                     <x-input-error :messages="$errors->get('description')" class="mt-2" />
                 </div>
 
-                <div class="flex items-center gap-4">
-                    <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
-                </div>
             </form>
-
-            <x-delete-button :action="route('chapters.destroy', $chapter)" :confirm="__('Are you sure you want to delete this chapter?')" class="mt-6">
-                {{ __('Delete Chapter') }}
-            </x-delete-button>
         </x-card>
+
+        <x-slot:sidebar>
+            <x-edit-actions
+                form="chapter-edit-form"
+                :delete-action="route('chapters.destroy', $chapter)"
+                :delete-confirm="__('Are you sure you want to delete this chapter?')"
+            >
+                {{ __('Delete Chapter') }}
+            </x-edit-actions>
+        </x-slot:sidebar>
     </x-edit-layout>
 </x-app-layout>

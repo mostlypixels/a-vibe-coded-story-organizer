@@ -77,7 +77,9 @@ class ChapterController extends Controller
         $chapter->act()->associate($act);
         $chapter->save();
 
-        return redirect()->route('projects.chapters.index', $project);
+        return $request->boolean('stay')
+            ? redirect()->route('chapters.edit', $chapter)->with('status', 'saved')
+            : redirect()->route('projects.chapters.index', $project);
     }
 
     public function destroy(Chapter $chapter): RedirectResponse

@@ -86,7 +86,9 @@ class EventController extends Controller
 
         $event->plotlines()->sync($request->validated('plotlines'));
 
-        return redirect()->route('projects.events.index', $event->project);
+        return $request->boolean('stay')
+            ? redirect()->route('events.edit', $event)->with('status', 'saved')
+            : redirect()->route('projects.events.index', $event->project);
     }
 
     public function destroy(Event $event): RedirectResponse

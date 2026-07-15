@@ -208,7 +208,9 @@ class CodexEntryController extends Controller
         $media->deleteFiles($pathsToDelete);
         $this->storeMediaUploads($codexEntry, $request, $media);
 
-        return redirect()->route('projects.codex.index', [$project, $codexEntry->type->routeKey()]);
+        return $request->boolean('stay')
+            ? redirect()->route('codex.edit', $codexEntry)->with('status', 'saved')
+            : redirect()->route('projects.codex.index', [$project, $codexEntry->type->routeKey()]);
     }
 
     public function destroy(CodexEntry $codexEntry): RedirectResponse

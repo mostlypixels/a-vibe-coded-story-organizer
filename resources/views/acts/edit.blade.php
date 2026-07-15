@@ -7,7 +7,7 @@
 
     <x-edit-layout>
         <x-card>
-            <form method="POST" action="{{ route('acts.update', $act) }}" class="space-y-6">
+            <form id="act-edit-form" method="POST" action="{{ route('acts.update', $act) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
@@ -23,15 +23,17 @@
                     <x-wysiwyg id="description" name="description" :value="old('description', $act->description)" :rows="4" />
                     <x-input-error :messages="$errors->get('description')" class="mt-2" />
                 </div>
-
-                <div class="flex items-center gap-4">
-                    <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
-                </div>
             </form>
-
-            <x-delete-button :action="route('acts.destroy', $act)" :confirm="__('Are you sure you want to delete this act?')" class="mt-6">
-                {{ __('Delete Act') }}
-            </x-delete-button>
         </x-card>
+
+        <x-slot:sidebar>
+            <x-edit-actions
+                form="act-edit-form"
+                :delete-action="route('acts.destroy', $act)"
+                :delete-confirm="__('Are you sure you want to delete this act?')"
+            >
+                {{ __('Delete Act') }}
+            </x-edit-actions>
+        </x-slot:sidebar>
     </x-edit-layout>
 </x-app-layout>

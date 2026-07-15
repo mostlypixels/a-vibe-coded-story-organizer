@@ -56,7 +56,9 @@ class CodexAttributeController extends Controller
     {
         $codexAttribute->update($request->validated());
 
-        return redirect()->route('projects.codex-attributes.index', $codexAttribute->project);
+        return $request->boolean('stay')
+            ? redirect()->route('codex-attributes.edit', $codexAttribute)->with('status', 'saved')
+            : redirect()->route('projects.codex-attributes.index', $codexAttribute->project);
     }
 
     public function destroy(CodexAttribute $codexAttribute): RedirectResponse

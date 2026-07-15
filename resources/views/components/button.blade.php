@@ -31,14 +31,20 @@
 
     $classes = "$base $variants $sizes";
 
-    // `icon` only has a defined glyph for the two variants that historically shipped one
-    // (Save / Delete). Other variants silently render without an icon rather than erroring,
-    // since a decorative leading icon is optional everywhere else.
+    // `icon` is either `true` (use the variant's default glyph below — only defined for
+    // the two variants that historically shipped one, Save / Delete; other variants
+    // silently render without an icon rather than erroring) or an explicit icon component
+    // name, for a button whose icon doesn't match its variant (e.g. a secondary "Save and
+    // stay" button that should still carry the Save glyph).
     $icons = [
         'primary' => 'tabler-device-floppy',
         'danger'  => 'tabler-trash',
     ];
-    $iconComponent = $icon ? ($icons[$variant] ?? null) : null;
+    $iconComponent = match (true) {
+        is_string($icon) => $icon,
+        (bool) $icon => $icons[$variant] ?? null,
+        default => null,
+    };
 @endphp
 
 @if ($href)

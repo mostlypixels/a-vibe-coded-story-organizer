@@ -1,4 +1,4 @@
-@props(['action', 'confirm'])
+@props(['action', 'confirm', 'buttonClass' => null])
 
 {{--
     Labelled delete-with-confirm form: the full-size sibling of x-icon-delete-button.
@@ -8,5 +8,5 @@
 <form method="POST" action="{{ $action }}" onsubmit="return confirm('{{ $confirm }}')" {{ $attributes }}>
     @csrf
     @method('DELETE')
-    <x-button variant="danger" :icon="true">{{ $slot }}</x-button>
+    <x-button variant="danger" :icon="true" :class="$buttonClass">{{ $slot }}</x-button>
 </form>

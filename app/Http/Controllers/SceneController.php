@@ -119,7 +119,9 @@ class SceneController extends Controller
         // Recompute references against the scene's now-saved contents (see store()).
         $matcher->syncScene($scene);
 
-        return redirect()->route('projects.scenes.index', $project);
+        return $request->boolean('stay')
+            ? redirect()->route('scenes.edit', $scene)->with('status', 'saved')
+            : redirect()->route('projects.scenes.index', $project);
     }
 
     public function destroy(Scene $scene): RedirectResponse

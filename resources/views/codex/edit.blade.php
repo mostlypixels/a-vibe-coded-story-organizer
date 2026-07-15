@@ -11,14 +11,13 @@
     </x-slot>
 
     <div class="space-y-10">
-        <form method="POST" action="{{ route('codex.update', $entry) }}" enctype="multipart/form-data" class="space-y-6">
+        <form id="codex-entry-edit-form" method="POST" action="{{ route('codex.update', $entry) }}" enctype="multipart/form-data" class="space-y-6">
             @csrf
             @method('PUT')
 
             @include('codex.partials.fields')
 
             <div class="flex items-center gap-4">
-                <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
                 <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cancel') }}</a>
             </div>
         </form>
@@ -50,9 +49,5 @@
                 </ul>
             @endif
         </x-card>
-
-        <x-delete-button :action="route('codex.destroy', $entry)" :confirm="__('Are you sure you want to delete this entry?')">
-            {{ __('Delete :label', ['label' => $type->label()]) }}
-        </x-delete-button>
     </div>
 </x-app-layout>

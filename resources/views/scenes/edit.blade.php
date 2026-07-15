@@ -13,7 +13,7 @@
 
     <x-edit-layout>
         <x-card>
-                <form method="POST" action="{{ route('scenes.update', $scene) }}" class="space-y-6">
+                <form id="scene-edit-form" method="POST" action="{{ route('scenes.update', $scene) }}" class="space-y-6">
                     @csrf
                     @method('PUT')
 
@@ -99,17 +99,18 @@
                         <x-input-error :messages="$errors->get('mentioned_events')" class="mt-2" />
                     </div>
 
-                    <div class="flex items-center gap-4">
-                        <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
-                    </div>
                 </form>
-
-                <x-delete-button :action="route('scenes.destroy', $scene)" :confirm="__('Are you sure you want to delete this scene?')" class="mt-6">
-                    {{ __('Delete Scene') }}
-                </x-delete-button>
         </x-card>
 
         <x-slot:sidebar>
+            <x-edit-actions
+                form="scene-edit-form"
+                :delete-action="route('scenes.destroy', $scene)"
+                :delete-confirm="__('Are you sure you want to delete this scene?')"
+            >
+                {{ __('Delete Scene') }}
+            </x-edit-actions>
+
             <x-card :title="__('Share this scene')">
                 @if (! $scene->isShared())
                     <form method="POST" action="{{ route('scenes.share.store', $scene) }}" class="space-y-4">
@@ -147,6 +148,7 @@
                                 <x-button
                                     variant="secondary"
                                     type="button"
+                                    icon="tabler-copy"
                                     aria-label="{{ __('Copy share link to clipboard') }}"
                                     x-on:click="navigator.clipboard.writeText($refs.shareUrl.value); copied = true; setTimeout(() => copied = false, 2000)"
                                 >
@@ -167,7 +169,7 @@
                             <form method="POST" action="{{ route('scenes.share.store', $scene) }}">
                                 @csrf
                                 <input type="hidden" name="duration" value="{{ $shareDefaultDuration }}">
-                                <x-button variant="secondary" type="button">{{ __('Regenerate') }}</x-button>
+                                <x-button variant="secondary" type="button" icon="tabler-refresh">{{ __('Regenerate') }}</x-button>
                             </form>
 
                             <x-delete-button :action="route('scenes.share.destroy', $scene)" :confirm="__('Revoke this share link? The current URL will stop working.')">

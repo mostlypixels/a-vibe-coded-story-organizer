@@ -58,7 +58,9 @@ class ActController extends Controller
     {
         $act->update($request->validated());
 
-        return redirect()->route('projects.acts.index', $act->project);
+        return $request->boolean('stay')
+            ? redirect()->route('acts.edit', $act)->with('status', 'saved')
+            : redirect()->route('projects.acts.index', $act->project);
     }
 
     public function destroy(Act $act): RedirectResponse
