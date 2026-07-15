@@ -1,6 +1,6 @@
 # Architecture
 
-This is a Laravel 12 app (Breeze auth, Blade + Tailwind, Alpine.js — no SPA framework)
+This is a Laravel 13 app (PHP 8.5, Breeze auth, Blade + Tailwind, Alpine.js — no SPA framework)
 for tracking a writing project's plotlines, timeline events, and manuscript structure.
 
 ## Domain model

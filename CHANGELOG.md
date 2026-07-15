@@ -10,6 +10,16 @@ set belongs in its pull request description.
 
 ## [Unreleased]
 
+### Changed
+
+- **Upgraded to Laravel 13.20.0 on PHP 8.5.7 (WAMP).** Bumped `composer.json` to
+  `"php": "^8.5"` and `"laravel/framework": "^13.0"`, and switched WAMP's active Apache
+  PHP module from 8.2.18 to 8.5.7. Maintenance upgrade with no behavior change: the only
+  dependency the framework bump forced was `laravel/tinker` → `^3.0` (resolved to v3.0.2);
+  no `config/*.php` or `bootstrap/app.php` change was required, and `composer test` stayed
+  green (539 passed / 2013 assertions). `ext-imap` (removed from PHP core in 8.4) was
+  intentionally not restored — the app does not use it.
+
 ### Fixed
 
 - **English demo data (`MelusineSeederEn`) was missing the aliases scenes actually use.** Mélusine's
