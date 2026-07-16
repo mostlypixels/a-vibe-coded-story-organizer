@@ -39,6 +39,22 @@ set belongs in its pull request description.
 
 ### Added
 
+- **Project-wide search page.** New `GET /projects/{project}/search` (last item in the primary
+  nav) scans the string/text fields of Acts, Chapters, Scenes (contents + notes), Events,
+  Plotlines, and Codex entries, with three match modes — all words (AND, the default), any word
+  (OR), exact phrase — and renders results grouped like the menu: Timeline / Story / Codex
+  sections, each stacking one full-width table per entity type, like the entity list pages
+  (Codex splits per entry type; an initial 3-column grid was revised away — too narrow to
+  read). Each matched *entity* is one table row: its name (linked to the edit page), the
+  fields the terms matched in ("Name, Contents"), a ~120-character highlighted text preview
+  of the first matching field (`<mark>`, escape-then-highlight so stored markup never renders
+  live), and a trailing view button. Entity types with no matches are hidden, as are sections
+  whose tables are all empty — only what matched renders. Plain GET form, no
+  AJAX; an empty query is the normal landing state, not an error. Under the hood: the first
+  `app/Services` service (`ProjectSearch`, a fixed six SELECTs per search with `LIKE`-wildcard
+  escaping so literal `%`/`_` in a query match literally), a `SearchMode` enum, and a
+  `SearchSnippet` helper — no new package, migration, or index. Result caps/pagination are
+  deliberately deferred to the `search_pagination` draft spec.
 - **Manual codex reference resync.** New `codex:sync-references {project?}` artisan command
   rebuilds the `scene_codex_entry` pivot from scratch (every project, or one via the optional
   argument) — needed to backfill scenes that existed before `SceneReferenceMatcher` shipped, since

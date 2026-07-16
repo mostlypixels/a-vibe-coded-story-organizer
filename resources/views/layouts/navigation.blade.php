@@ -39,6 +39,9 @@
                             // Codex — per-type active is computed inside the loop (enum-aware).
                             $attributesActive = request()->routeIs('projects.codex-attributes.*') || request()->routeIs('codex-attributes.*');
                             $codexActive = request()->routeIs('projects.codex.*') || request()->routeIs('codex.*') || $attributesActive;
+
+                            // Search — single top-level link, last in the menu.
+                            $searchActive = request()->routeIs('projects.search.*');
                         @endphp
 
                         <x-nav-link :href="route('projects.show', $project)" :active="request()->routeIs('projects.show')">
@@ -128,6 +131,13 @@
                                 </x-slot>
                             </x-dropdown>
                         </div>
+
+                        <x-nav-link
+                            :href="route('projects.search.index', $project)"
+                            :active="$searchActive"
+                            :aria-current="$searchActive ? 'page' : false">
+                            {{ __('Search') }}
+                        </x-nav-link>
                     @endif
                 </div>
             </div>
@@ -210,6 +220,9 @@
                     // Codex — per-type active is computed inside the loop (enum-aware).
                     $attributesActive = request()->routeIs('projects.codex-attributes.*') || request()->routeIs('codex-attributes.*');
                     $codexActive = request()->routeIs('projects.codex.*') || request()->routeIs('codex.*') || $attributesActive;
+
+                    // Search — single top-level link, last in the menu.
+                    $searchActive = request()->routeIs('projects.search.*');
                 @endphp
 
                 <x-responsive-nav-link :href="route('projects.show', $project)" :active="request()->routeIs('projects.show')">
@@ -262,6 +275,13 @@
 
                 <x-responsive-nav-link :href="route('projects.scenes.index', $project)" :active="$scenesActive">
                     {{ __('Scenes') }}
+                </x-responsive-nav-link>
+
+                <x-responsive-nav-link
+                    :href="route('projects.search.index', $project)"
+                    :active="$searchActive"
+                    :aria-current="$searchActive ? 'page' : false">
+                    {{ __('Search') }}
                 </x-responsive-nav-link>
             @endif
         </div>

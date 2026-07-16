@@ -482,6 +482,54 @@ is the same **[`documentation/export-format.md`](export-format.md)** the exporte
 > orchestration, and security gate also have their own focused suites (`ImportTest`,
 > `tests/Unit/Import/*`).
 
+## Project search
+
+Every project has a search page (`GET /projects/{project}/search`, named
+`projects.search.index`, the last item in the primary nav) that scans the string/text fields
+of six entities — Act, Chapter, Scene (contents + notes), Event, Plotline, and CodexEntry —
+and renders the matches grouped into the same three sections as the menu (Timeline / Story /
+Codex). Each section stacks one full-width result table per entity type — the same layout as
+the entity list pages (an earlier 3-column grid proved too narrow for comfortable reading).
+A table row is one matched **entity**: its name (linked to the edit page), the fields the
+terms matched in (concatenated, e.g. "Name, Contents"), the highlighted text preview, and a
+trailing view button (`x-icon-view-link`, same edit page — entities have no separate show
+page). Entity types with no matches are hidden entirely (no empty-state table), and a
+section whose tables are all empty is skipped — `SearchResults`' `has*Matches()` helpers
+drive the per-section check so the Blade stays logic-free. It is
+a plain `GET` form with a full-page reload — no AJAX;
+`q` and `mode` round-trip via the query string, and an empty `q` is the normal landing state
+(the form with no results), never a validation error.
+
+- **The service.** `App\Services\ProjectSearch` is the first (and template) occupant of the
+  `app/Services` layer: the controller stays thin (resolve → authorize → delegate → view) and
+  all query logic lives in `search(Project, string $query, SearchMode): SearchResults`. The
+  whole search is a **fixed six SELECTs** regardless of match count (one per entity type;
+  Chapter/Scene scope to the project through `whereHas` on their parent chain), asserted by a
+  query-count test.
+- **Modes.** `App\Enums\SearchMode`: `AllTerms` (AND, the default), `AnyTerm` (OR),
+  `ExactPhrase`. In AND mode a term may match in *any* searchable field of the entity — terms
+  are not required to co-occur in one field. The mode only changes which entities the SQL
+  returns; a returned entity always becomes **one result row listing every matching field**
+  (a Scene matching in both `contents` and `notes` yields one row matched in
+  "Contents, Notes").
+- **Snippets.** `App\Support\SearchSnippet` builds a ~120-char context window around the first
+  match and wraps matched terms in `<mark class="bg-sun-200">`, escape-then-highlight so raw
+  HTML in scene text can never become live markup. Its output is the **only** `{!! !!}` on the
+  page (rendered in `x-search.result-row`); everything else stays auto-escaped `{{ }}`. The
+  row's preview is built from the **first** matching field, in the entity's declared field
+  order — the "Matched in" column tells the reader where else the terms appeared.
+
+> [!WARNING]
+> User-supplied search terms have `%`, `_`, and `\` escaped (with a matching `ESCAPE` clause)
+> before being placed in a `LIKE` pattern — a literal `%` in a query must not act as a SQL
+> wildcard. Laravel's `whereLike()` does **not** do this (it binds the value as the raw
+> pattern, no `ESCAPE` clause), which is why `ProjectSearch` hand-rolls its `orWhereRaw(...
+> escape ...)` fragments. Don't "simplify" them back to `whereLike`.
+
+There is deliberately **no FULLTEXT index, no new package, and no pagination**: `LIKE` scans
+are fine at this project's scale and portable across DB drivers. Result caps and a paginated
+per-domain page are a separate follow-up spec (`search_pagination`).
+
 ## Navigation active state
 
 The primary nav (`resources/views/layouts/navigation.blade.php`) highlights the section matching
@@ -514,6 +562,6 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 | Input validation | `app/Http/Requests` (Form Requests), `app/Rules` (reusable rules) |
 | Authorization | `app/Policies/ProjectPolicy` |
 | Domain invariants / lifecycle | Model `booted()` hooks |
-| Reusable domain workflows | A Service/Action class — create `app/Services` when first needed |
+| Reusable domain workflows | `app/Services` (e.g. `ProjectSearch`), or an Action class |
 | Constant / reference data | `app/Support` (e.g. `PlotlineColors`), `app/Enums` |
 | Reusable UI | `resources/views/components` (Blade components) |

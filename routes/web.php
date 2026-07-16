@@ -22,6 +22,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SceneShareController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SharedSceneController;
 use App\Http\Controllers\StoryController;
 use Illuminate\Support\Facades\Route;
@@ -116,6 +117,11 @@ Route::middleware('auth')->group(function () {
         ->shallow();
 
     Route::get('/projects/{project}/story', [StoryController::class, 'index'])->name('projects.story.index');
+
+    // Full-text-ish search across one project's six searchable entities. Single
+    // GET action (no AJAX): q/mode round-trip via the query string. Authorizes
+    // via ProjectPolicy::view (SearchController + SearchRequest).
+    Route::get('/projects/{project}/search', [SearchController::class, 'index'])->name('projects.search.index');
 
     Route::resource('projects.acts', ActController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])

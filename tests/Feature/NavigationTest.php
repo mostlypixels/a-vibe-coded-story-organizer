@@ -255,4 +255,54 @@ class NavigationTest extends TestCase
         // anchors so the breadcrumb's own <span aria-current> is not counted.
         $this->assertDoesNotMatchRegularExpression('/<a[^>]*aria-current="page"/', $html);
     }
+
+    public function test_the_search_link_is_marked_on_the_search_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.search.index', $project))
+            ->assertOk()
+            ->getContent();
+
+        // Search is the active top-level link; every other section stays inactive.
+        $this->assertLinkIsCurrent($html, route('projects.search.index', $project));
+        $this->assertLinkIsNotCurrent($html, route('projects.show', $project));
+        $this->assertLinkIsNotCurrent($html, route('projects.plotlines.index', $project));
+        $this->assertLinkIsNotCurrent($html, route('projects.codex.index', [$project, 'characters']));
+        $this->assertLinkIsNotCurrent($html, route('projects.story.index', $project));
+    }
+
+    public function test_the_search_link_is_present_but_not_marked_on_a_non_search_page(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->project;
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.scenes.index', $project))
+            ->assertOk()
+            ->getContent();
+
+        // The link is always in the nav, but only current when on a search route.
+        $this->assertLinkIsNotCurrent($html, route('projects.search.index', $project));
+    }
+
+    public function test_the_search_link_points_at_the_project_search_route(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->getContent();
+
+        // The entry point resolves to the project-scoped search index.
+        $this->assertStringContainsString(
+            'href="'.e(route('projects.search.index', $project)).'"',
+            $html,
+        );
+    }
 }

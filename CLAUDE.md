@@ -24,11 +24,12 @@ resolve the model → authorize → delegate → return a response. Concretely, 
 * **Input validation** → Form Requests (`app/Http/Requests`). Reusable rules → `app/Rules`
   (see `ValidMarkdown`). Validate enums with `Rule::enum(...)`.
 * **Authorization** → Policies (`app/Policies`). See the Authorization rules below.
-* **Reusable / multi-step domain workflows** → a dedicated Service or Action class. There is no
-  `app/Services` layer yet; create one the first time an action needs non-trivial, reusable logic
-  (for example, the position-swap logic currently duplicated in the Act/Chapter/Scene controllers is
-  a candidate to extract into a shared trait or service). Do not add abstraction before there is a
-  second caller — prefer a private controller method until reuse is real.
+* **Reusable / multi-step domain workflows** → a dedicated Service or Action class in
+  `app/Services` (see `ProjectSearch` for the template: the controller resolves + authorizes,
+  the service owns the queries and domain logic). Extract further candidates the same way —
+  e.g. the position-swap logic currently duplicated in the Act/Chapter/Scene controllers. Do
+  not add abstraction before there is a second caller — prefer a private controller method
+  until reuse is real.
 * **Model lifecycle invariants** legitimately live in `booted()` hooks — e.g. auto-assigning
   `position` on create, and auto-creating the main plotline. This is the intended exception to
   "no logic in models": *invariants and lifecycle* belong in the model; *application workflow* does not.
