@@ -20,15 +20,11 @@ the pipeline — this skill exists so that never happens.
    to be short and is stress-tested later by the `grilling` step in `plan-tasks`.
 
 2. **Pick a name.** A short, descriptive `kebab-case` slug (e.g. `plotline-merge`). Then
-   **check it is free across the whole tree** with the glob `.specs/*/<name>/`:
-   - If nothing matches, use `<name>` as-is.
-   - If something already matches (typically a `shipped/<name>/` you're building a follow-up
-     to), the name is taken. Prefer a distinct, descriptive name for genuinely new work
-     (`<name>-followup`, or a name for the new slice). If the user really wants to reuse the
-     name, apply the pipeline's collision suffix **now** (`<name>-YYYY-MM-DD`, today's date) —
-     draft creation happens before any move, so you can't rely on the move-time auto-suffix;
-     a colliding `draft/<name>/` would fail the consistency test immediately. See
-     `.specs/README.md` → *Name-collision handling*.
+   **check it is free across the whole tree** with the glob `.specs/*/<name>/`. If taken
+   (typically a shipped feature you're following up), prefer a distinct new name; if the
+   user insists on reuse, apply the collision suffix from `.specs/README.md` →
+   *Name-collision handling* **now** — a colliding `draft/<name>/` fails the consistency
+   test immediately.
 
 3. **Create the folder and spec.** Write `.specs/draft/<name>/spec.md` (create `.specs/draft/`
    if absent). It **must** start with this frontmatter, then the body:

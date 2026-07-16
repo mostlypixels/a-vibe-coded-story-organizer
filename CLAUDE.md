@@ -4,6 +4,15 @@ Those are preferences to be taken into account during planning and development, 
 
 This code will be used by junior developers.
 
+### Commands
+
+The canonical commands for this project (referenced by the skills and agents in `.claude/`):
+
+* Test: `composer test` (in-memory SQLite, runs in parallel via paratest; one DB per process, so tests must not assume shared state)
+* Lint/format: `./vendor/bin/pint` (check only: `--test`)
+* Build frontend: `npm run build`
+* Dev server: `php artisan serve`
+
 ### General
 
 * Follow Laravel conventions unless there is a compelling architectural reason not to.

@@ -57,11 +57,11 @@ A single argument: the feature name. Locate the feature folder with the glob
 5. **Final sanity pass.** Once the loop empties, run this project's full test suite and
    linter once more (commands from `CLAUDE.md`'s Commands section) as a final check
    across everything the loop built. **If the feature has a UI/JS surface, a green suite
-   is not enough** — build the frontend and confirm the app serves the build (not a
-   stale `public/hot` dev-server pointer), and either drive the key flow in a browser or
-   hand the user the exact click-path to confirm. Frontend regressions (missing CSS
-   plugin, stale hot file, a reactive-proxy'd editor) routinely pass PHPUnit; see the
-   feature's `resolution-log.md`.
+   is not enough** — apply the same runtime verification the `plan-implementer` agent
+   uses: build the frontend, confirm the app serves the build (not a stale `public/hot`
+   pointer), and drive the key flow via the **`run-imagoldfish`** skill (or hand the user
+   the exact click-path). Frontend regressions routinely pass PHPUnit; see the feature's
+   `resolution-log.md`.
 
 6. **Consolidate the resolution log.** Ensure `<dir>/resolution-log.md` exists
    and captures the run's **deviations**, **issues → resolutions**, and
@@ -78,10 +78,8 @@ A single argument: the feature name. Locate the feature folder with the glob
    `expanded` → `planned` → `shipped`), then move the whole feature folder to
    `.specs/shipped/<name>/` so its location matches the stamp (use `git mv`; create
    `.specs/shipped/` if absent). **Before the `git mv`, apply the name-collision suffix rule**
-   from `.specs/README.md` → *Name-collision handling*: if `.specs/*/<name>/` matches any other
-   folder (most often an earlier `shipped/<name>/` whose name this work reused), move to
-   `.specs/shipped/<name>-YYYY-MM-DD/` instead — the same date as the `shipped:` stamp
-   (datetime `-HHMM` on a same-day double collision). Do both before asking about the commit, so the stamp and
+   from `.specs/README.md` → *Name-collision handling* (suffix date = the `shipped:` stamp).
+   Do both before asking about the commit, so the stamp and
    the move ride in the implementation commit — the spec's git history then points at the
    commit that shipped it, no hash field needed. Only add a `commit: <short-hash>` line
    when the stamp is made *after* the implementation commit already exists (e.g. stamping

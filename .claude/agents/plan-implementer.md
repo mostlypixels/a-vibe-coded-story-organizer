@@ -56,17 +56,9 @@ yourself, every time:
 - Write the tests the task file lists, matching this project's existing test style.
   Cover the authorization/ownership edge case if the feature has one, matching how
   sibling resources in this codebase test it.
-- **Give state-toggling UI a stable test hook instead of asserting on cosmetic classes.**
-  When a task adds active/selected/toggled state to an element that has no semantic
-  attribute to assert on — e.g. a `<button>` whose only signal is a swapped Tailwind
-  class — add a real hook (`aria-current`, `aria-pressed`, `aria-selected`, or a
-  `data-active` attribute) and assert on *that*. Asserting on class-token substrings
-  (`assertSee('text-white border-flame-500')`) is brittle: the tokens aren't unique to
-  one element, so a later task testing a *second* instance of the same pattern can't tell
-  which one is active and has to rework the earlier task's assertions. Add the hook in the
-  **first** task that introduces the pattern so every sibling task reuses it. It doubles as
-  an accessibility win. Only fall back to a class-token assertion when the task file
-  explicitly sanctions it and scope the regex to a uniquely-identifying ancestor.
+- Give state-toggling UI a stable semantic test hook (`aria-*`/`data-active`) instead of
+  asserting on Tailwind class tokens — see `documentation/best-practices.md` → *Testing UI
+  state* for the full rule.
 
 ## Verifying (required before a task counts as done)
 
@@ -84,9 +76,10 @@ yourself, every time:
      `:5173` dev-server origin).
    - Render the component/route and inspect the real output (server render via
      `artisan tinker`'s `Blade::render`, or an HTTP fetch), and for interactive JS drive
-     it in a browser with the console open where possible. If no browser automation is
-     available in-session, say so and hand back the exact click-path for the user to
-     confirm — do not declare an interactive feature verified on tests alone.
+     it in a browser — use the **`run-imagoldfish`** skill, which provides a Playwright
+     driver, login flow, and screenshots. If that genuinely isn't possible, say so and hand
+     back the exact click-path for the user to confirm — do not declare an interactive
+     feature verified on tests alone.
    These are the failures tests miss (a missing CSS plugin, a stale `public/hot`, a
    reactive-proxy'd editor instance) — see any feature's `resolution-log.md` for real
    examples in this repo.

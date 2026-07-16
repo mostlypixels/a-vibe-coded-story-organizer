@@ -101,9 +101,7 @@ when this folder moves in step 8. Below, **`<dir>`** means the matched feature f
    else in that file. Then move the whole feature folder to `.specs/planned/<name>/` so
    its location matches the stamp (use `git mv`; create `.specs/planned/` if absent).
    **Before the `git mv`, apply the name-collision suffix rule** from `.specs/README.md` →
-   *Name-collision handling*: if `.specs/*/<name>/` matches any other folder, the destination
-   becomes `<name>-YYYY-MM-DD` (datetime `-HHMM` on a same-day double collision), and that
-   suffixed name is what you pass to `ship-plan` next.
+   *Name-collision handling*; the possibly-suffixed name is what you pass to `ship-plan` next.
 
 9. **Report** the created `plan/` folder, the folder's new location under `.specs/planned/`,
    the task list with a one-line summary of each, and flag any open question you left

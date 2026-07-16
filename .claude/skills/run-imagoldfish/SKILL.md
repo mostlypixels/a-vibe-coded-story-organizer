@@ -3,7 +3,7 @@ name: run-imagoldfish
 description: Build, run, and drive the imagoldfish Laravel app in a real browser — start the dev server, log in, click through pages, screenshot the result, upload files. Use when asked to run the app, start the dev server, take a screenshot of a page, verify a UI change actually works, or drive an end-to-end flow (login, forms, tab switching, file upload) rather than just running the test suite.
 ---
 
-This is a Laravel 12 + Blade + Alpine.js + Tailwind app (PHP backend, no SPA
+This is a Laravel 13 + Blade + Alpine.js + Tailwind app (PHP backend, no SPA
 framework). It is driven with `php artisan serve` (no separate frontend dev
 server needed once assets are built) plus a small Playwright-based headless
 browser driver at `.claude/skills/run-imagoldfish/driver.mjs` — pipe it a
@@ -13,14 +13,10 @@ All paths below are relative to the repo root, except the driver itself.
 
 ## Prerequisites
 
-Windows/PowerShell environment observed in this repo. PHP 8.2 (wamp64),
-Composer, and Node/npm must already be on PATH — this repo assumes a local
-dev stack is already set up (no apt-get step here; this is not a container).
-
-```bash
-node --version   # v20+ used when this skill was verified
-php --version    # 8.2.18 (wamp64) used when this skill was verified
-```
+Windows/PowerShell environment observed in this repo. PHP 8.5, Composer, and
+Node/npm must already be on PATH — this repo assumes a local dev stack is
+already set up (no apt-get step here; this is not a container). Verify with
+`php --version` / `node --version` (PHP 8.5 / Node v20+ expected).
 
 ## Setup
 
@@ -72,7 +68,7 @@ Start the server in the background and poll it, then pipe a script to the
 driver:
 
 ```bash
-(php artisan serve --port=8000 > /tmp/artisan-serve.log 2>&1 &)
+(php artisan serve --port=8000 > "$TMPDIR/artisan-serve.log" 2>&1 &)  # or your scratchpad dir
 timeout 30 bash -c 'until curl -sf http://localhost:8000 -o /dev/null; do sleep 1; done'
 ```
 
@@ -141,8 +137,7 @@ Visit `http://localhost:8000` in a real browser. Ctrl-C to stop.
 ```bash
 composer test
 ```
-497+ tests expected to pass (as of the import feature). This uses an
-in-memory SQLite DB — it does **not** prove the dev-server-served app works;
+The full suite must be green. This uses an in-memory SQLite DB — it does **not** prove the dev-server-served app works;
 see the migration gotcha above.
 
 ```bash
@@ -183,9 +178,8 @@ per project convention, they're not part of your diff).
   ever reach the flow you're trying to screenshot. Build/export a real
   fixture first (e.g. via `StaticSiteExporter` in tinker) and
   `set-input-file` that path.
-- **Bash tool cwd resets between calls** in this environment — `cd` at the
-  start of every command block that needs the skill directory as cwd; don't
-  assume a previous `cd` stuck.
+- **Don't assume the shell cwd** — start any command block that needs the
+  skill directory as cwd with an explicit `cd` (or use absolute paths).
 
 ## Troubleshooting
 

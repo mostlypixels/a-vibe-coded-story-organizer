@@ -42,10 +42,8 @@ a fixed status. Example: `/mp-spec-expander plotline-merge` → reads
    without frontmatter is implicitly `draft`). Then move the whole feature folder to
    `.specs/expanded/<name>/` so its location matches the stamp (use `git mv`; create
    `.specs/expanded/` if absent). **Before the `git mv`, apply the name-collision suffix
-   rule** from `.specs/README.md` → *Name-collision handling*: if `.specs/*/<name>/` already
-   matches some other folder (e.g. a shipped `<name>`), the destination becomes
-   `<name>-YYYY-MM-DD` (date of the move; datetime `-HHMM` on a same-day double collision),
-   and that suffixed name is what you pass to `plan-tasks` next. The frontmatter stamp is the
+   rule** from `.specs/README.md` → *Name-collision handling*; the possibly-suffixed name
+   is what you pass to `plan-tasks` next. The frontmatter stamp is the
    only edit ever made to the source spec's content. Lifecycle, one stamp + move per pipeline stage:
    `draft` → `expanded` (this skill) → `planned` (`plan-tasks`) → `shipped` (`ship-plan`).
 

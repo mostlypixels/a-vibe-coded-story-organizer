@@ -105,3 +105,20 @@ in its home:
 - Maintain a single root `CHANGELOG.md` in [Keep a Changelog](https://keepachangelog.com)
   format: entries under `## [Unreleased]`, grouped by `Added` / `Changed` / `Fixed` /
   `Removed`, updated per feature or pull request (not per commit).
+
+## Testing UI state: assert on semantic hooks, not Tailwind classes
+
+When a view toggles active/selected state on an element whose only signal is a swapped
+Tailwind class (e.g. a tab `<button>`), give it a real hook — `aria-current`,
+`aria-pressed`, `aria-selected`, or a `data-active` attribute — and assert on **that** in
+feature tests.
+
+> [!WARNING]
+> Asserting on class-token substrings (`assertSee('text-white border-flame-500')`) is
+> brittle: the tokens aren't unique to one element, so a later test covering a *second*
+> instance of the pattern can't tell which one is active and forces a rework of the
+> earlier assertions.
+
+Add the hook in the **first** change that introduces the pattern so every sibling reuses
+it — it doubles as an accessibility win. Only fall back to a class-token assertion when
+explicitly sanctioned, scoping the regex to a uniquely-identifying ancestor.
