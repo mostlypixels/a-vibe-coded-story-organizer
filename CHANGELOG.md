@@ -12,6 +12,10 @@ set belongs in its pull request description.
 
 ### Changed
 
+- **`composer test` now runs the suite in parallel** (`php artisan test --parallel` via
+  `brianium/paratest`, new dev dependency): 4m18s → ~1m08s for 580 tests on the reference
+  machine. Each worker gets its own in-memory SQLite database, so tests must not assume
+  shared state across classes (they already don't, per `RefreshDatabase`).
 - **Upgraded to Laravel 13.20.0 on PHP 8.5.7 (WAMP).** Bumped `composer.json` to
   `"php": "^8.5"` and `"laravel/framework": "^13.0"`, and switched WAMP's active Apache
   PHP module from 8.2.18 to 8.5.7. Maintenance upgrade with no behavior change: the only
