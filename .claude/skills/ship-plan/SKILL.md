@@ -85,11 +85,14 @@ A single argument: the feature name. Locate the feature folder with the glob
    when the stamp is made *after* the implementation commit already exists (e.g. stamping
    retroactively), where the history link is lost.
 
-9. **Ask before branching/committing.** Do not create a branch or commit automatically.
-   Ask the user whether they want the accumulated changes committed (and to a new
-   branch, or the current one) — this mirrors the manual confirm step used when the
-   Codex feature shipped, and keeps a visible, hard-to-reverse git action as an explicit
-   choice rather than an assumption.
+9. **Ask before committing; ship via pull request.** Do not commit automatically — ask
+   the user first (a visible, hard-to-reverse git action stays an explicit choice).
+   `master` is protected: direct pushes are rejected, so once confirmed, create a feature
+   branch, commit (updating `CHANGELOG.md` in the same change set), push, and open a PR
+   with `gh pr create` — the PR description carries the richer rationale, per the
+   changelog convention. The `tests` CI check must be green before merging; squash-merge
+   with `gh pr merge --squash` once it is (confirm with the user unless they already
+   said to merge).
 
    When you do stage the commit, remember step 8 **already moved** the feature folder to
    `.specs/shipped/<name>/`, so the old `.specs/planned/<name>/` path no longer exists —
