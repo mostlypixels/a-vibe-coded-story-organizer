@@ -1,0 +1,42 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # Blade layouts use @vite — feature tests that render views need a real
+      # build manifest, and this doubles as a check that the frontend builds.
+      - name: Build frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run test suite
+        run: composer test
+
+      - name: Check code style
+        run: ./vendor/bin/pint --test

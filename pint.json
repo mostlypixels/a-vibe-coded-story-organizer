@@ -1,0 +1,6 @@
+{
+    "notPath": [
+        "database/seeders/MelusineSeederFr.php",
+        "database/seeders/MelusineSeederIt.php"
+    ]
+}
