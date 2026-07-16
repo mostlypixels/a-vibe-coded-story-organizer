@@ -13,6 +13,9 @@ The canonical commands for this project (referenced by the skills and agents in 
 * Build frontend: `npm run build`
 * Dev server: `php artisan serve`
 
+`master` is protected: direct pushes are rejected. All changes ship as branch → PR →
+green `tests` CI check → squash-merge (0 approvals required; self-merge is fine).
+
 ### General
 
 * Follow Laravel conventions unless there is a compelling architectural reason not to.

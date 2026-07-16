@@ -10,6 +10,15 @@ set belongs in its pull request description.
 
 ## [Unreleased]
 
+### Added
+
+- **CI merge gate.** GitHub Actions workflow (`.github/workflows/tests.yml`) runs the
+  parallel test suite and `pint --test` on every push and pull request (PHP 8.5,
+  ubuntu-latest, real frontend build so `@vite` views render). Branch protection on
+  `master` now requires a pull request with a green `tests` check before merging —
+  direct pushes are rejected. `pint.json` excludes the two hand-maintained Melusine
+  seeder variants so the style check reflects the "never reformat those" convention.
+
 ### Changed
 
 - **`composer test` now runs the suite in parallel** (`php artisan test --parallel` via
