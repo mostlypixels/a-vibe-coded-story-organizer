@@ -16,6 +16,9 @@ The canonical commands for this project (referenced by the skills and agents in 
 `master` is protected: direct pushes are rejected. All changes ship as branch → PR →
 green `tests` CI check → squash-merge (0 approvals required; self-merge is fine).
 
+Reusable workflow scripts live in `scripts/` (see its README); check there before
+inlining a command sequence in a skill or agent.
+
 ### General
 
 * Follow Laravel conventions unless there is a compelling architectural reason not to.
