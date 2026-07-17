@@ -1,61 +1,71 @@
 # `.specs/` — feature specifications & plans
 
 Each feature lives in **one self-contained folder**, grouped under a status subfolder that
-matches the `status:` in its `spec.md` frontmatter: `.specs/<status>/<name>/`. The `.specs/`
-root holds only these status folders (plus this `README.md`) — **no loose feature folders and
-no loose `*.md` files** besides the README.
+matches the `status:` in its `spec.md` frontmatter. Drafts sit directly under `draft/` — a
+draft has no lifecycle date yet. Every later stage groups its features into **`YYYY-MM`
+month buckets**, named for the date the feature *entered* that stage, so no single
+directory grows without bound as features accumulate (this matters most for `shipped/`,
+which only ever grows). The `.specs/` root holds only the status folders (plus this
+`README.md`) — **no loose feature folders and no loose `*.md` files** besides the README.
 
 ```
 .specs/
-  draft/<name>/      # spec hand-written, not yet expanded
-  expanded/<name>/   # design docs generated, not yet planned
-  planned/<name>/    # plan tasks generated, not yet shipped
-  shipped/<name>/    # plan fully implemented and merged
+  draft/<name>/                # spec hand-written, not yet expanded (flat — no date yet)
+  expanded/<YYYY-MM>/<name>/   # design docs generated, not yet planned
+  planned/<YYYY-MM>/<name>/    # plan tasks generated, not yet shipped
+  shipped/<YYYY-MM>/<name>/    # plan fully implemented and merged
 ```
 
-The four subfolders are exactly the four lifecycle `status:` values (see the table below).
-A subfolder only exists when at least one feature is at that stage. As a feature advances,
-its folder **moves** into the next status subfolder and its `spec.md` `status:` is
-re-stamped in the same step — the folder location and the frontmatter must always agree.
+The four status folders are exactly the four lifecycle `status:` values (see the table
+below). A subfolder (or month bucket) only exists when at least one feature is at that
+stage/month. As a feature advances, its folder **moves** into the next status's bucket and
+its `spec.md` frontmatter is re-stamped in the same step — the folder location and the
+frontmatter must always agree, including the bucket: each stage past draft stamps its date
+(`expanded:` / `planned:` / `shipped:`, as `YYYY-MM-DD`), and the bucket is that date's
+`YYYY-MM`.
 
-Because a feature can sit under any status subfolder, always locate one by name with the
-glob `.specs/*/<name>/`, not a hard-coded status.
+Because a feature can sit under any status, always locate one by name with the **two
+globs** `.specs/draft/<name>/` and `.specs/*/*/<name>/` (never a hard-coded status or
+bucket).
 
 > [!WARNING]
-> **Feature names are unique across the *whole* tree, not just within one status.**
-> Because a feature is located by the glob `.specs/*/<name>/`, that glob must resolve to
-> **exactly one** folder. The trap: you start a new feature `foo` under `draft/` (or
-> `planned/`) while a `foo` was already shipped to `shipped/` — now `.specs/*/foo/` matches
-> two folders and every skill that locates by name silently picks the wrong one (or clobbers
-> the shipped spec on the next `git mv`).
+> **Feature names are unique across the *whole* tree, not just within one status or
+> month.** Locating by name must resolve to **exactly one** folder. The trap: you start a
+> new feature `foo` under `draft/` while a `foo` was already shipped to
+> `shipped/2026-07/` — now the lookup matches two folders and every skill that locates by
+> name silently picks the wrong one (or clobbers the shipped spec on the next `git mv`).
+> Living in different month buckets does **not** make two same-named features distinct.
 
 ### Name-collision handling (auto-suffix on move)
 
-Collisions are resolved automatically **at the moment a pipeline stage moves a feature folder
-into its next status subfolder** — the pipeline never asks you to rename by hand. Each move
-(`mp-spec-expander` → `expanded/`, `plan-tasks` → `planned/`, `ship-plan` → `shipped/`)
-applies this procedure before its `git mv`:
+Collisions are resolved automatically **at the moment a pipeline stage moves a feature
+folder into its next status subfolder** — the pipeline never asks you to rename by hand.
+Each move (`mp-spec-expander` → `expanded/`, `plan-tasks` → `planned/`, `ship-plan` →
+`shipped/`) applies this procedure before its `git mv`:
 
 1. Take the destination name — normally `<name>`.
-2. Glob `.specs/*/<name>/` for **any folder other than the one being moved**. If none exists,
-   the name is free; move to `.specs/<newstatus>/<name>/` unchanged.
-3. If one exists (typically a `shipped/<name>/` from earlier work that reused the name), append
-   the **date of the move** as a suffix: move to `.specs/<newstatus>/<name>-YYYY-MM-DD/`.
-4. If *that* suffixed name is itself already taken — a second collision the same day — use the
-   **datetime** instead: `<name>-YYYY-MM-DD-HHMM`.
+2. Glob `.specs/draft/<name>/` and `.specs/*/*/<name>/` for **any folder other than the
+   one being moved**. If none exists, the name is free; move to
+   `.specs/<newstatus>/<YYYY-MM>/<name>/` unchanged.
+3. If one exists (typically a shipped `<name>` from earlier work that reused the name),
+   append the **date of the move** as a suffix: move to
+   `.specs/<newstatus>/<YYYY-MM>/<name>-YYYY-MM-DD/`.
+4. If *that* suffixed name is itself already taken — a second collision the same day —
+   use the **datetime** instead: `<name>-YYYY-MM-DD-HHMM`.
 
-From that move onward the feature is known by the new suffixed folder name; pass that name to
-the remaining pipeline stages. Example: expanding a fresh `draft/foo/` while `shipped/foo/`
-exists lands it at `.specs/expanded/foo-2026-07-10/`, leaving the shipped `foo` untouched.
+From that move onward the feature is known by the new suffixed folder name; pass that
+name to the remaining pipeline stages. Example: expanding a fresh `draft/foo/` while
+`shipped/2026-07/foo/` exists lands it at `.specs/expanded/2026-07/foo-2026-07-17/`,
+leaving the shipped `foo` untouched.
 
-`tests/Unit/SpecsStatusConsistencyTest` fails `composer test` (and CI) whenever one name still
-appears under two status folders — the backstop for a collision created by hand (e.g. a
-manually-made `draft/<name>/`) that no move has yet auto-resolved.
+`tests/Unit/SpecsStatusConsistencyTest` fails `composer test` (and CI) whenever one name
+still appears twice anywhere in the tree — the backstop for a collision created by hand
+(e.g. a manually-made `draft/<name>/`) that no move has yet auto-resolved.
 
 ## Per-feature layout
 
 ```
-.specs/<status>/<name>/
+.specs/<status>/<YYYY-MM>/<name>/    (drafts: .specs/draft/<name>/)
   spec.md              # the short source spec you write by hand (the input)
   expanded/            # detailed design docs generated by /mp-spec-expander
     overview.md  data-model.md  architecture.md  ui.md  testing.md  open-questions.md  (+ feature-specific)
@@ -68,26 +78,41 @@ manually-made `draft/<name>/`) that no move has yet auto-resolved.
 
 ## Lifecycle
 
-Create the folder and its `spec.md` yourself, then run the pipeline. Each stage stamps a
-`status:` in `spec.md`'s YAML frontmatter **and moves the feature folder** into the matching
-status subfolder:
+Create the folder and its `spec.md` yourself, then run the pipeline. Each stage stamps
+its `status:` **and its date** in `spec.md`'s YAML frontmatter, and moves the feature
+folder into the matching status subfolder's month bucket:
 
-| Stage | Command | Reads | Writes | `status:` → folder |
-|-------|---------|-------|--------|--------------------|
-| 1. Draft | `/draft-spec <name>` *(or by hand)* | your request | `.specs/draft/<name>/spec.md` | `draft` → `draft/` |
-| 2. Expand | `/mp-spec-expander <name>` | `spec.md` | `expanded/` | `expanded` → `expanded/` |
-| 3. Plan | `/plan-tasks <name>` | `expanded/` | `plan/` + `resolution-log.md` | `planned` → `planned/` |
-| 4. Ship | `/ship-plan <name>` | `plan/` | code + moves tasks to `plan/implemented/` | `shipped` → `shipped/` |
+| Stage | Command | Reads | Writes | frontmatter → folder |
+|-------|---------|-------|--------|----------------------|
+| 1. Draft | `/draft-spec <name>` *(or by hand)* | your request | `.specs/draft/<name>/spec.md` | `status: draft` → `draft/<name>/` |
+| 2. Expand | `/mp-spec-expander <name>` | `spec.md` | `expanded/` | `status: expanded` + `expanded: <date>` → `expanded/<YYYY-MM>/<name>/` |
+| 3. Plan | `/plan-tasks <name>` | `expanded/` | `plan/` + `resolution-log.md` | `status: planned` + `planned: <date>` → `planned/<YYYY-MM>/<name>/` |
+| 4. Ship | `/ship-plan <name>` | `plan/` | code + moves tasks to `plan/implemented/` | `status: shipped` + `shipped: <date>` → `shipped/<YYYY-MM>/<name>/` |
 
 Step 4 drives the `plan-implementer` agent task-by-task; each agent run appends to
 `resolution-log.md` and moves its finished task file into `plan/implemented/`.
 
+A fully-stamped shipped spec's frontmatter therefore reads like a timeline:
+
+```yaml
+---
+status: shipped
+expanded: 2026-07-15
+planned: 2026-07-16
+shipped: 2026-07-17
+---
+```
+
+(Features that advanced before the date stamps existed only carry `shipped:`.)
+
 > [!NOTE]
-> The folder location and the `status:` frontmatter encode the lifecycle stage twice, so
-> they can drift (e.g. a feature shipped but left stamped `planned`).
-> `tests/Unit/SpecsStatusConsistencyTest` is the reconciler: it fails `composer test` (and
-> CI) whenever a `spec.md` `status:` disagrees with its status folder, a feature folder is
-> filed directly under `.specs/`, or the root holds a non-status subfolder.
+> The folder location and the frontmatter encode the lifecycle stage (and month) twice,
+> so they can drift (e.g. a feature shipped but left stamped `planned`, or filed in a
+> bucket that disagrees with its date stamp). `tests/Unit/SpecsStatusConsistencyTest` is
+> the reconciler: it fails `composer test` (and CI) whenever a `spec.md` frontmatter
+> disagrees with its folder, a non-draft feature is missing its stage date or sits
+> outside a `YYYY-MM` bucket, a feature folder is filed directly under `.specs/`, or the
+> root holds a non-status subfolder.
 
 ## Starting a new feature
 
@@ -95,20 +120,20 @@ The simplest path is to ask for the draft — the `draft-spec` skill files it co
 
 ```
 /draft-spec <name>               # writes .specs/draft/<name>/spec.md with status: draft
-/mp-spec-expander <name>         # moves the folder to expanded/ when done
-/plan-tasks <name>               # moves the folder to planned/ when done
-/ship-plan <name>                # moves the folder to shipped/ when done
+/mp-spec-expander <name>         # moves the folder to expanded/<YYYY-MM>/ when done
+/plan-tasks <name>               # moves the folder to planned/<YYYY-MM>/ when done
+/ship-plan <name>                # moves the folder to shipped/<YYYY-MM>/ when done
 ```
 
 By hand instead of stage 1:
 
 ```
-mkdir -p .specs/draft/<name>     # new features start life under draft/
+mkdir -p .specs/draft/<name>     # new features start life under draft/ (never in a bucket)
 # write .specs/draft/<name>/spec.md, starting with `---\nstatus: draft\n---` frontmatter
 #   (a few paragraphs: problem, goals, rough approach)
 ```
 
-Reusing a shipped name is fine — but note the auto-suffix fires on a *move*, and a draft has
-not moved yet, so a colliding `draft/<name>/` would trip the consistency test immediately.
-`/draft-spec` handles this: it suffixes (`<name>-YYYY-MM-DD`) or picks a distinct name at
-creation. Doing it by hand, choose a free name yourself.
+Reusing a shipped name is fine — but note the auto-suffix fires on a *move*, and a draft
+has not moved yet, so a colliding `draft/<name>/` would trip the consistency test
+immediately. `/draft-spec` handles this: it suffixes (`<name>-YYYY-MM-DD`) or picks a
+distinct name at creation. Doing it by hand, choose a free name yourself.
