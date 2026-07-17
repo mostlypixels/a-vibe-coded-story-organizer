@@ -149,6 +149,28 @@ class SearchTest extends TestCase
         $response->assertSee(route('scenes.edit', $scene), false);
     }
 
+    public function test_a_matched_rich_html_field_strips_tags_from_the_preview(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        // Scene.notes is stored rich HTML (see RichTextFields) — the preview must show
+        // the reader's plain text, not the raw <p>/<strong> markup.
+        $this->sceneFor($project, [
+            'name' => 'The Opening Scene',
+            'notes' => '<p>A fearsome <strong>zephyrqux</strong> stalks the moor.</p>',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        $response->assertSeeHtml('<mark class="bg-sun-200">zephyrqux</mark>');
+        // The raw tags never reach the page, escaped or otherwise.
+        $response->assertDontSee('&lt;p&gt;', false);
+        $response->assertDontSee('<p>', false);
+        $response->assertDontSee('&lt;strong&gt;', false);
+    }
+
     public function test_a_row_lists_all_matched_fields_and_carries_a_view_button(): void
     {
         $user = User::factory()->create();

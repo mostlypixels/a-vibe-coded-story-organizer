@@ -285,3 +285,27 @@ User directive, superseding two of the plan's binding decisions ("every section 
   `scope="col"` headings and `<section` elements — both markers are unique to the search
   results on this page (the nav renders the section *words*, so word-based assertions stay
   meaningless here, per the task-04 lesson).
+
+### 2026-07-17 — Strip HTML tags from rich-text field previews
+
+User-reported issue: a match in a rich-HTML field (`Scene.notes` / any `description` field, per
+`RichTextFields`) rendered its `SearchSnippet` preview with the raw markup escaped and visible
+(e.g. literal `&lt;p&gt;`/`&lt;strong&gt;` text), instead of the plain text a reader expects.
+`SearchSnippet` itself was working as designed — it escapes-then-highlights raw input, and its own
+test suite (`SearchSnippetTest`) explicitly asserts that behavior for arbitrary text — so the fix
+belongs upstream of it, in what text `ProjectSearch` feeds in.
+
+- **Resolution:** `ProjectSearch::rowsFor()` now checks `RichTextFields::isRich($entity::class,
+  $column)` and, for rich fields, runs the raw value through `RichText::toPlainText()` (the same
+  helper already used elsewhere to render rich HTML as plain text) before both the
+  `fieldContainsAnyTerm` match check and the `SearchSnippet::highlight()` call. Plain Markdown
+  (`Scene.contents`) and non-rich fields (`name`/`title`) are untouched — this only affects the
+  columns listed in `RichTextFields::FIELDS`.
+- Reusing `RichText::toPlainText()` (rather than a new strip step local to search) keeps "how rich
+  HTML degrades to plain text" in one place, per the "configuration/logic in a single place"
+  guideline — `RichText` already owns turning `<p>`/`<br>` into line breaks before stripping tags.
+- Added `test_a_matched_rich_html_field_strips_tags_from_the_preview` to
+  `tests/Feature/SearchTest.php`, asserting the `<mark>` highlight still renders but neither raw
+  nor HTML-escaped tags reach the page. Full suite (589 tests) and `composer lint -- --test` green
+  after the change; no other tests needed updating since no prior test exercised a rich-field
+  match.
