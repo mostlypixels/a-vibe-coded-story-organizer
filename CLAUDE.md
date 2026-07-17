@@ -139,9 +139,11 @@ avoid, and the best practices to follow.
 * Every commit message body explains *why* the change was made and the intent behind it — this is the
   per-commit record (git already links, blames, and diffs it; no separate per-commit files).
 * Maintain a single `CHANGELOG.md` at the repo root in [Keep a Changelog](https://keepachangelog.com)
-  format: group entries under `## [Unreleased]` by `Added` / `Changed` / `Fixed` / `Removed`. Update it
-  per feature or pull request (not per commit). Richer rationale for a change set belongs in the PR
-  description, which links its commits automatically.
+  format, adapted so the heading answers *when something shipped*: each PR adds its own dated
+  `## YYYY-MM-DD — <title> (#PR)` section at the top (below `[Unreleased]`), grouping its entries by
+  `Added` / `Changed` / `Fixed` / `Removed`. Update it per feature or pull request (not per commit);
+  `[Unreleased]` holds only work not yet merged to `master`. Richer rationale for a change set belongs
+  in the PR description, which links its commits automatically.
 
 
 ### Naming conventions

@@ -87,17 +87,14 @@ A single argument: the feature name. Locate the feature folder with the glob
    when the stamp is made *after* the implementation commit already exists (e.g. stamping
    retroactively), where the history link is lost.
 
-9. **Ask before committing; ship via pull request.** Do not commit automatically — ask
-   the user first (a visible, hard-to-reverse git action stays an explicit choice).
-   `master` is protected: direct pushes are rejected, so once confirmed, create a feature
-   branch, commit (updating `CHANGELOG.md` in the same change set), push, and open a PR
-   with `gh pr create` — the PR description carries the richer rationale, per the
-   changelog convention. The `tests` CI check must be green before merging; squash-merge
-   with `gh pr merge --squash` once it is (confirm with the user unless they already
-   said to merge).
+9. **Ask before committing; then ship via the `ship-pr` skill.** Do not commit
+   automatically — ask the user first (a visible, hard-to-reverse git action stays an
+   explicit choice). Once confirmed, invoke the **`ship-pr`** skill, which owns the
+   branch → commit (with CHANGELOG entry) → push → PR → auto-merge ritual — don't
+   reimplement it here.
 
-   When you do stage the commit, remember step 8 **already moved** the feature folder to
-   `.specs/shipped/<name>/`, so the old `.specs/planned/<name>/` path no longer exists —
+   One staging detail specific to this flow: step 8 **already moved** the feature folder
+   to `.specs/shipped/<name>/`, so the old `.specs/planned/<name>/` path no longer exists —
    staging it (`git add .specs/planned/<name>`) fails with `fatal: pathspec … did not
    match any files`. Stage the whole spec tree instead so git records the rename plus the
    new `plan/implemented/`, `expanded/`, and `resolution-log.md` files in one go:

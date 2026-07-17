@@ -2,22 +2,38 @@
 
 All notable changes to this project are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Entries are grouped under a release heading by change type (`Added` / `Changed` /
-`Fixed` / `Removed`) and updated per feature or pull request — not per commit. The
-per-commit "why" lives in each commit message body; richer rationale for a change
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), adapted
+so the heading answers *when something shipped*: each merged pull request (or
+directly-landed feature) adds its own dated `## YYYY-MM-DD — <title> (#PR)` section at
+the top, below `[Unreleased]`, grouping its entries by change type (`Added` / `Changed`
+/ `Fixed` / `Removed`). `[Unreleased]` holds only work that has not merged to `master`
+yet — when the PR carrying an entry merges, the entry ships under its dated heading.
+The per-commit "why" lives in each commit message body; richer rationale for a change
 set belongs in its pull request description.
 
 ## [Unreleased]
 
+_Nothing yet — the next pull request adds its own dated section below._
+
+## 2026-07-17 — PR shipping ritual & dated changelog (#5)
+
 ### Added
 
-- **CI merge gate.** GitHub Actions workflow (`.github/workflows/tests.yml`) runs the
-  parallel test suite and `pint --test` on every push and pull request (PHP 8.5,
-  ubuntu-latest, real frontend build so `@vite` views render). Branch protection on
-  `master` now requires a pull request with a green `tests` check before merging —
-  direct pushes are rejected. `pint.json` excludes the two hand-maintained Melusine
-  seeder variants so the style check reflects the "never reformat those" convention.
+- **`ship-pr` skill** (`.claude/skills/ship-pr/SKILL.md`): the protected-`master`
+  branch → commit → push → PR → squash-auto-merge ritual as one reusable skill;
+  `ship-plan` step 9 now delegates to it instead of re-describing the dance.
+
+### Changed
+
+- **This changelog now uses dated sections.** Everything used to pile up under one giant
+  `[Unreleased]` heading with no way to tell when an entry shipped. Each merged PR now adds
+  its own `## YYYY-MM-DD — <title> (#PR)` section (convention documented in the header and
+  `CLAUDE.md`); the existing entries were re-filed under dated headings where attributable
+  (2026-07-14 → 2026-07-17) and an "Earlier" section for the rest.
+- **Repository auto-merge enabled** (GitHub setting): `gh pr merge --squash --auto` now
+  arms a PR to land itself when the `tests` check goes green — no manual watch-and-merge.
+
+## 2026-07-17 — Workflow optimizations (#4)
 
 ### Changed
 
@@ -32,41 +48,32 @@ set belongs in its pull request description.
   seeded `admin@example.com` dev user instead of creating and deleting a throwaway user
   via tinker.
 
-- **`composer test` now runs the suite in parallel** (`php artisan test --parallel` via
-  `brianium/paratest`, new dev dependency): 4m18s → ~1m08s for 580 tests on the reference
-  machine. Each worker gets its own in-memory SQLite database, so tests must not assume
-  shared state across classes (they already don't, per `RefreshDatabase`).
-- **Upgraded to Laravel 13.20.0 on PHP 8.5.7 (WAMP).** Bumped `composer.json` to
-  `"php": "^8.5"` and `"laravel/framework": "^13.0"`, and switched WAMP's active Apache
-  PHP module from 8.2.18 to 8.5.7. Maintenance upgrade with no behavior change: the only
-  dependency the framework bump forced was `laravel/tinker` → `^3.0` (resolved to v3.0.2);
-  no `config/*.php` or `bootstrap/app.php` change was required, and `composer test` stayed
-  green (539 passed / 2013 assertions). `ext-imap` (removed from PHP core in 8.4) was
-  intentionally not restored — the app does not use it.
-
-### Fixed
-
-- **English demo data (`MelusineSeederEn`) was missing the aliases scenes actually use.** Mélusine's
-  entry only had the accented `Mélusine` name and `Melusina`/`The Serpent Lady`/`Lady of Lusignan`
-  aliases, but every scene spells the name **without** the accent (`Melusine`) — a different letter,
-  not a normalization difference, so it could never match. Raymondin's entry had `Raymond` as an
-  alias, but `Raymond` is a substring of `Raymondin` (the spelling scenes use), not a separate word,
-  so whole-word matching correctly refused it. Added `Melusine` and `Raymondin` as aliases so the
-  demo project's own scenes link the way a reader would expect (`codex:sync-references` picks up
-  existing seeded scenes once these land).
-- **French and Italian demo data had the same gap for their Raymondin/Raimondino entries.**
-  `Raymond`/`Raimondo` are substrings of the `Raymondin`/`Raimondino` spelling the French and
-  Italian scenes actually use, so whole-word matching never linked them (same class of bug as the
-  English fix above; the French/Italian Mélusine entries were unaffected — their scenes already
-  spell the accented name consistently). Added `Raymondin` to `MelusineSeederFr` and `Raimondino`
-  to `MelusineSeederIt`.
-
 ### Removed
 
 - **`.claude/guidelines.md`** — it had drifted into a stale subset of `CLAUDE.md` (it still
   claimed there was no `app/Services` layer and no Scene/Act/Chapter feature tests).
   `CLAUDE.md` is the single maintained conventions file; the skills and agents that listed
   both now read only `CLAUDE.md`. Historical references in `.specs/shipped/` are left as-is.
+
+## 2026-07-16 — CI merge gate & parallel test suite (#3)
+
+### Added
+
+- **CI merge gate.** GitHub Actions workflow (`.github/workflows/tests.yml`) runs the
+  parallel test suite and `pint --test` on every push and pull request (PHP 8.5,
+  ubuntu-latest, real frontend build so `@vite` views render). Branch protection on
+  `master` now requires a pull request with a green `tests` check before merging —
+  direct pushes are rejected. `pint.json` excludes the two hand-maintained Melusine
+  seeder variants so the style check reflects the "never reformat those" convention.
+
+### Changed
+
+- **`composer test` now runs the suite in parallel** (`php artisan test --parallel` via
+  `brianium/paratest`, new dev dependency): 4m18s → ~1m08s for 580 tests on the reference
+  machine. Each worker gets its own in-memory SQLite database, so tests must not assume
+  shared state across classes (they already don't, per `RefreshDatabase`).
+
+## 2026-07-16 — Advanced search
 
 ### Added
 
@@ -86,6 +93,23 @@ set belongs in its pull request description.
   escaping so literal `%`/`_` in a query match literally), a `SearchMode` enum, and a
   `SearchSnippet` helper — no new package, migration, or index. Result caps/pagination are
   deliberately deferred to the `search_pagination` draft spec.
+
+## 2026-07-15 — Laravel 13 / PHP 8.5 upgrade
+
+### Changed
+
+- **Upgraded to Laravel 13.20.0 on PHP 8.5.7 (WAMP).** Bumped `composer.json` to
+  `"php": "^8.5"` and `"laravel/framework": "^13.0"`, and switched WAMP's active Apache
+  PHP module from 8.2.18 to 8.5.7. Maintenance upgrade with no behavior change: the only
+  dependency the framework bump forced was `laravel/tinker` → `^3.0` (resolved to v3.0.2);
+  no `config/*.php` or `bootstrap/app.php` change was required, and `composer test` stayed
+  green (539 passed / 2013 assertions). `ext-imap` (removed from PHP core in 8.4) was
+  intentionally not restored — the app does not use it.
+
+## 2026-07-14 — Codex alias references (#2)
+
+### Added
+
 - **Manual codex reference resync.** New `codex:sync-references {project?}` artisan command
   rebuilds the `scene_codex_entry` pivot from scratch (every project, or one via the optional
   argument) — needed to backfill scenes that existed before `SceneReferenceMatcher` shipped, since
@@ -141,6 +165,30 @@ set belongs in its pull request description.
   `CodexEntry::referencingScenes()` relations. This is the persisted, derived cache of
   "which codex entries a scene's contents reference"; matching logic, controller wiring,
   and UI arrive in later alias-references tasks.
+
+### Fixed
+
+- **English demo data (`MelusineSeederEn`) was missing the aliases scenes actually use.** Mélusine's
+  entry only had the accented `Mélusine` name and `Melusina`/`The Serpent Lady`/`Lady of Lusignan`
+  aliases, but every scene spells the name **without** the accent (`Melusine`) — a different letter,
+  not a normalization difference, so it could never match. Raymondin's entry had `Raymond` as an
+  alias, but `Raymond` is a substring of `Raymondin` (the spelling scenes use), not a separate word,
+  so whole-word matching correctly refused it. Added `Melusine` and `Raymondin` as aliases so the
+  demo project's own scenes link the way a reader would expect (`codex:sync-references` picks up
+  existing seeded scenes once these land).
+- **French and Italian demo data had the same gap for their Raymondin/Raimondino entries.**
+  `Raymond`/`Raimondo` are substrings of the `Raymondin`/`Raimondino` spelling the French and
+  Italian scenes actually use, so whole-word matching never linked them (same class of bug as the
+  English fix above; the French/Italian Mélusine entries were unaffected — their scenes already
+  spell the accented name consistently). Added `Raymondin` to `MelusineSeederFr` and `Raimondino`
+  to `MelusineSeederIt`.
+
+## Earlier (shipped before 2026-07-14)
+
+These entries predate the dated-section convention above; their individual ship dates are
+in git history (`git log -S "<entry text>" -- CHANGELOG.md`). Grouped by change type.
+
+### Added
 
 - **Project import.** **Admin → Export & import → Import** now reads an export `.zip` back into a
   brand-new project owned by the importing user (the tab previously just said import was "coming soon").
