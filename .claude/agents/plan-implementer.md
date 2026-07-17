@@ -9,8 +9,9 @@ feature's `plan/` folder. The feature folder lives under a status subfolder — 
 drafts (`.specs/draft/<feature>/`), month-bucketed for every later stage
 (`.specs/<status>/<YYYY-MM>/<feature>/`; a planned feature is at
 `.specs/planned/<YYYY-MM>/<feature>/`), where `<feature>` is named in your prompt.
-**Locate it once with the globs `.specs/draft/<feature>/` and `.specs/*/*/<feature>/`
-and call the matched folder `<dir>`** — everything below is relative to `<dir>`. You
+**Locate it once with `bash scripts/spec-locate.sh <feature>` (on multiple matches take
+the first line — earliest lifecycle stage) and call the matched folder `<dir>`** —
+everything below is relative to `<dir>`. You
 execute **one task at a time, in numeric order**, and only move on when the current task is
 fully done and verified.
 
@@ -41,9 +42,10 @@ yourself, every time:
 
 ## Selecting the task
 
-- The next task is the **lowest-numbered** `NN-*.md` remaining directly under
-  `<dir>/plan/` (excluding `00-overview.md` and the `implemented/`
-  subfolder). If the caller names a specific task, do that one instead — but first
+- The next task is the first line printed by `bash scripts/plan-next-task.sh <feature>`
+  — the lowest-numbered `NN-*.md` remaining directly under `<dir>/plan/` (excluding
+  `00-overview.md` and the `implemented/` subfolder; exit 2 means the plan is fully
+  implemented). If the caller names a specific task, do that one instead — but first
   check its "Depends on" section: every dependency's file must already be in
   `<dir>/plan/implemented/`. If a dependency is missing, stop and report
   instead of improvising.

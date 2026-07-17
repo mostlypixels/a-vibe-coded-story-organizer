@@ -31,30 +31,23 @@ invoking this, not as part of it.
    why* — the intent, not a diff restatement (that's this repo's per-commit record).
    End the body with the `Co-Authored-By: Claude` trailer per the harness rules.
 
-5. **Push and open the PR.**
+5. **Land it.** Write the PR body to a temp file — it carries the richer rationale
+   (per the changelog convention): what changed, why, and how it was verified (test
+   counts, lint, any runtime check). Then run the landing script **in the background**
+   and relay its outcome:
    ```bash
-   git push -u origin <branch>
-   gh pr create --title "..." --body "..."
+   bash scripts/pr-land.sh "<title>" <body-file>
    ```
-   The PR description carries the richer rationale (per the changelog convention):
-   what changed, why, and how it was verified (test counts, lint, any runtime check).
-
-6. **Arm auto-merge immediately** — the repo has auto-merge enabled, so CI does the
-   waiting, not you:
-   ```bash
-   gh pr merge <number> --squash --auto --delete-branch
-   ```
-   If this errors with "Auto merge is not allowed", the repo setting was turned off;
-   fall back to watching checks (`gh pr checks <number> --watch`, in the background)
-   and squash-merging manually when green.
-
-7. **Confirm it landed before reporting done.** Auto-merge is silent — do not declare
-   the change shipped on the strength of step 6 alone. Watch `gh pr checks <number>
-   --watch` in the background; when it finishes, verify the PR state is `MERGED`
-   (`gh pr view <number> --json state,mergedAt`). If a check failed, the PR is still
-   open: surface the failing check's output and fix forward on the same branch.
-   After the merge: `git checkout master && git pull` so the local clone matches, and
-   report the merge commit.
+   The script does push → `gh pr create` → arm squash auto-merge → watch checks →
+   poll until the PR state is `MERGED` → `git checkout master && git pull`, echoing
+   progress lines as it goes. The *why* still matters: auto-merge is silent, so
+   "armed" is not "shipped" — the script enforces this by exiting 0 only once the
+   PR is actually `MERGED` and local master is updated. Do not declare the change
+   shipped until it does. If auto-merge can't be armed (repo setting off), it prints
+   the manual squash-merge fallback and keeps watching. If it exits non-zero — a CI
+   check failed, or the merge didn't land within its ~2 min poll cap — it prints the
+   PR URL and state: surface the failing check's output and fix forward on the same
+   branch.
 
 ## Notes
 

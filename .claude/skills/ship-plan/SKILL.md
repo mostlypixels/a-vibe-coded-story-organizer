@@ -10,25 +10,24 @@ task at a time, instead of launching the implementer agent by hand for each task
 
 ## Argument
 
-A single argument: the feature name. Locate the feature folder with the globs
-`.specs/draft/<name>/` and `.specs/*/*/<name>/` — a planned feature sits at
+A single argument: the feature name. Locate the feature folder with
+`bash scripts/spec-locate.sh <name>` — a planned feature sits at
 `.specs/planned/<YYYY-MM>/<name>/` (stages past draft bucket features by month) — and
 use its `plan/` subfolder. Example: `/ship-plan codex` →
 `.specs/planned/2026-07/codex/plan/`. Below, **`<dir>`** means the matched feature folder.
 
 ## Steps
 
-1. **Validate.** Locate `<dir>` via the globs `.specs/draft/<name>/` and
-   `.specs/*/*/<name>/`, and confirm `<dir>/plan/00-overview.md` exists. If no folder matches or it has no `plan/`, tell the user to run
+1. **Validate.** Locate `<dir>` with `bash scripts/spec-locate.sh <name>`, and confirm
+   `<dir>/plan/00-overview.md` exists. If the script finds no folder or it has no `plan/`, tell the user to run
    `/plan-tasks <name>` first (it generates this folder from an expanded spec) and stop.
-   If the glob matches more than one folder (a name collision), work on the one in the
-   *earliest* lifecycle stage — the active feature; the collision is auto-resolved by the
-   suffix rule when it moves to `shipped/` in step 8.
+   If it prints more than one line (a name collision), take the *first* — matches are
+   ordered earliest-lifecycle-first, the active feature; the collision is auto-resolved
+   by the suffix rule when it moves to `shipped/` in step 8.
 
-2. **List remaining tasks.** `NN-*.md` files directly under `plan/` (excluding
-   `00-overview.md`), sorted numerically, that are not already present under
-   `plan/implemented/`. If none remain, report the feature is fully implemented and
-   stop here.
+2. **List remaining tasks** with `bash scripts/plan-next-task.sh <name>` — it prints the
+   unimplemented `NN-*.md` task files in numeric order. Exit 2 means none remain: report
+   the feature is fully implemented and stop here.
 
 3. **Light re-grill — only if the plan drifted.** The plan was already grilled at
    `plan-tasks` time, so **do not** repeat that interview. Instead do a quick drift
@@ -76,14 +75,12 @@ use its `plan/` subfolder. Example: `/ship-plan codex` →
    surface was verified, and the deviations/issues the agents logged along the way (point
    at `resolution-log.md`).
 
-8. **Stamp the source spec as shipped and move the folder.** In `<dir>/spec.md`'s YAML
-   frontmatter set `status: shipped` and `shipped: <YYYY-MM-DD>` (lifecycle: `draft` →
-   `expanded` → `planned` → `shipped`), then move the whole feature folder to
-   `.specs/shipped/<YYYY-MM>/<name>/` — the month bucket is the `shipped:` date's month —
-   so its location matches the stamp (use `git mv`; create missing folders).
-   **Before the `git mv`, apply the name-collision suffix rule**
-   from `.specs/README.md` → *Name-collision handling* (suffix date = the `shipped:` stamp).
-   Do both before asking about the commit, so the stamp and
+8. **Stamp the source spec as shipped and move the folder** with
+   `bash scripts/spec-advance.sh <name> shipped`. The script owns the mechanics —
+   stamping `status: shipped` + `shipped: <date>`, applying the name-collision suffix
+   rule from `.specs/README.md`, and `git mv`-ing the folder into the
+   `.specs/shipped/<YYYY-MM>/` month bucket — and prints the final path.
+   Run it before asking about the commit, so the stamp and
    the move ride in the implementation commit — the spec's git history then points at the
    commit that shipped it, no hash field needed. Only add a `commit: <short-hash>` line
    when the stamp is made *after* the implementation commit already exists (e.g. stamping
