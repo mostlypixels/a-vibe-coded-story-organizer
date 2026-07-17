@@ -19,33 +19,31 @@ the pipeline — this skill exists so that never happens.
    rough approach. Ask the user only about genuinely blocking ambiguities; a draft is meant
    to be short and is stress-tested later by the `grilling` step in `plan-tasks`.
 
-2. **Pick a name.** A short, descriptive `kebab-case` slug (e.g. `plotline-merge`). Then
-   **check it is free across the whole tree** with the globs `.specs/draft/<name>/` and
-   `.specs/*/*/<name>/` (stages past draft bucket features under a `YYYY-MM` month
-   folder, so the name sits one level deeper there). If taken
-   (typically a shipped feature you're following up), prefer a distinct new name; if the
-   user insists on reuse, apply the collision suffix from `.specs/README.md` →
-   *Name-collision handling* **now** — a colliding `draft/<name>/` fails the consistency
-   test immediately.
+2. **Pick a name and scaffold.** Choose a short, descriptive `kebab-case` slug (e.g.
+   `plotline-merge`), then run:
 
-3. **Create the folder and spec.** Write `.specs/draft/<name>/spec.md` (create `.specs/draft/`
-   if absent). It **must** start with this frontmatter, then the body:
-
-   ```markdown
-   ---
-   status: draft
-   ---
-
-   # <Feature title>
-
-   <A few short paragraphs: the problem, the goals / non-goals, and a rough approach.
-   Concrete but not exhaustive — the detailed design is generated later by
-   /mp-spec-expander. Reference existing files and conventions rather than inventing new ones.>
+   ```
+   php artisan spec:draft <name> --description="<one-line summary>"
    ```
 
-   `status: draft` and the `.specs/draft/<name>/` location must always agree — that pairing is
-   what the consistency test guards. Do not put the folder loose under `.specs/` or under any
-   other status subfolder.
+   The command validates the name (kebab-case), checks it is **free across the whole
+   tree** (a name reused anywhere — even under a shipped month bucket — fails
+   `tests/Unit/SpecsStatusConsistencyTest`), and creates `.specs/draft/<name>/spec.md`
+   with the correct `status: draft` frontmatter and title. If it reports a collision
+   (typically a shipped feature you're following up), prefer a distinct new name; if the
+   user insists on reuse, apply the collision suffix from `.specs/README.md` →
+   *Name-collision handling* to the new slug and rerun.
+
+3. **Write the spec body.** The command only scaffolds — replace everything below the
+   `# <Feature title>` heading (the description or placeholder line) with the real
+   content: a few short paragraphs covering the problem, the goals / non-goals, and a
+   rough approach. Concrete but not exhaustive — the detailed design is generated later
+   by `/mp-spec-expander`. Reference existing files and conventions rather than
+   inventing new ones.
+
+   Leave the frontmatter untouched: `status: draft` and the `.specs/draft/<name>/` location
+   must always agree — that pairing is what the consistency test guards. Do not move the
+   folder loose under `.specs/` or under any other status subfolder.
 
 4. **Report** the created path and a one-line summary, then point the user at the next stage:
    `/mp-spec-expander <name>` to expand it into design docs.

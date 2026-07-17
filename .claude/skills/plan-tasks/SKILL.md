@@ -10,16 +10,16 @@ plan that `/ship-plan` and the `plan-implementer` agent consume.
 
 ## Argument
 
-A single argument: the feature name. Locate the feature folder with the globs
-`.specs/draft/<name>/` and `.specs/*/*/<name>/` — after `mp-spec-expander` runs it sits
+A single argument: the feature name. Locate the feature folder with
+`bash scripts/spec-locate.sh <name>` — after `mp-spec-expander` runs it sits
 at `.specs/expanded/<YYYY-MM>/<name>/` (stages past draft bucket features by month) —
 and it must contain an `expanded/` subfolder holding whichever of `overview.md`,
 `data-model.md`, `architecture.md`, `ui.md`, `testing.md`, `open-questions.md` are
-relevant. If no folder matches or it has no `expanded/`, tell the user to run
+relevant. If the script finds no folder, or the folder has no `expanded/`, tell the user to run
 `/mp-spec-expander <name>` first (on a `.specs/draft/<name>/spec.md` source spec) and stop.
-If the glob matches more than one folder (a name collision), work on the one in the *earliest*
-lifecycle stage — that's the active feature; the collision is auto-resolved by the suffix rule
-when this folder moves in step 8. Below, **`<dir>`** means the matched feature folder.
+If it prints more than one line (a name collision), take the *first* — matches are ordered
+earliest-lifecycle-first, and that's the active feature; the collision is auto-resolved by the
+suffix rule when this folder moves in step 8. Below, **`<dir>`** means the matched feature folder.
 
 ## Steps
 
@@ -96,15 +96,13 @@ when this folder moves in step 8. Below, **`<dir>`** means the matched feature f
    agent (`.claude/agents/plan-implementer.md`) already runs any feature's plan by
    taking the feature name as an argument — don't recreate a bespoke one.
 
-8. **Stamp the status and move the folder.** Set `status: planned` and
-   `planned: <YYYY-MM-DD>` (today) in the YAML frontmatter of `<dir>/spec.md` (the
-   lifecycle is `draft` → `expanded` → `planned` → `shipped`; `mp-spec-expander` added
-   the frontmatter — if it's missing, add it). Touch nothing else in that file. Then
-   move the whole feature folder to `.specs/planned/<YYYY-MM>/<name>/` — the month
-   bucket is the `planned:` date's month — so its location matches the stamp (use
-   `git mv`; create missing folders).
-   **Before the `git mv`, apply the name-collision suffix rule** from `.specs/README.md` →
-   *Name-collision handling*; the possibly-suffixed name is what you pass to `ship-plan` next.
+8. **Stamp the status and move the folder** with
+   `bash scripts/spec-advance.sh <name> planned`. The script owns the mechanics —
+   stamping `status: planned` + `planned: <date>` in the spec's frontmatter (touching
+   nothing else in the file), applying the name-collision suffix rule from
+   `.specs/README.md`, and `git mv`-ing the folder into the `.specs/planned/<YYYY-MM>/`
+   month bucket — and prints the final path; the possibly-suffixed name is what you pass
+   to `ship-plan` next. (Lifecycle: `draft` → `expanded` → `planned` → `shipped`.)
 
 9. **Report** the created `plan/` folder, the folder's new location under `.specs/planned/`,
    the task list with a one-line summary of each, and flag any open question you left

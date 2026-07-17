@@ -38,6 +38,9 @@ the actual running app 500s on a page that touches a newer table:
 php artisan migrate
 ```
 
+(`scripts/serve-app.sh` refuses to start the server while migrations are
+pending, so this can't be silently forgotten on the agent path.)
+
 The driver's own dependencies (Playwright) live in **this skill directory**,
 separate from the app's `package.json` — install them once:
 
@@ -62,14 +65,21 @@ fail to load its assets:
 ls public/hot 2>/dev/null && echo "STALE — @vite will 404" || echo "ok"
 ```
 
+(`scripts/serve-app.sh` enforces this too — it refuses to start if
+`public/hot` exists or `public/build` is missing.)
+
 ## Run (agent path)
 
-Start the server in the background and poll it, then pipe a script to the
-driver:
+Start the server with the helper script (Git Bash) — it runs the pre-flight
+checks (stale `public/hot`, missing `public/build`, pending migrations),
+starts `php artisan serve` in the background, records the PID in
+`scripts/.serve-app.pid`, logs to `storage/logs/artisan-serve.log`, and polls
+until the URL answers. Idempotent — re-running while the server is up is a
+no-op:
 
 ```bash
-(php artisan serve --port=8000 > "$TMPDIR/artisan-serve.log" 2>&1 &)  # or your scratchpad dir
-timeout 30 bash -c 'until curl -sf http://localhost:8000 -o /dev/null; do sleep 1; done'
+bash scripts/serve-app.sh            # default port 8000
+bash scripts/serve-app.sh --port 8123
 ```
 
 The app requires a logged-in session for almost everything. Use the seeded dev
@@ -108,11 +118,11 @@ means the flow didn't work, even if every driver command printed "ok".
 When done: stop the server (the seeded user stays — no cleanup needed) —
 
 ```bash
-# PowerShell — find the exact PID, don't broadly pkill php (other php
-# processes, e.g. PhpStorm's own interpreter, may be running):
-Get-CimInstance Win32_Process -Filter "Name = 'php.exe'" | Where-Object { $_.CommandLine -match 'artisan serve' } | Select-Object ProcessId
-Stop-Process -Id <that-id> -Force
+bash scripts/stop-app.sh
 ```
+
+It kills exactly the PID recorded by `serve-app.sh` (no process-name hunting)
+and removes the PID file; it's idempotent if the server is already gone.
 
 | driver command | what it does |
 |---|---|
@@ -172,7 +182,10 @@ per project convention, they're not part of your diff).
   verify by reading the screenshot, not just by the driver printing `ok`.
 - **`pkill -f` / broad `Stop-Process` by name is not allowed by the sandbox
   and isn't a good idea anyway** (other `php` processes, e.g. an IDE's own
-  interpreter, may be running). Find the exact PID via
+  interpreter, may be running). `scripts/stop-app.sh` avoids the problem
+  entirely by killing the exact PID that `scripts/serve-app.sh` recorded. If
+  a server was started *outside* the script (no PID file), fall back to
+  finding the exact PID via
   `Get-CimInstance Win32_Process -Filter "Name = 'php.exe'"` filtered on
   `CommandLine -match 'artisan serve'`, then `Stop-Process -Id <id> -Force`.
 - **Uploading a real file needs a real archive**, not a zero-byte

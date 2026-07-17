@@ -15,6 +15,29 @@ set belongs in its pull request description.
 
 _Nothing yet — the next pull request adds its own dated section below._
 
+## 2026-07-17 — Extract workflow tooling from the skills (#7)
+
+### Added
+
+- `scripts/` toolbox extracted from the `.claude/` skills by the reworked
+  `extract-tools-and-commands` skill: `spec-locate.sh`, `spec-advance.sh`,
+  `plan-next-task.sh` (the `.specs` lifecycle mechanics), `serve-app.sh` /
+  `stop-app.sh` (PID-file-based dev-server control with pre-flight checks), and
+  `pr-land.sh` (push → PR → auto-merge → confirm-merged), each following a documented
+  bash contract; indexed in `scripts/README.md`.
+- `php artisan spec:draft` command scaffolding a stage-1 draft spec (prompts for
+  missing input interactively, non-interactive for agents), with `config/specs.php`
+  making the `.specs` base path injectable and a 6-test feature test.
+
+### Changed
+
+- `extract-tools-and-commands` skill elaborated from a four-line brief into a recurring
+  extraction pass with selection criteria, an artisan-vs-bash decision rule, a bash
+  script contract, and an audit → propose → approve → extract → rewire procedure.
+- The mp-spec-expander, plan-tasks, ship-plan, ship-pr, draft-spec, and run-imagoldfish
+  skills and the plan-implementer agent now delegate their mechanical command sequences
+  to the extracted tools, keeping only the judgment and invariant rationale inline.
+
 ## 2026-07-17 — Month buckets for the .specs tree (#6)
 
 ### Changed
