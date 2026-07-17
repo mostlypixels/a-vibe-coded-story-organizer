@@ -15,6 +15,14 @@ set belongs in its pull request description.
 
 _Nothing yet — the next pull request adds its own dated section below._
 
+## 2026-07-17 — Strip HTML tags from rich-text field previews in search results
+
+### Fixed
+
+- Search result previews for rich-HTML fields (`Scene.notes` and any `description` field
+  per `RichTextFields`) no longer show raw or HTML-escaped markup (e.g. `&lt;p&gt;`) — the
+  preview now shows the reader's plain text, matching what other rich-text renders already do.
+
 ## 2026-07-17 — Extract workflow tooling from the skills (#7)
 
 ### Added
