@@ -11,6 +11,8 @@ use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
+use App\Support\RichText;
+use App\Support\RichTextFields;
 use App\Support\SearchResultRow;
 use App\Support\SearchResults;
 use App\Support\SearchSnippet;
@@ -282,6 +284,12 @@ class ProjectSearch
 
             foreach ($fields as $column => $label) {
                 $value = (string) ($entity->getAttribute($column) ?? '');
+
+                // Rich-HTML fields (e.g. Scene.notes) store markup — the preview must show
+                // the reader's plain text, not the raw tags, so strip before matching/highlighting.
+                if (RichTextFields::isRich($entity::class, $column)) {
+                    $value = RichText::toPlainText($value);
+                }
 
                 if ($value === '' || ! $this->fieldContainsAnyTerm($value, $terms)) {
                     continue;
