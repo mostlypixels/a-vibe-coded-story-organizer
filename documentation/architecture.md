@@ -505,11 +505,12 @@ a plain `GET` form with a full-page reload — no AJAX;
   all query logic lives in `search(Project, string $query, SearchMode): SearchResults`. The
   whole search is a **fixed six SELECTs** regardless of match count (one per entity type;
   Chapter/Scene scope to the project through `whereHas` on their parent chain), asserted by a
-  query-count test.
+  query-count test. Each query fetches the entity's project-scoped rows, then **matching runs
+  in PHP** (`entityMatches`) rather than in a SQL `WHERE` — see *Accent folding* for why.
 - **Modes.** `App\Enums\SearchMode`: `AllTerms` (AND, the default), `AnyTerm` (OR),
   `ExactPhrase`. In AND mode a term may match in *any* searchable field of the entity — terms
-  are not required to co-occur in one field. The mode only changes which entities the SQL
-  returns; a returned entity always becomes **one result row listing every matching field**
+  are not required to co-occur in one field. The mode only changes which entities `entityMatches`
+  keeps; a kept entity always becomes **one result row listing every matching field**
   (a Scene matching in both `contents` and `notes` yields one row matched in
   "Contents, Notes").
 - **Snippets.** `App\Support\SearchSnippet` builds a ~120-char context window around the first
@@ -518,32 +519,30 @@ a plain `GET` form with a full-page reload — no AJAX;
   page (rendered in `x-search.result-row`); everything else stays auto-escaped `{{ }}`. The
   row's preview is built from the **first** matching field, in the entity's declared field
   order — the "Matched in" column tells the reader where else the terms appeared.
-- **Accent folding.** Matching is accent-insensitive: `Melusine` finds `Mélusine` and the
-  reverse. `App\Support\AccentFolder` is the single source of truth — one 1:1 accent→base map
-  drives both `fold()` (PHP) and `sqlColumnExpression()` (a portable `lower(replace(...))`
-  chain). It is wired into **all three** match points that must agree — the SQL predicate in
-  `ProjectSearch::orLikeAnyColumn`, the in-PHP re-check `fieldContainsAnyTerm`, and
-  `SearchSnippet`'s offset+highlight — so a row can never match in SQL yet be dropped (or shown
-  unhighlighted) in PHP. Because the map is strictly one-character-to-one-character, folding
-  preserves character offsets, which is how `SearchSnippet` matches on folded text but still
-  highlights the *original accented* characters. Folding also lowercases both sides, giving
-  uniform case-insensitivity across every driver (SQLite/MySQL fold ASCII case; Postgres `LIKE`
-  is case-sensitive). Expanding ligatures (`ß`→`ss`, `æ`, `œ`) would break the offset invariant
-  and are a documented non-goal.
+- **Accent folding.** Matching is case- and accent-insensitive: `Melusine` finds `Mélusine` and
+  the reverse. `App\Support\AccentFolder::fold()` (one 1:1 accent→base map) is the single source
+  of truth, applied at **all three** match points that must agree — the entity gate
+  (`ProjectSearch::entityMatches`), the per-field label check (`fieldContainsAnyTerm`), and
+  `SearchSnippet`'s offset+highlight — so an entity kept by the gate always yields at least one
+  field label and a correct snippet. Matching is a literal `str_contains` on folded plain text,
+  which is why `%`/`_` in a query need no escaping (they are never wildcards) and rich-HTML
+  fields are stripped to plain text before both matching and preview. Because the map is strictly
+  one-character-to-one-character, folding preserves character offsets, which is how `SearchSnippet`
+  matches on folded text but still highlights the *original accented* characters. Expanding
+  ligatures (`ß`→`ss`, `æ`, `œ`) would break the offset invariant and are a documented non-goal.
 
 > [!WARNING]
-> User-supplied search terms have `%`, `_`, and `\` escaped (with a matching `ESCAPE` clause)
-> before being placed in a `LIKE` pattern — a literal `%` in a query must not act as a SQL
-> wildcard. Laravel's `whereLike()` does **not** do this (it binds the value as the raw
-> pattern, no `ESCAPE` clause), which is why `ProjectSearch` hand-rolls its `orWhereRaw(...
-> escape ...)` fragments. Don't "simplify" them back to `whereLike`.
+> Matching runs in **PHP, not SQL** — deliberately. A folding SQL expression is not portable:
+> SQLite (the default/production driver) folds only ASCII case with no `unaccent`/ICU, and a
+> per-column nested-`REPLACE` chain **overflows SQLite's parser on some builds** (it passed
+> locally but failed CI). Folding in PHP against fetched rows keeps the behavior identical and
+> driver-independent. Don't "optimize" the match back into a `WHERE`/`LIKE`/collation clause.
 
-There is deliberately **no FULLTEXT index, no new package, and no pagination**: `LIKE` scans
-are fine at this project's scale and portable across DB drivers. The accent folding stays on
-the same portable footing — `AccentFolder::sqlColumnExpression` uses only ANSI `lower`/`replace`
-rather than a driver-specific `unaccent`/collation, so search behaves identically on every
-supported engine (verified by the CI matrix in the `multiple-database-engines` spec). Result
-caps and a paginated per-domain page are a separate follow-up spec (`search_pagination`).
+There is deliberately **no FULLTEXT index, no new package, and no pagination**: fetching a
+project's rows and scanning them in PHP is fine at this project's scale (a full scan is already
+what a leading-wildcard `LIKE` would cost) and is identical on every DB driver. Result caps and
+a paginated per-domain page are a separate follow-up spec (`search_pagination`); verifying the
+per-driver behavior is the `multiple-database-engines` spec's CI matrix.
 
 ## Navigation active state
 

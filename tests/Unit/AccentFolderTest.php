@@ -44,17 +44,4 @@ class AccentFolderTest extends TestCase
         $original = 'Crème brûlée';
         $this->assertSame(mb_strlen($original), mb_strlen(AccentFolder::fold($original)));
     }
-
-    public function test_sql_column_expression_wraps_the_column_in_lower_and_replace(): void
-    {
-        $expression = AccentFolder::sqlColumnExpression('name');
-
-        $this->assertStringStartsWith('lower(', $expression);
-        $this->assertStringContainsString('replace(', $expression);
-        // The innermost argument is the raw column identifier.
-        $this->assertStringContainsString('name', $expression);
-        // Portable primitives only — no driver-specific unaccent/collate.
-        $this->assertStringNotContainsStringIgnoringCase('unaccent', $expression);
-        $this->assertStringNotContainsStringIgnoringCase('collate', $expression);
-    }
 }

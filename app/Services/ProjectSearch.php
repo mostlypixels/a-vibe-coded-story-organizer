@@ -33,29 +33,25 @@ use Illuminate\Support\Collection;
  * matched fields are "Contents, Notes").
  *
  * Design decisions (all binding, see .specs/.../advanced_search/plan/00-overview.md):
- *   - Portable `LIKE '%term%'` — no driver-specific FULLTEXT/FTS, so it works on
- *     all four supported drivers (sqlite/mysql/pgsql/sqlsrv).
+ *   - Matching runs in PHP, not SQL. Each entity's project-scoped rows are fetched
+ *     with one query, then matched against the folded terms here. Accent folding
+ *     (see {@see AccentFolder}) must be byte-for-byte identical to the label /
+ *     snippet logic and portable across every driver, and a folding SQL expression
+ *     is neither — a per-column nested-REPLACE chain overflows SQLite's parser on
+ *     some builds. At this app's per-project scale a full scan is already the cost
+ *     of a leading-wildcard LIKE, so materialising the rows is no more expensive.
+ *   - Matching is case- AND accent-insensitive: `Melusine` matches `Mélusine`.
  *   - AND mode is cross-field per entity: each term must appear in *some* field,
  *     not necessarily the same one.
- *   - User-supplied `%`/`_` are escaped so they match literally, never as SQL
- *     wildcards (see {@see escapeLikeWildcards}).
- *   - Search runs against RAW stored values — Scene.contents (Markdown source)
- *     and Scene.notes (rich-HTML source), never the rendered output.
+ *   - User-supplied `%`/`_` need no escaping — matching is a literal `str_contains`
+ *     on folded text, so they never act as wildcards.
+ *   - Search runs against stored values (rich-HTML fields stripped to plain text
+ *     first) — Scene.contents (Markdown source) and Scene.notes, never rendered output.
  *   - Cross-project isolation: every query is scoped to $project, directly by
  *     project_id or via the act / chapter.act parent chain.
  */
 class ProjectSearch
 {
-    /**
-     * The escape character used in every generated `LIKE ... ESCAPE` clause.
-     *
-     * A backslash is chosen per the plan's binding decision. The bound pattern
-     * has its `%`, `_` and `\` prefixed with this character (see
-     * {@see escapeLikeWildcards}) so a literal percent/underscore typed by the
-     * user matches literally instead of acting as a wildcard.
-     */
-    private const ESCAPE_CHARACTER = '\\';
-
     /**
      * Searchable fields per entity, as `db_column => Human Label`. The label is
      * what the results view lists in the "Matched in" column, and the order here
@@ -170,9 +166,9 @@ class ProjectSearch
     }
 
     /**
-     * Split the query into the terms the WHERE clause and the per-field match
-     * check both use. Exact-phrase mode is a single, unsplit literal; AND/OR
-     * split on whitespace.
+     * Split the query into the terms the entity gate and the per-field match check
+     * both use. Exact-phrase mode is a single, unsplit literal; AND/OR split on
+     * whitespace.
      *
      * @return array<int, string>
      */
@@ -192,12 +188,13 @@ class ProjectSearch
     }
 
     /**
-     * Apply the mode-specific WHERE constraints to a project-scoped query and
-     * fetch the matching rows.
+     * Fetch a project-scoped entity's rows and keep those that match the query
+     * under the given mode.
      *
-     * The mode constraints live inside a single wrapping `where(fn …)` group so
-     * they can never leak past the project scope (an OR would otherwise break out
-     * of the `project_id` filter).
+     * The rows are matched in PHP (see the class docblock for why not SQL): one
+     * query fetches every project row for the entity, then {@see entityMatches}
+     * decides membership. The base query is already scoped to the project, so
+     * fetching "all" rows can never cross the project boundary.
      *
      * @param  Builder  $query  the project-scoped base query for one entity
      * @param  array<int, string>  $terms
@@ -208,61 +205,84 @@ class ProjectSearch
     {
         $columns = array_keys($fields);
 
-        return $query
-            ->where(function (Builder $group) use ($terms, $mode, $columns) {
-                if ($mode === SearchMode::AllTerms) {
-                    // AND across terms, OR across fields: one nested group per term,
-                    // each satisfied if the term appears in ANY field.
-                    foreach ($terms as $term) {
-                        $group->where(fn (Builder $termGroup) => $this->orLikeAnyColumn($termGroup, $columns, $term));
-                    }
-
-                    return;
-                }
-
-                // OR / exact-phrase: any (term × field) pairing satisfies the match.
-                foreach ($terms as $term) {
-                    $this->orLikeAnyColumn($group, $columns, $term);
-                }
-            })
-            ->get();
+        return $query->get()
+            ->filter(fn (Model $entity) => $this->entityMatches($entity, $columns, $terms, $mode))
+            ->values();
     }
 
     /**
-     * OR a `column LIKE %term%` predicate across every given column.
+     * Whether one entity satisfies the query under the given mode, matching on the
+     * accent-folded plain text of its searchable fields.
+     *
+     *   - AllTerms (AND): every term must appear in *some* field (not necessarily
+     *     the same one). An empty term list never matches.
+     *   - AnyTerm / ExactPhrase (OR / single literal): any term in any field.
      *
      * @param  array<int, string>  $columns
+     * @param  array<int, string>  $terms
      */
-    private function orLikeAnyColumn(Builder $query, array $columns, string $term): void
+    private function entityMatches(Model $entity, array $columns, array $terms, SearchMode $mode): bool
     {
-        // Fold accents on the term BEFORE escaping wildcards: folding only ever
-        // yields base letters (never %/_/\), so wildcard escaping is unaffected,
-        // and the pattern now matches the accent-folded column expression below.
-        $pattern = '%'.$this->escapeLikeWildcards(AccentFolder::fold($term)).'%';
+        $foldedValues = array_map(
+            static fn (string $value) => AccentFolder::fold($value),
+            $this->plainFieldValues($entity, $columns),
+        );
 
-        foreach ($columns as $column) {
-            // whereRaw is used (not the `like` operator) so we can attach the
-            // ESCAPE clause the wildcard-escaping relies on. Column names come
-            // from our own constants, never user input, so embedding them raw is
-            // safe; the pattern itself is always a bound parameter. The column is
-            // wrapped in AccentFolder's portable fold expression so `Melusine`
-            // matches `Mélusine` on every supported driver (see AccentFolder).
-            $query->orWhereRaw(
-                AccentFolder::sqlColumnExpression($column)." like ? escape '".self::ESCAPE_CHARACTER."'",
-                [$pattern],
-            );
+        $usableTermCount = 0;
+        $matchedTermCount = 0;
+
+        foreach ($terms as $term) {
+            if ($term === '') {
+                continue;
+            }
+
+            $usableTermCount++;
+            $foldedTerm = AccentFolder::fold($term);
+
+            foreach ($foldedValues as $value) {
+                if ($value !== '' && str_contains($value, $foldedTerm)) {
+                    // OR / exact-phrase: a single hit is enough.
+                    if ($mode !== SearchMode::AllTerms) {
+                        return true;
+                    }
+
+                    $matchedTermCount++;
+                    break; // this term is satisfied; move on to the next term
+                }
+            }
         }
+
+        // AllTerms: every usable term must have matched. OR / exact only reach here
+        // when no term matched at all.
+        return $mode === SearchMode::AllTerms
+            && $usableTermCount > 0
+            && $matchedTermCount === $usableTermCount;
     }
 
     /**
-     * Escape the LIKE wildcards `%` and `_` (and the escape character itself) so
-     * a literal percent/underscore in a user's term matches literally instead of
-     * behaving as a SQL wildcard. Pairs with the `ESCAPE` clause in
-     * {@see orLikeAnyColumn}.
+     * Extract each searchable field's plain-text value, used both for matching and
+     * for the preview. Rich-HTML fields (e.g. Scene.notes) are stripped to the
+     * reader's text so a term is matched against what the reader sees, never the
+     * raw tags — matching and the snippet therefore always agree.
+     *
+     * @param  array<int, string>  $columns
+     * @return array<string, string> db_column => plain text
      */
-    private function escapeLikeWildcards(string $term): string
+    private function plainFieldValues(Model $entity, array $columns): array
     {
-        return addcslashes($term, '%_'.self::ESCAPE_CHARACTER);
+        $values = [];
+
+        foreach ($columns as $column) {
+            $value = (string) ($entity->getAttribute($column) ?? '');
+
+            if ($value !== '' && RichTextFields::isRich($entity::class, $column)) {
+                $value = RichText::toPlainText($value);
+            }
+
+            $values[$column] = $value;
+        }
+
+        return $values;
     }
 
     /**
@@ -271,9 +291,8 @@ class ProjectSearch
      * matching field, in the declared field order — the row's matched-fields
      * list tells the reader where else the terms appeared.
      *
-     * The field-match check runs in PHP against the already-fetched row (no extra
-     * query) and is deliberately case-insensitive (mb_stripos) to mirror the
-     * case-insensitive LIKE. Empty/whitespace fields are skipped.
+     * The field-match check runs in PHP against the already-fetched, plain-text
+     * field value (see {@see fieldContainsAnyTerm}). Empty fields are skipped.
      *
      * @param  EloquentCollection<int, Model>  $entities
      * @param  array<string, string>  $fields  db_column => label
@@ -285,17 +304,12 @@ class ProjectSearch
         $rows = collect();
 
         foreach ($entities as $entity) {
+            $values = $this->plainFieldValues($entity, array_keys($fields));
             $matchedLabels = [];
             $snippet = null;
 
             foreach ($fields as $column => $label) {
-                $value = (string) ($entity->getAttribute($column) ?? '');
-
-                // Rich-HTML fields (e.g. Scene.notes) store markup — the preview must show
-                // the reader's plain text, not the raw tags, so strip before matching/highlighting.
-                if (RichTextFields::isRich($entity::class, $column)) {
-                    $value = RichText::toPlainText($value);
-                }
+                $value = $values[$column];
 
                 if ($value === '' || ! $this->fieldContainsAnyTerm($value, $terms)) {
                     continue;
@@ -319,11 +333,10 @@ class ProjectSearch
     }
 
     /**
-     * Whether a field's raw value contains at least one of the terms
+     * Whether a field's plain-text value contains at least one of the terms
      * (case- and accent-insensitive). This is what makes a field a "matching
-     * field" listed in its entity's result row, and it must fold accents exactly
-     * like the SQL side ({@see orLikeAnyColumn}) — otherwise a row could pass the
-     * DB filter yet be dropped here and get no field labels / snippet.
+     * field" listed in its entity's result row; it folds accents exactly like
+     * {@see entityMatches} so a gated-in entity always yields at least one label.
      *
      * @param  array<int, string>  $terms
      */

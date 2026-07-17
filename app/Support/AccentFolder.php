@@ -7,18 +7,21 @@ use App\Services\ProjectSearch;
 /**
  * Folds accented Latin characters to their plain lowercase ASCII base so search
  * can match across accents: a search for `Melusine` finds `Mélusine`, and the
- * reverse. This is the single source of truth for accent folding — both the SQL
- * side (via {@see sqlColumnExpression}) and the PHP side (via {@see fold}) derive
- * from the same {@see MAP}, so the database filter and the in-PHP re-check /
- * highlighting can never disagree about what "matches".
+ * reverse. This is the single source of truth for accent folding used by every
+ * part of search that must agree on what "matches" — {@see ProjectSearch}
+ * (both the entity gate and the per-field label check) and {@see SearchSnippet}
+ * (offset + highlight).
  *
- * Why a hand-rolled map instead of a DB collation or `Str::ascii()`:
- *   - The default (and production) database is SQLite, whose `LIKE`/`lower()`
- *     fold ASCII case only and never fold accents — and no `unaccent`/ICU
- *     collation is available. Relying on a collation would also give *different*
- *     results per engine (see documentation/architecture.md → Project search).
- *   - The folding must be byte-for-byte identical in SQL and PHP; the only way to
- *     guarantee that across four DB drivers is to build both from one explicit map.
+ * Why a hand-rolled map instead of a DB collation, `Str::ascii()`, or an SQL
+ * expression:
+ *   - Matching is done in PHP, not SQL, so it is identical and portable across
+ *     every driver. The default (and production) database is SQLite, whose
+ *     `LIKE`/`lower()` fold ASCII case only, never accents, with no `unaccent`/ICU
+ *     collation; and a folding SQL expression (a deep nested-REPLACE chain)
+ *     overflows SQLite's parser on some builds. See documentation/architecture.md
+ *     → Project search.
+ *   - A fixed, explicit map keeps folding deterministic and identical everywhere
+ *     it is applied (gate, label, snippet).
  *
  * > [!IMPORTANT]
  * > The map is deliberately **1 character → 1 character**. Folding therefore never
@@ -29,7 +32,6 @@ use App\Services\ProjectSearch;
  * > for `coeur` will not match `cœur`. Keep every entry a single base letter.
  *
  * @see SearchSnippet sibling stateless helper that relies on the offset invariant
- * @see ProjectSearch the search service that folds both query and columns
  */
 class AccentFolder
 {
@@ -60,38 +62,12 @@ class AccentFolder
 
     /**
      * Fold a string for comparison: strip accents via {@see MAP}, then lowercase
-     * the remaining ASCII.
-     *
-     * `strtr` replaces the multi-byte accented sequences from the map, and the
-     * ASCII-only `strtolower` mirrors SQLite's ASCII-only `lower()` so this exactly
-     * matches what {@see sqlColumnExpression} computes on the database side.
+     * the remaining ASCII. `strtr` replaces the multi-byte accented sequences from
+     * the map; the result is a plain, lowercase, accent-free string suitable for a
+     * literal `str_contains` match.
      */
     public static function fold(string $value): string
     {
         return strtolower(strtr($value, self::MAP));
-    }
-
-    /**
-     * Build the portable SQL expression that folds a column the same way
-     * {@see fold} folds a PHP string: a `lower(...)` wrapping a nested chain of
-     * `replace(...)` calls, one per accent in {@see MAP}.
-     *
-     * Uses only ANSI `lower`/`replace`, so it runs identically on
-     * sqlite/mysql/mariadb/pgsql/sqlsrv. The column name comes from
-     * ProjectSearch's own constants (never user input) and the accent literals are
-     * class constants, so embedding them raw is safe — the user's term stays a
-     * bound parameter on the other side of the `LIKE`.
-     *
-     * @param  string  $column  a trusted column identifier (e.g. `name`)
-     */
-    public static function sqlColumnExpression(string $column): string
-    {
-        $expression = $column;
-
-        foreach (self::MAP as $accented => $base) {
-            $expression = "replace({$expression}, '{$accented}', '{$base}')";
-        }
-
-        return "lower({$expression})";
     }
 }

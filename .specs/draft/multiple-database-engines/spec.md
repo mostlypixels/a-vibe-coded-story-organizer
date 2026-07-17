@@ -75,4 +75,6 @@ fixed under the relevant feature's spec.
 ## Related
 
 - `search-accent-folder` — the first feature whose cross-engine correctness this matrix
-  verifies; its `AccentFolder::sqlColumnExpression` portability claim is proven here.
+  verifies. It ended up matching in PHP (not SQL) precisely because a folding SQL expression
+  was *not* portable — a nested-`REPLACE` chain overflowed SQLite's parser on CI. This matrix
+  is what would have caught that before merge, and what proves search stays identical per driver.

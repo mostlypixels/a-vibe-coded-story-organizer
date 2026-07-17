@@ -21,16 +21,16 @@ _Nothing yet — the next pull request adds its own dated section below._
 
 - Project search now matches across accents: searching `Melusine` finds a `Mélusine`
   character (and the reverse), for every searchable field of every entity. A new
-  `App\Support\AccentFolder` is the single source of truth — one 1:1 accent→base map drives
-  both the PHP fold and a portable `lower(replace(...))` SQL expression, wired into the SQL
-  predicate, the in-PHP field re-check, and the snippet highlighter so all three agree.
+  `App\Support\AccentFolder` is the single source of truth — one 1:1 accent→base map, applied
+  at the entity gate, the per-field label check, and the snippet highlighter so all three agree.
 
 ### Changed
 
-- Snippet highlighting matches on accent-folded text but still renders the original accented
-  characters inside `<mark>`, and search is now uniformly case-insensitive across all supported
-  database drivers (previously `LIKE` case behavior varied by engine — e.g. Postgres was
-  case-sensitive).
+- Search matching now runs in PHP (accent-folded `str_contains`) rather than a SQL `WHERE`
+  clause, making it identical and portable across every supported database driver (a folding
+  SQL expression is not — it overflows SQLite's parser on some builds). Snippet highlighting
+  matches on accent-folded text but still renders the original accented characters inside
+  `<mark>`, and matching is now uniformly case-insensitive across all drivers.
 
 ## 2026-07-17 — Strip HTML tags from rich-text field previews in search results
 
