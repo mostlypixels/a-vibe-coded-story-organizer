@@ -15,6 +15,23 @@ set belongs in its pull request description.
 
 _Nothing yet — the next pull request adds its own dated section below._
 
+## 2026-07-17 — Accent-insensitive advanced search
+
+### Added
+
+- Project search now matches across accents: searching `Melusine` finds a `Mélusine`
+  character (and the reverse), for every searchable field of every entity. A new
+  `App\Support\AccentFolder` is the single source of truth — one 1:1 accent→base map drives
+  both the PHP fold and a portable `lower(replace(...))` SQL expression, wired into the SQL
+  predicate, the in-PHP field re-check, and the snippet highlighter so all three agree.
+
+### Changed
+
+- Snippet highlighting matches on accent-folded text but still renders the original accented
+  characters inside `<mark>`, and search is now uniformly case-insensitive across all supported
+  database drivers (previously `LIKE` case behavior varied by engine — e.g. Postgres was
+  case-sensitive).
+
 ## 2026-07-17 — Strip HTML tags from rich-text field previews in search results
 
 ### Fixed

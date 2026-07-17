@@ -11,6 +11,7 @@ use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
+use App\Support\AccentFolder;
 use App\Support\RichText;
 use App\Support\RichTextFields;
 use App\Support\SearchResultRow;
@@ -234,15 +235,20 @@ class ProjectSearch
      */
     private function orLikeAnyColumn(Builder $query, array $columns, string $term): void
     {
-        $pattern = '%'.$this->escapeLikeWildcards($term).'%';
+        // Fold accents on the term BEFORE escaping wildcards: folding only ever
+        // yields base letters (never %/_/\), so wildcard escaping is unaffected,
+        // and the pattern now matches the accent-folded column expression below.
+        $pattern = '%'.$this->escapeLikeWildcards(AccentFolder::fold($term)).'%';
 
         foreach ($columns as $column) {
             // whereRaw is used (not the `like` operator) so we can attach the
             // ESCAPE clause the wildcard-escaping relies on. Column names come
             // from our own constants, never user input, so embedding them raw is
-            // safe; the pattern itself is always a bound parameter.
+            // safe; the pattern itself is always a bound parameter. The column is
+            // wrapped in AccentFolder's portable fold expression so `Melusine`
+            // matches `Mélusine` on every supported driver (see AccentFolder).
             $query->orWhereRaw(
-                $column." like ? escape '".self::ESCAPE_CHARACTER."'",
+                AccentFolder::sqlColumnExpression($column)." like ? escape '".self::ESCAPE_CHARACTER."'",
                 [$pattern],
             );
         }
@@ -314,15 +320,21 @@ class ProjectSearch
 
     /**
      * Whether a field's raw value contains at least one of the terms
-     * (case-insensitive). This is what makes a field a "matching field" listed
-     * in its entity's result row.
+     * (case- and accent-insensitive). This is what makes a field a "matching
+     * field" listed in its entity's result row, and it must fold accents exactly
+     * like the SQL side ({@see orLikeAnyColumn}) — otherwise a row could pass the
+     * DB filter yet be dropped here and get no field labels / snippet.
      *
      * @param  array<int, string>  $terms
      */
     private function fieldContainsAnyTerm(string $value, array $terms): bool
     {
+        // Fold once; AccentFolder::fold already lowercases, so a plain
+        // str_contains is the correct case- and accent-insensitive check.
+        $foldedValue = AccentFolder::fold($value);
+
         foreach ($terms as $term) {
-            if ($term !== '' && mb_stripos($value, $term) !== false) {
+            if ($term !== '' && str_contains($foldedValue, AccentFolder::fold($term))) {
                 return true;
             }
         }

@@ -149,6 +149,24 @@ class SearchTest extends TestCase
         $response->assertSee(route('scenes.edit', $scene), false);
     }
 
+    public function test_an_unaccented_query_matches_accented_content_and_highlights_the_accented_text(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $this->sceneFor($project, [
+            'name' => 'The Opening Scene',
+            'contents' => 'A fearsome Mélusine stalks the moor.',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'Melusine']));
+
+        $response->assertOk();
+        // The unaccented query matched, and the highlighted preview keeps the
+        // original accented spelling inside the <mark>.
+        $response->assertSeeHtml('<mark class="bg-sun-200">Mélusine</mark>');
+    }
+
     public function test_a_matched_rich_html_field_strips_tags_from_the_preview(): void
     {
         $user = User::factory()->create();

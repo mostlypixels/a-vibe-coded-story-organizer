@@ -74,6 +74,22 @@ class SearchSnippetTest extends TestCase
         $this->assertStringContainsString('<mark class="bg-sun-200">castle</mark>', $snippet);
     }
 
+    public function test_matching_is_accent_insensitive_and_preserves_accents_in_the_mark(): void
+    {
+        // Search term has no accent; the source text does. It must still match, and
+        // the highlighted slice keeps the original accented characters.
+        $snippet = SearchSnippet::highlight('A tale of Mélusine the fae.', 'Melusine');
+
+        $this->assertStringContainsString('<mark class="bg-sun-200">Mélusine</mark>', $snippet);
+    }
+
+    public function test_an_accented_term_matches_unaccented_text(): void
+    {
+        $snippet = SearchSnippet::highlight('A tale of Melusine the fae.', 'Mélusine');
+
+        $this->assertStringContainsString('<mark class="bg-sun-200">Melusine</mark>', $snippet);
+    }
+
     public function test_it_returns_an_escaped_excerpt_when_no_term_matches(): void
     {
         $text = 'Rock & roll all night.';

@@ -76,17 +76,24 @@ class SearchSnippet
     }
 
     /**
-     * Character offset of the earliest case-insensitive occurrence of any term,
-     * or null if none of the terms appear in the text.
+     * Character offset of the earliest case- and accent-insensitive occurrence of
+     * any term, or null if none of the terms appear in the text.
+     *
+     * The search runs on the accent-folded text, but because {@see AccentFolder}
+     * folds 1 character → 1 character the returned offset is equally valid in the
+     * original text (see {@see AccentFolder}'s offset invariant).
      *
      * @param  array<int, string>  $terms
      */
     private static function firstMatchOffset(string $text, array $terms): ?int
     {
+        $foldedText = AccentFolder::fold($text);
         $earliest = null;
 
         foreach ($terms as $term) {
-            $offset = mb_stripos($text, $term);
+            // fold() already lowercases, so mb_strpos is the right case-insensitive
+            // primitive here (no _i variant needed).
+            $offset = mb_strpos($foldedText, AccentFolder::fold($term));
 
             if ($offset !== false && ($earliest === null || $offset < $earliest)) {
                 $earliest = $offset;
@@ -129,39 +136,61 @@ class SearchSnippet
     }
 
     /**
-     * Escape the window text and wrap every term occurrence in a <mark>.
+     * Escape the window text and wrap every (accent-insensitive) term occurrence
+     * in a <mark>.
      *
-     * Splitting on the term pattern (with the captured delimiter kept) yields
-     * alternating [plain, match, plain, match, ...] segments; each segment is
-     * escaped individually, so raw HTML in the text can never become live markup
-     * and the only tags in the output are the <mark> wrappers we add ourselves.
+     * Matches are located in the accent-*folded* window (so `Melusine` highlights
+     * `Mélusine`) but the emitted text is always sliced from the *original* window,
+     * so the reader still sees the accented characters. This relies on
+     * {@see AccentFolder} folding 1 character → 1 character: a match's character
+     * offset and length in the folded window are identical in the original one.
+     *
+     * Every emitted slice — plain or matched — is escaped individually, so raw HTML
+     * in the text can never become live markup; the only tags in the output are the
+     * <mark> wrappers we add ourselves.
      *
      * @param  array<int, string>  $terms
      */
     private static function highlightWindow(string $windowText, array $terms): string
     {
+        $foldedWindow = AccentFolder::fold($windowText);
+
         $alternation = implode('|', array_map(
-            static fn (string $term) => preg_quote($term, '/'),
+            static fn (string $term) => preg_quote(AccentFolder::fold($term), '/'),
             $terms
         ));
 
+        // fold() already lowercased both sides, so /i is only belt-and-braces.
         $pattern = '/('.$alternation.')/iu';
 
-        $segments = preg_split($pattern, $windowText, -1, PREG_SPLIT_DELIM_CAPTURE);
+        // PREG_OFFSET_CAPTURE reports BYTE offsets into the folded window; we
+        // convert each to a CHARACTER offset (valid in both windows) before slicing.
+        if (preg_match_all($pattern, $foldedWindow, $matches, PREG_OFFSET_CAPTURE) === 0) {
+            return e($windowText);
+        }
 
         $html = '';
+        $cursor = 0; // character cursor into the original window
 
-        foreach ($segments as $index => $segment) {
-            if ($segment === '') {
-                continue;
+        foreach ($matches[0] as [$matchText, $byteOffset]) {
+            $charOffset = mb_strlen(substr($foldedWindow, 0, $byteOffset));
+            $charLength = mb_strlen($matchText);
+
+            // Plain text before this match (taken from the original window).
+            if ($charOffset > $cursor) {
+                $html .= e(mb_substr($windowText, $cursor, $charOffset - $cursor));
             }
 
-            // Odd indices are the captured (matched) delimiters.
-            if ($index % 2 === 1) {
-                $html .= '<mark class="'.self::HIGHLIGHT_CLASS.'">'.e($segment).'</mark>';
-            } else {
-                $html .= e($segment);
-            }
+            // The matched slice, taken from the ORIGINAL so accents still render.
+            $html .= '<mark class="'.self::HIGHLIGHT_CLASS.'">'
+                .e(mb_substr($windowText, $charOffset, $charLength)).'</mark>';
+
+            $cursor = $charOffset + $charLength;
+        }
+
+        // Trailing plain text after the last match.
+        if ($cursor < mb_strlen($windowText)) {
+            $html .= e(mb_substr($windowText, $cursor));
         }
 
         return $html;

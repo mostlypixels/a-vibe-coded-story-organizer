@@ -518,6 +518,18 @@ a plain `GET` form with a full-page reload — no AJAX;
   page (rendered in `x-search.result-row`); everything else stays auto-escaped `{{ }}`. The
   row's preview is built from the **first** matching field, in the entity's declared field
   order — the "Matched in" column tells the reader where else the terms appeared.
+- **Accent folding.** Matching is accent-insensitive: `Melusine` finds `Mélusine` and the
+  reverse. `App\Support\AccentFolder` is the single source of truth — one 1:1 accent→base map
+  drives both `fold()` (PHP) and `sqlColumnExpression()` (a portable `lower(replace(...))`
+  chain). It is wired into **all three** match points that must agree — the SQL predicate in
+  `ProjectSearch::orLikeAnyColumn`, the in-PHP re-check `fieldContainsAnyTerm`, and
+  `SearchSnippet`'s offset+highlight — so a row can never match in SQL yet be dropped (or shown
+  unhighlighted) in PHP. Because the map is strictly one-character-to-one-character, folding
+  preserves character offsets, which is how `SearchSnippet` matches on folded text but still
+  highlights the *original accented* characters. Folding also lowercases both sides, giving
+  uniform case-insensitivity across every driver (SQLite/MySQL fold ASCII case; Postgres `LIKE`
+  is case-sensitive). Expanding ligatures (`ß`→`ss`, `æ`, `œ`) would break the offset invariant
+  and are a documented non-goal.
 
 > [!WARNING]
 > User-supplied search terms have `%`, `_`, and `\` escaped (with a matching `ESCAPE` clause)
@@ -527,8 +539,11 @@ a plain `GET` form with a full-page reload — no AJAX;
 > escape ...)` fragments. Don't "simplify" them back to `whereLike`.
 
 There is deliberately **no FULLTEXT index, no new package, and no pagination**: `LIKE` scans
-are fine at this project's scale and portable across DB drivers. Result caps and a paginated
-per-domain page are a separate follow-up spec (`search_pagination`).
+are fine at this project's scale and portable across DB drivers. The accent folding stays on
+the same portable footing — `AccentFolder::sqlColumnExpression` uses only ANSI `lower`/`replace`
+rather than a driver-specific `unaccent`/collation, so search behaves identically on every
+supported engine (verified by the CI matrix in the `multiple-database-engines` spec). Result
+caps and a paginated per-domain page are a separate follow-up spec (`search_pagination`).
 
 ## Navigation active state
 
