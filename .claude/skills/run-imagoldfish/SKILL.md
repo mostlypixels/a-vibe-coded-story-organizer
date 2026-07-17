@@ -72,13 +72,17 @@ driver:
 timeout 30 bash -c 'until curl -sf http://localhost:8000 -o /dev/null; do sleep 1; done'
 ```
 
-The app requires a logged-in session for almost everything. Create a
-throwaway user once via tinker (delete it again when you're done — this
-writes to the real dev database, there is no test-mode toggle):
+The app requires a logged-in session for almost everything. Use the seeded dev
+user `admin@example.com` / `password` — `DatabaseSeeder` creates it (idempotently,
+dev DB only) along with sample Melusine projects. If the dev database doesn't have
+it yet:
 
 ```bash
-php artisan tinker --execute="App\Models\User::factory()->create(['email' => 'agentcheck@example.com', 'password' => bcrypt('password')]); echo 'created';"
+php artisan db:seed
 ```
+
+Do not create throwaway users via tinker — the seeded user exists precisely so
+there's nothing to clean up afterwards.
 
 Then drive the app:
 
@@ -87,7 +91,7 @@ cd .claude/skills/run-imagoldfish
 node driver.mjs --session mycheck <<'EOF'
 nav http://localhost:8000/login
 wait-for input[name=email]
-fill input[name=email] agentcheck@example.com
+fill input[name=email] admin@example.com
 fill input[name=password] password
 click button[type=submit]
 wait-for text=Dashboard
@@ -101,8 +105,7 @@ this skill directory (latest also copied to `screenshot.png`). Read the PNG
 with the Read tool to actually look at it — a blank or error-page screenshot
 means the flow didn't work, even if every driver command printed "ok".
 
-When done: delete the throwaway user (`User::where('email', '...')->delete()`
-via tinker) and stop the server —
+When done: stop the server (the seeded user stays — no cleanup needed) —
 
 ```bash
 # PowerShell — find the exact PID, don't broadly pkill php (other php
@@ -141,7 +144,7 @@ The full suite must be green. This uses an in-memory SQLite DB — it does **not
 see the migration gotcha above.
 
 ```bash
-./vendor/bin/pint --test
+composer lint -- --test
 ```
 Pint-clean except pre-existing `database/seeders/MelusineSeederFr.php` /
 `MelusineSeederIt.php` (French/Italian seeder variants — leave those alone

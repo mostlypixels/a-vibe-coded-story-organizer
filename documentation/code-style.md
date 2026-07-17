@@ -5,8 +5,9 @@ surrounding code.
 
 ## Formatting
 
-- **Laravel Pint** is the formatter. Run `vendor/bin/pint` before committing; it applies the
-  Laravel preset. Do not hand-fight its output.
+- **Laravel Pint** is the formatter. Run `composer lint` before committing (check without
+  writing: `composer lint -- --test`); it applies the Laravel preset. Do not hand-fight its
+  output.
 - Follow standard Laravel conventions unless there is a compelling architectural reason not to.
 
 ## Naming

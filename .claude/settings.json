@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(composer test)",
+      "Bash(composer test *)",
+      "Bash(composer lint)",
+      "Bash(composer lint *)",
+      "Bash(composer show *)",
+      "Bash(php artisan test *)",
+      "Bash(php artisan migrate)",
+      "Bash(php artisan db:seed)",
+      "Bash(php artisan serve *)",
+      "Bash(php artisan config:clear)",
+      "Bash(php artisan route:list *)",
+      "Bash(php -l *)",
+      "Bash(vendor/bin/pint *)",
+      "Bash(./vendor/bin/pint *)",
+      "Bash(vendor/bin/phpunit *)",
+      "Bash(npm run build)",
+      "PowerShell(composer test *)",
+      "PowerShell(composer lint *)",
+      "PowerShell(php artisan test *)",
+      "PowerShell(Get-CimInstance Win32_Process *)"
+    ]
+  }
+}

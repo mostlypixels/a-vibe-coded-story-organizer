@@ -9,7 +9,7 @@ This code will be used by junior developers.
 The canonical commands for this project (referenced by the skills and agents in `.claude/`):
 
 * Test: `composer test` (in-memory SQLite, runs in parallel via paratest; one DB per process, so tests must not assume shared state)
-* Lint/format: `./vendor/bin/pint` (check only: `--test`)
+* Lint/format: `composer lint` (check only: `composer lint -- --test`)
 * Build frontend: `npm run build`
 * Dev server: `php artisan serve`
 
