@@ -107,6 +107,23 @@ main() {
         echo "pr-land.sh:     gh pr merge $pr_number --squash --delete-branch" >&2
     fi
 
+    # Checks take a few seconds to register after the PR opens; "no checks
+    # reported" from `gh pr checks` at this point means "not yet", not "failed".
+    # Wait (bounded) for at least one check to appear before watching.
+    echo "pr-land.sh: waiting for CI checks to register on PR #$pr_number..."
+    local wait_attempt
+    for wait_attempt in $(seq 1 18); do
+        if gh pr checks "$pr_number" >/dev/null 2>&1 || [ "$(gh pr view "$pr_number" --json statusCheckRollup --jq '.statusCheckRollup | length')" -gt 0 ]; then
+            break
+        fi
+        if [ "$wait_attempt" -eq 18 ]; then
+            echo "pr-land.sh: FAILED: no CI checks appeared on PR #$pr_number after ~90s." >&2
+            echo "pr-land.sh: PR: $pr_url" >&2
+            exit 1
+        fi
+        sleep 5
+    done
+
     echo "pr-land.sh: watching CI checks for PR #$pr_number (this blocks until they finish)..."
     local checks_status=0
     gh pr checks "$pr_number" --watch || checks_status=$?
