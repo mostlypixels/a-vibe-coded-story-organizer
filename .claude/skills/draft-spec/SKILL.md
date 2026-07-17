@@ -14,8 +14,8 @@ the pipeline — this skill exists so that never happens.
 ## Steps
 
 1. **Understand the feature.** From the user's request (and a quick look at the code it
-   touches — models, controllers, views, routes — grounded in `CLAUDE.md`,
-   `.claude/guidelines.md`, and `documentation/`), work out the problem, the goals, and a
+   touches — models, controllers, views, routes — grounded in `CLAUDE.md` and
+   `documentation/`), work out the problem, the goals, and a
    rough approach. Ask the user only about genuinely blocking ambiguities; a draft is meant
    to be short and is stress-tested later by the `grilling` step in `plan-tasks`.
 

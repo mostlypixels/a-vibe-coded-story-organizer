@@ -22,8 +22,8 @@ when this folder moves in step 8. Below, **`<dir>`** means the matched feature f
 
 ## Steps
 
-1. **Read every doc in `<dir>/expanded/`.** Read `CLAUDE.md` and `.claude/guidelines.md`
-   too, so task boundaries match this project's real architecture.
+1. **Read every doc in `<dir>/expanded/`.** Read `CLAUDE.md` too, so task boundaries
+   match this project's real architecture.
 
 2. **Grill the design before decomposing.** The expanded docs are a design that has
    never been stress-tested against the user. Invoke the **`grilling`** skill (via the

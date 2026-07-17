@@ -46,7 +46,9 @@ A single argument: the feature name. Locate the feature folder with the glob
    - Launch the `plan-implementer` agent (`Agent` tool, `subagent_type:
      "plan-implementer"`) with a prompt naming the feature and, if useful, the specific
      task number. The agent discovers prior progress itself — you do not need to recap
-     what earlier tasks built.
+     what earlier tasks built. The agent defaults to Sonnet; if the task file or
+     `00-overview.md` flags a task as especially tricky (broad refactor, subtle
+     invariants, gnarly JS), pass `model: "opus"` on the `Agent` call for that task.
    - Wait for its completion notification.
    - Confirm the task's `.md` file moved to `plan/implemented/`.
    - If the agent reports failed verification or leaves the task file in place, **stop

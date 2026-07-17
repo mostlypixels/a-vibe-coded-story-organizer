@@ -21,6 +21,17 @@ set belongs in its pull request description.
 
 ### Changed
 
+- **Workflow optimizations from the 2026-07-16 tooling audit.** `composer lint` is now the
+  canonical Pint entry point (`composer lint -- --test` to check only) — CLAUDE.md,
+  `documentation/code-style.md`, CI, and the `run-imagoldfish` skill all point at it. A
+  committed project allowlist (`.claude/settings.json`) covers the project's own
+  test/lint/artisan/build commands so implementer agent loops stop stalling on permission
+  prompts. The `plan-implementer` agent runs on Sonnet by default (`ship-plan` escalates
+  gnarly tasks to Opus per task) and no longer pre-reads every expanded spec doc — only
+  the ones the selected task file links. The `run-imagoldfish` skill logs in with the
+  seeded `admin@example.com` dev user instead of creating and deleting a throwaway user
+  via tinker.
+
 - **`composer test` now runs the suite in parallel** (`php artisan test --parallel` via
   `brianium/paratest`, new dev dependency): 4m18s → ~1m08s for 580 tests on the reference
   machine. Each worker gets its own in-memory SQLite database, so tests must not assume
@@ -49,6 +60,13 @@ set belongs in its pull request description.
   English fix above; the French/Italian Mélusine entries were unaffected — their scenes already
   spell the accented name consistently). Added `Raymondin` to `MelusineSeederFr` and `Raimondino`
   to `MelusineSeederIt`.
+
+### Removed
+
+- **`.claude/guidelines.md`** — it had drifted into a stale subset of `CLAUDE.md` (it still
+  claimed there was no `app/Services` layer and no Scene/Act/Chapter feature tests).
+  `CLAUDE.md` is the single maintained conventions file; the skills and agents that listed
+  both now read only `CLAUDE.md`. Historical references in `.specs/shipped/` are left as-is.
 
 ### Added
 
