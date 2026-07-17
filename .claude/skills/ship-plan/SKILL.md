@@ -10,15 +10,16 @@ task at a time, instead of launching the implementer agent by hand for each task
 
 ## Argument
 
-A single argument: the feature name. Locate the feature folder with the glob
-`.specs/*/<name>/` — a planned feature sits at `.specs/planned/<name>/` — and use its
-`plan/` subfolder. Example: `/ship-plan codex` → `.specs/planned/codex/plan/`. Below,
-**`<dir>`** means the matched feature folder.
+A single argument: the feature name. Locate the feature folder with the globs
+`.specs/draft/<name>/` and `.specs/*/*/<name>/` — a planned feature sits at
+`.specs/planned/<YYYY-MM>/<name>/` (stages past draft bucket features by month) — and
+use its `plan/` subfolder. Example: `/ship-plan codex` →
+`.specs/planned/2026-07/codex/plan/`. Below, **`<dir>`** means the matched feature folder.
 
 ## Steps
 
-1. **Validate.** Locate `<dir>` via `.specs/*/<name>/` and confirm `<dir>/plan/00-overview.md`
-   exists. If no folder matches or it has no `plan/`, tell the user to run
+1. **Validate.** Locate `<dir>` via the globs `.specs/draft/<name>/` and
+   `.specs/*/*/<name>/`, and confirm `<dir>/plan/00-overview.md` exists. If no folder matches or it has no `plan/`, tell the user to run
    `/plan-tasks <name>` first (it generates this folder from an expanded spec) and stop.
    If the glob matches more than one folder (a name collision), work on the one in the
    *earliest* lifecycle stage — the active feature; the collision is auto-resolved by the
@@ -78,8 +79,9 @@ A single argument: the feature name. Locate the feature folder with the glob
 8. **Stamp the source spec as shipped and move the folder.** In `<dir>/spec.md`'s YAML
    frontmatter set `status: shipped` and `shipped: <YYYY-MM-DD>` (lifecycle: `draft` →
    `expanded` → `planned` → `shipped`), then move the whole feature folder to
-   `.specs/shipped/<name>/` so its location matches the stamp (use `git mv`; create
-   `.specs/shipped/` if absent). **Before the `git mv`, apply the name-collision suffix rule**
+   `.specs/shipped/<YYYY-MM>/<name>/` — the month bucket is the `shipped:` date's month —
+   so its location matches the stamp (use `git mv`; create missing folders).
+   **Before the `git mv`, apply the name-collision suffix rule**
    from `.specs/README.md` → *Name-collision handling* (suffix date = the `shipped:` stamp).
    Do both before asking about the commit, so the stamp and
    the move ride in the implementation commit — the spec's git history then points at the
@@ -94,9 +96,8 @@ A single argument: the feature name. Locate the feature folder with the glob
    reimplement it here.
 
    One staging detail specific to this flow: step 8 **already moved** the feature folder
-   to `.specs/shipped/<name>/`, so the old `.specs/planned/<name>/` path no longer exists —
-   staging it (`git add .specs/planned/<name>`) fails with `fatal: pathspec … did not
-   match any files`. Stage the whole spec tree instead so git records the rename plus the
+   to `.specs/shipped/<YYYY-MM>/<name>/`, so the old `.specs/planned/…` path no longer
+   exists — staging it fails with `fatal: pathspec … did not match any files`. Stage the whole spec tree instead so git records the rename plus the
    new `plan/implemented/`, `expanded/`, and `resolution-log.md` files in one go:
    `git add -A .specs/` (the `.specs/` tree may be partly untracked, so `-A` is what
    captures the move + the new files). Then stage the actual source/test/doc changes.

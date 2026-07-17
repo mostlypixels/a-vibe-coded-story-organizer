@@ -171,7 +171,7 @@ surface.
 > commands run through the proxied instance silently no-op (this once made the toolbar dead while
 > the slash menu, which uses the raw editor, still worked). `wysiwyg.js` keeps the editor in a
 > **non-reactive closure variable**; only `ready`/`tick` are reactive. Same rule for any stateful
-> third-party instance. See `.specs/shipped/wysiwig/resolution-log.md` for the full incident.
+> third-party instance. See `.specs/shipped/2026-07/wysiwig/resolution-log.md` for the full incident.
 
 > [!NOTE]
 > **Image upload is deferred to v2.** There is no upload endpoint and no `project_media` table;

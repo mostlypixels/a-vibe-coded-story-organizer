@@ -1,5 +1,6 @@
 ---
 status: shipped
+shipped: 2026-07-08
 ---
 
 # Empty states

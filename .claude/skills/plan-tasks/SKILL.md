@@ -10,8 +10,9 @@ plan that `/ship-plan` and the `plan-implementer` agent consume.
 
 ## Argument
 
-A single argument: the feature name. Locate the feature folder with the glob
-`.specs/*/<name>/` — after `mp-spec-expander` runs it sits at `.specs/expanded/<name>/` —
+A single argument: the feature name. Locate the feature folder with the globs
+`.specs/draft/<name>/` and `.specs/*/*/<name>/` — after `mp-spec-expander` runs it sits
+at `.specs/expanded/<YYYY-MM>/<name>/` (stages past draft bucket features by month) —
 and it must contain an `expanded/` subfolder holding whichever of `overview.md`,
 `data-model.md`, `architecture.md`, `ui.md`, `testing.md`, `open-questions.md` are
 relevant. If no folder matches or it has no `expanded/`, tell the user to run
@@ -95,11 +96,13 @@ when this folder moves in step 8. Below, **`<dir>`** means the matched feature f
    agent (`.claude/agents/plan-implementer.md`) already runs any feature's plan by
    taking the feature name as an argument — don't recreate a bespoke one.
 
-8. **Stamp the status and move the folder.** Set `status: planned` in the YAML frontmatter
-   of `<dir>/spec.md` (the lifecycle is `draft` → `expanded` → `planned` → `shipped`;
-   `mp-spec-expander` added the frontmatter — if it's missing, add it). Touch nothing
-   else in that file. Then move the whole feature folder to `.specs/planned/<name>/` so
-   its location matches the stamp (use `git mv`; create `.specs/planned/` if absent).
+8. **Stamp the status and move the folder.** Set `status: planned` and
+   `planned: <YYYY-MM-DD>` (today) in the YAML frontmatter of `<dir>/spec.md` (the
+   lifecycle is `draft` → `expanded` → `planned` → `shipped`; `mp-spec-expander` added
+   the frontmatter — if it's missing, add it). Touch nothing else in that file. Then
+   move the whole feature folder to `.specs/planned/<YYYY-MM>/<name>/` — the month
+   bucket is the `planned:` date's month — so its location matches the stamp (use
+   `git mv`; create missing folders).
    **Before the `git mv`, apply the name-collision suffix rule** from `.specs/README.md` →
    *Name-collision handling*; the possibly-suffixed name is what you pass to `ship-plan` next.
 

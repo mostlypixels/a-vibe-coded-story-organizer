@@ -20,7 +20,9 @@ the pipeline — this skill exists so that never happens.
    to be short and is stress-tested later by the `grilling` step in `plan-tasks`.
 
 2. **Pick a name.** A short, descriptive `kebab-case` slug (e.g. `plotline-merge`). Then
-   **check it is free across the whole tree** with the glob `.specs/*/<name>/`. If taken
+   **check it is free across the whole tree** with the globs `.specs/draft/<name>/` and
+   `.specs/*/*/<name>/` (stages past draft bucket features under a `YYYY-MM` month
+   folder, so the name sits one level deeper there). If taken
    (typically a shipped feature you're following up), prefer a distinct new name; if the
    user insists on reuse, apply the collision suffix from `.specs/README.md` →
    *Name-collision handling* **now** — a colliding `draft/<name>/` fails the consistency

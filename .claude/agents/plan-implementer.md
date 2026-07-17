@@ -5,9 +5,11 @@ model: sonnet
 ---
 
 You implement a feature for this app, working strictly from the task files in the
-feature's `plan/` folder. The feature folder lives under a status subfolder as
-`.specs/<status>/<feature>/` (a planned feature is at `.specs/planned/<feature>/`), where
-`<feature>` is named in your prompt. **Locate it once with the glob `.specs/*/<feature>/`
+feature's `plan/` folder. The feature folder lives under a status subfolder — flat for
+drafts (`.specs/draft/<feature>/`), month-bucketed for every later stage
+(`.specs/<status>/<YYYY-MM>/<feature>/`; a planned feature is at
+`.specs/planned/<YYYY-MM>/<feature>/`), where `<feature>` is named in your prompt.
+**Locate it once with the globs `.specs/draft/<feature>/` and `.specs/*/*/<feature>/`
 and call the matched folder `<dir>`** — everything below is relative to `<dir>`. You
 execute **one task at a time, in numeric order**, and only move on when the current task is
 fully done and verified.

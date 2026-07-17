@@ -15,6 +15,23 @@ set belongs in its pull request description.
 
 _Nothing yet — the next pull request adds its own dated section below._
 
+## 2026-07-17 — Month buckets for the .specs tree (#6)
+
+### Changed
+
+- **`.specs/` stages past draft now bucket features by month** —
+  `.specs/<status>/<YYYY-MM>/<name>/` — so `shipped/` (21 features after two weeks, and
+  the only folder that grows forever) stays listable. Drafts stay flat under
+  `.specs/draft/<name>/` since a draft has no lifecycle date yet. Each pipeline stage now
+  stamps its date in the spec frontmatter (`expanded:` / `planned:` / `shipped:`) and the
+  bucket is that date's month; `SpecsStatusConsistencyTest` enforces the bucket shape,
+  the date stamps, and bucket↔stamp agreement, alongside its existing status and
+  name-uniqueness checks. The pipeline skills (`draft-spec`, `mp-spec-expander`,
+  `plan-tasks`, `ship-plan`) and the `plan-implementer` agent locate features with the
+  glob pair `.specs/draft/<name>/` + `.specs/*/*/<name>/`. All 21 shipped features moved
+  to `shipped/2026-07/` (two missing `shipped:` stamps backfilled from git history), and
+  the live docs that referenced old `.specs/shipped/<name>/` paths were updated.
+
 ## 2026-07-17 — PR shipping ritual & dated changelog (#5)
 
 ### Added
@@ -287,7 +304,7 @@ in git history (`git log -S "<entry text>" -- CHANGELOG.md`). Grouped by change 
   well-formedness. The export page links to the official
   [epubcheck](https://www.w3.org/publishing/epubcheck/) tool for authors who want full conformance
   verification. Authorization mirrors the existing export (`ProjectPolicy@view`, a foreign
-  `project_id` 403s). See `.specs/shipped/epub_export_v1/resolution-log.md` for the library
+  `project_id` 403s). See `.specs/shipped/2026-07/epub_export_v1/resolution-log.md` for the library
   research (the spec's originally-implied `grandt/phpepub` is dead since 2016) and several
   epub-library quirks worked around along the way.
 - Portable toolchain & shell conventions in [`.claude/conventions/tooling.md`](.claude/conventions/tooling.md),

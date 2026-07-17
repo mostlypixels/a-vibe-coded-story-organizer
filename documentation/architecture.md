@@ -461,7 +461,7 @@ is the same **[`documentation/export-format.md`](export-format.md)** the exporte
   row at its last completed phase with the uploaded zip + extraction kept on disk, so the user can
   **resume** (re-run only the remaining phases) or **discard** (roll back the partial `Project`, delete
   the working files, and remove the row) — never an orphaned half-import with no recovery path. See
-  `.specs/planned/import/expanded/data-model.md` for the full checkpoint contract.
+  `.specs/shipped/2026-07/import/expanded/data-model.md` for the full checkpoint contract.
 - **Synchronous by default, queued by opt-in.** `ImportSetting` (a singleton, same shape as
   `CrawlerSetting`) carries `max_archive_kilobytes` and `run_in_background`. With background mode off
   (the default, for installs with no queue worker) the whole import runs inline in the request and
