@@ -108,6 +108,10 @@ class ImportRoundTripTest extends TestCase
         $this->assertSame($importer->id, $imported->user_id, 'the imported project is owned by the importer, not the source owner');
         $this->assertSame($source->name, $imported->name);
         $this->assertSame($source->description, $imported->description);
+        $this->assertSame($source->dedication, $imported->dedication);
+        $this->assertSame($source->acknowledgements, $imported->acknowledgements);
+        $this->assertSame($source->preface, $imported->preface);
+        $this->assertSame($source->postface, $imported->postface);
         $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
 
         // ---- Story tree: names, order (by position), and content -------
@@ -470,6 +474,10 @@ class ImportRoundTripTest extends TestCase
         $project = Project::factory()->for($owner)->create([
             'name' => 'The Round Trip Chronicle',
             'description' => '<p>An <strong>epic</strong> tale.</p>',
+            'dedication' => 'For *everyone* who believed.',
+            'acknowledgements' => 'Thanks to my **editor**.',
+            'preface' => 'A word before we begin.',
+            'postface' => 'And so it ends.',
         ]);
 
         // Rename + restyle the auto-created is_main plotline (reconciliation axis).

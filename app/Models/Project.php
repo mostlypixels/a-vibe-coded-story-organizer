@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
@@ -26,6 +27,10 @@ class Project extends Model
         'rights',
         'isbn',
         'cover_image',
+        'dedication',
+        'acknowledgements',
+        'preface',
+        'postface',
     ];
 
     protected $casts = [
@@ -65,6 +70,48 @@ class Project extends Model
     public function tags(): HasMany
     {
         return $this->hasMany(Tag::class);
+    }
+
+    public function publicationSetting(): HasOne
+    {
+        return $this->hasOne(PublicationSetting::class);
+    }
+
+    /**
+     * Return the project's publication setting, or an unsaved default instance
+     * when no row exists. Never returns null, enabling code to access settings
+     * for projects that never visited the config form.
+     *
+     * The unsaved instance has all default attributes set to match what the
+     * database schema defaults would apply on insertion.
+     */
+    public function publicationSettingOrDefault(): PublicationSetting
+    {
+        if ($this->publicationSetting) {
+            return $this->publicationSetting;
+        }
+
+        return $this->publicationSetting()->make([
+            'include_project_cover' => true,
+            'include_author' => true,
+            'include_publisher' => true,
+            'include_rights' => true,
+            'include_isbn' => true,
+            'include_scene_titles' => false,
+            'include_act_descriptions' => false,
+            'include_chapter_descriptions' => false,
+            'include_scene_descriptions' => false,
+            'include_dedication' => false,
+            'include_acknowledgements' => false,
+            'include_preface' => false,
+            'include_postface' => false,
+            'chapter_title_format' => 'chapter_number_title',
+            'table_of_contents_depth' => 'chapters',
+            'divider_type' => 'horizontal_rule',
+            'include_codex_appendix' => false,
+            'appendix_entry_types' => [],
+            'appendix_include_images' => false,
+        ]);
     }
 
     /**

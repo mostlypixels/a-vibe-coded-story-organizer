@@ -25,7 +25,7 @@ class ImportSettingController extends Controller
         ImportSetting::current()->update($request->settings());
 
         return redirect()
-            ->route('admin.data.index')
+            ->route('admin.data.import.index')
             ->with('status', 'import-settings-updated');
     }
 }

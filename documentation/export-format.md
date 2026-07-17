@@ -32,7 +32,7 @@ The archive's root descriptor, written once per export:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "project_id": 42,
   "exported_at": "2026-07-09T14:03:11+00:00",
   "includes_media": true
@@ -51,7 +51,16 @@ The archive's root descriptor, written once per export:
 `version` is bumped **only** on a breaking change to the `data/` layout — a renamed or
 removed field, a changed directory scheme, a changed relationship encoding. Purely
 additive changes (a new optional field, a new entity type folder) do **not** bump it;
-an importer must ignore keys it does not recognize. The current version is **1**.
+an importer must ignore keys it does not recognize.
+
+> [!NOTE]
+> **Version 2** (the epub-configuration feature) is an exception to the "additive
+> changes don't bump" rule: it bumps once, deliberately, to cover every new field the
+> whole feature adds across its tasks — the four project front-/back-matter Markdown
+> fields below, chapter covers, and the serialized publication setting — rather than
+> bumping per task. All of it is still additive: a version 1 archive imports cleanly,
+> with every new field left `null`/default. `ImportRules::SUPPORTED_MANIFEST_VERSIONS`
+> accepts both `1` and `2`.
 
 ## The Story branch
 
@@ -68,6 +77,10 @@ A content field is never inlined into JSON — it is written as a **sibling file
 - `contents.md` — raw Markdown (scene prose, `contents` column, verbatim — **not** rendered).
 - `description.html`, `notes.html` — the stored **sanitized HTML fragment** (no `<!doctype>`,
   no wrapper, not re-rendered).
+- `dedication.md`, `acknowledgements.md`, `preface.md`, `postface.md` — the project's four
+  front-/back-matter fields, raw Markdown like `contents.md` (never rich HTML, never
+  re-rendered). Read on import through the same Markdown sanitizer gate as a scene's
+  `contents.md`.
 
 > [!IMPORTANT]
 > A **null or empty** content field omits **both** the file and its `*_file` key. This
@@ -78,8 +91,13 @@ A content field is never inlined into JSON — it is written as a **sibling file
 
 ```
 data/project/
-  project.json            { id, name, description_file? }
+  project.json            { id, name, description_file?, dedication_file?,
+                             acknowledgements_file?, preface_file?, postface_file? }
   description.html
+  dedication.md
+  acknowledgements.md
+  preface.md
+  postface.md
 data/acts/<id>-slug/
   act.json                { id, name, position, project_id, description_file? }
   description.html

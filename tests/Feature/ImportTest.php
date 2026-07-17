@@ -79,6 +79,15 @@ class ImportTest extends TestCase
         $this->assertSame('Fixture project', $project->name);
         $this->assertSame($user->id, $project->user_id);
 
+        // The fixture archive is a manifest-version-1 export, pre-dating the four
+        // front-/back-matter fields (task 02, epub-configuration): their `*_file`
+        // links are absent from project.json, so they must import as null rather
+        // than crash the graph importer.
+        $this->assertNull($project->dedication);
+        $this->assertNull($project->acknowledgements);
+        $this->assertNull($project->preface);
+        $this->assertNull($project->postface);
+
         $response->assertRedirect(route('projects.show', $project));
 
         // The import ran inline to completion within the request.
@@ -111,7 +120,7 @@ class ImportTest extends TestCase
         // Another user's stalled import must not leak into this user's list.
         Import::factory()->phase(ImportPhase::Story)->create();
 
-        $response = $this->actingAs($user)->get(route('admin.data.index'));
+        $response = $this->actingAs($user)->get(route('admin.data.import.index'));
 
         $response->assertOk();
         $imports = $response->viewData('imports');
@@ -126,7 +135,7 @@ class ImportTest extends TestCase
     public function test_the_import_tab_renders_the_upload_form(): void
     {
         $response = $this->actingAs(User::factory()->create())
-            ->get(route('admin.data.index'));
+            ->get(route('admin.data.import.index'));
 
         $response->assertOk();
         // The upload form posts to the import route and keeps a labelled file input.
@@ -148,7 +157,7 @@ class ImportTest extends TestCase
         $user = User::factory()->create();
         $import = Import::factory()->for($user)->phase(ImportPhase::Story)->create();
 
-        $response = $this->actingAs($user)->get(route('admin.data.index'));
+        $response = $this->actingAs($user)->get(route('admin.data.import.index'));
 
         $response->assertOk();
         // The archive's original name and the human phase label are shown.
@@ -172,7 +181,7 @@ class ImportTest extends TestCase
         $this->assertSame(ImportPhase::Completed, $import->refresh()->phase);
 
         $this->actingAs($owner)
-            ->get(route('admin.data.index'))
+            ->get(route('admin.data.import.index'))
             ->assertDontSee(__('In-progress imports'));
     }
 
@@ -181,7 +190,7 @@ class ImportTest extends TestCase
         ImportSetting::current()->update(['max_archive_kilobytes' => 50 * 1024]);
 
         $this->actingAs(User::factory()->create())
-            ->get(route('admin.data.index'))
+            ->get(route('admin.data.import.index'))
             // The MB input pre-fills with 50 (KB / 1024), not a hard-coded default.
             ->assertSee('value="50"', escape: false);
     }
@@ -255,7 +264,7 @@ class ImportTest extends TestCase
 
         $this->actingAs($owner)
             ->post(route('admin.data.imports.resume', $import))
-            ->assertRedirect(route('admin.data.index'));
+            ->assertRedirect(route('admin.data.import.index'));
 
         $this->assertSame(ImportPhase::Completed, $import->refresh()->phase);
     }
@@ -279,7 +288,7 @@ class ImportTest extends TestCase
 
         $this->actingAs($owner)
             ->delete(route('admin.data.imports.destroy', $import))
-            ->assertRedirect(route('admin.data.index'));
+            ->assertRedirect(route('admin.data.import.index'));
 
         $this->assertSame(0, Import::count());
     }
@@ -306,7 +315,7 @@ class ImportTest extends TestCase
                 'max_archive_megabytes' => 50,
                 'run_in_background' => '1',
             ])
-            ->assertRedirect(route('admin.data.index'));
+            ->assertRedirect(route('admin.data.import.index'));
 
         $setting = ImportSetting::current();
 
@@ -387,7 +396,7 @@ class ImportTest extends TestCase
 
         // Redirected to the Import tab with the "queued" flash — the graph phases
         // were deferred, so no project exists yet.
-        $response->assertRedirect(route('admin.data.index'));
+        $response->assertRedirect(route('admin.data.import.index'));
         $response->assertSessionHas('status', __('Import queued.'));
         Queue::assertPushed(ProjectImportJob::class);
 
@@ -437,7 +446,7 @@ class ImportTest extends TestCase
 
         $this->actingAs($owner)
             ->post(route('admin.data.imports.resume', $import))
-            ->assertRedirect(route('admin.data.index'));
+            ->assertRedirect(route('admin.data.import.index'));
 
         // Resume honored the CURRENT (background) value: it queued rather than
         // running inline, so the import is still pending and now flagged queued.

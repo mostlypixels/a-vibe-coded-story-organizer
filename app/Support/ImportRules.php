@@ -20,14 +20,16 @@ class ImportRules
     /**
      * The data/manifest.json `version` values this importer knows how to read.
      *
-     * Only version 1 (the current, only export format) exists today; when a
-     * future breaking export-format change bumps the version, extending this
-     * list is the one-line opt-in (see documentation/export-format.md → "The
-     * version contract").
+     * Version 2 (epub-configuration, task 02) adds the four project
+     * front-/back-matter Markdown fields, chapter covers, and the serialized
+     * PublicationSetting — all additive, so version 1 archives (missing these
+     * keys) still import cleanly, just with the new fields defaulted/null.
+     * Extending this list is the one-line opt-in for a future breaking change
+     * (see documentation/export-format.md → "The version contract").
      *
      * @var array<int, int>
      */
-    public const SUPPORTED_MANIFEST_VERSIONS = [1];
+    public const SUPPORTED_MANIFEST_VERSIONS = [1, 2];
 
     /**
      * Default archive size cap in kilobytes (200 MB).

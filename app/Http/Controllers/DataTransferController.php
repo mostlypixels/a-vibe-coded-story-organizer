@@ -10,29 +10,55 @@ use Illuminate\View\View;
 /**
  * Export & import section of the Admin Configuration area.
  *
- * Thin: returns the section view. The Export tab posts to ExportController; the
- * Import tab posts to ImportController. Provides:
- *  - the signed-in user's projects (ordered by name) so the Export form can
- *    offer them in its selector — the same access pattern the Dashboard uses;
- *  - the global ImportSetting singleton for the "Import settings" card;
- *  - the user's still-in-progress (non-completed) imports so the Import tab can
- *    list them with resume/discard actions (the view for these lands in task 08).
+ * Split (task 03) into three thin GET actions — one per server-rendered page,
+ * reached via ordinary links (resources/views/admin/data/partials/subnav.blade.php)
+ * rather than JavaScript tabs. Each POST that mutates something still lives on its
+ * own controller (ExportController, EpubExportController, ImportController,
+ * ImportSettingController); this controller only assembles the read-only data
+ * each page needs to render its form.
  */
 class DataTransferController extends Controller
 {
-    public function index(Request $request): View
+    /**
+     * The .zip project-export page: project picker + include-images toggle.
+     */
+    public function exportProject(Request $request): View
     {
         $projects = $request->user()->projects()->orderBy('name')->get();
 
+        return view('admin.data.export-project', [
+            'projects' => $projects,
+        ]);
+    }
+
+    /**
+     * The EPUB export page. For now (task 03) this only hosts the existing
+     * download form moved out of the old tabbed index — the configuration form
+     * itself (project settings, toggles, ordering) lands in task 04.
+     */
+    public function exportEbook(Request $request): View
+    {
+        $projects = $request->user()->projects()->orderBy('name')->get();
+
+        return view('admin.data.export-ebook', [
+            'projects' => $projects,
+        ]);
+    }
+
+    /**
+     * The import page: upload form + the global ImportSetting singleton (size
+     * cap + background toggle) + the user's still-in-progress imports.
+     */
+    public function import(Request $request): View
+    {
         // Only imports that are NOT completed are actionable (resume/discard);
-        // a completed import has nothing left to show on the Import tab.
+        // a completed import has nothing left to show here.
         $imports = $request->user()->imports()
             ->where('phase', '!=', ImportPhase::Completed)
             ->latest()
             ->get();
 
-        return view('admin.data.index', [
-            'projects' => $projects,
+        return view('admin.data.import', [
             'importSetting' => ImportSetting::current(),
             'imports' => $imports,
         ]);

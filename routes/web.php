@@ -71,7 +71,17 @@ Route::middleware('auth')->group(function () {
         Route::patch('/settings', [GeneralSettingsController::class, 'update'])->name('settings.update');
 
         Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance.edit');
-        Route::get('/data', [DataTransferController::class, 'index'])->name('data.index');
+
+        // The Export & import area is three server-rendered pages (not JS tabs),
+        // reached by ordinary <a> links in admin/data/partials/subnav.blade.php.
+        // /data itself only redirects to the first sub-page; the name is kept so
+        // existing route('admin.data.index') callers (the sidebar link, POST
+        // controllers that redirect back to "the area" generically) keep working.
+        Route::get('/data', fn () => redirect()->route('admin.data.export-project'))->name('data.index');
+        Route::get('/data/export/project', [DataTransferController::class, 'exportProject'])->name('data.export-project');
+        Route::get('/data/export/ebook', [DataTransferController::class, 'exportEbook'])->name('data.export-ebook');
+        Route::get('/data/import', [DataTransferController::class, 'import'])->name('data.import.index');
+
         // Export a project to a downloadable .zip. POST (not GET): a non-idempotent,
         // potentially expensive action that produces a download and carries CSRF +
         // the include_images toggle. The admin gate is "any authenticated user"; the

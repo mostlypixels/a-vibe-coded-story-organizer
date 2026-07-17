@@ -46,8 +46,15 @@ class StaticSiteExporter
      * reads this to decide how to interpret the archive; bump it only on a
      * breaking change to the data/ layout. Documented in
      * documentation/export-format.md.
+     *
+     * Bumped to 2 by the epub-configuration feature (task 02): this single bump
+     * covers every new field the whole feature adds across its tasks (the four
+     * project front-/back-matter Markdown columns here, plus chapter covers and
+     * the serialized PublicationSetting in later tasks) rather than bumping once
+     * per task. `ImportRules::SUPPORTED_MANIFEST_VERSIONS` still accepts the
+     * pre-bump version 1 — those archives simply import with the new fields null.
      */
-    private const DATA_VERSION = 1;
+    private const DATA_VERSION = 2;
 
     /**
      * Build the export and return the path to a ready temp zip. The caller (the
@@ -192,7 +199,11 @@ class StaticSiteExporter
     }
 
     /**
-     * data/project/ — project.json (id, name, description_file?) + description.html.
+     * data/project/ — project.json (id, name, description_file?, plus the four
+     * front-/back-matter Markdown field-file links) + description.html and any of
+     * dedication.md / acknowledgements.md / preface.md / postface.md that are
+     * non-empty. The four Markdown fields stay RAW — never rendered — like a
+     * scene's contents.md (task 02, epub-configuration).
      */
     private function addProject(ZipArchive $zip, Project $project): void
     {
@@ -203,6 +214,10 @@ class StaticSiteExporter
             'name' => $project->name,
         ];
         $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $project->description);
+        $json += $this->addFieldFile($zip, $dir, 'dedication_file', 'dedication.md', $project->dedication);
+        $json += $this->addFieldFile($zip, $dir, 'acknowledgements_file', 'acknowledgements.md', $project->acknowledgements);
+        $json += $this->addFieldFile($zip, $dir, 'preface_file', 'preface.md', $project->preface);
+        $json += $this->addFieldFile($zip, $dir, 'postface_file', 'postface.md', $project->postface);
 
         $this->addJson($zip, "{$dir}/project.json", $json);
     }

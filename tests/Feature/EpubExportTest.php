@@ -129,10 +129,10 @@ class EpubExportTest extends TestCase
         $project = Project::factory()->for($user)->create();
 
         $response = $this->actingAs($user)
-            ->from(route('admin.data.index'))
+            ->from(route('admin.data.export-ebook'))
             ->post(route('admin.data.export.epub'), ['project_id' => $project->id]);
 
-        $response->assertRedirect(route('admin.data.index'));
+        $response->assertRedirect(route('admin.data.export-ebook'));
         $response->assertSessionHasErrors('project_id');
     }
 
@@ -148,10 +148,10 @@ class EpubExportTest extends TestCase
         Chapter::factory()->for($act)->create(['position' => 1]);
 
         $response = $this->actingAs($user)
-            ->from(route('admin.data.index'))
+            ->from(route('admin.data.export-ebook'))
             ->post(route('admin.data.export.epub'), ['project_id' => $project->id]);
 
-        $response->assertRedirect(route('admin.data.index'));
+        $response->assertRedirect(route('admin.data.export-ebook'));
         $response->assertSessionHasErrors('project_id');
     }
 
@@ -169,10 +169,10 @@ class EpubExportTest extends TestCase
         $user = User::factory()->create();
         Project::factory()->for($user)->create(['name' => 'Epub-able Tale']);
 
-        $response = $this->actingAs($user)->get(route('admin.data.index'));
+        $response = $this->actingAs($user)->get(route('admin.data.export-ebook'));
 
         $response->assertOk();
-        $response->assertSeeText('Epub export');
+        $response->assertSeeText('Export ebook');
         $response->assertSee('Download EPUB');
         // The section posts to the dedicated epub route with the project picker.
         $response->assertSee('action="'.route('admin.data.export.epub').'"', false);
@@ -191,7 +191,7 @@ class EpubExportTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('admin.data.index'));
+        $response = $this->actingAs($user)->get(route('admin.data.export-ebook'));
 
         $response->assertOk();
         $response->assertSee('Create a project first to export it.');

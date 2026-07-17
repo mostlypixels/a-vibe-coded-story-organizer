@@ -1,5 +1,7 @@
 ---
-status: draft
+status: planned
+planned: 2026-07-17
+expanded: 2026-07-17
 ---
 
 # Epub Configuration

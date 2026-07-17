@@ -81,6 +81,11 @@ class ProjectGraphImporter
      * reconciles onto. On a name collision (case-insensitive match against the
      * user's existing project names) the new name gets a timestamp suffix —
      * import never merges into or blocks on an existing project.
+     *
+     * The four front-/back-matter fields (task 02, epub-configuration) are
+     * Markdown, read through the same sanitizer gate as a scene's contents.md.
+     * An archive that pre-dates them (manifest version 1) simply omits their
+     * `*_file` link keys, so readMarkdownField() returns null for each — no crash.
      */
     public function importProject(string $dataPath, User $user): Project
     {
@@ -88,10 +93,18 @@ class ProjectGraphImporter
 
         $descriptor = $this->readJson($dataPath, 'data/project/project.json');
         $description = $this->readHtmlField($dataPath, 'data/project', $descriptor);
+        $dedication = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'dedication_file');
+        $acknowledgements = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'acknowledgements_file');
+        $preface = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'preface_file');
+        $postface = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'postface_file');
 
         return DB::transaction(fn (): Project => $user->projects()->create([
             'name' => $this->collisionFreeName((string) $descriptor['name'], $user),
             'description' => $description,
+            'dedication' => $dedication,
+            'acknowledgements' => $acknowledgements,
+            'preface' => $preface,
+            'postface' => $postface,
         ]));
     }
 

@@ -13,7 +13,13 @@ set belongs in its pull request description.
 
 ## [Unreleased]
 
-_Nothing yet — the next pull request adds its own dated section below._
+### Added
+
+- Projects now carry four optional front-/back-matter Markdown fields — dedication,
+  acknowledgements, preface, postface — editable on the project edit page and surviving a
+  `.zip` export/import round-trip. The export manifest `version` bumps to `2` to cover this
+  and the rest of the epub-configuration feature's new fields; version `1` archives still
+  import cleanly, with the new fields left `null`.
 
 ## 2026-07-17 — Accent-insensitive advanced search
 
