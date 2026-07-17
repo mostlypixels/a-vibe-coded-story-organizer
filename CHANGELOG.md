@@ -15,6 +15,23 @@ set belongs in its pull request description.
 
 _Nothing yet — the next pull request adds its own dated section below._
 
+## 2026-07-17 — Accent-insensitive advanced search
+
+### Added
+
+- Project search now matches across accents: searching `Melusine` finds a `Mélusine`
+  character (and the reverse), for every searchable field of every entity. A new
+  `App\Support\AccentFolder` is the single source of truth — one 1:1 accent→base map, applied
+  at the entity gate, the per-field label check, and the snippet highlighter so all three agree.
+
+### Changed
+
+- Search matching now runs in PHP (accent-folded `str_contains`) rather than a SQL `WHERE`
+  clause, making it identical and portable across every supported database driver (a folding
+  SQL expression is not — it overflows SQLite's parser on some builds). Snippet highlighting
+  matches on accent-folded text but still renders the original accented characters inside
+  `<mark>`, and matching is now uniformly case-insensitive across all drivers.
+
 ## 2026-07-17 — Strip HTML tags from rich-text field previews in search results
 
 ### Fixed

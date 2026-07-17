@@ -292,6 +292,51 @@ class ProjectSearchTest extends TestCase
         $this->assertSame(['Notes'], $html->scenes->first()->fieldLabels);
     }
 
+    public function test_an_unaccented_term_matches_accented_data(): void
+    {
+        $project = $this->project();
+
+        $character = CodexEntry::factory()->for($project)->character()
+            ->create(['name' => 'Mélusine', 'description' => 'x']);
+
+        $results = $this->search($project, 'Melusine');
+
+        $this->assertCount(1, $results->characters);
+        $this->assertSame($character->id, $results->characters->first()->entity->id);
+        $this->assertSame(['Name'], $results->characters->first()->fieldLabels);
+    }
+
+    public function test_an_accented_term_matches_unaccented_data(): void
+    {
+        $project = $this->project();
+
+        $character = CodexEntry::factory()->for($project)->character()
+            ->create(['name' => 'Melusine', 'description' => 'x']);
+
+        $results = $this->search($project, 'Mélusine');
+
+        $this->assertCount(1, $results->characters);
+        $this->assertSame($character->id, $results->characters->first()->entity->id);
+    }
+
+    public function test_accent_folding_applies_to_non_name_fields_too(): void
+    {
+        $project = $this->project();
+        $chapter = $this->chapterIn($project);
+
+        // Accented term sits in the scene contents, not the name.
+        Scene::factory()->for($chapter)->create([
+            'name' => 'plain',
+            'contents' => 'they crossed the forêt at dusk',
+            'description' => 'x',
+        ]);
+
+        $results = $this->search($project, 'foret');
+
+        $this->assertCount(1, $results->scenes);
+        $this->assertSame(['Contents'], $results->scenes->first()->fieldLabels);
+    }
+
     public function test_blank_query_returns_an_empty_result_set(): void
     {
         $project = $this->project();
