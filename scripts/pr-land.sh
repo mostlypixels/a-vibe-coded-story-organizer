@@ -143,6 +143,10 @@ main() {
             echo "pr-land.sh: updating local master..."
             git checkout master
             git pull
+            # The squash merge means git branch -d won't see the branch as merged;
+            # the MERGED state above is the real safety check, so force-delete.
+            echo "pr-land.sh: deleting local branch '$branch' (remote twin already deleted by the merge)..."
+            git branch -D "$branch"
             echo "pr-land.sh: landed as merge commit $(git rev-parse HEAD) — $(git log -1 --format=%s)"
             exit 0
         fi
