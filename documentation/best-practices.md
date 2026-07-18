@@ -39,6 +39,16 @@ in its home:
 > in the model (`booted()` hooks assigning `position`, auto-creating the main plotline).
 > *Application workflow* does not.
 
+> [!WARNING]
+> When a Form Request's rules must also be validated **outside** an HTTP request (e.g. an
+> archive importer validating untrusted config extracted from a zip — see
+> `ProjectGraphImporter` validating against `UpdatePublicationSettingRequest::configRules()`),
+> expose them as a `public static function` returning the rule array, called from both
+> `rules()` and the non-HTTP caller. **Do not name it `validationRules()`** — that name is
+> already a non-static method on the `FormRequest` base class, and shadowing it fatals at
+> class load. `configRules()` is the established name for this pattern in this codebase; reuse
+> it (or the same suffix convention) rather than reinventing a name per feature.
+
 ## Security & validating user input
 
 - **Never trust user input.** Validate as early as possible, on both the front end and the

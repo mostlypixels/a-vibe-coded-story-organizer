@@ -102,6 +102,7 @@ class ArchiveValidator
             $manifest = $this->validateManifest($zip);       // check 4
             $entryDescriptors = $this->validateDescriptors($zip, $entries); // check 5
             $this->validateMedia($zip, $entryDescriptors, (bool) $manifest['includes_media']); // check 6
+            $this->validateChapterCovers($zip, $entries, (bool) $manifest['includes_media']); // check 6 (chapter covers)
         } finally {
             $zip->close();
         }
@@ -332,6 +333,72 @@ class ArchiveValidator
             CodexMediaCollection::ReferenceImage => $this->validateImageContent($descriptorPath, $archivePath, $bytes, $declaredMime, $sniffedMime),
             CodexMediaCollection::ReferenceFile => $this->validateReferenceFileContent($descriptorPath, $archivePath, $declaredMime, $sniffedMime),
         };
+    }
+
+    /**
+     * Check 6 (chapter covers): every chapter.json that links a `cover_file`
+     * (task 07, epub-configuration) points at a genuine image inside its own
+     * directory. The cover is a plain path field — unlike codex media it carries
+     * no declared mime — so it is validated on CONTENT alone: the bytes must sniff
+     * (finfo AND getimagesize, agreeing) as one of the allowed image types. A
+     * forged image (e.g. a renamed .php) is rejected.
+     *
+     * The file's presence is required only when the manifest says bytes are
+     * included, mirroring codex media: a metadata-only export legitimately ships
+     * the `cover_file` link but no bytes.
+     *
+     * @param  array<int, string>  $entries
+     */
+    private function validateChapterCovers(ZipArchive $zip, array $entries, bool $includesMedia): void
+    {
+        foreach ($entries as $path) {
+            if (basename($path) !== 'chapter.json' || ! str_starts_with($path, 'data/')) {
+                continue;
+            }
+
+            $descriptor = $this->decodeJson($zip, $path);
+
+            if (! array_key_exists('cover_file', $descriptor)) {
+                continue; // a chapter without a cover
+            }
+
+            // The declared relative path is attacker-controlled JSON — give it the
+            // same zip-slip treatment as a real entry name before joining.
+            $coverFile = $descriptor['cover_file'];
+            if (! is_string($coverFile) || $this->isUnsafePath($coverFile) || str_ends_with($coverFile, '/')) {
+                throw ImportValidationException::unsafeEntryPath(is_string($coverFile) ? $coverFile : '');
+            }
+
+            $archivePath = dirname($path).'/'.$coverFile;
+            $bytes = $zip->getFromName($archivePath);
+
+            if ($bytes === false) {
+                // No bytes: valid only for a metadata-only export.
+                if ($includesMedia) {
+                    throw ImportValidationException::missingMediaFile($path, $archivePath);
+                }
+
+                continue;
+            }
+
+            $this->validateChapterCoverContent($path, $archivePath, $bytes);
+        }
+    }
+
+    /**
+     * Content-sniff one chapter cover's bytes: finfo and getimagesize must agree on
+     * an allowed image mime. A renamed non-image fails both sniffers and is rejected.
+     */
+    private function validateChapterCoverContent(string $descriptorPath, string $archivePath, string $bytes): void
+    {
+        $sniffedMime = (new finfo(FILEINFO_MIME_TYPE))->buffer($bytes) ?: '';
+        $imageInfo = getimagesizefromstring($bytes);
+
+        if (! in_array($sniffedMime, ImportRules::IMAGE_MIME_TYPES, true)
+            || $imageInfo === false
+            || ($imageInfo['mime'] ?? null) !== $sniffedMime) {
+            throw ImportValidationException::mediaContentMismatch($archivePath);
+        }
     }
 
     /**

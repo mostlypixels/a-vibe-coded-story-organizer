@@ -32,16 +32,24 @@ class DataTransferController extends Controller
     }
 
     /**
-     * The EPUB export page. For now (task 03) this only hosts the existing
-     * download form moved out of the old tabbed index — the configuration form
-     * itself (project settings, toggles, ordering) lands in task 04.
+     * The EPUB export page: the config form (task 04) for one selected project
+     * plus the existing download form. The project picker reloads this page via
+     * a plain GET (?project=) rather than JavaScript — selecting a project loads
+     * ITS saved PublicationSetting (or an unsaved default when it never visited
+     * this form). Falls back to the user's first project when none is selected
+     * or the query value doesn't resolve to one of their own projects.
      */
     public function exportEbook(Request $request): View
     {
         $projects = $request->user()->projects()->orderBy('name')->get();
 
+        $selectedProject = $projects->firstWhere('id', (int) $request->query('project'))
+            ?? $projects->first();
+
         return view('admin.data.export-ebook', [
             'projects' => $projects,
+            'selectedProject' => $selectedProject,
+            'setting' => $selectedProject?->publicationSettingOrDefault(),
         ]);
     }
 

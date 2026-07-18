@@ -5,23 +5,15 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
+use App\Services\CoverImageService;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Throwable;
 
 class ProjectController extends Controller
 {
-    /**
-     * The disk and directory the project cover image lives on. Mirrors
-     * CodexMediaService::DISK ('public') so covers are reachable at /storage/...
-     * once `php artisan storage:link` has run.
-     */
-    private const COVER_DISK = 'public';
-
-    private const COVER_DIRECTORY = 'project-covers';
+    public function __construct(private CoverImageService $coverImageService) {}
 
     public function create(): View
     {
@@ -63,7 +55,10 @@ class ProjectController extends Controller
         $storedCover = null;
 
         if ($request->hasFile('cover_image')) {
-            $storedCover = $this->storeCoverImage($request->file('cover_image'));
+            $storedCover = $this->coverImageService->store(
+                $request->file('cover_image'),
+                CoverImageService::PROJECT_COVER_DIRECTORY
+            );
             $data['cover_image'] = $storedCover;
         } elseif ($request->boolean('remove_cover_image')) {
             $data['cover_image'] = null;
@@ -75,7 +70,7 @@ class ProjectController extends Controller
             // The row write failed after the new file landed — unlink it before
             // rethrowing so the failure never leaves an orphan file behind
             // (mirrors CodexMediaService::store()'s store-then-unlink pattern).
-            $this->deleteCoverImage($storedCover);
+            $this->coverImageService->delete($storedCover);
 
             throw $exception;
         }
@@ -83,7 +78,7 @@ class ProjectController extends Controller
         // A new upload replaces the old file; the remove checkbox clears it. Either way
         // the previous file is now safe to delete post-commit.
         if ($storedCover !== null || $request->boolean('remove_cover_image')) {
-            $this->deleteCoverImage($previousCover);
+            $this->coverImageService->delete($previousCover);
         }
 
         return $request->boolean('stay')
@@ -115,27 +110,5 @@ class ProjectController extends Controller
         $matcher->syncProject($project);
 
         return redirect()->route('projects.edit', $project)->with('status', 'codex-references-synced');
-    }
-
-    /**
-     * Store an already-validated cover upload on the public disk and return its path.
-     *
-     * A single path column on `projects` (no codex_media-style tracking row), so this
-     * is intentionally thinner than CodexMediaService::store().
-     */
-    private function storeCoverImage(UploadedFile $file): string
-    {
-        return $file->store(self::COVER_DIRECTORY, self::COVER_DISK);
-    }
-
-    /**
-     * Delete a cover file off the public disk when there is one, so a replaced or
-     * removed cover never lingers as an orphan.
-     */
-    private function deleteCoverImage(?string $path): void
-    {
-        if ($path !== null) {
-            Storage::disk(self::COVER_DISK)->delete($path);
-        }
     }
 }

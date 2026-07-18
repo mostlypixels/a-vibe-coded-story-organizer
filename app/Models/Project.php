@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BookLanguage;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CodexMediaService;
+use App\Services\CoverImageService;
 use App\Support\PlotlineColors;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -93,6 +94,7 @@ class Project extends Model
 
         return $this->publicationSetting()->make([
             'include_project_cover' => true,
+            'include_chapter_covers' => false,
             'include_author' => true,
             'include_publisher' => true,
             'include_rights' => true,
@@ -108,6 +110,7 @@ class Project extends Model
             'chapter_title_format' => 'chapter_number_title',
             'table_of_contents_depth' => 'chapters',
             'divider_type' => 'horizontal_rule',
+            'section_order' => PublicationSetting::SECTION_KEYS,
             'include_codex_appendix' => false,
             'appendix_entry_types' => [],
             'appendix_include_images' => false,
@@ -203,6 +206,22 @@ class Project extends Model
             // otherwise project deletion leaks an orphan cover on the public disk.
             if ($project->cover_image !== null) {
                 Storage::disk('public')->delete($project->cover_image);
+            }
+
+            // project → acts → chapters cascades at the DB level, bypassing both
+            // Act::deleting and Chapter::deleting — so purge every surviving chapter's
+            // cover file here (one query over the project's chapters, joined through
+            // their acts) before the cascade drops the rows, otherwise a project
+            // deletion leaks an orphan cover per chapter (media-lifecycle.md pitfall).
+            $coverImageService = app(CoverImageService::class);
+
+            $chapterCovers = Chapter::query()
+                ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
+                ->whereNotNull('cover_image')
+                ->pluck('cover_image');
+
+            foreach ($chapterCovers as $coverPath) {
+                $coverImageService->delete($coverPath);
             }
         });
     }

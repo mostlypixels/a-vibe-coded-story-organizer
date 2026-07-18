@@ -445,6 +445,71 @@ class ImportRoundTripTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Chapter cover round-trip (task 07)
+    // ------------------------------------------------------------------
+
+    public function test_a_chapter_cover_survives_an_export_import_round_trip(): void
+    {
+        $owner = User::factory()->create();
+        $project = Project::factory()->for($owner)->create(['name' => 'Covered Chronicle']);
+        $act = Act::factory()->for($project)->create(['name' => 'Act One', 'position' => 1]);
+
+        // A genuine image on the fake public disk, referenced by the chapter's cover.
+        $coverPath = UploadedFile::fake()->image('chapter-cover.jpg', 20, 20)->store('chapter-covers', 'public');
+        Chapter::factory()->for($act)->create([
+            'name' => 'Chapter One', 'position' => 1, 'cover_image' => $coverPath,
+        ]);
+
+        $zipPath = $this->exportZip($project->fresh(), includeMedia: true);
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertRedirect(route('projects.show', $importer->projects()->sole()));
+
+        $importedChapter = $importer->projects()->sole()
+            ->acts()->sole()
+            ->chapters()->sole();
+
+        // The cover lands at a FRESH storage path (never the archive's own) holding
+        // the exact source bytes.
+        $this->assertNotNull($importedChapter->cover_image);
+        $this->assertNotSame($coverPath, $importedChapter->cover_image);
+        Storage::disk('public')->assertExists($importedChapter->cover_image);
+        $this->assertSame(
+            Storage::disk('public')->get($coverPath),
+            Storage::disk('public')->get($importedChapter->cover_image),
+        );
+    }
+
+    public function test_a_metadata_only_export_imports_a_chapter_with_no_cover(): void
+    {
+        $owner = User::factory()->create();
+        $project = Project::factory()->for($owner)->create(['name' => 'Metadata Only Chronicle']);
+        $act = Act::factory()->for($project)->create(['name' => 'Act One', 'position' => 1]);
+
+        $coverPath = UploadedFile::fake()->image('chapter-cover.jpg', 20, 20)->store('chapter-covers', 'public');
+        Chapter::factory()->for($act)->create([
+            'name' => 'Chapter One', 'position' => 1, 'cover_image' => $coverPath,
+        ]);
+
+        // Export WITHOUT media bytes: the cover_file link is declared, no bytes ship.
+        $zipPath = $this->exportZip($project->fresh(), includeMedia: false);
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)]);
+
+        $importedChapter = $importer->projects()->sole()
+            ->acts()->sole()
+            ->chapters()->sole();
+
+        // No bytes shipped → the imported chapter keeps a null cover (like a
+        // metadata-only codex media row).
+        $this->assertNull($importedChapter->cover_image);
+    }
+
+    // ------------------------------------------------------------------
     // Fixtures & helpers
     // ------------------------------------------------------------------
 

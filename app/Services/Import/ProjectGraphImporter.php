@@ -7,14 +7,18 @@ use App\Enums\CodexMediaCollection;
 use App\Enums\ImportPhase;
 use App\Enums\SceneStatus;
 use App\Exceptions\ImportValidationException;
+use App\Http\Requests\UpdatePublicationSettingRequest;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\CodexMediaService;
+use App\Services\CoverImageService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Throwable;
 
 /**
@@ -71,6 +75,7 @@ class ProjectGraphImporter
     public function __construct(
         private ContentSanitizer $contentSanitizer,
         private CodexMediaService $codexMediaService,
+        private CoverImageService $coverImageService,
     ) {}
 
     /**
@@ -86,6 +91,11 @@ class ProjectGraphImporter
      * Markdown, read through the same sanitizer gate as a scene's contents.md.
      * An archive that pre-dates them (manifest version 1) simply omits their
      * `*_file` link keys, so readMarkdownField() returns null for each — no crash.
+     *
+     * The serialized PublicationSetting (task 05) is read + validated here too,
+     * as UNTRUSTED input: a valid config creates the project's row, an absent or
+     * malformed one is skipped so the project falls back to the lazy default —
+     * config is a presentation preference and must never fail the whole import.
      */
     public function importProject(string $dataPath, User $user): Project
     {
@@ -98,14 +108,97 @@ class ProjectGraphImporter
         $preface = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'preface_file');
         $postface = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'postface_file');
 
-        return DB::transaction(fn (): Project => $user->projects()->create([
-            'name' => $this->collisionFreeName((string) $descriptor['name'], $user),
-            'description' => $description,
-            'dedication' => $dedication,
-            'acknowledgements' => $acknowledgements,
-            'preface' => $preface,
-            'postface' => $postface,
-        ]));
+        // Validate BEFORE opening the transaction — it touches no DB, and this
+        // keeps a rejected config from ever influencing the project insert.
+        $publicationSetting = $this->readPublicationSetting($dataPath);
+
+        return DB::transaction(function () use ($user, $descriptor, $description, $dedication, $acknowledgements, $preface, $postface, $publicationSetting): Project {
+            $project = $user->projects()->create([
+                'name' => $this->collisionFreeName((string) $descriptor['name'], $user),
+                'description' => $description,
+                'dedication' => $dedication,
+                'acknowledgements' => $acknowledgements,
+                'preface' => $preface,
+                'postface' => $postface,
+            ]);
+
+            // Only a fully-valid config becomes a row; otherwise the project is
+            // left with no PublicationSetting, i.e. the lazy default.
+            if ($publicationSetting !== null) {
+                $project->publicationSetting()->create($publicationSetting);
+            }
+
+            return $project;
+        });
+    }
+
+    /**
+     * Read and validate the archive's serialized PublicationSetting as untrusted
+     * input, returning a clean attributes array to persist, or null when there is
+     * no config to apply (absent file, unreadable/non-array JSON, or a config that
+     * fails validation). A null NEVER fails the import — the project simply keeps
+     * the lazy default (overview.md #7; CLAUDE.md untrusted-input posture).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function readPublicationSetting(string $dataPath): ?array
+    {
+        $absolute = "{$dataPath}/data/publication-setting.json";
+
+        if (! is_file($absolute)) {
+            return null; // no config in the archive → lazy default
+        }
+
+        $raw = @file_get_contents($absolute);
+        $decoded = $raw === false ? null : json_decode($raw, true);
+
+        // Unlike a required descriptor, a malformed config is tolerated: log and
+        // fall back to defaults rather than aborting the whole import.
+        if (! is_array($decoded) || $decoded === []) {
+            Log::warning('Import: publication-setting.json is missing or not a JSON object; importing with default publication settings.');
+
+            return null;
+        }
+
+        return $this->validatePublicationSetting($decoded);
+    }
+
+    /**
+     * Validate a decoded config array against the SAME rules the config form
+     * uses ({@see UpdatePublicationSettingRequest::configRules()} — no loose
+     * re-implementation). Unknown `appendix_entry_types` are DROPPED before
+     * validation (a codex type this build doesn't know is silently ignored, not a
+     * hard failure); any other rule violation discards the whole config and
+     * returns null (import continues on the lazy default).
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>|null
+     */
+    private function validatePublicationSetting(array $config): ?array
+    {
+        // Drop appendix types that are not real CodexEntryType values instead of
+        // failing — the archive's own codex types are the only valid ones.
+        if (isset($config['appendix_entry_types']) && is_array($config['appendix_entry_types'])) {
+            $config['appendix_entry_types'] = array_values(array_filter(
+                $config['appendix_entry_types'],
+                fn (mixed $type): bool => is_string($type) && CodexEntryType::tryFrom($type) !== null,
+            ));
+        }
+
+        $validator = Validator::make($config, UpdatePublicationSettingRequest::configRules());
+
+        if ($validator->fails()) {
+            Log::warning('Import: publication-setting.json failed validation; importing with default publication settings.', [
+                'errors' => $validator->errors()->keys(),
+            ]);
+
+            return null;
+        }
+
+        // validated() returns only keys that have rules (every settable column),
+        // so a hostile `id`/`project_id`/timestamps in the JSON are dropped; the
+        // project_id is set by the create()-through-relationship above.
+        return $validator->validated();
     }
 
     /**
@@ -225,23 +318,38 @@ class ProjectGraphImporter
      * "nesting mirrors ownership"); every `position` is replayed verbatim from
      * the JSON, and each scene's event references resolve through the event
      * map phase 2 fully populated.
+     *
+     * A chapter's cover file is copied to a fresh public-disk path (task 07);
+     * as with codex media, disk copies live outside the DB transaction, so on
+     * ANY failure the covers copied so far are unlinked before rethrowing — a
+     * rolled-back phase never leaks orphan cover files.
      */
     public function importStory(string $dataPath, Project $project, array &$idMaps): void
     {
         $dataPath = $this->normalizePath($dataPath);
 
-        DB::transaction(function () use ($dataPath, $project, &$idMaps): void {
-            foreach ($this->readEntityDescriptors($dataPath, 'data/acts/*/act.json') as $actItem) {
-                $act = $project->acts()->create([
-                    'name' => $actItem['data']['name'],
-                    'position' => (int) $actItem['data']['position'],
-                    'description' => $this->readHtmlField($dataPath, $actItem['directory'], $actItem['data']),
-                ]);
-                $idMaps[self::MAP_ACTS][(int) $actItem['data']['id']] = $act->id;
+        $copiedCovers = [];
 
-                $this->importChapters($dataPath, $act, $actItem['directory'], $idMaps);
+        try {
+            DB::transaction(function () use ($dataPath, $project, &$idMaps, &$copiedCovers): void {
+                foreach ($this->readEntityDescriptors($dataPath, 'data/acts/*/act.json') as $actItem) {
+                    $act = $project->acts()->create([
+                        'name' => $actItem['data']['name'],
+                        'position' => (int) $actItem['data']['position'],
+                        'description' => $this->readHtmlField($dataPath, $actItem['directory'], $actItem['data']),
+                    ]);
+                    $idMaps[self::MAP_ACTS][(int) $actItem['data']['id']] = $act->id;
+
+                    $this->importChapters($dataPath, $act, $actItem['directory'], $idMaps, $copiedCovers);
+                }
+            });
+        } catch (Throwable $exception) {
+            foreach ($copiedCovers as $coverPath) {
+                $this->coverImageService->delete($coverPath);
             }
-        });
+
+            throw $exception;
+        }
     }
 
     /**
@@ -290,14 +398,17 @@ class ProjectGraphImporter
 
     /**
      * The chapters (and their scenes) nested under one act directory.
+     *
+     * @param  array<int, string>  $copiedCovers  cover paths copied so far (for rollback cleanup)
      */
-    private function importChapters(string $dataPath, Act $act, string $actDirectory, array &$idMaps): void
+    private function importChapters(string $dataPath, Act $act, string $actDirectory, array &$idMaps, array &$copiedCovers): void
     {
         foreach ($this->readEntityDescriptors($dataPath, "{$actDirectory}/chapters/*/chapter.json") as $chapterItem) {
             $chapter = $act->chapters()->create([
                 'name' => $chapterItem['data']['name'],
                 'position' => (int) $chapterItem['data']['position'],
                 'description' => $this->readHtmlField($dataPath, $chapterItem['directory'], $chapterItem['data']),
+                'cover_image' => $this->importChapterCover($dataPath, $chapterItem, $copiedCovers),
             ]);
             $idMaps[self::MAP_CHAPTERS][(int) $chapterItem['data']['id']] = $chapter->id;
 
@@ -305,6 +416,37 @@ class ProjectGraphImporter
                 $this->importScene($dataPath, $chapter, $sceneItem, $idMaps);
             }
         }
+    }
+
+    /**
+     * Copy a chapter's cover file (linked by `cover_file` in chapter.json) to a
+     * freshly generated public-disk path and return it, or null when the chapter
+     * has no cover or ships no bytes (a metadata-only export declares the link but
+     * carries no file — the imported chapter then keeps a null cover, exactly like
+     * a metadata-only codex media row). ArchiveValidator has already content-sniffed
+     * the bytes and traversal-checked the declared path.
+     *
+     * @param  array{path: string, directory: string, data: array<string, mixed>}  $chapterItem
+     * @param  array<int, string>  $copiedCovers
+     */
+    private function importChapterCover(string $dataPath, array $chapterItem, array &$copiedCovers): ?string
+    {
+        $coverFile = $chapterItem['data']['cover_file'] ?? null;
+
+        if (! is_string($coverFile) || $coverFile === '') {
+            return null;
+        }
+
+        $absoluteFile = "{$dataPath}/{$chapterItem['directory']}/{$coverFile}";
+
+        if (! is_file($absoluteFile)) {
+            return null; // metadata-only export: link declared, bytes absent
+        }
+
+        $path = $this->coverImageService->storeImportedFile($absoluteFile, CoverImageService::CHAPTER_COVER_DIRECTORY);
+        $copiedCovers[] = $path;
+
+        return $path;
     }
 
     /**

@@ -15,11 +15,47 @@ set belongs in its pull request description.
 
 ### Added
 
+- **Configurable EPUB export.** The ebook export (**Admin → Export & import → Export →
+  Ebook**) is now driven by a per-project **publication settings** form, so an author controls
+  what the generated `.epub` contains instead of taking one fixed layout. Every option defaults
+  to reproducing the previous export exactly, so an untouched project downloads the same book as
+  before. The config page offers:
+  - **Metadata toggles** — include (or omit) the author, publisher, rights, and ISBN in the
+    book's Dublin Core metadata.
+  - **Cover toggles** — include the project cover, and optionally a full-page **cover image per
+    chapter** (uploaded on the chapter edit page).
+  - **Content options** — show scene titles; show act / chapter / scene descriptions; and pick
+    the chapter-heading format (e.g. `Chapter 1: Title`, just the title, or just the number) and
+    the scene **divider** style (horizontal rule or a decorative flourish).
+  - **Front & back matter** — four optional Markdown sections (dedication, acknowledgements,
+    preface, postface) written on the project edit page, each independently toggled into the
+    book. Their order relative to the table of contents and the story body is set with a sortable
+    **section order** list (move up / move down), with the title page pinned first.
+  - **Table-of-contents depth** — list acts only, acts with their chapters (the default), or a
+    third level of per-scene links.
+  - **Codex appendix** — an optional back-matter appendix built from the project's Codex:
+    choose which entry types to include (characters / locations / organizations) and whether to
+    embed each entry's first image, rendered as a heading page plus one page per entry.
 - Projects now carry four optional front-/back-matter Markdown fields — dedication,
-  acknowledgements, preface, postface — editable on the project edit page and surviving a
-  `.zip` export/import round-trip. The export manifest `version` bumps to `2` to cover this
-  and the rest of the epub-configuration feature's new fields; version `1` archives still
-  import cleanly, with the new fields left `null`.
+  acknowledgements, preface, postface — editable on the project edit page.
+- **The archive round-trips all of it.** The publication settings travel in the `.zip` export
+  (`data/publication-setting.json`), the four Markdown fields and any chapter cover images travel
+  in `data/`, and all of it is restored on import. The export manifest `version` bumps to `2`
+  once to cover every new field; version `1` archives still import cleanly, with the new fields
+  left `null`/default. The publication settings are validated as **untrusted** input against the
+  same rules as the config form: a malformed setting is logged, skipped, and the project imports
+  its content on the default settings rather than failing the whole import (unknown appendix codex
+  types are dropped individually). A project with no saved setting omits the descriptor and
+  round-trips to the lazy default.
+
+### Changed
+
+- The Export & import "Export" and "Import" screens are now three server-rendered pages with a
+  sub-navigation (Export / Ebook / Import) instead of a single Alpine-tabbed page; the sidebar
+  entry and route names are unchanged.
+- The EPUB export architecture and the new archive fields are documented in
+  `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
+  `documentation/export-format.md`.
 
 ## 2026-07-17 — Accent-insensitive advanced search
 

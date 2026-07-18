@@ -73,7 +73,8 @@ class StaticSiteExporter
         try {
             $this->addReadme($zip, $project);
             $this->addManifest($zip, $project, $includeMedia);
-            $this->addStory($zip, $project);
+            $this->addPublicationSetting($zip, $project);
+            $this->addStory($zip, $project, $includeMedia);
             $this->addTimeline($zip, $project);
             $this->addCodex($zip, $project, $includeMedia);
             $this->addBook($zip, $project);
@@ -108,6 +109,51 @@ class StaticSiteExporter
         ];
 
         $this->addJson($zip, 'data/manifest.json', $manifest);
+    }
+
+    /**
+     * data/publication-setting.json — the project's EPUB publication config, so a
+     * customised setting survives an export → import round-trip (overview.md #7,
+     * task 05). RAW persisted values only, never rendered: booleans as booleans,
+     * enum columns as their backing string, the two ordered lists as arrays.
+     *
+     * The file is OMITTED entirely when the project has no saved row — the lazy
+     * default (Project::publicationSettingOrDefault()) means "no row" already
+     * equals "defaults", so writing a serialized default would add nothing. An
+     * import that finds no file therefore leaves the imported project on the same
+     * lazy default (ProjectGraphImporter::readPublicationSetting()).
+     */
+    private function addPublicationSetting(ZipArchive $zip, Project $project): void
+    {
+        $setting = $project->publicationSetting;
+
+        if ($setting === null) {
+            return;
+        }
+
+        $this->addJson($zip, 'data/publication-setting.json', [
+            'include_project_cover' => $setting->include_project_cover,
+            'include_chapter_covers' => $setting->include_chapter_covers,
+            'include_scene_titles' => $setting->include_scene_titles,
+            'include_act_descriptions' => $setting->include_act_descriptions,
+            'include_chapter_descriptions' => $setting->include_chapter_descriptions,
+            'include_scene_descriptions' => $setting->include_scene_descriptions,
+            'include_dedication' => $setting->include_dedication,
+            'include_acknowledgements' => $setting->include_acknowledgements,
+            'include_preface' => $setting->include_preface,
+            'include_postface' => $setting->include_postface,
+            'include_author' => $setting->include_author,
+            'include_publisher' => $setting->include_publisher,
+            'include_rights' => $setting->include_rights,
+            'include_isbn' => $setting->include_isbn,
+            'chapter_title_format' => $setting->chapter_title_format->value,
+            'table_of_contents_depth' => $setting->table_of_contents_depth->value,
+            'divider_type' => $setting->divider_type->value,
+            'section_order' => $setting->section_order,
+            'include_codex_appendix' => $setting->include_codex_appendix,
+            'appendix_entry_types' => $setting->appendix_entry_types,
+            'appendix_include_images' => $setting->appendix_include_images,
+        ]);
     }
 
     /**
@@ -153,7 +199,7 @@ class StaticSiteExporter
      * raw field files (exact stored column values — never re-rendered/re-sanitized,
      * invariant 3). Nesting mirrors ownership (invariant, 00-overview.md).
      */
-    private function addStory(ZipArchive $zip, Project $project): void
+    private function addStory(ZipArchive $zip, Project $project, bool $includeMedia): void
     {
         $this->addProject($zip, $project);
 
@@ -189,6 +235,7 @@ class StaticSiteExporter
                     'act_id' => $chapter->act_id,
                 ];
                 $chapterJson += $this->addFieldFile($zip, $chapterDir, 'description_file', 'description.html', $chapter->description);
+                $chapterJson += $this->addChapterCover($zip, $chapterDir, $chapter, $includeMedia);
                 $this->addJson($zip, "{$chapterDir}/chapter.json", $chapterJson);
 
                 foreach ($chapter->scenes as $scene) {
@@ -247,6 +294,40 @@ class StaticSiteExporter
         $json += $this->addFieldFile($zip, $dir, 'notes_file', 'notes.html', $scene->notes);
 
         $this->addJson($zip, "{$dir}/scene.json", $json);
+    }
+
+    /**
+     * A chapter's cover image (task 07, epub-configuration). Returns the `cover_file`
+     * link key to merge into chapter.json (a path relative to the chapter directory,
+     * `cover/<name>`) when the chapter has a cover, and — when $includeMedia is true —
+     * co-locates the file's BYTES at that path, exactly like codex media.
+     *
+     * The bytes are read straight off the `public` disk (invariant 5), never via the
+     * /storage URL, so the export never depends on `php artisan storage:link`. Like
+     * codex media, the link is written regardless of the toggle; only the bytes are
+     * conditional, and a metadata-only export imports back a null cover.
+     *
+     * @return array<string, string>
+     */
+    private function addChapterCover(ZipArchive $zip, string $chapterDir, Chapter $chapter, bool $includeMedia): array
+    {
+        if (blank($chapter->cover_image)) {
+            return [];
+        }
+
+        // basename-guarded so a stray path component can never escape the chapter dir.
+        $relativePath = 'cover/'.basename($chapter->cover_image);
+
+        if ($includeMedia) {
+            // A missing file on disk is skipped rather than aborting the whole export;
+            // the cover_file link still records that the chapter had a cover.
+            $bytes = Storage::disk('public')->get($chapter->cover_image);
+            if ($bytes !== null) {
+                $this->addFromString($zip, "{$chapterDir}/{$relativePath}", $bytes);
+            }
+        }
+
+        return ['cover_file' => $relativePath];
     }
 
     /**

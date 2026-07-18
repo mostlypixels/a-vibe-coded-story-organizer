@@ -350,6 +350,72 @@ class ArchiveValidatorTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Check 6 (chapter covers, task 07) — content-sniffed like codex media
+    // ------------------------------------------------------------------
+
+    public function test_rejects_a_chapter_cover_whose_content_is_not_an_image(): void
+    {
+        // A renamed PHP file masquerading as a jpeg chapter cover — the bytes
+        // sniff as executable, so the archive is rejected.
+        $phpBytes = '<?php echo "definitely not a jpeg";';
+
+        $path = $this->buildZip(function (ZipArchive $zip) use ($phpBytes): void {
+            $this->addValidBaseline($zip);
+            $this->addChapterWithCover($zip, 'cover/portrait.jpg');
+            $zip->addFromString('data/acts/1-act/chapters/1-chapter/cover/portrait.jpg', $phpBytes);
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('is not the type of file it claims to be');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    public function test_accepts_a_chapter_cover_that_is_a_genuine_image(): void
+    {
+        $pngBytes = base64_decode(self::TINY_PNG_BASE64);
+
+        $path = $this->buildZip(function (ZipArchive $zip) use ($pngBytes): void {
+            $this->addValidBaseline($zip);
+            $this->addChapterWithCover($zip, 'cover/portrait.png');
+            $zip->addFromString('data/acts/1-act/chapters/1-chapter/cover/portrait.png', $pngBytes);
+        });
+
+        (new ArchiveValidator)->validate($path);
+
+        $this->addToAssertionCount(1); // no exception thrown
+    }
+
+    public function test_accepts_a_metadata_only_archive_whose_chapter_cover_bytes_are_absent(): void
+    {
+        // The "Include images & files" toggle off: chapter.json declares the
+        // cover_file link but ships no bytes — that must validate.
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip, manifestOverrides: ['includes_media' => false]);
+            $this->addChapterWithCover($zip, 'cover/portrait.png');
+        });
+
+        (new ArchiveValidator)->validate($path);
+
+        $this->addToAssertionCount(1); // no exception thrown
+    }
+
+    public function test_rejects_a_chapter_cover_path_that_escapes_the_chapter_directory(): void
+    {
+        // The `cover_file` value inside chapter.json is attacker-controlled JSON
+        // and gets the same traversal treatment as a real zip entry name.
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip);
+            $this->addChapterWithCover($zip, '../../../../evil.png');
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('unsafe path');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    // ------------------------------------------------------------------
     // Happy path — a real export validates cleanly (the first point where the
     // export and import code paths touch).
     // ------------------------------------------------------------------
@@ -418,6 +484,22 @@ class ArchiveValidatorTest extends TestCase
             'exported_at' => '2026-07-13T00:00:00+00:00',
             'includes_media' => true,
         ], $overrides);
+    }
+
+    /**
+     * Add a shape-valid chapter.json (at data/acts/1-act/chapters/1-chapter/)
+     * whose `cover_file` links the given relative path. The cover BYTES are the
+     * caller's business (task 07).
+     */
+    private function addChapterWithCover(ZipArchive $zip, string $coverFile): void
+    {
+        $zip->addFromString('data/acts/1-act/chapters/1-chapter/chapter.json', json_encode([
+            'id' => 1,
+            'name' => 'Chapter one',
+            'position' => 1,
+            'act_id' => 1,
+            'cover_file' => $coverFile,
+        ]));
     }
 
     /**

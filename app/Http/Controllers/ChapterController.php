@@ -6,12 +6,16 @@ use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Models\Chapter;
 use App\Models\Project;
+use App\Services\CoverImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Throwable;
 
 class ChapterController extends Controller
 {
+    public function __construct(private CoverImageService $coverImageService) {}
+
     public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
@@ -67,15 +71,48 @@ class ChapterController extends Controller
     public function update(UpdateChapterRequest $request, Chapter $chapter): RedirectResponse
     {
         $project = $chapter->act->project;
-        $validated = $request->validated();
-        $act = $project->acts()->findOrFail($validated['act_id']);
+        $act = $project->acts()->findOrFail($request->validated()['act_id']);
+
+        // The cover is a file, not a mass-assignable column value, so keep it (and its
+        // remove checkbox and the non-fillable act_id) out of the plain attribute fill.
+        $data = $request->safe()->except(['act_id', 'cover_image', 'remove_cover_image']);
+
+        // The previous file is only unlinked *after* a successful save, so a failed
+        // write never leaves the row pointing at a file we already deleted.
+        $previousCover = $chapter->cover_image;
+        $storedCover = null;
+
+        if ($request->hasFile('cover_image')) {
+            $storedCover = $this->coverImageService->store(
+                $request->file('cover_image'),
+                CoverImageService::CHAPTER_COVER_DIRECTORY
+            );
+            $data['cover_image'] = $storedCover;
+        } elseif ($request->boolean('remove_cover_image')) {
+            $data['cover_image'] = null;
+        }
 
         // act_id is intentionally not mass-assignable (see Chapter::$fillable), so
         // reparent through the relationship rather than the (silently ignored)
         // fillable array — otherwise moving a chapter to another act is a no-op.
-        $chapter->fill(collect($validated)->except('act_id')->all());
+        $chapter->fill($data);
         $chapter->act()->associate($act);
-        $chapter->save();
+
+        try {
+            $chapter->save();
+        } catch (Throwable $exception) {
+            // The row write failed after the new file landed — unlink it before
+            // rethrowing so the failure never leaves an orphan file behind.
+            $this->coverImageService->delete($storedCover);
+
+            throw $exception;
+        }
+
+        // A new upload replaces the old file; the remove checkbox clears it. Either way
+        // the previous file is now safe to delete post-commit.
+        if ($storedCover !== null || $request->boolean('remove_cover_image')) {
+            $this->coverImageService->delete($previousCover);
+        }
 
         return $request->boolean('stay')
             ? redirect()->route('chapters.edit', $chapter)->with('status', 'saved')
