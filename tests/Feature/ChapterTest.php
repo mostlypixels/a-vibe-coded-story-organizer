@@ -7,6 +7,8 @@ use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -194,6 +196,137 @@ class ChapterTest extends TestCase
             ->assertForbidden();
 
         $this->assertNotNull($chapter->fresh());
+    }
+
+    // ---------------------------------------------------------------------
+    // Cover image (task 07) — upload / replace / remove / validation / cleanup
+    // ---------------------------------------------------------------------
+
+    public function test_uploading_a_cover_sets_the_chapter_cover_image(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $act = Act::factory()->for(Project::factory()->for($user))->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        $this->actingAs($user)
+            ->put(route('chapters.update', $chapter), $this->validPayload($act, [
+                'cover_image' => UploadedFile::fake()->image('cover.jpg'),
+            ]))
+            ->assertRedirect(route('projects.chapters.index', $act->project));
+
+        $chapter->refresh();
+        $this->assertNotNull($chapter->cover_image);
+        Storage::disk('public')->assertExists($chapter->cover_image);
+    }
+
+    public function test_replacing_the_cover_deletes_the_old_file_and_stores_the_new_one(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $act = Act::factory()->for(Project::factory()->for($user))->create();
+        $oldPath = 'chapter-covers/old-cover.jpg';
+        Storage::disk('public')->put($oldPath, 'contents');
+        $chapter = Chapter::factory()->for($act)->create(['cover_image' => $oldPath]);
+
+        $this->actingAs($user)
+            ->put(route('chapters.update', $chapter), $this->validPayload($act, [
+                'cover_image' => UploadedFile::fake()->image('new-cover.jpg'),
+            ]));
+
+        $chapter->refresh();
+        $this->assertNotSame($oldPath, $chapter->cover_image);
+        Storage::disk('public')->assertMissing($oldPath);
+        Storage::disk('public')->assertExists($chapter->cover_image);
+    }
+
+    public function test_removing_the_cover_clears_the_column_and_deletes_the_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $act = Act::factory()->for(Project::factory()->for($user))->create();
+        $oldPath = 'chapter-covers/old-cover.jpg';
+        Storage::disk('public')->put($oldPath, 'contents');
+        $chapter = Chapter::factory()->for($act)->create(['cover_image' => $oldPath]);
+
+        $this->actingAs($user)
+            ->put(route('chapters.update', $chapter), $this->validPayload($act, [
+                'remove_cover_image' => '1',
+            ]));
+
+        $this->assertNull($chapter->fresh()->cover_image);
+        Storage::disk('public')->assertMissing($oldPath);
+    }
+
+    public function test_updating_a_chapter_with_an_invalid_cover_fails_validation(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $act = Act::factory()->for(Project::factory()->for($user))->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        // A non-image file (wrong type).
+        $this->actingAs($user)
+            ->put(route('chapters.update', $chapter), $this->validPayload($act, [
+                'cover_image' => UploadedFile::fake()->create('cover.pdf', 100, 'application/pdf'),
+            ]))
+            ->assertSessionHasErrors('cover_image');
+
+        // An oversized image (over the 5 MB / 5120 KB cover limit).
+        $this->actingAs($user)
+            ->put(route('chapters.update', $chapter), $this->validPayload($act, [
+                'cover_image' => UploadedFile::fake()->image('huge.jpg')->size(6000),
+            ]))
+            ->assertSessionHasErrors('cover_image');
+    }
+
+    public function test_deleting_a_chapter_removes_its_cover_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $act = Act::factory()->for(Project::factory()->for($user))->create();
+        $coverPath = 'chapter-covers/doomed-cover.jpg';
+        Storage::disk('public')->put($coverPath, 'contents');
+        $chapter = Chapter::factory()->for($act)->create(['cover_image' => $coverPath]);
+
+        $this->actingAs($user)->delete(route('chapters.destroy', $chapter));
+
+        Storage::disk('public')->assertMissing($coverPath);
+    }
+
+    public function test_deleting_an_act_removes_its_chapters_cover_files(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $coverPath = 'chapter-covers/cascade-act-cover.jpg';
+        Storage::disk('public')->put($coverPath, 'contents');
+        Chapter::factory()->for($act)->create(['cover_image' => $coverPath]);
+
+        // Deleting the act cascades to its chapters at the DB level (bypassing
+        // Chapter::deleting); Act::deleting must purge the cover file itself.
+        $act->delete();
+
+        Storage::disk('public')->assertMissing($coverPath);
+    }
+
+    public function test_deleting_a_project_removes_its_chapters_cover_files(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $coverPath = 'chapter-covers/cascade-project-cover.jpg';
+        Storage::disk('public')->put($coverPath, 'contents');
+        Chapter::factory()->for($act)->create(['cover_image' => $coverPath]);
+
+        // The project cascade drops act + chapter rows via the FK, bypassing both
+        // Act::deleting and Chapter::deleting; Project::deleting must purge the
+        // surviving chapters' cover files project-wide.
+        $project->delete();
+
+        Storage::disk('public')->assertMissing($coverPath);
     }
 
     // ---------------------------------------------------------------------

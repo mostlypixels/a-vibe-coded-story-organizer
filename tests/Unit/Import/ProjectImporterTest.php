@@ -8,6 +8,7 @@ use App\Models\Import;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\CodexMediaService;
+use App\Services\CoverImageService;
 use App\Services\Import\ArchiveValidator;
 use App\Services\Import\ContentSanitizer;
 use App\Services\Import\ProjectGraphImporter;
@@ -263,7 +264,7 @@ class ProjectImporterTest extends TestCase
     {
         return new ProjectImporter(
             app(ArchiveValidator::class),
-            new ProjectGraphImporter(app(ContentSanitizer::class), app(CodexMediaService::class)),
+            new ProjectGraphImporter(app(ContentSanitizer::class), app(CodexMediaService::class), app(CoverImageService::class)),
             app(SceneReferenceMatcher::class),
         );
     }
@@ -277,7 +278,7 @@ class ProjectImporterTest extends TestCase
     {
         $graphImporter = Mockery::mock(
             ProjectGraphImporter::class,
-            [app(ContentSanitizer::class), app(CodexMediaService::class)],
+            [app(ContentSanitizer::class), app(CodexMediaService::class), app(CoverImageService::class)],
         )->makePartial();
         $graphImporter->shouldReceive('importCodex')->andThrow(new RuntimeException('boom'));
         $this->instance(ProjectGraphImporter::class, $graphImporter);

@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\BookLanguage;
 use App\Rules\SanitizeHtml;
 use App\Rules\ValidIsbn;
+use App\Rules\ValidMarkdown;
 use App\Support\CodexMediaRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -36,6 +37,14 @@ class UpdateProjectRequest extends FormRequest
             'rights' => ['nullable', 'string', 'max:1000'],
             'isbn' => ['nullable', 'string', new ValidIsbn],
             'cover_image' => CodexMediaRules::coverRules(),
+
+            // Book front/back-matter Markdown (task 02, epub-configuration). These
+            // stay raw Markdown like Scene.contents — ValidMarkdown reuses the same
+            // well-formedness gate, never a rich-HTML sanitizer.
+            'dedication' => ['nullable', 'string', 'max:20000', new ValidMarkdown],
+            'acknowledgements' => ['nullable', 'string', 'max:20000', new ValidMarkdown],
+            'preface' => ['nullable', 'string', 'max:20000', new ValidMarkdown],
+            'postface' => ['nullable', 'string', 'max:20000', new ValidMarkdown],
         ];
     }
 }

@@ -69,7 +69,7 @@ class ImportController extends Controller
 
             ProjectImportJob::dispatch($import);
 
-            return redirect()->route('admin.data.index')
+            return redirect()->route('admin.data.import.index')
                 ->with('status', __('Import queued.'));
         }
 
@@ -78,7 +78,7 @@ class ImportController extends Controller
         } catch (Throwable) {
             // The service already recorded a safe failure_message on the row and
             // left it resumable/discardable — the Import tab shows the details.
-            return redirect()->route('admin.data.index')
+            return redirect()->route('admin.data.import.index')
                 ->with('status', __('Import failed — see the Import tab for details.'));
         }
 
@@ -104,7 +104,7 @@ class ImportController extends Controller
 
             ProjectImportJob::dispatch($import);
 
-            return redirect()->route('admin.data.index')
+            return redirect()->route('admin.data.import.index')
                 ->with('status', __('Import queued.'));
         }
 
@@ -115,7 +115,7 @@ class ImportController extends Controller
             // failure_message; the Import tab surfaces it either way.
         }
 
-        return redirect()->route('admin.data.index');
+        return redirect()->route('admin.data.import.index');
     }
 
     /**
@@ -128,7 +128,7 @@ class ImportController extends Controller
 
         $this->importer->discard($import);
 
-        return redirect()->route('admin.data.index')
+        return redirect()->route('admin.data.import.index')
             ->with('status', __('Import discarded.'));
     }
 }

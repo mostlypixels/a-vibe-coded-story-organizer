@@ -19,6 +19,7 @@ use App\Http\Controllers\ImportSettingController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\PublicationSettingController;
 use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SceneShareController;
@@ -71,7 +72,17 @@ Route::middleware('auth')->group(function () {
         Route::patch('/settings', [GeneralSettingsController::class, 'update'])->name('settings.update');
 
         Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance.edit');
-        Route::get('/data', [DataTransferController::class, 'index'])->name('data.index');
+
+        // The Export & import area is three server-rendered pages (not JS tabs),
+        // reached by ordinary <a> links in admin/data/partials/subnav.blade.php.
+        // /data itself only redirects to the first sub-page; the name is kept so
+        // existing route('admin.data.index') callers (the sidebar link, POST
+        // controllers that redirect back to "the area" generically) keep working.
+        Route::get('/data', fn () => redirect()->route('admin.data.export-project'))->name('data.index');
+        Route::get('/data/export/project', [DataTransferController::class, 'exportProject'])->name('data.export-project');
+        Route::get('/data/export/ebook', [DataTransferController::class, 'exportEbook'])->name('data.export-ebook');
+        Route::get('/data/import', [DataTransferController::class, 'import'])->name('data.import.index');
+
         // Export a project to a downloadable .zip. POST (not GET): a non-idempotent,
         // potentially expensive action that produces a download and carries CSRF +
         // the include_images toggle. The admin gate is "any authenticated user"; the
@@ -82,6 +93,17 @@ Route::middleware('auth')->group(function () {
         // rendering, packaging, and structural validation. A project with nothing to
         // export redirects back with an error (EpubExportException), never a 500.
         Route::post('/data/export/epub', [EpubExportController::class, 'store'])->name('data.export.epub');
+
+        // Task 04: persists PublicationSetting (the Export-ebook config form) and
+        // reorders its section_order list. Write path only — the exporter does not
+        // consume these settings yet. Ownership walks the {project} route binding,
+        // mirrored in UpdatePublicationSettingRequest::authorize().
+        Route::patch('/data/export/ebook/{project}/settings', [PublicationSettingController::class, 'update'])
+            ->name('data.publication-settings.update');
+        Route::patch('/data/export/ebook/{project}/settings/section-order/{section}/move-up', [PublicationSettingController::class, 'moveSectionUp'])
+            ->name('data.publication-settings.section-order.move-up');
+        Route::patch('/data/export/ebook/{project}/settings/section-order/{section}/move-down', [PublicationSettingController::class, 'moveSectionDown'])
+            ->name('data.publication-settings.section-order.move-down');
 
         // Import a project from an uploaded export .zip. Each import creates a
         // BRAND-NEW project for the current user (never merges/updates), so store

@@ -96,7 +96,9 @@ class ExportTest extends TestCase
 
         $manifest = json_decode($raw, true);
         $this->assertIsArray($manifest, 'data/manifest.json is not valid JSON.');
-        $this->assertSame(1, $manifest['version']);
+        // Bumped to 2 by the epub-configuration feature (task 02) — see
+        // StaticSiteExporter::DATA_VERSION.
+        $this->assertSame(2, $manifest['version']);
         $this->assertSame($project->id, $manifest['project_id']);
         $this->assertTrue($manifest['includes_media']);
         $this->assertArrayHasKey('exported_at', $manifest);
@@ -199,7 +201,7 @@ class ExportTest extends TestCase
 
         $other = Project::factory()->create(['name' => 'Someone Elses Tale']);
 
-        $response = $this->actingAs($user)->get(route('admin.data.index'));
+        $response = $this->actingAs($user)->get(route('admin.data.export-project'));
 
         $response->assertOk();
         $response->assertSee('name="project_id"', false);
@@ -214,7 +216,7 @@ class ExportTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('admin.data.index'));
+        $response = $this->actingAs($user)->get(route('admin.data.export-project'));
 
         $response->assertOk();
         $response->assertSee('Create a project first to export it.');
@@ -342,6 +344,51 @@ class ExportTest extends TestCase
         $project_json = json_decode($zip->getFromName('data/project/project.json'), true);
         $this->assertSame($project->id, $project_json['id']);
         $this->assertSame('The Whole Book', $project_json['name']);
+
+        $zip->close();
+    }
+
+    public function test_the_four_frontmatter_markdown_fields_export_as_raw_field_files(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create([
+            'name' => 'The Whole Book',
+            'dedication' => 'For *everyone*.',
+            'acknowledgements' => 'Thanks to my **editor**.',
+            'preface' => 'A word before we begin.',
+            'postface' => 'And so it ends.',
+        ]);
+
+        $zip = $this->exportZip($user, $project);
+
+        $project_json = json_decode($zip->getFromName('data/project/project.json'), true);
+        $this->assertSame('dedication.md', $project_json['dedication_file']);
+        $this->assertSame('acknowledgements.md', $project_json['acknowledgements_file']);
+        $this->assertSame('preface.md', $project_json['preface_file']);
+        $this->assertSame('postface.md', $project_json['postface_file']);
+
+        // Raw Markdown, verbatim — never rendered/re-formatted.
+        $this->assertSame('For *everyone*.', $zip->getFromName('data/project/dedication.md'));
+        $this->assertSame('Thanks to my **editor**.', $zip->getFromName('data/project/acknowledgements.md'));
+        $this->assertSame('A word before we begin.', $zip->getFromName('data/project/preface.md'));
+        $this->assertSame('And so it ends.', $zip->getFromName('data/project/postface.md'));
+
+        $zip->close();
+    }
+
+    public function test_empty_frontmatter_fields_write_no_field_file_or_link(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'The Whole Book']);
+
+        $zip = $this->exportZip($user, $project);
+
+        $project_json = json_decode($zip->getFromName('data/project/project.json'), true);
+        $this->assertArrayNotHasKey('dedication_file', $project_json);
+        $this->assertArrayNotHasKey('acknowledgements_file', $project_json);
+        $this->assertArrayNotHasKey('preface_file', $project_json);
+        $this->assertArrayNotHasKey('postface_file', $project_json);
+        $this->assertFalse($zip->locateName('data/project/dedication.md'));
 
         $zip->close();
     }

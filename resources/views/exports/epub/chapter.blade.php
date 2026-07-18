@@ -1,23 +1,10 @@
-{{-- A Chapter page: "Chapter {position}: {name}" followed by its Scenes' rendered
-     Markdown, joined by <hr/> (no per-scene titles, no Chapter `description`) — the same
-     content shape as the book/ reading layer, per the grilled decision.
-
-     $renderedScenes is an ordered array of already-rendered HTML strings produced by
-     EpubExporter's own SmartPunct-configured CommonMark converter (NOT
-     Scene::renderedContents, which must stay untouched for the rest of the app). The
-     <hr/> is self-closed so the document stays XML-well-formed for task 05's validation.
-     The <section class="chapter"> root is what styles.css page-breaks. --}}
-@extends('exports.epub.layout', ['title' => 'Chapter '.$position.': '.$name])
+{{-- The standalone Chapter page (its own spine document at the default "Chapters" and the
+     "Scenes" TOC depth). The body markup lives in partials/chapter-body.blade.php so the
+     combined act page ("Acts" depth) can reuse it verbatim. The layout <title> falls back
+     to "Chapter {position}" so the XHTML document title is never empty (only possible with
+     the title-only format on a name-less chapter). --}}
+@extends('exports.epub.layout', ['title' => $heading !== '' ? $heading : 'Chapter '.$position])
 
 @section('content')
-    <section class="chapter">
-        <h1>Chapter {{ $position }}: {{ $name }}</h1>
-
-        @foreach ($renderedScenes as $index => $renderedScene)
-            @if ($index > 0)
-                <hr/>
-            @endif
-            {!! $renderedScene !!}
-        @endforeach
-    </section>
+    @include('exports.epub.partials.chapter-body')
 @endsection
