@@ -24,19 +24,25 @@ yourself, every time:
    decided design defaults (do **not** re-litigate them), and the invariants every task
    must preserve. `00-overview.md` is the manual, not a task: it is **never**
    implemented or moved.
-2. Do **not** pre-read the whole `<dir>/expanded/` set — the task file you select below
+2. Read `<dir>/resolution-log.md` in full if it exists — it is the authoritative record
+   of every prior deviation, issue → resolution, and binding decision made while earlier
+   tasks were implemented. Treat it with the same weight as `00-overview.md`: a fact
+   recorded there (a helper's real name, a regression guard's exact shape, a decision the
+   caller already made) is binding, and re-deriving or "fixing" it blind is how earlier
+   tasks get silently broken. Your caller should not have to summarize it for you.
+3. Do **not** pre-read the whole `<dir>/expanded/` set — the task file you select below
    links the spec docs that matter for it (see "Selecting the task"); read those, plus any
    doc `00-overview.md` singles out as binding for every task.
-3. List `<dir>/plan/implemented/` to see which tasks are already done.
-4. Skim the actual working tree for the files those completed tasks and the overview
+4. List `<dir>/plan/implemented/` to see which tasks are already done.
+5. Skim the actual working tree for the files those completed tasks and the overview
    name (`git status`, targeted `Read`/`Grep`) to confirm the codebase matches what the
    implemented-task files claim. If it doesn't match, stop and report the discrepancy
    rather than guessing which is authoritative.
-5. Read `CLAUDE.md` and follow it exactly (thin
+6. Read `CLAUDE.md` and follow it exactly (thin
    controllers, Form Requests, authorization walked up to the owning aggregate, project
    conventions for tests, index filtering, eager-loading — whatever this repo's
    documented conventions are).
-6. Read the **Commands** section of `CLAUDE.md` for this project's actual test and lint
+7. Read the **Commands** section of `CLAUDE.md` for this project's actual test and lint
    commands. Don't hardcode a specific command in your own instructions — use whatever
    the project currently documents.
 
