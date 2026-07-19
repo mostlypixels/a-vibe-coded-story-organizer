@@ -1,5 +1,7 @@
 version: '3.8'
 
+name: a-vibe-coded-story-organizer
+
 services:
   app:
     build:
