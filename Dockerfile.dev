@@ -1,0 +1,84 @@
+# Development Dockerfile with debugging tools
+FROM php:8.5-fpm-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache \
+    postgresql-dev \
+    sqlite \
+    sqlite-dev \
+    libxml2-dev \
+    oniguruma-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    curl \
+    git \
+    bash \
+    icu-dev \
+    freetype-dev \
+    libjpeg-turbo-dev \
+    libpng-dev \
+    npm \
+    nodejs \
+    supervisor \
+    nginx
+
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg
+
+RUN docker-php-ext-install \
+    pdo \
+    pdo_sqlite \
+    pdo_pgsql \
+    intl \
+    zip \
+    xml \
+    bcmath \
+    mbstring \
+    gd
+
+# docker-php-ext-install's own build-dependency virtual package is installed
+# and purged within that single RUN layer above, so phpize/autoconf/gcc are
+# gone by the time this step runs — reinstall them for the pecl build.
+RUN apk add --no-cache --virtual .xdebug-build-deps $PHPIZE_DEPS linux-headers && \
+    pecl install xdebug && \
+    docker-php-ext-enable xdebug && \
+    apk del .xdebug-build-deps
+
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+RUN addgroup -g 1000 laravel && \
+    adduser -D -u 1000 -G laravel laravel
+
+# Run PHP-FPM workers as laravel, matching the app files' ownership below —
+# see the equivalent step and comment in the production Dockerfile.
+RUN sed -i \
+    -e 's/^user = .*/user = laravel/' \
+    -e 's/^group = .*/group = laravel/' \
+    /usr/local/etc/php-fpm.d/www.conf
+
+COPY --chown=laravel:laravel . .
+
+RUN composer install
+
+RUN npm install
+
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY docker/supervisord.dev.conf /etc/supervisord.conf
+COPY docker/php.ini /usr/local/etc/php/conf.d/laravel.ini
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# nginx.conf runs workers as `laravel` (to share file ownership with php-fpm),
+# but the nginx package's own dirs are nginx:nginx by default — without this,
+# worker processes can't even traverse into /var/lib/nginx/tmp/client_body to
+# buffer request bodies to disk, so any POST body too large for nginx's
+# in-memory buffer (e.g. a file upload) 500s immediately with an EACCES in
+# the nginx error log, before the request ever reaches PHP.
+RUN mkdir -p /var/run/nginx && \
+    chown -R laravel:laravel /var/run/nginx /var/lib/nginx
+
+EXPOSE 80 5173 9000
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

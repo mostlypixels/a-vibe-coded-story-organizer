@@ -745,3 +745,4 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 | Reusable domain workflows | `app/Services` (e.g. `ProjectSearch`), or an Action class |
 | Constant / reference data | `app/Support` (e.g. `PlotlineColors`), `app/Enums` |
 | Reusable UI | `resources/views/components` (Blade components) |
+| Containerized dev/prod environment | `Dockerfile`(`.dev`), `docker-compose*.yml`, `docker/` — see [`documentation/docker.md`](docker.md) |

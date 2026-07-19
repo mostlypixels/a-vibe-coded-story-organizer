@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: a-vibe-coded-story-organizer_app_dev
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=${APP_KEY:-}
+      - DB_CONNECTION=sqlite
+      - LOG_CHANNEL=stack
+      - MAIL_MAILER=mailhog
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - REDIS_HOST=redis
+    ports:
+      - "${APP_PORT:-8000}:80"
+      - "${VITE_PORT:-5173}:5173"
+      - "9000:9000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/vendor
+    networks:
+      - a-vibe-coded-story-organizer
+    depends_on:
+      redis:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  redis:
+    image: redis:7-alpine
+    container_name: a-vibe-coded-story-organizer_redis_dev
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - a-vibe-coded-story-organizer
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: a-vibe-coded-story-organizer_mailhog_dev
+    ports:
+      - "${MAILHOG_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+    networks:
+      - a-vibe-coded-story-organizer
+
+networks:
+  a-vibe-coded-story-organizer:
+    driver: bridge

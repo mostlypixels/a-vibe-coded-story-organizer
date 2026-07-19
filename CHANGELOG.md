@@ -15,6 +15,12 @@ set belongs in its pull request description.
 
 ### Added
 
+- **Docker support.** Production (`Dockerfile`, `docker-compose.yml`) and development
+  (`Dockerfile.dev`, `docker-compose.dev.yml`, `Makefile`) container setups, so the app
+  can run without a local PHP/Node/Redis install. Documented in `documentation/docker.md`;
+  `docker/entrypoint.sh` generates a fresh `APP_KEY` per instance on first boot rather
+  than shipping a shared one.
+
 - **Configurable EPUB export.** The ebook export (**Admin → Export & import → Export →
   Ebook**) is now driven by a per-project **publication settings** form, so an author controls
   what the generated `.epub` contains instead of taking one fixed layout. Every option defaults

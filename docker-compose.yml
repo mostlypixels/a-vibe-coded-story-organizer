@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: a-vibe-coded-story-organizer_app
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=sqlite
+      - LOG_CHANNEL=stack
+    ports:
+      - "${APP_PORT:-80}:80"
+    volumes:
+      - ./database:/app/database
+      - ./storage:/app/storage
+    networks:
+      - a-vibe-coded-story-organizer
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: a-vibe-coded-story-organizer_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - a-vibe-coded-story-organizer
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+networks:
+  a-vibe-coded-story-organizer:
+    driver: bridge
+
+volumes:
+  redis_data:
