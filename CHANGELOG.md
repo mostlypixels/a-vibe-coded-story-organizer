@@ -11,11 +11,230 @@ yet — when the PR carrying an entry merges, the entry ships under its dated he
 The per-commit "why" lives in each commit message body; richer rationale for a change
 set belongs in its pull request description.
 
+A section with no `(#PR)` suffix landed directly on `master`, before the protected-branch
+workflow existed — it is not a missing number. Everything from `2026-07-17` onward went
+through a PR, and `scripts/pr-land.sh` stamps the number automatically.
+
 ## [Unreleased]
 
-_Nothing yet — the next pull request adds its own dated section below._
+_Nothing unreleased — every entry below has merged to `master`._
 
-## 2026-07-17 — Accent-insensitive advanced search
+## 2026-07-21 — Number the remaining changelog headings (#20)
+
+### Fixed
+
+- The two `2026-07-17` sections gained their PR numbers — accent-insensitive advanced search
+  is #10 and the rich-text preview tag-stripping is #9, both matched against `gh pr list`
+  rather than inferred from position. Every section dated `2026-07-17` or later now names
+  its PR.
+
+### Changed
+
+- The changelog's own header now explains that a section *without* a `(#PR)` suffix landed
+  directly on `master` before the protected-branch workflow existed, rather than being an
+  oversight. Two sections are in that category — **Advanced search** (`2026-07-16`) and the
+  **Laravel 13 / PHP 8.5 upgrade** (`2026-07-15`) — and they are correct as they stand;
+  without the note there is no way to tell a deliberate absence from a forgotten number.
+
+## 2026-07-21 — File the stranded changelog entries under their own PRs (#19)
+
+### Fixed
+
+- `[Unreleased]` had been holding the **Configurable EPUB export** entries since they merged
+  in #12, contradicting the convention's own rule that the section carries only work not yet
+  on `master`. They now sit under a dated `2026-07-18` heading. A second section had also
+  collected two unrelated PRs at once — the EPUB `short_open_tag` fix (#14) and the Docker
+  environment work (#13) — which showed up as a section with duplicate `### Changed` and
+  `### Fixed` groups; it is split in two, and all three headings gained their PR numbers.
+  No entry text was reworded: the change is purely which heading each entry files under.
+
+## 2026-07-21 — Stamp the PR number onto changelog headings automatically (#18)
+
+### Fixed
+
+- `scripts/pr-land.sh` now writes the `(#PR)` suffix onto the newest dated `CHANGELOG.md`
+  heading itself, between `gh pr create` and arming auto-merge. The convention asks each
+  dated section to name the PR that shipped it, but the number does not exist until the PR
+  is opened — and by then the entry is already committed — so every entry needed a manual
+  follow-up (#16 was one). The stamp only ever touches the *first* dated heading (new
+  entries go on top, so that is the current PR's), skips a heading that already carries a
+  number, and is skipped entirely when the branch does not touch `CHANGELOG.md` — so it
+  cannot retro-fit a wrong number onto an older entry.
+
+### Changed
+
+- The ship-pr skill now instructs leaving the `(#PR)` suffix off when writing the entry,
+  and `scripts/README.md` records the new step.
+
+## 2026-07-21 — Force a patched `shell-quote` via an npm override (#17)
+
+### Fixed
+
+- Forced `shell-quote` to `^1.9.0` with an npm `overrides` entry, clearing the high-severity
+  [GHSA-395f-4hp3-45gv](https://github.com/advisories/GHSA-395f-4hp3-45gv) / CVE-2026-13311
+  advisory (quadratic-complexity denial of service in `parse()`). The package reaches us only
+  through `concurrently`, which pins it *exactly* at the vulnerable `1.8.4`, so upgrading
+  `concurrently` could not fix it — even its latest release still names `1.8.4`. Real exposure
+  was minimal: it is a dev-only dependency used solely by the `composer dev` script, on
+  hardcoded (not attacker-controlled) command strings, and it ships in neither Docker image.
+  The override mainly stops a permanently red security alert from training everyone to ignore
+  the next one.
+
+### Added
+
+- New [`documentation/dependency-overrides.md`](documentation/dependency-overrides.md)
+  explaining what an npm override is, why this project carries the `shell-quote` one, when an
+  override is the wrong tool (it gives a package a version it never tested against, and the
+  failure surfaces in someone else's stack trace), and how to retire one once upstream fixes
+  its own tree.
+
+## 2026-07-21 — Upgrade the test toolchain to PHPUnit 13 and ParaTest 7.23 (#15)
+
+### Changed
+
+- Upgraded the development test toolchain to PHPUnit 13.2 and ParaTest 7.23 (from PHPUnit
+  11.5 / ParaTest 7.8), pulling ~23 transitive `sebastian/*` and `phpunit/php-*` majors with
+  them. ParaTest could not move past 7.8 while the PHPUnit constraint stayed on `^11.5`
+  (ParaTest 7.23 requires `phpunit/phpunit ^13.2`), so the two only move together.
+  `composer test` is unchanged and the suite passes as-is — no test, `phpunit.xml`, or
+  assertion changes were needed, and PHPUnit 13 raised no deprecation or schema warnings.
+  Both are dev-only dependencies, so the production image (`composer install --no-dev`) is
+  unaffected.
+
+> [!NOTE]
+> After pulling this, Docker users need `make rebuild` rather than `make build` — `vendor/`
+> lives in an anonymous volume that Compose carries over to a recreated container, so a plain
+> build leaves the old PHPUnit 11 mounted on top of the new image.
+
+## 2026-07-21 — EPUB export: XML declaration and config layout (#14)
+
+### Fixed
+
+- **The EPUB export could not render under `short_open_tag=On`.** The layout emitted its
+  XML declaration as `{!! '<?xml …' !!}`, but Blade runs PHP's own lexer over the raw
+  template before compiling `{!! !!}` into an echo — so `<?xml` was read as a short open
+  tag during that pass and the build failed with `unexpected identifier "version"`,
+  regardless of the `{!! !!}` wrapping. The declaration is now built by concatenating
+  `'<'` with the rest, which never puts the two characters adjacent in the source.
+  This surfaced in Docker: the official PHP images ship no `php.ini`, so PHP's compiled-in
+  default (`short_open_tag=On`) applies there, while a typical host `php.ini` sets it Off.
+
+### Changed
+
+- The EPUB publication-settings form is grouped in a labelled box showing the loaded
+  project's name, so it is clear which project the settings belong to, and the project
+  picker's **Load** button is promoted to the primary style as the page's entry action.
+
+## 2026-07-21 — Docker environment fixes and dependency refresh (#13)
+
+### Added
+
+- **Docker support.** Production (`Dockerfile`, `docker-compose.yml`) and development
+  (`Dockerfile.dev`, `docker-compose.dev.yml`, `Makefile`) container setups, so the app
+  can run without a local PHP/Node install. Documented in `documentation/docker.md`;
+  `docker/entrypoint.sh` generates a fresh `APP_KEY` per instance on first boot rather
+  than shipping a shared one.
+
+### Changed
+
+- **Composer dependencies refreshed** within the existing constraints (Laravel 13.20.0 →
+  13.21.1, Guzzle 7.14.2 → 7.15.1, plus patch bumps). PHPUnit deliberately stays on
+  `^11.5.50`; `brianium/paratest` is pinned behind it (7.23.0 requires PHPUnit `^13.2`),
+  so those two must be upgraded together in their own change.
+
+- **Docker: MailHog replaced with Mailpit.** MailHog has been unmaintained since 2020;
+  Mailpit is a drop-in replacement on the same SMTP port, with the UI still at `:8025`.
+
+### Fixed
+
+- **Docker: Xdebug was installed but could never connect.** The image enabled the
+  extension without configuring it, so it ran in the default `develop` mode — which does
+  not include step debugging — and the compose file published port 9000 (Xdebug 2's
+  default, and php-fpm's own port) even though Xdebug 3 dials *out* to the IDE. New
+  `docker/xdebug.ini` sets `mode=debug` on port 9003 via `host.docker.internal`, with
+  `start_with_request=trigger` so tests aren't slowed when not debugging.
+
+- **Docker: mail was misconfigured in development.** `MAIL_MAILER=mailhog` is not a
+  Laravel mail driver (`config/mail.php` defines no such transport), so sending mail from
+  the dev container raised `Mailer [mailhog] is not defined`. Now `smtp` pointed at the
+  mail catcher.
+
+- **`composer test` failed inside the Docker container** with 248 failures that did not
+  reproduce on the host. PHPUnit's `<env>` entries do not override variables already
+  present in the real environment unless marked `force="true"`, so the container's
+  `APP_ENV=local` beat `phpunit.xml`'s `APP_ENV=testing`. `ValidateCsrfToken` only skips
+  itself in the `testing` environment, so CSRF was enforced and every write request in the
+  suite returned 419. All `phpunit.xml` env entries are now forced, making `composer test`
+  behave identically on the host, in the container, and in CI.
+
+- **`make clean` could never run on Windows.** Make executes recipes through `cmd.exe`
+  there, where the target's `rm -rf` does not exist, so the command aborted. It now
+  selects `del` or `rm` from the `OS` variable. `documentation/docker.md` records the
+  constraint, since it applies to any shell command added to a target.
+
+- **Docker: `make rebuild` silently kept stale dependencies.** `vendor/` and
+  `node_modules/` are anonymous volumes, and Compose carries those over when recreating a
+  container — so rebuilding after a `composer.json`/`package.json` change left the old
+  dependencies mounted over the new image. `make rebuild` now recreates with
+  `--renew-anon-volumes`.
+
+### Removed
+
+- **Docker: the Redis container.** Cache, sessions, and the queue all use database drivers
+  whose tables ship with Laravel's default migrations, so Redis was a second service doing
+  nothing at this scale (`CACHE_STORE` is now `database`). `config/database.php` still
+  reads the `REDIS_*` variables if a deployment later needs it.
+
+- **Obsolete Compose `version:` key** from both compose files, and the end-of-life
+  `docker-compose` (v1) invocation in the `Makefile`, now `docker compose`.
+
+## 2026-07-18 — Configurable EPUB export (#12)
+
+### Added
+
+- **Configurable EPUB export.** The ebook export (**Admin → Export & import → Export →
+  Ebook**) is now driven by a per-project **publication settings** form, so an author controls
+  what the generated `.epub` contains instead of taking one fixed layout. Every option defaults
+  to reproducing the previous export exactly, so an untouched project downloads the same book as
+  before. The config page offers:
+  - **Metadata toggles** — include (or omit) the author, publisher, rights, and ISBN in the
+    book's Dublin Core metadata.
+  - **Cover toggles** — include the project cover, and optionally a full-page **cover image per
+    chapter** (uploaded on the chapter edit page).
+  - **Content options** — show scene titles; show act / chapter / scene descriptions; and pick
+    the chapter-heading format (e.g. `Chapter 1: Title`, just the title, or just the number) and
+    the scene **divider** style (horizontal rule or a decorative flourish).
+  - **Front & back matter** — four optional Markdown sections (dedication, acknowledgements,
+    preface, postface) written on the project edit page, each independently toggled into the
+    book. Their order relative to the table of contents and the story body is set with a sortable
+    **section order** list (move up / move down), with the title page pinned first.
+  - **Table-of-contents depth** — list acts only, acts with their chapters (the default), or a
+    third level of per-scene links.
+  - **Codex appendix** — an optional back-matter appendix built from the project's Codex:
+    choose which entry types to include (characters / locations / organizations) and whether to
+    embed each entry's first image, rendered as a heading page plus one page per entry.
+- Projects now carry four optional front-/back-matter Markdown fields — dedication,
+  acknowledgements, preface, postface — editable on the project edit page.
+- **The archive round-trips all of it.** The publication settings travel in the `.zip` export
+  (`data/publication-setting.json`), the four Markdown fields and any chapter cover images travel
+  in `data/`, and all of it is restored on import. The export manifest `version` bumps to `2`
+  once to cover every new field; version `1` archives still import cleanly, with the new fields
+  left `null`/default. The publication settings are validated as **untrusted** input against the
+  same rules as the config form: a malformed setting is logged, skipped, and the project imports
+  its content on the default settings rather than failing the whole import (unknown appendix codex
+  types are dropped individually). A project with no saved setting omits the descriptor and
+  round-trips to the lazy default.
+
+### Changed
+
+- The Export & import "Export" and "Import" screens are now three server-rendered pages with a
+  sub-navigation (Export / Ebook / Import) instead of a single Alpine-tabbed page; the sidebar
+  entry and route names are unchanged.
+- The EPUB export architecture and the new archive fields are documented in
+  `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
+  `documentation/export-format.md`.
+
+## 2026-07-17 — Accent-insensitive advanced search (#10)
 
 ### Added
 
@@ -32,7 +251,7 @@ _Nothing yet — the next pull request adds its own dated section below._
   matches on accent-folded text but still renders the original accented characters inside
   `<mark>`, and matching is now uniformly case-insensitive across all drivers.
 
-## 2026-07-17 — Strip HTML tags from rich-text field previews in search results
+## 2026-07-17 — Strip HTML tags from rich-text field previews in search results (#9)
 
 ### Fixed
 

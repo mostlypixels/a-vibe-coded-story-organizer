@@ -84,6 +84,37 @@
             </div>
         </x-card>
 
+        <x-card :title="__('Book front & back matter (Markdown)')">
+            <p class="text-sm text-gray-500">{{ __('Optional pages included in the EPUB export when enabled on the Export-ebook configuration page. These fields use Markdown (like scene contents), not the rich-text editor above.') }}</p>
+
+            <div class="mt-4 space-y-6">
+                <div>
+                    <x-input-label for="dedication" :value="__('Dedication')" />
+                    <textarea id="dedication" name="dedication" form="project-edit-form" rows="4" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm font-mono text-sm">{{ old('dedication', $project->dedication) }}</textarea>
+                    <x-input-error :messages="$errors->get('dedication')" class="mt-2" />
+                </div>
+
+                <div>
+                    <x-input-label for="acknowledgements" :value="__('Acknowledgements')" />
+                    <textarea id="acknowledgements" name="acknowledgements" form="project-edit-form" rows="4" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm font-mono text-sm">{{ old('acknowledgements', $project->acknowledgements) }}</textarea>
+                    <x-input-error :messages="$errors->get('acknowledgements')" class="mt-2" />
+                </div>
+
+                <div>
+                    <x-input-label for="preface" :value="__('Preface')" />
+                    <textarea id="preface" name="preface" form="project-edit-form" rows="4" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm font-mono text-sm">{{ old('preface', $project->preface) }}</textarea>
+                    <x-input-error :messages="$errors->get('preface')" class="mt-2" />
+                </div>
+
+                <div>
+                    <x-input-label for="postface" :value="__('Postface')" />
+                    <textarea id="postface" name="postface" form="project-edit-form" rows="4" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm font-mono text-sm">{{ old('postface', $project->postface) }}</textarea>
+                    <p class="mt-1 text-xs text-gray-400">{{ __('Rendered before any codex appendix.') }}</p>
+                    <x-input-error :messages="$errors->get('postface')" class="mt-2" />
+                </div>
+            </div>
+        </x-card>
+
         <x-slot:sidebar>
             <x-edit-actions
                 form="project-edit-form"

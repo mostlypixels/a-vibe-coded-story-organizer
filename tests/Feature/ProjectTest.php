@@ -195,6 +195,76 @@ class ProjectTest extends TestCase
         $response->assertSessionHasErrors('isbn');
     }
 
+    // --- Front/back-matter Markdown (epub-configuration, task 02) ----------
+
+    public function test_owner_can_update_a_project_with_all_four_frontmatter_fields(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'language' => 'en',
+            'dedication' => 'For *everyone* who believed.',
+            'acknowledgements' => 'Thanks to my **editor**.',
+            'preface' => 'A word before we begin.',
+            'postface' => 'And so it ends.',
+        ]);
+
+        $response->assertRedirect(route('projects.show', $project));
+
+        $project = $project->fresh();
+        $this->assertSame('For *everyone* who believed.', $project->dedication);
+        $this->assertSame('Thanks to my **editor**.', $project->acknowledgements);
+        $this->assertSame('A word before we begin.', $project->preface);
+        $this->assertSame('And so it ends.', $project->postface);
+    }
+
+    public function test_updating_a_project_with_invalid_markdown_in_dedication_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        // Invalid UTF-8 bytes make CommonMarkConverter throw
+        // UnexpectedEncodingException — the ValidMarkdown rule's failure path.
+        $response = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'language' => 'en',
+            'dedication' => "\xB1\x31",
+        ]);
+
+        $response->assertSessionHasErrors('dedication');
+    }
+
+    public function test_updating_a_project_with_dedication_over_the_max_length_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'My Novel',
+            'language' => 'en',
+            'dedication' => str_repeat('a', 20001),
+        ]);
+
+        $response->assertSessionHasErrors('dedication');
+    }
+
+    public function test_a_non_owner_cannot_update_a_projects_frontmatter_fields(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+
+        $this->actingAs($other)->put(route('projects.update', $project), [
+            'name' => 'Hijacked',
+            'language' => 'en',
+            'dedication' => 'Hijacked dedication',
+        ])->assertForbidden();
+
+        $this->assertNull($project->fresh()->dedication);
+    }
+
     public function test_updating_a_project_with_an_unsupported_language_fails_validation(): void
     {
         $user = User::factory()->create();

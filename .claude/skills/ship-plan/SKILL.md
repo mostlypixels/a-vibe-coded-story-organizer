@@ -42,7 +42,19 @@ use its `plan/` subfolder. Example: `/ship-plan codex` →
    silently implement over a divergence.
 
 4. **Run strictly sequentially.** Tasks are dependency-ordered by number, so never
-   launch more than one at a time. For the lowest-numbered remaining task:
+   launch more than one at a time.
+
+   > [!IMPORTANT]
+   > **This loop runs straight through with no checkpoint between tasks.** If the user
+   > wants to go one task at a time — to check quota, review each result, or resume a
+   > partly-finished plan by hand — **do not use this skill**: launch `plan-implementer`
+   > directly, once per task, and stop after each. That is the supported mode, not a
+   > workaround. The agent self-discovers state (including `resolution-log.md`), so a
+   > per-task prompt only needs the feature name and the task number — never a recap of
+   > what earlier tasks built. Track progress from `plan/implemented/` +
+   > `resolution-log.md`; don't hand-maintain a separate progress table.
+
+   For the lowest-numbered remaining task:
    - Launch the `plan-implementer` agent (`Agent` tool, `subagent_type:
      "plan-implementer"`) with a prompt naming the feature and, if useful, the specific
      task number. The agent discovers prior progress itself — you do not need to recap
@@ -105,5 +117,5 @@ use its `plan/` subfolder. Example: `/ship-plan codex` →
   `plan-implementer` agent runs, which are fully independent per task and self-discover
   state from the spec docs, `implemented/` folder, and working tree — don't duplicate
   that discovery work here.
-- If the user only wants a single task run (not the whole remaining plan), just launch
-  `plan-implementer` directly instead of this skill.
+- If the user only wants a single task run, or a pause between tasks, launch
+  `plan-implementer` directly instead of this skill — see the callout in step 4.

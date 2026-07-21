@@ -281,7 +281,7 @@ class MelusineSeederIt extends Seeder
                             ],
                             [
                                 'name' => 'Melusina al telaio',
-                                'contents' => "Nel frattempo, Melusina, seduta nella sua torre di Lusignano, filava un filo d\'argento. Vedeva ciascuno dei suoi figli nel filo — Urien sul suo trono, Guyon accanto al corpo del gigante, Antoine che si pulisce la spada, Reynaud inginocchiato davanti al re.\n\n« Quattro sono salvi, » disse. « Ma il quinto — »\n\nVide il fuoco.",
+                                'contents' => "Nel frattempo, Melusina, seduta nella sua torre di Lusignano, filava un filo d'argento. Vedeva ciascuno dei suoi figli nel filo — Urien sul suo trono, Guyon accanto al corpo del gigante, Antoine che si pulisce la spada, Reynaud inginocchiato davanti al re.\n\n« Quattro sono salvi, » disse. « Ma il quinto — »\n\nVide il fuoco.",
                             ],
                         ],
                     ],
@@ -329,7 +329,7 @@ class MelusineSeederIt extends Seeder
                             ],
                             [
                                 'name' => 'Intorno alle torri',
-                                'contents' => "Melusina volò tre volte intorno al castello di Lusignano. Il suo grido non era un urlo — era un suono simile a un\'arpa che si spezza, a un ghiaccio che si crepa su un fiume gelato. Lo sentirono in ogni villaggio a una giornata di cammino.\n\nAl primo giro, le torri piansero malte.\n\nAl secondo giro, le porte gemettero e si spacchettarono.\n\nAl terzo giro, si alzò tra le nuvole e scomparve.",
+                                'contents' => "Melusina volò tre volte intorno al castello di Lusignano. Il suo grido non era un urlo — era un suono simile a un'arpa che si spezza, a un ghiaccio che si crepa su un fiume gelato. Lo sentirono in ogni villaggio a una giornata di cammino.\n\nAl primo giro, le torri piansero malte.\n\nAl secondo giro, le porte gemettero e si spacchettarono.\n\nAl terzo giro, si alzò tra le nuvole e scomparve.",
                             ],
                         ],
                     ],
@@ -345,7 +345,7 @@ class MelusineSeederIt extends Seeder
                         'scenes' => [
                             [
                                 'name' => 'Legata dal ricordo',
-                                'contents' => "Melusina non partì del tutto.\n\nLa notte prima che un signore di Lusignano muoia, appare sulla torre più alta, vestita di bianco, i capelli sciolti al vento. Piange, e i suoi pianti risuonano come l\'acqua che scorre sulla pietra.\n\nRimane legata al castello — legata dall\'amore, dal ricordo, dai figli che vi ha messo al mondo.",
+                                'contents' => "Melusina non partì del tutto.\n\nLa notte prima che un signore di Lusignano muoia, appare sulla torre più alta, vestita di bianco, i capelli sciolti al vento. Piange, e i suoi pianti risuonano come l'acqua che scorre sulla pietra.\n\nRimane legata al castello — legata dall'amore, dal ricordo, dai figli che vi ha messo al mondo.",
                             ],
                             [
                                 'name' => 'Il penitente',
@@ -361,7 +361,7 @@ class MelusineSeederIt extends Seeder
                             ],
                             [
                                 'name' => 'Racconti dalle caverne',
-                                'contents' => "E Orribile? Nelle grotte del nord, i cacciatori raccontano la storia di una bestia con scaglie e occhi gialli. Si dice che abbia la forma di un uomo ma la fame di un serpente. Si dice che non attacchi mai senza essere provocata.\n\nNon sanno che è l\'ultimo figlio di Melusina.",
+                                'contents' => "E Orribile? Nelle grotte del nord, i cacciatori raccontano la storia di una bestia con scaglie e occhi gialli. Si dice che abbia la forma di un uomo ma la fame di un serpente. Si dice che non attacchi mai senza essere provocata.\n\nNon sanno che è l'ultimo figlio di Melusina.",
                             ],
                             [
                                 'name' => 'Un cumulo di pietre rotte',
@@ -512,7 +512,7 @@ class MelusineSeederIt extends Seeder
             $project,
             CodexEntryType::Organization,
             'La Casa di Lusignano',
-            "<p>La stirpe nobile fondata da Melusina e Raimondino, i cui figli conquistano corone attraverso l\'Europa e l\'Oriente prima che la casa si fonda in altre dinastie.</p>",
+            "<p>La stirpe nobile fondata da Melusina e Raimondino, i cui figli conquistano corone attraverso l'Europa e l'Oriente prima che la casa si fonda in altre dinastie.</p>",
             ['I Lusignani'],
             ['Casa nobile'],
         );

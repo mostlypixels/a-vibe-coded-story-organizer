@@ -417,7 +417,11 @@ is the architectural overview.
   rendered to string (HTML is never string-built in the service). Never blur the two.
 - **The README's plain-text description** comes from `App\Support\RichText::toPlainText()`, the
   rich-text module's home for stripping stored HTML to prose — the exporter calls it rather than
-  owning HTML-shape knowledge that has nothing to do with building a zip.
+  owning HTML-shape knowledge that has nothing to do with building a zip. Its sibling
+  `RichText::toXhtmlFragment()` does the parallel job for the **EPUB** exporter: it normalises a
+  sanitized rich-HTML `description` into well-formed XHTML (via `DOMDocument`) so an embedded act /
+  chapter / scene description clears the epub's XML-well-formedness gate. Both keep HTML-shape
+  knowledge in one place, beside the sanitizer.
 
 > [!WARNING]
 > **Export authorization is ownership, not just the admin gate.** The route sits behind `auth` +
@@ -481,6 +485,168 @@ is the same **[`documentation/export-format.md`](export-format.md)** the exporte
 > every axis — plus a second import of the same zip proving disambiguation. The HTTP layer, service
 > orchestration, and security gate also have their own focused suites (`ImportTest`,
 > `tests/Unit/Import/*`).
+
+## EPUB export (publication settings)
+
+**Admin → Export & import → Export → Ebook** lets a signed-in owner download one of their
+projects as a standard `.epub`, built by `App\Services\EpubExporter` on top of the
+`rampmaster/phpepub` library. Like `StaticSiteExporter` it is **HTTP-agnostic** (takes a
+`Project`, returns a finished temp-file path, cleans up on exception) so a future queued job
+could reuse it. The library owns the mechanical package (mimetype, `container.xml`, the OPF
+metadata/manifest/spine, the EPUB 3 nav document, the NCX, the zip); this service owns the
+**content** — every XHTML document (Blade under `resources/views/exports/epub/`, never
+string-built in PHP), the CSS, the metadata *values*, and the navigation shape.
+
+Two isolation rules are load-bearing and must not be "simplified" away:
+
+- **Scene bodies and the four front-/back-matter Markdown pages render through the service's
+  own private SmartPunct `CommonMarkConverter`** (smart dashes/ellipses/quotes), *never*
+  `Scene::renderedContents` — that accessor is the shared render path for the Story overview,
+  the share page, and the `book/` export, and must stay byte-for-byte identical.
+- **Rich-HTML fields (act/chapter/scene `description`, codex entry `description`) go through
+  one shared `App\Support\RichText::toXhtmlFragment()`** (`DOMDocument` load-HTML → save the
+  body fragment as XML) so a sanitized-but-not-necessarily-XHTML fragment — an unclosed `<p>`,
+  a bare `<br>` — becomes well-formed XHTML. Embedding such a fragment raw would fail the
+  package's hard XML gate (below). Markdown fields never touch this helper; rich-HTML fields
+  never touch the Markdown converter.
+
+> [!IMPORTANT]
+> **`validatePackage()` is a hard gate, run inside every `export()`.** Every shipped `.xhtml`
+> (this service's pages *and* the library's nav/cover pages) must parse with
+> `DOMDocument::loadXML()`, and the OPF must validate against the vendored EPUB 3 RelaxNG
+> schema (`resources/epub-schemas/`, no JVM/epubcheck at runtime). A failure there is a
+> **generator bug** and throws a plain `RuntimeException` (let it 500 and be logged) — it is
+> *not* `EpubExportException`, which is reserved for the one user-facing case: a project whose
+> skip-empty `filteredTree()` came back empty (nothing to export).
+
+### `PublicationSetting` drives everything
+
+The whole export is parameterised by one lazily-resolved `PublicationSetting`
+(`Project::publicationSettingOrDefault()` — an **unsaved default** instance when the project
+has no row; see the *Publication settings* model note). `export()` resolves it once and threads
+it through every private method. All formatting/ordering choices live on **enums**
+(`ChapterTitleFormat::format()`, `DividerType::dividerHtml()`,
+`TableOfContentsDepth::includesChapters()/includesScenes()`), never a `match` on a raw string
+in the service or a Blade view — `ChapterTitleFormat::format()` in particular is the single
+source of truth shared by the chapter page heading *and* its nav/TOC label, so the two can
+never drift.
+
+> [!IMPORTANT]
+> **Defaults reproduce the pre-feature output byte-for-byte.** Every metadata/cover toggle
+> defaults `true`; every *new* rendering (scene titles, all descriptions, front/back matter,
+> chapter covers, the codex appendix) defaults **off**. `EpubExporterTest`'s
+> `defaults_v1_regression` guard exports the same project twice — once on the lazy default
+> (no row) and once on an explicit `PublicationSetting::factory()` row — and asserts the two
+> `.epub`s are **content-identical**. Every later exporter change must keep it green; a new
+> gated feature that is off-by-default cannot alter a default project's output.
+
+> [!WARNING]
+> **The guard normalises the OPF timestamps; it does not compare raw `.epub` bytes.** The
+> library stamps `dc:date` / `dcterms:modified` from `time()` at finalize, so two back-to-back
+> exports that straddle a wall-clock second differ by those two lines even though every content
+> document is identical — under the parallel test runner that raced into an intermittent
+> failure. The guard therefore unzips both packages and compares **entry-by-entry**,
+> normalising only those two `time()`-derived OPF lines (`stripOpfTimestamps()`). Do not
+> "restore" it to a single raw-byte `assertSame` — that is the latent flake, not a stricter
+> check.
+
+### The `section_order` walk
+
+`addSections()` replaces what was once a hard-coded `title → toc → body` sequence: it walks
+`PublicationSetting::section_order` (an ordered JSON array of component keys — `title` pinned
+first by the model, `toc`/`body`/the matter sections movable via the config form's
+move-up/move-down idiom) and dispatches each key through a `match`:
+
+| Key | Method | Notes |
+| --- | --- | --- |
+| `title` | `addTitleSection()` | The story title page. Always first (the model pins it). |
+| `dedication`, `acknowledgements`, `preface`, `postface` | `addMatterSection()` | Markdown pages, one shared `matter.blade.php` view driven by `MATTER_SECTIONS`. |
+| `toc` | `addTocSection()` | The in-book TOC page (a real spine page, distinct from the reader-chrome nav). |
+| `body` | `addBody()` | The act/chapter/scene tree — the manuscript itself. |
+| `appendix` | `addAppendixSection()` | The optional codex appendix (below). |
+
+Each front-/back-matter section renders **only when its `include_*` toggle is on AND the
+Project's Markdown column is non-empty** — a disabled toggle *or* an empty field renders
+nothing, and this "enabled AND has content" rule extends to the appendix. A toggle gates a
+section on/off **independently** of its position in the order.
+
+### TOC/nav depth (`table_of_contents_depth`)
+
+The depth setting changes both the in-book TOC page (`renderToc()`) and the library nav that
+`addBody()` builds, in lockstep:
+
+- **`Chapters` (default)** — the two-level Act → Chapter tree. Each act is its own divider
+  page (a root nav entry); each chapter a nested page beneath it.
+- **`Scenes`** — adds a *third* nav level. Each chapter page emits `id="scene-{id}"` anchors
+  (`chapter-body.blade.php`, gated on this depth **only**, so the default depth stays
+  byte-for-byte as before), and the nav hangs a per-scene entry under the chapter whose href is
+  `chapter-{id}.xhtml#scene-{id}` — added with **null content**, which the library registers as
+  an in-page anchor entry *without* a new spine page.
+- **`Acts`** — the nav lists **only acts**. This one is not a simple "skip the chapter nav
+  points" branch, and the reason is a hard library constraint:
+
+> [!WARNING]
+> **`rampmaster/phpepub` couples spine placement and nav entries — there is no
+> spine-without-nav API.** Every content-bearing `addChapter()` adds a manifest item *and* a
+> spine `itemref` *and* a nav point together; `NavPoint::setNavHidden(true)` is honoured by the
+> NCX but **not** by the EPUB 3 nav document (confirmed by a standalone spike). So you cannot
+> put a chapter page in the reading order at `Acts` depth while keeping it out of the nav.
+> `Acts` depth therefore renders **one combined spine page per act**
+> (`renderActWithChapters()` → `act-combined.blade.php`): the act divider plus all its chapters
+> in a single `act-{id}.xhtml` document (each chapter still its own `<section>` for the
+> page-break CSS). One `addChapter()` per act ⇒ exactly one nav entry per act, and **no
+> standalone `chapter-{id}.xhtml` files are packaged** at this depth. The standalone-page shape
+> is impossible here without shipping an unreadable book (chapters in neither spine nor nav) or
+> fragile regex-surgery on the finalized nav.
+
+`act-combined.blade.php` and the standalone `act`/`chapter` pages share their inner bodies via
+`partials/act-body.blade.php` / `partials/chapter-body.blade.php` (and the exporter's
+`actViewData()` / `chapterViewData()` helpers), so the two rendering paths cannot drift.
+
+### Chapter cover pages
+
+`addChapterCoverPage()` inserts a full-page cover image before a chapter, gated by
+`include_chapter_covers` **and** a `cover_image` set on the chapter **and** the file still
+existing on the `public` disk (a missing file is skipped silently — the export never fails,
+mirroring the project cover). It is a **nav sibling** of the chapter (same level under the act,
+immediately before the chapter's own entry), *not* a child, so it never disturbs the `Scenes`
+depth's own nested scene anchors. At `Acts` depth — where there is no standalone chapter page —
+each cover page is a root-level nav entry immediately before the combined act page that holds
+that chapter. The image bytes go through the library's generic `addFile()` (manifest-only),
+namespaced `images/chapter-cover-{id}-{basename}`, never `setCoverImage()` (that one-shot API is
+reserved for the single package-level project cover in `applyCover()`).
+
+### The codex appendix
+
+`addAppendixSection()` fills the reserved `appendix` slot: an optional back-matter appendix of
+codex entries — a heading page (a root nav entry) plus one page per entry nested beneath it
+(entry name + `description` run through `RichText::toXhtmlFragment()`). It is a **true no-op**
+unless all three hold: `include_codex_appendix` is on, at least one `appendix_entry_types` is
+selected, **and** the project actually has entries of those types (a lone heading with no
+entries is pointless). Entries load filtered to the selected types, ordered `(type, name)`.
+
+When `appendix_include_images` is on, each entry's `media` relation is eager-loaded (ordered
+`(collection, position)`, matching the archive) and `addAppendixEntryImage()` embeds the
+entry's **first image only** — deliberately the first media row that is *both* an `image/*` MIME
+type *and* has bytes on disk, so a metadata-only imported row (null path) or a non-image
+reference file (a PDF) is skipped over rather than embedded as a broken `<img>`. A missing file
+returns null and the entry page renders text-only. Embedding all images, and a `Review` entity,
+are explicit V2 non-goals. When the images toggle is off, `media` is never loaded — no wasted
+query.
+
+### Publication settings (the model)
+
+`App\Models\PublicationSetting` is **one lazy row per project**: never auto-created in
+`booted()`, no backfill migration. `Project::publicationSettingOrDefault()` returns an unsaved
+instance whose field defaults match `PublicationSettingFactory::definition()` field-for-field
+(the two are the reference the defaults===v1 guard leans on — keep them in sync). The config
+form is `PublicationSettingController` + `UpdatePublicationSettingRequest`, whose shared
+`configRules()` static method is the single rule set used by **both** the form's `rules()` and
+the archive importer's untrusted-config validation (see *Static site import* / the export-format
+doc), so the form and the import path can never validate differently. Authorization is the
+ordinary `ProjectPolicy` walk (`update` to write, `view` to read/export) — no new policy.
+`SECTION_KEYS` / `PINNED_FIRST_SECTION` and the `moveSectionUp/Down` helpers keep the sortable
+section order's membership and pinning rules in exactly one place.
 
 ## Project search
 
@@ -579,3 +745,5 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 | Reusable domain workflows | `app/Services` (e.g. `ProjectSearch`), or an Action class |
 | Constant / reference data | `app/Support` (e.g. `PlotlineColors`), `app/Enums` |
 | Reusable UI | `resources/views/components` (Blade components) |
+| Containerized dev/prod environment | `Dockerfile`(`.dev`), `docker-compose*.yml`, `docker/` — see [`documentation/docker.md`](docker.md) |
+| Forced versions of transitive npm packages | `overrides` in `package.json` — see [`documentation/dependency-overrides.md`](dependency-overrides.md) |

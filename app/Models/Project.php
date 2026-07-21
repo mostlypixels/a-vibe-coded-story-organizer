@@ -5,11 +5,13 @@ namespace App\Models;
 use App\Enums\BookLanguage;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CodexMediaService;
+use App\Services\CoverImageService;
 use App\Support\PlotlineColors;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
@@ -26,6 +28,10 @@ class Project extends Model
         'rights',
         'isbn',
         'cover_image',
+        'dedication',
+        'acknowledgements',
+        'preface',
+        'postface',
     ];
 
     protected $casts = [
@@ -65,6 +71,50 @@ class Project extends Model
     public function tags(): HasMany
     {
         return $this->hasMany(Tag::class);
+    }
+
+    public function publicationSetting(): HasOne
+    {
+        return $this->hasOne(PublicationSetting::class);
+    }
+
+    /**
+     * Return the project's publication setting, or an unsaved default instance
+     * when no row exists. Never returns null, enabling code to access settings
+     * for projects that never visited the config form.
+     *
+     * The unsaved instance has all default attributes set to match what the
+     * database schema defaults would apply on insertion.
+     */
+    public function publicationSettingOrDefault(): PublicationSetting
+    {
+        if ($this->publicationSetting) {
+            return $this->publicationSetting;
+        }
+
+        return $this->publicationSetting()->make([
+            'include_project_cover' => true,
+            'include_chapter_covers' => false,
+            'include_author' => true,
+            'include_publisher' => true,
+            'include_rights' => true,
+            'include_isbn' => true,
+            'include_scene_titles' => false,
+            'include_act_descriptions' => false,
+            'include_chapter_descriptions' => false,
+            'include_scene_descriptions' => false,
+            'include_dedication' => false,
+            'include_acknowledgements' => false,
+            'include_preface' => false,
+            'include_postface' => false,
+            'chapter_title_format' => 'chapter_number_title',
+            'table_of_contents_depth' => 'chapters',
+            'divider_type' => 'horizontal_rule',
+            'section_order' => PublicationSetting::SECTION_KEYS,
+            'include_codex_appendix' => false,
+            'appendix_entry_types' => [],
+            'appendix_include_images' => false,
+        ]);
     }
 
     /**
@@ -156,6 +206,22 @@ class Project extends Model
             // otherwise project deletion leaks an orphan cover on the public disk.
             if ($project->cover_image !== null) {
                 Storage::disk('public')->delete($project->cover_image);
+            }
+
+            // project → acts → chapters cascades at the DB level, bypassing both
+            // Act::deleting and Chapter::deleting — so purge every surviving chapter's
+            // cover file here (one query over the project's chapters, joined through
+            // their acts) before the cascade drops the rows, otherwise a project
+            // deletion leaks an orphan cover per chapter (media-lifecycle.md pitfall).
+            $coverImageService = app(CoverImageService::class);
+
+            $chapterCovers = Chapter::query()
+                ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
+                ->whereNotNull('cover_image')
+                ->pluck('cover_image');
+
+            foreach ($chapterCovers as $coverPath) {
+                $coverImageService->delete($coverPath);
             }
         });
     }

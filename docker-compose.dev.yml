@@ -1,0 +1,60 @@
+name: a-vibe-coded-story-organizer
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: a-vibe-coded-story-organizer_app_dev
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=${APP_KEY:-}
+      - DB_CONNECTION=sqlite
+      - LOG_CHANNEL=stack
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+    ports:
+      - "${APP_PORT:-8000}:80"
+      - "${VITE_PORT:-5173}:5173"
+    # Xdebug connects OUT from the container to the IDE listening on the host, so
+    # no debug port is published here. Docker Desktop (Windows/Mac) provides
+    # host.docker.internal already; on Linux it does not exist unless mapped like
+    # this, and without it Xdebug silently fails to reach the IDE.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/vendor
+    networks:
+      - a-vibe-coded-story-organizer
+    depends_on:
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Catches outgoing mail instead of delivering it, and shows it in a web UI at
+  # :8025. Replaces MailHog, unmaintained since 2020; Mailpit is a drop-in
+  # replacement speaking SMTP on the same port.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: a-vibe-coded-story-organizer_mailpit_dev
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - a-vibe-coded-story-organizer
+
+networks:
+  a-vibe-coded-story-organizer:
+    driver: bridge

@@ -20,9 +20,10 @@ invoking this, not as part of it.
 
 2. **Update `CHANGELOG.md` as part of the change set** (skip only if the diff is
    docs/tooling so trivial it needs no entry). Per the convention in `CLAUDE.md`: add a
-   dated `## YYYY-MM-DD — <title> (#PR)` section at the top, below `[Unreleased]`,
-   dated today (adjust if the merge slips to another day; the PR number can be
-   backfilled by editing the heading after `gh pr create` prints it, or left off).
+   dated `## YYYY-MM-DD — <title>` section at the top, below `[Unreleased]`, dated
+   today (adjust if the merge slips to another day). **Leave the `(#PR)` suffix off** —
+   the number does not exist yet, and `pr-land.sh` stamps it onto the newest dated
+   heading automatically once `gh pr create` has assigned one.
 
 3. **Branch.** If still on `master`, create a short kebab-case feature branch named for
    the change set (`git checkout -b <name>`). If already on a feature branch, stay on it.
@@ -38,9 +39,12 @@ invoking this, not as part of it.
    ```bash
    bash scripts/pr-land.sh "<title>" <body-file>
    ```
-   The script does push → `gh pr create` → arm squash auto-merge → watch checks →
+   The script does push → `gh pr create` → stamp `(#PR)` onto the newest dated
+   changelog heading and push that fixup → arm squash auto-merge → watch checks →
    poll until the PR state is `MERGED` → `git checkout master && git pull`, echoing
-   progress lines as it goes. The *why* still matters: auto-merge is silent, so
+   progress lines as it goes. The stamp is skipped when the branch doesn't touch
+   `CHANGELOG.md` or the heading is already numbered, so it needs nothing from you
+   beyond leaving the suffix off in step 2. The *why* still matters: auto-merge is silent, so
    "armed" is not "shipped" — the script enforces this by exiting 0 only once the
    PR is actually `MERGED` and local master is updated. Do not declare the change
    shipped until it does. If auto-merge can't be armed (repo setting off), it prints

@@ -28,7 +28,7 @@ class AdminConfigurationTest extends TestCase
             'admin.index',
             'admin.settings.edit',
             'admin.appearance.edit',
-            'admin.data.index',
+            'admin.data.export-project',
             'admin.database.edit',
         ];
     }
@@ -80,7 +80,7 @@ class AdminConfigurationTest extends TestCase
 
         $this->actingAs($secondUser)->get(route('admin.settings.edit'))->assertOk();
         $this->actingAs($secondUser)->get(route('admin.appearance.edit'))->assertOk();
-        $this->actingAs($secondUser)->get(route('admin.data.index'))->assertOk();
+        $this->actingAs($secondUser)->get(route('admin.data.export-project'))->assertOk();
         $this->actingAs($secondUser)->get(route('admin.database.edit'))->assertOk();
     }
 
@@ -95,7 +95,10 @@ class AdminConfigurationTest extends TestCase
         $sidebarLinks = [
             'admin.settings.edit' => route('admin.settings.edit'),
             'admin.appearance.edit' => route('admin.appearance.edit'),
-            'admin.data.index' => route('admin.data.index'),
+            // The sidebar's "Export & import" link always points at admin.data.index
+            // (which merely redirects to the first sub-page); it stays highlighted
+            // active on all three admin.data.* sub-pages via routeIs('admin.data.*').
+            'admin.data.export-project' => route('admin.data.index'),
             'admin.database.edit' => route('admin.database.edit'),
         ];
 
@@ -109,10 +112,18 @@ class AdminConfigurationTest extends TestCase
                 "Expected {$currentRoute} to mark its own sidebar link active."
             );
 
-            // Exactly one aria-current="page" in the sidebar for this page.
+            // Exactly one aria-current="page" WITHIN THE SIDEBAR for this page.
+            // Scoped to the sidebar's own <nav> — task 03 added a second,
+            // independent aria-current on the page's own sub-nav
+            // (admin/data/partials/subnav.blade.php), which is expected and
+            // covered separately by DataTransferTest.
+            $this->assertMatchesRegularExpression('/<nav aria-label="Configuration">(.*?)<\/nav>/s', $html);
+            preg_match('/<nav aria-label="Configuration">(.*?)<\/nav>/s', $html, $matches);
+            $sidebarHtml = $matches[1];
+
             $this->assertSame(
                 1,
-                substr_count($html, 'aria-current="page"'),
+                substr_count($sidebarHtml, 'aria-current="page"'),
                 "Expected exactly one active sidebar link on {$currentRoute}."
             );
         }
@@ -147,48 +158,16 @@ class AdminConfigurationTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)->get(route('admin.settings.edit'))->assertSee('General settings');
-        $this->actingAs($user)->get(route('admin.data.index'))->assertSee('Export &amp; import', false);
+        $this->actingAs($user)->get(route('admin.data.export-project'))->assertSee('Export project');
         $this->actingAs($user)->get(route('admin.database.edit'))->assertSee('Database configuration');
     }
 
     // ---------------------------------------------------------------------
-    // Export & import (task 03) — the two-tab stub shell. The backup/restore
-    // engine is a separate future spec, so there is no export/import route to
-    // test; the tab switching itself is client-side Alpine. What the server
-    // renders is the accessible tab structure and both "coming soon" panels.
+    // Export & import (task 03) — split into three server-rendered pages
+    // (export-project / export-ebook / import) reached by ordinary links, not
+    // JS tabs. Full coverage of the split (sub-nav active state, each page's
+    // own controls, the data.index redirect) lives in DataTransferTest.
     // ---------------------------------------------------------------------
-
-    public function test_export_import_page_renders_both_tabs(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->get(route('admin.data.index'));
-
-        $response->assertOk();
-        $response->assertSee('Export &amp; import', false);
-
-        // Both tab controls, wired to their panels (WAI-ARIA tabs pattern).
-        $response->assertSee('id="tab-export"', false);
-        $response->assertSee('id="tab-import"', false);
-        $response->assertSee('role="tab"', false);
-        $response->assertSee('aria-controls="panel-export"', false);
-        $response->assertSee('aria-controls="panel-import"', false);
-    }
-
-    public function test_export_import_page_shows_export_form_and_import_upload_form(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->get(route('admin.data.index'));
-
-        // Tab switching is client-side; both panels are present in the HTML.
-        // The Export panel now carries a real form (or its empty state — this
-        // user owns no project, so the empty-state prompt shows). The Import
-        // panel now carries its own real upload form (task 08).
-        $response->assertSee('Create a project first to export it.');
-        $response->assertSee(route('admin.data.import'));
-        $response->assertSee('Archive (.zip)');
-    }
 
     // ---------------------------------------------------------------------
     // Database configuration (task 04) — a read-only display of the ACTIVE

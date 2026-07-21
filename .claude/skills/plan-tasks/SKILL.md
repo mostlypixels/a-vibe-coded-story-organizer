@@ -49,6 +49,16 @@ suffix rule when this folder moves in step 8. Below, **`<dir>`** means the match
    Order by dependency, not just narrative flow (data model before the UI that reads
    it, etc.).
 
+   **Split heavy tasks here, not later.** If a task is shaping up as "the big one" —
+   several interacting concerns, or you catch yourself about to write "the heaviest
+   slice" in its scope — that is the signal to break it into two or more ordered task
+   files now, each independently verifiable. Nothing downstream can split it: neither
+   `ship-plan` nor `plan-implementer` has a sub-step protocol, so an oversized task gets
+   split by hand mid-flight, with the caller inventing the boundary and hand-writing
+   "don't do part 2 yet" guardrails into each prompt. Getting granularity right at
+   planning time is far cheaper. If the natural boundary isn't obvious, ask the user
+   while you still have them in the grill (step 2).
+
 4. **Write `<dir>/plan/00-overview.md`** — the manual, never itself
    implemented or moved. Include:
    - The execution order and a one-line purpose for each task.

@@ -8,15 +8,54 @@
  */
 section.title-page,
 section.toc,
+section.matter,
 section.act,
-section.chapter {
+section.chapter,
+section.chapter-cover,
+section.appendix,
+section.codex-entry {
     break-before: page;
     page-break-before: always;
 }
 
 section.title-page,
-section.act {
+section.act,
+section.appendix {
     text-align: center;
+}
+
+/*
+ * A full-page chapter cover image (task 12): fills the page, no cropping distortion.
+ * `object-fit` is ignored by reader engines that only understand the fallback
+ * `max-width`/`max-height`, which still keeps the image within the page bounds.
+ */
+section.chapter-cover {
+    text-align: center;
+}
+
+section.chapter-cover img {
+    max-width: 100%;
+    max-height: 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/*
+ * A codex appendix entry's first image (task 13): a bounded, centred illustration sitting
+ * ABOVE the entry's description within the entry page — not a full-bleed cover page like
+ * section.chapter-cover. `max-width`/`max-height` keep it inside the page bounds without
+ * distortion on reader engines that ignore `object-fit`.
+ */
+section.codex-entry .codex-image {
+    text-align: center;
+    margin: 0 0 1em;
+}
+
+section.codex-entry .codex-image img {
+    max-width: 100%;
+    max-height: 60%;
+    object-fit: contain;
 }
 
 section.title-page .story-title {
@@ -29,4 +68,15 @@ section.act h1 {
 
 section.act .act-name {
     font-size: 1.25em;
+}
+
+/*
+ * The decorative scene divider (DividerType::Decorative renders
+ * `<p class="divider">* * *</p>`): a centered ornament with breathing room above and
+ * below, standing in for the plain <hr/>. The horizontal-rule divider is the browser
+ * default <hr/> and needs no rule.
+ */
+p.divider {
+    text-align: center;
+    margin: 1.5em 0;
 }

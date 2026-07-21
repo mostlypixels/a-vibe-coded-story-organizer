@@ -32,7 +32,7 @@ The archive's root descriptor, written once per export:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "project_id": 42,
   "exported_at": "2026-07-09T14:03:11+00:00",
   "includes_media": true
@@ -51,7 +51,80 @@ The archive's root descriptor, written once per export:
 `version` is bumped **only** on a breaking change to the `data/` layout — a renamed or
 removed field, a changed directory scheme, a changed relationship encoding. Purely
 additive changes (a new optional field, a new entity type folder) do **not** bump it;
-an importer must ignore keys it does not recognize. The current version is **1**.
+an importer must ignore keys it does not recognize.
+
+> [!NOTE]
+> **Version 2** (the epub-configuration feature) is an exception to the "additive
+> changes don't bump" rule: it bumps once, deliberately, to cover every new field the
+> whole feature adds across its tasks — the four project front-/back-matter Markdown
+> fields below, chapter covers, and the serialized publication setting — rather than
+> bumping per task. All of it is still additive: a version 1 archive imports cleanly,
+> with every new field left `null`/default. `ImportRules::SUPPORTED_MANIFEST_VERSIONS`
+> accepts both `1` and `2`.
+
+## `data/publication-setting.json`
+
+The project's EPUB **publication settings** — the include-toggles, formatting
+choices, section order, and appendix options edited on the Export-ebook config
+page (the `App\Models\PublicationSetting` row, one per project). A flat,
+project-level descriptor like `data/tags.json`, written **only when the project
+has a saved `publication_settings` row**; a project that never visited the config
+form omits the file entirely (its lossless meaning is "the lazy default").
+
+```json
+{
+  "include_project_cover": true,
+  "include_chapter_covers": false,
+  "include_scene_titles": false,
+  "include_act_descriptions": false,
+  "include_chapter_descriptions": false,
+  "include_scene_descriptions": false,
+  "include_dedication": false,
+  "include_acknowledgements": false,
+  "include_preface": false,
+  "include_postface": false,
+  "include_author": true,
+  "include_publisher": true,
+  "include_rights": true,
+  "include_isbn": true,
+  "chapter_title_format": "chapter_number_title",
+  "table_of_contents_depth": "chapters",
+  "divider_type": "horizontal_rule",
+  "section_order": ["title", "dedication", "acknowledgements", "preface", "toc", "body", "postface", "appendix"],
+  "include_codex_appendix": false,
+  "appendix_entry_types": [],
+  "appendix_include_images": false
+}
+```
+
+Every value is the **raw persisted column value** (booleans as booleans, the three
+enum columns as their backing string, the two ordered lists as arrays) — never
+rendered. `project_id`, `id`, and timestamps are deliberately **omitted**: the
+import remaps the setting onto the freshly-created project.
+
+> [!IMPORTANT]
+> **This descriptor is validated as UNTRUSTED input on import, never trusted.**
+> Unlike the content descriptors, a malformed publication setting must **never
+> fail the whole import** — the config is a presentation preference. The importer
+> (`ProjectGraphImporter::readPublicationSetting()`) validates it against the exact
+> rules the config form uses (`UpdatePublicationSettingRequest::configRules()`);
+> on **any** failure — unreadable/non-object JSON, an illegal enum, a broken
+> `section_order` — it **logs, skips the config, and imports the content anyway**,
+> leaving the project on the lazy default. Unknown `appendix_entry_types` are the
+> one soft case: individual unknown codex types are **dropped**, and the rest of
+> the config still applies. `ArchiveValidator` allow-lists the path
+> (`ImportRules::ALLOWED_FILES`) but does **not** schema-check its content — that
+> is entirely the importer's job.
+
+> [!NOTE]
+> **The codex appendix carries no archive artifact of its own.** The three appendix
+> fields (`include_codex_appendix`, `appendix_entry_types`, `appendix_include_images`)
+> are pure EPUB-render *preferences* — at export time the appendix pages are built from
+> the entries and media already written under the **Codex branch** below. So the
+> round-trip needs nothing beyond these three booleans/arrays in
+> `publication-setting.json`: an imported project re-renders the appendix from its
+> restored Codex, selecting the same entry types and embedding each entry's first image
+> exactly as the source did.
 
 ## The Story branch
 
@@ -68,6 +141,10 @@ A content field is never inlined into JSON — it is written as a **sibling file
 - `contents.md` — raw Markdown (scene prose, `contents` column, verbatim — **not** rendered).
 - `description.html`, `notes.html` — the stored **sanitized HTML fragment** (no `<!doctype>`,
   no wrapper, not re-rendered).
+- `dedication.md`, `acknowledgements.md`, `preface.md`, `postface.md` — the project's four
+  front-/back-matter fields, raw Markdown like `contents.md` (never rich HTML, never
+  re-rendered). Read on import through the same Markdown sanitizer gate as a scene's
+  `contents.md`.
 
 > [!IMPORTANT]
 > A **null or empty** content field omits **both** the file and its `*_file` key. This
@@ -78,20 +155,34 @@ A content field is never inlined into JSON — it is written as a **sibling file
 
 ```
 data/project/
-  project.json            { id, name, description_file? }
+  project.json            { id, name, description_file?, dedication_file?,
+                             acknowledgements_file?, preface_file?, postface_file? }
   description.html
+  dedication.md
+  acknowledgements.md
+  preface.md
+  postface.md
 data/acts/<id>-slug/
   act.json                { id, name, position, project_id, description_file? }
   description.html
   chapters/<id>-slug/
-    chapter.json          { id, name, position, act_id, description_file? }
+    chapter.json          { id, name, position, act_id, description_file?, cover_file? }
     description.html
+    cover/<name>          the chapter cover image bytes (only when media is included)
     scenes/<id>-slug/
       scene.json          (see below)
       contents.md
       description.html
       notes.html
 ```
+
+`chapter.json`'s `cover_file` (epub-configuration, task 07) is present only when the chapter
+has a cover image; it links a co-located `cover/<name>` file, exactly like a codex entry's
+`cover/…` media. The **bytes** ship only when the export includes media (the "Include images &
+files" toggle) — a metadata-only export declares `cover_file` but ships no bytes, and the
+importer then restores the chapter with a **null** cover. The cover is a plain path field with
+no declared mime, so the import security gate content-sniffs it on **bytes alone** (`finfo` +
+`getimagesize` must agree on an allowed image type); a forged image rejects the archive.
 
 `scene.json`:
 
