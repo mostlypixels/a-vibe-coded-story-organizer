@@ -57,7 +57,7 @@ set belongs in its pull request description.
   `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
   `documentation/export-format.md`.
 
-## 2026-07-21 — Force a patched `shell-quote` via an npm override
+## 2026-07-21 — Force a patched `shell-quote` via an npm override (#17)
 
 ### Fixed
 
