@@ -45,6 +45,14 @@ set belongs in its pull request description.
   the dev container raised `Mailer [mailhog] is not defined`. Now `smtp` pointed at the
   mail catcher.
 
+- **`composer test` failed inside the Docker container** with 248 failures that did not
+  reproduce on the host. PHPUnit's `<env>` entries do not override variables already
+  present in the real environment unless marked `force="true"`, so the container's
+  `APP_ENV=local` beat `phpunit.xml`'s `APP_ENV=testing`. `ValidateCsrfToken` only skips
+  itself in the `testing` environment, so CSRF was enforced and every write request in the
+  suite returned 419. All `phpunit.xml` env entries are now forced, making `composer test`
+  behave identically on the host, in the container, and in CI.
+
 - **Docker: `make rebuild` silently kept stale dependencies.** `vendor/` and
   `node_modules/` are anonymous volumes, and Compose carries those over when recreating a
   container — so rebuilding after a `composer.json`/`package.json` change left the old
