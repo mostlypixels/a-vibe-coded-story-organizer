@@ -57,7 +57,24 @@ set belongs in its pull request description.
   `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
   `documentation/export-format.md`.
 
-## 2026-07-21 — Docker environment fixes and dependency refresh
+## 2026-07-21 — EPUB export: XML declaration and config layout
+
+### Fixed
+
+- **The EPUB export could not render under `short_open_tag=On`.** The layout emitted its
+  XML declaration as `{!! '<?xml …' !!}`, but Blade runs PHP's own lexer over the raw
+  template before compiling `{!! !!}` into an echo — so `<?xml` was read as a short open
+  tag during that pass and the build failed with `unexpected identifier "version"`,
+  regardless of the `{!! !!}` wrapping. The declaration is now built by concatenating
+  `'<'` with the rest, which never puts the two characters adjacent in the source.
+  This surfaced in Docker: the official PHP images ship no `php.ini`, so PHP's compiled-in
+  default (`short_open_tag=On`) applies there, while a typical host `php.ini` sets it Off.
+
+### Changed
+
+- The EPUB publication-settings form is grouped in a labelled box showing the loaded
+  project's name, so it is clear which project the settings belong to, and the project
+  picker's **Load** button is promoted to the primary style as the page's entry action.
 
 ### Added
 
