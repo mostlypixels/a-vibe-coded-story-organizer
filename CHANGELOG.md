@@ -57,6 +57,24 @@ set belongs in its pull request description.
   `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
   `documentation/export-format.md`.
 
+## 2026-07-21 — Upgrade the test toolchain to PHPUnit 13 and ParaTest 7.23
+
+### Changed
+
+- Upgraded the development test toolchain to PHPUnit 13.2 and ParaTest 7.23 (from PHPUnit
+  11.5 / ParaTest 7.8), pulling ~23 transitive `sebastian/*` and `phpunit/php-*` majors with
+  them. ParaTest could not move past 7.8 while the PHPUnit constraint stayed on `^11.5`
+  (ParaTest 7.23 requires `phpunit/phpunit ^13.2`), so the two only move together.
+  `composer test` is unchanged and the suite passes as-is — no test, `phpunit.xml`, or
+  assertion changes were needed, and PHPUnit 13 raised no deprecation or schema warnings.
+  Both are dev-only dependencies, so the production image (`composer install --no-dev`) is
+  unaffected.
+
+> [!NOTE]
+> After pulling this, Docker users need `make rebuild` rather than `make build` — `vendor/`
+> lives in an anonymous volume that Compose carries over to a recreated container, so a plain
+> build leaves the old PHPUnit 11 mounted on top of the new image.
+
 ## 2026-07-21 — EPUB export: XML declaration and config layout
 
 ### Fixed
