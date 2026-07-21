@@ -4,16 +4,6 @@ set -e
 
 echo "Starting Imagoldfish application setup..."
 
-# Wait for Redis to be ready (development)
-if [ "$APP_ENV" = "local" ]; then
-    echo "Waiting for Redis..."
-    until nc -z redis 6379; do
-        echo "Redis is unavailable - sleeping"
-        sleep 1
-    done
-    echo "Redis is up"
-fi
-
 # APP_KEY: in dev the whole repo (including .env) is bind-mounted, so
 # `key:generate` can write a key back to .env once and it persists across
 # restarts. In production there is no .env file in the image (by design —

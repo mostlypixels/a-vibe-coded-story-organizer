@@ -1,5 +1,3 @@
-version: '3.8'
-
 name: a-vibe-coded-story-organizer
 
 services:
@@ -23,24 +21,7 @@ services:
       - ./storage:/app/storage
     networks:
       - a-vibe-coded-story-organizer
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:7-alpine
-    container_name: a-vibe-coded-story-organizer_redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    networks:
-      - a-vibe-coded-story-organizer
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
 
 networks:
   a-vibe-coded-story-organizer:
     driver: bridge
-
-volumes:
-  redis_data:

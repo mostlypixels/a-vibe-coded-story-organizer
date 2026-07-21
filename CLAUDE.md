@@ -15,7 +15,7 @@ The canonical commands for this project (referenced by the skills and agents in 
 
 These are the same commands whether run against a local PHP/Node install or inside
 Docker (`make test`, `make lint`, `make shell` then `npm run build`, `make up`) — see
-`documentation/docker.md`. Docker is available for anyone without a local PHP/Node/Redis
+`documentation/docker.md`. Docker is available for anyone without a local PHP/Node
 setup; it isn't required, and it doesn't replace the commands above.
 
 `master` is protected: direct pushes are rejected. All changes ship as branch → PR →

@@ -17,9 +17,49 @@ set belongs in its pull request description.
 
 - **Docker support.** Production (`Dockerfile`, `docker-compose.yml`) and development
   (`Dockerfile.dev`, `docker-compose.dev.yml`, `Makefile`) container setups, so the app
-  can run without a local PHP/Node/Redis install. Documented in `documentation/docker.md`;
+  can run without a local PHP/Node install. Documented in `documentation/docker.md`;
   `docker/entrypoint.sh` generates a fresh `APP_KEY` per instance on first boot rather
   than shipping a shared one.
+
+### Changed
+
+- **Composer dependencies refreshed** within the existing constraints (Laravel 13.20.0 →
+  13.21.1, Guzzle 7.14.2 → 7.15.1, plus patch bumps). PHPUnit deliberately stays on
+  `^11.5.50`; `brianium/paratest` is pinned behind it (7.23.0 requires PHPUnit `^13.2`),
+  so those two must be upgraded together in their own change.
+
+- **Docker: MailHog replaced with Mailpit.** MailHog has been unmaintained since 2020;
+  Mailpit is a drop-in replacement on the same SMTP port, with the UI still at `:8025`.
+
+### Fixed
+
+- **Docker: Xdebug was installed but could never connect.** The image enabled the
+  extension without configuring it, so it ran in the default `develop` mode — which does
+  not include step debugging — and the compose file published port 9000 (Xdebug 2's
+  default, and php-fpm's own port) even though Xdebug 3 dials *out* to the IDE. New
+  `docker/xdebug.ini` sets `mode=debug` on port 9003 via `host.docker.internal`, with
+  `start_with_request=trigger` so tests aren't slowed when not debugging.
+
+- **Docker: mail was misconfigured in development.** `MAIL_MAILER=mailhog` is not a
+  Laravel mail driver (`config/mail.php` defines no such transport), so sending mail from
+  the dev container raised `Mailer [mailhog] is not defined`. Now `smtp` pointed at the
+  mail catcher.
+
+- **Docker: `make rebuild` silently kept stale dependencies.** `vendor/` and
+  `node_modules/` are anonymous volumes, and Compose carries those over when recreating a
+  container — so rebuilding after a `composer.json`/`package.json` change left the old
+  dependencies mounted over the new image. `make rebuild` now recreates with
+  `--renew-anon-volumes`.
+
+### Removed
+
+- **Docker: the Redis container.** Cache, sessions, and the queue all use database drivers
+  whose tables ship with Laravel's default migrations, so Redis was a second service doing
+  nothing at this scale (`CACHE_STORE` is now `database`). `config/database.php` still
+  reads the `REDIS_*` variables if a deployment later needs it.
+
+- **Obsolete Compose `version:` key** from both compose files, and the end-of-life
+  `docker-compose` (v1) invocation in the `Makefile`, now `docker compose`.
 
 - **Configurable EPUB export.** The ebook export (**Admin → Export & import → Export →
   Ebook**) is now driven by a per-project **publication settings** form, so an author controls

@@ -66,6 +66,9 @@ RUN npm install
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.dev.conf /etc/supervisord.conf
 COPY docker/php.ini /usr/local/etc/php/conf.d/laravel.ini
+# Overwrites the bare `zend_extension=xdebug` line that docker-php-ext-enable
+# wrote above, adding the settings that actually make step debugging work.
+COPY docker/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
@@ -78,7 +81,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 RUN mkdir -p /var/run/nginx && \
     chown -R laravel:laravel /var/run/nginx /var/lib/nginx
 
-EXPOSE 80 5173 9000
+# 80 = nginx, 5173 = Vite HMR. No Xdebug port: Xdebug dials out to the IDE on the
+# host, it does not accept inbound connections (see docker/xdebug.ini).
+EXPOSE 80 5173
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

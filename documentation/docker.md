@@ -1,8 +1,8 @@
 # Docker
 
 Imagoldfish can run in Docker instead of a local PHP/Node install. Docker is the
-supported way to run the full stack (PHP, Redis, MailHog) without installing
-those services on the host machine.
+supported way to run the full stack (PHP, Nginx, Node) without installing those
+on the host machine.
 
 > [!NOTE]
 > This does not replace `composer test` / `composer lint` / `npm run build` as the
@@ -20,17 +20,25 @@ those services on the host machine.
 
 ```bash
 cp .env.docker .env
-make up          # builds and starts app, redis, mailhog
+make up          # builds and starts app + mailpit
 make migrate     # in another terminal, once the app container is up
 ```
 
 - App: http://localhost:8000
 - Vite (HMR): http://localhost:5173
-- MailHog UI: http://localhost:8025
+- Mailpit UI: http://localhost:8025
 
 `make up` without a Makefile target on your platform is just
-`docker-compose -f docker-compose.dev.yml up`; every `make` target in this doc is a
+`docker compose -f docker-compose.dev.yml up`; every `make` target in this doc is a
 thin alias documented in the root `Makefile` (`make help` lists them all).
+
+> [!WARNING]
+> After changing `composer.json` or `package.json` — or pulling a branch that did —
+> run **`make rebuild`**, not `make build && make up`. `vendor/` and `node_modules/`
+> live in anonymous volumes, and Compose reuses an existing anonymous volume when it
+> recreates a container, so a plain rebuild leaves the *old* dependencies mounted
+> over your new image. The symptom is a build that appears to succeed and change
+> nothing. `make rebuild` passes `--renew-anon-volumes`, which is the fix.
 
 ## Everyday commands
 
@@ -48,25 +56,52 @@ thin alias documented in the root `Makefile` (`make help` lists them all).
 Anything not covered by a `make` target can be run directly:
 
 ```bash
-docker-compose -f docker-compose.dev.yml exec app php artisan <command>
-docker-compose -f docker-compose.dev.yml exec app npm run build
+docker compose -f docker-compose.dev.yml exec app php artisan <command>
+docker compose -f docker-compose.dev.yml exec app npm run build
 ```
 
 ## Services
 
-- **app** — PHP 8.4-FPM + Nginx (via Supervisor), built from `Dockerfile` (production)
+- **app** — PHP-FPM + Nginx (via Supervisor), built from `Dockerfile` (production)
   or `Dockerfile.dev` (adds Xdebug, Node/npm, hot-reload volume mounts).
-- **redis** — cache/session store.
-- **mailhog** — catches outgoing mail in development; UI at `:8025`.
+- **mailpit** — catches outgoing mail in development; UI at `:8025`. Dev only.
+
+There is deliberately **no Redis container**. Cache, sessions, and the queue all use
+the database (`CACHE_STORE=database`, `SESSION_DRIVER=database`,
+`QUEUE_CONNECTION=database`), whose tables ship with Laravel's default migrations —
+so a second service would have bought nothing at this scale. If a deployment
+outgrows that, add Redis back and set `CACHE_STORE=redis` plus the `REDIS_*`
+variables that `config/database.php` already reads.
 
 The database is SQLite (`database/database.sqlite`), mounted as a volume so it
 survives container restarts — `make clean` is the one command that removes it.
 
 ## Debugging (Xdebug)
 
-Xdebug ships only in `Dockerfile.dev`, listening on port 9000. Configure your IDE
-to listen for incoming debug connections on that port and map `/app` to the
-project root.
+Xdebug ships only in `Dockerfile.dev`, configured by `docker/xdebug.ini`.
+
+The direction matters and is the usual source of confusion: **the container connects
+out to your IDE**, which listens on your machine. Nothing is published from the
+container for debugging, and no port mapping is needed.
+
+To debug:
+
+1. In your IDE, start listening for PHP debug connections on port **9003** (the
+   Xdebug 3 default — Xdebug 2's 9000 also collided with php-fpm's own port).
+2. Map the remote path `/app` to your project root, and set the IDE key to
+   `PHPSTORM`.
+3. Trigger a session. `xdebug.start_with_request=trigger` means Xdebug only attaches
+   when asked — use a browser extension ("Xdebug helper"), or append
+   `?XDEBUG_TRIGGER=1` to the URL. For a CLI command:
+   `make shell` then `XDEBUG_TRIGGER=1 php artisan <command>`.
+
+> [!NOTE]
+> `trigger` is deliberate. With `xdebug.start_with_request=yes`, *every* request and
+> every test would try to open a connection back to the IDE and stall until it timed
+> out, making `composer test` noticeably slower whenever you aren't debugging.
+
+If breakpoints never hit, set `xdebug.log_level=7` in `docker/xdebug.ini`, rebuild,
+and check the php-fpm log via `make logs` for Xdebug's own diagnostics.
 
 ## Production
 
@@ -108,8 +143,8 @@ via the environment.
 4. **Start the containers and run migrations:**
 
    ```bash
-   docker-compose up -d
-   docker-compose exec app php artisan migrate
+   docker compose up -d
+   docker compose exec app php artisan migrate
    ```
 
 If you skip step 2–3, `docker logs a-vibe-coded-story-organizer_app` will show the
@@ -151,6 +186,7 @@ Makefile                     # `make` shortcuts, see `make help`
 docker/
   entrypoint.sh              # APP_KEY generation, migrations, cache clear on boot
   nginx.conf
-  php.ini
+  php.ini                    # shared PHP settings (both images)
+  xdebug.ini                 # dev image only — step-debugging config
   supervisord.conf
 ```

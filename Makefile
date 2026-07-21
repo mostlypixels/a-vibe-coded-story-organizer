@@ -1,7 +1,9 @@
 .PHONY: help up down build rebuild logs shell tinker test lint migrate seed fresh ps restart clean
 
-COMPOSE_DEV = docker-compose -f docker-compose.dev.yml
-COMPOSE_PROD = docker-compose
+# `docker compose` (v2, a subcommand) rather than `docker-compose` (v1, a separate
+# Python binary that reached end of life in 2023).
+COMPOSE_DEV = docker compose -f docker-compose.dev.yml
+COMPOSE_PROD = docker compose
 APP_EXEC = $(COMPOSE_DEV) exec -u laravel app
 
 help:
@@ -40,8 +42,18 @@ down:
 build:
 	$(COMPOSE_DEV) build
 
+# Use this after changing composer.json/package.json (or pulling a branch that did).
+#
+# vendor/ and node_modules/ live in ANONYMOUS VOLUMES (see docker-compose.dev.yml)
+# so that the host's copies don't shadow the ones installed in the image. Compose
+# carries an existing anonymous volume over to the replacement container when it
+# recreates one — so `build` alone leaves you running a brand-new image with the
+# OLD dependencies still mounted on top of it, which looks exactly like the build
+# having silently done nothing. --renew-anon-volumes is what discards them so they
+# are repopulated from the freshly built image.
 rebuild:
 	$(COMPOSE_DEV) build --no-cache
+	$(COMPOSE_DEV) up --force-recreate --renew-anon-volumes
 
 logs:
 	$(COMPOSE_DEV) logs -f
