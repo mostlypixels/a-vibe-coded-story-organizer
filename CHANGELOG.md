@@ -57,7 +57,7 @@ set belongs in its pull request description.
   `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
   `documentation/export-format.md`.
 
-## 2026-07-21 — Upgrade the test toolchain to PHPUnit 13 and ParaTest 7.23
+## 2026-07-21 — Upgrade the test toolchain to PHPUnit 13 and ParaTest 7.23 (#15)
 
 ### Changed
 
