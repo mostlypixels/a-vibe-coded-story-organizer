@@ -19,7 +19,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 _Nothing unreleased — every entry below has merged to `master`._
 
-## 2026-07-21 — Number the remaining changelog headings
+## 2026-07-21 — Number the remaining changelog headings (#20)
 
 ### Fixed
 
