@@ -746,3 +746,4 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 | Constant / reference data | `app/Support` (e.g. `PlotlineColors`), `app/Enums` |
 | Reusable UI | `resources/views/components` (Blade components) |
 | Containerized dev/prod environment | `Dockerfile`(`.dev`), `docker-compose*.yml`, `docker/` — see [`documentation/docker.md`](docker.md) |
+| Forced versions of transitive npm packages | `overrides` in `package.json` — see [`documentation/dependency-overrides.md`](dependency-overrides.md) |

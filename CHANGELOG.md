@@ -57,6 +57,28 @@ set belongs in its pull request description.
   `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
   `documentation/export-format.md`.
 
+## 2026-07-21 — Force a patched `shell-quote` via an npm override
+
+### Fixed
+
+- Forced `shell-quote` to `^1.9.0` with an npm `overrides` entry, clearing the high-severity
+  [GHSA-395f-4hp3-45gv](https://github.com/advisories/GHSA-395f-4hp3-45gv) / CVE-2026-13311
+  advisory (quadratic-complexity denial of service in `parse()`). The package reaches us only
+  through `concurrently`, which pins it *exactly* at the vulnerable `1.8.4`, so upgrading
+  `concurrently` could not fix it — even its latest release still names `1.8.4`. Real exposure
+  was minimal: it is a dev-only dependency used solely by the `composer dev` script, on
+  hardcoded (not attacker-controlled) command strings, and it ships in neither Docker image.
+  The override mainly stops a permanently red security alert from training everyone to ignore
+  the next one.
+
+### Added
+
+- New [`documentation/dependency-overrides.md`](documentation/dependency-overrides.md)
+  explaining what an npm override is, why this project carries the `shell-quote` one, when an
+  override is the wrong tool (it gives a package a version it never tested against, and the
+  failure surfaces in someone else's stack trace), and how to retire one once upstream fixes
+  its own tree.
+
 ## 2026-07-21 — Upgrade the test toolchain to PHPUnit 13 and ParaTest 7.23 (#15)
 
 ### Changed
