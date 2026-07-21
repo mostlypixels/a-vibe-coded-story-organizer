@@ -57,6 +57,24 @@ set belongs in its pull request description.
   `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
   `documentation/export-format.md`.
 
+## 2026-07-21 — Stamp the PR number onto changelog headings automatically (#18)
+
+### Fixed
+
+- `scripts/pr-land.sh` now writes the `(#PR)` suffix onto the newest dated `CHANGELOG.md`
+  heading itself, between `gh pr create` and arming auto-merge. The convention asks each
+  dated section to name the PR that shipped it, but the number does not exist until the PR
+  is opened — and by then the entry is already committed — so every entry needed a manual
+  follow-up (#16 was one). The stamp only ever touches the *first* dated heading (new
+  entries go on top, so that is the current PR's), skips a heading that already carries a
+  number, and is skipped entirely when the branch does not touch `CHANGELOG.md` — so it
+  cannot retro-fit a wrong number onto an older entry.
+
+### Changed
+
+- The ship-pr skill now instructs leaving the `(#PR)` suffix off when writing the entry,
+  and `scripts/README.md` records the new step.
+
 ## 2026-07-21 — Force a patched `shell-quote` via an npm override (#17)
 
 ### Fixed
