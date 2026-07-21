@@ -15,7 +15,7 @@ set belongs in its pull request description.
 
 _Nothing unreleased — every entry below has merged to `master`._
 
-## 2026-07-21 — File the stranded changelog entries under their own PRs
+## 2026-07-21 — File the stranded changelog entries under their own PRs (#19)
 
 ### Fixed
 
