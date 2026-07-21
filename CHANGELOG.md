@@ -57,7 +57,7 @@ set belongs in its pull request description.
   `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
   `documentation/export-format.md`.
 
-## 2026-07-21 — Stamp the PR number onto changelog headings automatically
+## 2026-07-21 — Stamp the PR number onto changelog headings automatically (#18)
 
 ### Fixed
 
