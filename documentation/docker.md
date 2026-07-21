@@ -15,6 +15,16 @@ on the host machine.
 - Docker Desktop (Windows/Mac) or Docker Engine + Compose (Linux)
 - 4GB+ RAM allocated to Docker
 - Port 8000 (dev) or 80 (prod) free
+- `make`, optionally — every `make` target is a one-line alias, so you can always
+  read the `Makefile` and run the underlying `docker compose ...` command instead.
+  Windows has no `make` by default; `winget install ezwinports.make` provides
+  GNU Make 4.x (the `GnuWin32.Make` package is version 3.81 from 2006 — avoid it).
+
+> [!NOTE]
+> On Windows, Make runs each recipe through `cmd.exe`, not a POSIX shell, so Unix
+> commands like `rm` are unavailable inside a recipe. `make clean` therefore switches
+> on the `OS` variable to use `del` there. Keep that in mind before adding shell
+> commands to a target — a recipe that works on macOS may fail on Windows.
 
 ## Quick start (development)
 

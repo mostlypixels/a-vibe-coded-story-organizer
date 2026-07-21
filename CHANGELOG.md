@@ -53,6 +53,11 @@ set belongs in its pull request description.
   suite returned 419. All `phpunit.xml` env entries are now forced, making `composer test`
   behave identically on the host, in the container, and in CI.
 
+- **`make clean` could never run on Windows.** Make executes recipes through `cmd.exe`
+  there, where the target's `rm -rf` does not exist, so the command aborted. It now
+  selects `del` or `rm` from the `OS` variable. `documentation/docker.md` records the
+  constraint, since it applies to any shell command added to a target.
+
 - **Docker: `make rebuild` silently kept stale dependencies.** `vendor/` and
   `node_modules/` are anonymous volumes, and Compose carries those over when recreating a
   container — so rebuilding after a `composer.json`/`package.json` change left the old

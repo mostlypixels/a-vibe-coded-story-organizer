@@ -6,6 +6,18 @@ COMPOSE_DEV = docker compose -f docker-compose.dev.yml
 COMPOSE_PROD = docker compose
 APP_EXEC = $(COMPOSE_DEV) exec -u laravel app
 
+# Deleting the dev database has to be written twice, because Make runs recipes
+# through a different shell per platform: /bin/sh on macOS/Linux, but cmd.exe on
+# Windows, where `rm` simply does not exist and the recipe would abort. `OS` is set
+# to Windows_NT by Windows itself, which is the usual way to tell them apart.
+# Note the Windows branch also needs backslashes and an existence check, since
+# `del` errors on a missing file whereas `rm -f` does not.
+ifeq ($(OS),Windows_NT)
+    REMOVE_DEV_DATABASE = if exist database\database.sqlite del /f /q database\database.sqlite
+else
+    REMOVE_DEV_DATABASE = rm -f database/database.sqlite
+endif
+
 help:
 	@echo "Imagoldfish Docker Commands"
 	@echo ""
@@ -87,7 +99,7 @@ fresh:
 
 clean:
 	$(COMPOSE_DEV) down -v
-	rm -rf database/database.sqlite
+	$(REMOVE_DEV_DATABASE)
 
 # Production commands
 prod-up:
