@@ -11,9 +11,30 @@ yet — when the PR carrying an entry merges, the entry ships under its dated he
 The per-commit "why" lives in each commit message body; richer rationale for a change
 set belongs in its pull request description.
 
+A section with no `(#PR)` suffix landed directly on `master`, before the protected-branch
+workflow existed — it is not a missing number. Everything from `2026-07-17` onward went
+through a PR, and `scripts/pr-land.sh` stamps the number automatically.
+
 ## [Unreleased]
 
 _Nothing unreleased — every entry below has merged to `master`._
+
+## 2026-07-21 — Number the remaining changelog headings
+
+### Fixed
+
+- The two `2026-07-17` sections gained their PR numbers — accent-insensitive advanced search
+  is #10 and the rich-text preview tag-stripping is #9, both matched against `gh pr list`
+  rather than inferred from position. Every section dated `2026-07-17` or later now names
+  its PR.
+
+### Changed
+
+- The changelog's own header now explains that a section *without* a `(#PR)` suffix landed
+  directly on `master` before the protected-branch workflow existed, rather than being an
+  oversight. Two sections are in that category — **Advanced search** (`2026-07-16`) and the
+  **Laravel 13 / PHP 8.5 upgrade** (`2026-07-15`) — and they are correct as they stand;
+  without the note there is no way to tell a deliberate absence from a forgotten number.
 
 ## 2026-07-21 — File the stranded changelog entries under their own PRs (#19)
 
@@ -213,7 +234,7 @@ _Nothing unreleased — every entry below has merged to `master`._
   `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
   `documentation/export-format.md`.
 
-## 2026-07-17 — Accent-insensitive advanced search
+## 2026-07-17 — Accent-insensitive advanced search (#10)
 
 ### Added
 
@@ -230,7 +251,7 @@ _Nothing unreleased — every entry below has merged to `master`._
   matches on accent-folded text but still renders the original accented characters inside
   `<mark>`, and matching is now uniformly case-insensitive across all drivers.
 
-## 2026-07-17 — Strip HTML tags from rich-text field previews in search results
+## 2026-07-17 — Strip HTML tags from rich-text field previews in search results (#9)
 
 ### Fixed
 
