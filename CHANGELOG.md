@@ -57,6 +57,69 @@ set belongs in its pull request description.
   `documentation/architecture.md` (→ *EPUB export (publication settings)*) and
   `documentation/export-format.md`.
 
+## 2026-07-21 — Docker environment fixes and dependency refresh
+
+### Added
+
+- **Docker support.** Production (`Dockerfile`, `docker-compose.yml`) and development
+  (`Dockerfile.dev`, `docker-compose.dev.yml`, `Makefile`) container setups, so the app
+  can run without a local PHP/Node install. Documented in `documentation/docker.md`;
+  `docker/entrypoint.sh` generates a fresh `APP_KEY` per instance on first boot rather
+  than shipping a shared one.
+
+### Changed
+
+- **Composer dependencies refreshed** within the existing constraints (Laravel 13.20.0 →
+  13.21.1, Guzzle 7.14.2 → 7.15.1, plus patch bumps). PHPUnit deliberately stays on
+  `^11.5.50`; `brianium/paratest` is pinned behind it (7.23.0 requires PHPUnit `^13.2`),
+  so those two must be upgraded together in their own change.
+
+- **Docker: MailHog replaced with Mailpit.** MailHog has been unmaintained since 2020;
+  Mailpit is a drop-in replacement on the same SMTP port, with the UI still at `:8025`.
+
+### Fixed
+
+- **Docker: Xdebug was installed but could never connect.** The image enabled the
+  extension without configuring it, so it ran in the default `develop` mode — which does
+  not include step debugging — and the compose file published port 9000 (Xdebug 2's
+  default, and php-fpm's own port) even though Xdebug 3 dials *out* to the IDE. New
+  `docker/xdebug.ini` sets `mode=debug` on port 9003 via `host.docker.internal`, with
+  `start_with_request=trigger` so tests aren't slowed when not debugging.
+
+- **Docker: mail was misconfigured in development.** `MAIL_MAILER=mailhog` is not a
+  Laravel mail driver (`config/mail.php` defines no such transport), so sending mail from
+  the dev container raised `Mailer [mailhog] is not defined`. Now `smtp` pointed at the
+  mail catcher.
+
+- **`composer test` failed inside the Docker container** with 248 failures that did not
+  reproduce on the host. PHPUnit's `<env>` entries do not override variables already
+  present in the real environment unless marked `force="true"`, so the container's
+  `APP_ENV=local` beat `phpunit.xml`'s `APP_ENV=testing`. `ValidateCsrfToken` only skips
+  itself in the `testing` environment, so CSRF was enforced and every write request in the
+  suite returned 419. All `phpunit.xml` env entries are now forced, making `composer test`
+  behave identically on the host, in the container, and in CI.
+
+- **`make clean` could never run on Windows.** Make executes recipes through `cmd.exe`
+  there, where the target's `rm -rf` does not exist, so the command aborted. It now
+  selects `del` or `rm` from the `OS` variable. `documentation/docker.md` records the
+  constraint, since it applies to any shell command added to a target.
+
+- **Docker: `make rebuild` silently kept stale dependencies.** `vendor/` and
+  `node_modules/` are anonymous volumes, and Compose carries those over when recreating a
+  container — so rebuilding after a `composer.json`/`package.json` change left the old
+  dependencies mounted over the new image. `make rebuild` now recreates with
+  `--renew-anon-volumes`.
+
+### Removed
+
+- **Docker: the Redis container.** Cache, sessions, and the queue all use database drivers
+  whose tables ship with Laravel's default migrations, so Redis was a second service doing
+  nothing at this scale (`CACHE_STORE` is now `database`). `config/database.php` still
+  reads the `REDIS_*` variables if a deployment later needs it.
+
+- **Obsolete Compose `version:` key** from both compose files, and the end-of-life
+  `docker-compose` (v1) invocation in the `Makefile`, now `docker compose`.
+
 ## 2026-07-17 — Accent-insensitive advanced search
 
 ### Added
