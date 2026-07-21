@@ -62,11 +62,14 @@
                         @endforeach
                     </select>
                 </div>
-                <x-button variant="secondary">{{ __('Load') }}</x-button>
+                <x-button variant="primary">{{ __('Load') }}</x-button>
             </form>
 
             @if ($selectedProject)
                 @php $sectionOrder = $setting->section_order ?? \App\Models\PublicationSetting::SECTION_KEYS; @endphp
+
+                <fieldset class="mt-8 border border-gray-200 rounded-md px-4 pb-4">
+                    <legend class="px-2 text-sm font-semibold text-navy-900">{{ $selectedProject->name }}</legend>
 
                 {{--
                     The config form (task 04): persists PublicationSetting.
@@ -341,6 +344,7 @@
                     </a>
                     {{ __('tool.') }}
                 </p>
+                </fieldset>
             @endif
         @endif
     </x-card>
