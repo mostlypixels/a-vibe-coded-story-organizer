@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #
 # pr-land.sh — land the current feature branch on master via the protected-branch
-# PR ritual: push the branch, open a PR, arm squash auto-merge, watch CI, and
-# only report success once the PR state is actually MERGED (auto-merge is silent,
-# so "armed" is not "shipped" — this script enforces the difference).
+# PR ritual: push the branch, open a PR, stamp the PR number onto the changelog
+# heading, arm squash auto-merge, watch CI, and only report success once the PR
+# state is actually MERGED (auto-merge is silent, so "armed" is not "shipped" —
+# this script enforces the difference).
 #
 #     usage: pr-land.sh <title> <body-file>
 #
@@ -62,6 +63,48 @@ refuse_master() {
     return 0
 }
 
+# Stamp the PR number onto the newest dated CHANGELOG heading.
+#
+# The changelog convention wants `## YYYY-MM-DD — <title> (#PR)`, but the number
+# cannot be known when the entry is written: it only exists once `gh pr create`
+# has run, and by then the entry is already committed. Every entry therefore
+# needed a manual follow-up. This closes the loop automatically.
+#
+# Only the FIRST dated heading in the file is considered — new entries always go
+# at the top, so that is this PR's — and it is left alone if it already carries a
+# number. Returns 1 (no edit made) when there is nothing to stamp, which callers
+# treat as normal, not as a failure.
+#
+# Takes the file path so it can be unit-tested against a fixture.
+backfill_changelog_heading() {
+    local pr_number="$1" file="$2"
+
+    [ -f "$file" ] || return 1
+
+    local temp_file="$file.pr-land.tmp"
+
+    # Interval expressions ({4}) are deliberately avoided: this has to behave the
+    # same under mawk (the default awk on Ubuntu CI) as under gawk.
+    if awk -v number="$pr_number" '
+        !seen && /^## [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] / {
+            seen = 1
+            if ($0 !~ /\(#[0-9][0-9]*\)[ \t]*$/) {
+                sub(/[ \t]+$/, "")
+                $0 = $0 " (#" number ")"
+                edited = 1
+            }
+        }
+        { print }
+        END { exit(edited ? 0 : 1) }
+    ' "$file" > "$temp_file"; then
+        mv "$temp_file" "$file"
+        return 0
+    fi
+
+    rm -f "$temp_file"
+    return 1
+}
+
 # Warn (but do not abort) when the tree is dirty: this repo routinely carries
 # the user's unrelated WIP (e.g. welcome.blade.php), and only already-committed
 # work ships anyway — the push sends commits, not the working tree.
@@ -94,6 +137,28 @@ main() {
     # `gh pr create` prints the PR URL; the number is its last path segment.
     pr_number="${pr_url##*/}"
     echo "pr-land.sh: opened PR #$pr_number: $pr_url"
+
+    # Stamp the number onto this PR's changelog heading and push the fixup. This
+    # happens BEFORE auto-merge is armed on purpose: once armed, the PR can land
+    # the moment checks go green, and a push racing that merge would be lost.
+    # Guarded on the branch actually having touched CHANGELOG.md, so a PR without
+    # an entry can never stamp its number onto some earlier, unnumbered heading.
+    if git diff --name-only "origin/master...HEAD" | grep -qx "CHANGELOG.md"; then
+        if backfill_changelog_heading "$pr_number" "CHANGELOG.md"; then
+            echo "pr-land.sh: stamping (#$pr_number) onto the changelog heading..."
+            git add CHANGELOG.md
+            git commit --message "Backfill the PR number on the changelog heading
+
+The number only exists once the PR is open, so pr-land.sh stamps it here.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+            git push
+        else
+            echo "pr-land.sh: changelog heading already numbered (or no dated heading) — nothing to stamp."
+        fi
+    else
+        echo "pr-land.sh: branch does not touch CHANGELOG.md — skipping the PR-number stamp."
+    fi
 
     echo "pr-land.sh: arming squash auto-merge..."
     if gh pr merge "$pr_number" --squash --auto --delete-branch; then
