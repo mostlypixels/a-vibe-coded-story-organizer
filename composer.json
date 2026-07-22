@@ -10,6 +10,7 @@
         "ext-intl": "*",
         "ext-zip": "*",
         "ezyang/htmlpurifier": "^4.19",
+        "jfcherng/php-diff": "^7.0",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
         "league/commonmark": "^2.8",

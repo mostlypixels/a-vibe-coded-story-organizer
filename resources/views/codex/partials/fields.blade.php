@@ -27,9 +27,17 @@
             </div>
 
             <div>
-                <x-input-label for="description" :value="__('Description')" />
-                <x-wysiwyg id="description" name="description" :value="old('description', $entry?->description)" :rows="10" />
-                <x-input-error :messages="$errors->get('description')" class="mt-2" />
+                {{-- Autosave only applies once the entry exists (task 9's scope note): the
+                     autosave endpoint PATCHes an existing row, so the create form (no id
+                     yet) keeps the plain x-wysiwyg it always had, submitted with the rest
+                     of the form on "Create". --}}
+                @if ($entry !== null)
+                    <x-autosave-field entity="codex" :model="$entry" field="description" :label="__('Description')" :rows="10" />
+                @else
+                    <x-input-label for="description" :value="__('Description')" />
+                    <x-wysiwyg id="description" name="description" :value="old('description', $entry?->description)" :rows="10" />
+                    <x-input-error :messages="$errors->get('description')" class="mt-2" />
+                @endif
             </div>
 
             {{-- Aliases: a small add/remove-row repeater of free-text inputs (x-string-list). --}}

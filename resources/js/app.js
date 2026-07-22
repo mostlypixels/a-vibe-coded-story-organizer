@@ -2,10 +2,14 @@ import './bootstrap';
 
 import Alpine from 'alpinejs';
 import { registerWysiwyg } from './wysiwyg';
+import { registerAutosaveField } from './autosave/field';
+import { registerAutosaveBadge } from './autosave/badge';
 
 window.Alpine = Alpine;
 
 registerWysiwyg(Alpine);
+registerAutosaveField(Alpine);
+registerAutosaveBadge(Alpine);
 
 Alpine.start();
 

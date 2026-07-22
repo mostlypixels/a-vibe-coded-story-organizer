@@ -19,9 +19,7 @@
                 </div>
 
                 <div>
-                    <x-input-label for="description" :value="__('Description')" />
-                    <x-wysiwyg id="description" name="description" :value="old('description', $act->description)" :rows="4" />
-                    <x-input-error :messages="$errors->get('description')" class="mt-2" />
+                    <x-autosave-field entity="act" :model="$act" field="description" :label="__('Description')" />
                 </div>
             </form>
         </x-card>

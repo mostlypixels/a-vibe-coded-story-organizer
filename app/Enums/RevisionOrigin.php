@@ -19,4 +19,22 @@ enum RevisionOrigin: string
     case Revert = 'revert';
     case Import = 'import';
     case Baseline = 'baseline';
+
+    /**
+     * The origin badge label shown on the history page (task 10,
+     * expanded/ui.md "History page"). `Baseline` itself is never rendered
+     * through this — that row gets its own dedicated "Baseline — value before
+     * revision history" row instead (handoff.md §9.2) — but the label is kept
+     * here alongside the others rather than leaving one case undocumented.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Automatic => 'Autosaved',
+            self::Manual => 'Saved',
+            self::Revert => 'Reverted',
+            self::Import => 'Imported',
+            self::Baseline => 'Baseline',
+        };
+    }
 }

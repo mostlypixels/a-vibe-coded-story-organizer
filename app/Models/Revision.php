@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
@@ -60,6 +61,17 @@ class Revision extends Model
     }
 
     /**
+     * The user who wrote this revision (the project owner, for a `baseline` row —
+     * see App\Services\RevisionRecorder::ensureBaseline()). The history page
+     * (task 10) eager-loads this selecting only `id`/`name`, never pulling in
+     * anything from `revisions.value`.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
      * The query {@see MassPrunable} runs (via the scheduled `model:prune`
      * command) to delete eligible rows in bulk.
      *
@@ -76,17 +88,17 @@ class Revision extends Model
      * see .specs/draft/multiple-database-engines), so every supported engine
      * runs the exact same plan.
      *
-     * Reads config('revisions.retention_days') directly for now — task 12
-     * introduces the RevisionSetting singleton and swaps this to
-     * RevisionSetting::current()->retention_days so the retention window
-     * becomes admin-configurable.
+     * Reads RevisionSetting::current()->retention_days (task 12's admin-
+     * configurable singleton) rather than a raw config value, so lowering the
+     * retention window in the admin panel (task 13) takes effect on the very
+     * next scheduled prune without a deploy.
      */
     public function prunable(): Builder
     {
         return static::query()
             ->where('origin', RevisionOrigin::Automatic)
             ->whereNull('label')
-            ->where('created_at', '<', now()->subDays(config('revisions.retention_days')))
+            ->where('created_at', '<', now()->subDays(RevisionSetting::current()->retention_days))
             ->whereNotIn('id', function ($query) {
                 $query->selectRaw('MAX(id)')
                     ->from('revisions')
