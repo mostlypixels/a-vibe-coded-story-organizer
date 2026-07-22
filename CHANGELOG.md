@@ -19,7 +19,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 _Nothing unreleased — every entry below has merged to `master`._
 
-## 2026-07-22 — Reorganize the WYSIWYG toolbar into labeled clusters
+## 2026-07-22 — Reorganize the WYSIWYG toolbar into labeled clusters (#21)
 
 ### Changed
 
