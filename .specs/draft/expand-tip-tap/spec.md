@@ -189,6 +189,13 @@ attribute/structure losses so they're not a silent surprise."
   * round-trip tests, including the discovered merged-cell gap as an explicit
     case: assert a merged table cell's Markdown-mode loss is
     expected/documented, not an accidental regression
+  * **Prevent, don't just warn, for the UI-authored case:** hide the
+    `mergeCells`/`splitCell` toolbar and keyboard-shortcut entries for
+    Markdown-format fields, the same `isMarkdown` conditional already used to
+    disable `strike`/`underline` in `resources/js/wysiwyg.js`. A writer
+    authoring from scratch in a Markdown-mode field then cannot create a merged
+    cell at all — the fallback-list check below exists for the residual case
+    (paste of an externally-formatted table), not the common one.
 * **Images: decided — support them.** Same verified-modest path as tables —
   `@tiptap/extension-image` ships real `parseMarkdown`/`renderMarkdown`. Four-part
   change:
@@ -202,6 +209,13 @@ attribute/structure losses so they're not a silent surprise."
   * Reminder from Non-goals: this covers *rendering* an existing image reference
     only — upload/storage stays out of scope, owned elsewhere by
     `CodexMediaService`.
+  * **Prevent, don't just warn, for the UI-authored case:** the extension's
+    `resize` option defaults to `false` and is opt-in — simply never enable it
+    for Markdown-format fields (same `isMarkdown` conditional as tables above).
+    No resize handles are rendered, so `width`/`height` attrs never get set
+    through the editor's own UI. The fallback-list check below covers the
+    residual case (a pasted `<img width height>` from an external source), not
+    the common one.
 * **Strikethrough: decided, not blocked on the pivotal unknown above.** Unlike
   tables/images, the `Strike` node already ships in `StarterKit` — it's just turned
   off in Markdown mode (`resources/js/wysiwyg.js`, `strike: false` when
@@ -261,20 +275,65 @@ attribute/structure losses so they're not a silent surprise."
     over the existing `blockquote` element; a `data-callout-type` attribute (or
     similar) is the only widening, and only if callouts should also work in the 8
     HTML `RichTextFields`, not just `Scene.contents`.
-* **Decide the fallback policy — reframed by the inventory above.** With nothing
-  left in scope that deletes content outright (see Synthesis above), the
-  question is no longer "how do we stop autosave from destroying content," it's
-  "how do we surface the remaining attribute/structure-level losses" (merged
-  table cells, resized image dimensions, an HTML wrapper tag's attributes) so
-  they're not a silent surprise. Options, still open, to pick from:
-  * flatten silently (today's behaviour) — lowest cost, but the exact gap this
-    spec exists to close; not recommended given the reframing above still leaves
-    real (if smaller) silent losses
-  * flatten, but detect and warn from an explicit config list — no fuzzy diffing,
-    so cosmetic `_em_` → `*em*` / reference-link normalisation never triggers a
-    false warning; matches the now-smaller, enumerable set of real losses
-  * refuse to load such a field into the editor and fall back to a plain
-    textarea — disproportionate now that the residual set is this small
+* **Fallback policy: decided — prevent where cheap, warn from an explicit
+  config list for the rest.** Reframed by the inventory above: with nothing left
+  in scope that deletes content outright (see Synthesis), the question was never
+  really "how do we stop autosave from destroying content" — it's "how do we
+  stop the remaining three attribute/structure-level losses from happening, and
+  surface the cases we can't stop." Two of the three have a real prevention
+  option; the third doesn't, because of *how* it enters the document:
+  * **Merged table cells and resized images are preventable at the UI level** —
+    see the `Prevent, don't just warn` notes on the Tables/Images bullets above.
+    Both losses only exist because the editor exposes a command
+    (`mergeCells`/`splitCell`, the resize handles) that produces something
+    Markdown can't represent; hiding that command for Markdown-format fields
+    stops a writer from creating the problem in the first place.
+  * **An unmatched HTML wrapper tag can't be prevented the same way** — it
+    doesn't arrive via a toolbar action a writer chooses, it arrives via
+    **paste** (copying formatted content from a website or word processor that
+    wraps things in a `<div>`) or **import** (a `.zip` project import, or a
+    scene written before the TipTap editor existed). There's no button to hide.
+    Actually preventing it would mean transforming incoming HTML at paste/import
+    time — stripping or flattening any tag outside the schema's allow-list
+    before it reaches the document (a paste-handler transform, and/or extending
+    `Import\ContentSanitizer` for the import path) — real additional scope, not
+    a toggle, and not decided here; left for whoever picks up this spec's tasks
+    to size separately if worth doing.
+  * **Paste is the residual gap even for the two preventable cases:** hiding a
+    toolbar button only stops UI-authored merges/resizes. Pasting an HTML table
+    with a `colspan`, or an `<img width height>`, from an external source can
+    still inject the same attributes — the same mechanism as the HTML-wrapper
+    case. So prevention shrinks the problem for 1 and 2, it doesn't close it;
+    the warn-from-a-list fallback below is still the backstop for all three,
+    it just becomes the rare path for merges/resizes instead of the primary one.
+  * The list itself needs to work without false positives, which is why it's a
+    small, enumerable set of structural checks rather than a diff:
+  * **Rejected: flatten silently (today's behaviour).** It's the exact gap this
+    spec exists to close, and the reframing doesn't remove the loss, only
+    shrinks it — still a real, silent surprise on autosave.
+  * **Rejected: refuse to load into the editor, fall back to a plain textarea.**
+    Was defensible when the residual set looked large (tables, images,
+    footnotes, raw HTML...); with all of those now either supported or verified
+    non-destructive, this is a disproportionately heavy hammer for "a merged
+    cell's colspan didn't survive."
+  * **Chosen: an explicit construct list, checked structurally, not by diffing.**
+    Detect specifically: a table containing a merged cell (colspan/rowspan
+    present in the source), an image with `width`/`height` attributes set, and
+    an HTML block whose outer tag doesn't match any registered node's
+    `parseHTML` rule. Each is a structural check against the parsed document —
+    not a text diff — so it can never misfire on the cosmetic normalisations
+    this spec already expects (`_em_` → `*em*`, reference-link → inline,
+    bullet-marker changes). Underline and callouts need no entry: underline's
+    `<u>` passthrough and a callout's blockquote fallback are both designed to
+    round-trip without loss. Footnotes are out of this spec's list entirely —
+    `footnote-plugin` owns that decision, and today's behaviour (degrades to
+    plain text) isn't a loss this list needs to catch.
+  * The warning itself (copy, UI placement, whether it's dismissible per-field)
+    is `autosave-with-revisions`' concern, not this spec's — this spec's
+    deliverable is the **list** (the three structural checks above) and the
+    guarantee that it's exhaustive against everything this spec's inventory
+    covers, so `autosave-with-revisions` §11.5.2 has something concrete to
+    build the notice on.
 * **Document the normalisation.** Even with everything supported, TipTap re-serialises
   Markdown (`_em_` → `*em*`, bullet markers, wrapping), so the first edit of any
   pre-existing scene rewrites the whole document. `autosave-with-revisions` §11.3

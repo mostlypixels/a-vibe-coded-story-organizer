@@ -825,11 +825,12 @@ behaviour. See §10.
 1. **The dirty-only rule.** Proposed but **not confirmed**: *never autosave a field the
    writer has not actually typed in*, so merely opening a scene can never write anything.
    Strongly recommended regardless of the TipTap outcome — it is what makes reading safe.
-2. **Warning on unrepresentable content — reframed, still open.** `expand-tip-tap` resolved
-   what the editor supports; nothing left in its inventory destroys content outright (see
-   §11.4 update). So this is no longer "warn before content gets destroyed" — it's whether
-   to surface the smaller remaining attribute/structure-level losses (a merged table cell,
-   a resized image's dimensions, an HTML wrapper tag's attributes) via an explicit
-   config-list warning, rather than a fuzzy diff. `expand-tip-tap` leans toward
-   flatten-and-warn-from-a-list but has not finalized it.
+2. **Warning on unrepresentable content — decided in `expand-tip-tap`.** Nothing left in its
+   inventory destroys content outright (see §11.4 update), so this was never "warn before
+   content gets destroyed" — `expand-tip-tap` decided flatten-and-warn-from-an-explicit-list,
+   with the list being exactly three structural checks (a merged table cell, a resized
+   image's `width`/`height`, an HTML block whose tag matches no registered node), checked
+   structurally against the parsed document rather than by diffing, so cosmetic
+   normalisation (§11.3) never triggers a false warning. What's still this feature's
+   concern: the warning's copy, UI placement, and whether it's dismissible per-field.
 3. Whether `Ctrl-S` collides with `.specs/draft/keyboard-shortcuts`.
