@@ -22,30 +22,73 @@
     // Give the editable region roughly the height of the textarea it replaces.
     $resolvedMinHeight = $minHeight ?? (($rows * 1.5) + 1).'rem';
 
-    // Simple toggle buttons: [label, command, active-name]. Headings, link and the
-    // horizontal rule are handled separately below (they take arguments / prompts).
-    // Underline/Strike round-trip in both formats (expand-tip-tap task 05: Strike is
-    // standard GFM; Underline serializes via the sanctioned `<u>` HTML-passthrough
-    // exception, see resources/js/wysiwyg.js's MarkdownUnderline), so both join the
-    // unconditional base array — no per-format gate needed, matching the slash menu.
-    $toggles = [
-        ['B', 'toggleBold', 'bold', __('Bold')],
-        ['I', 'toggleItalic', 'italic', __('Italic')],
-        ['U', 'toggleUnderline', 'underline', __('Underline')],
-        ['S', 'toggleStrike', 'strike', __('Strikethrough')],
+    // Heading level buttons (H1-H4), collapsed into the Headings dropdown. Each drives
+    // x-wysiwyg.toolbar-button with the plain cmd(command, args) + isOn(active, args)
+    // shape.
+    $headings = collect(range(1, 4))->map(fn ($level) => [
+        'label' => "H{$level}",
+        'command' => 'toggleHeading',
+        'args' => ['level' => $level],
+        'active' => ['heading', ['level' => $level]],
+        'title' => __('Heading :level', ['level' => $level]),
+    ]);
+
+    // The Headings dropdown trigger shows the active level's label (H1-H4) when the
+    // cursor sits in a heading, or a plain "H" otherwise — built as a nested-ternary JS
+    // expression from the $headings array above so it stays in sync with it. Built
+    // right-to-left (reverse order) so the final expression checks level 1 first.
+    $headingTriggerLabelExpr = Illuminate\Support\Js::from('H');
+    foreach ($headings->reverse() as $heading) {
+        $headingTriggerLabelExpr = "isOn('heading', ".Illuminate\Support\Js::from($heading['args']).') ? '
+            .Illuminate\Support\Js::from($heading['label']).' : ('.$headingTriggerLabelExpr.')';
+    }
+    $headingTriggerActiveExpr = $headings
+        ->map(fn ($heading) => "isOn('heading', ".Illuminate\Support\Js::from($heading['args']).')')
+        ->implode(' || ');
+
+    // Text format: Bold/Italic/Underline/Strike. Underline/Strike round-trip in both
+    // formats (expand-tip-tap task 05: Strike is standard GFM; Underline serializes via
+    // the sanctioned `<u>` HTML-passthrough exception, see resources/js/wysiwyg.js's
+    // MarkdownUnderline), so both join the unconditional base array — no per-format
+    // gate needed, matching the slash menu.
+    $textFormat = [
+        ['label' => 'B', 'command' => 'toggleBold', 'active' => ['bold'], 'title' => __('Bold')],
+        ['label' => 'I', 'command' => 'toggleItalic', 'active' => ['italic'], 'title' => __('Italic')],
+        ['label' => 'U', 'command' => 'toggleUnderline', 'active' => ['underline'], 'title' => __('Underline')],
+        ['label' => 'S', 'command' => 'toggleStrike', 'active' => ['strike'], 'title' => __('Strikethrough')],
     ];
 
-    $toggles = array_merge($toggles, [
-        ['&bull;', 'toggleBulletList', 'bulletList', __('Bulleted list')],
-        ['1.', 'toggleOrderedList', 'orderedList', __('Numbered list')],
+    // Lists & blocks: bullet/ordered/task list, blockquote, inline code, code block.
+    $listsAndBlocks = [
+        ['label' => '&bull;', 'command' => 'toggleBulletList', 'active' => ['bulletList'], 'title' => __('Bulleted list')],
+        ['label' => '1.', 'command' => 'toggleOrderedList', 'active' => ['orderedList'], 'title' => __('Numbered list')],
         // Task list: same plain-toggle shape as the two list types above — no
         // isMarkdown gate needed on the toggle itself (task lists round-trip in both
         // formats, expand-tip-tap task 03); only resize/merge are format-gated below.
-        ['&#9744;', 'toggleTaskList', 'taskList', __('Task list')],
-        ['&rdquo;', 'toggleBlockquote', 'blockquote', __('Blockquote')],
-        ['&lt;/&gt;', 'toggleCode', 'code', __('Inline code')],
-        ['{ }', 'toggleCodeBlock', 'codeBlock', __('Code block')],
-    ]);
+        ['label' => '&#9744;', 'command' => 'toggleTaskList', 'active' => ['taskList'], 'title' => __('Task list')],
+        ['label' => '&rdquo;', 'command' => 'toggleBlockquote', 'active' => ['blockquote'], 'title' => __('Blockquote')],
+        ['label' => '&lt;/&gt;', 'command' => 'toggleCode', 'active' => ['code'], 'title' => __('Inline code')],
+        ['label' => '{ }', 'command' => 'toggleCodeBlock', 'active' => ['codeBlock'], 'title' => __('Code block')],
+    ];
+
+    // Table structure: row/column ops (both formats) plus merge/split (HTML-mode only),
+    // collapsed into the Table structure dropdown. Row/column ops keep the grid
+    // rectangular, so — unlike merge/split — they're available in both formats, no
+    // @if ($markdown) gate needed.
+    $tableStructure = [
+        ['label' => '&#8213;+', 'command' => 'addRowAfter', 'title' => __('Add row below')],
+        ['label' => '&#8213;&minus;', 'command' => 'deleteRow', 'title' => __('Delete row')],
+        ['label' => '&#8214;+', 'command' => 'addColumnAfter', 'title' => __('Add column right')],
+        ['label' => '&#8214;&minus;', 'command' => 'deleteColumn', 'title' => __('Delete column')],
+    ];
+
+    // Merge/split-cell: HTML-mode fields only. A merged cell (colspan) is lossless
+    // there but loses its structure in Markdown, so this affordance is not rendered at
+    // all for Markdown-mode fields — prevent, don't just warn, per architecture.md §2.
+    if (! $markdown) {
+        $tableStructure[] = ['label' => '&#8676;&#8677;', 'command' => 'mergeCells', 'title' => __('Merge cells')];
+        $tableStructure[] = ['label' => '&#8677;&#8676;', 'command' => 'splitCell', 'title' => __('Split cell')];
+    }
 
     $btnBase = 'inline-flex min-w-[2rem] items-center justify-center rounded px-2 py-1 text-sm font-medium';
 @endphp
@@ -79,32 +122,67 @@
         <div class="overflow-hidden rounded-md border border-gray-300 shadow-sm focus-within:border-ocean-500 focus-within:ring-1 focus-within:ring-ocean-500">
             @unless ($disabled)
                 <div class="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1" role="toolbar" aria-label="{{ __('Formatting') }}">
-                    @foreach (range(1, 4) as $level)
-                        <button
-                            type="button"
-                            @click="cmd('toggleHeading', { level: {{ $level }} })"
-                            :class="isOn('heading', { level: {{ $level }} }) ? 'bg-ocean-100 text-ocean-800' : 'text-gray-600 hover:bg-gray-200'"
-                            class="{{ $btnBase }}"
-                            title="{{ __('Heading :level', ['level' => $level]) }}"
-                            aria-label="{{ __('Heading :level', ['level' => $level]) }}"
-                        >H{{ $level }}</button>
+                    {{-- Cluster 1: Headings, collapsed into a dropdown. The trigger's
+                         label and active-state highlighting are computed from the same
+                         $headings array that populates the dropdown content, so they
+                         can't drift out of sync with it. --}}
+                    <x-dropdown align="left" width="auto" contentClasses="p-1 bg-white flex items-center gap-0.5">
+                        <x-slot name="trigger">
+                            <button
+                                type="button"
+                                :class="({{ $headingTriggerActiveExpr }}) ? 'bg-ocean-100 text-ocean-800' : 'text-gray-600 hover:bg-gray-200'"
+                                class="{{ $btnBase }}"
+                                title="{{ __('Heading') }}"
+                                aria-label="{{ __('Heading') }}"
+                            ><span x-text="{{ $headingTriggerLabelExpr }}"></span></button>
+                        </x-slot>
+
+                        <x-slot name="content">
+                            @foreach ($headings as $heading)
+                                <x-wysiwyg.toolbar-button
+                                    :command="$heading['command']"
+                                    :args="$heading['args']"
+                                    :active="$heading['active']"
+                                    :label="$heading['label']"
+                                    :title="$heading['title']"
+                                />
+                            @endforeach
+                        </x-slot>
+                    </x-dropdown>
+
+                    <span class="mx-1 h-5 w-px bg-gray-300"></span>
+
+                    {{-- Cluster 2: Text format — Bold/Italic/Underline/Strike, unchanged
+                         inline row. --}}
+                    @foreach ($textFormat as $toggle)
+                        <x-wysiwyg.toolbar-button
+                            :command="$toggle['command']"
+                            :active="$toggle['active']"
+                            :label="$toggle['label']"
+                            :title="$toggle['title']"
+                        />
                     @endforeach
 
                     <span class="mx-1 h-5 w-px bg-gray-300"></span>
 
-                    @foreach ($toggles as [$label, $command, $active, $title])
-                        <button
-                            type="button"
-                            @click="cmd('{{ $command }}')"
-                            :class="isOn('{{ $active }}') ? 'bg-ocean-100 text-ocean-800' : 'text-gray-600 hover:bg-gray-200'"
-                            class="{{ $btnBase }}"
-                            title="{{ $title }}"
-                            aria-label="{{ $title }}"
-                        >{!! $label !!}</button>
+                    {{-- Cluster 3: Lists & blocks, unchanged inline row. --}}
+                    @foreach ($listsAndBlocks as $toggle)
+                        <x-wysiwyg.toolbar-button
+                            :command="$toggle['command']"
+                            :active="$toggle['active']"
+                            :label="$toggle['label']"
+                            :title="$toggle['title']"
+                        />
                     @endforeach
 
                     <span class="mx-1 h-5 w-px bg-gray-300"></span>
 
+                    {{-- Cluster 4: Insert — Link, Horizontal rule, Table, Image, Callout.
+                         Table and Image live here now (moved up from after the
+                         table-structure ops) so every "insert something new" action sits
+                         together. Link/Image/Callout call bespoke no-arg helpers rather
+                         than cmd(), so they stay hand-written instead of using
+                         x-wysiwyg.toolbar-button. --}}
                     <button
                         type="button"
                         @click="setLink()"
@@ -122,11 +200,6 @@
                         aria-label="{{ __('Horizontal rule') }}"
                     >&mdash;</button>
 
-                    <span class="mx-1 h-5 w-px bg-gray-300"></span>
-
-                    {{-- Table/Image take arguments/prompts rather than being plain toggles,
-                         so — like Link and Horizontal rule above — they get their own
-                         buttons rather than a $toggles entry. --}}
                     <button
                         type="button"
                         @click="cmd('insertTable', { rows: 3, cols: 3, withHeaderRow: true })"
@@ -134,42 +207,6 @@
                         title="{{ __('Table') }}"
                         aria-label="{{ __('Table') }}"
                     >&#9638;</button>
-
-                    {{-- Row/column add-remove: unlike merge/split, these keep the grid
-                         rectangular (every row still has the same cell count), which GFM
-                         tables always support — so, unlike merge/split below, this is
-                         available in both formats, no @if ($markdown) gate needed. --}}
-                    <button
-                        type="button"
-                        @click="cmd('addRowAfter')"
-                        class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                        title="{{ __('Add row below') }}"
-                        aria-label="{{ __('Add row below') }}"
-                    >&#8213;+</button>
-
-                    <button
-                        type="button"
-                        @click="cmd('deleteRow')"
-                        class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                        title="{{ __('Delete row') }}"
-                        aria-label="{{ __('Delete row') }}"
-                    >&#8213;&minus;</button>
-
-                    <button
-                        type="button"
-                        @click="cmd('addColumnAfter')"
-                        class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                        title="{{ __('Add column right') }}"
-                        aria-label="{{ __('Add column right') }}"
-                    >&#8214;+</button>
-
-                    <button
-                        type="button"
-                        @click="cmd('deleteColumn')"
-                        class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                        title="{{ __('Delete column') }}"
-                        aria-label="{{ __('Delete column') }}"
-                    >&#8214;&minus;</button>
 
                     <button
                         type="button"
@@ -191,30 +228,34 @@
                         aria-label="{{ __('Callout') }}"
                     >&#9432;</button>
 
-                    @if (! $markdown)
-                        <span class="mx-1 h-5 w-px bg-gray-300"></span>
+                    <span class="mx-1 h-5 w-px bg-gray-300"></span>
 
-                        {{-- Merge/split-cell: HTML-mode fields only. A merged cell (colspan)
-                             is lossless there but loses its structure in Markdown, so this
-                             affordance is not rendered at all for Markdown-mode fields —
-                             prevent, don't just warn, per architecture.md §2. There is no
-                             existing merge/split UI to gate; this is new either way. --}}
-                        <button
-                            type="button"
-                            @click="cmd('mergeCells')"
-                            class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                            title="{{ __('Merge cells') }}"
-                            aria-label="{{ __('Merge cells') }}"
-                        >&#8676;&#8677;</button>
+                    {{-- Cluster 5: Table structure, collapsed into a dropdown. Its
+                         trigger glyph (square + pencil) is deliberately distinct from
+                         cluster 4's plain-square "insert table" glyph so the two aren't
+                         confused, and its title/aria-label reads "Table structure" vs.
+                         cluster 4's "Table". Merge/split still only appear when
+                         ! $markdown — see the $tableStructure array above. --}}
+                    <x-dropdown align="left" width="auto" contentClasses="p-1 bg-white flex items-center gap-0.5">
+                        <x-slot name="trigger">
+                            <button
+                                type="button"
+                                class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
+                                title="{{ __('Table structure') }}"
+                                aria-label="{{ __('Table structure') }}"
+                            >&#9638;&#9998;</button>
+                        </x-slot>
 
-                        <button
-                            type="button"
-                            @click="cmd('splitCell')"
-                            class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                            title="{{ __('Split cell') }}"
-                            aria-label="{{ __('Split cell') }}"
-                        >&#8677;&#8676;</button>
-                    @endif
+                        <x-slot name="content">
+                            @foreach ($tableStructure as $op)
+                                <x-wysiwyg.toolbar-button
+                                    :command="$op['command']"
+                                    :label="$op['label']"
+                                    :title="$op['title']"
+                                />
+                            @endforeach
+                        </x-slot>
+                    </x-dropdown>
                 </div>
             @endunless
 

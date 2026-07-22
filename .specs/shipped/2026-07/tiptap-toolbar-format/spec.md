@@ -1,5 +1,8 @@
 ---
-status: draft
+status: shipped
+shipped: 2026-07-22
+planned: 2026-07-22
+expanded: 2026-07-22
 ---
 
 # Tiptap Toolbar Format
