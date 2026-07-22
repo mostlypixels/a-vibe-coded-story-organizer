@@ -287,6 +287,31 @@ class EpubExporterTest extends TestCase
         $this->assertStringNotContainsString("\u{201C}", $shared, 'shared render must not get curly quotes');
     }
 
+    public function test_strikethrough_and_task_list_render_as_real_markup_in_the_epub(): void
+    {
+        // Task 02 (expand-tip-tap): the isolated EPUB converter gets Strikethrough/
+        // TaskList extensions added alongside SmartPunct, so this markup renders as
+        // real HTML instead of literal tildes/brackets — matching what the editor and
+        // Scene::renderedContents() already produce via GFM.
+        $project = Project::factory()->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        Scene::factory()->for($chapter)->create([
+            'contents' => "This is ~~struck~~ text.\n\n- [ ] todo\n- [x] done",
+        ]);
+
+        $tree = $this->exporter()->filteredTree($project);
+        $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
+
+        $this->assertStringContainsString('<del>struck</del>', $html, 'strikethrough must render as <del>, not literal tildes');
+        $this->assertStringNotContainsString('~~', $html);
+
+        $this->assertStringContainsString('type="checkbox"', $html, 'task list items must render as real checkboxes');
+        $this->assertStringContainsString('checked', $html, 'the checked item must render its checked state');
+        $this->assertStringNotContainsString('[ ] todo', $html, 'unchecked item must not render as literal brackets');
+        $this->assertStringNotContainsString('[x] done', $html, 'checked item must not render as literal brackets');
+    }
+
     public function test_full_metadata_epub_opf_contains_every_field_and_both_identifiers(): void
     {
         Storage::fake('public');

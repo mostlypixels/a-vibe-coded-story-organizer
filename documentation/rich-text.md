@@ -70,13 +70,27 @@ actual cleaning is the mutator's job on the model write path.
 `RichTextFields::ALLOWED_TAGS` — everything outside it is stripped:
 
 ```
-p, h1, h2, h3, h4, strong, em, u, s, ul, ol, li, blockquote, code, pre, a, br, hr
+p, h1, h2, h3, h4, strong, em, u, s,
+ul, ol, li, blockquote, code, pre, a, br, hr,
+table, thead, tbody, tr, th, td,
+img,
+label, input, span, div
 ```
 
-Only `<a>` carries an attribute (`href`), restricted to the `http` / `https` schemes in
-`ALLOWED_SCHEMES` (relative URLs carry no scheme and remain allowed; `javascript:` and `data:`
-are blocked by omission). Deliberately **no** `<script>` / `<iframe>` / `<object>`, no `<img>`
-(image upload is a v2 concern — see below), no `style`/`class`, and no event-handler attributes.
+The second and third rows were added by the `expand-tip-tap` feature: `table`/`thead`/`tbody`/
+`tr`/`th`/`td` for the table extension, `img` for image references (uploading new images is
+still out of scope — only referencing an existing URL is supported), and `label`/`input`/
+`span`/`div` for the task-list checkbox markup TipTap's `TaskItem`/`TaskList` extensions render.
+
+`RichTextFields::ALLOWED_ATTRIBUTES` (a separate `tag => list<attribute>` map, kept apart from
+`ALLOWED_TAGS` on purpose) lists which attributes survive per tag: `a[href]` (restricted to the
+`http`/`https` schemes in `ALLOWED_SCHEMES` — relative URLs carry no scheme and remain allowed;
+`javascript:` and `data:` are blocked by omission), `img[src|alt|title|width|height]`,
+`ul[data-type]`, `li[data-type|data-checked]`, `input[type|checked|disabled]`,
+`td[colspan|rowspan]`/`th[colspan|rowspan]` (table merge/split, structural not presentational),
+and `blockquote[data-callout-type]` (the callout node — see below). A tag absent from this map is
+allowed bare, with no attributes at all. Deliberately still **no** `<script>` / `<iframe>` /
+`<object>`, no `style`/`class`, and no event-handler attributes anywhere.
 
 ### 3. Render only sanitized content, only via `x-rich-text`
 
@@ -144,17 +158,32 @@ view or controller.
   Used by every rich-HTML field in the taxonomy above.
 - **Markdown mode (`markdown` prop).** Used only by `Scene.contents`. The `@tiptap/markdown`
   extension hydrates the editor from the stored Markdown (`contentType: 'markdown'`) and
-  serializes back with `editor.getMarkdown()` on write. Underline and Strike are **disabled** in
-  this mode (neither round-trips to clean CommonMark), so the toolbar and slash menu both hide
-  them. The stored value stays Markdown; `ValidMarkdown` + `Str::markdown()` remain the gate.
+  serializes back with `editor.getMarkdown()` on write. Underline and Strikethrough are **both
+  enabled** in this mode: Strikethrough round-trips as plain GFM (`ValidMarkdown` now parses GFM,
+  not plain CommonMark), and Underline serializes to a literal `<u>…</u>` passthrough, which GFM's
+  raw-inline-HTML tolerance carries through unchanged (see `MarkdownUnderline` in
+  `resources/js/wysiwyg.js`). Table merge/split and image resize stay **HTML-mode only** — both
+  are lossy in Markdown, which is why they're on the fallback-warning list below. The stored value
+  stays Markdown; `ValidMarkdown` + `Str::markdown()` remain the gate.
 
 **Toolbar + slash menu.** Two ways to format, both producing the same commands: an always-visible
-toolbar, and a Notion-style `/` slash command menu (headings H1–H4, bold/italic + underline/strike
-in HTML mode, bullet/ordered lists, blockquote, inline code and code block, link, horizontal
-rule). The slash menu reuses `@tiptap/suggestion` (already a dependency) for the trigger and its
-bundled `@floating-ui/dom` for popup positioning — **no extra dependency**. Because every slash
-item invokes the same StarterKit command the toolbar calls, the menu adds no new node/mark
-surface.
+toolbar, and a Notion-style `/` slash command menu (headings H1–H4, bold/italic + underline/strike,
+bullet/ordered/task lists, blockquote, callout, inline code and code block, link, horizontal rule,
+table, image). The slash menu reuses `@tiptap/suggestion` (already a dependency) for the trigger
+and its bundled `@floating-ui/dom` for popup positioning — **no extra dependency**. Because every
+slash item invokes the same underlying command the toolbar calls, the menu adds no new node/mark
+surface of its own.
+
+**Tables, images, task lists, and callouts** (`expand-tip-tap`) round-trip in both editor modes.
+Adding/removing a table row or column (toolbar buttons alongside the Table button) is available
+in both modes too, since it always keeps the grid rectangular — unlike merge/split (below), it
+never produces a shape GFM can't represent. Table merge/split and image resize are HTML-mode-only
+affordances (see the fallback-warning section below for why). A **callout** is a `> [!NOTE]`/`[!TIP]`/`[!IMPORTANT]`/`[!WARNING]`/
+`[!CAUTION]` blockquote — GitHub's own alert convention, recognized on a blockquote's first line
+in both formats — implemented as a custom `Callout` node (`resources/js/wysiwyg.js`) that presents
+over the existing `<blockquote>` element via a `data-callout-type` attribute in HTML mode, and
+re-serializes as `> [!TYPE]` + `> `-prefixed body in Markdown mode. The toolbar button inserts a
+new callout or cycles an existing one through the five types.
 
 > [!IMPORTANT]
 > **Editor output must stay ⊆ the allow-list.** Whatever the toolbar *or slash menu* can produce
@@ -174,13 +203,30 @@ surface.
 > third-party instance. See `.specs/shipped/2026-07/wysiwig/resolution-log.md` for the full incident.
 
 > [!NOTE]
-> **Image upload is deferred to v2.** There is no upload endpoint and no `project_media` table;
-> `<img>` is not in the allow-list, and the toolbar has no image insert. Because nothing can be
-> uploaded, the related concerns — unauthenticated-upload authorization and orphaned-image
-> garbage collection — are **not applicable** in v1. Adding image upload later would introduce an
-> `auth`-protected, `authorize('update', $project)`-guarded route plus file validation (reuse
-> `CodexMediaService` / `CodexMediaRules`), and only then does `<img[src|alt]>` join the
-> allow-list.
+> **Image upload (a new file) is still deferred.** The toolbar's Image button (`expand-tip-tap`)
+> only inserts a reference to an existing URL — there is still no upload endpoint and no
+> `project_media` table. Because nothing can be uploaded, the related concerns —
+> unauthenticated-upload authorization and orphaned-image garbage collection — remain **not
+> applicable**. Adding real upload later would introduce an `auth`-protected,
+> `authorize('update', $project)`-guarded route plus file validation (reuse `CodexMediaService` /
+> `CodexMediaRules`); `<img[src|alt|title|width|height]>` is already in the allow-list today.
+
+## Fallback-warning structural checks
+
+Three constructs are lossless in HTML mode but **lossy in Markdown mode**: a merged table cell
+(GFM has no `colspan`/`rowspan` concept), a resized image (GFM has no width/height syntax), and an
+unmatched raw-HTML wrapper tag pasted or imported into the document (CommonMark's raw-HTML
+passthrough unwraps a tag with no registered ProseMirror node and keeps only its content). None of
+these are prevented — they're detected, so a caller can warn the user before the loss happens.
+
+`resources/js/wysiwyg/fallbackChecks.js` is a standalone module (no import of `wysiwyg.js`, so it
+can be depended on without pulling in toolbar/Alpine code) exporting `hasMergedTableCell(doc)`,
+`hasResizedImage(doc)`, `hasUnmatchedHtmlWrapperTag(source, editor)`, and the combined
+`findFallbackWarnings({ editor, source })`. `autosave-with-revisions` (§11.5.2) is this module's
+first real consumer — it surfaces these as a save-time warning. See
+`resources/js/wysiwyg/fallbackChecks.test.js` for the exhaustive positive/negative cases (including
+regression guards so a plain table/image/task-list, an underline mark, or a callout block never
+false-positives).
 
 ## Where things live
 

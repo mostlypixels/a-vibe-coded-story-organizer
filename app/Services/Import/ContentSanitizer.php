@@ -107,11 +107,29 @@ class ContentSanitizer
      * Decoding entities cannot mask an attack: encoded markup (`&lt;script&gt;`)
      * is inert text on BOTH sides of the comparison, while real disallowed
      * markup is removed from the cleaned side and still mismatches.
+     *
+     * `<input>` (the task-list checkbox markup, `expand-tip-tap`) needs three more
+     * normalizations, all purely serialization differences HTMLPurifier introduces
+     * that carry no security meaning:
+     *   - it always self-closes void elements ("/>" instead of ">"), while GFM's
+     *     renderer does not;
+     *   - `HTMLPurifier_AttrTransform_Input` (a cross-attribute validation pass, not
+     *     a safety strip) force-adds an empty `value=""` to every checkbox/radio
+     *     `<input>` that lacks one;
+     *   - it rewrites boolean attributes (`checked`, `disabled`) from GFM's
+     *     `checked=""` shorthand to the equivalent `checked="checked"` form.
+     * Left unnormalized, every Markdown task list would be a false-positive
+     * "disallowed content" rejection even though nothing was actually stripped.
      */
     private function canonicalize(string $html): string
     {
         $normalizedNewlines = str_replace(["\r\n", "\r"], "\n", $html);
+        $decoded = html_entity_decode($normalizedNewlines, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
-        return trim(html_entity_decode($normalizedNewlines, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $normalized = preg_replace('/\s*\/>/', '>', $decoded);
+        $normalized = preg_replace('/\svalue=""/', '', (string) $normalized);
+        $normalized = preg_replace('/\b(checked|disabled)="(?:checked|disabled|)"/', '$1', (string) $normalized);
+
+        return trim((string) $normalized);
     }
 }

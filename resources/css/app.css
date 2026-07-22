@@ -281,3 +281,130 @@
     font-size: theme('fontSize.sm');
     color: theme('colors.gray.400');
 }
+
+/*
+ * Table, task-list, and image-resize affordances (expand-tip-tap task 04). `prose`
+ * (@tailwindcss/typography) already styles rendered tables/task lists reasonably
+ * outside the editor, but the *editing* surface needs its own minimal rules: cell
+ * borders/padding so an empty table is visible at all, ProseMirror's own resize/
+ * selection classes (which `prose` knows nothing about), and checkbox alignment for
+ * TaskItem's <label><input> markup.
+ */
+.tiptap table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.tiptap td,
+.tiptap th {
+    border: 1px solid theme('colors.gray.300');
+    padding: theme('spacing.1') theme('spacing.2');
+    vertical-align: top;
+}
+
+.tiptap th {
+    background-color: theme('colors.gray.50');
+    font-weight: 600;
+    text-align: left;
+}
+
+.tiptap .selectedCell {
+    background-color: theme('colors.ocean.50');
+}
+
+.tiptap ul[data-type='taskList'] {
+    list-style: none;
+    padding-left: 0;
+}
+
+.tiptap ul[data-type='taskList'] li {
+    display: flex;
+    align-items: flex-start;
+    gap: theme('spacing.2');
+}
+
+.tiptap ul[data-type='taskList'] li > label {
+    margin-top: 0.2rem;
+    user-select: none;
+}
+
+.tiptap ul[data-type='taskList'] li > div {
+    flex: 1 1 auto;
+}
+
+.tiptap ul[data-type='taskList'] li > div > p:first-child {
+    margin-top: 0;
+}
+
+/*
+ * Callout / alert blocks (`> [!TYPE]`, expand-tip-tap task 06) — the GitHub-flavoured
+ * alert look already used in this repo's own documentation/*.md, rendered over the
+ * <blockquote> element via the data-callout-type attribute. A left border + a per-type
+ * accent colour and icon (::before) distinguishes the five types from a plain quote.
+ * Styled on `blockquote[data-callout-type]` (not scoped to `.tiptap`) so it looks the
+ * same inside the editor and in the rendered HTML fields downstream.
+ */
+blockquote[data-callout-type] {
+    margin: theme('spacing.4') 0;
+    border-left-width: 4px;
+    border-left-style: solid;
+    border-radius: theme('borderRadius.md');
+    padding: theme('spacing.2') theme('spacing.3');
+    background-color: theme('colors.gray.50');
+    font-style: normal;
+}
+
+blockquote[data-callout-type]::before {
+    display: block;
+    margin-bottom: theme('spacing.1');
+    font-weight: 600;
+    font-size: theme('fontSize.sm');
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+blockquote[data-callout-type='note'] {
+    border-left-color: theme('colors.blue.500');
+}
+
+blockquote[data-callout-type='note']::before {
+    content: '\2139  Note';
+    color: theme('colors.blue.700');
+}
+
+blockquote[data-callout-type='tip'] {
+    border-left-color: theme('colors.green.500');
+}
+
+blockquote[data-callout-type='tip']::before {
+    content: '\1F4A1  Tip';
+    color: theme('colors.green.700');
+}
+
+blockquote[data-callout-type='important'] {
+    border-left-color: theme('colors.purple.500');
+}
+
+blockquote[data-callout-type='important']::before {
+    content: '\2757  Important';
+    color: theme('colors.purple.700');
+}
+
+blockquote[data-callout-type='warning'] {
+    border-left-color: theme('colors.amber.500');
+}
+
+blockquote[data-callout-type='warning']::before {
+    content: '\26A0\FE0F  Warning';
+    color: theme('colors.amber.700');
+}
+
+blockquote[data-callout-type='caution'] {
+    border-left-color: theme('colors.red.500');
+}
+
+blockquote[data-callout-type='caution']::before {
+    content: '\1F6D1  Caution';
+    color: theme('colors.red.700');
+}

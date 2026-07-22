@@ -29,12 +29,24 @@ class HtmlSanitizerTest extends TestCase
         $this->assertStringContainsString('hi', $output);
     }
 
-    public function test_it_removes_images_and_event_handlers(): void
+    public function test_it_keeps_images_but_strips_event_handlers(): void
     {
-        $output = $this->clean('<img src=x onerror=alert(1)>');
+        // expand-tip-tap: <img> joined the allow-list (src/alt/title/width/height),
+        // but only those attribute names — onerror is not in ALLOWED_ATTRIBUTES so
+        // it's stripped regardless of tag.
+        $output = $this->clean('<img src="https://example.com/x.png" alt="x" onerror=alert(1)>');
 
-        $this->assertStringNotContainsString('<img', $output);
+        $this->assertStringContainsString('<img', $output);
+        $this->assertStringContainsString('src="https://example.com/x.png"', $output);
+        $this->assertStringContainsString('alt="x"', $output);
         $this->assertStringNotContainsString('onerror', $output);
+    }
+
+    public function test_it_strips_disallowed_image_url_schemes(): void
+    {
+        $output = $this->clean('<img src="javascript:alert(1)" alt="x">');
+
+        $this->assertStringNotContainsString('javascript:', $output);
     }
 
     public function test_it_neutralizes_javascript_hrefs_but_keeps_the_text(): void
@@ -105,6 +117,81 @@ class HtmlSanitizerTest extends TestCase
 
         $this->assertStringContainsString('href="https://example.com"', $output);
         $this->assertStringContainsString('safe', $output);
+    }
+
+    public function test_it_preserves_a_table_fragment_unchanged(): void
+    {
+        $table = '<table><thead><tr><th>Name</th></tr></thead>'
+            .'<tbody><tr><td>Value</td></tr></tbody></table>';
+
+        $output = $this->clean($table);
+
+        $this->assertStringContainsString('<table>', $output);
+        $this->assertStringContainsString('<thead>', $output);
+        $this->assertStringContainsString('<tbody>', $output);
+        $this->assertStringContainsString('<th>Name</th>', $output);
+        $this->assertStringContainsString('<td>Value</td>', $output);
+    }
+
+    public function test_it_preserves_a_merged_table_cell(): void
+    {
+        // expand-tip-tap task 04: colspan/rowspan joined ALLOWED_ATTRIBUTES so a
+        // merged cell (produced by the toolbar's mergeCells/splitCell buttons, or
+        // hand-authored HTML) round-trips through the server. The editor itself
+        // never emits `style`/<colgroup>/<col> for tables (see wysiwyg.js's
+        // PlainTable override), so this only needs to prove colspan/rowspan survive
+        // — a stray style/colgroup arriving via some other path should still be
+        // stripped, same as any other presentational attribute.
+        $table = '<table><tbody>'
+            .'<tr><td colspan="2" rowspan="1">merged</td></tr>'
+            .'<tr><td colspan="1" rowspan="1">a</td><td colspan="1" rowspan="1">b</td></tr>'
+            .'</tbody></table>';
+
+        $output = $this->clean($table.'<table style="min-width: 50px;"><colgroup><col></colgroup><tbody><tr><td>x</td></tr></tbody></table>');
+
+        $this->assertStringContainsString('colspan="2"', $output);
+        $this->assertStringContainsString('rowspan="1"', $output);
+        $this->assertStringContainsString('merged', $output);
+        $this->assertStringNotContainsString('style=', $output);
+        $this->assertStringNotContainsString('<colgroup', $output);
+        $this->assertStringNotContainsString('<col>', $output);
+    }
+
+    public function test_it_preserves_a_task_list_fragment_unchanged(): void
+    {
+        $taskList = '<ul data-type="taskList">'
+            .'<li data-type="taskItem" data-checked="true">'
+            .'<label><input type="checkbox" checked></label><span></span><div>Done</div>'
+            .'</li></ul>';
+
+        $output = $this->clean($taskList);
+
+        $this->assertStringContainsString('data-type="taskList"', $output);
+        $this->assertStringContainsString('data-type="taskItem"', $output);
+        $this->assertStringContainsString('data-checked="true"', $output);
+        $this->assertStringContainsString('type="checkbox"', $output);
+        $this->assertStringContainsString('Done', $output);
+    }
+
+    public function test_it_preserves_a_callout_blockquote_attribute(): void
+    {
+        $output = $this->clean('<blockquote data-callout-type="warning"><p>Heads up.</p></blockquote>');
+
+        $this->assertStringContainsString('data-callout-type="warning"', $output);
+        $this->assertStringContainsString('Heads up.', $output);
+    }
+
+    public function test_purifier_allowed_html_lists_the_new_tags_and_attributes(): void
+    {
+        $allowed = RichTextFields::purifierAllowedHtml();
+
+        $this->assertStringContainsString('table', $allowed);
+        $this->assertStringContainsString('img[src|alt|title|width|height]', $allowed);
+        $this->assertStringContainsString('li[data-type|data-checked]', $allowed);
+        $this->assertStringContainsString('ul[data-type]', $allowed);
+        $this->assertStringContainsString('blockquote[data-callout-type]', $allowed);
+        $this->assertStringContainsString('td[colspan|rowspan]', $allowed);
+        $this->assertStringContainsString('th[colspan|rowspan]', $allowed);
     }
 
     public function test_rich_text_fields_exposes_the_expected_field_list(): void
