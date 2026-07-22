@@ -734,7 +734,7 @@ fields, in the feature's core loop.
 
 | Spec | Relationship |
 |---|---|
-| **TipTap editor capability** *(to be written)* | **Hard prerequisite — this feature is blocked on it.** Must establish what the editor can and cannot round-trip (tables, images, footnotes, raw HTML), and verify whether the official TipTap `Table` / `Image` extensions ship Markdown handlers. See §11.4. Until it lands, autosave cannot state what happens when the editor silently drops formatting. |
+| `.specs/draft/expand-tip-tap` | **Was the hard prerequisite — now substantially resolved.** Tables, images, task lists, strikethrough, underline, and callouts are all decided-to-support; the rest of the original inventory (nested blockquotes, hard breaks, reference-style links, definition lists, raw HTML blocks) is verified safe or gracefully degrading, not destructive. See §11.4 (updated) and that spec's own "Synthesis" section. **Still open there:** the exact fallback-warning policy for the small remaining attribute/structure-level losses (merged table cells, resized image dimensions, an HTML wrapper tag's attributes) — see §11.5.2. Footnotes were split out to `.specs/draft/footnote-plugin` (no official TipTap extension exists) and are not blocking — a footnote degrades to plain visible text today, it does not get destroyed. |
 | `.specs/draft/data-loss-warnings` | **Hard dependency.** Owns the gap in §2.3 — short fields and relations do not autosave, so a dirty-form guard is required for this feature to be safe. |
 | `.specs/draft/multiple-database-engines` | Constrains §1.1, §4.2, §9.8, §9.9 — all DDL and queries must be portable across five engines; no window functions without verification. The `text()` → `longText()` widening (§9.8) and the `size_bytes` column (§9.9) are both direct consequences. |
 | `.specs/draft/editor-interface` | Shares the editor surface; the indicator, `Ctrl-S` handling and dirty state must be designed together, not twice. The `x-autosave-field` wrapper (§9.4) is the shared seam. |
@@ -772,7 +772,21 @@ Consequence beyond §9.13: **the first edit of every pre-existing scene will pro
 whole-document diff** in the compare view. The baseline (§9.2) preserves the original, so
 nothing is lost — but the expanded spec must say so, or it reads as a bug.
 
-### 11.4 The editor cannot round-trip tables, images or footnotes — **this is the blocker**
+### 11.4 The editor cannot round-trip tables, images or footnotes — **was the blocker, now resolved**
+
+> **Update, `expand-tip-tap` session:** the "unverified" item below has been verified against
+> actual package source, not assumed. Tables, images, and task lists all ship real
+> `parseMarkdown`/`renderMarkdown` handlers and are decided-to-support; strikethrough,
+> underline (via `<u>` passthrough), and callout/alert blocks are also decided. Footnotes
+> have no official TipTap extension (confirmed via registry 404) and were split into their
+> own spec, `.specs/draft/footnote-plugin` — not a blocker, since a footnote degrades to
+> plain visible text today rather than being destroyed. The rest of the original
+> "unrepresentable content" concern (raw HTML blocks, definition lists, reference-style
+> links, nested blockquotes, hard breaks) is now verified safe or gracefully degrading too.
+> See `expand-tip-tap`'s "Synthesis" note: **nothing left in its inventory deletes content
+> outright** — the only remaining decision is the fallback-*warning* policy for smaller
+> attribute/structure-level losses (§11.5.2). The narrative below is kept as the historical
+> record of what triggered the split.
 
 `wysiwyg.js` configures **`StarterKit` only**. `node_modules/@tiptap` contains no Table
 and no Image extension. But `ValidMarkdown` accepts anything CommonMark parses, so a
@@ -811,8 +825,11 @@ behaviour. See §10.
 1. **The dirty-only rule.** Proposed but **not confirmed**: *never autosave a field the
    writer has not actually typed in*, so merely opening a scene can never write anything.
    Strongly recommended regardless of the TipTap outcome — it is what makes reading safe.
-2. **Warning on unrepresentable content.** Whether the field shows a notice
-   ("This scene has a table the editor can't keep…") when the stored text contains
-   constructs the editor cannot hold, driven by an explicit list in config rather than a
-   fuzzy diff. Depends on what the TipTap spec decides to support.
+2. **Warning on unrepresentable content — reframed, still open.** `expand-tip-tap` resolved
+   what the editor supports; nothing left in its inventory destroys content outright (see
+   §11.4 update). So this is no longer "warn before content gets destroyed" — it's whether
+   to surface the smaller remaining attribute/structure-level losses (a merged table cell,
+   a resized image's dimensions, an HTML wrapper tag's attributes) via an explicit
+   config-list warning, rather than a fuzzy diff. `expand-tip-tap` leans toward
+   flatten-and-warn-from-a-list but has not finalized it.
 3. Whether `Ctrl-S` collides with `.specs/draft/keyboard-shortcuts`.
