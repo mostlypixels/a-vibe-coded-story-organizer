@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CoverImageService;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Chapter extends Model
 {
     use HasFactory;
+    use HasRevisions;
     use HasSiblingPosition;
     use SanitizesRichHtml;
 
@@ -31,6 +33,14 @@ class Chapter extends Model
     public function scenes(): HasMany
     {
         return $this->hasMany(Scene::class);
+    }
+
+    /**
+     * The project that owns this chapter's revisions (see HasRevisions).
+     */
+    public function revisionProject(): Project
+    {
+        return $this->act->project;
     }
 
     /**

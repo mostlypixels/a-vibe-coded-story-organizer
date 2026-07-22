@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BookLanguage;
+use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CodexMediaService;
 use App\Services\CoverImageService;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 class Project extends Model
 {
     use HasFactory;
+    use HasRevisions;
     use SanitizesRichHtml;
 
     protected $fillable = [
@@ -41,6 +43,14 @@ class Project extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * A project owns its own revisions (see HasRevisions).
+     */
+    public function revisionProject(): Project
+    {
+        return $this;
     }
 
     public function plotlines(): HasMany

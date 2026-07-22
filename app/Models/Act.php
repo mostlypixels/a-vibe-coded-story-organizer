@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CoverImageService;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Act extends Model
 {
     use HasFactory;
+    use HasRevisions;
     use HasSiblingPosition;
     use SanitizesRichHtml;
 
@@ -30,6 +32,14 @@ class Act extends Model
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class);
+    }
+
+    /**
+     * The project that owns this act's revisions (see HasRevisions).
+     */
+    public function revisionProject(): Project
+    {
+        return $this->project;
     }
 
     /**

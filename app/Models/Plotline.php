@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Plotline extends Model
 {
     use HasFactory;
+    use HasRevisions;
     use SanitizesRichHtml;
 
     protected $fillable = [
@@ -30,6 +32,14 @@ class Plotline extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * The project that owns this plotline's revisions (see HasRevisions).
+     */
+    public function revisionProject(): Project
+    {
+        return $this->project;
     }
 
     public function events(): BelongsToMany
