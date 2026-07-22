@@ -23,7 +23,10 @@ use App\Models\Scene;
  *      MUST stay a superset of what the editor's slash menu can produce.
  *
  * Scene.contents is deliberately absent: it stays Markdown-only (ValidMarkdown +
- * Str::markdown()), never routed through the sanitizer or the editor.
+ * Str::markdown()), never routed through the sanitizer. It IS edited through the
+ * same x-wysiwyg editor as every rich-HTML field, in its `markdown` mode
+ * (scenes/edit.blade.php renders `<x-wysiwyg ... markdown>`) — only the sanitizer
+ * is bypassed, not the editor.
  */
 class RichTextFields
 {
@@ -44,19 +47,71 @@ class RichTextFields
 
     /**
      * Tags the sanitizer permits. Everything else is stripped. Deliberately no
-     * <script>/<iframe>/<object>, no <img> (image upload is a v2 concern), and no
-     * presentational attributes. Kept in sync with the editor slash menu (task 04).
+     * <script>/<iframe>/<object> and no presentational attributes (style/class) on
+     * any tag. Kept in sync with the editor slash menu (task 04 of expand-tip-tap).
+     *
+     * `table`/`thead`/`tbody`/`tr`/`th`/`td` (tables), `img` (image references —
+     * uploading new images is still out of scope, only referencing an existing URL),
+     * and `label`/`input`/`span`/`div` (the task-list checkbox markup TipTap's
+     * TaskItem/TaskList extensions render — see ALLOWED_ATTRIBUTES for the attributes
+     * each of those carries) were added by the expand-tip-tap feature.
      *
      * @var list<string>
      */
     public const ALLOWED_TAGS = [
         'p', 'h1', 'h2', 'h3', 'h4', 'strong', 'em', 'u', 's',
         'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'br', 'hr',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        'img',
+        'label', 'input', 'span', 'div',
     ];
 
     /**
-     * URL schemes allowed on <a href>. Relative URLs carry no scheme and remain
-     * permitted; javascript: and data: are blocked by omission.
+     * Attributes each tag carries in the sanitized output, keyed by tag name. A tag
+     * absent from this map is allowed bare (no attributes at all) — see
+     * purifierAllowedHtml(), which falls back to the tag name alone in that case.
+     *
+     * Note this only restricts which attribute *names* survive, not their values
+     * (HTMLPurifier's `HTML.Allowed` directive has no per-attribute value
+     * restriction beyond `URI.AllowedSchemes` for href/src) — e.g. `input`'s `type`
+     * attribute isn't pinned to `checkbox` here; that's an accepted limitation of
+     * this mechanism, not an oversight.
+     *
+     * @var array<string, list<string>>
+     */
+    public const ALLOWED_ATTRIBUTES = [
+        'a' => ['href'],
+        'img' => ['src', 'alt', 'title', 'width', 'height'],
+        // TipTap's TaskList/TaskItem (@tiptap/extension-list) render:
+        //   <ul data-type="taskList"><li data-type="taskItem" data-checked="true">
+        //     <label><input type="checkbox" checked></label><span></span><div>…</div>
+        //   </li></ul>
+        'ul' => ['data-type'],
+        'li' => ['data-type', 'data-checked'],
+        // `disabled` is added alongside type/checked because GFM's rendered task-list
+        // (league/commonmark's TaskList extension, used by Str::markdown() for the
+        // Scene.contents Markdown carve-out and checked here by
+        // ContentSanitizer::assertMarkdownAllowed()) emits a static, read-only
+        // <input disabled type="checkbox">, distinct from TipTap's own editable
+        // checkbox markup (which never sets it). Not a security concern either way.
+        'input' => ['type', 'checked', 'disabled'],
+        // colspan/rowspan (expand-tip-tap task 04, table merge/split — HTML-mode
+        // fields only) are structural, not presentational: without them a merged
+        // cell's HTML would render with the wrong grid shape entirely. Note the
+        // editor's own Table override (resources/js/wysiwyg.js's PlainTable) strips
+        // the extension's default `style`/<colgroup>/<col> output before it ever
+        // reaches the sanitizer, so no exception for `style` is needed here — this
+        // app deliberately never emits it for tables.
+        'td' => ['colspan', 'rowspan'],
+        'th' => ['colspan', 'rowspan'],
+        // The callout node (`> [!NOTE]` etc., expand-tip-tap task 06) presents over
+        // the existing <blockquote> element via this attribute — no new tag needed.
+        'blockquote' => ['data-callout-type'],
+    ];
+
+    /**
+     * URL schemes allowed on <a href> and <img src>. Relative URLs carry no scheme
+     * and remain permitted; javascript: and data: are blocked by omission.
      *
      * @var list<string>
      */
@@ -104,13 +159,16 @@ class RichTextFields
     }
 
     /**
-     * The HTMLPurifier "HTML.Allowed" directive built from the tag allow-list.
-     * Only <a> carries an attribute (href); everything else is bare.
+     * The HTMLPurifier "HTML.Allowed" directive built from the tag allow-list plus
+     * ALLOWED_ATTRIBUTES: a tag with entries there becomes "tag[attr1|attr2]", a tag
+     * without any becomes the bare tag name.
      */
     public static function purifierAllowedHtml(): string
     {
         $tags = array_map(
-            static fn (string $tag): string => $tag === 'a' ? 'a[href]' : $tag,
+            static fn (string $tag): string => isset(self::ALLOWED_ATTRIBUTES[$tag])
+                ? sprintf('%s[%s]', $tag, implode('|', self::ALLOWED_ATTRIBUTES[$tag]))
+                : $tag,
             self::ALLOWED_TAGS,
         );
 

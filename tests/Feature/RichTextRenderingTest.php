@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BookLanguage;
 use App\Models\Act;
 use App\Models\Project;
 use App\Models\User;
@@ -58,6 +59,34 @@ class RichTextRenderingTest extends TestCase
             ->assertDontSee('<strong>', false)
             ->assertDontSee('<li>', false)
             ->assertDontSee('<script>', false);
+    }
+
+    public function test_project_update_persists_a_table_and_image_fragment_unchanged(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $richFragment = '<table><thead><tr><th>Col</th></tr></thead>'
+            .'<tbody><tr><td>Val</td></tr></tbody></table>'
+            .'<img src="https://example.com/cover.png" alt="Cover">';
+
+        $this->actingAs($user)
+            ->put(route('projects.update', $project), [
+                'name' => $project->name,
+                'description' => $richFragment,
+                'language' => BookLanguage::English->value,
+            ])
+            ->assertRedirect();
+
+        $this->assertStringContainsString('<table>', $project->fresh()->description);
+        $this->assertStringContainsString('<th>Col</th>', $project->fresh()->description);
+        $this->assertStringContainsString('src="https://example.com/cover.png"', $project->fresh()->description);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee('<table>', false)
+            ->assertSee('src="https://example.com/cover.png"', false);
     }
 
     public function test_non_owner_cannot_view_a_project(): void

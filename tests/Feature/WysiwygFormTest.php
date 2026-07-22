@@ -126,4 +126,22 @@ class WysiwygFormTest extends TestCase
         // The rich HTML sibling field still gets sanitized on write.
         $this->assertStringNotContainsString('<script>', (string) $scene->description);
     }
+
+    /**
+     * Regression guard for tiptap-toolbar-format task 02: the toolbar's buttons were
+     * regrouped into 5 clusters and Headings/Table structure collapsed into dropdowns,
+     * but every command must still be reachable with the same aria-labels.
+     */
+    public function test_toolbar_still_exposes_key_formatting_commands_after_regrouping(): void
+    {
+        [$user, $project] = $this->fixture();
+
+        $this->actingAs($user)
+            ->get(route('projects.edit', $project))
+            ->assertOk()
+            ->assertSee('aria-label="Bold"', false)
+            ->assertSee('aria-label="Heading"', false)
+            ->assertSee('aria-label="Table structure"', false)
+            ->assertSee('aria-label="Formatting"', false); // outer toolbar container, unchanged
+    }
 }

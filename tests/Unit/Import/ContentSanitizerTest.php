@@ -135,6 +135,32 @@ class ContentSanitizerTest extends TestCase
         $this->assertTrue(true);
     }
 
+    /**
+     * Regression test for `expand-tip-tap` task 01/08: before that feature widened
+     * `RichTextFields::ALLOWED_TAGS` to include `table`/`thead`/`tbody`/`tr`/`th`/`td`,
+     * `img`, and the task-list markup, a Markdown document rendering to any of those
+     * tags would have been rejected here as "disallowed HTML content" — even though
+     * the source Markdown itself was perfectly valid GFM. This is a real import-time
+     * behavior change (acceptance, not just editor capability), so it gets its own
+     * named test rather than being an implicit side effect of the allow-list edit.
+     */
+    public function test_gfm_table_image_and_task_list_markdown_passes(): void
+    {
+        $this->sanitizer->assertMarkdownAllowed(<<<'MARKDOWN'
+            | Name  | Role     |
+            | ----- | -------- |
+            | Alice | Detective|
+            | Bob   | Suspect  |
+
+            ![A portrait](https://example.com/portrait.png)
+
+            - [ ] Interview Bob
+            - [x] Search the study
+            MARKDOWN);
+
+        $this->assertTrue(true);
+    }
+
     // ------------------------------------------------------------------
     // assertMarkdownAllowed — violations
     // ------------------------------------------------------------------

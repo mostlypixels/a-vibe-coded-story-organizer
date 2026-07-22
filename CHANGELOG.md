@@ -19,6 +19,21 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 _Nothing unreleased — every entry below has merged to `master`._
 
+## 2026-07-22 — Reorganize the WYSIWYG toolbar into labeled clusters (#21)
+
+### Changed
+
+- The rich-text editor's toolbar (`x-wysiwyg`) now groups its ~25 buttons into five labeled
+  clusters — Headings, Text format, Lists & blocks, Insert, and Table structure — instead of one
+  long flex-wrapped row with only loose divider ticks. Headings and Table structure, the two
+  least-frequently-used clusters, collapse behind a dropdown (reusing the existing
+  `<x-dropdown>` component) so the always-visible row roughly halves in button count. Every
+  command, its keyboard/click behavior, and the existing HTML-mode-only gating (merge/split,
+  table row/column ops) are unchanged — this is a presentation refactor only.
+- Extracted a new `x-wysiwyg.toolbar-button` sub-component for the plain toggle-button shape
+  (`cmd()` + optional `isOn()`), so adding a future toolbar command is a one-array-entry change
+  rather than copy-pasted button markup.
+
 ## 2026-07-21 — Number the remaining changelog headings (#20)
 
 ### Fixed

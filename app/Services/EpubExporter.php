@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use League\CommonMark\CommonMarkConverter;
 use League\CommonMark\Extension\SmartPunct\SmartPunctExtension;
+use League\CommonMark\Extension\Strikethrough\StrikethroughExtension;
+use League\CommonMark\Extension\TaskList\TaskListExtension;
 use Rampmaster\EPub\Core\EPub;
 use Rampmaster\EPub\Core\Structure\OPF\DublinCore;
 use RuntimeException;
@@ -1224,6 +1226,12 @@ class EpubExporter
             // grilled decision). It lives ONLY on this instance — never on Str::markdown
             // or Scene::renderedContents.
             $converter->getEnvironment()->addExtension(new SmartPunctExtension);
+            // Strikethrough/TaskList keep this isolated converter in agreement with the
+            // GFM grammar Scene::renderedContents() and ValidMarkdown already use — added
+            // individually (not via GithubFlavoredMarkdownConverter) so the SmartPunct
+            // isolation rationale above stays intact: this instance never becomes shared.
+            $converter->getEnvironment()->addExtension(new StrikethroughExtension);
+            $converter->getEnvironment()->addExtension(new TaskListExtension);
 
             $this->converter = $converter;
         }
