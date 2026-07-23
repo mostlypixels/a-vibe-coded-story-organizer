@@ -54,7 +54,7 @@ class RevisionDiffer
         $html = DiffHelper::calculate(
             $oldProjection,
             $newProjection,
-            'Inline',
+            'SideBySide',
             [
                 // The whole field is one diff, not a multi-file patch — showing
                 // every unchanged line keeps short-field context intact instead of

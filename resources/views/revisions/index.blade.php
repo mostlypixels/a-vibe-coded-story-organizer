@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <x-heading level="2">
-                {{ __('History') }} &mdash; {{ Illuminate\Support\Str::headline($field) }}
+                {{ __('History') }} &mdash; {{ Illuminate\Support\Str::headline($entity) }} "{{ $entityName }}" &mdash; {{ Illuminate\Support\Str::headline($field) }}
             </x-heading>
             <a href="{{ $editUrl }}" class="text-sm text-gray-500 hover:text-gray-700">
                 {{ __('Back to editing') }}
