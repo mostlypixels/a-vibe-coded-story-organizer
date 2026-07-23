@@ -7,12 +7,14 @@
     $appearanceActive = request()->routeIs('admin.appearance.*');
     $dataActive       = request()->routeIs('admin.data.*');
     $databaseActive   = request()->routeIs('admin.database.*');
+    $revisionsActive  = request()->routeIs('admin.revisions.*');
 
     $sections = [
         ['label' => 'General settings',          'href' => route('admin.settings.edit'),   'active' => $generalActive],
         ['label' => 'Appearance & accessibility', 'href' => route('admin.appearance.edit'), 'active' => $appearanceActive],
         ['label' => 'Export & import',            'href' => route('admin.data.index'),      'active' => $dataActive],
         ['label' => 'Database configuration',     'href' => route('admin.database.edit'),   'active' => $databaseActive],
+        ['label' => 'Revisions',                  'href' => route('admin.revisions.edit'),  'active' => $revisionsActive],
     ];
 
     $activeClasses = 'border-flame-500 bg-aqua-50 text-navy-900 font-semibold';

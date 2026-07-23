@@ -179,6 +179,128 @@ scenes stay hidden regardless of the global toggle).
 > authenticated user may edit it. This is deliberate (no `is_admin` role); do not "fix" it into
 > a project walk.
 
+## Revisions (autosave + field history)
+
+Fourteen long-text fields across the project tree (`Scene.contents` above all) autosave
+via AJAX as the writer types, and every save that matters is recoverable through a
+per-field history/compare/revert UI. There is **no draft-vs-published split** — autosave
+writes the live column directly, so exports, search, share links, and
+`SceneReferenceMatcher` always read the same value the writer sees.
+
+**The registry (`App\Support\AutosavableFields::REGISTRY`).** One associative array,
+keyed by the URL slug the feature's routes accept (`project`, `act`, `chapter`,
+`plotline`, `event`, `scene`, `codex`), each mapping to `[model class, [field =>
+FieldKind, ...]]`. This is the **single source of truth** for three different concerns
+that must never drift apart:
+
+- Which fields autosave at all, and what kind of editor (`FieldKind::Plain` / `Rich` /
+  `Markdown`) each one uses.
+- Route resolution: `routes/web.php` gates the `{entity}` segment with
+  `->whereIn('entity', AutosavableFields::slugs())`, so an unregistered slug 404s at the
+  router — there is **one generic `FieldAutosaveController` route, never one per model**.
+- Validation: `AutosavableFields::validationRule($slug, $field)` is the *only* place a
+  character cap or content rule is expressed; `FieldAutosaveController` and the existing
+  Form Requests both call it, so the two paths can never validate the same field two
+  different ways.
+
+Coalescing windows (`config('revisions.windows')`, keyed `"Model.field"` with a
+`"default"` fallback) and per-field character caps (`config('revisions.caps')`, same
+keying) live in `config/revisions.php` for the same "configuration in one place" reason —
+`AutosavableFields` reads them, nothing hard-codes a window or cap per field elsewhere.
+
+**Writing to `revisions` (`App\Services\RevisionRecorder`).** The one class that ever
+inserts or updates a `Revision` row — called by `FieldAutosaveController` on every
+autosave/manual save, and by the baseline-backfill migration, so the live write path and
+a fresh install's backfill can never diverge.
+
+- **Coalescing.** Within a field's configured window, a run of `origin: automatic` saves
+  overwrites the same still-open revision row in place (a plain `UPDATE`, not a new
+  insert) rather than creating one row per keystroke-debounce tick. Every other origin —
+  `manual`, `revert`, `import`, `baseline` — always inserts a fresh row, so a form-submit
+  Save, a revert, or an import stays individually visible in history even seconds after
+  an autosave closed a coalescing window.
+- **Byte-identical no-op.** `RevisionRecorder` doesn't decide whether to write at all —
+  the caller (`FieldAutosaveController`) compares the incoming value against the current
+  column value first and skips the call entirely when nothing changed (typing something
+  and undoing it leaves no trace). A `manual=true` save always bypasses this skip, so two
+  identical manual saves in a row still both persist.
+- **Baseline seeding (`ensureBaseline()`).** The very first time a field is ever touched
+  (autosave or backfill), a `origin: baseline` row is written holding the *pre-edit*
+  value, stamped with the entity's own `updated_at` (not `now()`) so it accurately
+  represents "this value held from this timestamp onward" for compare-by-date. Skipped
+  when the field is currently empty — nothing worth preserving.
+
+**Origin (`App\Enums\RevisionOrigin`).** `automatic` / `manual` / `revert` / `import` /
+`baseline` — see its own docblock for the label shown on the history page. This is the
+axis that decides *how a row was created*; it is deliberately not the same taxonomy as
+"category" below.
+
+**Prune vs. purge — the safety-critical distinction.**
+
+> [!WARNING]
+> Only `origin: automatic`, unlabeled revisions are ever eligible for the unattended
+> daily sweep, and even then never the *newest* revision of any `(entity, field)` pair.
+> `Revision::prunable()`'s `whereNotIn(... MAX(id) group by ...)` subquery expresses "keep
+> the newest row per field" **without a window function** (portable across
+> sqlite/mysql/mariadb/pgsql/sqlsrv — see `.specs/draft/multiple-database-engines`). This
+> is the single most safety-critical query in the feature; any change to it needs a test
+> proving a labeled row, a non-automatic-origin row, and the newest row of a field all
+> survive regardless of age.
+
+- **Prune** = the unattended path. `Revision::prunable()` (an instance method
+  `MassPrunable` calls via the scheduled `model:prune` command — not a query-builder
+  macro, so tests call it as `(new Revision())->prunable()`) reads
+  `RevisionSetting::current()->retention_days`, an admin-configurable singleton, rather
+  than the raw `config('revisions.retention_days')` — lowering retention in the admin
+  panel takes effect on the very next scheduled prune with no deploy.
+- **Purge** = the deliberate, explicit path (`App\Services\RevisionPurger`), the opposite
+  number of prune: it *is* allowed to remove labeled and non-automatic rows, because
+  without a release valve an imported project's history or a two-year `manual` trail
+  would be a one-way ratchet. Both `revisions:purge` (console) and the admin "Revisions"
+  page's storage panel call this one service, so a dry-run preview and the real deletion
+  can never report different counts. Its four **categories** — `automatic` / `manual` /
+  `labeled` / `imported` — are a cross-cutting slice, not a fifth `RevisionOrigin`: three
+  map directly to an origin, but `labeled` matches `whereNotNull('label')` regardless of
+  origin (a manual or automatic row can both carry a label).
+
+**List queries never hydrate `value`.** The history index, the storage panel, and every
+purge-preview query select explicit columns only — `size_bytes` exists precisely so
+`SUM(size_bytes)` never needs to touch `value`, since a field's full text history can be
+large. Any new query against `revisions` should follow the same rule.
+
+**`project_id` is always set explicitly**, never inferred from the polymorphic
+`revisionable_type`/`revisionable_id` pair — `App\Models\Concerns\HasRevisions::
+revisionProject()` walks up to the owning `Project` (its own id for `Project` itself),
+mirroring `ProjectPolicy::update`'s authorization walk. This matters because deleting a
+`Project` cascades to its acts/chapters/scenes at the DB level without firing Eloquent
+events, so a polymorphic-column-based lookup would silently break for orphaned rows.
+
+**Diffing (`App\Services\RevisionDiffer`)** wraps `jfcherng/php-diff`'s word-level inline
+renderer (verified compatible with this app's PHP/Laravel versions at adoption time — see
+`resolution-log.md` if that ever needs re-checking) for the compare view's `<ins>`/`<del>`
+spans.
+
+**Revert is additive, never destructive.** `RevisionController::revert` writes a new
+`origin: revert` revision holding the older value; no user action ever deletes history
+except the explicit purge above.
+
+**Known gap (deliberately out of scope for this feature).** Short fields and relations —
+`name`, `chapter_id`, `status`, `event_id`, `mentioned_events` — still only save on the
+existing manual form submit; they carry cross-field validation rules that don't survive a
+field-level autosave. Closing that gap is `.specs/draft/data-loss-warnings`'s job, shipped
+independently by design.
+
+> [!NOTE]
+> **`Ctrl-S` is claimed.** Autosave binds `Ctrl-S`/`Cmd-S` inside an autosaving field to
+> flush the pending save and close the current coalescing window (it does not open the
+> browser's native "Save page" dialog). Whoever picks up `.specs/draft/keyboard-shortcuts`
+> next should treat this binding as already spoken for rather than reassigning it.
+
+For the full design rationale and rejected alternatives (why no draft/published split, why
+no `laravel-auditing`/`laravel-versionable`/`revisionable` package, why no server-side
+collaborative locking), see `.specs/shipped/2026-07/autosave-with-revisions/` (its
+`handoff.md` and `plan/resolution-log.md`) once this feature ships.
+
 ## Enum convention
 
 Enums live in `app/Enums`. The pattern (see `SceneStatus`):
@@ -742,7 +864,7 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 | Input validation | `app/Http/Requests` (Form Requests), `app/Rules` (reusable rules) |
 | Authorization | `app/Policies/ProjectPolicy` |
 | Domain invariants / lifecycle | Model `booted()` hooks |
-| Reusable domain workflows | `app/Services` (e.g. `ProjectSearch`), or an Action class |
+| Reusable domain workflows | `app/Services` (e.g. `ProjectSearch`, `RevisionRecorder`, `RevisionPurger`), or an Action class |
 | Constant / reference data | `app/Support` (e.g. `PlotlineColors`), `app/Enums` |
 | Reusable UI | `resources/views/components` (Blade components) |
 | Containerized dev/prod environment | `Dockerfile`(`.dev`), `docker-compose*.yml`, `docker/` — see [`documentation/docker.md`](docker.md) |

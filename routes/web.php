@@ -22,12 +22,14 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PublicationSettingController;
 use App\Http\Controllers\RevisionController;
+use App\Http\Controllers\RevisionSettingController;
 use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SceneShareController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SharedSceneController;
 use App\Http\Controllers\StoryController;
+use App\Services\RevisionPurger;
 use App\Support\AutosavableFields;
 use Illuminate\Support\Facades\Route;
 
@@ -123,6 +125,19 @@ Route::middleware('auth')->group(function () {
         Route::patch('/data/import-settings', [ImportSettingController::class, 'update'])->name('data.import-settings');
 
         Route::get('/database', [DatabaseConfigurationController::class, 'edit'])->name('database.edit');
+
+        // Task 13: the dedicated admin "Revisions" page — the RevisionSetting
+        // retention form (confirm-gated when lowering the window) and the
+        // "Revision storage" panel's bulk-delete actions. A new, standalone
+        // section rather than folded into General settings or Export & import
+        // (handoff.md §9.11/§4.3 — confirmed in this feature's grilling pass).
+        Route::get('/revisions', [RevisionSettingController::class, 'edit'])->name('revisions.edit');
+        Route::patch('/revisions', [RevisionSettingController::class, 'update'])->name('revisions.update');
+        Route::delete('/revisions/purge/{category}', [RevisionSettingController::class, 'purgeCategory'])
+            ->whereIn('category', RevisionPurger::CATEGORIES)
+            ->name('revisions.purge-category');
+        Route::delete('/revisions/purge-old-automatic', [RevisionSettingController::class, 'purgeOldAutomatic'])
+            ->name('revisions.purge-old-automatic');
     });
 
     Route::resource('projects', ProjectController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);

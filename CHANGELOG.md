@@ -17,7 +17,44 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-_Nothing unreleased — every entry below has merged to `master`._
+### Added
+
+- Autosave with revisions: the 14 registered long-text fields across the project tree
+  (`Scene.contents`, act/chapter/plotline/event descriptions, project description and
+  front/back matter, codex entry descriptions) now save automatically via AJAX as the
+  writer types — debounce, blur, and `Ctrl-S`/`Cmd-S` all flush a pending save — instead
+  of only on an explicit form submit. A crashed or closed tab's unsaved text survives in
+  `localStorage` and is offered back on next load, and a stale two-tab overwrite is caught
+  by a 409 conflict response (Reload / Keep mine / Compare) rather than silently clobbering
+  the other tab's work.
+- A per-field revision history page (`RevisionController`) with a word-level compare view
+  and a non-destructive revert — reverting always writes a new `origin: revert` row, it
+  never deletes history. Revisions coalesce within a configurable per-field window so a
+  run of keystrokes doesn't produce one row per autosave tick, while a manual Save always
+  stays individually visible.
+- A daily automatic prune (`Revision::prunable()`, wired into `model:prune`) keeps the
+  `revisions` table bounded, with a non-negotiable rule that it never removes a labeled
+  revision, a non-automatic-origin revision, or the newest revision of any field. A new
+  admin "Revisions" settings page exposes the retention window (confirm-gated when
+  lowering it) and a storage panel with category/age-based bulk purge
+  (`RevisionPurger`, `revisions:purge`).
+- Project export/import now carries revision history: a new `include_revisions` toggle on
+  export writes each field's history to a `revisions/<field>.json` sidecar per entity, and
+  import restores it tagged `origin: import` (never eligible for the automatic prune).
+  EPUB export is unaffected — it never included revisions and still doesn't.
+
+### Changed
+
+- Adding autosave to a future long-text field is now a one-registry-entry
+  (`App\Support\AutosavableFields::REGISTRY`) + one-Blade-line (`x-autosave-field`)
+  change, not a new controller/route/test per field — see `documentation/architecture.md`
+  → "Revisions".
+
+> [!NOTE]
+> Known gap, shipped deliberately: short fields and relations (`name`, `chapter_id`,
+> `status`, `event_id`, `mentioned_events`) still only save on the existing manual form
+> submit — they carry cross-field validation rules that don't survive a field-level
+> autosave. Closing that gap is `.specs/draft/data-loss-warnings`'s job, not this feature's.
 
 ## 2026-07-22 — Reorganize the WYSIWYG toolbar into labeled clusters (#21)
 

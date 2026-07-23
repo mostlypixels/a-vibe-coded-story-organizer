@@ -533,3 +533,229 @@ _None yet._
   PruneCommand.php`) rather than guessing: `"{$count} [{$model}] records will be
   pruned."` (brackets around the FQCN) -- the task's own test list only says
   "reports the count", not the exact wording.
+
+## Task 13 -- Admin "Revisions" settings page
+
+* **Design decision -- computing the confirm-count without a second query
+  implementation:** rather than re-deriving "what would `prunable()` return
+  under a candidate `retention_days`" as a parallel/parameterized query
+  (risking silent drift from the real nightly-prune query), `RevisionSettingController::
+  countPrunableAt()` opens a DB transaction, applies the candidate value to
+  the `RevisionSetting` singleton, runs the REAL `(new Revision)->prunable()->count()`,
+  then always rolls back in a `finally` block -- so the count is guaranteed to
+  match what `model:prune` would actually do, and nothing is left applied even
+  if `prunable()` itself throws. Relies on `RevisionSetting::current()` being
+  deliberately non-memoised (task 12's own docblock) so the count read inside
+  the transaction sees the just-applied, not-yet-committed value.
+* **Design decision -- storage panel counts reuse `RevisionPurger::purge(...,
+  dryRun: true)` rather than a second hand-rolled query per category:** keeps
+  the panel's displayed figures from ever drifting out of sync with what a
+  "Delete all" button actually removes, and keeps `RevisionPurger` the single
+  place purge-adjacent queries live (never hydrating `value`, per
+  00-overview.md's read rule).
+* **Interpretation of "per category and per age ('imported', 'auto older than
+  1 year')" (handoff.md §4.3, task file's own scope line):** implemented as
+  four whole-category "Delete all" buttons (`RevisionSettingController::
+  purgeCategory()`, one per `RevisionPurger::CATEGORIES`) plus one additional
+  age-scoped action, "Automatic revisions older than 1 year"
+  (`purgeOldAutomatic()`, a fixed 365-day threshold named
+  `OLD_AUTOMATIC_THRESHOLD_DAYS` rather than a free-text day input — the task
+  file names this exact example, not an arbitrary configurable cutoff). Note
+  this age-scoped action purges the whole `automatic` category by age,
+  including any row that happens to carry a label — `RevisionPurger`'s
+  `automatic` category matches on origin alone (task 12's own documented
+  design: "labeled" is a separate, cross-cutting category, not a modifier on
+  the other three) — confirmed via a test that seeds an old, labeled,
+  `origin: automatic` row and asserts it IS removed by this action, unlike
+  `Revision::prunable()`, which would never touch it.
+* **Routes:** `admin.revisions.edit` (GET), `admin.revisions.update` (PATCH,
+  handles both the raise-immediately and lower-then-confirm paths from one
+  action), `admin.revisions.purge-category` (DELETE, `{category}` constrained
+  via `->whereIn('category', RevisionPurger::CATEGORIES)` so an unregistered
+  category 404s at the router before reaching the controller — mirroring the
+  `{entity}` slug gate on the autosave/history routes), and
+  `admin.revisions.purge-old-automatic` (DELETE, no route parameter).
+* **Confirm screen is a plain returned `View`, not a redirect:** like the
+  `revisions.revert` 409 case (task 11), the first (unconfirmed) `PATCH
+  admin.revisions.update` submission with a lower value renders
+  `admin.revisions.confirm-retention` directly from the same controller
+  action rather than redirecting to a separate confirm route — keeps the
+  "nothing persisted until the confirming POST" invariant trivially true
+  (there is no intermediate persisted state to redirect through), and matches
+  handoff.md §9.11's "plain two-step POST/confirm form" framing.
+* **Manual verification (`run-imagoldfish` skill, real `php artisan serve` +
+  built assets):** logged in as the seeded dev user, opened `/admin/revisions`,
+  confirmed the new "Revisions" sidebar entry and its `aria-current="page"`
+  state, saw real per-category counts/sizes in the storage panel. Submitted a
+  lower `retention_days`, saw the confirm screen render with a real computed
+  count (0, since the dev DB's seeded revisions are all recent) and the exact
+  `current -> new` days wording, confirmed it, and saw "Retention setting
+  saved." with the new value persisted. Opened the "Manual" category's
+  `x-dialog` confirm, deleted it, and saw the flash message ("1 revision(s)
+  removed."), the Manual row's count drop to 0, and its own "Delete all"
+  button go `disabled`. One driver quirk worth noting for later use of this
+  skill: `text=` selectors matched BOTH a row's always-visible "Delete
+  all"/"Delete" trigger button and the (currently hidden) submit button
+  inside every other row's own `x-dialog` (`variant="danger"` gives both the
+  same `.bg-red-600` class and often overlapping "Delete" substring text) —
+  `button[type=submit].bg-red-600:visible` reliably isolated the one actually
+  open dialog's submit button, since Playwright's `:visible` pseudo-class
+  correctly excludes the `x-show`-hidden ones and `[type=submit]` excludes the
+  always-visible `type="button"` triggers.
+
+## Task 14 -- Zip export: `include_revisions` toggle
+
+* **Design decision -- reused `HasRevisions`'s `revisions()` MorphMany relation
+  instead of a raw `Revision::where('revisionable_type', ...)` query:** every model
+  exported here (`Project`, `Act`, `Chapter`, `Plotline`, `Event`, `Scene`,
+  `CodexEntry`) already has `App\Models\Concerns\HasRevisions` applied (task 3), so
+  `$entity->revisions()->where('field', $field)->...` reads through the same
+  polymorphic-type resolution Eloquent's `morphMany()` already handles, rather than
+  the exporter hard-coding each model's FQCN as the `revisionable_type` string a
+  second time.
+* **Design decision -- one new private `addRevisions()` helper, called
+  unconditionally from every entity-writing method (`addProject`, and the act/
+  chapter/scene/plotline/event/codex-entry writers), with the `$includeRevisions`
+  guard living INSIDE the helper:** keeps every call site a single added line
+  (`$this->addRevisions($zip, $dir, '<slug>', $entity, $includeRevisions);`) with no
+  `if` needed at each of the seven call sites, rather than guarding the whole
+  toggle at six or seven different points.
+* **Deviation -- revision JSON shape:** each entry in a `revisions/<field>.json`
+  array is `{ id, value, origin, label, user_id, created_at }`. Not specified
+  verbatim by the task file or `handoff.md` section 8 (both only say "that field's
+  whole history as an array"); chosen as the plain, complete set of non-derived
+  `Revision` columns (`size_bytes` is intentionally excluded -- it is a derived
+  cache of `strlen(value)`, redundant once `value` is present; `project_id`/
+  `revisionable_type`/`revisionable_id` are intentionally excluded -- implicit from
+  where the file lives in the archive, exactly like every other `data/` entity
+  file in this exporter omits its own parent-scoping columns).
+* **Deviation -- default OFF, unlike `include_images` (default ON):** the new
+  `include_revisions` checkbox on `export-project.blade.php` has no
+  `@checked(..., true)` default, so an export defaults to NOT including revision
+  history. Not specified either way by the task file; chosen because a project
+  with a long autosave history could make the export meaningfully heavier, and the
+  existing `include_images` default-on toggle governs something every export
+  already wants (media), whereas revision history is a new, opt-in-feeling
+  addition. `ExportRequest::rules()`'s `'include_revisions' => ['sometimes',
+  'boolean']` mirrors `include_images`'s absent-means-false validation rule
+  either way.
+* **Note -- "EPUB and PDF export... unaffected" (task's own test list):** only
+  `EpubExporter`/`EpubExportRequest` exist in this codebase; there is no separate
+  PDF exporter to test against (the task file's "EPUB and PDF" phrasing is carried
+  from `spec.md`'s original wording covering a broader export surface than what is
+  actually built). The regression test covers EPUB only
+  (`test_epub_export_has_no_include_revisions_option`), confirming
+  `EpubExportRequest::rules()` has no such field and posting the toggle anyway is
+  silently ignored.
+* No new migration/model/route was needed -- this task is additive-only inside the
+  existing `StaticSiteExporter`/`ExportRequest`/`ExportController` trio, per its own
+  scope note.
+
+## Task 15 -- Zip import: read revision sidecars
+
+* **Design decision -- no new ImportPhase, revisions ride inside the existing four:**
+  the task file flagged this as a real judgment call ("split it further... if it turns
+  out to need its own sub-phase"). Decided NOT to split: each entity's
+  `revisions/<field>.json` sidecar is read and inserted immediately after that same
+  entity is created, inside the SAME transaction as the entity itself (one new private
+  `importRevisions(string $dataPath, string $directory, string $slug, Model $entity, int
+  $userId, bool $includeRevisions)` helper, called from `importProject()`,
+  `importTimeline()`, `importStory()`/`importChapters()`/`importScene()`, and
+  `importCodex()`/`importCodexEntry()`). This keeps the "each phase transaction either
+  fully commits or fully rolls back" invariant intact for revisions too, and is exactly
+  what makes the resumed-import idempotency requirement (below) true for free -- a
+  fifth phase would have needed its own checkpoint/resume bookkeeping in `ProjectImporter`
+  for no real benefit, since a revision row has no existence independent of the entity it
+  belongs to.
+* **`includesRevisions(string $dataPath): bool` reads `data/manifest.json` via the
+  existing `readJsonIfPresent()` helper (tolerant of a missing file), not the strict
+  `readJson()`:** `ProjectGraphImporterTest`'s base fixture ships NO `data/manifest.json`
+  at all (that file only matters to `ArchiveValidator`, which these unit tests bypass by
+  calling the graph importer directly) -- using the strict reader would have made every
+  existing test in that file throw `ImportValidationException::missingDescriptor()` the
+  moment this task's code ran. `ArchiveValidator::MANIFEST_REQUIRED_KEYS` also does not
+  list `includes_revisions`, confirming the key was always meant to be optional/tolerant,
+  matching `includes_media`'s own "the flag governs behavior, absence just means false"
+  shape.
+* **Deviation/addition -- imported revision values are re-sanitized through
+  `ContentSanitizer`, same as the entity's own current field value:** the task file and
+  `handoff.md` §8 don't mention this explicitly, but a `revisions/<field>.json` sidecar is
+  just as much untrusted archive content as `description.html`/`contents.md`, and a stored
+  `Revision.value` is later rendered on the history/compare pages (task 10's
+  `RevisionDiffer`). `importRevisions()` runs each value through
+  `ContentSanitizer::assertHtmlAllowed()` (Rich fields) or `assertMarkdownAllowed()`
+  (Markdown fields) before insert, keyed off the field's registered `FieldKind` --
+  `Plain` fields (e.g. `Project.rights`) get no check, matching how the live-field import
+  path (`readHtmlField()`/`readMarkdownField()`) never touches Plain fields either. A
+  disallowed value in a revision sidecar now rejects the whole import, exactly like a
+  disallowed `description.html` does.
+* **The importing user is `$project->user_id`, not a passed-in `User`, for every phase
+  after `importProject()`:** `importTimeline()`/`importStory()`/`importCodex()` never
+  received a `User $user` parameter (project creation is the only phase that does) --
+  since `ProjectImporter::start()` always creates the project via
+  `$user->projects()->create(...)`, `$project->user_id` IS the importing user's id, so no
+  signature change was needed on those three public phase methods (a real, deliberate
+  minimization: the task's own "genuinely new scope" warning was about the revision-import
+  logic itself, not about growing every phase method's public contract).
+* **Resumed-import idempotency test, seeded via the real import path (not `RevisionFactory`
+  with a hand-set origin):** added to `tests/Unit/Import/ProjectImporterTest.php`'s existing
+  stall/resume fixture -- a revision sidecar on Scene B's `contents` field, asserted present
+  (count 1) both right after the Story-phase stall AND again after a full resume completes
+  the Codex phase, proving the already-committed Story phase's revision import is never
+  re-run. This is the concrete case task 15's own test list asked for ("reuses task 1's own
+  prunable tests' shape but seeded via the import path specifically") applied to the
+  no-duplication requirement rather than the prunable one.
+* **`Revision::prunable()` exemption, seeded via the real import path:** added
+  `test_an_imported_revision_is_excluded_from_prunable_even_when_very_old` to
+  `ProjectGraphImporterTest` -- a revision sidecar entry with `created_at` in year 2000 and
+  source `origin: automatic` (which WOULD be prunable if the source origin survived import)
+  is imported and confirmed absent from `(new Revision)->prunable()`'s result, proving
+  `origin` really is forced to `import` end-to-end through this task's code, not just
+  asserted by a factory-seeded row (task 1's own generic non-automatic-origins test already
+  covers `RevisionOrigin::Import` in the abstract).
+* **Issue -> resolution (test authoring, not app code):** `HasRevisions::revisions()`
+  applies its own default `->latest('created_at')` ordering. A test that chained
+  `->where('field', ...)->orderBy('created_at')` on top of `$entity->revisions()` got BOTH
+  order-by clauses in the final SQL (the relation's own DESC one first), so the "ascending"
+  order never took effect -- fixed by sorting the returned `Collection` in PHP
+  (`->get()->sortBy('created_at')->values()`) instead of trying to override the relation's
+  built-in order via a second `orderBy()` call.
+
+## Task 16 -- Documentation + CHANGELOG
+
+* Documentation-only task, no code change. Added a new "Revisions" section to
+  `documentation/architecture.md` (between "Hidden from crawlers" and "Enum convention"),
+  matching the existing section's style (GFM `> [!NOTE]`/`> [!WARNING]` callouts): the
+  registry as single source of truth, `RevisionRecorder`'s coalescing/byte-identical-no-op/
+  baseline-seeding behavior, the origin enum, the prune-vs-purge safety distinction (with
+  a `> [!WARNING]` on `Revision::prunable()`'s portability-without-window-functions
+  subquery, since resolution-log.md flags it as the single most safety-critical query in
+  the feature), the "list queries never hydrate value" rule, why `project_id` is always
+  explicit, `RevisionDiffer`, and the revert-is-additive rule.
+* Added `RevisionRecorder`/`RevisionPurger` as named examples of the Service-class pattern
+  in both `documentation/architecture.md`'s "Where things live" table and
+  `documentation/best-practices.md`'s "Where logic lives" table (both already existed;
+  no new "where does X live" doc needed).
+* **`Ctrl-S` is claimed** — added a `> [!NOTE]` at the end of the new Revisions section,
+  and a matching note directly inside `.specs/draft/keyboard-shortcuts/spec.md` (still an
+  unedited template stub otherwise), since that file is the first thing whoever picks up
+  that spec will open. No existing precedent for a "cross-spec claims" tracking doc was
+  found in this repo (checked `documentation/*.md` and every `.specs/draft/*/spec.md` for
+  "claimed"/"reserved"/"spoken for" language) — this is the first instance of the pattern,
+  should a later feature want to reuse it.
+* `CHANGELOG.md`: added one `[Unreleased]` entry (not a dated `## YYYY-MM-DD — ... (#PR)`
+  section) per `00-overview.md`'s own framing ("the actual PR number/date are filled in at
+  ship time") — `ship-plan`/`ship-pr` stamps the dated heading and PR number when this
+  branch actually merges, matching how every other in-flight feature's changelog entry in
+  this repo is drafted. Grouped `Added`/`Changed` per CLAUDE.md, plus the explicit
+  known-gap `> [!NOTE]` the task file required verbatim (short fields still only save on
+  manual form submit; closing that gap is `.specs/draft/data-loss-warnings`'s job).
+* Verified: `composer test` (858 tests, 3263 assertions, all green) and `composer lint`
+  both clean after the doc-only changes — no code was touched, so this mainly confirms
+  nothing in the edited Markdown accidentally broke a docs-consistency test
+  (`tests/Unit/SpecsStatusConsistencyTest` — the only such test in this repo — is unrelated
+  to `documentation/`, it only enforces `.specs/` folder-vs-frontmatter agreement, and
+  passed unaffected).
+* This was the plan's final task (16 of 16) — every task file in `plan/` is now in
+  `plan/implemented/`, so this feature is ready to move from `.specs/planned/2026-07/
+  autosave-with-revisions/` to `.specs/shipped/`.

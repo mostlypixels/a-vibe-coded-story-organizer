@@ -14,7 +14,7 @@ in its home:
 | --- | --- |
 | Input validation | Form Requests (`app/Http/Requests`); reusable rules in `app/Rules` |
 | Authorization | Policies (`app/Policies`) |
-| Reusable / multi-step domain workflow | A Service or Action class |
+| Reusable / multi-step domain workflow | A Service or Action class (e.g. `RevisionRecorder`, `RevisionPurger`) |
 | Model lifecycle invariants | Model `booted()` hooks |
 | Constant / reference data | `app/Support`, `app/Enums` |
 
