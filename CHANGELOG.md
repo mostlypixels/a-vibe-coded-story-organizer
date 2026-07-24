@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-24 — Revision reads authorize `view` (C1)
+## 2026-07-24 — Revision reads authorize `view` (C1) (#32)
 
 ### Changed
 
