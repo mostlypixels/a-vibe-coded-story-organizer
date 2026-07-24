@@ -9,7 +9,9 @@ use App\Models\Project;
 use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\User;
+use App\Policies\ProjectPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
@@ -279,5 +281,43 @@ class RevisionHistoryTest extends TestCase
         $this->actingAs($other)->get(route('revisions.compare', [
             'entity' => 'act', 'id' => $act->id, 'field' => 'description', 'from' => $from->id, 'to' => $to->id,
         ]))->assertForbidden();
+    }
+
+    // ---------------------------------------------------------------------
+    // Authorization altitude — reads need `view`, writes need `update`
+    // ---------------------------------------------------------------------
+
+    public function test_revision_reads_require_only_view_while_revert_requires_update(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+        $revision = $this->revisionFor($act, ['user_id' => $user->id, 'value' => 'An older description']);
+
+        // ProjectPolicy::view and ::update are identical today, so the altitude
+        // is only observable by forcing them apart: grant `view`, deny `update`.
+        // Reads must then still succeed (they gate on `view`); the mutating
+        // revert must 403 (it still demands `update`).
+        $this->partialMock(ProjectPolicy::class, function (MockInterface $mock) {
+            $mock->shouldReceive('view')->andReturnTrue();
+            $mock->shouldReceive('update')->andReturnFalse();
+        });
+
+        $this->actingAs($user)
+            ->get(route('revisions.index', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']))
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->get(route('revisions.compare', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']))
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->get(route('projects.revisions.index', $act->project))
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->post(route('revisions.revert', $revision), [
+                'base_hash' => hash('sha256', (string) $act->description),
+            ])
+            ->assertForbidden();
     }
 }

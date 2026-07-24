@@ -19,13 +19,15 @@ class RevisionBrowserController extends Controller
     /**
      * Show the browser landing page for one project.
      *
-     * Authorizes `update` on the project — the same ability RevisionController's
-     * own history / compare / revert actions check (RevisionController::resolve),
-     * so the browser and every page it links to gate identically.
+     * Authorizes `view` — reading revision history is a view capability, the
+     * same altitude RevisionController's history / compare reads use
+     * (RevisionController::resolve). The mutating revert / purge actions
+     * instead demand `update`, so the browser and every read it links to gate
+     * identically, one level below the writes.
      */
     public function index(Project $project): View
     {
-        $this->authorize('update', $project);
+        $this->authorize('view', $project);
 
         return view('revisions.browser', ['project' => $project]);
     }
