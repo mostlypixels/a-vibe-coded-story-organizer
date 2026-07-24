@@ -9,6 +9,8 @@ use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CoverImageService;
+use App\Services\RevisionRecorder;
+use App\Support\AutosavableFields;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -98,7 +100,7 @@ class ChapterController extends Controller
         ]);
     }
 
-    public function update(UpdateChapterRequest $request, Chapter $chapter): RedirectResponse
+    public function update(UpdateChapterRequest $request, Chapter $chapter, RevisionRecorder $recorder): RedirectResponse
     {
         $project = $chapter->act->project;
         $act = $project->acts()->findOrFail($request->validated()['act_id']);
@@ -106,6 +108,10 @@ class ChapterController extends Controller
         // The cover is a file, not a mass-assignable column value, so keep it (and its
         // remove checkbox and the non-fillable act_id) out of the plain attribute fill.
         $data = $request->safe()->except(['act_id', 'cover_image', 'remove_cover_image']);
+
+        // Snapshot before fill()/save() below overwrite these in memory — see
+        // AutosavableFields::snapshotFieldsBeforeUpdate()'s docblock.
+        $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($chapter, $data);
 
         // The previous file is only unlinked *after* a successful save, so a failed
         // write never leaves the row pointing at a file we already deleted.
@@ -143,6 +149,8 @@ class ChapterController extends Controller
         if ($storedCover !== null || $request->boolean('remove_cover_image')) {
             $this->coverImageService->delete($previousCover);
         }
+
+        $recorder->recordManualChanges($chapter, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
 
         return $request->boolean('stay')
             ? redirect()->route('chapters.edit', $chapter)->with('status', 'saved')

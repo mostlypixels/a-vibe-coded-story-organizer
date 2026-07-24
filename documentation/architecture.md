@@ -284,6 +284,23 @@ spans.
 `origin: revert` revision holding the older value; no user action ever deletes history
 except the explicit purge above.
 
+**Revisions browser (Tools ▸ Revisions).** Besides the per-field History icon on each
+edit page, the whole of a project's history is reachable from one place: the **Tools**
+toolbar dropdown → **Revisions** (`RevisionBrowserController`, route
+`projects.revisions.index`). Its left sidebar is a tree — entity type → entity → field —
+of everything in the project that *has* revisions, each field showing its revision count
+and linking to that field's existing history page. The tree is built by
+`App\Services\ProjectRevisionsBrowser` (following the `ProjectSearch` service pattern): a
+single grouped query over `revisions.project_id` yields the `(type, id, field)` triples
+with counts, then one tiny name query per present type — and, per the rule above, it
+**never selects `value`**. Only revised entities/fields appear, so a large project's
+sidebar stays focused. The landing page, the per-field history, and the compare view all
+render inside one shared shell, `<x-revisions-layout>` (a class-based component that owns
+the tree build so the three controllers stay thin), so the sidebar stays in view while a
+reader drills from a field's history into a diff and back. The compare diff itself is a
+borderless **Old / New** side-by-side (`resources/views/revisions/compare.blade.php`
+restyles `jfcherng/php-diff`'s `SideBySide` table) with only the changed words tinted.
+
 **Known gap (deliberately out of scope for this feature).** Short fields and relations —
 `name`, `chapter_id`, `status`, `event_id`, `mentioned_events` — still only save on the
 existing manual form submit; they carry cross-field validation rules that don't survive a

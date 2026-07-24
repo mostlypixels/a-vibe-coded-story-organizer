@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\BookLanguage;
+use App\Enums\RevisionOrigin;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
@@ -131,6 +132,39 @@ class ProjectTest extends TestCase
         $this->assertSame('978-0-306-40615-7', $project->isbn);
         $this->assertNotNull($project->cover_image);
         Storage::disk('public')->assertExists($project->cover_image);
+    }
+
+    public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_a_changed_autosaved_field(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['description' => 'Old description']);
+
+        $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => $project->name,
+            'description' => 'New description',
+            'language' => 'en',
+        ]);
+
+        $revision = $project->revisions()->where('field', 'description')->latest('created_at')->first();
+
+        $this->assertNotNull($revision);
+        $this->assertSame(RevisionOrigin::Manual, $revision->origin);
+        $this->assertSame('New description', $revision->value);
+        $this->assertNotNull($revision->label);
+    }
+
+    public function test_saving_the_edit_form_does_not_record_a_revision_for_an_untouched_autosaved_field(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['description' => 'Same description']);
+
+        $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'New name',
+            'description' => 'Same description',
+            'language' => 'en',
+        ]);
+
+        $this->assertSame(0, $project->revisions()->where('field', 'description')->count());
     }
 
     public function test_a_non_owner_cannot_update_a_project(): void

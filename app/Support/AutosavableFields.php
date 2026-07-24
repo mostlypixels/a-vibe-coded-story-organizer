@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Rules\SanitizeHtml;
 use App\Rules\ValidMarkdown;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Single source of truth for which model+field pairs the autosave-with-revisions
@@ -161,6 +162,35 @@ class AutosavableFields
             FieldKind::Markdown => ['nullable', 'string', "max:{$cap}", new ValidMarkdown],
             FieldKind::Plain => ['nullable', 'string', "max:{$cap}"],
         };
+    }
+
+    /**
+     * The current value of every registered autosaved field on `$model` that is
+     * also a key in `$data` — read *before* the caller applies `$data` to the
+     * model, since that's the only point the pre-edit value is still readable.
+     *
+     * Pairs with App\Services\RevisionRecorder::recordManualChanges(), which
+     * compares this snapshot against each field's value after the caller's
+     * `$model->update($data)` to decide which fields actually changed and
+     * therefore earn a manual revision — a full-form Save button covers several
+     * autosaved fields at once, and only the ones a writer actually touched
+     * should get a new row.
+     *
+     * @return array<string, string>
+     */
+    public static function snapshotFieldsBeforeUpdate(Model $model, array $data): array
+    {
+        $fields = self::REGISTRY[self::slugFor($model::class)][1];
+
+        $snapshot = [];
+
+        foreach (array_keys($fields) as $field) {
+            if (array_key_exists($field, $data)) {
+                $snapshot[$field] = (string) ($model->getAttribute($field) ?? '');
+            }
+        }
+
+        return $snapshot;
     }
 
     /**

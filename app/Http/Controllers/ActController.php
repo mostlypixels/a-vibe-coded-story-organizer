@@ -9,6 +9,8 @@ use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
+use App\Services\RevisionRecorder;
+use App\Support\AutosavableFields;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -81,9 +83,14 @@ class ActController extends Controller
         ]);
     }
 
-    public function update(UpdateActRequest $request, Act $act): RedirectResponse
+    public function update(UpdateActRequest $request, Act $act, RevisionRecorder $recorder): RedirectResponse
     {
-        $act->update($request->validated());
+        $data = $request->validated();
+        $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($act, $data);
+
+        $act->update($data);
+
+        $recorder->recordManualChanges($act, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
 
         return $request->boolean('stay')
             ? redirect()->route('acts.edit', $act)->with('status', 'saved')

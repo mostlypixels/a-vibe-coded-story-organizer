@@ -68,6 +68,45 @@ class RevisionRecorder
     }
 
     /**
+     * The auto-generated label every full-form Save button's manual checkpoint
+     * gets, e.g. "Saved 24 July 10:43" — the same `d F H:i` format
+     * RevisionController's revert action already uses for its own
+     * auto-generated "Reverted to :date" label, kept as one shared format
+     * rather than each caller picking its own.
+     */
+    public static function manualSaveLabel(): string
+    {
+        return __('Saved :date', ['date' => now()->format('d F H:i')]);
+    }
+
+    /**
+     * Record a manual checkpoint for every field in `$before` whose value
+     * changed compared to `$entity`'s current (already-saved) value.
+     *
+     * `$before` is App\Support\AutosavableFields::snapshotFieldsBeforeUpdate()'s
+     * output, taken by the caller *before* it applied the form's data to
+     * `$entity` — this method has no other way to know the pre-edit value once
+     * that update has already overwritten it. A full-form Save button commonly
+     * covers several autosaved fields in one submit (e.g. Project's
+     * description/rights/dedication/acknowledgements/preface/postface); only
+     * the fields a writer actually touched get a new row, so clicking Save
+     * after editing just one of them doesn't also spam empty-diff manual rows
+     * for the rest.
+     */
+    public function recordManualChanges(Model $entity, array $before, User $user, string $label): void
+    {
+        foreach ($before as $field => $previousValue) {
+            $currentValue = (string) ($entity->getAttribute($field) ?? '');
+
+            if ($currentValue === $previousValue) {
+                continue;
+            }
+
+            $this->record($entity, $field, $currentValue, $user, RevisionOrigin::Manual, $label);
+        }
+    }
+
+    /**
      * Seed a `baseline` revision holding the entity's *current* (pre-edit)
      * value for this field, but only if no revision at all exists yet for
      * this (entity, field) pair — a no-op on every later call.

@@ -14,7 +14,9 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Services\AttributeTimeline;
 use App\Services\CodexMediaService;
+use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
+use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -172,24 +174,24 @@ class CodexEntryController extends Controller
             ->values();
     }
 
-    public function update(UpdateCodexEntryRequest $request, CodexEntry $codexEntry, CodexMediaService $media, SceneReferenceMatcher $matcher): RedirectResponse
+    public function update(UpdateCodexEntryRequest $request, CodexEntry $codexEntry, CodexMediaService $media, SceneReferenceMatcher $matcher, RevisionRecorder $recorder): RedirectResponse
     {
         $project = $codexEntry->project;
         $validated = $request->validated();
+        $data = ['name' => $validated['name'], 'description' => $validated['description'] ?? null];
 
         // DB-only inside the transaction; disk deletes/writes happen after commit
         // (see store() / storeMediaUploads / finding 3).
-        $pathsToDelete = DB::transaction(function () use ($request, $project, $codexEntry, $validated, $media, $matcher) {
+        $pathsToDelete = DB::transaction(function () use ($request, $project, $codexEntry, $validated, $data, $media, $matcher, $recorder) {
             // Snapshot the name and alias set BEFORE the save so we can tell whether the
             // matching terms actually changed. A project-wide rescan is O(scenes) work, so
             // it must be skipped when an unrelated edit (e.g. only a new cover image or a
             // description tweak) leaves the terms untouched.
             $termsBefore = $this->referenceTerms($codexEntry->name, $codexEntry->aliases()->pluck('alias')->all());
 
-            $codexEntry->update([
-                'name' => $validated['name'],
-                'description' => $validated['description'] ?? null,
-            ]);
+            $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($codexEntry, $data);
+
+            $codexEntry->update($data);
 
             $this->syncAliases($codexEntry, $validated['aliases'] ?? []);
             $codexEntry->tags()->sync($this->resolveTags($project, $validated['tags'] ?? []));
@@ -201,6 +203,8 @@ class CodexEntryController extends Controller
             if ($termsBefore !== $termsAfter) {
                 $matcher->syncProject($project);
             }
+
+            $recorder->recordManualChanges($codexEntry, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
 
             return $this->queueMediaRemovals($codexEntry, $request, $media);
         });

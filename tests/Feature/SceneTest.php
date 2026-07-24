@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RevisionOrigin;
 use App\Enums\SceneStatus;
 use App\Models\Act;
 use App\Models\Chapter;
@@ -167,6 +168,24 @@ class SceneTest extends TestCase
         $scene = $scene->fresh();
         $this->assertSame('New name', $scene->name);
         $this->assertSame(SceneStatus::Final, $scene->status);
+    }
+
+    public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_the_changed_contents(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['contents' => 'Old contents.']);
+
+        $this->actingAs($user)->put(
+            route('scenes.update', $scene),
+            $this->validPayload($chapter, ['contents' => 'Some **markdown** contents.']),
+        );
+
+        $revision = $scene->revisions()->where('field', 'contents')->latest('created_at')->first();
+
+        $this->assertNotNull($revision);
+        $this->assertSame(RevisionOrigin::Manual, $revision->origin);
+        $this->assertNotNull($revision->label);
     }
 
     public function test_a_user_cannot_update_another_users_scene(): void

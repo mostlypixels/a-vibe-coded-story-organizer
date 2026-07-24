@@ -117,6 +117,9 @@ class RevisionController extends Controller
             });
 
         return view('revisions.index', [
+            // The owning Project drives the shared <x-revisions-layout> sidebar;
+            // already resolved (and authorized against) in resolve() above.
+            'project' => $model->revisionProject(),
             'entity' => $entity,
             'id' => $id,
             'field' => $field,
@@ -187,6 +190,9 @@ class RevisionController extends Controller
             : null;
 
         return view('revisions.compare', [
+            // The owning Project drives the shared <x-revisions-layout> sidebar;
+            // already resolved (and authorized against) in resolve() above.
+            'project' => $model->revisionProject(),
             'entity' => $entity,
             'id' => $id,
             'field' => $field,

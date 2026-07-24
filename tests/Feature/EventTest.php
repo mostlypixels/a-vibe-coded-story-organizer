@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RevisionOrigin;
 use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
@@ -146,6 +147,28 @@ class EventTest extends TestCase
         ])->assertRedirect(route('projects.events.index', $project));
 
         $this->assertSame('Updated Title', $event->fresh()->title);
+    }
+
+    public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_the_changed_description(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = $project->plotlines()->first();
+        $event = Event::factory()->for($project)->create(['description' => 'Old description']);
+        $event->plotlines()->attach($plotline);
+
+        $this->actingAs($user)->put(route('events.update', $event), [
+            'title' => $event->title,
+            'event_datetime' => $event->event_datetime->format('Y-m-d H:i:s'),
+            'description' => 'New description',
+            'plotlines' => [$plotline->id],
+        ]);
+
+        $revision = $event->revisions()->where('field', 'description')->latest('created_at')->first();
+
+        $this->assertNotNull($revision);
+        $this->assertSame(RevisionOrigin::Manual, $revision->origin);
+        $this->assertNotNull($revision->label);
     }
 
     public function test_a_non_fixed_event_datetime_can_still_be_changed(): void
