@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RevisionOrigin;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\Project;
@@ -112,6 +113,24 @@ class ActTest extends TestCase
 
         $response->assertRedirect(route('projects.acts.index', $project));
         $this->assertSame('New name', $act->fresh()->name);
+    }
+
+    public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_the_changed_description(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create(['description' => 'Old description']);
+
+        $this->actingAs($user)->put(route('acts.update', $act), [
+            'name' => $act->name,
+            'description' => 'New description',
+        ]);
+
+        $revision = $act->revisions()->where('field', 'description')->latest('created_at')->first();
+
+        $this->assertNotNull($revision);
+        $this->assertSame(RevisionOrigin::Manual, $revision->origin);
+        $this->assertNotNull($revision->label);
     }
 
     public function test_a_user_cannot_update_another_users_act(): void

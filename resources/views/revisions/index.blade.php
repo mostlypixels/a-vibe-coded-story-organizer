@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-revisions-layout :project="$project" :entity="$entity" :id="$id" :field="$field">
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <x-heading level="2">
@@ -107,4 +107,4 @@
             @endforelse
         </x-table>
     </div>
-</x-app-layout>
+</x-revisions-layout>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RevisionOrigin;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\User;
@@ -171,6 +172,25 @@ class PlotlineTest extends TestCase
         ])->assertRedirect(route('projects.plotlines.index', $project));
 
         $this->assertSame('New Name', $plotline->fresh()->name);
+    }
+
+    public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_the_changed_description(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create(['description' => 'Old description']);
+
+        $this->actingAs($user)->put(route('plotlines.update', $plotline), [
+            'name' => $plotline->name,
+            'color' => $plotline->color,
+            'description' => 'New description',
+        ]);
+
+        $revision = $plotline->revisions()->where('field', 'description')->latest('created_at')->first();
+
+        $this->assertNotNull($revision);
+        $this->assertSame(RevisionOrigin::Manual, $revision->origin);
+        $this->assertNotNull($revision->label);
     }
 
     public function test_a_user_cannot_update_a_plotline_in_another_users_project(): void

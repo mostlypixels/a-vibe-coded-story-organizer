@@ -7,6 +7,8 @@ use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
 use App\Models\Project;
 use App\Services\CodexAsOfResolver;
+use App\Services\RevisionRecorder;
+use App\Support\AutosavableFields;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -80,11 +82,16 @@ class EventController extends Controller
         ]);
     }
 
-    public function update(UpdateEventRequest $request, Event $event): RedirectResponse
+    public function update(UpdateEventRequest $request, Event $event, RevisionRecorder $recorder): RedirectResponse
     {
-        $event->update($request->safe()->except('plotlines'));
+        $data = $request->safe()->except('plotlines');
+        $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($event, $data);
+
+        $event->update($data);
 
         $event->plotlines()->sync($request->validated('plotlines'));
+
+        $recorder->recordManualChanges($event, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
 
         return $request->boolean('stay')
             ? redirect()->route('events.edit', $event)->with('status', 'saved')

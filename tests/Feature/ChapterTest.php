@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RevisionOrigin;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\Project;
@@ -140,6 +141,23 @@ class ChapterTest extends TestCase
 
         $response->assertRedirect(route('projects.chapters.index', $project));
         $this->assertSame('New name', $chapter->fresh()->name);
+    }
+
+    public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_the_changed_description(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create(['description' => 'Old description']);
+
+        $this->actingAs($user)
+            ->put(route('chapters.update', $chapter), $this->validPayload($act, ['description' => 'New description']));
+
+        $revision = $chapter->revisions()->where('field', 'description')->latest('created_at')->first();
+
+        $this->assertNotNull($revision);
+        $this->assertSame(RevisionOrigin::Manual, $revision->origin);
+        $this->assertNotNull($revision->label);
     }
 
     public function test_a_chapter_can_be_moved_to_another_act_in_the_same_project(): void

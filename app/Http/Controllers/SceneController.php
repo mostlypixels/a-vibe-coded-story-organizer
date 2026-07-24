@@ -8,7 +8,9 @@ use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CodexAsOfResolver;
+use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
+use App\Support\AutosavableFields;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -103,14 +105,17 @@ class SceneController extends Controller
         ]);
     }
 
-    public function update(UpdateSceneRequest $request, Scene $scene, SceneReferenceMatcher $matcher): RedirectResponse
+    public function update(UpdateSceneRequest $request, Scene $scene, SceneReferenceMatcher $matcher, RevisionRecorder $recorder): RedirectResponse
     {
         $project = $scene->chapter->act->project;
         $validated = $request->validated();
         $chapter = $this->chapterQueryFor($project)->findOrFail($validated['chapter_id']);
+        $sceneAttributes = $this->sceneAttributes($validated);
+
+        $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($scene, $sceneAttributes);
 
         $scene->update(
-            $this->sceneAttributes($validated)
+            $sceneAttributes
             + ['chapter_id' => $chapter->id, 'event_id' => $this->resolveHappensDuringEvent($project, $validated)]
         );
 
@@ -118,6 +123,8 @@ class SceneController extends Controller
 
         // Recompute references against the scene's now-saved contents (see store()).
         $matcher->syncScene($scene);
+
+        $recorder->recordManualChanges($scene, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
 
         return $request->boolean('stay')
             ? redirect()->route('scenes.edit', $scene)->with('status', 'saved')

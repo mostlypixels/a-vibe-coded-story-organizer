@@ -99,6 +99,64 @@ class RevisionRecorderTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
+    // recordManualChanges() — full-form Save checkpoint
+    // ---------------------------------------------------------------------
+
+    public function test_record_manual_changes_records_only_the_fields_that_actually_changed(): void
+    {
+        $scene = Scene::factory()->create([
+            'description' => 'Same description',
+            'notes' => 'Old notes',
+            'contents' => 'Same contents',
+        ]);
+        $user = User::factory()->create();
+
+        $before = [
+            'description' => 'Same description',
+            'notes' => 'Old notes',
+            'contents' => 'Same contents',
+        ];
+
+        // Simulates the caller having already applied the form's new values to the
+        // model (App\Support\AutosavableFields::snapshotFieldsBeforeUpdate()'s
+        // contract) — only 'notes' actually differs from $before.
+        $scene->notes = 'New notes';
+
+        $this->recorder->recordManualChanges($scene, $before, $user, 'Saved 24 July 10:43');
+
+        $this->assertSame(0, $scene->revisions()->where('field', 'description')->count());
+        $this->assertSame(0, $scene->revisions()->where('field', 'contents')->count());
+
+        $notesRevision = $scene->revisions()->where('field', 'notes')->latest('created_at')->first();
+        $this->assertNotNull($notesRevision);
+        $this->assertSame(RevisionOrigin::Manual, $notesRevision->origin);
+        $this->assertSame('New notes', $notesRevision->value);
+        $this->assertSame('Saved 24 July 10:43', $notesRevision->label);
+    }
+
+    public function test_record_manual_changes_always_inserts_a_fresh_row_even_immediately_after_an_automatic_one(): void
+    {
+        $scene = Scene::factory()->create(['contents' => 'original']);
+        $user = User::factory()->create();
+
+        $this->recorder->record($scene, 'contents', 'autosaved draft', $user, RevisionOrigin::Automatic);
+
+        $scene->contents = 'saved via button';
+        $this->recorder->recordManualChanges($scene, ['contents' => 'autosaved draft'], $user, 'Saved 24 July 10:43');
+
+        $revisions = $scene->revisions()
+            ->where('field', 'contents')
+            ->whereIn('origin', [RevisionOrigin::Automatic, RevisionOrigin::Manual])
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount(2, $revisions);
+        $this->assertSame(RevisionOrigin::Automatic, $revisions[0]->origin);
+        $this->assertSame(RevisionOrigin::Manual, $revisions[1]->origin);
+        $this->assertSame('saved via button', $revisions[1]->value);
+    }
+
+    // ---------------------------------------------------------------------
     // record() — project_id resolution
     // ---------------------------------------------------------------------
 

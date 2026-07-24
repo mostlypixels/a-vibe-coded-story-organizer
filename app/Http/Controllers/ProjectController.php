@@ -6,7 +6,9 @@ use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
 use App\Services\CoverImageService;
+use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
+use App\Support\AutosavableFields;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
 use Illuminate\View\View;
@@ -92,11 +94,15 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function update(UpdateProjectRequest $request, Project $project): RedirectResponse
+    public function update(UpdateProjectRequest $request, Project $project, RevisionRecorder $recorder): RedirectResponse
     {
         // The cover is a file, not a mass-assignable column value, so keep it (and its
         // remove checkbox) out of the plain attribute update and resolve it separately.
         $data = $request->safe()->except(['cover_image', 'remove_cover_image']);
+
+        // Snapshot before the update below overwrites these in memory — see
+        // AutosavableFields::snapshotFieldsBeforeUpdate()'s docblock.
+        $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($project, $data);
 
         // The previous file is only unlinked *after* a successful save, so a failed
         // write never leaves the row pointing at a file we already deleted.
@@ -129,6 +135,8 @@ class ProjectController extends Controller
         if ($storedCover !== null || $request->boolean('remove_cover_image')) {
             $this->coverImageService->delete($previousCover);
         }
+
+        $recorder->recordManualChanges($project, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
 
         return $request->boolean('stay')
             ? redirect()->route('projects.edit', $project)->with('status', 'saved')

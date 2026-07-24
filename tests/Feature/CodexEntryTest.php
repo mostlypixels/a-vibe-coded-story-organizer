@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\CodexEntryType;
+use App\Enums\RevisionOrigin;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexAlias;
@@ -197,6 +198,24 @@ class CodexEntryTest extends TestCase
         $this->assertSame('New Name', $entry->name);
         $this->assertSame(['Fresh Alias'], $entry->aliases()->pluck('alias')->all());
         $this->assertSame(['Reworked'], $entry->tags->pluck('name')->all());
+    }
+
+    public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_the_changed_description(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['description' => 'Old description']);
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => $entry->name,
+            'description' => 'New description',
+        ]);
+
+        $revision = $entry->revisions()->where('field', 'description')->latest('created_at')->first();
+
+        $this->assertNotNull($revision);
+        $this->assertSame(RevisionOrigin::Manual, $revision->origin);
+        $this->assertNotNull($revision->label);
     }
 
     // ---------------------------------------------------------------------

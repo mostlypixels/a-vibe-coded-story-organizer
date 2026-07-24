@@ -21,6 +21,7 @@ use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PublicationSettingController;
+use App\Http\Controllers\RevisionBrowserController;
 use App\Http\Controllers\RevisionController;
 use App\Http\Controllers\RevisionSettingController;
 use App\Http\Controllers\RobotsTxtController;
@@ -230,6 +231,13 @@ Route::middleware('auth')->group(function () {
         Route::patch('/autosave/{entity}/{id}/{field}', [FieldAutosaveController::class, 'update'])
             ->name('autosave.update');
     });
+
+    // Tools ▸ Revisions: the project-scoped browser landing page. Project-scoped
+    // (unlike the slug-gated per-field routes below) so the toolbar's project
+    // resolver picks it up and the Tools menu highlights; its sidebar links out
+    // to the per-field history routes that follow.
+    Route::get('/projects/{project}/revisions', [RevisionBrowserController::class, 'index'])
+        ->name('projects.revisions.index');
 
     // History + compare (task 10). Same slug-gated {entity} pattern as
     // autosave.update above, but without the tight autosave throttle — these

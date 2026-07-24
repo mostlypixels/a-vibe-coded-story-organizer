@@ -17,6 +17,37 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-24 — Revisions browser, readable compare & manual-save labels
+
+### Added
+
+- A **Tools** dropdown in the main toolbar, with a **Revisions** entry that opens a
+  project-scoped revisions browser (`RevisionBrowserController`, route
+  `projects.revisions.index`). Its sidebar lists every entity and field in the project
+  that actually has revision history — grouped by type, each field showing its revision
+  count — so the whole project's history is reachable from one place instead of only the
+  History icon on each field's own edit page.
+- `App\Services\ProjectRevisionsBrowser`, the single query owner behind the sidebar tree
+  (one grouped query over `revisions.project_id`; never hydrates `value`), and a shared
+  `<x-revisions-layout>` shell so the history and compare pages keep the sidebar in view
+  while drilling in.
+
+### Changed
+
+- The compare view no longer renders the diff as a bordered two-column table. It is now a
+  clean, borderless **Old / New** side-by-side that reads like prose, with only the
+  changed words tinted (red on the old side, green on the new).
+
+### Fixed
+
+- The full-form **Save** button on every autosaved entity (Project, Act, Chapter,
+  Plotline, Event, Scene, Codex entry) now records a permanent, labeled manual revision
+  (`"Saved <date>"`) for each field that actually changed — previously the Save button
+  wrote the column but created no manual checkpoint, leaving only the periodic
+  `origin: automatic` autosave rows (subject to coalescing and pruning). Only fields whose
+  value changed get a row, so saving a multi-field form after editing one field no longer
+  spams near-empty revisions for the rest.
+
 ## 2026-07-24 — Autosave storage improvements (#26)
 
 ### Changed
