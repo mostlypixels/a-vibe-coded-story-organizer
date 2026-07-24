@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-24 — Centralize revisionable display-name (A3)
+## 2026-07-24 — Centralize revisionable display-name (A3) (#31)
 
 ### Changed
 
