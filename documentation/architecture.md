@@ -306,10 +306,19 @@ and linking to that field's existing history page. The tree is built by
 single grouped query over `revisions.project_id` yields the `(type, id, field)` triples
 with counts, then one tiny name query per present type — and, per the rule above, it
 **never selects `value`**. Only revised entities/fields appear, so a large project's
-sidebar stays focused. The landing page, the per-field history, and the compare view all
-render inside one shared shell, `<x-revisions-layout>` (a class-based component that owns
-the tree build so the three controllers stay thin), so the sidebar stays in view while a
-reader drills from a field's history into a diff and back. The compare diff itself is a
+sidebar stays focused. It is bounded three further ways so a heavily-revised project stays
+navigable: each group heading carries a **count badge** of the revised entities it holds;
+groups **default-collapse** (only the group holding the entity currently being viewed
+starts open); and a client-side (Alpine) **filter box** narrows the list by entity name —
+matching groups auto-expand, the rest hide. All filter/collapse logic is plain Alpine
+*expressions* (never a component method), so a child element reads the ancestor `filter`
+state without the `this`-binding pitfall. The landing page, the per-field history, and the
+compare view all render inside one shared shell, `<x-revisions-layout>` (a class-based
+component that owns the tree build so the three controllers stay thin), so the sidebar
+stays in view while a reader drills from a field's history into a diff and back. Because
+the sidebar is the single per-field navigation surface, the history page carries **no
+separate field switcher** — reaching a sibling field that has no revisions yet goes back
+through the edit page. The compare diff itself is a
 borderless **Old / New** side-by-side (`resources/views/revisions/compare.blade.php`
 restyles `jfcherng/php-diff`'s `SideBySide` table) with only the changed words tinted.
 

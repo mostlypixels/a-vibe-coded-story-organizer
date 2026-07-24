@@ -122,6 +122,44 @@ class RevisionBrowserTest extends TestCase
             ->assertSee(route('projects.revisions.index', $project), false);
     }
 
+    public function test_the_sidebar_offers_a_client_side_filter_box(): void
+    {
+        // handoff D2: a client-side filter narrows a large sidebar by name.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+
+        $this->revisionFor(Act::class, $act->id, $project->id, 'description');
+
+        $response = $this->actingAs($user)->get(route('projects.revisions.index', $project));
+
+        $response->assertOk();
+        $response->assertSee('x-model="filter"', false);
+    }
+
+    public function test_only_the_active_entitys_group_starts_open(): void
+    {
+        // handoff D2: groups default-collapse to bound a big sidebar; only the
+        // group holding the entity currently being viewed starts open.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->revisionFor(Act::class, $act->id, $project->id, 'description');
+        $this->revisionFor(Scene::class, $scene->id, $project->id, 'notes');
+
+        // Viewing the Act's history: its group opens, the Scene group stays collapsed.
+        $response = $this->actingAs($user)->get(
+            route('revisions.index', ['entity' => 'act', 'id' => $act->id, 'field' => 'description'])
+        );
+
+        $response->assertOk();
+        $response->assertSee('open: true', false);
+        $response->assertSee('open: false', false);
+    }
+
     public function test_the_history_page_renders_the_browser_sidebar_with_the_active_field(): void
     {
         $user = User::factory()->create();
