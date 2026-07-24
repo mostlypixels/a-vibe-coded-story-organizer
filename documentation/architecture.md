@@ -213,9 +213,14 @@ keying) live in `config/revisions.php` for the same "configuration in one place"
 `AutosavableFields` reads them, nothing hard-codes a window or cap per field elsewhere.
 
 **Writing to `revisions` (`App\Services\RevisionRecorder`).** The one class that ever
-inserts or updates a `Revision` row — called by `FieldAutosaveController` on every
-autosave/manual save, and by the baseline-backfill migration, so the live write path and
-a fresh install's backfill can never diverge.
+inserts or updates a `Revision` row. Two entry points reach it: `FieldAutosaveController`
+for every `origin: automatic` autosave, and each of the 7 entity controllers' `update()`
+— through the shared `App\Http\Controllers\Concerns\RecordsManualRevisions` trait
+(`snapshotAutosaved()` before the save, `recordManualSave()` after) — for the labeled
+`origin: manual` checkpoint a full-form Save writes. The manual half is one trait, not
+copy-pasted per controller, and the recorder defaults the "Saved &lt;date&gt;" label so
+no caller names it. The baseline-backfill migration also calls the recorder, so the live
+write path and a fresh install's backfill can never diverge.
 
 - **Coalescing.** Within a field's configured window, a run of `origin: automatic` saves
   overwrites the same still-open revision row in place (a plain `UPDATE`, not a new
@@ -224,10 +229,13 @@ a fresh install's backfill can never diverge.
   Save, a revert, or an import stays individually visible in history even seconds after
   an autosave closed a coalescing window.
 - **Byte-identical no-op.** `RevisionRecorder` doesn't decide whether to write at all —
-  the caller (`FieldAutosaveController`) compares the incoming value against the current
-  column value first and skips the call entirely when nothing changed (typing something
-  and undoing it leaves no trace). A `manual=true` save always bypasses this skip, so two
-  identical manual saves in a row still both persist.
+  each caller compares first and skips when nothing changed. The autosave endpoint
+  (`FieldAutosaveController`) compares the incoming value against the current column value
+  and skips the call entirely when they're identical (typing something and undoing it
+  leaves no trace). The manual path (`recordManualChanges()`) independently compares each
+  field's pre-edit snapshot against its post-save value and records only the fields the
+  writer actually touched, so clicking Save after editing one of a form's several
+  autosaved fields doesn't spam empty-diff `manual` rows for the rest.
 - **Baseline seeding (`ensureBaseline()`).** The very first time a field is ever touched
   (autosave or backfill), a `origin: baseline` row is written holding the *pre-edit*
   value, stamped with the entity's own `updated_at` (not `now()`) so it accurately

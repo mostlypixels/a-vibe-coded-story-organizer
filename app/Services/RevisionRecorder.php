@@ -92,9 +92,16 @@ class RevisionRecorder
      * the fields a writer actually touched get a new row, so clicking Save
      * after editing just one of them doesn't also spam empty-diff manual rows
      * for the rest.
+     *
+     * `$label` defaults to {@see self::manualSaveLabel()} — the only label
+     * every caller ever passes, so it lives here rather than being repeated at
+     * each call site. (It cannot be a parameter default: PHP default values
+     * must be constant expressions, and the label embeds `now()`.)
      */
-    public function recordManualChanges(Model $entity, array $before, User $user, string $label): void
+    public function recordManualChanges(Model $entity, array $before, User $user, ?string $label = null): void
     {
+        $label ??= self::manualSaveLabel();
+
         foreach ($before as $field => $previousValue) {
             $currentValue = (string) ($entity->getAttribute($field) ?? '');
 

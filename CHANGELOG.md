@@ -17,7 +17,23 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-24 — Centralize autosave slug+field resolution (A2) (#29)
+## 2026-07-24 — Manual-save revision trait & default label (A1)
+
+### Changed
+
+- Extracted the manual-save revision checkpoint every entity controller's `update()`
+  repeated into a shared `App\Http\Controllers\Concerns\RecordsManualRevisions` trait
+  (`snapshotAutosaved()` before the save, `recordManualSave()` after). All 7 controllers
+  (Project, Act, Chapter, Plotline, Event, Scene, CodexEntry) now go through it, and none
+  of them inject `RevisionRecorder` or name the label anymore — the `$model->update()`
+  itself is intentionally left per-controller (cover images, transactions, reparenting all
+  genuinely differ). `RevisionRecorder::recordManualChanges()` now defaults its `$label`
+  to `manualSaveLabel()`, the only label any caller ever passed.
+
+### Fixed
+
+- Corrected the *Revisions* architecture doc's "byte-identical no-op" note, which still
+  described the `manual=true` autosave bypass removed in #28.
 
 ### Changed
 
