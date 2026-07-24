@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-24 — Revisions/autosave dead-code cleanup
+## 2026-07-24 — Revisions/autosave dead-code cleanup (#28)
 
 ### Removed
 
