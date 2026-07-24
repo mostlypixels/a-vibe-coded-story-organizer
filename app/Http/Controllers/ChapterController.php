@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Requests\DestroyChapterRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
@@ -9,8 +10,6 @@ use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CoverImageService;
-use App\Services\RevisionRecorder;
-use App\Support\AutosavableFields;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +18,8 @@ use Throwable;
 
 class ChapterController extends Controller
 {
+    use RecordsManualRevisions;
+
     public function __construct(private CoverImageService $coverImageService) {}
 
     public function index(Request $request, Project $project): View
@@ -100,7 +101,7 @@ class ChapterController extends Controller
         ]);
     }
 
-    public function update(UpdateChapterRequest $request, Chapter $chapter, RevisionRecorder $recorder): RedirectResponse
+    public function update(UpdateChapterRequest $request, Chapter $chapter): RedirectResponse
     {
         $project = $chapter->act->project;
         $act = $project->acts()->findOrFail($request->validated()['act_id']);
@@ -110,8 +111,8 @@ class ChapterController extends Controller
         $data = $request->safe()->except(['act_id', 'cover_image', 'remove_cover_image']);
 
         // Snapshot before fill()/save() below overwrite these in memory — see
-        // AutosavableFields::snapshotFieldsBeforeUpdate()'s docblock.
-        $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($chapter, $data);
+        // RecordsManualRevisions::snapshotAutosaved()'s docblock.
+        $beforeAutosavedFields = $this->snapshotAutosaved($chapter, $data);
 
         // The previous file is only unlinked *after* a successful save, so a failed
         // write never leaves the row pointing at a file we already deleted.
@@ -150,7 +151,7 @@ class ChapterController extends Controller
             $this->coverImageService->delete($previousCover);
         }
 
-        $recorder->recordManualChanges($chapter, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
+        $this->recordManualSave($chapter, $beforeAutosavedFields);
 
         return $request->boolean('stay')
             ? redirect()->route('chapters.edit', $chapter)->with('status', 'saved')

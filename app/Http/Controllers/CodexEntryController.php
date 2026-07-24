@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
+use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Requests\StoreCodexEntryRequest;
 use App\Http\Requests\UpdateCodexEntryRequest;
 use App\Models\CodexAttribute;
@@ -14,9 +15,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Services\AttributeTimeline;
 use App\Services\CodexMediaService;
-use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
-use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +25,8 @@ use Illuminate\View\View;
 
 class CodexEntryController extends Controller
 {
+    use RecordsManualRevisions;
+
     public function index(Request $request, Project $project, string $type): View
     {
         $this->authorize('view', $project);
@@ -174,7 +175,7 @@ class CodexEntryController extends Controller
             ->values();
     }
 
-    public function update(UpdateCodexEntryRequest $request, CodexEntry $codexEntry, CodexMediaService $media, SceneReferenceMatcher $matcher, RevisionRecorder $recorder): RedirectResponse
+    public function update(UpdateCodexEntryRequest $request, CodexEntry $codexEntry, CodexMediaService $media, SceneReferenceMatcher $matcher): RedirectResponse
     {
         $project = $codexEntry->project;
         $validated = $request->validated();
@@ -182,14 +183,14 @@ class CodexEntryController extends Controller
 
         // DB-only inside the transaction; disk deletes/writes happen after commit
         // (see store() / storeMediaUploads / finding 3).
-        $pathsToDelete = DB::transaction(function () use ($request, $project, $codexEntry, $validated, $data, $media, $matcher, $recorder) {
+        $pathsToDelete = DB::transaction(function () use ($request, $project, $codexEntry, $validated, $data, $media, $matcher) {
             // Snapshot the name and alias set BEFORE the save so we can tell whether the
             // matching terms actually changed. A project-wide rescan is O(scenes) work, so
             // it must be skipped when an unrelated edit (e.g. only a new cover image or a
             // description tweak) leaves the terms untouched.
             $termsBefore = $this->referenceTerms($codexEntry->name, $codexEntry->aliases()->pluck('alias')->all());
 
-            $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($codexEntry, $data);
+            $beforeAutosavedFields = $this->snapshotAutosaved($codexEntry, $data);
 
             $codexEntry->update($data);
 
@@ -204,7 +205,7 @@ class CodexEntryController extends Controller
                 $matcher->syncProject($project);
             }
 
-            $recorder->recordManualChanges($codexEntry, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
+            $this->recordManualSave($codexEntry, $beforeAutosavedFields);
 
             return $this->queueMediaRemovals($codexEntry, $request, $media);
         });

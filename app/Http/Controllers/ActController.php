@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Requests\DestroyActRequest;
 use App\Http\Requests\StoreActRequest;
 use App\Http\Requests\UpdateActRequest;
@@ -9,8 +10,6 @@ use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
-use App\Services\RevisionRecorder;
-use App\Support\AutosavableFields;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +17,8 @@ use Illuminate\View\View;
 
 class ActController extends Controller
 {
+    use RecordsManualRevisions;
+
     public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
@@ -83,14 +84,14 @@ class ActController extends Controller
         ]);
     }
 
-    public function update(UpdateActRequest $request, Act $act, RevisionRecorder $recorder): RedirectResponse
+    public function update(UpdateActRequest $request, Act $act): RedirectResponse
     {
         $data = $request->validated();
-        $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($act, $data);
+        $beforeAutosavedFields = $this->snapshotAutosaved($act, $data);
 
         $act->update($data);
 
-        $recorder->recordManualChanges($act, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
+        $this->recordManualSave($act, $beforeAutosavedFields);
 
         return $request->boolean('stay')
             ? redirect()->route('acts.edit', $act)->with('status', 'saved')

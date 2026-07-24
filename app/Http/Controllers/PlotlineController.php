@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\UpdatePlotlineRequest;
 use App\Models\Plotline;
 use App\Models\Project;
-use App\Services\RevisionRecorder;
-use App\Support\AutosavableFields;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PlotlineController extends Controller
 {
+    use RecordsManualRevisions;
+
     public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
@@ -55,14 +56,14 @@ class PlotlineController extends Controller
         return view('plotlines.edit', ['plotline' => $plotline]);
     }
 
-    public function update(UpdatePlotlineRequest $request, Plotline $plotline, RevisionRecorder $recorder): RedirectResponse
+    public function update(UpdatePlotlineRequest $request, Plotline $plotline): RedirectResponse
     {
         $data = $request->validated();
-        $beforeAutosavedFields = AutosavableFields::snapshotFieldsBeforeUpdate($plotline, $data);
+        $beforeAutosavedFields = $this->snapshotAutosaved($plotline, $data);
 
         $plotline->update($data);
 
-        $recorder->recordManualChanges($plotline, $beforeAutosavedFields, $request->user(), RevisionRecorder::manualSaveLabel());
+        $this->recordManualSave($plotline, $beforeAutosavedFields);
 
         return redirect()->route('projects.plotlines.index', $plotline->project);
     }
