@@ -192,6 +192,23 @@ export function scheduleRetry(callback, delayMs) {
  * a different session must never silently offer to clobber newer server
  * text, only `offer-compare-only`.
  */
+/**
+ * How long a `localStorage` draft stays eligible for recovery, in milliseconds — a
+ * flat 4-hour duration from `savedAt`, not a calendar-day boundary (a draft written
+ * at 11:58pm keeps its full ~4 hours, it does not reset at midnight). See
+ * `.specs/planned/2026-07/autosave-storage-improvements/00-overview.md` decision 1.
+ */
+export const DRAFT_TTL_MS = 4 * 60 * 60 * 1000;
+
+/**
+ * Read-time pre-filter in front of `triageDraft()` (00-overview.md decision 6): an
+ * expired draft is treated identically to "no draft" and never reaches the three-way
+ * triage below. `now` is injectable so tests don't depend on the real clock.
+ */
+export function isDraftExpired(draft, now = Date.now()) {
+    return now - draft.savedAt > DRAFT_TTL_MS;
+}
+
 export function triageDraft(draft, server) {
     if (draft.value === server.value) {
         // It landed (or was undone) — nothing to recover.

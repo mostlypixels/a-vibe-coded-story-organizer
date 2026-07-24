@@ -19,7 +19,7 @@
  * wysiwyg-wrapped) this field is.
  */
 
-import { mapResponse, retryDelayMs, scheduleRetry, triageDraft, worstState, STATES } from './store';
+import { mapResponse, retryDelayMs, scheduleRetry, worstState, STATES } from './store';
 
 /**
  * How long to wait after the last keystroke before an automatic autosave PATCH
@@ -33,6 +33,30 @@ export const DEBOUNCE_MS = 2000;
  * after saved").
  */
 export const SAVED_FADE_MS = 2000;
+
+/**
+ * Set (and never reset — 00-overview.md decision 5) once `data-loss-warnings`'
+ * navigation guard dispatches `autosave:explicit-leave`, synchronously and
+ * immediately before it reassigns `window.location.href`. Registered once at module
+ * load (an ES module body only runs once, no matter how many times
+ * `registerAutosaveField()` itself is called), so every field's
+ * `snapshotDraftIfDirty()` below shares the same flag without any per-field wiring.
+ *
+ * This app has no client-side routing — every page is a full reload — so once the
+ * flag is set the document is already unloading; there is no future `beforeunload`
+ * on this same page instance that could be incorrectly suppressed by never resetting
+ * it. Native `beforeunload` (real tab-close/browser-quit/hard navigation) can never
+ * set this flag itself — browsers withhold which button the user picked on that
+ * native prompt from JS — so that path always writes defensively.
+ */
+let explicitLeavePending = false;
+window.addEventListener('autosave:explicit-leave', () => {
+    explicitLeavePending = true;
+});
+
+function explicitLeaveRequested() {
+    return explicitLeavePending;
+}
 
 /**
  * The `localStorage` key for a field's draft mirror (handoff.md §3.4/§9.1). An
@@ -138,6 +162,12 @@ export function registerAutosaveField(Alpine) {
         Alpine.store('autosave', {
             fields: {},
             elements: {},
+            // key => the pre-computed `revisions.compare` URL (or null when the
+            // route doesn't exist yet), set once per field in init() alongside
+            // `elements`. The recovery modal (task 02/03) reads this instead of
+            // ever recomputing a compare route in JS — Blade already computes it
+            // once, same as today's per-field banner.
+            compareUrls: {},
             // key => boolean, mirrors each field's own `dirty` flag. Distinct from
             // `fields` (the STATES machine value): a field is dirty from the first
             // keystroke until a successful save/flush, including the ~2s debounce
@@ -163,11 +193,6 @@ export function registerAutosaveField(Alpine) {
         key: storageKeyFor(config),
         dirty: false,
         state: STATES.IDLE,
-        // Per handoff.md §9.7's three-way triage: null (nothing to recover),
-        // 'restore' (clean unsaved work), or 'compare-only' (server moved on).
-        draftAction: null,
-        draftValue: null,
-        draftSavedAt: null,
         attempt: 0,
         pendingTimer: null,
         wasReplay: false,
@@ -177,19 +202,20 @@ export function registerAutosaveField(Alpine) {
             const store = Alpine.store('autosave');
             store.fields[this.key] = this.state;
             store.elements[this.key] = this.$el;
-
-            this.checkForDraft();
+            store.compareUrls[this.key] = config.compareUrl ?? null;
 
             this._onInput = () => this.onInput();
             this._onFocusOut = () => this.flush();
             this._onKeydown = (event) => this.onKeydown(event);
             this._onWindowFocus = () => this.replayIfQueued();
+            this._onBeforeUnload = () => this.snapshotDraftIfDirty();
 
             this.$root.addEventListener('input', this._onInput);
             this.$root.addEventListener('focusout', this._onFocusOut);
             this.$root.addEventListener('keydown', this._onKeydown);
             window.addEventListener('focus', this._onWindowFocus);
             document.addEventListener('visibilitychange', this._onWindowFocus);
+            window.addEventListener('beforeunload', this._onBeforeUnload);
         },
 
         destroy() {
@@ -198,10 +224,12 @@ export function registerAutosaveField(Alpine) {
             this.$root.removeEventListener('keydown', this._onKeydown);
             window.removeEventListener('focus', this._onWindowFocus);
             document.removeEventListener('visibilitychange', this._onWindowFocus);
+            window.removeEventListener('beforeunload', this._onBeforeUnload);
 
             const store = Alpine.store('autosave');
             delete store.fields[this.key];
             delete store.elements[this.key];
+            delete store.compareUrls[this.key];
             delete store.dirty[this.key];
         },
 
@@ -226,7 +254,6 @@ export function registerAutosaveField(Alpine) {
         onInput() {
             this.dirty = true;
             Alpine.store('autosave').dirty[this.key] = true;
-            this.mirrorDraft();
 
             if (!shouldAutosave(this.dirty, config.id)) {
                 return;
@@ -262,6 +289,22 @@ export function registerAutosaveField(Alpine) {
 
         mirrorDraft() {
             writeDraft(this.key, { value: this.fieldValue(), baseHash: this.baseHash, savedAt: Date.now() });
+        },
+
+        /**
+         * The `beforeunload` write (00-overview.md decision 2): a dirty field mirrors
+         * its draft once, at departure, instead of on every keystroke. Skipped entirely
+         * when the field is clean (nothing to lose) or the departure was an explicit,
+         * informed "leave anyway" via `data-loss-warnings`' nav guard (§3 of
+         * architecture.md) — a real tab-close/browser-quit can never set that flag, so
+         * it always falls through and writes defensively.
+         */
+        snapshotDraftIfDirty() {
+            if (!this.dirty || explicitLeaveRequested()) {
+                return;
+            }
+
+            this.mirrorDraft();
         },
 
         /** Blur/Ctrl-S: send immediately, cancelling any pending debounce tick. Never fires on a clean (non-dirty) field. */
@@ -341,46 +384,5 @@ export function registerAutosaveField(Alpine) {
             }
         },
 
-        checkForDraft() {
-            const draft = readDraft(this.key);
-
-            if (!draft) {
-                return;
-            }
-
-            const server = { value: config.initialValue ?? '', hash: config.baseHash };
-            const triage = triageDraft(draft, server);
-
-            if (triage === 'drop-silently') {
-                clearDraft(this.key);
-
-                return;
-            }
-
-            this.draftAction = triage === 'offer-restore' ? 'restore' : 'compare-only';
-            this.draftValue = draft.value;
-            this.draftSavedAt = draft.savedAt;
-        },
-
-        restoreDraft() {
-            const textarea = this.$root.querySelector('textarea');
-
-            if (textarea) {
-                textarea.value = this.draftValue;
-                // Dispatch a real, bubbling input event so this component (and, once
-                // mounted inside <x-wysiwyg>, Tiptap's own hydration) picks up the
-                // restored text the same way a keystroke would.
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-
-            this.discardDraft();
-        },
-
-        discardDraft() {
-            clearDraft(this.key);
-            this.draftAction = null;
-            this.draftValue = null;
-            this.draftSavedAt = null;
-        },
     }));
 }

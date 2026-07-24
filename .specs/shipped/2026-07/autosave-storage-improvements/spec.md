@@ -1,5 +1,8 @@
 ---
-status: draft
+status: shipped
+shipped: 2026-07-24
+planned: 2026-07-24
+expanded: 2026-07-24
 ---
 
 # Autosave Storage Improvements

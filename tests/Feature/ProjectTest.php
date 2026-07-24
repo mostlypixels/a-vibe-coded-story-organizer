@@ -453,6 +453,24 @@ class ProjectTest extends TestCase
         $response->assertDontSee('Are you sure you want to delete this project?');
     }
 
+    public function test_the_page_level_draft_recovery_modal_is_mounted_once_on_a_page_with_autosave_fields(): void
+    {
+        // Task 03 (autosave-storage-improvements): the old inline per-field banner is
+        // gone; recovery now happens once, globally, via <x-autosave-draft-recovery-modal>
+        // mounted in layouts/app.blade.php — assert it actually renders alongside the
+        // autosave field(s) on a real edit page.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->get(route('projects.edit', $project));
+
+        $response->assertOk();
+        // modal.blade.php renders the dialog's name inside its open-modal.window
+        // listener comparison (no literal name="..." attribute), so assert on that.
+        $response->assertSee("== 'draft-recovery'", false);
+        $response->assertDontSee('data-autosave-draft-banner', false);
+    }
+
     public function test_a_brand_new_projects_edit_page_shows_the_unqualified_delete_confirmation(): void
     {
         $user = User::factory()->create();
