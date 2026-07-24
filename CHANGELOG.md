@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-24 — Centralize autosave slug+field resolution (A2)
+## 2026-07-24 — Centralize autosave slug+field resolution (A2) (#29)
 
 ### Changed
 
