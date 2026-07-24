@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-24 — Revisions sidebar polish (D2/D3)
+## 2026-07-24 — Revisions sidebar polish (D2/D3) (#33)
 
 ### Added
 
