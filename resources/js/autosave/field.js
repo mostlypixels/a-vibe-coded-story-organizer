@@ -264,10 +264,11 @@ export function registerAutosaveField(Alpine) {
         },
 
         /**
-         * Ctrl-S is a flush + not a permanent checkpoint (00-overview.md): it sends
-         * `run_matcher: true` (coarse trigger) but never `manual: true` — only an
-         * explicit form Save button sets that, and wiring the Save button itself is
-         * task 9's job once this component is mounted into a real edit view.
+         * Ctrl-S is a flush, not a permanent checkpoint (00-overview.md): it sends
+         * `run_matcher: true` (a coarse trigger) so the autosave lands immediately and
+         * closes the coalescing window. It never creates a manual revision — the
+         * permanent, labeled manual checkpoint is the full-form Save button's job, and
+         * that is recorded server-side by the entity controllers, not by this endpoint.
          */
         onKeydown(event) {
             const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's';
@@ -318,7 +319,7 @@ export function registerAutosaveField(Alpine) {
             this.save(options);
         },
 
-        async save({ manual = false, runMatcher = false } = {}) {
+        async save({ runMatcher = false } = {}) {
             const value = this.fieldValue();
 
             this.setState(STATES.SAVING);
@@ -332,7 +333,6 @@ export function registerAutosaveField(Alpine) {
                     value,
                     base_hash: this.baseHash,
                     run_matcher: runMatcher,
-                    manual,
                 });
 
                 status = response.status;
@@ -373,7 +373,7 @@ export function registerAutosaveField(Alpine) {
 
             if (state === STATES.RETRYING) {
                 this.attempt += 1;
-                scheduleRetry(() => this.save({ manual, runMatcher }), retryDelayMs(this.attempt, retryAfterMs));
+                scheduleRetry(() => this.save({ runMatcher }), retryDelayMs(this.attempt, retryAfterMs));
             }
         },
 

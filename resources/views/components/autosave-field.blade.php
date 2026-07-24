@@ -16,7 +16,6 @@
 @php
     use App\Enums\FieldKind;
     use App\Support\AutosavableFields;
-    use Illuminate\Support\Facades\Route;
 
     // Kind, character cap, and coalescing window come from the registry, never
     // passed as props — "a future field is one registry line + one blade line"
@@ -30,14 +29,10 @@
     $hash = hash('sha256', $currentValue);
     $autosaveUrl = route('autosave.update', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
 
-    // The history/compare routes belong to task 10 — guarded so this component
-    // already works standalone, before those routes exist.
-    $historyUrl = Route::has('revisions.index')
-        ? route('revisions.index', ['entity' => $entity, 'id' => $model->id, 'field' => $field])
-        : null;
-    $compareUrl = Route::has('revisions.compare')
-        ? route('revisions.compare', ['entity' => $entity, 'id' => $model->id, 'field' => $field])
-        : null;
+    // Links to this field's revision history and compare views (the History icon
+    // below, and the compare URL handed to the Alpine component for its own use).
+    $historyUrl = route('revisions.index', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
+    $compareUrl = route('revisions.compare', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
 @endphp
 
 <div
@@ -67,16 +62,14 @@
                 x-text="state"
             ></span>
 
-            @if ($historyUrl)
-                <a
-                    href="{{ $historyUrl }}"
-                    class="inline-flex items-center justify-center p-1 rounded-md text-navy-500 hover:bg-navy-50"
-                    title="{{ __('History') }}"
-                >
-                    <span class="sr-only">{{ __('History') }}</span>
-                    <x-tabler-history class="h-4 w-4" />
-                </a>
-            @endif
+            <a
+                href="{{ $historyUrl }}"
+                class="inline-flex items-center justify-center p-1 rounded-md text-navy-500 hover:bg-navy-50"
+                title="{{ __('History') }}"
+            >
+                <span class="sr-only">{{ __('History') }}</span>
+                <x-tabler-history class="h-4 w-4" />
+            </a>
         </div>
     </div>
 

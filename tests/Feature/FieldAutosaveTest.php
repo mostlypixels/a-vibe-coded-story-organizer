@@ -296,35 +296,6 @@ class FieldAutosaveTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Manual origin always inserts, bypassing coalescing and the no-op skip
-    // ---------------------------------------------------------------------
-
-    public function test_manual_saves_always_insert_a_new_revision_even_called_twice_in_succession(): void
-    {
-        $user = User::factory()->create();
-        $act = $this->actFor($user);
-
-        $firstHash = $this->hashOf($act->description);
-
-        $first = $this->actingAs($user)->patchJson(
-            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
-            ['value' => 'Same text', 'base_hash' => $firstHash, 'manual' => true],
-        )->assertOk();
-
-        $second = $this->actingAs($user)->patchJson(
-            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
-            ['value' => 'Same text', 'base_hash' => $first->json('hash'), 'manual' => true],
-        )->assertOk();
-
-        $this->assertNotSame($first->json('revision_id'), $second->json('revision_id'));
-        $this->assertSame(2, Revision::where('field', 'description')
-            ->where('revisionable_id', $act->id)
-            ->where('revisionable_type', Act::class)
-            ->where('origin', RevisionOrigin::Manual)
-            ->count());
-    }
-
-    // ---------------------------------------------------------------------
     // Rate limiting
     // ---------------------------------------------------------------------
 

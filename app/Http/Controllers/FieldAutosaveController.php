@@ -42,7 +42,6 @@ class FieldAutosaveController extends Controller
             'value' => AutosavableFields::validationRule($entity, $field),
             'base_hash' => ['required', 'string'],
             'run_matcher' => ['sometimes', 'boolean'],
-            'manual' => ['sometimes', 'boolean'],
         ]);
 
         $currentValue = (string) ($model->getAttribute($field) ?? '');
@@ -57,16 +56,13 @@ class FieldAutosaveController extends Controller
 
         $storedValue = (string) ($model->fresh()->getAttribute($field) ?? '');
 
-        $origin = $request->boolean('manual') ? RevisionOrigin::Manual : RevisionOrigin::Automatic;
-
-        // A manual (full-form Save) write is a deliberate checkpoint and always
-        // gets its own row, even if nothing actually changed — this is what makes
-        // repeatedly hitting Save distinct history from an autosave debounce tick
-        // (handoff.md §2.2 vs. §2.4). Automatic saves skip the write entirely when
-        // the persisted value didn't change, so typing something and undoing it
-        // leaves no trace.
-        if ($origin === RevisionOrigin::Manual || $storedValue !== $currentValue) {
-            $recorder->record($model, $field, $storedValue, $request->user(), $origin);
+        // This AJAX endpoint only ever records origin: automatic, and skips the write
+        // entirely when the persisted value didn't change — so typing something and
+        // undoing it leaves no trace. The full-form Save button's permanent, labeled
+        // manual checkpoint is recorded separately, server-side, by the entity
+        // controllers' update() via RevisionRecorder::recordManualChanges().
+        if ($storedValue !== $currentValue) {
+            $recorder->record($model, $field, $storedValue, $request->user(), RevisionOrigin::Automatic);
         }
 
         // Coarse trigger (blur/Ctrl-S/submit) only, never a bare debounce tick, and

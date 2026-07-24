@@ -8,9 +8,10 @@ return [
     |--------------------------------------------------------------------------
     |
     | How long an `automatic`, unlabeled revision survives before it becomes
-    | eligible for pruning (Revision::prunable()). This seeds
-    | RevisionSetting::current()'s lazy-create path (task 12); until that
-    | singleton exists, Revision::prunable() reads this value directly.
+    | eligible for pruning (Revision::prunable()). This is the default that seeds
+    | the lazily-created RevisionSetting::current() singleton, which is what
+    | Revision::prunable() actually reads at prune time — so lowering retention in
+    | the admin panel takes effect on the next scheduled prune without a deploy.
     |
     */
 
