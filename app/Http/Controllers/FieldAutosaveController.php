@@ -29,10 +29,7 @@ class FieldAutosaveController extends Controller
 {
     public function update(string $entity, int $id, string $field, Request $request, RevisionRecorder $recorder): JsonResponse
     {
-        $modelClass = AutosavableFields::modelFor($entity);
-        $fields = AutosavableFields::REGISTRY[$entity][1];
-
-        abort_unless(array_key_exists($field, $fields), 404);
+        [$modelClass] = AutosavableFields::resolveField($entity, $field);
 
         $model = $modelClass::findOrFail($id);
 

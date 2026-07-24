@@ -15,6 +15,7 @@ use App\Rules\ValidMarkdown;
 use App\Support\AutosavableFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 /**
@@ -72,6 +73,31 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
     ): void {
         $this->assertSame($expectedModel, AutosavableFields::modelFor($slug));
         $this->assertSame($expectedKind, AutosavableFields::kindOf($slug, $field));
+    }
+
+    // ---------------------------------------------------------------------
+    // AutosavableFields::resolveField() — the shared "unknown field 404s"
+    // contract (FieldAutosaveController + RevisionController both go through it)
+    // ---------------------------------------------------------------------
+
+    public function test_resolve_field_returns_the_model_class_and_field_map_for_a_registered_pair(): void
+    {
+        [$modelClass, $fields] = AutosavableFields::resolveField('scene', 'notes');
+
+        $this->assertSame(Scene::class, $modelClass);
+        $this->assertSame(
+            ['description' => FieldKind::Rich, 'notes' => FieldKind::Rich, 'contents' => FieldKind::Markdown],
+            $fields,
+        );
+    }
+
+    public function test_resolve_field_404s_for_a_field_not_registered_on_the_slug(): void
+    {
+        // `title` is a real Event column but is not an autosavable field on
+        // any slug — resolving it must 404, never leak through as a valid pair.
+        $this->expectException(NotFoundHttpException::class);
+
+        AutosavableFields::resolveField('act', 'title');
     }
 
     // ---------------------------------------------------------------------
