@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DestroyChapterRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Models\Chapter;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Services\CoverImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Throwable;
 
@@ -33,9 +36,19 @@ class ChapterController extends Controller
             ->orderBy($sort, $direction)
             ->get();
 
+        // The delete-with-move dialog on each row needs the full set of the project's
+        // chapters as move destinations, independent of the current search/act filter
+        // above (moving is never limited to what the filter happens to match).
+        $destinationChapters = Chapter::query()
+            ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
+            ->orderBy('act_id')
+            ->orderBy('position')
+            ->get(['id', 'name', 'act_id']);
+
         return view('chapters.index', [
             'project' => $project->load('acts'),
             'chapters' => $chapters,
+            'destinationChapters' => $destinationChapters,
             'sort' => $sort,
             'direction' => $direction,
         ]);
@@ -62,9 +75,26 @@ class ChapterController extends Controller
     {
         $this->authorize('update', $chapter->act->project);
 
+        $project = $chapter->act->project;
+
+        // Feeds the delete-with-move dialog's honest cascade summary: a chapter is a
+        // one-level entity, so only its direct children (scenes) are counted.
+        $chapter->loadCount('scenes');
+
+        // Every *other* chapter in the project is a candidate destination for moving
+        // this chapter's scenes. An empty list collapses the dialog to "delete
+        // everything".
+        $destinations = Chapter::query()
+            ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
+            ->where('id', '!=', $chapter->id)
+            ->orderBy('act_id')
+            ->orderBy('position')
+            ->get();
+
         return view('chapters.edit', [
             'chapter' => $chapter,
-            'project' => $chapter->act->project->load('acts'),
+            'project' => $project->load('acts'),
+            'destinations' => $destinations,
         ]);
     }
 
@@ -119,12 +149,42 @@ class ChapterController extends Controller
             : redirect()->route('projects.chapters.index', $project);
     }
 
-    public function destroy(Chapter $chapter): RedirectResponse
+    public function destroy(DestroyChapterRequest $request, Chapter $chapter): RedirectResponse
     {
-        $this->authorize('update', $chapter->act->project);
-
+        // Authorization is handled by DestroyChapterRequest::authorize() (mirrors the
+        // walk-up-to-project check the other actions perform).
         $project = $chapter->act->project;
-        $chapter->delete();
+
+        // Reassignment (optional) and the delete itself are a single atomic unit: a
+        // failure partway must never leave scenes half-moved or an orphaned chapter
+        // (CLAUDE.md's multi-step-write transaction rule).
+        DB::transaction(function () use ($request, $chapter, $project) {
+            if ($destinationId = $request->validated('move_children_to')) {
+                $destination = Chapter::query()
+                    ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
+                    ->findOrFail($destinationId);
+
+                // Scene::booted() only assigns `position` on create, never on a plain
+                // chapter_id update, so we set it explicitly here — appending each moved
+                // scene after the destination's existing ones, in ascending original
+                // order, so their relative order survives the move and no two scenes
+                // ever share a position within the destination chapter.
+                $nextPosition = $destination->scenes()->max('position') + 1;
+
+                $chapter->scenes()->orderBy('position')->get()->each(function (Scene $scene) use ($destination, &$nextPosition) {
+                    // chapter_id is intentionally not mass-assignable (see Scene::$fillable),
+                    // so reparent through the relationship — a plain update(['chapter_id' => …])
+                    // is silently dropped. Mirrors SceneController::update()'s associate().
+                    $scene->position = $nextPosition++;
+                    $scene->chapter()->associate($destination);
+                    $scene->save();
+                });
+            }
+
+            // Same cascade path as before — just nothing left to cascade if the
+            // scenes were reassigned above.
+            $chapter->delete();
+        });
 
         return redirect()->route('projects.chapters.index', $project);
     }

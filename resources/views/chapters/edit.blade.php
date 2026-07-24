@@ -46,13 +46,43 @@
         </x-card>
 
         <x-slot:sidebar>
-            <x-edit-actions
-                form="chapter-edit-form"
-                :delete-action="route('chapters.destroy', $chapter)"
-                :delete-confirm="__('Are you sure you want to delete this chapter?')"
-            >
-                {{ __('Delete Chapter') }}
-            </x-edit-actions>
+            @if ($chapter->scenes_count > 0)
+                {{-- Chapter has scenes: offer "move them elsewhere, then delete" or a full cascade. --}}
+                <x-edit-actions form="chapter-edit-form">
+                    <x-slot:delete>
+                        <x-button
+                            variant="danger"
+                            type="button"
+                            :icon="true"
+                            class="w-full"
+                            x-data=""
+                            x-on:click="$dispatch('open-modal', 'delete-chapter-{{ $chapter->id }}')"
+                        >
+                            {{ __('Delete Chapter') }}
+                        </x-button>
+                    </x-slot:delete>
+                </x-edit-actions>
+
+                <x-delete-with-move-dialog
+                    name="delete-chapter-{{ $chapter->id }}"
+                    :action="route('chapters.destroy', $chapter)"
+                    :title="__('Delete Chapter?')"
+                    :child-count="$chapter->scenes_count"
+                    child-singular="scene"
+                    child-plural="scenes"
+                    destination-noun="chapter"
+                    :destinations="$destinations"
+                />
+            @else
+                {{-- No scenes: nothing to move or count — keep the original plain confirm(). --}}
+                <x-edit-actions
+                    form="chapter-edit-form"
+                    :delete-action="route('chapters.destroy', $chapter)"
+                    :delete-confirm="__('Are you sure you want to delete this chapter?')"
+                >
+                    {{ __('Delete Chapter') }}
+                </x-edit-actions>
+            @endif
 
             <x-card :title="$coverUrl ? __('Replace cover image') : __('Cover image')">
                 <p class="text-sm text-gray-500">{{ __('Optional. Included before this chapter in the EPUB export when chapter covers are enabled.') }}</p>

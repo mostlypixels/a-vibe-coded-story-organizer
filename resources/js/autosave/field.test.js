@@ -1,5 +1,35 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { clearDraft, readDraft, shouldAutosave, storageKeyFor, writeDraft } from './field';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearDraft, readDraft, registerAutosaveField, shouldAutosave, storageKeyFor, writeDraft } from './field';
+
+/**
+ * Minimal Alpine stand-in for `registerAutosaveField()`'s `store()`/`data()` calls —
+ * just enough of Alpine's public surface for the plain-object component methods to be
+ * invoked directly in a test, without pulling in the real Alpine runtime (no
+ * reactivity/DOM-diffing needed for these assertions; see badge.js/badge.test.js for
+ * this codebase's precedent of testing the DOM-free half of an Alpine adapter).
+ */
+function createAlpineStub() {
+    const stores = {};
+    const factories = {};
+
+    return {
+        store(name, value) {
+            if (value !== undefined) {
+                stores[name] = value;
+
+                return undefined;
+            }
+
+            return stores[name];
+        },
+        data(name, factory) {
+            factories[name] = factory;
+        },
+        factory(name) {
+            return factories[name];
+        },
+    };
+}
 
 /**
  * Covers task 08's DOM-free logic: the localStorage key-building for both the
@@ -76,4 +106,119 @@ describe('draft mirror (readDraft/writeDraft/clearDraft)', () => {
     // here: jsdom's Storage implementation doesn't allow reliably stubbing
     // setItem() to simulate QuotaExceededError from a unit test, so faking it
     // would test the mock, not the browser behavior it's standing in for.
+});
+
+/**
+ * Covers task 01 of the data-loss-warnings plan: the store-wide `dirty` map and
+ * `isDirty()` alongside the existing per-field `state` machine. Mounts
+ * `registerAutosaveField()`'s `autosaveField` component directly against a real
+ * (jsdom) DOM node and a stub Alpine, bypassing the real Alpine runtime entirely —
+ * matching this file's existing convention (see the top-of-file docblock) of
+ * unit-testing the DOM-free/logic half of the adapter.
+ */
+describe('registerAutosaveField store dirty tracking', () => {
+    let Alpine;
+
+    beforeEach(() => {
+        Alpine = createAlpineStub();
+        registerAutosaveField(Alpine);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        window.localStorage.clear();
+        delete window.axios;
+    });
+
+    /** Mounts an `autosaveField` instance on a real `<div><textarea /></div>`, mirroring
+     *  the wrapper/inner-textarea shape `fieldValue()`'s `querySelector('textarea')`
+     *  assumes (see field.js's docblock). */
+    function mountField(config) {
+        const root = document.createElement('div');
+        const textarea = document.createElement('textarea');
+        root.appendChild(textarea);
+        document.body.appendChild(root);
+
+        const field = Alpine.factory('autosaveField')(config);
+        field.$root = root;
+        field.$el = root;
+        field.init();
+
+        return { field, textarea };
+    }
+
+    it('isDirty() returns false and does not throw before any field has registered', () => {
+        expect(Alpine.store('autosave').isDirty()).toBe(false);
+    });
+
+    it('typing in a field sets store.dirty[key] to true before the debounce timer fires', () => {
+        vi.useFakeTimers();
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // The debounce timer was scheduled but not yet advanced — dirty is set
+        // synchronously by onInput(), well before any PATCH fires.
+        expect(Alpine.store('autosave').dirty[field.key]).toBe(true);
+        expect(Alpine.store('autosave').isDirty()).toBe(true);
+    });
+
+    it('a successful save clears store.dirty[key] back to false', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(Alpine.store('autosave').dirty[field.key]).toBe(true);
+
+        await field.save({});
+
+        expect(Alpine.store('autosave').dirty[field.key]).toBe(false);
+        expect(Alpine.store('autosave').isDirty()).toBe(false);
+    });
+
+    it('destroy() removes the key from store.dirty entirely, mirroring fields/elements', () => {
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(Alpine.store('autosave').dirty).toHaveProperty(field.key);
+
+        field.destroy();
+
+        expect(Alpine.store('autosave').dirty).not.toHaveProperty(field.key);
+        expect(Alpine.store('autosave').fields).not.toHaveProperty(field.key);
+        expect(Alpine.store('autosave').elements).not.toHaveProperty(field.key);
+    });
+
+    it('isDirty() is true when any registered field is dirty and false once none are', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
+        };
+
+        const first = mountField({ entity: 'scene', id: 1, field: 'contents', url: '/scenes/1', baseHash: 'a' });
+        const second = mountField({ entity: 'scene', id: 2, field: 'contents', url: '/scenes/2', baseHash: 'b' });
+
+        expect(Alpine.store('autosave').isDirty()).toBe(false);
+
+        first.textarea.value = 'hello';
+        first.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(Alpine.store('autosave').isDirty()).toBe(true);
+
+        second.textarea.value = 'world';
+        second.textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(Alpine.store('autosave').isDirty()).toBe(true);
+
+        await first.field.save({});
+        expect(Alpine.store('autosave').isDirty()).toBe(true); // second field is still dirty
+
+        await second.field.save({});
+        expect(Alpine.store('autosave').isDirty()).toBe(false);
+    });
 });

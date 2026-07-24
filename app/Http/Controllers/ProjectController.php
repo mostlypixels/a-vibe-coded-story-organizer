@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Services\CoverImageService;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Arr;
 use Illuminate\View\View;
 use Throwable;
 
@@ -40,7 +41,55 @@ class ProjectController extends Controller
     {
         $this->authorize('update', $project);
 
-        return view('projects.edit', ['project' => $project]);
+        // Counts feed the delete-confirm string below. The main plotline and the
+        // Start/End bookend events are auto-created, un-deletable invariants of every
+        // project (see Project::booted()) — they are excluded so a brand-new project
+        // reads as having nothing to lose, not "1 plotline and 2 events".
+        $project->loadCount([
+            'acts',
+            'plotlines' => fn ($query) => $query->where('is_main', false),
+            'events' => fn ($query) => $query->where('is_fixed', false),
+            'codexEntries',
+        ]);
+
+        return view('projects.edit', [
+            'project' => $project,
+            'deleteConfirm' => $this->buildDeleteConfirmMessage($project),
+        ]);
+    }
+
+    /**
+     * Build the native confirm() string for deleting this project: a plain
+     * cascade-count sentence listing only the non-zero categories among its direct
+     * children, e.g. "This project has 2 acts and 5 codex entries, which will also be
+     * deleted." A brand-new project (nothing beyond its un-deletable main plotline and
+     * bookend events) falls back to the original unqualified question — there is
+     * nothing to enumerate that the user doesn't already expect to lose.
+     */
+    private function buildDeleteConfirmMessage(Project $project): string
+    {
+        $categories = [
+            'acts' => [$project->acts_count, '{1} :count act|[2,*] :count acts'],
+            'plotlines' => [$project->plotlines_count, '{1} :count plotline|[2,*] :count plotlines'],
+            'events' => [$project->events_count, '{1} :count event|[2,*] :count events'],
+            'codex entries' => [$project->codex_entries_count, '{1} :count codex entry|[2,*] :count codex entries'],
+        ];
+
+        $nonZero = [];
+
+        foreach ($categories as [$count, $choicePattern]) {
+            if ($count > 0) {
+                $nonZero[] = trans_choice($choicePattern, $count, ['count' => $count]);
+            }
+        }
+
+        if ($nonZero === []) {
+            return __('Are you sure you want to delete this project?');
+        }
+
+        return __('This project has :categories, which will also be deleted.', [
+            'categories' => Arr::join($nonZero, ', ', ' '.__('and').' '),
+        ]);
     }
 
     public function update(UpdateProjectRequest $request, Project $project): RedirectResponse

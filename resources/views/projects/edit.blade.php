@@ -107,7 +107,7 @@
             <x-edit-actions
                 form="project-edit-form"
                 :delete-action="route('projects.destroy', $project)"
-                :delete-confirm="__('Are you sure you want to delete this project?')"
+                :delete-confirm="$deleteConfirm"
             >
                 {{ __('Delete Project') }}
             </x-edit-actions>
