@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -193,6 +194,185 @@ class ChapterTest extends TestCase
 
         $this->actingAs($other)
             ->delete(route('chapters.destroy', $chapter))
+            ->assertForbidden();
+
+        $this->assertNotNull($chapter->fresh());
+    }
+
+    // ---------------------------------------------------------------------
+    // Delete with "move scenes elsewhere, or cascade" (data-loss-warnings)
+    // ---------------------------------------------------------------------
+
+    public function test_deleting_a_chapter_with_no_scenes_keeps_the_plain_confirmation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        // The edit page shows the original unqualified confirm(), no move-or-delete dialog.
+        $this->actingAs($user)
+            ->get(route('chapters.edit', $chapter))
+            ->assertOk()
+            ->assertSee('Are you sure you want to delete this chapter?')
+            ->assertDontSee('name="move_children_to"', false);
+
+        // And a bare DELETE (no move_children_to) still deletes normally.
+        $this->actingAs($user)
+            ->delete(route('chapters.destroy', $chapter))
+            ->assertRedirect(route('projects.chapters.index', $project));
+
+        $this->assertNull($chapter->fresh());
+    }
+
+    public function test_edit_page_offers_delete_only_when_the_chapter_has_scenes_but_no_destination(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        Scene::factory()->for($chapter)->count(3)->create();
+
+        // Only chapter in the project → the dialog renders, but with the informational
+        // "delete everything" line and no destination <select>.
+        $this->actingAs($user)
+            ->get(route('chapters.edit', $chapter))
+            ->assertOk()
+            ->assertSee('This will also delete')
+            ->assertSee('3 scenes')
+            ->assertDontSee('name="move_children_to"', false);
+    }
+
+    public function test_edit_page_offers_the_move_picker_when_another_chapter_exists(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        Chapter::factory()->for($act)->create(['name' => 'Elsewhere']);
+        Scene::factory()->for($chapter)->count(2)->create();
+
+        $this->actingAs($user)
+            ->get(route('chapters.edit', $chapter))
+            ->assertOk()
+            ->assertSee('name="move_children_to"', false)
+            ->assertSee('Elsewhere');
+    }
+
+    public function test_deleting_a_chapter_without_a_destination_cascades_as_before(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        // A sibling chapter exists, but the user chose "delete everything" (no move_children_to).
+        Chapter::factory()->for($act)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($user)
+            ->delete(route('chapters.destroy', $chapter))
+            ->assertRedirect(route('projects.chapters.index', $project));
+
+        // The chapter and its scenes are gone via the FK cascade, exactly as before.
+        $this->assertNull($chapter->fresh());
+        $this->assertNull($scene->fresh());
+    }
+
+    public function test_deleting_a_chapter_can_move_its_scenes_to_another_chapter(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+
+        $source = Chapter::factory()->for($act)->create();
+        $destination = Chapter::factory()->for($act)->create();
+
+        // Destination already has two scenes (positions 1, 2).
+        Scene::factory()->for($destination)->create(['position' => 1]);
+        Scene::factory()->for($destination)->create(['position' => 2]);
+
+        // Source scenes in a known order.
+        $first = Scene::factory()->for($source)->create(['position' => 1, 'name' => 'Source First']);
+        $second = Scene::factory()->for($source)->create(['position' => 2, 'name' => 'Source Second']);
+
+        $this->actingAs($user)
+            ->delete(route('chapters.destroy', $source), ['move_children_to' => $destination->id])
+            ->assertRedirect(route('projects.chapters.index', $project));
+
+        // Source chapter is gone; the moved scenes are NOT deleted.
+        $this->assertNull($source->fresh());
+        $this->assertNotNull($first->fresh());
+        $this->assertNotNull($second->fresh());
+
+        // Every moved scene now belongs to the destination.
+        $this->assertSame($destination->id, $first->fresh()->chapter_id);
+        $this->assertSame($destination->id, $second->fresh()->chapter_id);
+
+        // Appended after the destination's existing max position (2), in original order.
+        $this->assertSame(3, $first->fresh()->position);
+        $this->assertSame(4, $second->fresh()->position);
+    }
+
+    public function test_moved_scenes_never_collide_positions_in_the_destination(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+
+        $source = Chapter::factory()->for($act)->create();
+        $destination = Chapter::factory()->for($act)->create();
+
+        Scene::factory()->for($destination)->create(['position' => 1]);
+        Scene::factory()->for($source)->count(3)->sequence(
+            ['position' => 1],
+            ['position' => 2],
+            ['position' => 3],
+        )->create();
+
+        $this->actingAs($user)
+            ->delete(route('chapters.destroy', $source), ['move_children_to' => $destination->id]);
+
+        $positions = Scene::where('chapter_id', $destination->id)->pluck('position')->all();
+
+        $this->assertSame($positions, array_values(array_unique($positions)));
+    }
+
+    public function test_move_children_to_must_be_another_chapter_in_the_same_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        Scene::factory()->for($chapter)->create();
+
+        // A destination in a different project is rejected.
+        $foreignChapter = Chapter::factory()->for(Act::factory()->for(Project::factory()->for($user)))->create();
+
+        $this->actingAs($user)
+            ->delete(route('chapters.destroy', $chapter), ['move_children_to' => $foreignChapter->id])
+            ->assertSessionHasErrors('move_children_to');
+
+        $this->assertNotNull($chapter->fresh());
+
+        // The chapter's own id as a destination is rejected (Rule::notIn).
+        $this->actingAs($user)
+            ->delete(route('chapters.destroy', $chapter), ['move_children_to' => $chapter->id])
+            ->assertSessionHasErrors('move_children_to');
+
+        $this->assertNotNull($chapter->fresh());
+    }
+
+    public function test_a_non_owner_cannot_delete_or_move_a_chapters_scenes(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $act = Act::factory()->for(Project::factory()->for($owner))->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $destination = Chapter::factory()->for($act)->create();
+        Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($other)
+            ->delete(route('chapters.destroy', $chapter), ['move_children_to' => $destination->id])
             ->assertForbidden();
 
         $this->assertNotNull($chapter->fresh());

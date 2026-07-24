@@ -19,6 +19,28 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ### Added
 
+- Data loss warnings: an in-app "You have unsaved changes — leave anyway?" dialog now
+  intercepts navigation away from a dirty autosave field, and a native `beforeunload`
+  prompt catches an actual tab-close/browser-quit — neither existed before, so closing a
+  tab mid-edit previously lost the text with no warning at all. Deleting an Act or
+  Chapter that still has chapters/scenes underneath now offers a choice — move them to
+  another act/chapter (reassignment + delete happen as one transaction) or delete
+  everything, with an honest count either way — instead of a generic "are you sure?"
+  that gave no hint of the blast radius or any alternative to losing them. Deleting a
+  Project (whose children have no natural place to move to) keeps a plain confirmation,
+  now naming only the non-zero categories being removed.
+
+### Changed
+
+- `Alpine.store('autosave')` gained a `dirty`/`isDirty()` signal, distinct from each
+  field's save-state machine — a field counts as dirty from the first keystroke through
+  the ~2s autosave debounce window, which is exactly the gap the new navigation guard
+  and `beforeunload` fallback both close.
+
+## 2026-07-24 — Autosave with revisions (#24)
+
+### Added
+
 - Autosave with revisions: the 14 registered long-text fields across the project tree
   (`Scene.contents`, act/chapter/plotline/event descriptions, project description and
   front/back matter, codex entry descriptions) now save automatically via AJAX as the
@@ -49,12 +71,6 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
   (`App\Support\AutosavableFields::REGISTRY`) + one-Blade-line (`x-autosave-field`)
   change, not a new controller/route/test per field — see `documentation/architecture.md`
   → "Revisions".
-
-> [!NOTE]
-> Known gap, shipped deliberately: short fields and relations (`name`, `chapter_id`,
-> `status`, `event_id`, `mentioned_events`) still only save on the existing manual form
-> submit — they carry cross-field validation rules that don't survive a field-level
-> autosave. Closing that gap is `.specs/draft/data-loss-warnings`'s job, not this feature's.
 
 ## 2026-07-22 — Reorganize the WYSIWYG toolbar into labeled clusters (#21)
 

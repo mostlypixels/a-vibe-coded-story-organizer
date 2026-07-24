@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DestroyActRequest;
 use App\Http\Requests\StoreActRequest;
 use App\Http\Requests\UpdateActRequest;
 use App\Models\Act;
+use App\Models\Chapter;
 use App\Models\Project;
+use App\Models\Scene;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ActController extends Controller
@@ -25,9 +29,15 @@ class ActController extends Controller
             ->orderBy($sort, $direction)
             ->get();
 
+        // The delete-with-move dialog on each row needs the full set of sibling acts as
+        // move destinations, independent of the current search filter above (moving is
+        // never limited to what the search happens to match).
+        $destinationActs = $project->acts()->orderBy('position')->get(['id', 'name', 'position']);
+
         return view('acts.index', [
             'project' => $project,
             'acts' => $acts,
+            'destinationActs' => $destinationActs,
             'sort' => $sort,
             'direction' => $direction,
         ]);
@@ -51,7 +61,24 @@ class ActController extends Controller
     {
         $this->authorize('update', $act->project);
 
-        return view('acts.edit', ['act' => $act]);
+        // Counts feed the delete-with-move dialog's honest cascade summary: an act's
+        // direct children (chapters) plus its grandchildren (scenes, counted through
+        // the chapters) — both are destroyed by a plain cascade delete.
+        $act->loadCount('chapters');
+        $sceneCount = Scene::whereHas('chapter', fn ($query) => $query->where('act_id', $act->id))->count();
+
+        // Every *other* act in the project is a candidate destination for moving this
+        // act's chapters. An empty list collapses the dialog to "delete everything".
+        $destinations = $act->project->acts()
+            ->where('id', '!=', $act->id)
+            ->orderBy('position')
+            ->get();
+
+        return view('acts.edit', [
+            'act' => $act,
+            'sceneCount' => $sceneCount,
+            'destinations' => $destinations,
+        ]);
     }
 
     public function update(UpdateActRequest $request, Act $act): RedirectResponse
@@ -63,12 +90,40 @@ class ActController extends Controller
             : redirect()->route('projects.acts.index', $act->project);
     }
 
-    public function destroy(Act $act): RedirectResponse
+    public function destroy(DestroyActRequest $request, Act $act): RedirectResponse
     {
-        $this->authorize('update', $act->project);
-
+        // Authorization is handled by DestroyActRequest::authorize() (mirrors the
+        // walk-up-to-project check the other actions perform).
         $project = $act->project;
-        $act->delete();
+
+        // Reassignment (optional) and the delete itself are a single atomic unit: a
+        // failure partway must never leave chapters half-moved or an orphaned act
+        // (CLAUDE.md's multi-step-write transaction rule).
+        DB::transaction(function () use ($request, $act) {
+            if ($destinationId = $request->validated('move_children_to')) {
+                $destination = $act->project->acts()->findOrFail($destinationId);
+
+                // Chapter::booted() only assigns `position` on create, never on a plain
+                // act_id update, so we set it explicitly here — appending each moved
+                // chapter after the destination's existing ones, in ascending original
+                // order, so their relative order survives the move and no two chapters
+                // ever share a position within the destination act.
+                $nextPosition = $destination->chapters()->max('position') + 1;
+
+                $act->chapters()->orderBy('position')->get()->each(function (Chapter $chapter) use ($destination, &$nextPosition) {
+                    // act_id is intentionally not mass-assignable (see Chapter::$fillable),
+                    // so reparent through the relationship — a plain update(['act_id' => …])
+                    // is silently dropped. Mirrors ChapterController::update()'s associate().
+                    $chapter->position = $nextPosition++;
+                    $chapter->act()->associate($destination);
+                    $chapter->save();
+                });
+            }
+
+            // Same cascade path as before — just nothing left to cascade if the
+            // chapters were reassigned above.
+            $act->delete();
+        });
 
         return redirect()->route('projects.acts.index', $project);
     }

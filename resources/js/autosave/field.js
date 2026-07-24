@@ -138,10 +138,23 @@ export function registerAutosaveField(Alpine) {
         Alpine.store('autosave', {
             fields: {},
             elements: {},
+            // key => boolean, mirrors each field's own `dirty` flag. Distinct from
+            // `fields` (the STATES machine value): a field is dirty from the first
+            // keystroke until a successful save/flush, including the ~2s debounce
+            // window where `state` is still `idle` — exactly the window the
+            // data-loss-warnings navigation guard and beforeunload fallback exist to
+            // protect (`.specs/planned/2026-07/data-loss-warnings/expanded/architecture.md` §1).
+            dirty: {},
 
             /** Worst-state-wins across every field currently on the page (ui.md). */
             worstState() {
                 return worstState(Object.values(this.fields));
+            },
+
+            /** Is anything on this page unsaved right now? The one signal the
+             *  navigation guard and its beforeunload fallback both read. */
+            isDirty() {
+                return Object.values(this.dirty).some(Boolean);
             },
         });
     }
@@ -189,6 +202,7 @@ export function registerAutosaveField(Alpine) {
             const store = Alpine.store('autosave');
             delete store.fields[this.key];
             delete store.elements[this.key];
+            delete store.dirty[this.key];
         },
 
         setState(next) {
@@ -211,6 +225,7 @@ export function registerAutosaveField(Alpine) {
          */
         onInput() {
             this.dirty = true;
+            Alpine.store('autosave').dirty[this.key] = true;
             this.mirrorDraft();
 
             if (!shouldAutosave(this.dirty, config.id)) {
@@ -295,6 +310,7 @@ export function registerAutosaveField(Alpine) {
 
             if (state === STATES.SAVED) {
                 this.dirty = false;
+                Alpine.store('autosave').dirty[this.key] = false;
                 this.attempt = 0;
                 // §9.13: adopt the server's hash, never write `data.value` back into
                 // the editor DOM (would yank the caret mid-sentence).

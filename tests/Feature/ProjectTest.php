@@ -429,4 +429,44 @@ class ProjectTest extends TestCase
         $this->assertSame($lower->id, $project->startEvent()->id);
         $this->assertSame($higher->id, $project->endEvent()->id);
     }
+
+    // --- Delete confirmation string -----------------------------------------
+
+    public function test_the_edit_page_lists_only_non_zero_categories_in_the_delete_confirmation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        Act::factory()->for($project)->create();
+        Act::factory()->for($project)->create();
+        CodexEntry::factory()->for($project)->character()->create();
+        CodexEntry::factory()->for($project)->character()->create();
+        CodexEntry::factory()->for($project)->character()->create();
+        CodexEntry::factory()->for($project)->character()->create();
+        CodexEntry::factory()->for($project)->character()->create();
+
+        // No extra plotlines/events beyond the auto-created main plotline and
+        // Start/End bookends, so those two categories must stay out of the sentence.
+        $response = $this->actingAs($user)->get(route('projects.edit', $project));
+
+        $response->assertSee('This project has 2 acts and 5 codex entries, which will also be deleted.', false);
+        $response->assertDontSee('Are you sure you want to delete this project?');
+    }
+
+    public function test_a_brand_new_projects_edit_page_shows_the_unqualified_delete_confirmation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        // A fresh project only has its auto-created main plotline and Start/End
+        // bookend events (Project::booted()) — none of which count toward the
+        // cascade sentence, so the original unqualified question must show instead.
+        $response = $this->actingAs($user)->get(route('projects.edit', $project));
+
+        $response->assertSee('Are you sure you want to delete this project?', false);
+        $response->assertDontSee('0 acts');
+        $response->assertDontSee('0 plotlines');
+        $response->assertDontSee('0 events');
+        $response->assertDontSee('0 codex entries');
+    }
 }

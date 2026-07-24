@@ -36,5 +36,23 @@
         </div>
 
         <x-autosave-status-badge />
+
+        {{--
+            x-data lives on this wrapping div, not directly on <x-dialog> — the
+            component's own root markup (dialog.blade.php -> modal.blade.php) does not
+            forward extra attributes onto its inner <x-modal>, so an x-data placed
+            straight on <x-dialog> is silently dropped. Alpine resolves properties/
+            methods through the parent scope chain, so confirmLeave() below still
+            resolves fine from inside the nested x-modal/x-dialog scopes.
+        --}}
+        <div x-data="navigationGuard()">
+            <x-dialog name="unsaved-changes-guard" :title="__('Unsaved changes')">
+                {{ __('You have unsaved changes. If you leave now, they may be lost.') }}
+                <x-slot name="footer">
+                    <x-button variant="secondary" x-on:click="$dispatch('close')">{{ __('Cancel') }}</x-button>
+                    <x-button variant="danger" x-on:click="confirmLeave()">{{ __('Leave anyway') }}</x-button>
+                </x-slot>
+            </x-dialog>
+        </div>
     </body>
 </html>

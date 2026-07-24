@@ -50,7 +50,21 @@
                                     <x-icon-move-down-button :action="route('acts.move-down', $act)" :disabled="$loop->last" />
                                 @endif
                                 <x-icon-edit-link :href="route('acts.edit', $act)" />
-                                <x-icon-delete-button :action="route('acts.destroy', $act)" :confirm="__('Are you sure you want to delete this act?')" />
+                                @if ($act->chapters_count > 0)
+                                    {{-- Act has chapters: open the "move or delete" dialog instead of a plain confirm(). --}}
+                                    <button
+                                        type="button"
+                                        x-data=""
+                                        x-on:click="$dispatch('open-modal', 'delete-act-{{ $act->id }}')"
+                                        class="inline-flex items-center justify-center p-1.5 rounded-md border border-red-600 bg-transparent text-red-600 hover:bg-red-50"
+                                        title="{{ __('Delete') }}"
+                                    >
+                                        <span class="sr-only">{{ __('Delete') }}</span>
+                                        <x-tabler-trash class="h-4 w-4" />
+                                    </button>
+                                @else
+                                    <x-icon-delete-button :action="route('acts.destroy', $act)" :confirm="__('Are you sure you want to delete this act?')" />
+                                @endif
                             </div>
                         </td>
                     </x-table-row>
@@ -64,5 +78,22 @@
                     />
                 @endforelse
             </x-table>
+
+            {{-- Delete-with-move dialogs live outside the table (a modal <div> is not
+                 valid inside a <tbody>); each is opened by its row's trash button. --}}
+            @foreach ($acts as $act)
+                @if ($act->chapters_count > 0)
+                    <x-delete-with-move-dialog
+                        name="delete-act-{{ $act->id }}"
+                        :action="route('acts.destroy', $act)"
+                        :title="__('Delete Act?')"
+                        :child-count="$act->chapters_count"
+                        child-singular="chapter"
+                        child-plural="chapters"
+                        destination-noun="act"
+                        :destinations="$destinationActs->where('id', '!=', $act->id)->values()"
+                    />
+                @endif
+            @endforeach
     </div>
 </x-app-layout>
