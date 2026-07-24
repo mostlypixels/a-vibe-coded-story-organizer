@@ -17,6 +17,25 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-24 — Revisions sidebar polish (D2/D3) (#33)
+
+### Added
+
+- The revisions-browser sidebar now has a client-side **filter box** that narrows the
+  list by entity name as you type (matching groups auto-expand, the rest hide), and each
+  group heading carries a **count badge** of the revised entities it holds.
+
+### Changed
+
+- Sidebar groups now **default-collapse**: only the group holding the entity currently
+  being viewed starts open, so a heavily-revised project opens compact.
+
+### Removed
+
+- The per-field **field switcher** on the history page. The sidebar is now the single
+  per-field navigation surface; reaching a sibling field that has no revisions yet goes
+  back through the edit page.
+
 ## 2026-07-24 — Revision reads authorize `view` (C1) (#32)
 
 ### Changed

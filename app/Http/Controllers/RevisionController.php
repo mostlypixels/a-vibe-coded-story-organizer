@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\FieldKind;
 use App\Enums\RevisionOrigin;
 use App\Models\Revision;
 use App\Services\RevisionDiffer;
@@ -11,9 +10,7 @@ use App\Support\AutosavableFields;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 /**
@@ -65,7 +62,7 @@ class RevisionController extends Controller
      */
     public function index(Request $request, string $entity, int $id, string $field): View
     {
-        [$model, $registeredFields] = $this->resolve($entity, $id, $field);
+        $model = $this->resolve($entity, $id, $field);
 
         $entityName = $model->revisionDisplayName();
 
@@ -133,7 +130,6 @@ class RevisionController extends Controller
                     'from' => $orderedIds->get(1), 'to' => $orderedIds->get(0),
                 ])
                 : null,
-            'fieldSwitcher' => $this->fieldSwitcher($entity, $id, $field, $registeredFields),
             'editUrl' => route(self::EDIT_ROUTES[$entity], $model),
             'baseHash' => $baseHash,
         ]);
@@ -149,7 +145,7 @@ class RevisionController extends Controller
      */
     public function compare(Request $request, string $entity, int $id, string $field, RevisionDiffer $differ): View
     {
-        [$model] = $this->resolve($entity, $id, $field);
+        $model = $this->resolve($entity, $id, $field);
 
         $entityName = $model->revisionDisplayName();
 
@@ -277,36 +273,15 @@ class RevisionController extends Controller
      * resolve to the same user today, but the altitude is set on purpose so a
      * future view-only collaborator could read history without being able to
      * revert.
-     *
-     * @return array{0: Model, 1: array<string, FieldKind>}
      */
-    private function resolve(string $entity, int $id, string $field): array
+    private function resolve(string $entity, int $id, string $field): Model
     {
-        [$modelClass, $registeredFields] = AutosavableFields::resolveField($entity, $field);
+        [$modelClass] = AutosavableFields::resolveField($entity, $field);
 
         $model = $modelClass::findOrFail($id);
 
         $this->authorize('view', $model->revisionProject());
 
-        return [$model, $registeredFields];
-    }
-
-    /**
-     * Links to every other field registered for this entity (ui.md's "field
-     * switcher"), so navigating between e.g. a Scene's description/notes/
-     * contents history never needs a trip back through the edit page.
-     *
-     * @param  array<string, FieldKind>  $registeredFields
-     * @return Collection<int, object{field: string, label: string, active: bool, url: string}>
-     */
-    private function fieldSwitcher(string $entity, int $id, string $currentField, array $registeredFields): Collection
-    {
-        return collect(array_keys($registeredFields))
-            ->map(fn (string $otherField) => (object) [
-                'field' => $otherField,
-                'label' => Str::headline($otherField),
-                'active' => $otherField === $currentField,
-                'url' => route('revisions.index', ['entity' => $entity, 'id' => $id, 'field' => $otherField]),
-            ]);
+        return $model;
     }
 }

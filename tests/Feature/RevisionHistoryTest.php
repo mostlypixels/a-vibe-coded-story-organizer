@@ -128,18 +128,36 @@ class RevisionHistoryTest extends TestCase
         $response->assertSee('Baseline — value before revision history');
     }
 
-    public function test_field_switcher_links_to_sibling_fields_of_a_multi_field_entity(): void
+    public function test_sidebar_links_to_a_revised_sibling_field_but_not_a_revision_less_one(): void
     {
+        // The per-field field switcher was removed (handoff D3); the sidebar
+        // (x-revisions-layout) is now the only per-field navigation, and it only
+        // lists fields that actually have history. So a sibling field with
+        // revisions is reachable from the history page, but a revision-less one
+        // is not (reaching it goes back through the edit page).
         $user = User::factory()->create();
         $scene = $this->sceneFor($user);
+        $projectId = $scene->chapter->act->project->id;
+
+        foreach (['description', 'notes'] as $field) {
+            Revision::factory()->create([
+                'revisionable_type' => Scene::class,
+                'revisionable_id' => $scene->id,
+                'project_id' => $projectId,
+                'field' => $field,
+                'user_id' => $user->id,
+            ]);
+        }
 
         $response = $this->actingAs($user)->get(
             route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'description'])
         );
 
         $response->assertOk();
+        // The revised sibling field is linked from the sidebar…
         $response->assertSee(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'notes']), false);
-        $response->assertSee(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']), false);
+        // …the revision-less one is not.
+        $response->assertDontSee(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']), false);
     }
 
     public function test_a_non_owner_gets_403_on_the_history_index(): void

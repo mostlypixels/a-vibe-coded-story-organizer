@@ -11,23 +11,10 @@
     </x-slot>
 
     <div class="space-y-6">
-        {{-- Field switcher (ui.md's "field switcher"): every other field this
-             entity has registered, so moving between e.g. a Scene's description/
-             notes/contents history never needs a trip back through the edit page. --}}
-        @if ($fieldSwitcher->count() > 1)
-            <div class="flex flex-wrap gap-2">
-                @foreach ($fieldSwitcher as $switcherField)
-                    <a
-                        href="{{ $switcherField->url }}"
-                        aria-current="{{ $switcherField->active ? 'page' : 'false' }}"
-                        class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium {{ $switcherField->active ? 'bg-navy-900 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' }}"
-                    >
-                        {{ $switcherField->label }}
-                    </a>
-                @endforeach
-            </div>
-        @endif
-
+        {{-- The per-field navigation lives in the sidebar (x-revisions-layout)
+             now, so the history page no longer repeats a field switcher here.
+             The sidebar only lists fields that actually have revisions; reaching
+             a revision-less sibling field goes back through the edit page. --}}
         <div class="flex items-center justify-between gap-4">
             <form method="GET" class="flex items-center gap-2">
                 <x-text-input
