@@ -111,7 +111,11 @@ class ProjectRevisionsBrowser
      */
     private function entitiesFor(string $slug, string $modelClass, Collection $rows): Collection
     {
-        $displayColumn = $this->displayColumnFor($slug);
+        // The single column that titles this entity type — `name` for all but
+        // Event (`title`), owned by HasRevisions::revisionDisplayColumn() so the
+        // exception lives in exactly one place (RevisionController reads the same
+        // source through revisionDisplayName()).
+        $displayColumn = $modelClass::revisionDisplayColumn();
 
         // Just the id + the one column the sidebar prints — never the entity's
         // own rich/large text columns.
@@ -155,16 +159,5 @@ class ProjectRevisionsBrowser
                 'entity' => $slug,
             ])
             ->values();
-    }
-
-    /**
-     * The single column holding an entity's human-readable title. Every
-     * registered model uses `name` except Event, which uses `title` — mirrors
-     * RevisionController::displayNameFor()'s name/title fallback, but as a
-     * column so the name query never selects a large text field.
-     */
-    private function displayColumnFor(string $slug): string
-    {
-        return $slug === 'event' ? 'title' : 'name';
     }
 }

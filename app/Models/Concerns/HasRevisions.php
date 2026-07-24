@@ -40,4 +40,30 @@ trait HasRevisions
     {
         return $this->morphMany(Revision::class, 'revisionable')->latest('created_at');
     }
+
+    /**
+     * The single column holding this model's human-readable title in the
+     * revisions UI. `name` for every revisionable except Event, which overrides
+     * this to `title` — the one place that exception lives now (previously it was
+     * re-encoded in both RevisionController and ProjectRevisionsBrowser).
+     *
+     * Static so ProjectRevisionsBrowser can name the column at query-build time —
+     * it selects `id` + this column instead of hydrating each entity's full row,
+     * so it never loads a large rich/markdown field just to print a sidebar label.
+     */
+    public static function revisionDisplayColumn(): string
+    {
+        return 'name';
+    }
+
+    /**
+     * This entity's own human-readable title for a revisions heading (e.g.
+     * "Compare — Project 'Melusine' — Description"), read from
+     * {@see self::revisionDisplayColumn()}. Falls back to `#<id>` so a heading
+     * is never blank if that column is empty.
+     */
+    public function revisionDisplayName(): string
+    {
+        return (string) ($this->getAttribute(static::revisionDisplayColumn()) ?? '#'.$this->getKey());
+    }
 }
