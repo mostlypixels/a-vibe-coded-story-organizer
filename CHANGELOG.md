@@ -17,6 +17,23 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-24 — Revisions/autosave dead-code cleanup
+
+### Removed
+
+- The unused `manual` flag on the autosave PATCH endpoint and in `field.js`. Nothing ever
+  sent `manual: true` — the full-form Save button's permanent, labeled manual checkpoint is
+  recorded server-side by the entity controllers (`RevisionRecorder::recordManualChanges`),
+  not through this endpoint. The autosave endpoint now always records `origin: automatic`
+  and skips the write on a byte-identical no-op, as before.
+
+### Changed
+
+- Simplified `<x-autosave-field>`: dropped the always-true `Route::has()` guards around the
+  History / Compare links (those routes have existed since the feature shipped).
+- Refreshed a stale `config/revisions.php` comment — the `RevisionSetting` retention
+  singleton exists and is what `Revision::prunable()` reads at prune time.
+
 ## 2026-07-24 — Revisions browser, readable compare & manual-save labels (#27)
 
 ### Added
