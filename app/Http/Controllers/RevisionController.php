@@ -266,17 +266,15 @@ class RevisionController extends Controller
 
     /**
      * Resolve the {entity}/{id}/{field} route segments into the model instance
-     * and authorize the request, walking to the owning Project exactly like
-     * FieldAutosaveController (CLAUDE.md's authorization rule).
+     * and authorize the request, walking to the owning Project (CLAUDE.md's
+     * authorization rule). The slug+field→class step and its unknown-field 404
+     * are shared with FieldAutosaveController via AutosavableFields::resolveField().
      *
      * @return array{0: Model, 1: array<string, FieldKind>}
      */
     private function resolve(string $entity, int $id, string $field): array
     {
-        $modelClass = AutosavableFields::modelFor($entity);
-        $registeredFields = AutosavableFields::REGISTRY[$entity][1];
-
-        abort_unless(array_key_exists($field, $registeredFields), 404);
+        [$modelClass, $registeredFields] = AutosavableFields::resolveField($entity, $field);
 
         $model = $modelClass::findOrFail($id);
 

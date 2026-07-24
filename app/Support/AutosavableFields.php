@@ -96,6 +96,35 @@ class AutosavableFields
     }
 
     /**
+     * Resolve a URL slug + field pair to the registered model class and the
+     * slug's full field map, 404ing when the field is not registered for the
+     * slug.
+     *
+     * The single home of the feature's "unknown field 404s" contract:
+     * FieldAutosaveController and RevisionController both reach a model+field
+     * through here, so the check can never drift between them (each used to
+     * re-derive REGISTRY[$slug][1] + abort_unless with slightly different
+     * phrasing). The {slug} itself is already guaranteed registered by the
+     * router's `->whereIn('entity', slugs())`; only the {field} segment still
+     * needs checking, which is why this never validates the slug.
+     *
+     * Returns the model *class*, not a hydrated instance: the caller still
+     * owns `->findOrFail($id)` (it holds the id, and wants that 404 to read as
+     * "no such entity" rather than "no such field") and the subsequent
+     * authorize() walk to the owning Project.
+     *
+     * @return array{0: class-string, 1: array<string, FieldKind>}
+     */
+    public static function resolveField(string $slug, string $field): array
+    {
+        [$modelClass, $fields] = self::REGISTRY[$slug];
+
+        abort_unless(array_key_exists($field, $fields), 404);
+
+        return [$modelClass, $fields];
+    }
+
+    /**
      * The reverse of {@see self::modelFor()}: the URL slug a given model class is
      * registered under. Used by App\Services\RevisionRecorder, which only ever has
      * a Model instance (never the slug it was reached through) and still needs to

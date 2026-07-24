@@ -136,6 +136,19 @@ class FieldAutosaveTest extends TestCase
         )->assertNotFound();
     }
 
+    public function test_a_field_not_registered_for_the_slug_404s(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        // `notes` is a registered field on Scene but not on Act — the shared
+        // AutosavableFields::resolveField() 404s it before any write happens.
+        $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'notes']),
+            ['value' => 'x', 'base_hash' => $this->hashOf(null)],
+        )->assertNotFound();
+    }
+
     // ---------------------------------------------------------------------
     // Validation
     // ---------------------------------------------------------------------

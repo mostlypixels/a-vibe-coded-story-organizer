@@ -198,6 +198,10 @@ that must never drift apart:
 - Route resolution: `routes/web.php` gates the `{entity}` segment with
   `->whereIn('entity', AutosavableFields::slugs())`, so an unregistered slug 404s at the
   router — there is **one generic `FieldAutosaveController` route, never one per model**.
+  The remaining slug+field→model step lives in **`AutosavableFields::resolveField($slug,
+  $field)`**, the single home of the "unknown *field* 404s" contract: both
+  `FieldAutosaveController` and `RevisionController` reach a model+field through it, so the
+  check can never drift between them.
 - Validation: `AutosavableFields::validationRule($slug, $field)` is the *only* place a
   character cap or content rule is expressed; `FieldAutosaveController` and the existing
   Form Requests both call it, so the two paths can never validate the same field two

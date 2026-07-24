@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-24 — Centralize autosave slug+field resolution (A2) (#29)
+
+### Changed
+
+- Centralized the autosave/revisions slug+field→model resolution in
+  `AutosavableFields::resolveField()`. `FieldAutosaveController` and `RevisionController`
+  each used to re-derive `REGISTRY[$slug][1]` and `abort_unless(array_key_exists(...), 404)`
+  independently; the shared resolver is now the single home of the "unknown field 404s"
+  contract, so the two paths can never drift.
+
 ## 2026-07-24 — Revisions/autosave dead-code cleanup (#28)
 
 ### Removed
