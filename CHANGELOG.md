@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-24 — Manual-save revision trait & default label (A1)
+## 2026-07-24 — Manual-save revision trait & default label (A1) (#30)
 
 ### Changed
 
