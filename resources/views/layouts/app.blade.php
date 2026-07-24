@@ -34,5 +34,7 @@
                 </div>
             </main>
         </div>
+
+        <x-autosave-status-badge />
     </body>
 </html>

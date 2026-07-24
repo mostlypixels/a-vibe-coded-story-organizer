@@ -5,12 +5,14 @@ Companion to `spec.md`, which stays the hand-written source of intent. Where the
 disagree, **this file wins** — it records where the spec was ambiguous, incomplete, or
 wrong once checked against the code.
 
-> [!IMPORTANT]
-> **Blocked as of 2026-07-22.** §9 is resolved, but grilling surfaced a lossy-Markdown
-> problem (§11.4) that belongs to the editor, not to autosave. A **TipTap editor
-> capability spec is now a hard prerequisite** — see §10. Do not run
-> `/mp-spec-expander` on this folder until that spec answers what the editor can and
-> cannot round-trip.
+> [!NOTE]
+> **Unblocked as of 2026-07-22.** §9 is resolved, and the TipTap editor capability
+> prerequisite (§10, §11.4) has since shipped as `.specs/shipped/2026-07/expand-tip-tap`
+> — tables, images, task lists, and callouts round-trip, and the fallback-warning list
+> for the small remaining structural losses is implemented (that spec's plan task 07).
+> `/mp-spec-expander` may now run on this folder. The other listed dependency,
+> `.specs/draft/data-loss-warnings`, remains a bare draft — it is a hard dependency for
+> §2.3's short-field gap, not a prerequisite for expansion itself.
 
 Each decision below states what was chosen, why, and what was rejected. The rejected
 options are kept deliberately: they are the questions a reviewer will ask, and the

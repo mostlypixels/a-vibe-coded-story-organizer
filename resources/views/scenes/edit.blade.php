@@ -75,21 +75,15 @@
                     </div>
 
                     <div>
-                        <x-input-label for="description" :value="__('Description')" />
-                        <x-wysiwyg id="description" name="description" :value="old('description', $scene->description)" :rows="4" />
-                        <x-input-error :messages="$errors->get('description')" class="mt-2" />
+                        <x-autosave-field entity="scene" :model="$scene" field="description" :label="__('Description')" />
                     </div>
 
                     <div>
-                        <x-input-label for="contents" :value="__('Contents (Markdown)')" />
-                        <x-wysiwyg id="contents" name="contents" :value="old('contents', $scene->contents)" :rows="12" markdown />
-                        <x-input-error :messages="$errors->get('contents')" class="mt-2" />
+                        <x-autosave-field entity="scene" :model="$scene" field="contents" :label="__('Contents (Markdown)')" :rows="12" />
                     </div>
 
                     <div>
-                        <x-input-label for="notes" :value="__('Notes')" />
-                        <x-wysiwyg id="notes" name="notes" :value="old('notes', $scene->notes)" :rows="6" />
-                        <x-input-error :messages="$errors->get('notes')" class="mt-2" />
+                        <x-autosave-field entity="scene" :model="$scene" field="notes" :label="__('Notes')" :rows="6" />
                     </div>
 
                     <div>

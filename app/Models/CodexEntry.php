@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
+use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\AttributeTimeline;
 use App\Services\CodexMediaService;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class CodexEntry extends Model
 {
     use HasFactory;
+    use HasRevisions;
     use SanitizesRichHtml;
 
     protected $fillable = [
@@ -43,6 +45,14 @@ class CodexEntry extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * The project that owns this codex entry's revisions (see HasRevisions).
+     */
+    public function revisionProject(): Project
+    {
+        return $this->project;
     }
 
     public function aliases(): HasMany

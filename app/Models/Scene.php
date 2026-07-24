@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SceneStatus;
+use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -15,6 +16,7 @@ use Illuminate\Support\Str;
 class Scene extends Model
 {
     use HasFactory;
+    use HasRevisions;
     use HasSiblingPosition;
     use SanitizesRichHtml;
 
@@ -36,6 +38,14 @@ class Scene extends Model
     public function chapter(): BelongsTo
     {
         return $this->belongsTo(Chapter::class);
+    }
+
+    /**
+     * The project that owns this scene's revisions (see HasRevisions).
+     */
+    public function revisionProject(): Project
+    {
+        return $this->chapter->act->project;
     }
 
     /**

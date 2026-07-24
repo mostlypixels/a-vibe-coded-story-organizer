@@ -13,6 +13,7 @@ use App\Http\Controllers\DataTransferController;
 use App\Http\Controllers\EpubExportController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\FieldAutosaveController;
 use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportSettingController;
@@ -20,12 +21,16 @@ use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PublicationSettingController;
+use App\Http\Controllers\RevisionController;
+use App\Http\Controllers\RevisionSettingController;
 use App\Http\Controllers\RobotsTxtController;
 use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SceneShareController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SharedSceneController;
 use App\Http\Controllers\StoryController;
+use App\Services\RevisionPurger;
+use App\Support\AutosavableFields;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -120,6 +125,19 @@ Route::middleware('auth')->group(function () {
         Route::patch('/data/import-settings', [ImportSettingController::class, 'update'])->name('data.import-settings');
 
         Route::get('/database', [DatabaseConfigurationController::class, 'edit'])->name('database.edit');
+
+        // Task 13: the dedicated admin "Revisions" page — the RevisionSetting
+        // retention form (confirm-gated when lowering the window) and the
+        // "Revision storage" panel's bulk-delete actions. A new, standalone
+        // section rather than folded into General settings or Export & import
+        // (handoff.md §9.11/§4.3 — confirmed in this feature's grilling pass).
+        Route::get('/revisions', [RevisionSettingController::class, 'edit'])->name('revisions.edit');
+        Route::patch('/revisions', [RevisionSettingController::class, 'update'])->name('revisions.update');
+        Route::delete('/revisions/purge/{category}', [RevisionSettingController::class, 'purgeCategory'])
+            ->whereIn('category', RevisionPurger::CATEGORIES)
+            ->name('revisions.purge-category');
+        Route::delete('/revisions/purge-old-automatic', [RevisionSettingController::class, 'purgeOldAutomatic'])
+            ->name('revisions.purge-old-automatic');
     });
 
     Route::resource('projects', ProjectController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
@@ -201,6 +219,34 @@ Route::middleware('auth')->group(function () {
         ->name('codex.attribute-values.store');
     Route::delete('/codex-attribute-values/{codexAttributeValue}', [CodexAttributeValueController::class, 'destroy'])
         ->name('codex.attribute-values.destroy');
+
+    // Autosave-with-revisions (task 06): the one generic PATCH every registered
+    // field autosaves through — see App\Support\AutosavableFields for the
+    // slug => model+field registry this route gates on. An unregistered
+    // {entity} slug 404s here, before FieldAutosaveController ever runs
+    // (handoff.md §3.1/§3.2). throttle:120,1 comfortably covers a 2-second
+    // debounce across several fields at once (handoff.md §9.8).
+    Route::whereIn('entity', AutosavableFields::slugs())->middleware('throttle:120,1')->group(function () {
+        Route::patch('/autosave/{entity}/{id}/{field}', [FieldAutosaveController::class, 'update'])
+            ->name('autosave.update');
+    });
+
+    // History + compare (task 10). Same slug-gated {entity} pattern as
+    // autosave.update above, but without the tight autosave throttle — these
+    // are ordinary page loads, not a debounce endpoint.
+    Route::whereIn('entity', AutosavableFields::slugs())->group(function () {
+        Route::get('/revisions/{entity}/{id}/{field}', [RevisionController::class, 'index'])
+            ->name('revisions.index');
+        Route::get('/revisions/{entity}/{id}/{field}/compare', [RevisionController::class, 'compare'])
+            ->name('revisions.compare');
+    });
+
+    // Revert (task 11): resolves straight from the {revision} route-model
+    // binding, not the {entity} slug — a Revision's own revisionable_type is
+    // always a real, already-registered model, so no separate slug gate is
+    // needed here.
+    Route::post('/revisions/{revision}/revert', [RevisionController::class, 'revert'])
+        ->name('revisions.revert');
 });
 
 require __DIR__.'/auth.php';

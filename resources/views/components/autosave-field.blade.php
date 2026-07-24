@@ -1,0 +1,150 @@
+@props([
+    'entity',
+    'model',
+    'field',
+    'label' => null,
+    'rows' => 4,
+    // Only needed when this field is rendered outside its owning <form> tag (e.g.
+    // projects/edit.blade.php's "Book metadata"/"front & back matter" cards, which
+    // sit below the closed </form> and associate every input via HTML5's `form=`
+    // attribute instead). Forwarded onto the actual input so the field still
+    // submits with the right form on a full-page Save, exactly like the textarea
+    // it replaces did.
+    'form' => null,
+])
+
+@php
+    use App\Enums\FieldKind;
+    use App\Support\AutosavableFields;
+    use Illuminate\Support\Facades\Route;
+
+    // Kind, character cap, and coalescing window come from the registry, never
+    // passed as props — "a future field is one registry line + one blade line"
+    // (ui.md's "x-autosave-field component"). An unregistered $field throws here
+    // (AutosavableFields::kindOf()'s array access), the same as it 404s server-side.
+    $kind = AutosavableFields::kindOf($entity, $field);
+    $currentValue = (string) ($model->{$field} ?? '');
+    // The server is the sole hash authority (00-overview.md/handoff.md §9.13) even
+    // for the very first render: this is the same hash() call the PATCH endpoint
+    // uses, so base_hash starts correct without an extra round trip.
+    $hash = hash('sha256', $currentValue);
+    $autosaveUrl = route('autosave.update', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
+
+    // The history/compare routes belong to task 10 — guarded so this component
+    // already works standalone, before those routes exist.
+    $historyUrl = Route::has('revisions.index')
+        ? route('revisions.index', ['entity' => $entity, 'id' => $model->id, 'field' => $field])
+        : null;
+    $compareUrl = Route::has('revisions.compare')
+        ? route('revisions.compare', ['entity' => $entity, 'id' => $model->id, 'field' => $field])
+        : null;
+@endphp
+
+<div
+    x-data="autosaveField({
+        entity: @js($entity),
+        id: {{ (int) $model->id }},
+        field: @js($field),
+        url: @js($autosaveUrl),
+        baseHash: @js($hash),
+        initialValue: @js($currentValue),
+    })"
+    data-autosave-field="{{ $entity }}:{{ $model->id }}:{{ $field }}"
+>
+    <div class="flex items-center justify-between gap-2">
+        <x-input-label for="{{ $field }}" :value="$label" />
+
+        <div class="flex items-center gap-2">
+            {{-- Per-field indicator (ui.md "Inline indicator"): shows only this
+                 field's own state, precise about which field is affected. Idle
+                 renders nothing — no persistent chrome. --}}
+            <span
+                class="text-xs text-gray-500"
+                data-autosave-indicator
+                x-show="state !== 'idle'"
+                style="display: none;"
+                x-text="state"
+            ></span>
+
+            @if ($historyUrl)
+                <a
+                    href="{{ $historyUrl }}"
+                    class="inline-flex items-center justify-center p-1 rounded-md text-navy-500 hover:bg-navy-50"
+                    title="{{ __('History') }}"
+                >
+                    <span class="sr-only">{{ __('History') }}</span>
+                    <x-tabler-history class="h-4 w-4" />
+                </a>
+            @endif
+        </div>
+    </div>
+
+    {{-- localStorage restore banner (ui.md "localStorage restore banner"): inline
+         per field, never a modal. draftAction is null (nothing to recover),
+         'restore' (clean unsaved work — Restore/Discard), or 'compare-only' (the
+         server moved on since this draft was written — never a bare Restore). --}}
+    <div
+        x-show="draftAction !== null"
+        style="display: none;"
+        class="mt-1 rounded-md border border-ocean-200 bg-ocean-50 px-3 py-2 text-sm text-ocean-800"
+        data-autosave-draft-banner
+    >
+        <p x-show="draftAction === 'restore'" style="display: none;">
+            {{ __('Unsaved changes were found from your last session.') }}
+        </p>
+        <p x-show="draftAction === 'compare-only'" style="display: none;">
+            {{ __('A newer version was saved elsewhere since these unsaved changes were made.') }}
+        </p>
+
+        <div class="mt-1 flex gap-3">
+            <button type="button" x-show="draftAction === 'restore'" style="display: none;" @click="restoreDraft()" class="font-medium underline">
+                {{ __('Restore') }}
+            </button>
+
+            @if ($compareUrl)
+                {{-- handoff.md §9.7: a mismatched base hash never offers a bare
+                     Restore — only Compare/Discard, so a stale draft can never
+                     silently clobber newer server text. --}}
+                <a href="{{ $compareUrl }}" x-show="draftAction === 'compare-only'" style="display: none;" class="font-medium underline">
+                    {{ __('Compare') }}
+                </a>
+            @endif
+
+            <button type="button" @click="discardDraft()" class="font-medium underline">
+                {{ __('Discard') }}
+            </button>
+        </div>
+    </div>
+
+    @if ($kind === FieldKind::Plain)
+        {{-- The one kind that is a bare <textarea>, not <x-wysiwyg> — Project.rights
+             stays a plain textarea, never forced into the rich editor. --}}
+        {{--
+            `form="{{ $form }}"` renders empty (form="") when $form is null — per the
+            HTML living standard, a form attribute that doesn't resolve to a real
+            <form> id is treated exactly like the attribute being absent (falls back
+            to the nearest ancestor <form>), so this is safe to always emit rather
+            than needing a conditional that would break the tag's attribute parsing.
+        --}}
+        <textarea
+            id="{{ $field }}"
+            name="{{ $field }}"
+            rows="{{ $rows }}"
+            data-hash="{{ $hash }}"
+            form="{{ $form }}"
+            class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+        >{{ $currentValue }}</textarea>
+    @else
+        <x-wysiwyg
+            id="{{ $field }}"
+            name="{{ $field }}"
+            :value="$currentValue"
+            :rows="$rows"
+            :markdown="$kind === FieldKind::Markdown"
+            data-hash="{{ $hash }}"
+            :form="$form"
+        />
+    @endif
+
+    <x-input-error :messages="$errors->get($field)" class="mt-2" />
+</div>

@@ -23,6 +23,13 @@ class MelusineSeederFr extends Seeder
     {
         $user = User::first() ?? User::factory()->create();
 
+        // Guards against re-running `db:seed` against a database that already has
+        // this demo project — without it, every re-run (e.g. `make seed` invoked
+        // twice) duplicates the whole project tree instead of no-op'ing.
+        if ($user->projects()->where('name', 'Le Roman de Mélusine')->exists()) {
+            return;
+        }
+
         // Rich-HTML description: showcases the new format (a heading + a list) so the
         // Story overview and detail pages render real markup. Every string is within the
         // sanitizer allow-list; the set-mutator on Project::description cleans it on write

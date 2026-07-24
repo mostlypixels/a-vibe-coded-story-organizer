@@ -1,5 +1,7 @@
 ---
-status: draft
+status: planned
+planned: 2026-07-22
+expanded: 2026-07-22
 ---
 
 # Autosave With Revisions
