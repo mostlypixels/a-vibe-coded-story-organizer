@@ -44,6 +44,15 @@ class Event extends Model
         return $this->project;
     }
 
+    /**
+     * Events are titled by `title`, not the `name` every other revisionable
+     * uses — the single override of HasRevisions::revisionDisplayColumn().
+     */
+    public static function revisionDisplayColumn(): string
+    {
+        return 'title';
+    }
+
     public function plotlines(): BelongsToMany
     {
         return $this->belongsToMany(Plotline::class);

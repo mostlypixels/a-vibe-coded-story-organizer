@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-24 — Centralize revisionable display-name (A3)
+
+### Changed
+
+- Centralized "how a revisionable is titled" (`name` for all but Event, which uses `title`)
+  into `HasRevisions`: a static `revisionDisplayColumn()` — overridden once on `Event` — and
+  an instance `revisionDisplayName()` reading it. `RevisionController` (history/compare
+  heading) and `ProjectRevisionsBrowser` (sidebar) both go through it, removing the
+  duplicated `event → title` special-case from those two files.
+
 ## 2026-07-24 — Manual-save revision trait & default label (A1) (#30)
 
 ### Changed

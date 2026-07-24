@@ -67,7 +67,7 @@ class RevisionController extends Controller
     {
         [$model, $registeredFields] = $this->resolve($entity, $id, $field);
 
-        $entityName = $this->displayNameFor($model);
+        $entityName = $model->revisionDisplayName();
 
         $search = trim((string) $request->query('label', ''));
 
@@ -151,7 +151,7 @@ class RevisionController extends Controller
     {
         [$model] = $this->resolve($entity, $id, $field);
 
-        $entityName = $this->displayNameFor($model);
+        $entityName = $model->revisionDisplayName();
 
         $baseHash = hash('sha256', (string) ($model->getAttribute($field) ?? ''));
 
@@ -281,18 +281,6 @@ class RevisionController extends Controller
         $this->authorize('update', $model->revisionProject());
 
         return [$model, $registeredFields];
-    }
-
-    /**
-     * The entity's own human-readable title, for the "Compare — Project
-     * 'Melusine' — Description" style heading (every registered model uses
-     * `name` except Event, which uses `title` — see AutosavableFields::
-     * REGISTRY's model list). Falls back to the id so a page never renders a
-     * heading with a blank name if that ever changes.
-     */
-    private function displayNameFor(Model $model): string
-    {
-        return $model->name ?? $model->title ?? '#'.$model->getKey();
     }
 
     /**

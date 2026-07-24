@@ -163,6 +163,36 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
+    // revisionDisplayColumn() / revisionDisplayName() — the one home of the
+    // "Event is titled by `title`, every other revisionable by `name`" exception
+    // ---------------------------------------------------------------------
+
+    public function test_revision_display_column_is_name_for_every_model_except_event(): void
+    {
+        $this->assertSame('name', Act::revisionDisplayColumn());
+        $this->assertSame('name', Scene::revisionDisplayColumn());
+        $this->assertSame('name', CodexEntry::revisionDisplayColumn());
+        $this->assertSame('title', Event::revisionDisplayColumn());
+    }
+
+    public function test_revision_display_name_reads_the_display_column(): void
+    {
+        $act = Act::factory()->create(['name' => 'The Reckoning']);
+        $event = Event::factory()->create(['title' => 'The Betrayal']);
+
+        $this->assertSame('The Reckoning', $act->revisionDisplayName());
+        $this->assertSame('The Betrayal', $event->revisionDisplayName());
+    }
+
+    public function test_revision_display_name_falls_back_to_the_id_when_the_column_is_null(): void
+    {
+        $act = Act::factory()->create();
+        $act->name = null;
+
+        $this->assertSame('#'.$act->getKey(), $act->revisionDisplayName());
+    }
+
+    // ---------------------------------------------------------------------
     // windowSeconds() / characterCap() — config lookups
     // ---------------------------------------------------------------------
 
