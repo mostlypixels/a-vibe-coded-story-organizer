@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-24 — Revisions browser, readable compare & manual-save labels
+## 2026-07-24 — Revisions browser, readable compare & manual-save labels (#27)
 
 ### Added
 
