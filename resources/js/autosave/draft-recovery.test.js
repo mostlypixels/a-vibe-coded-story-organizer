@@ -91,6 +91,37 @@ describe('collectDraftEntries', () => {
         expect(collectDraftEntries(fields, elements, compareUrls)).toHaveLength(0);
     });
 
+    it('drops a draft whose value now equals the server value (it landed or was undone)', () => {
+        const key = storageKeyFor({ entity: 'scene', id: 6, field: 'contents' });
+
+        // A live, non-expired draft — but its value matches the current server value,
+        // so triageDraft() returns 'drop-silently' and collectDraftEntries() must skip
+        // it rather than offering a recovery for work that is no different from what is
+        // already saved.
+        writeDraft(key, { value: 'same as server', baseHash: 'hash-a', savedAt: Date.now() });
+
+        const fields = { [key]: 'idle' };
+        const elements = { [key]: makeFieldElement('hash-a', 'same as server') };
+        const compareUrls = { [key]: '/compare/6' };
+
+        expect(collectDraftEntries(fields, elements, compareUrls)).toHaveLength(0);
+    });
+
+    it('skips a registered field whose element has no textarea to compare against', () => {
+        const key = storageKeyFor({ entity: 'scene', id: 7, field: 'contents' });
+
+        writeDraft(key, { value: 'unsaved edit', baseHash: 'hash-a', savedAt: Date.now() });
+
+        // A stale/mismatched map entry: the element exists but holds no <textarea>, so
+        // there is no live server value/hash to triage against — the field is skipped
+        // rather than throwing while building the recovery list.
+        const fields = { [key]: 'idle' };
+        const elements = { [key]: document.createElement('div') };
+        const compareUrls = { [key]: '/compare/7' };
+
+        expect(collectDraftEntries(fields, elements, compareUrls)).toHaveLength(0);
+    });
+
     it('returns an empty list when nothing is registered', () => {
         expect(collectDraftEntries({}, {}, {})).toEqual([]);
     });
