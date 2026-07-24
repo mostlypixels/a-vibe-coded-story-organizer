@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-24 — Revision reads authorize `view` (C1)
+
+### Changed
+
+- Revision **reads** (history, compare, and the project revisions browser) now authorize
+  `view` on the owning project instead of `update`; the mutating **revert** and **purge**
+  actions still require `update`. Reading history is a view capability — the altitude is
+  now set deliberately (one level below the writes) rather than inherited by accident. In
+  this single-owner app `view` and `update` resolve to the same user, so there is no
+  behavior change today; it makes a future view-only collaborator possible.
+
 ## 2026-07-24 — Centralize revisionable display-name (A3) (#31)
 
 ### Changed

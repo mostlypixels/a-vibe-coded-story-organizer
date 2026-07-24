@@ -270,6 +270,14 @@ class RevisionController extends Controller
      * authorization rule). The slug+field→class step and its unknown-field 404
      * are shared with FieldAutosaveController via AutosavableFields::resolveField().
      *
+     * Reading revision history is a `view` capability, not `update`: both
+     * history and compare (and the browser landing, RevisionBrowserController)
+     * authorize `view`, while the mutating revert action below deliberately
+     * still demands `update`. In this single-owner app the two abilities
+     * resolve to the same user today, but the altitude is set on purpose so a
+     * future view-only collaborator could read history without being able to
+     * revert.
+     *
      * @return array{0: Model, 1: array<string, FieldKind>}
      */
     private function resolve(string $entity, int $id, string $field): array
@@ -278,7 +286,7 @@ class RevisionController extends Controller
 
         $model = $modelClass::findOrFail($id);
 
-        $this->authorize('update', $model->revisionProject());
+        $this->authorize('view', $model->revisionProject());
 
         return [$model, $registeredFields];
     }
