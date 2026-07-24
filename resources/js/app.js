@@ -4,6 +4,7 @@ import Alpine from 'alpinejs';
 import { registerWysiwyg } from './wysiwyg';
 import { registerAutosaveField } from './autosave/field';
 import { registerAutosaveBadge } from './autosave/badge';
+import { registerDraftRecoveryModal } from './autosave/draft-recovery';
 import { registerNavigationGuard } from './navigation-guard';
 
 window.Alpine = Alpine;
@@ -11,6 +12,7 @@ window.Alpine = Alpine;
 registerWysiwyg(Alpine);
 registerAutosaveField(Alpine);
 registerAutosaveBadge(Alpine);
+registerDraftRecoveryModal(Alpine);
 registerNavigationGuard(Alpine);
 
 Alpine.start();

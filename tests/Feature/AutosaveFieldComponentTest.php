@@ -142,4 +142,39 @@ class AutosaveFieldComponentTest extends TestCase
         // escapes forward slashes), so the URL appears JSON-escaped, not verbatim.
         $this->assertStringContainsString(str_replace('/', '\/', $expectedUrl), $html);
     }
+
+    public function test_the_inline_draft_banner_no_longer_renders(): void
+    {
+        // Task 03 (autosave-storage-improvements) removed the old inline per-field
+        // banner entirely — draft recovery now lives in the page-level
+        // <x-autosave-draft-recovery-modal> mounted once in layouts/app.blade.php.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create(['description' => 'Hello world']);
+
+        $html = Blade::render(
+            '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
+            ['act' => $act],
+        );
+
+        $this->assertStringNotContainsString('data-autosave-draft-banner', $html);
+        $this->assertStringNotContainsString('draftAction', $html);
+    }
+
+    public function test_compare_url_is_passed_into_the_alpine_config(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+
+        $html = Blade::render(
+            '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
+            ['act' => $act],
+        );
+
+        $expectedUrl = route('revisions.compare', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']);
+
+        $this->assertStringContainsString('compareUrl:', $html);
+        $this->assertStringContainsString(str_replace('/', '\/', $expectedUrl), $html);
+    }
 }

@@ -17,6 +17,25 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-24 — Autosave storage improvements (#26)
+
+### Changed
+
+- Autosave drafts are now written to `localStorage` once, at `beforeunload`, instead of
+  on every keystroke — the write is also suppressed when the writer explicitly confirmed
+  leaving via the navigation guard, and skipped entirely once a draft is more than 4
+  hours old (a flat TTL, not reset at midnight).
+- Draft recovery moved from an inline per-field banner to a single page-level modal
+  (`Alpine.data('draftRecoveryModal')`) that lists every dirty field's unsaved draft at
+  once, with Restore/Discard per entry or all at once — closing the modal (Esc/backdrop)
+  never discards a draft, only an explicit action does.
+
+### Removed
+
+- The old inline per-field draft-recovery banner and its backing Alpine state
+  (`draftAction`/`draftValue`/`draftSavedAt`/`restoreDraft()`/`discardDraft()`/
+  `checkForDraft()` in `field.js`), superseded by the new global recovery modal.
+
 ### Added
 
 - Data loss warnings: an in-app "You have unsaved changes — leave anyway?" dialog now

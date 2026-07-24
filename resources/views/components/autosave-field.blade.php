@@ -48,6 +48,7 @@
         url: @js($autosaveUrl),
         baseHash: @js($hash),
         initialValue: @js($currentValue),
+        compareUrl: @js($compareUrl),
     })"
     data-autosave-field="{{ $entity }}:{{ $model->id }}:{{ $field }}"
 >
@@ -76,43 +77,6 @@
                     <x-tabler-history class="h-4 w-4" />
                 </a>
             @endif
-        </div>
-    </div>
-
-    {{-- localStorage restore banner (ui.md "localStorage restore banner"): inline
-         per field, never a modal. draftAction is null (nothing to recover),
-         'restore' (clean unsaved work — Restore/Discard), or 'compare-only' (the
-         server moved on since this draft was written — never a bare Restore). --}}
-    <div
-        x-show="draftAction !== null"
-        style="display: none;"
-        class="mt-1 rounded-md border border-ocean-200 bg-ocean-50 px-3 py-2 text-sm text-ocean-800"
-        data-autosave-draft-banner
-    >
-        <p x-show="draftAction === 'restore'" style="display: none;">
-            {{ __('Unsaved changes were found from your last session.') }}
-        </p>
-        <p x-show="draftAction === 'compare-only'" style="display: none;">
-            {{ __('A newer version was saved elsewhere since these unsaved changes were made.') }}
-        </p>
-
-        <div class="mt-1 flex gap-3">
-            <button type="button" x-show="draftAction === 'restore'" style="display: none;" @click="restoreDraft()" class="font-medium underline">
-                {{ __('Restore') }}
-            </button>
-
-            @if ($compareUrl)
-                {{-- handoff.md §9.7: a mismatched base hash never offers a bare
-                     Restore — only Compare/Discard, so a stale draft can never
-                     silently clobber newer server text. --}}
-                <a href="{{ $compareUrl }}" x-show="draftAction === 'compare-only'" style="display: none;" class="font-medium underline">
-                    {{ __('Compare') }}
-                </a>
-            @endif
-
-            <button type="button" @click="discardDraft()" class="font-medium underline">
-                {{ __('Discard') }}
-            </button>
         </div>
     </div>
 

@@ -195,6 +195,39 @@ describe('registerAutosaveField store dirty tracking', () => {
         expect(Alpine.store('autosave').dirty).not.toHaveProperty(field.key);
         expect(Alpine.store('autosave').fields).not.toHaveProperty(field.key);
         expect(Alpine.store('autosave').elements).not.toHaveProperty(field.key);
+        expect(Alpine.store('autosave').compareUrls).not.toHaveProperty(field.key);
+    });
+
+    it('init() sets store.compareUrls[key] from config.compareUrl, and destroy() removes it alongside store.elements[key]', () => {
+        const { field } = mountField({
+            entity: 'scene',
+            id: 43,
+            field: 'contents',
+            url: '/scenes/43',
+            baseHash: 'abc',
+            compareUrl: '/revisions/compare/43',
+        });
+
+        expect(Alpine.store('autosave').compareUrls[field.key]).toBe('/revisions/compare/43');
+
+        field.destroy();
+
+        expect(Alpine.store('autosave').compareUrls).not.toHaveProperty(field.key);
+    });
+
+    it('init() defaults store.compareUrls[key] to null when no compareUrl is configured (the revisions.compare route may not exist yet)', () => {
+        const { field } = mountField({ entity: 'scene', id: 44, field: 'contents', url: '/scenes/44', baseHash: 'abc' });
+
+        expect(Alpine.store('autosave').compareUrls[field.key]).toBeNull();
+    });
+
+    it('destroy() removes the beforeunload listener too', () => {
+        const removeSpy = vi.spyOn(window, 'removeEventListener');
+        const { field } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        field.destroy();
+
+        expect(removeSpy).toHaveBeenCalledWith('beforeunload', field._onBeforeUnload);
     });
 
     it('isDirty() is true when any registered field is dirty and false once none are', async () => {
@@ -220,5 +253,92 @@ describe('registerAutosaveField store dirty tracking', () => {
 
         await second.field.save({});
         expect(Alpine.store('autosave').isDirty()).toBe(false);
+    });
+});
+
+/**
+ * Task 01 of autosave-storage-improvements: the draft mirror moves from firing on
+ * every keystroke to firing once, at `beforeunload`, and is suppressed entirely when
+ * the departure was an explicit "leave anyway" via data-loss-warnings' nav guard.
+ * Asserts on the actual `localStorage` contents (via `readDraft`), the same
+ * observable surface `writeDraft`/`readDraft` already expose to other tests in this
+ * file, rather than spying on `writeDraft` — it's called directly within field.js's
+ * own module scope, not through the test file's imported binding.
+ */
+describe('write-once-at-beforeunload (autosave-storage-improvements task 01)', () => {
+    let Alpine;
+
+    beforeEach(() => {
+        Alpine = createAlpineStub();
+        registerAutosaveField(Alpine);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        window.localStorage.clear();
+        delete window.axios;
+    });
+
+    function mountField(config) {
+        const root = document.createElement('div');
+        const textarea = document.createElement('textarea');
+        root.appendChild(textarea);
+        document.body.appendChild(root);
+
+        const field = Alpine.factory('autosaveField')(config);
+        field.$root = root;
+        field.$el = root;
+        field.init();
+
+        return { field, textarea };
+    }
+
+    // Each test below mounts its own field with a distinct `id` (and therefore a
+    // distinct storage key). This matters because `beforeunload` listeners are never
+    // torn down here (no `field.destroy()` call, matching this describe block's focus
+    // on the listener itself) — reusing an `id` across tests would let a still-live
+    // listener from an earlier test's field re-write its own draft when a later
+    // test's `beforeunload` dispatch fires, since `window.dispatchEvent` reaches every
+    // listener still registered on `window`, not just the field under test.
+
+    it('typing no longer writes a draft to localStorage', () => {
+        const { textarea } = mountField({ entity: 'scene', id: 1, field: 'contents', url: '/scenes/1', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(readDraft('scene:1:contents')).toBeNull();
+    });
+
+    it('beforeunload on a dirty field writes the draft once, with the current value', () => {
+        const { field, textarea } = mountField({ entity: 'scene', id: 2, field: 'contents', url: '/scenes/2', baseHash: 'abc' });
+
+        textarea.value = 'unsaved edit';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        window.dispatchEvent(new Event('beforeunload'));
+
+        expect(readDraft(field.key)).toMatchObject({ value: 'unsaved edit', baseHash: 'abc' });
+    });
+
+    it('beforeunload on a clean field writes nothing', () => {
+        const { field } = mountField({ entity: 'scene', id: 3, field: 'contents', url: '/scenes/3', baseHash: 'abc' });
+
+        window.dispatchEvent(new Event('beforeunload'));
+
+        expect(readDraft(field.key)).toBeNull();
+    });
+
+    it('an explicit-leave suppresses the beforeunload write for every field', () => {
+        const { field, textarea } = mountField({ entity: 'scene', id: 4, field: 'contents', url: '/scenes/4', baseHash: 'abc' });
+
+        textarea.value = 'unsaved edit';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        window.dispatchEvent(new CustomEvent('autosave:explicit-leave'));
+        window.dispatchEvent(new Event('beforeunload'));
+
+        expect(readDraft(field.key)).toBeNull();
     });
 });
