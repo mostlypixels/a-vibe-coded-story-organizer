@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-25 — Read revision history as save points
+## 2026-07-25 — Read revision history as save points (#41)
 
 ### Added
 
