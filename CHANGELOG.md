@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-25 — Record what each save changed
+## 2026-07-25 — Record what each save changed (#40)
 
 ### Added
 
