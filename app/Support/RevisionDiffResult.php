@@ -2,33 +2,36 @@
 
 namespace App\Support;
 
+use App\Services\Diff\DiffHtmlRenderer;
+use App\Services\RevisionDiffer;
+
 /**
  * The result of comparing two revisions of one field, returned by
- * App\Services\RevisionDiffer. Exactly one of the two states applies:
+ * {@see RevisionDiffer}.
  *
- *   - A real diff: `html` holds the rendered word-level diff markup, safe to
- *     `{!! !!}` directly (jfcherng/php-diff's HTML renderer already escapes the
- *     underlying text).
- *   - "Formatting changed only": the two revisions' RichText::toPlainText()
- *     projections are identical, but the raw stored HTML differs (handoff.md
- *     §5.3) — rendering an empty diff here would read as "nothing changed",
- *     which is misleading when the writer *did* press Save and something *did*
- *     change (e.g. a bold mark added/removed with no wording change).
+ * Both diff strategies produce the same shape, which is the point: the compare
+ * view renders a Rich field and a Markdown field with the same two lines of
+ * Blade, and never has to ask which differ ran.
  */
-final class RevisionDiffResult
+final readonly class RevisionDiffResult
 {
-    private function __construct(
-        public readonly bool $formattingChangedOnly,
-        public readonly ?string $html,
+    /**
+     * @param  string  $html  The rendered diff, safe to `{!! !!}` directly — both
+     *                        producers escape the underlying text themselves (see
+     *                        {@see DiffHtmlRenderer} for why that has to be true
+     *                        by construction).
+     * @param  int  $changeCount  How many change *hunks* the diff found — a contiguous
+     *                            run of changed blocks (or lines) counts once, which is
+     *                            what a reader means by "3 changes". Zero means the two
+     *                            values are identical.
+     */
+    public function __construct(
+        public string $html,
+        public int $changeCount,
     ) {}
 
-    public static function diff(string $html): self
+    public function hasChanges(): bool
     {
-        return new self(formattingChangedOnly: false, html: $html);
-    }
-
-    public static function formattingChangedOnly(): self
-    {
-        return new self(formattingChangedOnly: true, html: null);
+        return $this->changeCount > 0;
     }
 }
