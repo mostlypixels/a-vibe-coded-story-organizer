@@ -46,11 +46,15 @@
                 </a>
             @endif
 
-            {{-- TODO (task 17): "Undo this save" goes here — a POST form to
-                 revisions.saves.revert carrying one base_hashes[<field>] hidden
-                 input per field in this group, behind the x-delete-button
-                 confirm pattern. Hidden when the point is current, since undoing
-                 the live state is a no-op dressed up as an action. --}}
+            {{-- Offered on every save point *including the current one* —
+                 undoing the newest save is the most useful case, since undo
+                 restores what came before it. The exception is a baseline: it is
+                 the seeded pre-history value and has nothing before it to go
+                 back to. The endpoint refuses that too — a hidden button is not
+                 a check. --}}
+            @if (! $point->isBaseline())
+                <x-undo-save-button :point="$point" :base-hashes="$baseHashes" />
+            @endif
         </div>
     </div>
 

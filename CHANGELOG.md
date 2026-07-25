@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-25 — Undo a whole save (#44)
+
+### Added
+
+- **Undo this save.** Every save in a history now has an *Undo this save* button: one
+  click puts every field that save changed back to what it was before it, and lands you on
+  the edit form looking at the restored text. Fields that save didn't touch are left
+  exactly as they are — later edits elsewhere are never discarded.
+- The undo is recorded as a save of its own, so nothing is deleted and you can undo the
+  undo. That includes undoing your most recent save, which is usually the one you want.
+- If anything the save touched changed while you had the page open, the whole undo is
+  refused and nothing is written — a half-undone save is worse than none.
+
 ## 2026-07-25 — Revert conflicts come back to the page you were reading (#43)
 
 ### Changed

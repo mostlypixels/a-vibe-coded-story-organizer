@@ -436,6 +436,30 @@ ended up holding. The controller is resolve → authorize → delegate → redir
 > rendered once in `<x-revisions-layout>`, the shell the history and compare pages share,
 > rather than per page.
 
+**Undo this save** (`revisions.saves.revert` → `RevisionController::revertSave`) is the
+same machinery applied to a whole save point: every field that save touched goes back to
+the value it held *before* it. `RevisionReverter::revertSave()` wraps the lot in one
+`DB::transaction`, checks **every** field's base hash before writing **any** of them, and
+calls `RevisionRecorder::startNewSave()` so the result is one new save point rather than a
+scatter of unrelated rows.
+
+* **Only the fields that save touched** — never a whole-entity rollback to that moment,
+  which would silently discard unrelated later edits to other fields.
+* **All-or-nothing.** A half-applied undo is a state the writer never asked for and cannot
+  recognise; refusing outright is kinder.
+* **The value restored is the one *before* the save**, which is a different row from the
+  one the save wrote — the newest revision of that field strictly older than it, by
+  `(created_at, id)`. When there is none, the save *created* that field's content and the
+  undo empties it (every registered field is `nullable`).
+* **Any save point can be undone, including the current one.** Undo runs backwards, so
+  undoing the newest save is "undo what I just saved" — the most useful case, not a no-op.
+  It is also what makes an undo undoable in turn. The one exception is a **baseline**: it
+  is the seeded pre-history value and has nothing before it, so the button is hidden and
+  the endpoint refuses it.
+* The `{save}` segment is constrained to the ULID alphabet in `routes/web.php`, so a
+  malformed id 404s at the router. It is a lookup key, never a capability — authorization
+  still walks from the group's entity up to its owning `Project`.
+
 **Revisions browser (Tools ▸ Revisions).** Besides the per-field History icon on each
 edit page, the whole of a project's history is reachable from one place: the **Tools**
 toolbar dropdown → **Revisions** (`RevisionBrowserController`, route

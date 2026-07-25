@@ -29,6 +29,23 @@
             <main>
                 <div class="py-12">
                     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                        {{--
+                            "Undo this save" lands on the entity's edit form, and
+                            all seven edit forms reach this shell — six through
+                            <x-edit-layout>, codex directly — so the confirmation
+                            lives here rather than being repeated in each. Scoped
+                            to this one status value, so no other page's flash can
+                            surface through it.
+                        --}}
+                        @if (session('status') === 'reverted-save')
+                            <x-alert variant="success" dismissible class="mb-6">
+                                {{ __('Save undone.') }}
+                                @if (session('restored_fields'))
+                                    {{ __('Restored: :fields.', ['fields' => implode(', ', session('restored_fields'))]) }}
+                                @endif
+                            </x-alert>
+                        @endif
+
                         {{ $slot }}
                     </div>
                 </div>

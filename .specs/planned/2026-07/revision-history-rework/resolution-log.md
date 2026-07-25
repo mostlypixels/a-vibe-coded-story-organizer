@@ -126,30 +126,53 @@ before extending the feature.
   `session('status')`, so task 11's "reverted" confirmation had never once been shown. Both
   outcomes render in the shared shell — see *Known gaps* below for the full note.
 
+* **Task 17's "refuse the current save point" was overturned — the task contradicted
+  itself.** It listed both *"the undo is itself one save point — symmetric with what it
+  undoes, and immediately undoable in turn"* and *"reverting the current save point is
+  refused"*. An undo **becomes** the newest save point the moment it is written, so under
+  the second rule it can never be undone and the first is dead on arrival. The test caught
+  it (`undoing the undo moves forward again` failed). The rule was inherited from per-field
+  revert, where it is right: *Revert to this* on the newest revision restores the value
+  already in the column, a real no-op. Undo runs the other way — it restores what came
+  **before** — so undoing the newest save is "undo what I just saved", the most useful case
+  there is. Owner's call (2026-07-25): **drop the refusal**; any save point can be undone.
+* **A baseline save point cannot be undone.** Not in the task, and it needs to be: a
+  baseline is the seeded pre-history value, so "the value before it" is nothing, and
+  undoing one would silently empty the field. The button is hidden and the endpoint refuses
+  it. (Undoing a *normal* save that created a field's content does still empty it — there
+  the emptiness is a real earlier state the writer had, not an artefact of seeding.)
+* **The undo form carries a base hash for every registered field, not only the group's.**
+  The task said "one `base_hashes[<field>]` hidden input per field in the group". But
+  `?field=` narrows `SavePoint::$entries`, and the undo must restore the **whole** save
+  regardless of what the page is filtered to — so a filtered page would submit an
+  incomplete set and the undo would refuse itself. The page already computes a hash per
+  registered field for the compare screen's restore buttons; sending all of them costs
+  three to six hidden inputs and removes the coupling entirely. The server resolves the
+  group's real field list from the database and ignores the rest.
+* **`restore()` now takes a value and a label rather than the `Revision` they came from.**
+  The two callers reach them differently: a single-field revert restores *that* revision's
+  value, while an undo restores the value the field held **before** the row the save wrote
+  — a different row, and sometimes no row at all.
+* **The `reverted-save` flash renders in `layouts/app.blade.php`, not in `x-edit-layout`.**
+  Six of the seven edit forms use `x-edit-layout`; `codex/edit` does not. The app shell is
+  the only place all seven meet. It is scoped to that one status value, so no other page's
+  flash can surface through it.
+* **The predecessor lookup is re-stated in `RevisionReverter`, not shared.**
+  `RevisionSnapshot` and `RevisionRecorder` both already walk `(created_at, id)` backwards,
+  but each wants a different thing out of the row it finds — a bound, a value, and now a
+  `Revision`. Three ten-line queries reading the same way beat one parameterised helper
+  that has to explain which of the three it is doing.
+
 ## Known gaps
 
-* **The source diff has two accessibility channels, not three.** `expanded/ui.md` requires
-  tint + glyph + a visually-hidden label on every marked passage. `jfcherng` writes its own
-  `<ins>`/`<del>` and offers no hook for a label, so the Markdown/plain side gets the tint
-  and the glyph plus the semantic elements. Closing it means the source path emitting its
-  own markers rather than delegating to the library — a task-7-sized change, not a styling
-  one. Documented in `documentation/architecture.md`.
-* **A coalescing autosave narrows what *Undo this save* covers.** Accepted when Q1 was
-  settled (`expanded/open-questions.md` Q1): a coalescing row keeps its *original* `save_id`,
-  exactly as it already keeps its original `created_at`. So a save touching three fields
-  where one coalesces into a still-open burst from earlier puts that field in the **earlier**
-  save point — the group the writer thinks of as "the save I just made" lists two fields, and
-  task 17's *Undo this save* then silently leaves the third alone. The alternative (rewriting
-  an existing group's membership after the fact) is worse. Already documented in
-  `RevisionRecorder::record()`'s docblock and in `documentation/architecture.md`; recorded
-  here because it is a standing behavioural gap rather than only a design note, and it is the
-  one gap that bears directly on tasks 16–17.
-* **A prune leaves stale summaries behind.** Accepted when Q7 was settled: deleting an
-  `automatic` row leaves its successor's stored `summary_html` / `change_count` describing a
-  diff against a row that no longer exists, so the **history list** can under-report what a
-  save changed. The compare screen always computes live and is unaffected. Recomputing during
-  a mass prune would turn a cheap `DELETE` into an O(n) diff job, which is why it was not
-  taken. Documented in `expanded/data-model.md`'s warning callout.
+**Moved to [`standing-issues.md`](standing-issues.md).** A gap that survives the task that
+found it is not part of the *record of the work* — it is a fact about the code, and it needs
+to be read by whoever extends the feature next rather than buried in a log that is otherwise
+finished business. That file now holds both the accepted costs that used to be listed here
+and the defects found reviewing task 16.
+
+Only entries that were **closed** stay below, as part of the record:
+
 * ~~**Nothing renders the revert flashes yet.**~~ `RevisionController::revert()` already
   returned `back()->with('status', 'reverted')`, but no view read that key — the success
   message had been dropped on the floor since task 11, and so there was no render site for

@@ -269,6 +269,13 @@ Route::middleware('auth')->group(function () {
     // needed here.
     Route::post('/revisions/{revision}/revert', [RevisionController::class, 'revert'])
         ->name('revisions.revert');
+
+    // Undo a whole save point (task 17). {save} is a save_id ULID, constrained
+    // to the ULID alphabet (Crockford base32, no I/L/O/U) so a malformed id
+    // 404s at the router rather than reaching a query.
+    Route::post('/revisions/saves/{save}/revert', [RevisionController::class, 'revertSave'])
+        ->where('save', '[0-9A-HJKMNP-TV-Z]{26}')
+        ->name('revisions.saves.revert');
 });
 
 require __DIR__.'/auth.php';

@@ -74,7 +74,17 @@ still appears twice anywhere in the tree — the backstop for a collision create
     NN-<slug>.md       #   one file per task, dependency-ordered
     implemented/       #   completed task files are moved here
   resolution-log.md    # running record of deviations, issues→resolutions, feedback
+  standing-issues.md   # what is still wrong with the shipped code (optional)
 ```
+
+`resolution-log.md` and `standing-issues.md` divide the same subject on a simple line: **is
+this still true of the code?** The log is the record of the *work* — decisions, deviations,
+and problems that were resolved as tasks ran; its entries stop being actionable once the task
+is done. Standing issues are facts about the *code*, and each stays until someone fixes it or
+a decision retires it: defects nobody has got to yet, and accepted costs of the design that
+should not be rediscovered as surprises. Create the file when a feature has its first one —
+it is not part of the generated scaffold. See
+`.specs/planned/2026-07/revision-history-rework/standing-issues.md` for the shape.
 
 ## Lifecycle
 

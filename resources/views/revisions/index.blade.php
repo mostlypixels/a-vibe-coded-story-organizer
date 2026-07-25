@@ -93,6 +93,7 @@
                             'entity' => $entity,
                             'id' => $id,
                             'field' => $field,
+                            'baseHashes' => $baseHashes,
                         ])
                     </li>
                 @endforeach
