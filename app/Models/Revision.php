@@ -21,6 +21,13 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * there is no `updated_at` column at all; `created_at` is always set
  * explicitly by the writer, never left to the database default.
  *
+ * `save_id` groups the per-field rows written by one Save (or one autosave
+ * burst) into a single *save point* — the unit the history, compare and revert
+ * screens address. Storage stays per field; only the layers above it think in
+ * save points. `summary_html` and `change_count` are that row's diff against
+ * its predecessor, computed once at write time so no list page ever diffs
+ * anything at read time.
+ *
  * `project_id` is a real foreign key (not inferred from the polymorphic
  * `revisionable_type`/`revisionable_id` pair) because deleting a Project
  * cascades to its acts/chapters/scenes at the DB level without firing
@@ -38,8 +45,11 @@ class Revision extends Model
         'revisionable_type',
         'revisionable_id',
         'field',
+        'save_id',
         'value',
         'size_bytes',
+        'summary_html',
+        'change_count',
         'project_id',
         'user_id',
         'label',
