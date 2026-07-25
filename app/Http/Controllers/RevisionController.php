@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RevisionOrigin;
 use App\Exceptions\RevisionConflictException;
 use App\Models\Revision;
 use App\Services\RevisionComparison;
@@ -93,6 +94,11 @@ class RevisionController extends Controller
             'manualOnly' => $filters['manualOnly'],
             'entityName' => $model->revisionDisplayName(),
             'savePoints' => $savePoints,
+            // One base hash per registered field, for the "Undo this save"
+            // forms — every field, not just the ones a given save point
+            // touched, so a `?field=` filtered page still submits a complete
+            // set (see the save-point partial).
+            'baseHashes' => $this->baseHashes($entity, $model),
             // Only fields that actually have history are offered: a filter that
             // can only ever return nothing is not a choice worth showing.
             'fieldOptions' => $this->fieldOptions($entity, $model),
@@ -367,6 +373,63 @@ class RevisionController extends Controller
         }
 
         return back()->with('status', 'reverted');
+    }
+
+    /**
+     * Undo a whole save point: every field it touched goes back to the value it
+     * held before it (task 17, expanded/architecture.md "@revertSave").
+     *
+     * `{save}` is a save id, and the route constrains it to the ULID alphabet so
+     * a malformed one 404s at the router. It is a **lookup key, never a
+     * capability**: authorization still walks from the group's entity up to its
+     * owning Project, exactly as every other action here does.
+     *
+     * **The current save point can be undone like any other.** The plan said to
+     * refuse it, inherited from the per-field revert where the rule is right —
+     * "Revert to this" on the newest revision restores the value already in the
+     * column, a real no-op. Undo runs the other way: it restores what came
+     * *before* the save, so undoing the newest one is the most useful case there
+     * is ("undo what I just saved"), and it is what lets an undo be undone in
+     * turn — a promise the plan makes two lines later. See resolution-log.md.
+     */
+    public function revertSave(Request $request, string $save, RevisionReverter $reverter): RedirectResponse
+    {
+        $group = Revision::query()->where('save_id', $save)->get();
+
+        abort_if($group->isEmpty(), 404);
+
+        $entity = $group->first()->revisionable;
+
+        // The entity a revision points at can have been deleted since; there is
+        // nothing to undo onto.
+        abort_if($entity === null, 404);
+
+        $this->authorize('update', $entity->revisionProject());
+
+        $validated = $request->validate([
+            'base_hashes' => ['required', 'array'],
+            'base_hashes.*' => ['required', 'string'],
+        ]);
+
+        // A baseline is the seeded pre-history value, not something anyone
+        // saved: it has no "before" to go back to, and undoing it would empty
+        // the field. The list hides its button for the same reason.
+        if (SavePoint::dominantOrigin($group->pluck('origin')) === RevisionOrigin::Baseline) {
+            return back()->with('error', __('That is the initial value — there is no earlier version to go back to.'));
+        }
+
+        try {
+            $restored = $reverter->revertSave($entity, $group, $validated['base_hashes'], $request->user());
+        } catch (RevisionConflictException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        // Lands on the edit form, not back on the history: the writer undid a
+        // save to get their text back, so the useful next screen is the text.
+        return redirect()
+            ->route(self::EDIT_ROUTES[AutosavableFields::slugFor($entity::class)], $entity)
+            ->with('status', 'reverted-save')
+            ->with('restored_fields', array_map(Str::headline(...), $restored));
     }
 
     /**
