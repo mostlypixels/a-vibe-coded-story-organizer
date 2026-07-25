@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\RevisionOrigin;
 use App\Services\RevisionHistory;
+use App\Services\RevisionSnapshot;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -46,6 +47,13 @@ final readonly class SavePoint
      * @param  string|null  $authorName  Null when the author's account is gone.
      * @param  string|null  $label  The first label any of its rows carries, e.g. "Saved 24 July 10:43".
      * @param  bool  $isCurrent  This is the entity's newest save point — its live state.
+     * @param  int  $lastRevisionId  The highest row id in the group — the tie-break that makes
+     *                               this save point an exact position in history rather than
+     *                               just a second. Two save points can share a `savedAt`, so
+     *                               {@see RevisionSnapshot} needs this to resolve
+     *                               "the state as of here" deterministically. Taken from the
+     *                               whole group, never from {@see $entries}, which a field
+     *                               filter may have narrowed.
      * @param  string|null  $previousSaveId  The save point immediately before this one, or null
      *                                       at the start of history. What "compare with previous"
      *                                       and "and N more changes" both point at.
@@ -59,6 +67,7 @@ final readonly class SavePoint
         public ?string $label,
         public RevisionOrigin $origin,
         public bool $isCurrent,
+        public int $lastRevisionId,
         public ?string $previousSaveId,
         public Collection $entries,
     ) {}

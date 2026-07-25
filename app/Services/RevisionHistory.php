@@ -193,6 +193,7 @@ class RevisionHistory
                 label: $rows->pluck('label')->filter()->first(),
                 origin: SavePoint::dominantOrigin($rows->pluck('origin')),
                 isCurrent: $group->save_id === $currentSaveId,
+                lastRevisionId: (int) $group->last_id,
                 // Newest-first ordering means "the one after this in the list".
                 previousSaveId: $groups->get($index + 1)?->save_id,
                 entries: $this->entriesFor($entity, $rows),
