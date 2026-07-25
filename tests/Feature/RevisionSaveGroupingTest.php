@@ -132,7 +132,7 @@ class RevisionSaveGroupingTest extends TestCase
     {
         $user = User::factory()->create();
         $scene = Scene::factory()->create(['contents' => 'original']);
-        $recorder = new RevisionRecorder;
+        $recorder = app(RevisionRecorder::class);
 
         $first = $recorder->record($scene, 'contents', 'first draft', $user, RevisionOrigin::Automatic);
         $originalSaveId = $first->save_id;
@@ -162,7 +162,7 @@ class RevisionSaveGroupingTest extends TestCase
         // One recorder instance stands in for one request — an import writes
         // revisions for hundreds of entities this way, and they must not all
         // collapse into a single "Undo this save".
-        $recorder = new RevisionRecorder;
+        $recorder = app(RevisionRecorder::class);
 
         $first = $recorder->record($firstAct, 'description', '<p>One edited</p>', $user, RevisionOrigin::Manual);
         $second = $recorder->record($secondAct, 'description', '<p>Two edited</p>', $user, RevisionOrigin::Manual);
@@ -174,7 +174,7 @@ class RevisionSaveGroupingTest extends TestCase
     {
         $user = User::factory()->create();
         $act = Act::factory()->create(['description' => '<p>Pre-existing</p>']);
-        $recorder = new RevisionRecorder;
+        $recorder = app(RevisionRecorder::class);
 
         $written = $recorder->record($act, 'description', '<p>Edited</p>', $user, RevisionOrigin::Manual);
 

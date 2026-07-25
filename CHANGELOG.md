@@ -17,6 +17,24 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-25 — Record what each save changed (#40)
+
+### Added
+
+- Every revision now stores a one-line summary of what it changed, and a count of how
+  many changes it made, written at the moment the revision is. The upcoming history
+  screens read those columns instead of comparing revisions while you wait, so a long
+  history opens as fast as a short one.
+- The summary shows the *first* change with as much of its surroundings as fits, and
+  reports the rest as a count. A find-and-replace across forty paragraphs is one readable
+  line plus "and 39 more changes", not forty lines of noise.
+
+### Changed
+
+- Importing a project recomputes each revision's summary as it replays the history, so
+  imported history reads exactly like history written here. Summaries are never carried
+  in an export archive — they are derived from the values already in it.
+
 ## 2026-07-25 — Show what changed in rich text fields (#39)
 
 ### Added

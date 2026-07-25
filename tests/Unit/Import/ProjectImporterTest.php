@@ -15,6 +15,7 @@ use App\Services\Import\ArchiveValidator;
 use App\Services\Import\ContentSanitizer;
 use App\Services\Import\ProjectGraphImporter;
 use App\Services\ProjectImporter;
+use App\Services\RevisionSummarizer;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -281,7 +282,15 @@ class ProjectImporterTest extends TestCase
     {
         return new ProjectImporter(
             app(ArchiveValidator::class),
-            new ProjectGraphImporter(app(ContentSanitizer::class), app(CodexMediaService::class), app(CoverImageService::class)),
+            // Constructed by hand, not resolved: a stall scenario binds a
+            // partial mock into the container, and the resume has to use the
+            // real thing.
+            new ProjectGraphImporter(
+                app(ContentSanitizer::class),
+                app(CodexMediaService::class),
+                app(CoverImageService::class),
+                app(RevisionSummarizer::class),
+            ),
             app(SceneReferenceMatcher::class),
         );
     }
@@ -295,7 +304,12 @@ class ProjectImporterTest extends TestCase
     {
         $graphImporter = Mockery::mock(
             ProjectGraphImporter::class,
-            [app(ContentSanitizer::class), app(CodexMediaService::class), app(CoverImageService::class)],
+            [
+                app(ContentSanitizer::class),
+                app(CodexMediaService::class),
+                app(CoverImageService::class),
+                app(RevisionSummarizer::class),
+            ],
         )->makePartial();
         $graphImporter->shouldReceive('importCodex')->andThrow(new RuntimeException('boom'));
         $this->instance(ProjectGraphImporter::class, $graphImporter);

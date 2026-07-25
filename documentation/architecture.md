@@ -293,10 +293,50 @@ depends on who authored the markup:
 | `FieldKind` | Strategy | Why |
 |---|---|---|
 | `Rich` (the TipTap HTML fields) | **Visual diff** — `App\Services\Diff\HtmlTokenizer` → `VisualHtmlDiffer` → `DiffHtmlRenderer`, built in-house on `jfcherng/php-sequence-matcher` | The writer never types that HTML. She should see her paragraphs with the changes marked in place, not `</p><p>` churn. |
-| `Markdown` (`Scene.contents`, the project front/back matter) and `Plain` (`Project.rights`) | **Source diff** — `jfcherng/php-diff`, side by side, word detail | She types the Markdown herself. There the markup *is* the content. |
+| `Markdown` (`Scene.contents`, the project front/back matter) and `Plain` (`Project.rights`) | **Source diff** — `App\Services\Diff\SourceDiffer`, wrapping `jfcherng/php-diff` side by side, word detail | She types the Markdown herself. There the markup *is* the content. |
 
 Both return a `RevisionDiffResult` (`html` plus a `changeCount` of change hunks) whose
 `html` is safe to `{!! !!}`, because in both cases the producer escapes the text.
+
+**Summaries (`App\Services\RevisionSummarizer`)** answer the same question in one line, for
+a history row. The two engines above each hand it a `ChangeExcerpt` — the first thing that
+changed, as a run of words, plus the total hunk count — and it spends
+`config('revisions.summary.max_length')` characters of *text* outward from that change,
+then renders the result through `DiffHtmlRenderer`.
+
+> [!NOTE]
+> Three things about summaries are deliberate and easy to get wrong if you change this
+> code. They are computed at **write** time and stored on the row (`summary_html`,
+> `change_count`), because a diff between two immutable revisions is a constant — so
+> rendering a page of history diffs nothing. They are bounded by rendered **length**, not
+> by hunk count: a find-and-replace on a character's name produces forty hunks, and forty
+> hunks in a list row is unreadable. And the budget is spent **outward from the change**,
+> never from the top of the field down, so the thing the row exists to show can never be
+> the part that gets cut. Cutting happens on words, before rendering — trimming a
+> marked-up string could leave an `<ins>` open, trimming tokens cannot.
+
+`RevisionRecorder` is the only caller on the live write path. It resolves the row's
+**predecessor** — the newest revision for the same `(entity, field)` strictly older than
+the row being written — and stores the summary alongside the value, on an insert *and* on
+a coalescing update (a coalesced row's value is being replaced, so its summary is stale;
+and the row is never its own predecessor). Baselines store `null` / `0`: nothing came
+before them, so the list renders them as *Initial value*. `ProjectGraphImporter` does the
+same during a replay, computing each row's summary from the row before it in the sidecar —
+which is oldest-first, so **do not reorder that loop**. Summaries are never read from an
+archive: they are derived from values the archive already contains.
+
+> [!WARNING]
+> **A failed summary must never cost a save.** Both callers wrap the summarizer: if the
+> diff layer throws, the row is written with a `null` summary and the failure is logged.
+> A revision with no summary is a cosmetic problem; a lost save is not.
+
+> [!WARNING]
+> **Stale summaries after a prune.** `Revision::prunable()` deletes old `automatic` rows.
+> The row that *followed* a deleted one keeps a summary computed against a predecessor
+> that no longer exists, so it under-reports — it describes a smaller change than the one
+> now visible between the surviving neighbours. This is accepted: recomputing during a
+> mass prune would turn a cheap `DELETE` into an O(n) diff job. The compare screen always
+> diffs live, so the detail view is never wrong; only the list excerpt can be.
 
 > [!WARNING]
 > Never run diff output through `HtmlSanitizer`. The author allow-list

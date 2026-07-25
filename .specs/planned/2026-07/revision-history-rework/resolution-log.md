@@ -50,6 +50,27 @@ before extending the feature.
   old file's cases *were* the routing cases — they only tested the branch that no longer
   exists. Two files would have meant two setUps and two sets of "which differ ran"
   assertions over the same class.
+* **Task 8 needed a summary path for Markdown/Plain, which the task file only described
+  for Rich.** It said "rendered in the renderer's `inline` mode", but `DiffHtmlRenderer`
+  takes `DiffBlock[]` and a source field has no blocks. Rather than fabricate blocks or
+  let the source path emit its own `<ins>`/`<del>`, both strategies now reduce to
+  `DiffSpan[]` (a new `ChangeExcerpt` carries them plus the hunk count) and render through
+  one new public `DiffHtmlRenderer::renderSpanRun()`. This also moved all `jfcherng` usage
+  out of `RevisionDiffer` into a new `App\Services\Diff\SourceDiffer` — a genuine second
+  caller, which is what the "no abstraction before reuse is real" rule was waiting for.
+  `Scene.contents` — the field the writer cares about most — gets a real summary as a
+  result.
+* **The summary budget is spent outward from the change, not from the start of the
+  excerpt.** Not stated either way in the plan, and it decides whether the feature works:
+  a word changed 300 characters into a paragraph would otherwise be exactly the part that
+  got cut, leaving the row showing an unchanged opening. A quarter of the budget goes to a
+  run-up into the change, the rest follows it, and either cut end is marked with an
+  ellipsis. Pinned by a test.
+* **A formatting-only change has no marked words in its summary.** There is no marker for
+  "reformatted" — `<ins>`/`<del>` would both be lies — so such a row shows the affected
+  text unmarked and relies on `change_count`. The summarizer prefers a block whose *words*
+  changed when there is one, so this only surfaces when formatting is genuinely all that
+  moved. Task 12's `<x-diff>` is where an affordance for it would go.
 
 ## Issues → resolutions
 
