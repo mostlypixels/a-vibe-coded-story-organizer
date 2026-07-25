@@ -4,13 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Enums\RevisionOrigin;
 use App\Models\Revision;
-use App\Services\RevisionDiffer;
+use App\Services\RevisionComparison;
+use App\Services\RevisionHistory;
 use App\Services\RevisionRecorder;
 use App\Support\AutosavableFields;
+use App\Support\FieldComparison;
+use App\Support\SavePoint;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 /**
@@ -52,155 +57,284 @@ class RevisionController extends Controller
     ];
 
     /**
-     * List every revision recorded for one (entity, id, field) triple,
-     * newest first, with an optional label search.
+     * One entity's history, as the save points a writer actually made
+     * (expanded/ui.md "History page").
      *
-     * Never hydrates `value` (00-overview.md's "list queries never hydrate
-     * value" invariant, backed by `size_bytes` existing precisely so this
-     * page never needs to) — only the columns the table actually renders are
-     * selected, and `user` is eager-loaded selecting just `id`/`name`.
+     * `?field=`, `?label=`, `?manual=` and `?page=` are the whole state — the
+     * page is a pure GET, bookmarkable and shareable, with no session-held
+     * filter to go stale behind the reader's back.
+     *
+     * No query logic lives here: {@see RevisionHistory} owns it, and never
+     * hydrates `revisions.value` (the stored `summary_html` / `change_count`
+     * exist precisely so a list page never has to diff or read a value).
      */
-    public function index(Request $request, string $entity, int $id, string $field): View
+    public function index(Request $request, string $entity, int $id, RevisionHistory $history): View
     {
-        $model = $this->resolve($entity, $id, $field);
+        $model = $this->resolveEntity($entity, $id);
 
-        $entityName = $model->revisionDisplayName();
+        $filters = [
+            'field' => $this->resolveFieldFilter($entity, $request),
+            'label' => trim((string) $request->query('label', '')),
+            'manualOnly' => $request->boolean('manual'),
+        ];
 
-        $search = trim((string) $request->query('label', ''));
-
-        // The current stored value's hash, carried as a hidden field on every
-        // revert form on this page — the same base-hash conflict check the
-        // autosave PATCH endpoint uses (FieldAutosaveController), so a revert
-        // against stale state 409s instead of silently overwriting newer work.
-        $baseHash = hash('sha256', (string) ($model->getAttribute($field) ?? ''));
-
-        // The full, unfiltered id order for this (entity, field) pair — cheap
-        // (ids only) and used two ways below: to mark the current-value row
-        // (see the docblock on that variable) and to resolve each row's
-        // "compare with previous" link even when a label search is active.
-        $orderedIds = $model->revisions()
-            ->where('field', $field)
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->pluck('id')
-            ->values();
-
-        // Every save that ever writes a revision stores the value it just
-        // persisted (RevisionRecorder::record()/ensureBaseline()), and a
-        // byte-identical automatic save skips writing entirely rather than
-        // leaving a stale row — so the newest revision's value is always
-        // exactly the entity's current column value. Marking it "current"
-        // therefore never needs to hydrate `value` to compare it.
-        $currentRevisionId = $orderedIds->first();
-
-        $revisions = $model->revisions()
-            ->where('field', $field)
-            ->select(['id', 'created_at', 'user_id', 'label', 'origin'])
-            ->with('user:id,name')
-            ->when($search !== '', fn ($query) => $query->where('label', 'like', '%'.$search.'%'))
-            ->get()
-            ->map(function (Revision $revision) use ($orderedIds, $currentRevisionId, $entity, $id, $field) {
-                $position = $orderedIds->search($revision->id);
-                $previousId = $position === false ? null : $orderedIds->get($position + 1);
-
-                return (object) [
-                    'revision' => $revision,
-                    'isCurrent' => $revision->id === $currentRevisionId,
-                    'compareWithPreviousUrl' => $previousId === null ? null : route('revisions.compare', [
-                        'entity' => $entity, 'id' => $id, 'field' => $field,
-                        'from' => $previousId, 'to' => $revision->id,
-                    ]),
-                ];
-            });
+        $savePoints = $history->forEntity($model, $filters, $request->integer('page', 1))
+            // Every filter has to survive a page change, or paging silently
+            // widens what the reader is looking at.
+            ->withQueryString();
 
         return view('revisions.index', [
             // The owning Project drives the shared <x-revisions-layout> sidebar;
-            // already resolved (and authorized against) in resolve() above.
+            // already resolved (and authorized against) in resolveEntity().
             'project' => $model->revisionProject(),
             'entity' => $entity,
             'id' => $id,
-            'field' => $field,
-            'entityName' => $entityName,
-            'search' => $search,
-            'rows' => $revisions,
-            'canCompareLatestTwo' => $orderedIds->count() >= 2,
-            'compareLatestTwoUrl' => $orderedIds->count() >= 2
-                ? route('revisions.compare', [
-                    'entity' => $entity, 'id' => $id, 'field' => $field,
-                    'from' => $orderedIds->get(1), 'to' => $orderedIds->get(0),
-                ])
-                : null,
+            'field' => $filters['field'],
+            'label' => $filters['label'],
+            'manualOnly' => $filters['manualOnly'],
+            'entityName' => $model->revisionDisplayName(),
+            'savePoints' => $savePoints,
+            // Only fields that actually have history are offered: a filter that
+            // can only ever return nothing is not a choice worth showing.
+            'fieldOptions' => $this->fieldOptions($entity, $model),
             'editUrl' => route(self::EDIT_ROUTES[$entity], $model),
-            'baseHash' => $baseHash,
         ]);
     }
 
     /**
-     * Word-level diff between two revisions of the same (entity, field) pair
-     * (expanded/architecture.md "Compare — diff service").
+     * The pre-save-point history URL, kept as a redirect.
      *
-     * `from`/`to` are revision ids (query string). When either is omitted,
-     * defaults to the two most recent revisions — "what changed last" is the
-     * common case a reader lands here to answer.
+     * The field-scoped page is gone as a *page*: it is the same page with
+     * `?field=` set. One concept, one screen — and an old link still arrives
+     * showing what it was about.
      */
-    public function compare(Request $request, string $entity, int $id, string $field, RevisionDiffer $differ): View
+    public function field(string $entity, int $id, string $field): RedirectResponse
     {
-        $model = $this->resolve($entity, $id, $field);
+        $this->resolveEntity($entity, $id);
 
-        $entityName = $model->revisionDisplayName();
+        AutosavableFields::resolveField($entity, $field);
 
-        $baseHash = hash('sha256', (string) ($model->getAttribute($field) ?? ''));
+        return redirect()->route('revisions.index', [
+            'entity' => $entity,
+            'id' => $id,
+            'field' => $field,
+        ]);
+    }
 
-        $revisionsQuery = $model->revisions()->where('field', $field);
+    /**
+     * The fields of this entity that have any history, as `field => headline`.
+     *
+     * @return array<string, string>
+     */
+    private function fieldOptions(string $entity, Model $model): array
+    {
+        [, $fields] = AutosavableFields::REGISTRY[$entity];
 
-        $fromId = $request->query('from');
-        $toId = $request->query('to');
+        $withHistory = $model->revisions()->getQuery()->reorder()->distinct()->pluck('field')->all();
 
-        if ($fromId !== null && $toId !== null) {
-            $from = (clone $revisionsQuery)->findOrFail($fromId);
-            $to = (clone $revisionsQuery)->findOrFail($toId);
-        } else {
-            // No explicit pair requested: fall back to the two most recent
-            // revisions (there may be fewer than two — handled by $to/$from
-            // staying null, which the view renders as "not enough history").
-            $latestTwo = (clone $revisionsQuery)
-                ->select(['id', 'created_at', 'user_id', 'label', 'origin', 'value'])
-                ->orderByDesc('created_at')
-                ->orderByDesc('id')
-                ->limit(2)
-                ->get();
+        $options = [];
 
-            $to = $latestTwo->first();
-            $from = $latestTwo->get(1);
+        foreach (array_keys($fields) as $field) {
+            if (in_array($field, $withHistory, true)) {
+                $options[$field] = Str::headline($field);
+            }
         }
 
-        // Chronological order for the diff itself, regardless of which one the
-        // caller labeled "from"/"to" in the query string.
-        if ($from !== null && $to !== null && $from->created_at->gt($to->created_at)) {
-            [$from, $to] = [$to, $from];
-        }
+        return $options;
+    }
 
-        $kind = AutosavableFields::kindOf($entity, $field);
-        $result = ($from !== null && $to !== null)
-            ? $differ->diff($kind, $from->value, $to->value)
-            : null;
+    /**
+     * Compare an entity at two save points, field by field
+     * (expanded/ui.md "Compare page").
+     *
+     * Entity-level, not field-level: two save points are two *moments*, and the
+     * page answers "what is different about this act between them" — including
+     * a field neither save wrote directly but that changed in between. See
+     * App\Support\EntitySnapshot for why that is correct rather than surprising.
+     *
+     * `from`/`to` are save ids. Either missing falls back to the two most
+     * recent points ("what changed last" is what a reader lands here to ask),
+     * and a reversed pair is put back in chronological order rather than
+     * rejected — the direction of a diff is not the reader's to get wrong.
+     */
+    public function compare(
+        Request $request,
+        string $entity,
+        int $id,
+        RevisionHistory $history,
+        RevisionComparison $comparison,
+    ): View {
+        $model = $this->resolveEntity($entity, $id);
+        $field = $this->resolveFieldFilter($entity, $request);
+
+        // Both pickers offer every save point, unfiltered: narrowing the option
+        // list by the field filter would hide the very save the reader is
+        // trying to compare against.
+        $points = $history->savePoints($model);
+        [$from, $to] = $this->resolvePair($points, $request);
+
+        $comparisons = ($from !== null && $to !== null)
+            ? $comparison->between($model, $from, $to, $field)
+            : collect();
 
         return view('revisions.compare', [
             // The owning Project drives the shared <x-revisions-layout> sidebar;
-            // already resolved (and authorized against) in resolve() above.
+            // already resolved (and authorized against) in resolveEntity().
             'project' => $model->revisionProject(),
             'entity' => $entity,
             'id' => $id,
             'field' => $field,
-            // The view hands this to <x-diff>, which lays a source diff out as
-            // two columns and a visual one as blocks.
-            'kind' => $kind,
-            'entityName' => $entityName,
+            'entityName' => $model->revisionDisplayName(),
+            'points' => $points,
             'from' => $from,
             'to' => $to,
-            'result' => $result,
-            'baseHash' => $baseHash,
+            'comparisons' => $comparisons,
+            'unchangedFields' => $this->unchangedFields($entity, $comparisons, $from, $to),
+            // One base hash per field, for the per-field restore buttons: the
+            // same conflict check the autosave endpoint uses, so restoring
+            // against a field someone else has since changed 409s rather than
+            // silently overwriting their work.
+            'baseHashes' => $this->baseHashes($entity, $model),
+            'savesApart' => $this->savesApart($points, $from, $to),
+            'editUrl' => route(self::EDIT_ROUTES[$entity], $model),
         ]);
+    }
+
+    /**
+     * The pre-save-point compare URL, translated and redirected.
+     *
+     * Its `from`/`to` were *revision* ids; a revision knows the save point it
+     * belongs to, so the equivalent entity-level comparison is one lookup away.
+     * The field it was scoped to survives as the `?field=` filter, so a bookmark
+     * still lands on a page about what the bookmark was about.
+     */
+    public function fieldCompare(Request $request, string $entity, int $id, string $field): RedirectResponse
+    {
+        $model = $this->resolveEntity($entity, $id);
+
+        // Keeps the unknown-field 404 in one place, shared with the autosave
+        // endpoint — a legacy URL naming a field that no longer exists is not
+        // something to redirect helpfully.
+        AutosavableFields::resolveField($entity, $field);
+
+        return redirect()->route('revisions.compare', array_filter([
+            'entity' => $entity,
+            'id' => $id,
+            'field' => $field,
+            'from' => $this->saveIdOf($model, $request->query('from')),
+            'to' => $this->saveIdOf($model, $request->query('to')),
+        ]));
+    }
+
+    /**
+     * The save point a revision id belongs to, or null when the id is absent or
+     * gone. A stale bookmark loses its pair, not its page.
+     */
+    private function saveIdOf(Model $model, mixed $revisionId): ?string
+    {
+        if (! is_numeric($revisionId)) {
+            return null;
+        }
+
+        return $model->revisions()->whereKey($revisionId)->value('save_id');
+    }
+
+    /**
+     * The two save points to compare, oldest first.
+     *
+     * @param  Collection<int, SavePoint>  $points  Newest first.
+     * @return array{0: ?SavePoint, 1: ?SavePoint}
+     */
+    private function resolvePair(Collection $points, Request $request): array
+    {
+        if ($points->count() < 2) {
+            return [null, null];
+        }
+
+        $fromId = $request->query('from');
+        $toId = $request->query('to');
+
+        if ($fromId === null || $toId === null) {
+            // The two most recent points, oldest first.
+            return [$points->get(1), $points->get(0)];
+        }
+
+        $from = $this->pointOrFail($points, $fromId);
+        $to = $this->pointOrFail($points, $toId);
+
+        // The list is newest-first, so the lower index is the newer point.
+        return $points->search($from, strict: true) < $points->search($to, strict: true)
+            ? [$to, $from]
+            : [$from, $to];
+    }
+
+    /**
+     * @param  Collection<int, SavePoint>  $points
+     */
+    private function pointOrFail(Collection $points, mixed $saveId): SavePoint
+    {
+        $point = $points->firstWhere('saveId', $saveId);
+
+        abort_if($point === null, 404);
+
+        return $point;
+    }
+
+    /**
+     * The registered fields the comparison found unchanged, by headline, for
+     * the page's "N other fields unchanged" line.
+     *
+     * Derived by subtracting the changed fields from the registry rather than
+     * asked of RevisionComparison, which deliberately returns only what differs.
+     *
+     * @param  Collection<int, FieldComparison>  $comparisons
+     * @return list<string>
+     */
+    private function unchangedFields(string $entity, Collection $comparisons, ?SavePoint $from, ?SavePoint $to): array
+    {
+        if ($from === null || $to === null) {
+            return [];
+        }
+
+        $changed = $comparisons->pluck('field')->all();
+        [, $fields] = AutosavableFields::REGISTRY[$entity];
+
+        return array_values(array_map(
+            fn (string $field): string => Str::headline($field),
+            array_diff(array_keys($fields), $changed),
+        ));
+    }
+
+    /**
+     * The current stored value's hash for every registered field.
+     *
+     * @return array<string, string>
+     */
+    private function baseHashes(string $entity, Model $model): array
+    {
+        [, $fields] = AutosavableFields::REGISTRY[$entity];
+        $hashes = [];
+
+        foreach (array_keys($fields) as $field) {
+            $hashes[$field] = hash('sha256', (string) ($model->getAttribute($field) ?? ''));
+        }
+
+        return $hashes;
+    }
+
+    /**
+     * How many save points lie between the two being compared — the "12 saves
+     * apart" in the pair summary.
+     *
+     * @param  Collection<int, SavePoint>  $points
+     */
+    private function savesApart(Collection $points, ?SavePoint $from, ?SavePoint $to): int
+    {
+        if ($from === null || $to === null) {
+            return 0;
+        }
+
+        return abs($points->search($from, strict: true) - $points->search($to, strict: true));
     }
 
     /**
@@ -264,27 +398,51 @@ class RevisionController extends Controller
     }
 
     /**
-     * Resolve the {entity}/{id}/{field} route segments into the model instance
-     * and authorize the request, walking to the owning Project (CLAUDE.md's
-     * authorization rule). The slug+field→class step and its unknown-field 404
-     * are shared with FieldAutosaveController via AutosavableFields::resolveField().
+     * The entity a history or compare page is about, authorized.
      *
-     * Reading revision history is a `view` capability, not `update`: both
-     * history and compare (and the browser landing, RevisionBrowserController)
-     * authorize `view`, while the mutating revert action below deliberately
-     * still demands `update`. In this single-owner app the two abilities
-     * resolve to the same user today, but the altitude is set on purpose so a
-     * future view-only collaborator could read history without being able to
-     * revert.
+     * The field-free half of {@see self::resolve()}: with history addressed per
+     * entity, a field is a *filter* rather than part of the address, so
+     * resolving one no longer needs a field to resolve at all.
+     *
+     * Authorization walks to the owning Project, as everywhere else — the id in
+     * the URL is a lookup key, never a capability.
+     *
+     * Reading history is a `view` capability, not `update`: history, compare
+     * and the browser landing all authorize `view`, while the mutating revert
+     * action deliberately still demands `update`. In this single-owner app the
+     * two resolve to the same user today, but the altitude is set on purpose so
+     * a future view-only collaborator could read history without being able to
+     * revert it.
      */
-    private function resolve(string $entity, int $id, string $field): Model
+    private function resolveEntity(string $entity, int $id): Model
     {
-        [$modelClass] = AutosavableFields::resolveField($entity, $field);
-
-        $model = $modelClass::findOrFail($id);
+        $model = AutosavableFields::modelFor($entity)::findOrFail($id);
 
         $this->authorize('view', $model->revisionProject());
 
         return $model;
+    }
+
+    /**
+     * The `?field=` filter: null for "all fields", or a field registered for
+     * this entity.
+     *
+     * An unregistered field 404s through {@see AutosavableFields::resolveField()}
+     * rather than being quietly ignored — the same contract
+     * FieldAutosaveController holds, kept in one place so the two can never
+     * drift. A filter naming a field that does not exist is a broken link, and
+     * silently showing everything would hide that.
+     */
+    private function resolveFieldFilter(string $entity, Request $request): ?string
+    {
+        $field = trim((string) $request->query('field', ''));
+
+        if ($field === '') {
+            return null;
+        }
+
+        AutosavableFields::resolveField($entity, $field);
+
+        return $field;
     }
 }

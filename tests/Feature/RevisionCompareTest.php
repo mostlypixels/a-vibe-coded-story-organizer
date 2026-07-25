@@ -1,0 +1,396 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Act;
+use App\Models\Chapter;
+use App\Models\Project;
+use App\Models\Revision;
+use App\Models\Scene;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
+use Tests\TestCase;
+
+/**
+ * Task 14 — the entity compare page: two save points, every field that differs.
+ *
+ * The property most of these tests exist to pin is that comparison is about two
+ * *moments*, not two edits. A save that touched only the dedication still
+ * implies a state for the description, so a field neither chosen save wrote can
+ * legitimately appear as changed — and a field both moments agree on never
+ * appears at all.
+ */
+class RevisionCompareTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function actFor(User $user): Act
+    {
+        return Act::factory()->for(Project::factory()->for($user)->create())->create();
+    }
+
+    private function sceneFor(User $user): Scene
+    {
+        return Scene::factory()->for(Chapter::factory()->for($this->actFor($user))->create())->create();
+    }
+
+    /**
+     * One revision in a save point of its own, unless `save_id` is passed.
+     */
+    private function revisionFor(Act $act, array $overrides = []): Revision
+    {
+        return Revision::factory()->create([
+            'revisionable_type' => Act::class,
+            'revisionable_id' => $act->id,
+            'project_id' => $act->project->id,
+            'field' => 'description',
+            'save_id' => (string) Str::ulid(),
+            ...$overrides,
+        ]);
+    }
+
+    /**
+     * One revision of a Scene field, in a save point of its own.
+     *
+     * A Scene is the entity used wherever a test needs *several* registered
+     * fields (description, notes, contents); an Act registers only one.
+     */
+    private function sceneRevision(Scene $scene, string $field, ?string $value, $at): Revision
+    {
+        return Revision::factory()->create([
+            'revisionable_type' => Scene::class,
+            'revisionable_id' => $scene->id,
+            'project_id' => $scene->chapter->act->project->id,
+            'field' => $field,
+            'save_id' => (string) Str::ulid(),
+            'user_id' => $scene->chapter->act->project->user_id,
+            'value' => $value,
+            'created_at' => $at,
+        ]);
+    }
+
+    private function compareUrl(Act $act, array $query = []): string
+    {
+        return route('revisions.compare', ['entity' => 'act', 'id' => $act->id, ...$query]);
+    }
+
+    private function sceneCompareUrl(Scene $scene, array $query = []): string
+    {
+        return route('revisions.compare', ['entity' => 'scene', 'id' => $scene->id, ...$query]);
+    }
+
+    public function test_the_owner_can_compare_two_save_points(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $from = $this->revisionFor($act, [
+            'user_id' => $user->id,
+            'value' => '<p>The ferry left.</p>',
+            'created_at' => now()->subDay(),
+        ]);
+        $to = $this->revisionFor($act, [
+            'user_id' => $user->id,
+            'value' => '<p>The ferry slipped away.</p>',
+            'created_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get($this->compareUrl($act, [
+            'from' => $from->save_id, 'to' => $to->save_id,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Description');
+        $response->assertSee('slipped away');
+    }
+
+    public function test_a_non_owner_gets_403(): void
+    {
+        $owner = User::factory()->create();
+        $act = $this->actFor($owner);
+        $this->revisionFor($act, ['user_id' => $owner->id]);
+
+        $this->actingAs(User::factory()->create())
+            ->get($this->compareUrl($act))
+            ->assertForbidden();
+    }
+
+    public function test_a_guest_is_redirected_to_login(): void
+    {
+        $act = $this->actFor(User::factory()->create());
+
+        $this->get($this->compareUrl($act))->assertRedirect(route('login'));
+    }
+
+    public function test_an_unknown_save_id_404s(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $from = $this->revisionFor($act, ['user_id' => $user->id, 'created_at' => now()->subDay()]);
+        $this->revisionFor($act, ['user_id' => $user->id, 'created_at' => now()]);
+
+        $this->actingAs($user)
+            ->get($this->compareUrl($act, ['from' => $from->save_id, 'to' => (string) Str::ulid()]))
+            ->assertNotFound();
+    }
+
+    public function test_a_reversed_pair_renders_the_same_diff_as_the_correct_order(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $older = $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>Old text</p>', 'created_at' => now()->subDay()]);
+        $newer = $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>New text</p>', 'created_at' => now()]);
+
+        // Direction is not the reader's to get wrong: a backwards pair is put
+        // back in order rather than rejected or diffed in reverse.
+        $forwards = $this->actingAs($user)->get($this->compareUrl($act, ['from' => $older->save_id, 'to' => $newer->save_id]));
+        $backwards = $this->actingAs($user)->get($this->compareUrl($act, ['from' => $newer->save_id, 'to' => $older->save_id]));
+
+        $forwards->assertOk();
+        $backwards->assertOk();
+
+        foreach ([$forwards, $backwards] as $response) {
+            $this->assertStringContainsString('<ins', $response->getContent());
+            $this->assertStringContainsString('New', $response->getContent());
+        }
+    }
+
+    public function test_no_pair_defaults_to_the_two_most_recent_save_points(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>Oldest</p>', 'created_at' => now()->subDays(3)]);
+        $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>Middle</p>', 'created_at' => now()->subDay()]);
+        $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>Newest</p>', 'created_at' => now()]);
+
+        $response = $this->actingAs($user)->get($this->compareUrl($act));
+
+        $response->assertOk();
+        // "What changed last" is what a reader lands here to ask.
+        $response->assertSee('Newest');
+        $response->assertSee('Middle');
+        $response->assertDontSee('Oldest');
+    }
+
+    public function test_fewer_than_two_save_points_shows_the_empty_state(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+        $this->revisionFor($act, ['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->get($this->compareUrl($act))
+            ->assertOk()
+            ->assertSee('Nothing to compare yet.');
+    }
+
+    public function test_a_field_neither_save_wrote_appears_when_it_changed_in_between(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user);
+
+        // The two chosen points both touched the description. A save between
+        // them changed the notes — comparing two *states* has to report that.
+        $from = $this->sceneRevision($scene, 'description', '<p>Old</p>', now()->subDays(3));
+        $this->sceneRevision($scene, 'notes', '<p>A note appeared.</p>', now()->subDays(2));
+        $to = $this->sceneRevision($scene, 'description', '<p>New</p>', now());
+
+        $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
+            'from' => $from->save_id, 'to' => $to->save_id,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Notes');
+        $response->assertSee('A note appeared.');
+    }
+
+    public function test_unchanged_fields_are_reported_as_a_count_not_as_sections(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user);
+
+        $from = $this->sceneRevision($scene, 'description', '<p>Old</p>', now()->subDay());
+        $to = $this->sceneRevision($scene, 'description', '<p>New</p>', now());
+
+        $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
+            'from' => $from->save_id, 'to' => $to->save_id,
+        ]));
+
+        // A Scene registers description, notes and contents; only the first
+        // changed, and the other two collapse into one muted line rather than
+        // two empty sections.
+        $response->assertOk();
+        $response->assertSee('2 other fields unchanged (Notes, Contents)');
+    }
+
+    public function test_a_field_that_did_not_exist_at_the_older_point_reads_as_new(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user);
+
+        $from = $this->sceneRevision($scene, 'description', '<p>Something</p>', now()->subDay());
+        $to = $this->sceneRevision($scene, 'notes', '<p>A brand new note.</p>', now());
+
+        $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
+            'from' => $from->save_id, 'to' => $to->save_id,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('A brand new note.');
+        $response->assertSee('New');
+    }
+
+    public function test_the_field_filter_renders_exactly_one_section(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user);
+
+        $from = $this->sceneRevision($scene, 'description', '<p>Old</p>', now()->subDays(2));
+        $this->sceneRevision($scene, 'notes', '<p>Noted.</p>', now()->subDay());
+        $to = $this->sceneRevision($scene, 'description', '<p>New</p>', now());
+
+        $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
+            'from' => $from->save_id, 'to' => $to->save_id, 'field' => 'description',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Show all fields');
+        $response->assertDontSee('Noted.');
+        $this->assertSame(1, substr_count($response->getContent(), 'aria-labelledby="diff-'));
+    }
+
+    public function test_an_unregistered_field_filter_404s(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+        $this->revisionFor($act, ['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->get($this->compareUrl($act, ['field' => 'not_a_field']))
+            ->assertNotFound();
+    }
+
+    public function test_the_newer_picker_disables_every_option_not_newer_than_the_older_one(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $oldest = $this->revisionFor($act, ['user_id' => $user->id, 'created_at' => now()->subDays(3)]);
+        $middle = $this->revisionFor($act, ['user_id' => $user->id, 'created_at' => now()->subDays(2)]);
+        $newest = $this->revisionFor($act, ['user_id' => $user->id, 'created_at' => now()]);
+
+        $response = $this->actingAs($user)->get($this->compareUrl($act, [
+            'from' => $middle->save_id, 'to' => $newest->save_id,
+        ]));
+
+        $response->assertOk();
+
+        // The invalid pairing is made unreachable rather than accepted and then
+        // rejected — there is no backwards diff and no error state to design.
+        $newerSelect = substr($response->getContent(), (int) strpos($response->getContent(), 'id="compare-to"'));
+
+        $this->assertTrue($this->optionIsDisabled($newerSelect, $oldest->save_id), 'an older save was still selectable as the newer side');
+        $this->assertTrue($this->optionIsDisabled($newerSelect, $middle->save_id), 'the older side itself was still selectable as the newer side');
+        $this->assertFalse($this->optionIsDisabled($newerSelect, $newest->save_id), 'a genuinely newer save was locked out');
+    }
+
+    /**
+     * Whether the `<option>` carrying `$saveId` is disabled, matched on the
+     * opening tag so the assertion does not depend on Blade's indentation.
+     */
+    private function optionIsDisabled(string $html, string $saveId): bool
+    {
+        preg_match('/<option\b[^>]*value="'.preg_quote($saveId, '/').'"[^>]*>/s', $html, $matches);
+
+        $this->assertNotEmpty($matches, "No <option> found for save {$saveId}.");
+
+        return str_contains($matches[0], 'disabled');
+    }
+
+    public function test_the_legacy_field_scoped_url_redirects_to_the_equivalent_save_points(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $from = $this->revisionFor($act, ['user_id' => $user->id, 'created_at' => now()->subDay()]);
+        $to = $this->revisionFor($act, ['user_id' => $user->id, 'created_at' => now()]);
+
+        // The old URL carried *revision* ids; a revision knows its save point,
+        // so a bookmark still lands on the comparison it was about.
+        $this->actingAs($user)
+            ->get(route('revisions.field-compare', [
+                'entity' => 'act', 'id' => $act->id, 'field' => 'description',
+                'from' => $from->id, 'to' => $to->id,
+            ]))
+            ->assertRedirect($this->compareUrl($act, [
+                'field' => 'description', 'from' => $from->save_id, 'to' => $to->save_id,
+            ]));
+    }
+
+    public function test_the_legacy_url_survives_a_pair_that_no_longer_exists(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+        $this->revisionFor($act, ['user_id' => $user->id]);
+
+        // A pruned revision loses the bookmark its pair, not its page.
+        $this->actingAs($user)
+            ->get(route('revisions.field-compare', [
+                'entity' => 'act', 'id' => $act->id, 'field' => 'description',
+                'from' => 999999, 'to' => 999998,
+            ]))
+            ->assertRedirect($this->compareUrl($act, ['field' => 'description']));
+    }
+
+    public function test_a_markdown_field_still_compares_its_raw_text(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user);
+
+        $make = fn (string $value, $at) => Revision::factory()->create([
+            'revisionable_type' => Scene::class,
+            'revisionable_id' => $scene->id,
+            'project_id' => $scene->chapter->act->project->id,
+            'field' => 'contents',
+            'save_id' => (string) Str::ulid(),
+            'user_id' => $user->id,
+            'value' => $value,
+            'created_at' => $at,
+        ]);
+
+        $from = $make('Hello world', now()->subDay());
+        $to = $make('Hello **world**', now());
+
+        $response = $this->actingAs($user)->get(route('revisions.compare', [
+            'entity' => 'scene', 'id' => $scene->id, 'from' => $from->save_id, 'to' => $to->save_id,
+        ]));
+
+        $response->assertOk();
+        // The asterisks are the content here, so they have to survive.
+        $this->assertSame(2, substr_count($response->getContent(), '<ins>**</ins>'));
+    }
+
+    public function test_a_formatting_only_change_renders_its_badge_end_to_end(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        // The proof that the whole visual-diff chain works through the page:
+        // tokenizer → differ → renderer → x-diff, for a save that changed no
+        // words at all.
+        $from = $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>Hello world</p>', 'created_at' => now()->subDay()]);
+        $to = $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>Hello <strong>world</strong></p>', 'created_at' => now()]);
+
+        $response = $this->actingAs($user)->get($this->compareUrl($act, [
+            'from' => $from->save_id, 'to' => $to->save_id,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('formatting changed: bold added');
+        $response->assertSee('<strong>world</strong>', escape: false);
+    }
+}

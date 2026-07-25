@@ -243,10 +243,24 @@ Route::middleware('auth')->group(function () {
     // autosave.update above, but without the tight autosave throttle — these
     // are ordinary page loads, not a debounce endpoint.
     Route::whereIn('entity', AutosavableFields::slugs())->group(function () {
-        Route::get('/revisions/{entity}/{id}/{field}', [RevisionController::class, 'index'])
+        // History and compare are addressed per ENTITY: a save point is the
+        // unit, and a field is a `?field=` filter on top of it. The two
+        // field-scoped URLs that predate save points survive as redirects, so
+        // links already in the wild still land somewhere truthful.
+        Route::get('/revisions/{entity}/{id}', [RevisionController::class, 'index'])
             ->name('revisions.index');
-        Route::get('/revisions/{entity}/{id}/{field}/compare', [RevisionController::class, 'compare'])
+
+        // Declared BEFORE the {field} routes below: both are three segments, so
+        // `/revisions/act/1/compare` would otherwise match the legacy history
+        // redirect with field="compare" and 404 as an unknown field.
+        Route::get('/revisions/{entity}/{id}/compare', [RevisionController::class, 'compare'])
             ->name('revisions.compare');
+
+        Route::get('/revisions/{entity}/{id}/{field}/compare', [RevisionController::class, 'fieldCompare'])
+            ->name('revisions.field-compare');
+
+        Route::get('/revisions/{entity}/{id}/{field}', [RevisionController::class, 'field'])
+            ->name('revisions.field');
     });
 
     // Revert (task 11): resolves straight from the {revision} route-model
