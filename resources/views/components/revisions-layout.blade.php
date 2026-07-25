@@ -30,6 +30,26 @@
         </div>
 
         <div class="lg:col-span-9 space-y-6">
+            {{--
+                Every revert redirects back to the page it was fired from, and
+                both of those pages (history and compare) live in this shell —
+                so the two outcomes are rendered once, here, rather than
+                duplicated per page.
+
+                `error` carries an App\Exceptions\RevisionConflictException's
+                message: someone else moved the value while this page was open,
+                which is a situation to act on, not a failure to apologise for.
+            --}}
+            @if (session('error'))
+                <x-alert variant="danger" dismissible>{{ session('error') }}</x-alert>
+            @endif
+
+            @if (session('status') === 'reverted')
+                <x-alert variant="success" dismissible>
+                    {{ __('Reverted. That value is current again, and the revert was added to the history — nothing was removed.') }}
+                </x-alert>
+            @endif
+
             {{ $slot }}
         </div>
     </div>

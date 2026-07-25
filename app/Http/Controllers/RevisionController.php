@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\RevisionOrigin;
+use App\Exceptions\RevisionConflictException;
 use App\Models\Revision;
 use App\Services\RevisionComparison;
 use App\Services\RevisionHistory;
-use App\Services\RevisionRecorder;
+use App\Services\RevisionReverter;
 use App\Support\AutosavableFields;
 use App\Support\FieldComparison;
 use App\Support\SavePoint;
@@ -14,7 +14,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -192,8 +191,8 @@ class RevisionController extends Controller
             'unchangedFields' => $this->unchangedFields($entity, $comparisons, $from, $to),
             // One base hash per field, for the per-field restore buttons: the
             // same conflict check the autosave endpoint uses, so restoring
-            // against a field someone else has since changed 409s rather than
-            // silently overwriting their work.
+            // against a field someone else has since changed comes back with an
+            // error alert rather than silently overwriting their work.
             'baseHashes' => $this->baseHashes($entity, $model),
             'savesApart' => $this->savesApart($points, $from, $to),
             'editUrl' => route(self::EDIT_ROUTES[$entity], $model),
@@ -338,29 +337,22 @@ class RevisionController extends Controller
     }
 
     /**
-     * Revert one field to an older revision's value (task 11,
-     * expanded/architecture.md "Revert", handoff.md §5.2).
+     * Revert one field to an older revision's value (expanded/architecture.md
+     * "Revert", handoff.md §5.2).
      *
-     * Additive, never destructive: the reverted-away-from state stays exactly
-     * where it is in history, and this always writes a *new* `origin: revert`
-     * row rather than touching any existing revision — reverting twice in a
-     * row ("undo a revert by reverting again", handoff.md §5.2) works for
-     * free, since every revert is just another forward-moving write.
+     * Resolve → authorize → delegate → redirect: the work itself lives in
+     * {@see RevisionReverter} (task 16), shared with the whole-save undo so the
+     * two paths cannot drift.
      *
-     * Takes the same base-hash conflict check as FieldAutosaveController::
-     * update() (task 6) — a revert against a field someone else already
-     * changed since the page loaded must 409, not silently clobber their
-     * work — and re-runs the same validation/sanitization a normal save
-     * does, via AutosavableFields::validationRule() and the model's own
-     * mutators (e.g. SanitizesRichHtml for a rich field), so an older
-     * revision's value can never bypass rules tightened since it was
-     * recorded.
+     * A base-hash conflict **redirects back with an error alert** rather than
+     * `abort(409)`-ing into a bare error page (grill decision 10). The writer
+     * did nothing wrong — a second tab or an in-flight autosave moved the value
+     * — and they need a page they can reload and retry from. The 409 *status*
+     * survives only on the JSON autosave endpoint, where a client reads it.
      */
-    public function revert(Request $request, Revision $revision, RevisionRecorder $recorder): RedirectResponse
+    public function revert(Request $request, Revision $revision, RevisionReverter $reverter): RedirectResponse
     {
         $entity = $revision->revisionable;
-        $field = $revision->field;
-        $slug = AutosavableFields::slugFor($entity::class);
 
         $this->authorize('update', $entity->revisionProject());
 
@@ -368,31 +360,11 @@ class RevisionController extends Controller
             'base_hash' => ['required', 'string'],
         ]);
 
-        $currentValue = (string) ($entity->getAttribute($field) ?? '');
-        $storedHash = hash('sha256', $currentValue);
-
-        if ($validated['base_hash'] !== $storedHash) {
-            abort(409, __('This field was changed elsewhere.'));
+        try {
+            $reverter->revertField($entity, $revision, $validated['base_hash'], $request->user());
+        } catch (RevisionConflictException $exception) {
+            return back()->with('error', $exception->getMessage());
         }
-
-        Validator::make(
-            ['value' => $revision->value],
-            ['value' => AutosavableFields::validationRule($slug, $field)],
-        )->validate();
-
-        $entity->{$field} = $revision->value;
-        $entity->save(); // Mutators run here, e.g. SanitizesRichHtml for rich fields.
-
-        $storedValue = (string) ($entity->fresh()->getAttribute($field) ?? '');
-
-        $recorder->record(
-            $entity,
-            $field,
-            $storedValue,
-            $request->user(),
-            RevisionOrigin::Revert,
-            __('Reverted to :date', ['date' => $revision->created_at->format('d F H:i')]),
-        );
 
         return back()->with('status', 'reverted');
     }

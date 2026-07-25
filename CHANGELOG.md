@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-25 — Revert conflicts come back to the page you were reading (#43)
+
+### Changed
+
+- **Reverting a value that changed while you had the page open no longer dumps you on an
+  error page.** You come back to the history you were reading, with an alert explaining
+  that something else changed it and to reload and try again — nothing is written. The
+  check itself is unchanged: it is what stops a revert from quietly overwriting text you
+  never chose to discard.
+- A successful revert now says so. The confirmation was being sent and never displayed.
+
 ## 2026-07-25 — Browse history and compare saves, not fields (#42)
 
 ### Added
