@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-25 — Undo a whole save
+## 2026-07-25 — Undo a whole save (#44)
 
 ### Added
 
