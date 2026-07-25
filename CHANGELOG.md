@@ -17,6 +17,27 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-25 — Group revisions into save points (#38)
+
+### Added
+
+- Revision rows now carry a **save point** id (`save_id`): every field written by one
+  Save — or by one autosave burst — shares it. This is the unit the upcoming history,
+  compare and revert screens address, instead of addressing single field revisions.
+  Rows also gained `summary_html` / `change_count` columns, filled in a later change,
+  so a history list never has to compute a diff to render itself.
+- Export archives carry `save_id` in each `revisions/<field>.json` sidecar, and import
+  remaps every source group to a fresh local group — so "these rows were one save"
+  survives a round-trip without borrowing another install's ids.
+
+### Removed
+
+- **All existing revision history is deleted** when this migration runs. Rows written
+  before save points existed have no group to belong to, and a null grouping key would
+  poison every read path. History restarts from a fresh baseline the next time each
+  field is edited. Safe here because the project is pre-V1 and the only data in
+  existence is the demo seed.
+
 ## 2026-07-25 — Silence the unsaved-changes prompt on Save (#37)
 
 ### Fixed

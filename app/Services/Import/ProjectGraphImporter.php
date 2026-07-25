@@ -23,6 +23,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -825,6 +826,21 @@ class ProjectGraphImporter
      *     origin, which exempts it from age-pruning (Revision::prunable()):
      *     an import is an explicit act of preservation, not something a
      *     nightly prune should be allowed to quietly erase.
+     *   - gets its `save_id` REMAPPED, never copied — see below.
+     *
+     * Save-point grouping survives an import as a *shape*, not as an identity.
+     * A source `save_id` names a group on another install and could collide
+     * with a local one, so each distinct source id is translated to one fresh
+     * local ULID: two source rows that were one save stay one save here, two
+     * source groups stay two groups. A row whose sidecar predates the feature
+     * has no `save_id` at all and gets a fresh id of its own.
+     *
+     * The translation table is local to this method — i.e. scoped to ONE
+     * entity — which also enforces the local invariant that a save point never
+     * spans entities (RevisionRecorder mints one id per (request, entity)).
+     * An archive is untrusted input: if a foreign one claims a single save
+     * covering two entities, importing it verbatim would let "Undo this save"
+     * reach into an entity the writer never asked about.
      *
      * Rich/Markdown values are run through the same ContentSanitizer gate as
      * the entity's own current field value (readHtmlField()/
@@ -840,6 +856,9 @@ class ProjectGraphImporter
 
         [, $fields] = AutosavableFields::REGISTRY[$slug];
 
+        /** @var array<string, string> source save_id => fresh local ULID */
+        $saveIds = [];
+
         foreach ($fields as $field => $kind) {
             foreach ($this->readJsonIfPresent($dataPath, "{$directory}/revisions/{$field}.json") as $revisionData) {
                 $value = (string) ($revisionData['value'] ?? '');
@@ -850,8 +869,13 @@ class ProjectGraphImporter
                     FieldKind::Plain => null,
                 };
 
+                $sourceSaveId = $revisionData['save_id'] ?? null;
+
                 $entity->revisions()->create([
                     'field' => $field,
+                    'save_id' => is_string($sourceSaveId) && $sourceSaveId !== ''
+                        ? $saveIds[$sourceSaveId] ??= (string) Str::ulid()
+                        : (string) Str::ulid(),
                     'value' => $value,
                     'size_bytes' => strlen($value),
                     'project_id' => $entity->revisionProject()->id,

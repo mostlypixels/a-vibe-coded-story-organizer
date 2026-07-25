@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\Revision;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Revision>
@@ -23,6 +24,11 @@ class RevisionFactory extends Factory
      * tests that care about a specific (revisionable_type, revisionable_id,
      * field) triple override those attributes explicitly.
      *
+     * Every created row gets its own fresh `save_id`, so factory-made rows look
+     * like real ones (the column is never null in production) and no test has
+     * to remember to set it. Tests that need several rows in *one* save point
+     * pass the same `save_id` to each explicitly.
+     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -34,6 +40,7 @@ class RevisionFactory extends Factory
             'revisionable_type' => Project::class,
             'revisionable_id' => $project->id,
             'field' => 'description',
+            'save_id' => (string) Str::ulid(),
             'value' => $value,
             'size_bytes' => strlen($value),
             'project_id' => $project->id,

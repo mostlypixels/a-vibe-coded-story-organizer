@@ -769,9 +769,19 @@ class StaticSiteExporter
                 ->where('field', $field)
                 ->oldest('created_at')
                 ->oldest('id')
-                ->get(['id', 'value', 'origin', 'label', 'user_id', 'created_at'])
+                ->get(['id', 'save_id', 'value', 'origin', 'label', 'user_id', 'created_at'])
                 ->map(fn (Revision $revision): array => [
                     'id' => $revision->id,
+                    // The save-point grouping: rows sharing a save_id were
+                    // written by one Save. Import remaps it to a fresh local
+                    // id (never inserts this one verbatim — it names a group on
+                    // another install), which preserves the grouping without
+                    // borrowing the identity.
+                    //
+                    // summary_html/change_count are deliberately NOT exported:
+                    // they are derived from the values already in this file, and
+                    // derived data does not belong in an interchange format.
+                    'save_id' => $revision->save_id,
                     'value' => $revision->value,
                     'origin' => $revision->origin->value,
                     'label' => $revision->label,
