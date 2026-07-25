@@ -17,6 +17,27 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-25 — Show what changed in rich text fields (#39)
+
+### Added
+
+- Comparing two revisions of a **rich text field** (act/chapter/scene descriptions, the
+  character and place sheets — anything edited in the WYSIWYG editor) now shows the
+  field the way it is written, with the changed words marked in place, instead of a
+  two-column table of stripped-down plain text. New in-house diff engine under
+  `App\Services\Diff\`: paragraphs are matched first, then words inside the paragraphs
+  that actually changed. No new dependency — it is built on the sequence matcher the
+  existing diff library already ships.
+
+### Changed
+
+- A save that only changed formatting — bolding a sentence, turning a paragraph into a
+  heading — now shows what changed. It used to say *"Formatting changed only."* and show
+  nothing, because rich fields were flattened to plain text before diffing.
+- Markdown and plain fields (`Scene.contents`, the project front/back matter, the rights
+  notice) keep their existing side-by-side source diff. There the markup is what the
+  writer typed, so it has to stay visible.
+
 ## 2026-07-25 — Group revisions into save points (#38)
 
 ### Added

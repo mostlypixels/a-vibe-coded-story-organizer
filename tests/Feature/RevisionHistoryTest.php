@@ -199,10 +199,9 @@ class RevisionHistoryTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('quietly');
-        $response->assertDontSee('Formatting changed only.');
     }
 
-    public function test_compare_between_two_revisions_that_only_differ_in_markup_shows_formatting_changed_only(): void
+    public function test_compare_between_two_revisions_that_only_differ_in_formatting_still_shows_the_text(): void
     {
         $user = User::factory()->create();
         $act = $this->actFor($user);
@@ -214,7 +213,7 @@ class RevisionHistoryTest extends TestCase
         ]);
         $to = $this->revisionFor($act, [
             'user_id' => $user->id,
-            'value' => '<div>Hello world</div>',
+            'value' => '<p>Hello <strong>world</strong></p>',
             'created_at' => now(),
         ]);
 
@@ -222,8 +221,12 @@ class RevisionHistoryTest extends TestCase
             'entity' => 'act', 'id' => $act->id, 'field' => 'description', 'from' => $from->id, 'to' => $to->id,
         ]));
 
+        // The writer bolded a word. The old plain-text projection reduced both
+        // sides to "Hello world" and could only say "Formatting changed only.";
+        // the visual differ shows her the paragraph with the bold applied.
         $response->assertOk();
-        $response->assertSee('Formatting changed only.');
+        $response->assertSee('Hello');
+        $response->assertSee('<strong>world</strong>', escape: false);
     }
 
     public function test_compare_on_a_markdown_field_diffs_the_raw_text_directly(): void
@@ -260,7 +263,6 @@ class RevisionHistoryTest extends TestCase
         // is its own inserted diff segment, so assert on the pair of them rather
         // than one contiguous "**world**" string.
         $this->assertSame(2, substr_count($response->getContent(), '<ins>**</ins>'));
-        $response->assertDontSee('Formatting changed only.');
     }
 
     public function test_compare_defaults_to_the_two_most_recent_revisions_when_no_pair_is_given(): void

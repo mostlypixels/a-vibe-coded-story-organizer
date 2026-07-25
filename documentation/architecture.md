@@ -287,10 +287,26 @@ mirroring `ProjectPolicy::update`'s authorization walk. This matters because del
 `Project` cascades to its acts/chapters/scenes at the DB level without firing Eloquent
 events, so a polymorphic-column-based lookup would silently break for orphaned rows.
 
-**Diffing (`App\Services\RevisionDiffer`)** wraps `jfcherng/php-diff`'s word-level inline
-renderer (verified compatible with this app's PHP/Laravel versions at adoption time — see
-`resolution-log.md` if that ever needs re-checking) for the compare view's `<ins>`/`<del>`
-spans.
+**Diffing (`App\Services\RevisionDiffer`)** is a router, and which strategy it picks
+depends on who authored the markup:
+
+| `FieldKind` | Strategy | Why |
+|---|---|---|
+| `Rich` (the TipTap HTML fields) | **Visual diff** — `App\Services\Diff\HtmlTokenizer` → `VisualHtmlDiffer` → `DiffHtmlRenderer`, built in-house on `jfcherng/php-sequence-matcher` | The writer never types that HTML. She should see her paragraphs with the changes marked in place, not `</p><p>` churn. |
+| `Markdown` (`Scene.contents`, the project front/back matter) and `Plain` (`Project.rights`) | **Source diff** — `jfcherng/php-diff`, side by side, word detail | She types the Markdown herself. There the markup *is* the content. |
+
+Both return a `RevisionDiffResult` (`html` plus a `changeCount` of change hunks) whose
+`html` is safe to `{!! !!}`, because in both cases the producer escapes the text.
+
+> [!WARNING]
+> Never run diff output through `HtmlSanitizer`. The author allow-list
+> (`RichTextFields::ALLOWED_TAGS`) deliberately has no `ins`/`del` in it — so that the
+> editor's strikethrough `<s>` ("no longer accurate") stays distinct from `<del>`
+> ("removed between these revisions") — and purifying afterwards would eat exactly the
+> markers the diff exists to add. `DiffHtmlRenderer` is safe by *construction* instead:
+> it rebuilds every tag from its own `EMITTED_TAGS` list and escapes every text node.
+> Equally, never route a Markdown or Plain field through the tokenizer: it would eat the
+> `**`, `#` and `>` the writer actually changed.
 
 **Revert is additive, never destructive.** `RevisionController::revert` writes a new
 `origin: revert` revision holding the older value; no user action ever deletes history

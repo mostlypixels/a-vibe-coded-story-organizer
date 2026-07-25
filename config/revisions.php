@@ -52,4 +52,25 @@ return [
         'default' => 100_000, // descriptions
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Visual diff
+    |--------------------------------------------------------------------------
+    |
+    | max_word_complexity — the ceiling on the word-level pass inside a changed
+    | block, measured as old_token_count * new_token_count. Above it,
+    | App\Services\Diff\VisualHtmlDiffer stops trying to show which words moved
+    | and reports the block as removed-and-added instead.
+    |
+    | Borrowed from wikidiff2's `maxWordLevelDiffComplexity`, and for the same
+    | reason: a Myers diff is quadratic in the worst case, so a wholesale
+    | rewrite of a long paragraph would otherwise make the request grind. A
+    | coarser diff is a far better failure mode than a slow page.
+    |
+    */
+
+    'diff' => [
+        'max_word_complexity' => 2_000_000,
+    ],
+
 ];
