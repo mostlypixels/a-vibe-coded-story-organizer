@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-25 — Group revisions into save points
+## 2026-07-25 — Group revisions into save points (#38)
 
 ### Added
 
