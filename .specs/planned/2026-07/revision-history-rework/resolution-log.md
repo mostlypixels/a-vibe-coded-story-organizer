@@ -44,6 +44,12 @@ before extending the feature.
   required fetching N+1 rows per page so row 21 could be diffed against its predecessor.
   With summaries stored at write time, no diffing happens on the list at all; the extra
   group is still fetched, but only to build the last row's "compare with previous" link.
+* **Task 7's routing tests went into the existing `tests/Unit/Services/RevisionDifferTest.php`**
+  rather than a second file (`tests/Unit/RevisionDifferRoutingTest.php`, as the task named
+  it). One test class per class is the convention everywhere else in this suite, and the
+  old file's cases *were* the routing cases — they only tested the branch that no longer
+  exists. Two files would have meant two setUps and two sets of "which differ ran"
+  assertions over the same class.
 
 ## Issues → resolutions
 
