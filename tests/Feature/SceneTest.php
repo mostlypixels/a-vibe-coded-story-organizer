@@ -634,6 +634,33 @@ class SceneTest extends TestCase
             ->assertSee('Detected from the scene contents on last save.');
     }
 
+    /**
+     * The `beforeunload` unsaved-changes prompt is suppressed for the Save / Save and stay
+     * submit by `resources/js/navigation-guard.js`, which reads `data-guard-save` off the
+     * submit event's `submitter`. The JS predicate is unit-tested in
+     * `resources/js/navigation-guard.test.js`; this covers the other half of the wiring —
+     * that `<x-edit-actions>` really emits the attribute on both buttons, so a refactor of
+     * the shared component (or of `<x-button>`'s attribute merging) can't silently bring
+     * the spurious prompt back.
+     */
+    public function test_the_edit_page_marks_both_save_buttons_for_the_navigation_guard(): void
+    {
+        $user = User::factory()->create();
+        $scene = Scene::factory()->for($this->chapterFor($user))->create();
+
+        $response = $this->actingAs($user)->get(route('scenes.edit', $scene))->assertOk();
+
+        // Blade renders a valueless component attribute in its boolean form,
+        // `data-guard-save="data-guard-save"` — one per Save button. The JS only needs the
+        // attribute to be *present* (`[data-guard-save]`), so any value would do; asserting
+        // the exact rendered form just keeps this count unambiguous.
+        $this->assertSame(
+            2,
+            substr_count($response->getContent(), 'data-guard-save="data-guard-save"'),
+            'Both Save and Save and stay must carry data-guard-save.'
+        );
+    }
+
     public function test_the_edit_page_shows_the_empty_state_when_there_are_no_references(): void
     {
         $user = User::factory()->create();

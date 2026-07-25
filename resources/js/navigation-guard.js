@@ -32,7 +32,35 @@ export function shouldIntercept(event, anchor) {
     return true;
 }
 
+/**
+ * Pure predicate: is this `submit` event the entity edit page's **Save / Save and stay**
+ * action — i.e. triggered by a button carrying `data-guard-save` (see
+ * `resources/views/components/edit-actions.blade.php`)? Those are the deliberate,
+ * data-persisting submits whose full-page navigation must not raise the unsaved-changes
+ * prompt: the submit *is* the save.
+ *
+ * Every other form submit on the page (search, logout, delete, JS-only forms) is
+ * deliberately left untouched, so it keeps warning/behaving exactly as before. Read in
+ * the bubbling phase (see `registerNavigationGuard`) so a handler that already cancelled
+ * the submit is honored via `event.defaultPrevented`.
+ */
+export function isGuardedSaveSubmit(event) {
+    if (event.defaultPrevented) return false; // handled in JS — the page won't unload
+
+    const submitter = event.submitter;
+
+    return !!submitter && submitter.closest?.('[data-guard-save]') !== null;
+}
+
 export function registerNavigationGuard(Alpine) {
+    // Set once a Save / Save and stay submit is in flight (see edit-actions.blade.php's
+    // `data-guard-save`). The page is already committing to that navigation, so the
+    // native `beforeunload` fallback below must not second-guess it with an unsaved-
+    // changes prompt. Never reset — like field.js's `explicitLeavePending`, a full-page
+    // submit unloads this document, and "Save and stay" reloads a fresh module, so there
+    // is no later `beforeunload` on this same page instance to wrongly suppress.
+    let savingViaForm = false;
+
     Alpine.data('navigationGuard', () => ({
         pendingHref: null,
 
@@ -76,12 +104,27 @@ export function registerNavigationGuard(Alpine) {
         },
     }));
 
+    // The Save / Save and stay buttons persist the writer's data, so their submit must
+    // never raise the unsaved-changes prompt. Bubbling phase so a JS-only form that
+    // `preventDefault()`s its submit has already done so (and won't unload). We also fire
+    // `autosave:explicit-leave` so each field skips its now-redundant `beforeunload`
+    // draft mirror (field.js) — the submit is itself the save.
+    document.addEventListener('submit', (event) => {
+        if (!isGuardedSaveSubmit(event)) {
+            return;
+        }
+
+        savingViaForm = true;
+        window.dispatchEvent(new CustomEvent('autosave:explicit-leave'));
+    });
+
     // Native fallback for tab-close/hard navigation, where there is no in-app click to
     // intercept. Deliberately dumb (architecture.md §3): no custom text (browsers
     // ignore it), and no attempt to distinguish which button the user eventually picks
-    // in the native prompt — `autosave:explicit-leave` can never fire from here.
+    // in the native prompt — `autosave:explicit-leave` can never fire from here. Stays
+    // silent once a Save / Save and stay submit is in flight.
     window.addEventListener('beforeunload', (event) => {
-        if (!Alpine.store('autosave')?.isDirty()) {
+        if (savingViaForm || !Alpine.store('autosave')?.isDirty()) {
             return;
         }
 
