@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shouldIntercept } from './navigation-guard';
+import { isGuardedSaveSubmit, shouldIntercept } from './navigation-guard';
 
 /**
  * Tests for `resources/js/navigation-guard.js`'s pure predicate, `shouldIntercept()`
@@ -74,5 +74,37 @@ describe('shouldIntercept', () => {
         expect(
             shouldIntercept(makeEvent(), makeAnchor({ href: `${window.location.href}#section` })),
         ).toBe(false);
+    });
+});
+
+/**
+ * Tests for `isGuardedSaveSubmit()` — the predicate that keeps the native `beforeunload`
+ * unsaved-changes prompt silent for the entity edit page's Save / Save and stay submit,
+ * and only that submit. A `submitter`-shaped stand-in whose `closest()` reports whether
+ * the button (or an ancestor) carries `data-guard-save` is all the predicate reads.
+ */
+function makeSaveSubmitter() {
+    return { closest: (selector) => (selector === '[data-guard-save]' ? {} : null) };
+}
+
+function makePlainSubmitter() {
+    return { closest: () => null };
+}
+
+describe('isGuardedSaveSubmit', () => {
+    it('suppresses for a submit fired by a data-guard-save button (Save / Save and stay)', () => {
+        expect(isGuardedSaveSubmit(makeEvent({ submitter: makeSaveSubmitter() }))).toBe(true);
+    });
+
+    it('does not suppress a submit from an unmarked button (search, logout, delete)', () => {
+        expect(isGuardedSaveSubmit(makeEvent({ submitter: makePlainSubmitter() }))).toBe(false);
+    });
+
+    it('does not suppress a programmatic submit with no submitter', () => {
+        expect(isGuardedSaveSubmit(makeEvent({ submitter: null }))).toBe(false);
+    });
+
+    it('does not suppress once a JS handler has preventDefault()ed the submit', () => {
+        expect(isGuardedSaveSubmit(makeEvent({ defaultPrevented: true, submitter: makeSaveSubmitter() }))).toBe(false);
     });
 });

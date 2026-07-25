@@ -23,9 +23,16 @@
         <x-auth-session-status :status="__('Saved.')" class="mb-3" />
     @endif
 
+    {{--
+        `data-guard-save` marks these as the entity save action: the navigation guard
+        (resources/js/navigation-guard.js) reads it off the submit event's `submitter` so
+        the native "unsaved changes" prompt stays silent when the writer clicks Save /
+        Save and stay — the submit *is* the save. No other form on the page carries it, so
+        every other submit keeps warning/behaving as before.
+    --}}
     <div class="flex flex-col gap-3">
-        <x-button variant="primary" type="submit" form="{{ $form }}" :icon="true" class="w-full">{{ __('Save') }}</x-button>
-        <x-button variant="secondary" type="submit" form="{{ $form }}" name="stay" value="1" icon="tabler-device-floppy" class="w-full">{{ __('Save and stay') }}</x-button>
+        <x-button variant="primary" type="submit" form="{{ $form }}" data-guard-save :icon="true" class="w-full">{{ __('Save') }}</x-button>
+        <x-button variant="secondary" type="submit" form="{{ $form }}" data-guard-save name="stay" value="1" icon="tabler-device-floppy" class="w-full">{{ __('Save and stay') }}</x-button>
     </div>
 
     @if ($deleteAction || isset($delete))

@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-25 — Silence the unsaved-changes prompt on Save
+
+### Fixed
+
+- Clicking **Save** or **Save and stay** on an entity edit page no longer triggers the
+  browser's native *"…information you've entered may not be saved"* prompt. Those buttons
+  now carry `data-guard-save`, and the `beforeunload` unsaved-changes fallback in
+  `navigation-guard.js` stays silent while their submit is in flight (and fires
+  `autosave:explicit-leave` so each field skips its now-redundant draft mirror). Every
+  other form submit on the page still warns/behaves exactly as before.
+
 ## 2026-07-24 — Revisions sidebar polish (D2/D3) (#33)
 
 ### Added
