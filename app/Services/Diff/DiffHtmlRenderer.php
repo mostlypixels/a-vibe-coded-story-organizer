@@ -3,6 +3,7 @@
 namespace App\Services\Diff;
 
 use App\Enums\DiffChange;
+use App\Services\RevisionSummarizer;
 use App\Support\DiffBlock;
 use App\Support\DiffSpan;
 use App\Support\HtmlBlock;
@@ -106,6 +107,22 @@ class DiffHtmlRenderer
         }
 
         return $html;
+    }
+
+    /**
+     * Render a bare run of word spans in summary mode — no block wrapper at all.
+     *
+     * This is what a history row's one-line summary is made of (see
+     * {@see RevisionSummarizer}), and it is public so that the source differ,
+     * which has words but no blocks to hang them on, produces its markers
+     * through the same escaping path as everything else here rather than
+     * building `<ins>`/`<del>` of its own.
+     *
+     * @param  list<DiffSpan>  $spans
+     */
+    public function renderSpanRun(array $spans): string
+    {
+        return $this->renderSpans($spans, inline: true);
     }
 
     /**

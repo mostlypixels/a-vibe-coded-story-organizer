@@ -293,10 +293,27 @@ depends on who authored the markup:
 | `FieldKind` | Strategy | Why |
 |---|---|---|
 | `Rich` (the TipTap HTML fields) | **Visual diff** — `App\Services\Diff\HtmlTokenizer` → `VisualHtmlDiffer` → `DiffHtmlRenderer`, built in-house on `jfcherng/php-sequence-matcher` | The writer never types that HTML. She should see her paragraphs with the changes marked in place, not `</p><p>` churn. |
-| `Markdown` (`Scene.contents`, the project front/back matter) and `Plain` (`Project.rights`) | **Source diff** — `jfcherng/php-diff`, side by side, word detail | She types the Markdown herself. There the markup *is* the content. |
+| `Markdown` (`Scene.contents`, the project front/back matter) and `Plain` (`Project.rights`) | **Source diff** — `App\Services\Diff\SourceDiffer`, wrapping `jfcherng/php-diff` side by side, word detail | She types the Markdown herself. There the markup *is* the content. |
 
 Both return a `RevisionDiffResult` (`html` plus a `changeCount` of change hunks) whose
 `html` is safe to `{!! !!}`, because in both cases the producer escapes the text.
+
+**Summaries (`App\Services\RevisionSummarizer`)** answer the same question in one line, for
+a history row. The two engines above each hand it a `ChangeExcerpt` — the first thing that
+changed, as a run of words, plus the total hunk count — and it spends
+`config('revisions.summary.max_length')` characters of *text* outward from that change,
+then renders the result through `DiffHtmlRenderer`.
+
+> [!NOTE]
+> Three things about summaries are deliberate and easy to get wrong if you change this
+> code. They are computed at **write** time and stored on the row (`summary_html`,
+> `change_count`), because a diff between two immutable revisions is a constant — so
+> rendering a page of history diffs nothing. They are bounded by rendered **length**, not
+> by hunk count: a find-and-replace on a character's name produces forty hunks, and forty
+> hunks in a list row is unreadable. And the budget is spent **outward from the change**,
+> never from the top of the field down, so the thing the row exists to show can never be
+> the part that gets cut. Cutting happens on words, before rendering — trimming a
+> marked-up string could leave an `<ins>` open, trimming tokens cannot.
 
 > [!WARNING]
 > Never run diff output through `HtmlSanitizer`. The author allow-list

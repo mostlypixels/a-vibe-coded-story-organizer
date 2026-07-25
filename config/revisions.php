@@ -73,4 +73,26 @@ return [
         'max_word_complexity' => 2_000_000,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | History-row summaries
+    |--------------------------------------------------------------------------
+    |
+    | max_length — how much of a change one history row shows, measured in
+    | characters of rendered *text*: the markup around it never counts against
+    | the budget. App\Services\RevisionSummarizer spends it outward from the
+    | first change, so the thing the row exists to show is never what gets cut.
+    |
+    | Bounded by length rather than by hunk count on purpose. A find-and-replace
+    | on a character's name produces forty hunks, and forty hunks in a list row
+    | is unreadable — while "the first hunk only" would be uselessly terse for a
+    | one-word edit. Whatever does not fit is reported as "and N more changes",
+    | which links to the compare page.
+    |
+    */
+
+    'summary' => [
+        'max_length' => 200, // characters of text
+    ],
+
 ];
