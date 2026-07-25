@@ -1,8 +1,12 @@
+@php
+    use Illuminate\Support\Str;
+@endphp
+
 <x-revisions-layout :project="$project" :entity="$entity" :id="$id" :field="$field">
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <x-heading level="2">
-                {{ __('History') }} &mdash; {{ Illuminate\Support\Str::headline($entity) }} "{{ $entityName }}" &mdash; {{ Illuminate\Support\Str::headline($field) }}
+                {{ __('History') }} &mdash; {{ Str::headline($entity) }} "{{ $entityName }}"
             </x-heading>
             <a href="{{ $editUrl }}" class="text-sm text-gray-500 hover:text-gray-700">
                 {{ __('Back to editing') }}
@@ -11,87 +15,90 @@
     </x-slot>
 
     <div class="space-y-6">
-        {{-- The per-field navigation lives in the sidebar (x-revisions-layout)
-             now, so the history page no longer repeats a field switcher here.
-             The sidebar only lists fields that actually have revisions; reaching
-             a revision-less sibling field goes back through the edit page. --}}
-        <div class="flex items-center justify-between gap-4">
-            <form method="GET" class="flex items-center gap-2">
+        {{-- Every filter is a GET parameter, so the page stays bookmarkable and
+             the Back button means what it looks like it means. A native <select>
+             is right here: a handful of options, no search, and it is
+             keyboard-operable and screen-reader-announced for free. --}}
+        <form method="GET" class="bg-white shadow-sm rounded-lg px-6 py-4 flex flex-wrap items-end gap-4">
+            @if ($fieldOptions !== [])
+                <div>
+                    <x-input-label for="field-filter" :value="__('Field')" />
+                    <select
+                        id="field-filter"
+                        name="field"
+                        class="mt-1 block border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm text-sm"
+                    >
+                        <option value="">{{ __('All fields') }}</option>
+                        @foreach ($fieldOptions as $value => $headline)
+                            <option value="{{ $value }}" @selected($field === $value)>{{ $headline }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
+            <div>
+                <x-input-label for="label-search" :value="__('Label')" />
                 <x-text-input
+                    id="label-search"
                     type="search"
                     name="label"
-                    :value="$search"
-                    class="text-sm"
+                    :value="$label"
+                    class="mt-1 text-sm"
                     :placeholder="__('Search labels…')"
                 />
-                <x-button variant="secondary" type="submit">{{ __('Search') }}</x-button>
-                @if ($search !== '')
-                    <a href="{{ route('revisions.index', ['entity' => $entity, 'id' => $id, 'field' => $field]) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            </div>
+
+            <label for="manual-only" class="flex items-center gap-2 pb-2">
+                <input
+                    id="manual-only"
+                    type="checkbox"
+                    name="manual"
+                    value="1"
+                    @checked($manualOnly)
+                    class="rounded border-gray-300 text-ocean-600 focus:ring-ocean-500"
+                >
+                <span class="text-sm text-gray-700">{{ __('Manual saves only') }}</span>
+            </label>
+
+            <div class="flex items-center gap-3 pb-1">
+                <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
+
+                @if ($field !== null || $label !== '' || $manualOnly)
+                    <a href="{{ route('revisions.index', ['entity' => $entity, 'id' => $id]) }}" class="text-sm text-gray-500 hover:text-gray-700">
                         {{ __('Clear') }}
                     </a>
                 @endif
-            </form>
+            </div>
+        </form>
 
-            @if ($canCompareLatestTwo)
-                <x-button variant="secondary" :href="$compareLatestTwoUrl">{{ __('Compare latest two') }}</x-button>
-            @endif
-        </div>
+        @if ($savePoints->isEmpty())
+            <div class="bg-white shadow-sm rounded-lg px-6 py-10 text-center text-gray-500">
+                @if ($field !== null || $label !== '' || $manualOnly)
+                    <p class="font-medium text-gray-600">{{ __('No saves match these filters.') }}</p>
+                    <p class="mt-1 text-sm">{{ __('Try clearing them to see the whole history.') }}</p>
+                @else
+                    <p class="font-medium text-gray-600">{{ __('No history yet.') }}</p>
+                    <p class="mt-1 text-sm">{{ __('Editing this and saving will start it.') }}</p>
+                @endif
+            </div>
+        @else
+            {{-- A <ul>, not x-table: a save point is two-level (the save, then
+                 the fields it touched) and a table row cannot hold that without
+                 lying about its structure to a screen reader. --}}
+            <ul class="space-y-4">
+                @foreach ($savePoints as $point)
+                    <li>
+                        @include('revisions.partials.save-point', [
+                            'point' => $point,
+                            'entity' => $entity,
+                            'id' => $id,
+                            'field' => $field,
+                        ])
+                    </li>
+                @endforeach
+            </ul>
 
-        <x-table>
-            <x-slot:head>
-                <x-table-heading>{{ __('Date') }}</x-table-heading>
-                <x-table-heading>{{ __('Author') }}</x-table-heading>
-                <x-table-heading>{{ __('Label') }}</x-table-heading>
-                <x-table-heading>{{ __('Origin') }}</x-table-heading>
-                <x-table-heading />
-            </x-slot:head>
-
-            @forelse ($rows as $row)
-                <x-table-row :striped="$loop->even">
-                    @if ($row->revision->origin === \App\Enums\RevisionOrigin::Baseline)
-                        {{-- handoff.md §9.2: a baseline's `created_at` is borrowed from
-                             the entity's own `updated_at` at seeding time, so it must
-                             never be misread as a real edit row. --}}
-                        <td colspan="4" class="px-4 py-3 text-sm text-gray-500 italic">
-                            {{ __('Baseline — value before revision history') }}
-                        </td>
-                    @else
-                        <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
-                            {{ $row->revision->created_at->format('d F Y H:i') }}
-                        </td>
-                        <td class="px-4 py-3 text-sm text-gray-700">
-                            {{ $row->revision->user?->name ?? __('Unknown') }}
-                        </td>
-                        <td class="px-4 py-3 text-sm text-gray-700">
-                            {{ $row->revision->label ?? '—' }}
-                        </td>
-                        <td class="px-4 py-3">
-                            <x-revision-origin-badge :origin="$row->revision->origin" />
-                        </td>
-                    @endif
-                    <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
-                        <div class="flex items-center justify-end gap-2">
-                            @if ($row->isCurrent)
-                                <x-badge variant="success">{{ __('Current') }}</x-badge>
-                            @endif
-                            @if ($row->compareWithPreviousUrl)
-                                <a href="{{ $row->compareWithPreviousUrl }}" class="text-sm text-ocean-600 hover:text-ocean-800 hover:underline">
-                                    {{ __('Compare with previous') }}
-                                </a>
-                            @endif
-                            @unless ($row->isCurrent)
-                                <x-revert-revision-button :revision="$row->revision" :base-hash="$baseHash" />
-                            @endif
-                        </div>
-                    </td>
-                </x-table-row>
-            @empty
-                <x-table-empty
-                    :colspan="5"
-                    :filtered="$search !== ''"
-                    :items="__('revisions')"
-                />
-            @endforelse
-        </x-table>
+            {{ $savePoints->links() }}
+        @endif
     </div>
 </x-revisions-layout>

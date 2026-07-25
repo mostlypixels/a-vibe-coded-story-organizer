@@ -408,3 +408,250 @@ blockquote[data-callout-type='caution']::before {
     content: '\1F6D1  Caution';
     color: theme('colors.red.700');
 }
+
+/*
+ * Revision diffs — applied only by the `x-diff` component
+ * (resources/views/components/diff.blade.php), which is the single view allowed
+ * to emit these classes. Written as CSS rather than as Tailwind utilities
+ * because it styles markup this app generates but the template never sees:
+ * App\Services\Diff\DiffHtmlRenderer's <ins>/<del> markers and rebuilt blocks,
+ * and jfcherng's side-by-side <table>. Pseudo-element gutter glyphs and
+ * descendant selectors read far better here than as arbitrary variants, exactly
+ * as with the .tiptap rules above.
+ *
+ * Every change is signalled three ways: a background tint, a +/- gutter glyph,
+ * and a visually-hidden "inserted"/"removed" label the renderer puts inside each
+ * marker. Colour alone is not information, and <ins>/<del> announcement is
+ * inconsistent across screen readers, so each channel covers for the others.
+ *
+ * NEVER use text-decoration as a change marker. The writer can apply <s> and <u>
+ * herself (both are in RichTextFields::ALLOWED_TAGS), so a struck-out passage has
+ * to keep meaning "she struck this out" — which is also why the markers below
+ * explicitly clear the decoration browsers put on <ins>/<del> by default.
+ */
+.revision-diff {
+    font-size: theme('fontSize.sm');
+    line-height: theme('lineHeight.relaxed');
+    overflow-x: auto;
+}
+
+.revision-diff ins.diff-ins,
+.revision-diff del.diff-del {
+    text-decoration: none;
+    border-radius: theme('borderRadius.DEFAULT');
+    padding: 0 theme('spacing.1');
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.revision-diff ins.diff-ins {
+    background-color: theme('colors.green.100');
+    color: theme('colors.green.700');
+}
+
+.revision-diff del.diff-del {
+    background-color: theme('colors.red.100');
+    color: theme('colors.red.700');
+}
+
+/*
+ * The gutter glyph. `aria-hidden` cannot be set on generated content, so these
+ * are deliberately punctuation-only marks that add nothing when a screen reader
+ * does read them — the meaning is carried by the sr-only label beside them.
+ */
+.revision-diff ins.diff-ins::before {
+    content: '+';
+    font-weight: 700;
+    margin-inline-end: theme('spacing.1');
+    opacity: 0.7;
+}
+
+.revision-diff del.diff-del::before {
+    content: '\2212'; /* U+2212 MINUS SIGN — reads as a minus, not a hyphen */
+    font-weight: 700;
+    margin-inline-end: theme('spacing.1');
+    opacity: 0.7;
+}
+
+/*
+ * A whole block that arrived or left, as opposed to words inside a block that
+ * changed. Marked on the block itself with a coloured edge, so a wholly-new
+ * paragraph is legible as one thing rather than as a wall of tint.
+ */
+.revision-diff .diff-inserted,
+.revision-diff .diff-removed,
+.revision-diff .diff-formatting-changed {
+    border-inline-start: 3px solid transparent;
+    padding-inline-start: theme('spacing.3');
+}
+
+.revision-diff .diff-inserted {
+    border-inline-start-color: theme('colors.green.400');
+}
+
+.revision-diff .diff-removed {
+    border-inline-start-color: theme('colors.red.400');
+}
+
+.revision-diff .diff-formatting-changed {
+    border-inline-start-color: theme('colors.blue.300');
+}
+
+/*
+ * "formatting changed: bold added" — the renderer writes the sentence (it is the
+ * only layer that knows which marks moved); this makes it look like an x-badge.
+ * Kept in step with resources/views/components/badge.blade.php's `info` variant.
+ */
+.revision-diff .diff-note {
+    display: inline-flex;
+    align-items: center;
+    margin-inline-start: theme('spacing.2');
+    padding: 0.125rem theme('spacing.2');
+    border-radius: theme('borderRadius.full');
+    background-color: theme('colors.blue.100');
+    color: theme('colors.blue.800');
+    font-size: theme('fontSize.xs');
+    font-weight: 500;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/*
+ * Visual diff — the writer's own formatting is preserved (a heading still looks
+ * like a heading) without inheriting the editor's prose styles, which is why
+ * this sets its own spacing rather than reaching for `prose`.
+ */
+.revision-diff--visual > * + * {
+    margin-top: theme('spacing.3');
+}
+
+.revision-diff--visual h1,
+.revision-diff--visual h2,
+.revision-diff--visual h3,
+.revision-diff--visual h4 {
+    font-weight: 600;
+    color: theme('colors.gray.900');
+}
+
+.revision-diff--visual h1 { font-size: theme('fontSize.xl'); }
+.revision-diff--visual h2 { font-size: theme('fontSize.lg'); }
+.revision-diff--visual h3,
+.revision-diff--visual h4 { font-size: theme('fontSize.base'); }
+
+.revision-diff--visual ul,
+.revision-diff--visual ol {
+    padding-inline-start: theme('spacing.6');
+    list-style-position: outside;
+}
+
+.revision-diff--visual ul { list-style-type: disc; }
+.revision-diff--visual ol { list-style-type: decimal; }
+
+.revision-diff--visual blockquote {
+    border-inline-start: 3px solid theme('colors.gray.300');
+    padding-inline-start: theme('spacing.3');
+    color: theme('colors.gray.600');
+}
+
+.revision-diff--visual pre {
+    background-color: theme('colors.gray.50');
+    padding: theme('spacing.2');
+    border-radius: theme('borderRadius.DEFAULT');
+    overflow-x: auto;
+}
+
+.revision-diff--visual a {
+    color: theme('colors.ocean.700');
+    text-decoration: underline;
+}
+
+.revision-diff--visual img {
+    max-width: 100%;
+    height: auto;
+}
+
+/*
+ * Source diff — jfcherng's SideBySide renderer emits a two-column table, one
+ * <td class="old">/<td class="new"> pair per row (no header or line numbers, per
+ * RevisionDiffer's options). Styled to read as two prose panels rather than as a
+ * spreadsheet: no per-cell borders, just a divider between the columns. An empty
+ * counterpart cell (`td.none`, one side of an add or a remove) gets a faint grey
+ * so it reads as "nothing here" rather than as an oversight.
+ */
+.revision-diff--source table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.revision-diff--source td {
+    width: 50%;
+    vertical-align: top;
+    padding: theme('spacing.2') theme('spacing.4');
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.revision-diff--source td.old {
+    border-inline-end: 1px solid theme('colors.gray.200');
+}
+
+.revision-diff--source td.none {
+    background-color: theme('colors.gray.50');
+}
+
+/*
+ * jfcherng marks word-level changes with bare <ins>/<del> (no class of its own),
+ * so the source diff needs the same treatment applied by element.
+ *
+ * > [!NOTE]
+ * > This side gets two of the three channels — tint and glyph — not three. The
+ * > visually-hidden label is emitted by DiffHtmlRenderer, which only renders the
+ * > visual diff; jfcherng writes this markup itself and offers no hook for one.
+ * > The semantic <ins>/<del> elements are still there for the screen readers
+ * > that do announce them. Closing the gap properly means the source path
+ * > producing its own markers rather than delegating to the library, which is a
+ * > bigger change than a styling component should make.
+ */
+.revision-diff--source ins,
+.revision-diff--source del {
+    text-decoration: none;
+    border-radius: theme('borderRadius.DEFAULT');
+    padding: 0 theme('spacing[0.5]');
+}
+
+.revision-diff--source ins {
+    background-color: theme('colors.green.100');
+    color: theme('colors.green.700');
+}
+
+.revision-diff--source del {
+    background-color: theme('colors.red.100');
+    color: theme('colors.red.700');
+}
+
+.revision-diff--source ins::before {
+    content: '+';
+    font-weight: 700;
+    margin-inline-end: theme('spacing[0.5]');
+    opacity: 0.7;
+}
+
+.revision-diff--source del::before {
+    content: '\2212';
+    font-weight: 700;
+    margin-inline-end: theme('spacing[0.5]');
+    opacity: 0.7;
+}
+
+/*
+ * Summary mode — one line in a history row. No block chrome at all: the row is a
+ * scan target, so the markers are the only thing allowed to draw the eye.
+ */
+.revision-diff--inline {
+    display: block;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: theme('colors.gray.700');
+}

@@ -1,8 +1,12 @@
+@php
+    use Illuminate\Support\Str;
+@endphp
+
 <x-revisions-layout :project="$project" :entity="$entity" :id="$id" :field="$field">
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <x-heading level="2">
-                {{ __('Compare') }} &mdash; {{ Illuminate\Support\Str::headline($entity) }} "{{ $entityName }}" &mdash; {{ Illuminate\Support\Str::headline($field) }}
+                {{ __('Compare') }} &mdash; {{ Str::headline($entity) }} "{{ $entityName }}"
             </x-heading>
             <a href="{{ route('revisions.index', ['entity' => $entity, 'id' => $id, 'field' => $field]) }}" class="text-sm">
                 {{ __('Back to history') }}
@@ -12,69 +16,106 @@
 
     <div class="space-y-6">
         @if ($from === null || $to === null)
-            {{-- Not enough history yet to compare (fewer than two revisions), or an
-                 explicit from/to pair that failed to resolve. --}}
+            {{-- Fewer than two save points: there is no pair to be had yet. --}}
             <div class="bg-white shadow-sm rounded-lg px-6 py-10 text-center text-gray-500">
                 <p class="font-medium text-gray-600">{{ __('Nothing to compare yet.') }}</p>
-                <p class="mt-1 text-sm">{{ __('This field needs at least two revisions before they can be compared.') }}</p>
+                <p class="mt-1 text-sm">{{ __('This entity needs at least two saves before they can be compared.') }}</p>
             </div>
         @else
-            <div class="bg-white shadow-sm rounded-lg overflow-hidden">
-                {{-- Old / New header, aligned to the 50/50 diff columns below (both
-                     this row and the table are full-width halves), so the labels sit
-                     directly over their column. $from is the older revision, $to the
-                     newer — RevisionController::compare() already ordered them
-                     chronologically regardless of the query string's from/to. --}}
-                <div class="grid grid-cols-2 border-b border-gray-200 bg-gray-50 text-sm text-gray-600">
-                    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-e border-gray-200">
-                        <div>
-                            <span class="font-semibold text-gray-800">{{ __('Old') }}</span>
-                            &mdash; {{ $from->created_at->format('d F Y H:i') }}
-                            ({{ $from->user?->name ?? __('Unknown') }})
-                        </div>
-                        <x-revert-revision-button :revision="$from" :base-hash="$baseHash" />
-                    </div>
-                    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                        <div>
-                            <span class="font-semibold text-gray-800">{{ __('New') }}</span>
-                            &mdash; {{ $to->created_at->format('d F Y H:i') }}
-                            ({{ $to->user?->name ?? __('Unknown') }})
-                        </div>
-                        <x-revert-revision-button :revision="$to" :base-hash="$baseHash" />
-                    </div>
+            {{-- Left is always the older side, right the newer. The invalid
+                 pairing is made *unreachable* — x-revision-picker disables every
+                 option not strictly newer than the older selection, server-side,
+                 so it holds with JS off too. There is no backwards diff and no
+                 error state to design.
+
+                 Each picker is a native <select> that the Alpine combobox
+                 replaces once it mounts; the surrounding form is what makes the
+                 no-JS baseline work. --}}
+            <form method="GET" class="bg-white shadow-sm rounded-lg px-6 py-4">
+                @if ($field !== null)
+                    <input type="hidden" name="field" value="{{ $field }}">
+                @endif
+
+                @php
+                    // The pair the page is currently showing. Each picker writes
+                    // *both* halves when it navigates: a reader who arrived with
+                    // no explicit pair is looking at the defaulted two most
+                    // recent points, and writing only the chosen side would let
+                    // the other default straight back — the selection would
+                    // appear to do nothing.
+                    $pair = ['from' => $from->saveId, 'to' => $to->saveId];
+                @endphp
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-revision-picker side="from" :label="__('Older')" :points="$points" :selected="$from" :pair="$pair" />
+                    <x-revision-picker side="to" :label="__('Newer')" :points="$points" :selected="$to" :pair="$pair" :disabled-before="$from" />
                 </div>
 
-                {{-- Whichever strategy RevisionDiffer picked for this field, the
-                     producer escaped the text itself, so the result is safe to
-                     render directly — see App\Services\Diff\DiffHtmlRenderer for
-                     why that has to be true by construction on the rich side.
-
-                     Two output shapes share these styles for now (task 14 replaces
-                     this page with the x-diff component):
-
-                     - Markdown/plain fields get jfcherng's two-column <table> (a
-                       <td class="old">/<td class="new"> pair per row, no header or
-                       line numbers per RevisionDiffer's options). Styled to read as
-                       two prose panels rather than a spreadsheet: no per-cell
-                       borders, just a divider between the columns, and empty
-                       counterpart cells (`td.none`, one side of an add/remove) get
-                       a faint grey so they read as "nothing here".
-                     - Rich fields get the visual differ's own blocks — the field as
-                       the writer sees it, with the changes marked in place.
-
-                     Either way only the actually-changed words are tinted: red
-                     <del> for what left, green <ins> for what arrived. --}}
-                <div class="overflow-x-auto text-sm leading-relaxed
-                    [&>*:not(table)]:px-6 [&>*:not(table)]:py-1 [&>*:not(table):first-child]:pt-4 [&>*:not(table):last-child]:pb-4
-                    [&_table]:w-full [&_table]:table-fixed [&_table]:border-collapse
-                    [&_td]:w-1/2 [&_td]:align-top [&_td]:px-4 [&_td]:py-2 [&_td]:whitespace-pre-wrap [&_td]:break-words
-                    [&_td.old]:border-e [&_td.old]:border-gray-200
-                    [&_td.none]:bg-gray-50/60
-                    [&_del]:bg-red-100 [&_del]:text-red-700 [&_del]:no-underline
-                    [&_ins]:bg-green-100 [&_ins]:text-green-700 [&_ins]:no-underline">
-                    {!! $result->html !!}
+                <div class="mt-4 flex items-center justify-between gap-4">
+                    <p class="text-sm text-gray-500">
+                        {{ trans_choice('{0}The same save|{1}1 save apart|[2,*]:count saves apart', $savesApart, ['count' => $savesApart]) }}
+                        &middot;
+                        {{ $from->savedAt->format('d F Y H:i') }} &rarr; {{ $to->savedAt->format('d F Y H:i') }}
+                    </p>
+                    <x-button variant="secondary" type="submit">{{ __('Compare') }}</x-button>
                 </div>
-            </div>
+            </form>
+
+            @if ($field !== null)
+                <p class="text-sm text-gray-500">
+                    {{ __('Showing :field only.', ['field' => Str::headline($field)]) }}
+                    <a
+                        href="{{ route('revisions.compare', ['entity' => $entity, 'id' => $id, 'from' => $from->saveId, 'to' => $to->saveId]) }}"
+                        class="text-ocean-600 hover:text-ocean-800 hover:underline"
+                    >{{ __('Show all fields') }}</a>
+                </p>
+            @endif
+
+            @forelse ($comparisons as $comparison)
+                {{-- One section per changed field, in registry order. An <article>
+                     with its own heading, so the page reads as a list of things
+                     that changed rather than as one undifferentiated diff. --}}
+                <article aria-labelledby="diff-{{ $comparison->field }}">
+                    <x-card>
+                        <x-slot name="header">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <x-heading level="3" id="diff-{{ $comparison->field }}">
+                                    {{ Str::headline($comparison->field) }}
+                                    @if ($comparison->isNewField())
+                                        <x-badge variant="success">{{ __('New') }}</x-badge>
+                                    @endif
+                                </x-heading>
+
+                                {{-- Restore the older side. Hidden when that side
+                                     is already the live value, where restoring it
+                                     would be a no-op dressed up as an action. --}}
+                                @if ($comparison->from !== null && ! $from->isCurrent)
+                                    <x-revert-revision-button
+                                        :revision="$comparison->from"
+                                        :base-hash="$baseHashes[$comparison->field]"
+                                    />
+                                @endif
+                            </div>
+                        </x-slot>
+
+                        <x-diff :html="$comparison->result->html" :kind="$comparison->kind" />
+                    </x-card>
+                </article>
+            @empty
+                <div class="bg-white shadow-sm rounded-lg px-6 py-10 text-center text-gray-500">
+                    <p class="font-medium text-gray-600">{{ __('These two saves left every field identical.') }}</p>
+                </div>
+            @endforelse
+
+            @if ($unchangedFields !== [])
+                <p class="text-sm text-gray-500">
+                    {{ trans_choice(
+                        '{1}1 other field unchanged (:fields)|[2,*]:count other fields unchanged (:fields)',
+                        count($unchangedFields),
+                        ['count' => count($unchangedFields), 'fields' => implode(', ', $unchangedFields)],
+                    ) }}
+                </p>
+            @endif
         @endif
     </div>
 </x-revisions-layout>
