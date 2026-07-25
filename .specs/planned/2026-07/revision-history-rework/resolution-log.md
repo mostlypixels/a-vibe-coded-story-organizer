@@ -108,6 +108,24 @@ before extending the feature.
   feeds both its own halves — the baseline `<select>` and the combobox. One source, so the
   two can never label the same save differently.
 
+* **Task 16 split the base-hash check out of the revert body, rather than moving the body
+  verbatim.** The task said "moved verbatim in behaviour", and it is — but as
+  `assertUnchanged()` + a private `restore()` instead of one method. Task 17 has to verify
+  *every* field's hash **before** writing *any* of them (all-or-nothing), which is impossible
+  if the check and the write are welded together. `revertField()` is still the whole
+  sequence in one call for the single-field path.
+* **The conflict is a `RevisionConflictException` caught in the controller, not a renderable
+  exception.** Laravel would let the exception render its own redirect, which would spare
+  both revert actions a `try`/`catch`. `ImportController` already establishes the local
+  convention — catch the domain exception, `return back()->with(...)` — and an explicit catch
+  is the reading a junior developer can follow without knowing that exceptions may carry a
+  `render()` method. It also keeps task 17's `DB::transaction` rollback obvious at the call
+  site.
+* **The revert flash rendering went into `x-revisions-layout`, and the success message with
+  it.** Not in the task, but the task's error alert had nowhere to appear: no view read
+  `session('status')`, so task 11's "reverted" confirmation had never once been shown. Both
+  outcomes render in the shared shell — see *Known gaps* below for the full note.
+
 ## Known gaps
 
 * **The source diff has two accessibility channels, not three.** `expanded/ui.md` requires
@@ -116,6 +134,29 @@ before extending the feature.
   and the glyph plus the semantic elements. Closing it means the source path emitting its
   own markers rather than delegating to the library — a task-7-sized change, not a styling
   one. Documented in `documentation/architecture.md`.
+* **A coalescing autosave narrows what *Undo this save* covers.** Accepted when Q1 was
+  settled (`expanded/open-questions.md` Q1): a coalescing row keeps its *original* `save_id`,
+  exactly as it already keeps its original `created_at`. So a save touching three fields
+  where one coalesces into a still-open burst from earlier puts that field in the **earlier**
+  save point — the group the writer thinks of as "the save I just made" lists two fields, and
+  task 17's *Undo this save* then silently leaves the third alone. The alternative (rewriting
+  an existing group's membership after the fact) is worse. Already documented in
+  `RevisionRecorder::record()`'s docblock and in `documentation/architecture.md`; recorded
+  here because it is a standing behavioural gap rather than only a design note, and it is the
+  one gap that bears directly on tasks 16–17.
+* **A prune leaves stale summaries behind.** Accepted when Q7 was settled: deleting an
+  `automatic` row leaves its successor's stored `summary_html` / `change_count` describing a
+  diff against a row that no longer exists, so the **history list** can under-report what a
+  save changed. The compare screen always computes live and is unaffected. Recomputing during
+  a mass prune would turn a cheap `DELETE` into an O(n) diff job, which is why it was not
+  taken. Documented in `expanded/data-model.md`'s warning callout.
+* ~~**Nothing renders the revert flashes yet.**~~ `RevisionController::revert()` already
+  returned `back()->with('status', 'reverted')`, but no view read that key — the success
+  message had been dropped on the floor since task 11, and so there was no render site for
+  task 16's conflict alert either. **Closed by task 16**: both alerts now live in
+  `x-revisions-layout`, the one shell the history and compare pages share, so both revert
+  entry points are covered once rather than per page. Recorded because it was found while
+  starting task 16 and is called out nowhere in the plan.
 
 ## Issues → resolutions
 

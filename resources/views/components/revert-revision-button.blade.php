@@ -10,7 +10,8 @@
     RevisionController::index()/compare() at page-render time — the same
     base-hash conflict check FieldAutosaveController's autosave PATCH uses, so
     reverting against a field someone else already changed since the page
-    loaded 409s instead of silently overwriting their work.
+    loaded comes back with an error alert (rendered by x-revisions-layout)
+    instead of silently overwriting their work.
 
     Reused on both the history row (resources/views/revisions/index.blade.php)
     and the compare view (resources/views/revisions/compare.blade.php) — one

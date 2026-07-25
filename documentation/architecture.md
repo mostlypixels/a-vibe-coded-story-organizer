@@ -418,6 +418,24 @@ changed.
 `origin: revert` revision holding the older value; no user action ever deletes history
 except the explicit purge above.
 
+The work itself lives in `App\Services\RevisionReverter`, not in the controller, so the
+single-field revert and the whole-save undo run the same four steps and cannot drift:
+check the base hash → re-validate the old value against **today's**
+`AutosavableFields::validationRule()` (rules can have tightened since it was recorded) →
+assign and `save()` so the model's mutators run → record the value the database actually
+ended up holding. The controller is resolve → authorize → delegate → redirect.
+
+> [!NOTE]
+> **The two conflict surfaces answer differently, on purpose.** The base hash is what
+> stops a revert from overwriting a value a second tab (or an in-flight autosave) wrote
+> after the page was drawn. When it no longer matches, `RevisionReverter` throws
+> `RevisionConflictException` and the **browser** paths redirect back with an error alert
+> — the writer did nothing wrong and needs a page they can reload and retry from, not a
+> bare error screen. The **409 status** survives only on the JSON autosave endpoint
+> (`FieldAutosaveController`), where a client actually reads it. Both revert outcomes are
+> rendered once in `<x-revisions-layout>`, the shell the history and compare pages share,
+> rather than per page.
+
 **Revisions browser (Tools ▸ Revisions).** Besides the per-field History icon on each
 edit page, the whole of a project's history is reachable from one place: the **Tools**
 toolbar dropdown → **Revisions** (`RevisionBrowserController`, route

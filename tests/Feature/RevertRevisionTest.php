@@ -11,11 +11,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Task 11 — RevisionController::revert(): copies an older revision's value
- * back onto the live column, additively (expanded/architecture.md "Revert",
- * handoff.md §5.2). Never destructive: the reverted-away-from state and every
- * other row stay exactly as they were, and revert always creates a new
- * `origin: revert` row rather than editing anything.
+ * RevisionController::revert() and the App\Services\RevisionReverter behind it
+ * (task 16): copies an older revision's value back onto the live column,
+ * additively (expanded/architecture.md "Revert", handoff.md §5.2). Never
+ * destructive: the reverted-away-from state and every other row stay exactly as
+ * they were, and revert always creates a new `origin: revert` row rather than
+ * editing anything.
+ *
+ * The service is covered through the HTTP endpoint rather than in isolation —
+ * the base-hash check, the re-validation and the recorded row are all things a
+ * request has to end up with, and testing them here keeps the conflict *response*
+ * (task 16's changed behaviour) in the same file as the behaviour it changed.
  */
 class RevertRevisionTest extends TestCase
 {
@@ -118,7 +124,12 @@ class RevertRevisionTest extends TestCase
         $this->assertStringContainsString('Older text', $act->description);
     }
 
-    public function test_a_stale_base_hash_returns_409_and_makes_no_changes(): void
+    /**
+     * Task 16 changed this deliberately: a conflict used to abort(409) into a
+     * bare error page shown to a writer who did nothing wrong. It now redirects
+     * back with an error alert they can act on. See resolution-log.md.
+     */
+    public function test_a_stale_base_hash_redirects_back_with_an_error_and_makes_no_changes(): void
     {
         $user = User::factory()->create();
         $act = $this->actFor($user, ['description' => '<p>Current text</p>']);
@@ -131,13 +142,36 @@ class RevertRevisionTest extends TestCase
 
         $countBefore = Revision::count();
 
-        $this->actingAs($user)->post(route('revisions.revert', $old), [
+        $response = $this->actingAs($user)->post(route('revisions.revert', $old), [
             'base_hash' => 'not-the-real-hash',
-        ])->assertStatus(409);
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+        $response->assertSessionMissing('status');
 
         $act->refresh();
         $this->assertSame('<p>Current text</p>', $act->description);
         $this->assertSame($countBefore, Revision::count());
+    }
+
+    /**
+     * The regression guard for the other half of that decision: the two
+     * conflict surfaces were split on purpose. A browser POST gets a page; the
+     * JSON autosave endpoint keeps the 409 *status*, because a client reads it.
+     */
+    public function test_the_autosave_endpoint_still_answers_the_same_conflict_with_409_json(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user, ['description' => '<p>Current text</p>']);
+
+        $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
+            ['value' => '<p>Fresh text</p>', 'base_hash' => 'not-the-real-hash'],
+        )->assertStatus(409);
+
+        $act->refresh();
+        $this->assertSame('<p>Current text</p>', $act->description);
     }
 
     public function test_a_non_owner_gets_403(): void
