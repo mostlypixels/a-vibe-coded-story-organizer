@@ -348,6 +348,46 @@ archive: they are derived from values the archive already contains.
 > Equally, never route a Markdown or Plain field through the tokenizer: it would eat the
 > `**`, `#` and `>` the writer actually changed.
 
+**Save points — storage is per field, everything above it is per entity.** The
+`revisions` table keeps one immutable row per (field, moment), but a save that touched
+three fields is *one* thing the writer remembers doing, so it is one thing to look at,
+compare against and undo. `revisions.save_id` ties those rows together, and
+`App\Services\RevisionHistory` folds them into `SavePoint`s (each holding `SaveEntry`s in
+registry field order). It runs two queries — a `GROUP BY save_id` for the page, then that
+page's rows — and folds them in PHP. No window functions and no `GROUP_CONCAT`: this app
+runs on five database engines, and the only way to be sure they all behave is to ask each
+of them for very little.
+
+Three details are easy to break:
+
+* **Ordering is `(MAX(created_at), MAX(id))`.** An autosave burst and the Save that closes
+  it land in the same second; `created_at` alone orders them arbitrarily.
+* **The page fetches one group beyond its limit.** That group is never rendered — it
+  exists so the last row on the page can still name the save point before it, which is
+  what its *compare with previous* link addresses.
+* **`isCurrent` is resolved with no filters applied.** "Current" is a fact about the
+  entity, not about the list being looked at. Deriving it from a filtered page would crown
+  whatever sat at the top of it and tell the writer an old save is her current text.
+
+> [!IMPORTANT]
+> No history query ever selects `revisions.value`. A page can span dozens of revisions of
+> a scene's contents; `size_bytes`, `summary_html` and `change_count` exist precisely so
+> it never has to read them. There is a query-listener test guarding this.
+
+**A save point is a moment, not a set of values.** `App\Services\RevisionSnapshot::asOf()`
+resolves, *for every registered field*, the newest revision at or before that moment — so
+a save that touched only `notes` still implies a state for `description` and `contents`.
+`RevisionComparison::between()` diffs two such snapshots and skips every field whose two
+sides resolve to the same revision id, hydrating `value` only for the ones that actually
+changed.
+
+> [!NOTE]
+> This means a field that **neither** save touched can appear as changed, when some save
+> between them changed it. That is correct, not a bug: the writer is comparing two states
+> of the scene, not two lists of edits. The pair is also never reordered by the
+> comparison — putting `from` before `to` is the caller's job, because the caller is what
+> accepted two ids from a query string.
+
 **Revert is additive, never destructive.** `RevisionController::revert` writes a new
 `origin: revert` revision holding the older value; no user action ever deletes history
 except the explicit purge above.

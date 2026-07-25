@@ -95,4 +95,23 @@ return [
         'max_length' => 200, // characters of text
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | History list
+    |--------------------------------------------------------------------------
+    |
+    | per_page — how many *save points* one page of an entity's history shows.
+    | Save points, not rows: one Save that touched three fields is one entry on
+    | the list, so a page of 20 can render anywhere from 20 to 60 revisions.
+    |
+    | App\Services\RevisionHistory always fetches one group beyond the page. The
+    | extra one is never rendered — it exists so the last row on the page can
+    | still name the save point before it for its "compare with previous" link.
+    |
+    */
+
+    'history' => [
+        'per_page' => 20, // save points
+    ],
+
 ];

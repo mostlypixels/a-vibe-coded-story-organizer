@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-25 — Read revision history as save points (#41)
+
+### Added
+
+- Revision history can now be read the way it was made: as **save points**. One Save that
+  changed three fields is one entry, listing all three, instead of three separate entries
+  that happen to share a timestamp. Groundwork for the history and compare screens — no
+  page shows this yet.
+- Comparing two save points answers "what is different about this scene between these two
+  moments", covering every field — including one that neither save touched directly but
+  that changed in between. Fields that are the same at both moments are skipped entirely
+  rather than compared and found equal.
+
 ## 2026-07-25 — Record what each save changed (#40)
 
 ### Added
