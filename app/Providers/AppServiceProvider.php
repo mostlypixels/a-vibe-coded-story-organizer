@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Services\HtmlSanitizer;
+use App\Services\RevisionRecorder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -18,6 +19,16 @@ class AppServiceProvider extends ServiceProvider
         // Building HTMLPurifier is non-trivial; share one instance across the
         // per-field sanitization calls (wired in task 02) and the SanitizeHtml rule.
         $this->app->singleton(HtmlSanitizer::class);
+
+        // One recorder per request, so its save-point memo (RevisionRecorder::
+        // currentSaveId()) survives across the several record() calls one
+        // request makes. Without this binding every `app(RevisionRecorder::
+        // class)` and every method injection resolves a *fresh* object, and
+        // each field of one form submit would be stamped with its own save id
+        // — i.e. the grouping the whole history feature is built on would
+        // silently degrade back to one-save-point-per-field. Load-bearing;
+        // covered by RevisionSaveGroupingTest.
+        $this->app->scoped(RevisionRecorder::class);
     }
 
     /**

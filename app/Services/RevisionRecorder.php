@@ -7,6 +7,7 @@ use App\Models\Revision;
 use App\Models\User;
 use App\Support\AutosavableFields;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * The one place the application writes to the `revisions` table.
@@ -20,9 +21,49 @@ use Illuminate\Database\Eloquent\Model;
  * the caller's job, comparing the incoming value against the entity's current
  * column value before ever calling record(). This class only knows how to
  * coalesce and how to seed a baseline.
+ *
+ * It is also the only place `save_id` — the *save point* grouping key the
+ * history/compare/revert screens address — is minted. That requires the
+ * recorder to be **one instance per request**: it is registered as
+ * `$this->app->scoped()` in App\Providers\AppServiceProvider.
  */
 class RevisionRecorder
 {
+    /**
+     * The save-point id minted for each entity touched during this request,
+     * keyed by `"<class>:<key>"`. Deliberately per (request, entity) rather
+     * than per request: App\Services\Import\ProjectGraphImporter writes
+     * revisions for hundreds of entities in a single request, and grouping
+     * them into one save point would make "Undo this save" offer to revert an
+     * entire imported project.
+     *
+     * Instance state, not static and not session-backed — it must reset
+     * between requests, which is exactly the `scoped()` binding's lifetime.
+     *
+     * @var array<string, string>
+     */
+    private array $saveIds = [];
+
+    /**
+     * The save point every row written for `$entity` during this request
+     * belongs to, minted on first use.
+     */
+    public function currentSaveId(Model $entity): string
+    {
+        return $this->saveIds[$this->saveKey($entity)] ??= (string) Str::ulid();
+    }
+
+    /**
+     * Deliberately open a *new* save point for `$entity` inside a request that
+     * has already written to it — used by the whole-save revert, whose result
+     * must be a save point of its own rather than joining the rows it was
+     * triggered from.
+     */
+    public function startNewSave(Model $entity): void
+    {
+        unset($this->saveIds[$this->saveKey($entity)]);
+    }
+
     /**
      * Record a new value for one revisionable field, coalescing with an
      * already-open automatic revision when one exists.
@@ -34,6 +75,15 @@ class RevisionRecorder
      * new row. Every other origin (manual, revert, import) always inserts a
      * fresh row — this is what makes a form-submit Save a permanent,
      * individually visible entry even seconds after an autosave.
+     *
+     * A coalescing update keeps the row's original `save_id`, exactly as it
+     * already keeps its original `created_at`: it is the same continuing
+     * editing burst, and rewriting either would make the row claim to be
+     * something it is not. Accepted consequence (see documentation/
+     * architecture.md): if a save touches three fields and one of them
+     * coalesces into a still-open row from an earlier burst, that field lands
+     * in the *earlier* save point, so the group the writer thinks of as "the
+     * save I just made" lists two fields, not three.
      */
     public function record(
         Model $entity,
@@ -57,6 +107,7 @@ class RevisionRecorder
 
         return $entity->revisions()->create([
             'field' => $field,
+            'save_id' => $this->currentSaveId($entity),
             'value' => $value,
             'size_bytes' => strlen($value),
             'project_id' => $entity->revisionProject()->id,
@@ -126,6 +177,11 @@ class RevisionRecorder
      *
      * Skipped entirely when the field's current value is null/empty — an
      * empty field has nothing worth preserving.
+     *
+     * The baseline gets a `save_id` all of its own rather than joining the
+     * save that triggered the seeding: it is the pre-edit state, not part of
+     * that save, and showing it inside that save point would attribute an
+     * untouched value to the writer who happened to edit next.
      */
     public function ensureBaseline(Model $entity, string $field): void
     {
@@ -141,6 +197,7 @@ class RevisionRecorder
 
         $entity->revisions()->create([
             'field' => $field,
+            'save_id' => (string) Str::ulid(),
             'value' => $current,
             'size_bytes' => strlen($current),
             'project_id' => $entity->revisionProject()->id,
@@ -168,6 +225,14 @@ class RevisionRecorder
     public function lastValueFor(Model $entity, string $field): ?string
     {
         return $this->lastRevisionFor($entity, $field)?->value;
+    }
+
+    /**
+     * The {@see self::$saveIds} memo key for one entity.
+     */
+    private function saveKey(Model $entity): string
+    {
+        return $entity::class.':'.$entity->getKey();
     }
 
     /**
