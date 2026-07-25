@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-25 — Silence the unsaved-changes prompt on Save
+## 2026-07-25 — Silence the unsaved-changes prompt on Save (#37)
 
 ### Fixed
 
