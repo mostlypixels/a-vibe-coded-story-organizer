@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-25 — Browse history and compare saves, not fields
+## 2026-07-25 — Browse history and compare saves, not fields (#42)
 
 ### Added
 
