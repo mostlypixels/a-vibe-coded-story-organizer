@@ -336,8 +336,8 @@ independently by design.
 
 For the full design rationale and rejected alternatives (why no draft/published split, why
 no `laravel-auditing`/`laravel-versionable`/`revisionable` package, why no server-side
-collaborative locking), see `.specs/shipped/2026-07/autosave-with-revisions/` (its
-`handoff.md` and `plan/resolution-log.md`) once this feature ships.
+collaborative locking), see `.specs/shipped/2026-07/autosave-with-revisions/` — its
+`handoff.md` and `resolution-log.md`.
 
 ## Enum convention
 
