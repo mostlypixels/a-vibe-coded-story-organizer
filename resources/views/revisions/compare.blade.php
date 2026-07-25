@@ -22,54 +22,33 @@
                 <p class="mt-1 text-sm">{{ __('This entity needs at least two saves before they can be compared.') }}</p>
             </div>
         @else
-            {{-- The pickers, as two plain <select>s in a GET form: the working
-                 no-JS baseline task 15 progressively enhances into a combobox.
-                 Left is always the older side and right the newer, and the
-                 invalid pairing is made *unreachable* (disabled options) rather
-                 than accepted and then rejected — there is no backwards diff and
-                 no error state to design. --}}
+            {{-- Left is always the older side, right the newer. The invalid
+                 pairing is made *unreachable* — x-revision-picker disables every
+                 option not strictly newer than the older selection, server-side,
+                 so it holds with JS off too. There is no backwards diff and no
+                 error state to design.
+
+                 Each picker is a native <select> that the Alpine combobox
+                 replaces once it mounts; the surrounding form is what makes the
+                 no-JS baseline work. --}}
             <form method="GET" class="bg-white shadow-sm rounded-lg px-6 py-4">
                 @if ($field !== null)
                     <input type="hidden" name="field" value="{{ $field }}">
                 @endif
 
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <x-input-label for="compare-from" :value="__('Older')" />
-                        <select
-                            id="compare-from"
-                            name="from"
-                            class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm text-sm"
-                        >
-                            @foreach ($points as $point)
-                                <option value="{{ $point->saveId }}" @selected($point->saveId === $from->saveId)>
-                                    @include('revisions.partials.save-point-option', ['point' => $point, 'number' => $points->count() - $loop->index])
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                @php
+                    // The pair the page is currently showing. Each picker writes
+                    // *both* halves when it navigates: a reader who arrived with
+                    // no explicit pair is looking at the defaulted two most
+                    // recent points, and writing only the chosen side would let
+                    // the other default straight back — the selection would
+                    // appear to do nothing.
+                    $pair = ['from' => $from->saveId, 'to' => $to->saveId];
+                @endphp
 
-                    <div>
-                        <x-input-label for="compare-to" :value="__('Newer')" />
-                        <select
-                            id="compare-to"
-                            name="to"
-                            class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm text-sm"
-                        >
-                            @foreach ($points as $point)
-                                {{-- The list is newest-first, so anything at or
-                                     after the older selection's position is not
-                                     newer than it. --}}
-                                <option
-                                    value="{{ $point->saveId }}"
-                                    @selected($point->saveId === $to->saveId)
-                                    @disabled($loop->index >= $points->search(fn ($candidate) => $candidate->saveId === $from->saveId))
-                                >
-                                    @include('revisions.partials.save-point-option', ['point' => $point, 'number' => $points->count() - $loop->index])
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-revision-picker side="from" :label="__('Older')" :points="$points" :selected="$from" :pair="$pair" />
+                    <x-revision-picker side="to" :label="__('Newer')" :points="$points" :selected="$to" :pair="$pair" :disabled-before="$from" />
                 </div>
 
                 <div class="mt-4 flex items-center justify-between gap-4">

@@ -6,6 +6,7 @@ import { registerAutosaveField } from './autosave/field';
 import { registerAutosaveBadge } from './autosave/badge';
 import { registerDraftRecoveryModal } from './autosave/draft-recovery';
 import { registerNavigationGuard } from './navigation-guard';
+import { registerRevisionPicker } from './revision-picker';
 
 window.Alpine = Alpine;
 
@@ -14,6 +15,7 @@ registerAutosaveField(Alpine);
 registerAutosaveBadge(Alpine);
 registerDraftRecoveryModal(Alpine);
 registerNavigationGuard(Alpine);
+registerRevisionPicker(Alpine);
 
 Alpine.start();
 

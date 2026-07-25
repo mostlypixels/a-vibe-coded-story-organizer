@@ -291,7 +291,9 @@ class RevisionCompareTest extends TestCase
 
         // The invalid pairing is made unreachable rather than accepted and then
         // rejected — there is no backwards diff and no error state to design.
-        $newerSelect = substr($response->getContent(), (int) strpos($response->getContent(), 'id="compare-to"'));
+        // Asserted on the *baseline* <select>, since that is what has to hold
+        // with JS off; the combobox reads the same server-decided flags.
+        $newerSelect = substr($response->getContent(), (int) strpos($response->getContent(), 'name="to"'));
 
         $this->assertTrue($this->optionIsDisabled($newerSelect, $oldest->save_id), 'an older save was still selectable as the newer side');
         $this->assertTrue($this->optionIsDisabled($newerSelect, $middle->save_id), 'the older side itself was still selectable as the newer side');
@@ -309,6 +311,35 @@ class RevisionCompareTest extends TestCase
         $this->assertNotEmpty($matches, "No <option> found for save {$saveId}.");
 
         return str_contains($matches[0], 'disabled');
+    }
+
+    public function test_the_pickers_carry_their_aria_contract_server_side(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $this->revisionFor($act, ['user_id' => $user->id, 'created_at' => now()->subDay()]);
+        $this->revisionFor($act, ['user_id' => $user->id, 'created_at' => now()]);
+
+        $response = $this->actingAs($user)->get($this->compareUrl($act));
+
+        // The combobox is an enhancement, but its roles and labelling are
+        // rendered by the server — so the DOM is already correct before Alpine
+        // touches it, and a bundle that fails to load cannot leave behind a
+        // half-built widget that lies to a screen reader.
+        $response->assertOk();
+        $response->assertSee('role="combobox"', escape: false);
+        $response->assertSee('role="listbox"', escape: false);
+        $response->assertSee('role="option"', escape: false);
+        $response->assertSee('aria-controls="from-listbox"', escape: false);
+        $response->assertSee('aria-controls="to-listbox"', escape: false);
+        $response->assertSee('aria-labelledby="from-label"', escape: false);
+        $response->assertSee('aria-labelledby="to-label"', escape: false);
+
+        // …and the no-JS baseline is still a real <select> with a real name.
+        $response->assertSee('<select', escape: false);
+        $response->assertSee('name="from"', escape: false);
+        $response->assertSee('name="to"', escape: false);
     }
 
     public function test_the_legacy_field_scoped_url_redirects_to_the_equivalent_save_points(): void
