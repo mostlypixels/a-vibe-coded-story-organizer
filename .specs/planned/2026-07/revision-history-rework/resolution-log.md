@@ -72,6 +72,18 @@ before extending the feature.
   changed when there is one, so this only surfaces when formatting is genuinely all that
   moved. Task 12's `<x-diff>` is where an affordance for it would go.
 
+* **`SaveEntry` carries no `compareWithPreviousUrl`; `SavePoint` carries a
+  `previousSaveId` instead.** The sketch in `expanded/architecture.md` put a URL on the
+  entry. Both the group's "compare with previous" action and an entry's "and N more
+  changes" link resolve to the same `from`/`to` pair, so one id on the group covers both —
+  and route names belong in the view rather than in a service, particularly since the
+  route this would have named does not exist until task 14.
+* **`SavePoint` gained a `lastRevisionId` the sketch did not have.** Task 11's snapshot
+  bound is `(created_at, id)`, so a save point has to name its own id tie-break. It must
+  come from the whole group rather than from `entries`, which a field filter may have
+  narrowed — otherwise a filtered history page would resolve snapshots differently from an
+  unfiltered one.
+
 ## Issues → resolutions
 
 _None yet._
