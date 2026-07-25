@@ -97,6 +97,17 @@ before extending the feature.
   that way. The component is still the only view that applies those classes, so "one place
   owns diff styling" holds.
 
+* **Tasks 13 and 14 landed as one commit.** They are one route contract: task 13's rows
+  link to compare and task 14 changes what compare accepts, so splitting them would have
+  left a commit where the history page's own links 404 — and task 13's own tests require
+  those links to *work*. Task 14 could not simply go first either, because its "Back to
+  history" link needs the entity-level history route.
+* **`SavePoint` numbering and the option label live in `x-revision-picker`, not in a
+  shared partial.** Task 14 built a `save-point-option` partial for its two `<select>`s;
+  task 15 folded it into the picker component, which serialises the option list once and
+  feeds both its own halves — the baseline `<select>` and the combobox. One source, so the
+  two can never label the same save differently.
+
 ## Known gaps
 
 * **The source diff has two accessibility channels, not three.** `expanded/ui.md` requires

@@ -17,6 +17,33 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-25 — Browse history and compare saves, not fields
+
+### Added
+
+- **The history page now lists saves, not field revisions.** One Save that changed three
+  fields is one entry listing all three, with a one-line summary of what changed in each.
+  Filter by field, search labels, or show only the saves you made deliberately — all four
+  controls (including the page) live in the URL, so a filtered view can be bookmarked and
+  shared.
+- **Compare now answers "what is different about this scene between these two moments"**,
+  covering every field rather than one at a time. A field that neither save touched
+  directly still shows up when something changed it in between, because the page compares
+  two states of the entity, not two lists of edits. Fields that are the same at both
+  moments collapse into a single line.
+- Each side of the comparison has a save picker with its own filters — manual saves only,
+  and a date range — which are deliberately independent, so a suspect save can be compared
+  against the autosaves around it. It works as a plain dropdown with keyboard alone, and
+  with JavaScript off.
+
+### Changed
+
+- Diffs are styled in one place, so a rich text field and a Markdown field read as the
+  same feature. Every change is marked three ways at once — colour, a `+`/`−` sign, and
+  text for screen readers — because colour on its own is not information.
+- The old per-field history and compare URLs redirect to the new pages with that field
+  pre-filtered. Existing links and bookmarks keep working.
+
 ## 2026-07-25 — Read revision history as save points (#41)
 
 ### Added
