@@ -1199,6 +1199,41 @@ class ExportTest extends TestCase
         $zip->close();
     }
 
+    public function test_exported_rows_carry_their_save_id_but_not_the_derived_summary_columns(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $revision = Revision::factory()->create([
+            'revisionable_type' => Scene::class,
+            'revisionable_id' => $scene->id,
+            'project_id' => $project->id,
+            'field' => 'contents',
+            'save_id' => '01J0000000000000000000000A',
+            'summary_html' => '<ins>added</ins>',
+            'change_count' => 3,
+        ]);
+
+        $zip = $this->exportZipWithRevisions($user, $project);
+
+        $sceneDir = $this->sceneDir($project, $scene);
+        $history = json_decode($zip->getFromName("{$sceneDir}/revisions/contents.json"), true);
+
+        // The grouping travels with the archive — import remaps it to a fresh
+        // local id rather than inserting this one, which keeps "these rows were
+        // one save" true without borrowing another install's identity.
+        $this->assertSame($revision->save_id, $history[0]['save_id']);
+
+        // summary_html/change_count are derived from the values already in this
+        // file. Derived data has no place in an interchange format.
+        $this->assertArrayNotHasKey('summary_html', $history[0]);
+        $this->assertArrayNotHasKey('change_count', $history[0]);
+
+        $zip->close();
+    }
+
     public function test_a_field_with_zero_revisions_writes_no_revisions_file_for_it(): void
     {
         $user = User::factory()->create();

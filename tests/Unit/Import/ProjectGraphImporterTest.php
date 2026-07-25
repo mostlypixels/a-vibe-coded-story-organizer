@@ -484,6 +484,86 @@ class ProjectGraphImporterTest extends TestCase
         $this->assertSame(8, Revision::query()->where('origin', RevisionOrigin::Import)->count());
     }
 
+    public function test_import_preserves_save_grouping_while_remapping_it_to_fresh_local_ids(): void
+    {
+        $this->writeManifest(includesRevisions: true);
+
+        $sceneRevisionsDir = 'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions';
+
+        // One source save touched two fields (SOURCE-SAVE-A), a later one
+        // touched a single field (SOURCE-SAVE-B).
+        $this->writeFixtureFile("{$sceneRevisionsDir}/contents.json", json_encode([
+            ['id' => 1, 'save_id' => 'SOURCE-SAVE-A', 'value' => 'Contents at save A.', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
+            ['id' => 2, 'save_id' => 'SOURCE-SAVE-B', 'value' => 'Contents at save B.', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-02-01T00:00:00+00:00'],
+        ]));
+        $this->writeFixtureFile("{$sceneRevisionsDir}/description.json", json_encode([
+            ['id' => 3, 'save_id' => 'SOURCE-SAVE-A', 'value' => '<p>Description at save A.</p>', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
+        ]));
+
+        $this->runFullImport(User::factory()->create());
+
+        $scene = Scene::query()->where('name', 'Scene B')->firstOrFail();
+        $saveIds = $scene->revisions()->get()->pluck('save_id', 'value');
+
+        // The two fields written by one source save are still one save point…
+        $this->assertSame($saveIds['Contents at save A.'], $saveIds['<p>Description at save A.</p>']);
+        // …a different one from the later save…
+        $this->assertNotSame($saveIds['Contents at save A.'], $saveIds['Contents at save B.']);
+        // …and it is a LOCAL id: a foreign save_id names a group on another
+        // install and could collide with one of ours, so grouping is preserved
+        // as a shape, never as an identity.
+        $this->assertNotContains('SOURCE-SAVE-A', $saveIds->all());
+        $this->assertNotContains('SOURCE-SAVE-B', $saveIds->all());
+        $this->assertSame(0, Revision::query()->whereNull('save_id')->count());
+    }
+
+    public function test_a_sidecar_predating_save_grouping_imports_one_fresh_save_point_per_row(): void
+    {
+        $this->writeManifest(includesRevisions: true);
+
+        // No save_id key at all — an archive exported before this feature.
+        $this->writeFixtureFile(
+            'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions/contents.json',
+            json_encode([
+                ['id' => 1, 'value' => 'Older draft.', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
+                ['id' => 2, 'value' => 'Newer draft.', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-02-01T00:00:00+00:00'],
+            ]),
+        );
+
+        $this->runFullImport(User::factory()->create());
+
+        $saveIds = Revision::query()->pluck('save_id');
+
+        $this->assertCount(2, $saveIds->filter());
+        $this->assertCount(2, $saveIds->unique());
+    }
+
+    public function test_two_entities_never_share_a_save_point_even_if_the_archive_claims_they_do(): void
+    {
+        $this->writeManifest(includesRevisions: true);
+
+        // An archive is untrusted input. A save point is per (request, entity)
+        // here, so a foreign archive claiming one save across two entities must
+        // not be replayed verbatim — otherwise "Undo this save" could reach
+        // into an entity the writer never asked about.
+        $this->writeFixtureFile('data/acts/100-act-one/revisions/description.json', json_encode([
+            ['id' => 1, 'save_id' => 'SOURCE-SAVE-A', 'value' => '<p>Act history.</p>', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
+        ]));
+        $this->writeFixtureFile('data/acts/100-act-one/chapters/200-chapter-one/revisions/description.json', json_encode([
+            ['id' => 2, 'save_id' => 'SOURCE-SAVE-A', 'value' => '<p>Chapter history.</p>', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
+        ]));
+
+        [$project] = $this->runFullImport(User::factory()->create());
+
+        $act = $project->acts()->firstOrFail();
+        $chapter = $act->chapters()->firstOrFail();
+
+        $this->assertNotSame(
+            $act->revisions()->sole()->save_id,
+            $chapter->revisions()->sole()->save_id,
+        );
+    }
+
     public function test_an_imported_revision_is_excluded_from_prunable_even_when_very_old(): void
     {
         $this->writeManifest(includesRevisions: true);
