@@ -28,7 +28,7 @@ class RevisionRecorderTest extends TestCase
     {
         parent::setUp();
 
-        $this->recorder = new RevisionRecorder;
+        $this->recorder = app(RevisionRecorder::class);
     }
 
     // ---------------------------------------------------------------------

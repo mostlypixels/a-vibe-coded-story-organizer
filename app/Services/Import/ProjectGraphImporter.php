@@ -17,7 +17,11 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\CodexMediaService;
 use App\Services\CoverImageService;
+use App\Services\RevisionRecorder;
+use App\Services\RevisionSummarizer;
+use App\Services\StaticSiteExporter;
 use App\Support\AutosavableFields;
+use App\Support\RevisionSummary;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -85,6 +89,7 @@ class ProjectGraphImporter
         private ContentSanitizer $contentSanitizer,
         private CodexMediaService $codexMediaService,
         private CoverImageService $coverImageService,
+        private RevisionSummarizer $summarizer,
     ) {}
 
     /**
@@ -847,6 +852,17 @@ class ProjectGraphImporter
      * readMarkdownField()) — a revision's stored value is just as much
      * untrusted archive content as the live column, and it is later rendered
      * on the history/compare pages (task 10).
+     *
+     * > [!IMPORTANT]
+     * > `summary_html` / `change_count` are **recomputed**, never read from the
+     * > archive: they are derived from the values in the sidecar, and the
+     * > exporter deliberately leaves derived data out of an interchange format.
+     * > Recomputing them here depends on **replay order** — the sidecar is
+     * > written oldest-first ({@see StaticSiteExporter::addRevisions()}),
+     * > so each row's predecessor is simply the row before it in this loop. Do
+     * > not reorder, filter or parallelise this replay without carrying the
+     * > predecessor along some other way, or every summary after the first will
+     * > describe the wrong pair of values.
      */
     private function importRevisions(string $dataPath, string $directory, string $slug, Model $entity, int $userId, bool $includeRevisions): void
     {
@@ -860,6 +876,12 @@ class ProjectGraphImporter
         $saveIds = [];
 
         foreach ($fields as $field => $kind) {
+            // The predecessor of the row about to be written, carried along the
+            // replay rather than queried back: the sidecar is oldest-first, so
+            // it is always the row this loop wrote last. Null for the first row,
+            // which has nothing before it and so gets no summary.
+            $previousValue = null;
+
             foreach ($this->readJsonIfPresent($dataPath, "{$directory}/revisions/{$field}.json") as $revisionData) {
                 $value = (string) ($revisionData['value'] ?? '');
 
@@ -870,6 +892,7 @@ class ProjectGraphImporter
                 };
 
                 $sourceSaveId = $revisionData['save_id'] ?? null;
+                $summary = $this->summarizeImported($kind, $previousValue, $value);
 
                 $entity->revisions()->create([
                     'field' => $field,
@@ -878,13 +901,39 @@ class ProjectGraphImporter
                         : (string) Str::ulid(),
                     'value' => $value,
                     'size_bytes' => strlen($value),
+                    'summary_html' => $summary->summaryHtml,
+                    'change_count' => $summary->changeCount,
                     'project_id' => $entity->revisionProject()->id,
                     'user_id' => $userId,
                     'label' => $revisionData['label'] ?? null,
                     'origin' => RevisionOrigin::Import,
                     'created_at' => $revisionData['created_at'],
                 ]);
+
+                $previousValue = $value;
             }
+        }
+    }
+
+    /**
+     * One imported row's summary, or an empty one if the diff layer trips over
+     * the archive's content.
+     *
+     * Guarded for the same reason {@see RevisionRecorder} guards
+     * its own call, only more so: this input is untrusted, and an import that
+     * fell over on a cosmetic list-page detail would lose the writer a whole
+     * project's history.
+     */
+    private function summarizeImported(FieldKind $kind, ?string $previousValue, string $value): RevisionSummary
+    {
+        try {
+            return $this->summarizer->summarize($kind, $previousValue, $value);
+        } catch (Throwable $exception) {
+            Log::warning('Could not summarize an imported revision; importing it without a summary.', [
+                'exception' => $exception,
+            ]);
+
+            return new RevisionSummary(null, 0);
         }
     }
 

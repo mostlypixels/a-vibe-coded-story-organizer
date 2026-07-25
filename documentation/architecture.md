@@ -315,6 +315,29 @@ then renders the result through `DiffHtmlRenderer`.
 > the part that gets cut. Cutting happens on words, before rendering — trimming a
 > marked-up string could leave an `<ins>` open, trimming tokens cannot.
 
+`RevisionRecorder` is the only caller on the live write path. It resolves the row's
+**predecessor** — the newest revision for the same `(entity, field)` strictly older than
+the row being written — and stores the summary alongside the value, on an insert *and* on
+a coalescing update (a coalesced row's value is being replaced, so its summary is stale;
+and the row is never its own predecessor). Baselines store `null` / `0`: nothing came
+before them, so the list renders them as *Initial value*. `ProjectGraphImporter` does the
+same during a replay, computing each row's summary from the row before it in the sidecar —
+which is oldest-first, so **do not reorder that loop**. Summaries are never read from an
+archive: they are derived from values the archive already contains.
+
+> [!WARNING]
+> **A failed summary must never cost a save.** Both callers wrap the summarizer: if the
+> diff layer throws, the row is written with a `null` summary and the failure is logged.
+> A revision with no summary is a cosmetic problem; a lost save is not.
+
+> [!WARNING]
+> **Stale summaries after a prune.** `Revision::prunable()` deletes old `automatic` rows.
+> The row that *followed* a deleted one keeps a summary computed against a predecessor
+> that no longer exists, so it under-reports — it describes a smaller change than the one
+> now visible between the surviving neighbours. This is accepted: recomputing during a
+> mass prune would turn a cheap `DELETE` into an O(n) diff job. The compare screen always
+> diffs live, so the detail view is never wrong; only the list excerpt can be.
+
 > [!WARNING]
 > Never run diff output through `HtmlSanitizer`. The author allow-list
 > (`RichTextFields::ALLOWED_TAGS`) deliberately has no `ins`/`del` in it — so that the

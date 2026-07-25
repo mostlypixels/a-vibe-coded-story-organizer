@@ -6,8 +6,12 @@ use App\Enums\RevisionOrigin;
 use App\Models\Revision;
 use App\Models\User;
 use App\Support\AutosavableFields;
+use App\Support\RevisionSummary;
+use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * The one place the application writes to the `revisions` table.
@@ -43,6 +47,8 @@ class RevisionRecorder
      * @var array<string, string>
      */
     private array $saveIds = [];
+
+    public function __construct(private readonly RevisionSummarizer $summarizer) {}
 
     /**
      * The save point every row written for `$entity` during this request
@@ -100,16 +106,34 @@ class RevisionRecorder
             : null;
 
         if ($open !== null) {
-            $open->update(['value' => $value, 'size_bytes' => strlen($value)]);
+            // The row's value is being replaced, so its stored summary is now
+            // describing a diff that no longer exists. Recomputed against the
+            // row *before* this one — a coalescing row is never its own
+            // predecessor, however many times the burst overwrites it.
+            $summary = $this->summarize($entity, $field, $value, $this->predecessorValue($entity, $field, $open));
+
+            $open->update([
+                'value' => $value,
+                'size_bytes' => strlen($value),
+                'summary_html' => $summary->summaryHtml,
+                'change_count' => $summary->changeCount,
+            ]);
 
             return $open;
         }
+
+        // Resolved after ensureBaseline() above, so the first real edit to a
+        // field is summarised against the baseline it just seeded rather than
+        // against nothing.
+        $summary = $this->summarize($entity, $field, $value, $this->predecessorValue($entity, $field));
 
         return $entity->revisions()->create([
             'field' => $field,
             'save_id' => $this->currentSaveId($entity),
             'value' => $value,
             'size_bytes' => strlen($value),
+            'summary_html' => $summary->summaryHtml,
+            'change_count' => $summary->changeCount,
             'project_id' => $entity->revisionProject()->id,
             'user_id' => $user->id,
             'label' => $label,
@@ -200,6 +224,11 @@ class RevisionRecorder
             'save_id' => (string) Str::ulid(),
             'value' => $current,
             'size_bytes' => strlen($current),
+            // A baseline has nothing before it, so there is no change to
+            // summarise. The history list renders these as "Initial value"
+            // rather than as an empty diff.
+            'summary_html' => null,
+            'change_count' => 0,
             'project_id' => $entity->revisionProject()->id,
             'user_id' => $entity->revisionProject()->user_id,
             'label' => null,
@@ -225,6 +254,63 @@ class RevisionRecorder
     public function lastValueFor(Model $entity, string $field): ?string
     {
         return $this->lastRevisionFor($entity, $field)?->value;
+    }
+
+    /**
+     * Summarise a value against what it replaced, for the row's stored
+     * `summary_html` / `change_count`.
+     *
+     * > [!IMPORTANT]
+     * > Wrapped, and deliberately so: a revision without a summary is a
+     * > cosmetic problem, a lost save is not. Whatever the diff layer trips
+     * > over — a malformed stored value, an unsupported construct — the
+     * > writer's text still reaches the database, and the row simply has
+     * > nothing to say about itself on the history list.
+     */
+    private function summarize(Model $entity, string $field, string $value, ?string $previousValue): RevisionSummary
+    {
+        try {
+            $kind = AutosavableFields::kindOf(AutosavableFields::slugFor($entity::class), $field);
+
+            return $this->summarizer->summarize($kind, $previousValue, $value);
+        } catch (Throwable $exception) {
+            Log::warning('Could not summarize a revision; storing it without a summary.', [
+                'entity' => $entity::class,
+                'entity_id' => $entity->getKey(),
+                'field' => $field,
+                'exception' => $exception,
+            ]);
+
+            return new RevisionSummary(null, 0);
+        }
+    }
+
+    /**
+     * The value this (entity, field) held before the row being written — the
+     * newest revision strictly older than it.
+     *
+     * `$before` is passed only on a coalescing update, where the row being
+     * rewritten already exists and must be stepped over. On an insert the row
+     * does not exist yet, so the newest revision *is* the predecessor.
+     *
+     * Reads one column of one row: the write path already touches this
+     * neighbourhood, and it buys a history list that never diffs anything.
+     */
+    private function predecessorValue(Model $entity, string $field, ?Revision $before = null): ?string
+    {
+        $revisions = $entity->revisions()->where('field', $field);
+
+        if ($before !== null) {
+            // Ordering is by (created_at, id), so "older than" has to be too —
+            // a burst can write several rows inside the same second.
+            $revisions->where(fn (Builder $query) => $query
+                ->where('created_at', '<', $before->created_at)
+                ->orWhere(fn (Builder $tie) => $tie
+                    ->where('created_at', $before->created_at)
+                    ->where('id', '<', $before->id)));
+        }
+
+        return $revisions->latest('created_at')->latest('id')->value('value');
     }
 
     /**

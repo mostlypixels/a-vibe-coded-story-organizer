@@ -404,6 +404,42 @@ class ProjectGraphImporterTest extends TestCase
         $this->assertSame('Some *prose* here, revised.', $history[1]->value);
     }
 
+    public function test_imported_rows_get_summaries_recomputed_in_replay_order(): void
+    {
+        $this->writeManifest(includesRevisions: true);
+
+        // summary_html/change_count are deliberately absent from the archive —
+        // they are derived from the values in it, and derived data does not
+        // belong in an interchange format. Each row's predecessor is the row
+        // before it in this file, which is why the replay order matters.
+        $sceneRevisionsDir = 'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions';
+        $this->writeFixtureFile("{$sceneRevisionsDir}/contents.json", json_encode([
+            ['id' => 1, 'value' => 'She waited.', 'origin' => 'baseline', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
+            ['id' => 2, 'value' => 'She waited quietly.', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-02-01T00:00:00+00:00'],
+            ['id' => 3, 'value' => 'She waited quietly by the water.', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-03-01T00:00:00+00:00'],
+        ]));
+
+        $this->runFullImport(User::factory()->create());
+
+        $scene = Scene::query()->where('name', 'Scene B')->firstOrFail();
+        $history = $scene->revisions()->where('field', 'contents')->get()->sortBy('created_at')->values();
+
+        // The first row has nothing before it to be compared against.
+        $this->assertNull($history[0]->summary_html);
+        $this->assertSame(0, $history[0]->change_count);
+
+        // The others describe their own predecessor, not the whole file and not
+        // each other's pair.
+        $this->assertSame(1, $history[1]->change_count);
+        $this->assertStringContainsString('quietly.', $history[1]->summary_html);
+        // Compared against the row before it, not the one after: the words the
+        // *third* row introduced have no business in the second row's summary.
+        $this->assertStringNotContainsString('water', $history[1]->summary_html);
+
+        $this->assertSame(1, $history[2]->change_count);
+        $this->assertStringContainsString('by the water.', $history[2]->summary_html);
+    }
+
     public function test_includes_revisions_false_imports_zero_revisions_even_when_a_sidecar_file_exists(): void
     {
         $this->writeManifest(includesRevisions: false);
