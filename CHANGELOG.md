@@ -17,6 +17,8 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-25 — Show what changed in rich text fields
+
 ### Added
 
 - Comparing two revisions of a **rich text field** (act/chapter/scene descriptions, the
