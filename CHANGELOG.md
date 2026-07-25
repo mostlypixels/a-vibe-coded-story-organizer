@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-25 — Revert conflicts come back to the page you were reading
+## 2026-07-25 — Revert conflicts come back to the page you were reading (#43)
 
 ### Changed
 
