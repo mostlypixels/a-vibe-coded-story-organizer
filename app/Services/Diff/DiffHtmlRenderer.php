@@ -64,6 +64,23 @@ class DiffHtmlRenderer
     /** …and removals. */
     private const REMOVE_CLASS = 'diff-del';
 
+    /** …and the note naming a formatting-only change. */
+    private const FORMATTING_NOTE_CLASS = 'diff-note';
+
+    /**
+     * Inline marks in the writer's vocabulary, for {@see self::formattingNote()}.
+     * Links are handled separately — their mark carries the target.
+     *
+     * @var array<string, string>
+     */
+    private const MARK_NAMES = [
+        'strong' => 'bold',
+        'em' => 'italic',
+        'u' => 'underline',
+        's' => 'strikethrough',
+        'code' => 'code',
+    ];
+
     /**
      * Render a diff.
      *
@@ -196,9 +213,63 @@ class DiffHtmlRenderer
         }
 
         $tag = in_array($block->tag, self::EMITTED_TAGS, true) ? $block->tag : 'p';
-        $content = $this->renderContent($diffBlock, inline: false);
+        $content = $this->renderContent($diffBlock, inline: false).$this->formattingNote($diffBlock);
 
         return "<{$tag}".$this->attributes($this->blockAttributes($diffBlock)).">{$content}</{$tag}>";
+    }
+
+    /**
+     * The note that names a formatting-only change, e.g. "formatting changed:
+     * bold added".
+     *
+     * Emitted here rather than assembled by the `x-diff` component for the same
+     * reason the `sr-only` marker labels are: the component receives a *string*
+     * of HTML and never parses it, so anything that has to sit inside a
+     * particular block has to be produced where the block is. The component
+     * styles it into a badge; this decides what it says.
+     *
+     * It earns its place because the visible difference can be very subtle —
+     * one bolded word in a paragraph — and a diff that marks nothing looks
+     * exactly like a diff that found nothing.
+     */
+    private function formattingNote(DiffBlock $diffBlock): string
+    {
+        if ($diffBlock->change !== DiffChange::FormattingChanged) {
+            return '';
+        }
+
+        $changes = [];
+
+        foreach ($diffBlock->marksAdded as $mark) {
+            $changes[] = __(':mark added', ['mark' => $this->markName($mark)]);
+        }
+
+        foreach ($diffBlock->marksRemoved as $mark) {
+            $changes[] = __(':mark removed', ['mark' => $this->markName($mark)]);
+        }
+
+        if ($changes === []) {
+            return '';
+        }
+
+        return '<span class="'.self::FORMATTING_NOTE_CLASS.'">'
+            .e(__('formatting changed: :changes', ['changes' => implode(', ', $changes)]))
+            .'</span>';
+    }
+
+    /**
+     * A mark's name in the writer's words. She applied "bold", not `<strong>`.
+     *
+     * A link mark carries its target (`a:https://…`), which is why this matches
+     * on the prefix rather than looking the whole thing up.
+     */
+    private function markName(string $mark): string
+    {
+        if (str_starts_with($mark, 'a:')) {
+            return __('link');
+        }
+
+        return self::MARK_NAMES[$mark] ?? $mark;
     }
 
     /**

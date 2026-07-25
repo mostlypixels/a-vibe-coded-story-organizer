@@ -84,6 +84,28 @@ before extending the feature.
   narrowed — otherwise a filtered history page would resolve snapshots differently from an
   unfiltered one.
 
+* **`DiffHtmlRenderer` writes the formatting-change note; `<x-diff>` only styles it.**
+  Task 12 asked the component to render an `x-badge` naming what changed. It cannot: the
+  component receives a *string* of HTML and never parses it, so anything that has to sit
+  inside a particular block must be produced where the block is — exactly as the `sr-only`
+  marker labels already are. The renderer gained a `MARK_NAMES` map and emits
+  `<span class="diff-note">formatting changed: bold added</span>`; the component styles it
+  to match `x-badge`'s `info` variant.
+* **`<x-diff>`'s rules are plain CSS in `app.css`, not Tailwind utilities in the
+  component.** Pseudo-element gutter glyphs and descendant selectors over markup the
+  template never sees read far better as CSS, which is why `.tiptap` is already written
+  that way. The component is still the only view that applies those classes, so "one place
+  owns diff styling" holds.
+
+## Known gaps
+
+* **The source diff has two accessibility channels, not three.** `expanded/ui.md` requires
+  tint + glyph + a visually-hidden label on every marked passage. `jfcherng` writes its own
+  `<ins>`/`<del>` and offers no hook for a label, so the Markdown/plain side gets the tint
+  and the glyph plus the semantic elements. Closing it means the source path emitting its
+  own markers rather than delegating to the library — a task-7-sized change, not a styling
+  one. Documented in `documentation/architecture.md`.
+
 ## Issues → resolutions
 
 _None yet._

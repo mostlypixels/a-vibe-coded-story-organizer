@@ -348,6 +348,32 @@ archive: they are derived from values the archive already contains.
 > Equally, never route a Markdown or Plain field through the tokenizer: it would eat the
 > `**`, `#` and `>` the writer actually changed.
 
+**All diff styling lives in `<x-diff>`** (`resources/views/components/diff.blade.php`)
+and the `.revision-diff` rules in `resources/css/app.css`. Both diff kinds render through
+it, so a rich field's visual diff and a Markdown field's side-by-side table read as one
+feature — and none of that styling can bleed into `x-rich-text`, which renders the
+author's own content and must never look like a diff. It is written as plain CSS rather
+than Tailwind utilities for the same reason the `.tiptap` rules are: it styles markup the
+app generates but no template ever sees.
+
+Every change is signalled three ways at once — background tint, a `+` / `−` gutter glyph,
+and a visually-hidden "inserted"/"removed" label. Colour alone is not information, and
+`<ins>`/`<del>` announcement is inconsistent across screen readers, so each channel covers
+for the others.
+
+> [!WARNING]
+> **Never use `text-decoration` as a change marker.** The writer can apply `<s>` and `<u>`
+> herself — both are in `RichTextFields::ALLOWED_TAGS` — so a struck-out passage has to
+> keep meaning "she struck this out". The marker rules explicitly clear the underline and
+> strikethrough browsers put on `<ins>`/`<del>` by default.
+
+> [!NOTE]
+> The **source diff carries two channels, not three**: `jfcherng` writes that markup
+> itself and offers no hook for a visually-hidden label, so it gets the tint and the glyph
+> plus the semantic `<ins>`/`<del>` elements. Closing the gap means the source path
+> producing its own markers instead of delegating to the library — a bigger change than
+> the styling layer should make on its own.
+
 **Save points — storage is per field, everything above it is per entity.** The
 `revisions` table keeps one immutable row per (field, moment), but a save that touched
 three fields is *one* thing the writer remembers doing, so it is one thing to look at,

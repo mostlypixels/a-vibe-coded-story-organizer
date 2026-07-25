@@ -192,6 +192,9 @@ class RevisionController extends Controller
             'entity' => $entity,
             'id' => $id,
             'field' => $field,
+            // The view hands this to <x-diff>, which lays a source diff out as
+            // two columns and a visual one as blocks.
+            'kind' => $kind,
             'entityName' => $entityName,
             'from' => $from,
             'to' => $to,

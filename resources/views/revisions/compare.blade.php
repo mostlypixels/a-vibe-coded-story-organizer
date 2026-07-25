@@ -44,36 +44,10 @@
                     </div>
                 </div>
 
-                {{-- Whichever strategy RevisionDiffer picked for this field, the
-                     producer escaped the text itself, so the result is safe to
-                     render directly — see App\Services\Diff\DiffHtmlRenderer for
-                     why that has to be true by construction on the rich side.
-
-                     Two output shapes share these styles for now (task 14 replaces
-                     this page with the x-diff component):
-
-                     - Markdown/plain fields get jfcherng's two-column <table> (a
-                       <td class="old">/<td class="new"> pair per row, no header or
-                       line numbers per RevisionDiffer's options). Styled to read as
-                       two prose panels rather than a spreadsheet: no per-cell
-                       borders, just a divider between the columns, and empty
-                       counterpart cells (`td.none`, one side of an add/remove) get
-                       a faint grey so they read as "nothing here".
-                     - Rich fields get the visual differ's own blocks — the field as
-                       the writer sees it, with the changes marked in place.
-
-                     Either way only the actually-changed words are tinted: red
-                     <del> for what left, green <ins> for what arrived. --}}
-                <div class="overflow-x-auto text-sm leading-relaxed
-                    [&>*:not(table)]:px-6 [&>*:not(table)]:py-1 [&>*:not(table):first-child]:pt-4 [&>*:not(table):last-child]:pb-4
-                    [&_table]:w-full [&_table]:table-fixed [&_table]:border-collapse
-                    [&_td]:w-1/2 [&_td]:align-top [&_td]:px-4 [&_td]:py-2 [&_td]:whitespace-pre-wrap [&_td]:break-words
-                    [&_td.old]:border-e [&_td.old]:border-gray-200
-                    [&_td.none]:bg-gray-50/60
-                    [&_del]:bg-red-100 [&_del]:text-red-700 [&_del]:no-underline
-                    [&_ins]:bg-green-100 [&_ins]:text-green-700 [&_ins]:no-underline">
-                    {!! $result->html !!}
-                </div>
+                {{-- All diff styling lives in <x-diff>; this page declares none of
+                     its own, so a rich field's visual diff and a Markdown field's
+                     side-by-side table read as one feature. --}}
+                <x-diff :html="$result->html" :kind="$kind" class="px-4 py-3" />
             </div>
         @endif
     </div>
