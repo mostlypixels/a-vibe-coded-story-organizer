@@ -30,11 +30,19 @@ that must not drift:
   model. `resolveField($slug, $field)` is the single home of the "unknown field 404s"
   contract; both `FieldAutosaveController` and `RevisionController` go through it.
 - **Validation.** `validationRule($slug, $field)` is the only place a cap or content rule is
-  expressed. The autosave endpoint and the Form Requests both call it.
+  expressed. The autosave endpoint and the Form Requests — Store *and* Update — both call it.
 
 Coalescing windows (`config('revisions.windows')`) and per-field caps
 (`config('revisions.caps')`) live in `config/revisions.php`, keyed `"Model.field"` with a
 `"default"` fallback. Nothing hard-codes either elsewhere.
+
+> [!WARNING]
+> A `max:` literal in a Form Request for an autosaved field is a bug, not a style choice.
+> The two paths drifted for twelve of the fourteen fields until `FormRequestCapAgreementTest`
+> started walking the registry: autosave accepted 40,000 characters of `dedication`, then Save
+> refused the text the server had already stored. The reverse also shipped — `Scene.contents`
+> had no form cap at all, so a paste over 1,000,000 characters was saved once and rejected by
+> every autosave after it.
 
 ## Writing rows — `App\Services\RevisionRecorder`
 

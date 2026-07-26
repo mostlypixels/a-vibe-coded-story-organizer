@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\SanitizeHtml;
+use App\Support\AutosavableFields;
 use App\Support\CodexMediaRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -22,7 +22,7 @@ class UpdateCodexEntryRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', new SanitizeHtml],
+            'description' => AutosavableFields::validationRule('codex', 'description'),
             'aliases' => ['nullable', 'array'],
             'aliases.*' => ['nullable', 'string', 'max:255'],
             'tags' => ['nullable', 'array'],

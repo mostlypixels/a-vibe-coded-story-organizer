@@ -44,11 +44,27 @@ return [
     | Requests, so the two can never drift (handoff.md §9.8). Keyed
     | "Model.field" with a "default" fallback.
     |
+    | This array is the *only* place a cap is written down: every Form Request
+    | reaches it through AutosavableFields::validationRule(), and
+    | FormRequestCapAgreementTest fails if one grows its own `max:` literal.
+    | Editing a number here moves both the Save path and the autosave path at
+    | once — which is the point, because a writer who autosaves 40,000
+    | characters and is then refused by Save has lost nothing but their trust.
+    |
     */
 
     'caps' => [
         'Scene.contents' => 1_000_000,
         'Project.rights' => 1_000,
+
+        // Front/back matter: a dedication or preface is a page or two, not a
+        // chapter. 20,000 characters (~8 pages) was the Save form's long-standing
+        // limit and stays the limit — autosave was the outlier at 100,000.
+        'Project.dedication' => 20_000,
+        'Project.acknowledgements' => 20_000,
+        'Project.preface' => 20_000,
+        'Project.postface' => 20_000,
+
         'default' => 100_000, // descriptions
     ],
 
