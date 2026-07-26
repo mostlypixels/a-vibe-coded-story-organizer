@@ -17,6 +17,32 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Make Save and autosave agree on how long a field may be (#50)
+
+### Fixed
+
+- Autosave and the Save button validated the same field two different ways for twelve of the
+  fourteen autosaved fields. A writer could autosave 40,000 characters of `dedication` and then
+  be told by Save that it "must not be greater than 20000" — about text the server had already
+  stored. `Scene.contents` drifted the other way: no cap at all on the Save path against
+  autosave's 1,000,000, so an over-long paste was accepted once and refused by every autosave
+  after it. Every Form Request now takes its rule from
+  `AutosavableFields::validationRule()`, the same source the autosave endpoint uses.
+- The Save path now caps fields it previously left unbounded: `description` on all six models
+  (100,000) and `Scene.contents` / `Scene.notes` (1,000,000 / 100,000).
+
+### Changed
+
+- Front and back matter (`dedication`, `acknowledgements`, `preface`, `postface`) is capped at
+  20,000 characters on both paths — the Save form's long-standing limit wins, and autosave
+  tightens to match. The caps now live in `config/revisions.php` beside the others.
+
+### Added
+
+- `FormRequestCapAgreementTest` — walks the registry and fails if any Form Request validates an
+  autosaved field differently from `validationRule()`, so the next field added cannot drift the
+  same way. Covers the Store requests too, which had the same gap.
+
 ## 2026-07-26 — Extract the duplication the week's PRs left behind (#49)
 
 ### Added

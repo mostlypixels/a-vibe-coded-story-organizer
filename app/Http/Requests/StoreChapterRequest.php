@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\SanitizeHtml;
+use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,7 +25,7 @@ class StoreChapterRequest extends FormRequest
                 Rule::exists('acts', 'id')->where('project_id', $this->route('project')->id),
             ],
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', new SanitizeHtml],
+            'description' => AutosavableFields::validationRule('chapter', 'description'),
         ];
     }
 }

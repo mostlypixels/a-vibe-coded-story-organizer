@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\SanitizeHtml;
+use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreActRequest extends FormRequest
@@ -19,7 +19,7 @@ class StoreActRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', new SanitizeHtml],
+            'description' => AutosavableFields::validationRule('act', 'description'),
         ];
     }
 }

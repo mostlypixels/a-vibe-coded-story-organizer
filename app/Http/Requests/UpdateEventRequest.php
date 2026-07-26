@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\SanitizeHtml;
 use App\Rules\WithinEventWindow;
+use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +21,7 @@ class UpdateEventRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', new SanitizeHtml],
+            'description' => AutosavableFields::validationRule('event', 'description'),
             // Start/End bookends are editable, but every event stays inside the [Start, End]
             // window and the bookends stay first/last — WithinEventWindow enforces both, and
             // branches on the bookend being edited so Start/End bound only themselves.
