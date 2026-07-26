@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — Strip and fold each searched field once
+## 2026-07-26 — Strip and fold each searched field once (#52)
 
 ### Changed
 
