@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
+use App\Http\Controllers\Concerns\RedirectsAfterSave;
+use App\Http\Controllers\Concerns\ReordersSiblings;
+use App\Http\Controllers\Concerns\ReparentsChildren;
+use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\DestroyChapterRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Models\Chapter;
 use App\Models\Project;
-use App\Models\Scene;
 use App\Services\CoverImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +22,10 @@ use Throwable;
 class ChapterController extends Controller
 {
     use RecordsManualRevisions;
+    use RedirectsAfterSave;
+    use ReordersSiblings;
+    use ReparentsChildren;
+    use ResolvesIndexSorting;
 
     public function __construct(private CoverImageService $coverImageService) {}
 
@@ -26,11 +33,9 @@ class ChapterController extends Controller
     {
         $this->authorize('view', $project);
 
-        $sort = in_array($request->query('sort'), ['name', 'position']) ? $request->query('sort') : 'position';
-        $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
+        [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
-        $chapters = Chapter::query()
-            ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
+        $chapters = $project->chapterQuery()
             ->with('act')
             ->withCount('scenes')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
@@ -42,8 +47,7 @@ class ChapterController extends Controller
         // The delete-with-move dialog on each row needs the full set of the project's
         // chapters as move destinations, independent of the current search/act filter
         // above (moving is never limited to what the filter happens to match).
-        $destinationChapters = Chapter::query()
-            ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
+        $destinationChapters = $project->chapterQuery()
             ->orderBy('act_id')
             ->orderBy('position')
             ->get(['id', 'name', 'act_id']);
@@ -87,8 +91,7 @@ class ChapterController extends Controller
         // Every *other* chapter in the project is a candidate destination for moving
         // this chapter's scenes. An empty list collapses the dialog to "delete
         // everything".
-        $destinations = Chapter::query()
-            ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
+        $destinations = $project->chapterQuery()
             ->where('id', '!=', $chapter->id)
             ->orderBy('act_id')
             ->orderBy('position')
@@ -153,9 +156,7 @@ class ChapterController extends Controller
 
         $this->recordManualSave($chapter, $beforeAutosavedFields);
 
-        return $request->boolean('stay')
-            ? redirect()->route('chapters.edit', $chapter)->with('status', 'saved')
-            : redirect()->route('projects.chapters.index', $project);
+        return $this->redirectAfterSave($request, ['chapters.edit', $chapter], ['projects.chapters.index', $project]);
     }
 
     public function destroy(DestroyChapterRequest $request, Chapter $chapter): RedirectResponse
@@ -169,25 +170,9 @@ class ChapterController extends Controller
         // (CLAUDE.md's multi-step-write transaction rule).
         DB::transaction(function () use ($request, $chapter, $project) {
             if ($destinationId = $request->validated('move_children_to')) {
-                $destination = Chapter::query()
-                    ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
-                    ->findOrFail($destinationId);
+                $destination = $project->chapterQuery()->findOrFail($destinationId);
 
-                // Scene::booted() only assigns `position` on create, never on a plain
-                // chapter_id update, so we set it explicitly here — appending each moved
-                // scene after the destination's existing ones, in ascending original
-                // order, so their relative order survives the move and no two scenes
-                // ever share a position within the destination chapter.
-                $nextPosition = $destination->scenes()->max('position') + 1;
-
-                $chapter->scenes()->orderBy('position')->get()->each(function (Scene $scene) use ($destination, &$nextPosition) {
-                    // chapter_id is intentionally not mass-assignable (see Scene::$fillable),
-                    // so reparent through the relationship — a plain update(['chapter_id' => …])
-                    // is silently dropped. Mirrors SceneController::update()'s associate().
-                    $scene->position = $nextPosition++;
-                    $scene->chapter()->associate($destination);
-                    $scene->save();
-                });
+                $this->reparentChildren($chapter, $destination, 'scenes', 'chapter');
             }
 
             // Same cascade path as before — just nothing left to cascade if the
@@ -200,18 +185,14 @@ class ChapterController extends Controller
 
     public function moveUp(Chapter $chapter): RedirectResponse
     {
-        $this->authorize('update', $chapter->act->project);
-
-        $chapter->moveUp();
+        $this->reorderSibling($chapter, $chapter->act->project, up: true);
 
         return redirect()->back();
     }
 
     public function moveDown(Chapter $chapter): RedirectResponse
     {
-        $this->authorize('update', $chapter->act->project);
-
-        $chapter->moveDown();
+        $this->reorderSibling($chapter, $chapter->act->project, up: false);
 
         return redirect()->back();
     }

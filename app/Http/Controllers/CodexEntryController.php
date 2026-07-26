@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
+use App\Http\Controllers\Concerns\RedirectsAfterSave;
+use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\StoreCodexEntryRequest;
 use App\Http\Requests\UpdateCodexEntryRequest;
 use App\Models\CodexAttribute;
@@ -26,6 +28,8 @@ use Illuminate\View\View;
 class CodexEntryController extends Controller
 {
     use RecordsManualRevisions;
+    use RedirectsAfterSave;
+    use ResolvesIndexSorting;
 
     public function index(Request $request, Project $project, string $type): View
     {
@@ -33,9 +37,9 @@ class CodexEntryController extends Controller
 
         $entryType = CodexEntryType::fromRouteKey($type);
 
-        // Only name is sortable on this index (entries are not position-ordered).
-        $sort = 'name';
-        $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
+        // Only name is sortable on this index (entries are not position-ordered),
+        // so `?sort=` has exactly one legal value and always resolves to it.
+        [$sort, $direction] = $this->resolveSorting($request, ['name'], 'name');
 
         $entries = CodexEntry::query()
             ->where('project_id', $project->id)
@@ -213,9 +217,11 @@ class CodexEntryController extends Controller
         $media->deleteFiles($pathsToDelete);
         $this->storeMediaUploads($codexEntry, $request, $media);
 
-        return $request->boolean('stay')
-            ? redirect()->route('codex.edit', $codexEntry)->with('status', 'saved')
-            : redirect()->route('projects.codex.index', [$project, $codexEntry->type->routeKey()]);
+        return $this->redirectAfterSave(
+            $request,
+            ['codex.edit', $codexEntry],
+            ['projects.codex.index', [$project, $codexEntry->type->routeKey()]],
+        );
     }
 
     public function destroy(CodexEntry $codexEntry): RedirectResponse

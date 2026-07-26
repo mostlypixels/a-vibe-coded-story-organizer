@@ -8,6 +8,7 @@ use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CodexMediaService;
 use App\Services\CoverImageService;
 use App\Support\PlotlineColors;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -128,6 +129,38 @@ class Project extends Model
     }
 
     /**
+     * Every chapter in this project, as a query to build on.
+     *
+     * Chapters belong to a project *through* their act, so there is no direct
+     * relation to hang this on — and the walk was being spelled out as
+     * `whereHas('act', …)` at eight call sites (both index queries, the edit
+     * page's move destinations, the destroy action's destination lookup, the
+     * cover purge in booted(), ProjectSearch, SceneReferenceMatcher).
+     *
+     * Deliberately a Builder rather than a `hasManyThrough` relation: a relation
+     * joins `acts`, and `acts` also has `name` and `position` columns — so
+     * `orderBy('position')` or `get(['id', 'name'])` on it is an ambiguous-column
+     * error on every engine. Every caller here builds its own ordering and
+     * filtering on top, which is exactly what a single-table query gives them
+     * safely. Nothing eager-loads it, which is the only thing a relation would
+     * have bought.
+     */
+    public function chapterQuery(): Builder
+    {
+        return Chapter::query()->whereHas('act', fn (Builder $query) => $query->where('project_id', $this->id));
+    }
+
+    /**
+     * Every scene in this project, as a query to build on. The two-level twin of
+     * {@see self::chapterQuery()} — scenes reach the project through
+     * chapter → act — and a Builder for the same reason.
+     */
+    public function sceneQuery(): Builder
+    {
+        return Scene::query()->whereHas('chapter.act', fn (Builder $query) => $query->where('project_id', $this->id));
+    }
+
+    /**
      * The project's Start bookend event (year 0001): the earliest is_fixed event,
      * created undeletable by booted() and the anchor for every attribute-timeline
      * baseline. Single source of truth for "the project's Start".
@@ -225,8 +258,7 @@ class Project extends Model
             // deletion leaks an orphan cover per chapter (media-lifecycle.md pitfall).
             $coverImageService = app(CoverImageService::class);
 
-            $chapterCovers = Chapter::query()
-                ->whereHas('act', fn ($query) => $query->where('project_id', $project->id))
+            $chapterCovers = $project->chapterQuery()
                 ->whereNotNull('cover_image')
                 ->pluck('cover_image');
 

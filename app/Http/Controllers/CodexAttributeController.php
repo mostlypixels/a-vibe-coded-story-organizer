@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CodexEntryType;
+use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Requests\StoreCodexAttributeRequest;
 use App\Http\Requests\UpdateCodexAttributeRequest;
 use App\Models\CodexAttribute;
@@ -12,6 +13,8 @@ use Illuminate\View\View;
 
 class CodexAttributeController extends Controller
 {
+    use RedirectsAfterSave;
+
     public function index(Project $project): View
     {
         $this->authorize('view', $project);
@@ -56,9 +59,11 @@ class CodexAttributeController extends Controller
     {
         $codexAttribute->update($request->validated());
 
-        return $request->boolean('stay')
-            ? redirect()->route('codex-attributes.edit', $codexAttribute)->with('status', 'saved')
-            : redirect()->route('projects.codex-attributes.index', $codexAttribute->project);
+        return $this->redirectAfterSave(
+            $request,
+            ['codex-attributes.edit', $codexAttribute],
+            ['projects.codex-attributes.index', $codexAttribute->project],
+        );
     }
 
     public function destroy(CodexAttribute $codexAttribute): RedirectResponse

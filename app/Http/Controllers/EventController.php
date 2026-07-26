@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
+use App\Http\Controllers\Concerns\RedirectsAfterSave;
+use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
@@ -15,13 +17,14 @@ use Illuminate\View\View;
 class EventController extends Controller
 {
     use RecordsManualRevisions;
+    use RedirectsAfterSave;
+    use ResolvesIndexSorting;
 
     public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
 
-        $sort = in_array($request->query('sort'), ['title', 'event_datetime']) ? $request->query('sort') : 'event_datetime';
-        $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
+        [$sort, $direction] = $this->resolveSorting($request, ['title', 'event_datetime'], 'event_datetime');
 
         $events = $project->events()
             ->with('plotlines')
@@ -94,9 +97,7 @@ class EventController extends Controller
 
         $this->recordManualSave($event, $beforeAutosavedFields);
 
-        return $request->boolean('stay')
-            ? redirect()->route('events.edit', $event)->with('status', 'saved')
-            : redirect()->route('projects.events.index', $event->project);
+        return $this->redirectAfterSave($request, ['events.edit', $event], ['projects.events.index', $event->project]);
     }
 
     public function destroy(Event $event): RedirectResponse

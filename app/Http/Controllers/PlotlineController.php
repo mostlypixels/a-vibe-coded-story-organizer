@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
+use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\UpdatePlotlineRequest;
 use App\Models\Plotline;
@@ -14,13 +15,13 @@ use Illuminate\View\View;
 class PlotlineController extends Controller
 {
     use RecordsManualRevisions;
+    use ResolvesIndexSorting;
 
     public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
 
-        $sort = in_array($request->query('sort'), ['name', 'color']) ? $request->query('sort') : 'name';
-        $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
+        [$sort, $direction] = $this->resolveSorting($request, ['name', 'color'], 'name');
 
         $plotlines = $project->plotlines()
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))

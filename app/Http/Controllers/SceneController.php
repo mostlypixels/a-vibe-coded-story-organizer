@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
+use App\Http\Controllers\Concerns\RedirectsAfterSave;
+use App\Http\Controllers\Concerns\ReordersSiblings;
+use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\StoreSceneRequest;
 use App\Http\Requests\UpdateSceneRequest;
-use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CodexAsOfResolver;
 use App\Services\SceneReferenceMatcher;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,16 +21,17 @@ use Illuminate\View\View;
 class SceneController extends Controller
 {
     use RecordsManualRevisions;
+    use RedirectsAfterSave;
+    use ReordersSiblings;
+    use ResolvesIndexSorting;
 
     public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
 
-        $sort = in_array($request->query('sort'), ['name', 'position']) ? $request->query('sort') : 'position';
-        $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
+        [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
-        $scenes = Scene::query()
-            ->whereHas('chapter.act', fn ($query) => $query->where('project_id', $project->id))
+        $scenes = $project->sceneQuery()
             ->with('chapter.act', 'event')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
             ->when($request->filled('chapter'), fn ($query) => $query->where('chapter_id', $request->query('chapter')))
@@ -64,7 +66,7 @@ class SceneController extends Controller
     public function store(StoreSceneRequest $request, Project $project, SceneReferenceMatcher $matcher): RedirectResponse
     {
         $validated = $request->validated();
-        $chapter = $this->chapterQueryFor($project)->findOrFail($validated['chapter_id']);
+        $chapter = $project->chapterQuery()->findOrFail($validated['chapter_id']);
 
         $scene = $chapter->scenes()->create(
             $this->sceneAttributes($validated) + ['event_id' => $this->resolveHappensDuringEvent($project, $validated)]
@@ -110,7 +112,7 @@ class SceneController extends Controller
     {
         $project = $scene->chapter->act->project;
         $validated = $request->validated();
-        $chapter = $this->chapterQueryFor($project)->findOrFail($validated['chapter_id']);
+        $chapter = $project->chapterQuery()->findOrFail($validated['chapter_id']);
         $sceneAttributes = $this->sceneAttributes($validated);
 
         $beforeAutosavedFields = $this->snapshotAutosaved($scene, $sceneAttributes);
@@ -127,9 +129,7 @@ class SceneController extends Controller
 
         $this->recordManualSave($scene, $beforeAutosavedFields);
 
-        return $request->boolean('stay')
-            ? redirect()->route('scenes.edit', $scene)->with('status', 'saved')
-            : redirect()->route('projects.scenes.index', $project);
+        return $this->redirectAfterSave($request, ['scenes.edit', $scene], ['projects.scenes.index', $project]);
     }
 
     public function destroy(Scene $scene): RedirectResponse
@@ -145,39 +145,33 @@ class SceneController extends Controller
 
     public function moveUp(Request $request, Scene $scene): RedirectResponse|JsonResponse
     {
-        $this->authorize('update', $scene->chapter->act->project);
+        $this->reorderSibling($scene, $scene->chapter->act->project, up: true);
 
-        $scene->moveUp();
-
-        if ($request->wantsJson()) {
-            return response()->json(['position' => $scene->position]);
-        }
-
-        return redirect()->back();
+        return $this->reorderResponse($request, $scene);
     }
 
     public function moveDown(Request $request, Scene $scene): RedirectResponse|JsonResponse
     {
-        $this->authorize('update', $scene->chapter->act->project);
+        $this->reorderSibling($scene, $scene->chapter->act->project, up: false);
 
-        $scene->moveDown();
-
-        if ($request->wantsJson()) {
-            return response()->json(['position' => $scene->position]);
-        }
-
-        return redirect()->back();
+        return $this->reorderResponse($request, $scene);
     }
 
-    private function chapterQueryFor(Project $project): Builder
+    /**
+     * Scenes are the one reorderable entity the Story overview moves over AJAX, so
+     * their move actions answer JSON with the new position; every other caller is a
+     * plain form post that redirects back (see the ReordersSiblings docblock).
+     */
+    private function reorderResponse(Request $request, Scene $scene): RedirectResponse|JsonResponse
     {
-        return Chapter::query()
-            ->whereHas('act', fn ($query) => $query->where('project_id', $project->id));
+        return $request->wantsJson()
+            ? response()->json(['position' => $scene->position])
+            : redirect()->back();
     }
 
     private function chaptersFor(Project $project): Collection
     {
-        return $this->chapterQueryFor($project)
+        return $project->chapterQuery()
             ->with('act')
             ->orderBy('name')
             ->get();

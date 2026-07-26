@@ -17,6 +17,45 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Extract the duplication the week's PRs left behind (#49)
+
+### Added
+
+- `app/Http/Controllers/Concerns/ResolvesIndexSorting` — the `?sort=`/`?direction=` allow-list
+  every entity index re-typed. `$sort` reaches `orderBy()`, so that check is a security
+  boundary and now has one home.
+- `ReordersSiblings`, `ReparentsChildren`, `RedirectsAfterSave` — the authorize-then-move pair,
+  the "move or delete" reassignment algorithm (with its two pitfalls explained once instead of
+  twice), and the Save / Save-and-stay redirect with its `status=saved` flash.
+- `Project::chapterQuery()` / `Project::sceneQuery()` — the `whereHas('act', …)` walk that was
+  spelled out at nine call sites. Builders rather than `hasManyThrough`: a join brings `acts`'
+  own `name`/`position` into scope, making `orderBy('position')` ambiguous.
+- `Act::scenes()` — a real `hasManyThrough` for the grandchildren the cascade-delete summary counts.
+- `<x-icon-button>` — the single home of icon-control shape, colour variants and accessible
+  name; plus `<x-icon-move-button>` (replacing the byte-identical up/down pair) and
+  `<x-icon-dialog-button>` for a delete that opens the move-or-delete dialog.
+- `IconButtonComponentTest` and `BladeComponentCompilationTest` — the first tests to assert
+  these components' rendered markup at all, and a guard that no page emits an uncompiled
+  component tag.
+
+### Changed
+
+- `ProjectSearch::search()` — six near-identical blocks, each passing its field map to two
+  methods, collapsed onto one `searchEntity()` helper.
+- The `ghost` icon-button variant styles its own disabled state via `disabled:` utilities, so
+  the greyed look follows the actual `disabled` attribute — the Story overview's AJAX reorder,
+  which toggles it from JS, restyles for free instead of needing its own class list.
+
+### Fixed
+
+- The Acts and Chapters index pages hand-rolled a `<button>` with `icon-delete-button`'s
+  classes copied in, which could drift from it; both now compose the shared component.
+
+### Removed
+
+- `icon-move-up-button` / `icon-move-down-button` (superseded by `icon-move-button`), and
+  `SceneController::chapterQueryFor()` (now `Project::chapterQuery()`).
+
 ## 2026-07-26 — Documentation you can actually read (#48)
 
 ### Added

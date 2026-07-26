@@ -56,22 +56,13 @@
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1">
                                 @if ($sort === 'position' && request()->filled('act'))
-                                    <x-icon-move-up-button :action="route('chapters.move-up', $chapter)" :disabled="$loop->first" />
-                                    <x-icon-move-down-button :action="route('chapters.move-down', $chapter)" :disabled="$loop->last" />
+                                    <x-icon-move-button direction="up" :action="route('chapters.move-up', $chapter)" :disabled="$loop->first" />
+                                    <x-icon-move-button direction="down" :action="route('chapters.move-down', $chapter)" :disabled="$loop->last" />
                                 @endif
                                 <x-icon-edit-link :href="route('chapters.edit', $chapter)" />
                                 @if ($chapter->scenes_count > 0)
                                     {{-- Chapter has scenes: open the "move or delete" dialog instead of a plain confirm(). --}}
-                                    <button
-                                        type="button"
-                                        x-data=""
-                                        x-on:click="$dispatch('open-modal', 'delete-chapter-{{ $chapter->id }}')"
-                                        class="inline-flex items-center justify-center p-1.5 rounded-md border border-red-600 bg-transparent text-red-600 hover:bg-red-50"
-                                        title="{{ __('Delete') }}"
-                                    >
-                                        <span class="sr-only">{{ __('Delete') }}</span>
-                                        <x-tabler-trash class="h-4 w-4" />
-                                    </button>
+                                    <x-icon-dialog-button :modal="'delete-chapter-'.$chapter->id" />
                                 @else
                                     <x-icon-delete-button :action="route('chapters.destroy', $chapter)" :confirm="__('Are you sure you want to delete this chapter?')" />
                                 @endif
