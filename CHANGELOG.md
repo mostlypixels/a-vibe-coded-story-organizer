@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — Don't say "saved" while the last words are still unsaved
+## 2026-07-26 — Don't say "saved" while the last words are still unsaved (#55)
 
 ### Fixed
 
