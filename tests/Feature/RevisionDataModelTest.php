@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\RevisionOrigin;
 use App\Models\Project;
 use App\Models\Revision;
+use App\Support\AutosavableFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -215,7 +216,7 @@ class RevisionDataModelTest extends TestCase
     {
         $windows = config('revisions.windows');
 
-        $this->assertSame(60, $windows['Scene.contents']);
+        $this->assertSame(60, $windows['scene.contents']);
         $this->assertSame(300, $windows['default']);
     }
 
@@ -223,9 +224,64 @@ class RevisionDataModelTest extends TestCase
     {
         $caps = config('revisions.caps');
 
-        $this->assertSame(1_000_000, $caps['Scene.contents']);
-        $this->assertSame(1_000, $caps['Project.rights']);
+        $this->assertSame(1_000_000, $caps['scene.contents']);
+        $this->assertSame(1_000, $caps['project.rights']);
         $this->assertSame(100_000, $caps['default']);
+    }
+
+    /**
+     * Both arrays are keyed by the registry's own slug — `scene.contents`, the word
+     * in the address bar — so there is one vocabulary for these fourteen fields
+     * rather than two with a translation step between them.
+     *
+     * This is the test the old two-scheme arrangement could not have: a mistyped key
+     * never raises, it falls through to `default` and silently applies the wrong
+     * window or cap. So rather than assert the keys are spelled right, assert that
+     * every key present is one the registry can actually reach.
+     */
+    public function test_every_per_field_config_key_names_a_registered_field(): void
+    {
+        $registered = [];
+
+        foreach (AutosavableFields::REGISTRY as $slug => [$modelClass, $fields]) {
+            foreach (array_keys($fields) as $field) {
+                $registered[] = "{$slug}.{$field}";
+            }
+        }
+
+        foreach (['windows', 'caps'] as $array) {
+            $keys = array_keys(config("revisions.{$array}"));
+
+            foreach (array_diff($keys, ['default']) as $key) {
+                $this->assertContains(
+                    $key,
+                    $registered,
+                    "config('revisions.{$array}') has a key [{$key}] that no registered field resolves to. "
+                    .'It will never be read — the lookup falls through to `default` instead, silently.',
+                );
+            }
+        }
+    }
+
+    /**
+     * The other direction: every registered field resolves both of its settings
+     * without falling through, for the fields that declare an override.
+     */
+    public function test_every_registered_field_resolves_its_window_and_cap(): void
+    {
+        foreach (AutosavableFields::REGISTRY as $slug => [$modelClass, $fields]) {
+            foreach (array_keys($fields) as $field) {
+                $this->assertGreaterThan(0, AutosavableFields::windowSeconds($slug, $field), "{$slug}.{$field} window");
+                $this->assertGreaterThan(0, AutosavableFields::characterCap($slug, $field), "{$slug}.{$field} cap");
+            }
+        }
+
+        // The overrides specifically, so a rename that quietly defaulted them all
+        // would be caught rather than passing the loop above.
+        $this->assertSame(60, AutosavableFields::windowSeconds('scene', 'contents'));
+        $this->assertSame(1_000_000, AutosavableFields::characterCap('scene', 'contents'));
+        $this->assertSame(1_000, AutosavableFields::characterCap('project', 'rights'));
+        $this->assertSame(20_000, AutosavableFields::characterCap('project', 'dedication'));
     }
 
     public function test_config_retention_days_defaults_to_ninety(): void

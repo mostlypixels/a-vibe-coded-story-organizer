@@ -17,6 +17,23 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — One name for each autosaved field
+
+### Changed
+
+- `config/revisions.php` keyed its per-field windows and caps by model class basename
+  (`Scene.contents`) while the registry that reads them keys by URL slug (`scene`), with a
+  translation step in between. The same fourteen fields had two names, and anyone adding a
+  fifteenth had to get both schemes right. Config now uses the slug — `scene.contents`,
+  `project.dedication` — and the translation is gone.
+
+### Added
+
+- `RevisionDataModelTest` walks the registry in both directions: every per-field config key must
+  name a registered field, and every registered field must resolve both its window and its cap.
+  A key naming no field is invisible otherwise — the lookup falls through to `default` and
+  silently applies the wrong number rather than failing.
+
 ## 2026-07-26 — No blank rows in an exported book's contents (#56)
 
 ### Fixed
