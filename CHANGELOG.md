@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — Keep the newest revision, whichever order it was written in
+## 2026-07-26 — Keep the newest revision, whichever order it was written in (#54)
 
 ### Fixed
 
