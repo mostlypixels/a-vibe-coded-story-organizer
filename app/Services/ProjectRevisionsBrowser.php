@@ -75,6 +75,13 @@ class ProjectRevisionsBrowser
         // (revisionable_type, revisionable_id, field) => count, for this project,
         // grouped by the polymorphic type so each group is resolved independently
         // below. `revisionable_type` holds the FQCN (no morph map is registered).
+        //
+        // Only `project_id` is indexed, so the grouping itself is unindexed work.
+        // Left that way deliberately: this runs once per visit to the browser
+        // landing page, while `revisions` is the most written-to table in the app
+        // (every autosave), and an index earns its write cost only against a
+        // measured read. If this page ever feels slow, the seam to widen is a
+        // composite (project_id, revisionable_type, revisionable_id, field).
         $countsByType = Revision::query()
             ->where('project_id', $project->id)
             ->groupBy('revisionable_type', 'revisionable_id', 'field')

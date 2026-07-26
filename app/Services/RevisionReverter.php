@@ -157,7 +157,10 @@ class RevisionReverter
      * The recorded value is read back *after* `save()`, so it is what the
      * database actually holds — the model's mutators (e.g. `SanitizesRichHtml`
      * on a rich field) may well have changed it on the way in, and a revision
-     * that disagreed with its own column would poison every later diff.
+     * that disagreed with its own column would poison every later diff. Read
+     * back from the model rather than from a `fresh()` query: those mutators are
+     * `Attribute::make(set:)`, so they have already rewritten the in-memory
+     * attribute by the time `save()` returns.
      *
      * **The two writes are one transaction.** Changing the column and recording
      * that it changed are halves of the same fact: if the second failed on its
@@ -191,7 +194,10 @@ class RevisionReverter
             $entity->{$field} = $value;
             $entity->save(); // Mutators run here, e.g. SanitizesRichHtml for rich fields.
 
-            $storedValue = (string) ($entity->fresh()->getAttribute($field) ?? '');
+            // In memory, not via fresh(): the mutators above run on *assignment*, so
+            // this attribute already holds what the row holds, and a re-SELECT would
+            // read every column (Scene.contents included) to learn nothing.
+            $storedValue = (string) ($entity->getAttribute($field) ?? '');
 
             $this->recorder->record($entity, $field, $storedValue, $user, RevisionOrigin::Revert, $label);
 
