@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — One name for each autosaved field
+## 2026-07-26 — One name for each autosaved field (#57)
 
 ### Changed
 
