@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — Documentation you can actually read
+## 2026-07-26 — Documentation you can actually read (#48)
 
 ### Added
 
