@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — Write down what the review learned, where it will be read
+## 2026-07-26 — Write down what the review learned, where it will be read (#58)
 
 ### Changed
 
