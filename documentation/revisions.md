@@ -372,6 +372,25 @@ The compare diff is a borderless **Old / New** side-by-side
 (`resources/views/revisions/compare.blade.php` restyles `jfcherng/php-diff`'s `SideBySide`)
 with only changed words tinted.
 
+Each changed field is one card headed *Comparing changes to `<Entity>` field '`<Field>`'*,
+holding **three panes of one shell** (`<x-revision-panel>`): *What changed* (the diff), then
+*Older* and *Newer* — both whole values, side by side (`<x-revision-version>`), each with its
+own **Revert to this** underneath.
+
+- A diff says what moved; it does not say what you'd be looking at if you took one side.
+  "Revert to this" is a choice between two *versions*, so the button lives under the version
+  it restores — in the card header it pointed at neither column.
+- The diff is a labelled pane like the other two, not loose text above them: three things are
+  being shown, and one of them being unlabelled is what made the pair below look like the
+  whole comparison.
+- Each column renders its value the way the app renders that field elsewhere: rich HTML
+  through `<x-rich-text>`, Markdown through `Str::markdown()` (like `Scene::renderedContents`),
+  plain text escaped. What you compare is what you get back.
+- The panes scroll (`max-h-96`) rather than growing: two full scene contents at full height
+  would push the two buttons a novel's length apart.
+- A side that is already the entity's current save point shows a **Current version** badge —
+  reverting to the value the field already holds is a no-op that would still write a revision.
+
 ## Routes
 
 | Route name | Verb + path | What it is |

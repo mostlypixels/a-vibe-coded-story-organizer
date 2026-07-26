@@ -101,7 +101,10 @@ class RevisionCompareTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertSee('Description');
+        // The section names the whole comparison, not just the field — a bare
+        // "Description" left the reader to work out what they were looking at.
+        $response->assertSee("Comparing changes to Act field 'Description'");
+        $response->assertSee('What changed');
         $response->assertSee('slipped away');
     }
 
@@ -422,6 +425,95 @@ class RevisionCompareTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('formatting changed: bold added');
+        $response->assertSee('<strong>world</strong>', escape: false);
+    }
+
+    public function test_each_side_renders_its_whole_value_with_its_own_revert_button(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        // Neither compared point is the current one, so both sides are
+        // restorable — the case where the two buttons have to be told apart.
+        $older = $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>The ferry left at dawn.</p>', 'created_at' => now()->subDays(3)]);
+        $newer = $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>The ferry slipped away at dawn.</p>', 'created_at' => now()->subDays(2)]);
+        $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>Something later entirely.</p>', 'created_at' => now()]);
+
+        $response = $this->actingAs($user)->get($this->compareUrl($act, [
+            'from' => $older->save_id, 'to' => $newer->save_id,
+        ]));
+
+        $response->assertOk();
+
+        // The diff shows only what moved; the columns show both versions whole,
+        // unchanged opening included.
+        $response->assertSee('The ferry left at dawn.');
+        $response->assertSee('The ferry slipped away at dawn.');
+
+        // One revert form per column, each pointed at its own revision.
+        $content = $response->getContent();
+        $this->assertSame(1, substr_count($content, route('revisions.revert', $older)));
+        $this->assertSame(1, substr_count($content, route('revisions.revert', $newer)));
+    }
+
+    public function test_the_side_that_is_already_the_current_value_offers_no_revert(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $older = $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>Old</p>', 'created_at' => now()->subDay()]);
+        $current = $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>New</p>', 'created_at' => now()]);
+
+        $response = $this->actingAs($user)->get($this->compareUrl($act, [
+            'from' => $older->save_id, 'to' => $current->save_id,
+        ]));
+
+        $response->assertOk();
+
+        // Restoring the value the field already holds is a no-op dressed up as
+        // an action: the column says what it is instead.
+        $response->assertSee('Current version');
+        $this->assertSame(0, substr_count($response->getContent(), route('revisions.revert', $current)));
+        $this->assertSame(1, substr_count($response->getContent(), route('revisions.revert', $older)));
+    }
+
+    public function test_a_field_that_did_not_exist_yet_says_so_instead_of_offering_a_revert(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user);
+
+        // The notes start existing between the two points, so the older column
+        // has no revision to show and nothing to restore.
+        $from = $this->sceneRevision($scene, 'description', '<p>Unchanged.</p>', now()->subDays(2));
+        $this->sceneRevision($scene, 'description', '<p>Changed.</p>', now()->subDay());
+        $to = $this->sceneRevision($scene, 'notes', '<p>A brand new note.</p>', now());
+
+        $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
+            'from' => $from->save_id, 'to' => $to->save_id, 'field' => 'notes',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('This field had no content yet.');
+        $response->assertSee('A brand new note.');
+    }
+
+    public function test_a_markdown_column_renders_the_value_the_way_the_app_does(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user);
+
+        $from = $this->sceneRevision($scene, 'contents', 'Hello world', now()->subDay());
+        $to = $this->sceneRevision($scene, 'contents', 'Hello **world**', now());
+
+        $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
+            'from' => $from->save_id, 'to' => $to->save_id, 'field' => 'contents',
+        ]));
+
+        $response->assertOk();
+
+        // The diff above compares the raw source (the asterisks are the change);
+        // the column shows what the writer would get back.
+        $response->assertSee('<ins>**</ins>', escape: false);
         $response->assertSee('<strong>world</strong>', escape: false);
     }
 }
