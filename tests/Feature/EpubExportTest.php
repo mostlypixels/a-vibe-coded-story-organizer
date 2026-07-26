@@ -2,13 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ChapterTitleFormat;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\Project;
+use App\Models\PublicationSetting;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
+use ZipArchive;
 
 /**
  * Epub export (task 06): the POST /admin/data/export/epub endpoint that wires the
@@ -35,6 +39,35 @@ class EpubExportTest extends TestCase
             'position' => 1,
             'contents' => 'Some prose for the chapter.',
         ]);
+    }
+
+    /**
+     * Every file inside the exported EPUB whose name matches `$pattern`, as text.
+     *
+     * The response is never actually sent in a test, so `deleteFileAfterSend` has not
+     * run and the streamed temp file is still on disk (same trick as ExportTest).
+     */
+    private function packagedFiles(TestResponse $response, string $pattern): array
+    {
+        $path = $response->baseResponse->getFile()->getPathname();
+        $this->assertFileExists($path);
+
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($path) === true, 'The exported epub could not be opened.');
+
+        $files = [];
+
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $name = $zip->getNameIndex($index);
+
+            if (preg_match($pattern, $name)) {
+                $files[$name] = $zip->getFromIndex($index);
+            }
+        }
+
+        $zip->close();
+
+        return $files;
     }
 
     // ---------------------------------------------------------------------
@@ -64,6 +97,52 @@ class EpubExportTest extends TestCase
         // test since the response is never actually sent).
         $path = $response->baseResponse->getFile()->getPathname();
         $this->assertFileExists($path);
+    }
+
+    /**
+     * A chapter whose name is blank, under the "Title only" format, used to produce an
+     * empty label in the packaged navigation and table of contents — a blank row in the
+     * reader's contents list. `validatePackage()` schema-checks the OPF, not the nav,
+     * so the broken book exported clean.
+     *
+     * The page heading is deliberately still empty (the writer asked for the title
+     * alone, and there is none); it is only the listing that gets the fallback.
+     *
+     * `chapters.name` is `NOT NULL` and `Store/UpdateChapterRequest` require it, so the
+     * form cannot produce this — an import, a seeder or a direct write can. That is
+     * exactly why the export must not depend on the form having been the door: the
+     * blank-name branch in `ChapterTitleFormat::format()` exists for the same reason.
+     */
+    public function test_a_chapter_with_a_blank_name_still_gets_a_navigation_label(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $chapter = Chapter::factory()->for($act)->create(['position' => 1, 'name' => '']);
+        Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Some prose.']);
+
+        PublicationSetting::factory()->for($project)->create([
+            'chapter_title_format' => ChapterTitleFormat::Title,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('admin.data.export.epub'), [
+            'project_id' => $project->id,
+        ])->assertOk();
+
+        // Both listings the reader can reach: the EPUB 3 nav document / NCX the reader
+        // chrome builds its contents menu from, and the in-book Table of Contents page.
+        $listings = $this->packagedFiles($response, '/(nav|toc)[^\/]*\.(xhtml|ncx)$/i');
+
+        $this->assertNotEmpty($listings, 'the export produced no navigation document to check');
+
+        foreach ($listings as $name => $contents) {
+            $this->assertStringContainsString(
+                'Chapter 1',
+                $contents,
+                "[{$name}] a nameless chapter must fall back to its position, not list a blank row",
+            );
+        }
     }
 
     // ---------------------------------------------------------------------

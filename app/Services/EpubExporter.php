@@ -1114,10 +1114,22 @@ class EpubExporter
      * The nav label for a Chapter, formatted by the configured {@see ChapterTitleFormat}
      * — the single source of truth shared with the chapter page heading, so the two can
      * never drift.
+     *
+     * With one addition a label needs and a heading does not: the `Title` format returns
+     * an empty string for a chapter with no name, which is right on the page (the writer
+     * asked for the title alone, and there isn't one) and useless in a contents listing,
+     * where it renders as a blank row. `validatePackage()` schema-checks the OPF, not the
+     * nav, so such a book exports clean and only looks broken in the reader.
+     *
+     * The fallback lives here rather than in `format()` on purpose: it is the *listing*
+     * that cannot cope with an empty label, and it matches what {@see sceneNavTitle()} and
+     * {@see actNavTitle()} already do with a nameless scene or act.
      */
     private function chapterNavTitle(Chapter $chapter, ChapterTitleFormat $format): string
     {
-        return $format->format($chapter->position, $chapter->name);
+        $label = $format->format($chapter->position, $chapter->name);
+
+        return $label !== '' ? $label : "Chapter {$chapter->position}";
     }
 
     /**
