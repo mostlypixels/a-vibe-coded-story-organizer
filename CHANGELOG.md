@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — Make Save and autosave agree on how long a field may be
+## 2026-07-26 — Make Save and autosave agree on how long a field may be (#50)
 
 ### Fixed
 
