@@ -160,6 +160,57 @@ class RevisionBrowserTest extends TestCase
         $response->assertSee('open: false', false);
     }
 
+    public function test_the_entity_name_links_to_its_unfiltered_history(): void
+    {
+        // Task 18: the sidebar's entity name is the way into the whole entity's
+        // history; its field leaves are the same page with `?field=` set.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create(['name' => 'Act Alpha']);
+
+        $this->revisionFor(Act::class, $act->id, $project->id, 'description');
+
+        $response = $this->actingAs($user)->get(route('projects.revisions.index', $project));
+
+        $response->assertOk();
+        // The closing quote matters: the filtered leaf URL starts with the
+        // unfiltered one, so a bare assertSee() of it would pass either way.
+        $response->assertSee(
+            'href="'.route('revisions.index', ['entity' => 'act', 'id' => $act->id]).'"',
+            false,
+        );
+    }
+
+    public function test_the_entity_level_history_page_marks_the_entity_row_active(): void
+    {
+        // With no `?field=`, the active row is the entity name itself — and its
+        // group still starts open, exactly as on a field-filtered page.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create(['name' => 'Act Alpha']);
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->revisionFor(Act::class, $act->id, $project->id, 'description');
+        $this->revisionFor(Scene::class, $scene->id, $project->id, 'notes');
+
+        $response = $this->actingAs($user)->get(
+            route('revisions.index', ['entity' => 'act', 'id' => $act->id])
+        );
+
+        $response->assertOk();
+        $response->assertSee('open: true', false);
+        $response->assertSee('open: false', false);
+        // The entity anchor is the one carrying aria-current, not a field leaf —
+        // matched as one tag so the two cannot be satisfied by separate elements.
+        $entityUrl = route('revisions.index', ['entity' => 'act', 'id' => $act->id]);
+
+        $this->assertMatchesRegularExpression(
+            '/<a\s[^>]*href="'.preg_quote($entityUrl, '/').'"[^>]*aria-current="page"/',
+            $response->getContent(),
+        );
+    }
+
     public function test_the_history_page_renders_the_browser_sidebar_with_the_active_field(): void
     {
         $user = User::factory()->create();

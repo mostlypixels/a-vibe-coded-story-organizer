@@ -2,6 +2,7 @@
     'form',
     'deleteAction' => null,
     'deleteConfirm' => null,
+    'historyModel' => null,
 ])
 
 {{--
@@ -17,6 +18,10 @@
     Pass a `delete` slot to replace the default confirm() delete button with a custom
     trigger (e.g. Act/Chapter's "move or delete" dialog trigger) while keeping the same
     Actions card layout and divider.
+
+    Pass `historyModel` (the entity being edited) on a revisionable screen to add the
+    entity-level History link — the primary entry point into the revisions browser. Omit
+    it on screens whose model has no revision history (e.g. a codex attribute).
 --}}
 <x-card :title="__('Actions')">
     @if (session('status') === 'saved')
@@ -33,6 +38,10 @@
     <div class="flex flex-col gap-3">
         <x-button variant="primary" type="submit" form="{{ $form }}" data-guard-save :icon="true" class="w-full">{{ __('Save') }}</x-button>
         <x-button variant="secondary" type="submit" form="{{ $form }}" data-guard-save name="stay" value="1" icon="tabler-device-floppy" class="w-full">{{ __('Save and stay') }}</x-button>
+
+        @if ($historyModel)
+            <x-entity-history-link :model="$historyModel" class="w-full" />
+        @endif
     </div>
 
     @if ($deleteAction || isset($delete))

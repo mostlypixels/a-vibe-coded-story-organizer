@@ -89,6 +89,7 @@
         @if ($entry !== null)
             <x-edit-actions
                 form="codex-entry-edit-form"
+                :history-model="$entry"
                 :delete-action="route('codex.destroy', $entry)"
                 :delete-confirm="__('Are you sure you want to delete this entry?')"
             >

@@ -106,6 +106,7 @@
         <x-slot:sidebar>
             <x-edit-actions
                 form="project-edit-form"
+                :history-model="$project"
                 :delete-action="route('projects.destroy', $project)"
                 :delete-confirm="$deleteConfirm"
             >

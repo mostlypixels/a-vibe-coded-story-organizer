@@ -521,4 +521,21 @@ class ProjectTest extends TestCase
         $response->assertDontSee('0 events');
         $response->assertDontSee('0 codex entries');
     }
+
+    public function test_the_edit_page_links_to_the_projects_revision_history(): void
+    {
+        // Task 18: the Actions card carries the entity-level History link — the
+        // primary way into the revisions browser. The closing quote keeps this
+        // from being satisfied by a per-field `?field=` icon link.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.edit', $project))
+            ->assertOk()
+            ->assertSee(
+                'href="'.route('revisions.index', ['entity' => 'project', 'id' => $project->id]).'"',
+                false,
+            );
+    }
 }
