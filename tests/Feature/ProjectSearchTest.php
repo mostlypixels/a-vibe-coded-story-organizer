@@ -337,6 +337,32 @@ class ProjectSearchTest extends TestCase
         $this->assertSame(['Contents'], $results->scenes->first()->fieldLabels);
     }
 
+    /**
+     * Matching and previewing read the same fields but need different text:
+     * comparison happens on accent-folded, lowercased values, while the preview
+     * must show what the writer actually typed. The two now travel side by side
+     * through the matcher, so handing the wrong one to the snippet builder is a
+     * one-word mistake — and one no other test would catch, since every accent
+     * test above asserts only that the row came back.
+     */
+    public function test_the_preview_shows_the_writers_own_text_not_the_folded_match_text(): void
+    {
+        $project = $this->project();
+        $chapter = $this->chapterIn($project);
+
+        Scene::factory()->for($chapter)->create([
+            'name' => 'plain',
+            'contents' => 'They crossed the FORÊT at dusk',
+            'description' => 'x',
+        ]);
+
+        $snippet = $this->search($project, 'foret')->scenes->first()->snippet;
+
+        $this->assertStringContainsString('<mark', $snippet);
+        $this->assertStringContainsString('FORÊT', $snippet, 'the preview must keep the stored accents and casing');
+        $this->assertStringNotContainsString('foret at dusk', $snippet, 'the preview must not be the folded text');
+    }
+
     public function test_blank_query_returns_an_empty_result_set(): void
     {
         $project = $this->project();

@@ -16,7 +16,6 @@ use App\Support\SearchResultRow;
 use App\Support\SearchResults;
 use App\Support\SearchSnippet;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -141,11 +140,20 @@ class ProjectSearch
      * One entity type's search: fetch its project-scoped rows, keep the ones that
      * match, and turn each into a result row.
      *
-     * The two halves are separate methods because they answer different questions
-     * ("is this entity in the result set?" vs "which of its fields matched?"), but
-     * no caller ever wants one without the other — and each call previously had to
-     * pass `$fields` to both, which is the kind of repetition that eventually gets
-     * passed two *different* field maps by mistake.
+     * **Each entity's text is stripped and folded exactly once**, here, and the two
+     * derived maps are then passed down. Membership ("is this entity in the result
+     * set?") and labelling ("which of its fields matched?") are still separate
+     * questions answered by separate methods, but they used to be separate *passes*:
+     * the gate folded every field, then the row builder stripped them all again and
+     * folded each one a third time. For a scene that is up to a megabyte through
+     * `RichText::toPlainText()` and `AccentFolder::fold()` twice over, per matching
+     * scene, per search. Matching in PHP is the deliberate design decision (see the
+     * class docblock); doing it repeatedly never was.
+     *
+     * Both maps are needed and neither is derivable from the other cheaply: matching
+     * compares folded text, while the snippet must be built from the *unfolded*
+     * plain text, or the preview would show the reader accent-stripped, lowercased
+     * prose instead of what they wrote.
      *
      * @param  Builder  $query  the project-scoped base query for one entity
      * @param  array<string, string>  $fields  db_column => label
@@ -154,7 +162,51 @@ class ProjectSearch
      */
     private function searchEntity(Builder $query, array $fields, array $terms, SearchMode $mode): Collection
     {
-        return $this->rowsFor($this->matches($query, $terms, $mode, $fields), $fields, $terms);
+        $columns = array_keys($fields);
+
+        // Folded once per search, not once per entity per field.
+        $foldedTerms = $this->foldedTerms($terms);
+
+        $rows = collect();
+
+        // Fetching every project row for the entity is the design decision above;
+        // the base query is already project-scoped, so this can never cross the
+        // project boundary.
+        foreach ($query->get() as $entity) {
+            $plainValues = $this->plainFieldValues($entity, $columns);
+            $foldedValues = array_map(AccentFolder::fold(...), $plainValues);
+
+            if (! $this->entityMatches($foldedValues, $foldedTerms, $mode)) {
+                continue;
+            }
+
+            $row = $this->rowFor($entity, $fields, $plainValues, $foldedValues, $terms, $foldedTerms);
+
+            if ($row !== null) {
+                $rows->push($row);
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The non-empty search terms, accent-folded ready for comparison.
+     *
+     * @param  array<int, string>  $terms
+     * @return array<int, string>
+     */
+    private function foldedTerms(array $terms): array
+    {
+        $folded = [];
+
+        foreach ($terms as $term) {
+            if ($term !== '') {
+                $folded[] = AccentFolder::fold($term);
+            }
+        }
+
+        return $folded;
     }
 
     /**
@@ -180,59 +232,23 @@ class ProjectSearch
     }
 
     /**
-     * Fetch a project-scoped entity's rows and keep those that match the query
-     * under the given mode.
-     *
-     * The rows are matched in PHP (see the class docblock for why not SQL): one
-     * query fetches every project row for the entity, then {@see entityMatches}
-     * decides membership. The base query is already scoped to the project, so
-     * fetching "all" rows can never cross the project boundary.
-     *
-     * @param  Builder  $query  the project-scoped base query for one entity
-     * @param  array<int, string>  $terms
-     * @param  array<string, string>  $fields  db_column => label
-     * @return EloquentCollection<int, Model>
-     */
-    private function matches(Builder $query, array $terms, SearchMode $mode, array $fields): EloquentCollection
-    {
-        $columns = array_keys($fields);
-
-        return $query->get()
-            ->filter(fn (Model $entity) => $this->entityMatches($entity, $columns, $terms, $mode))
-            ->values();
-    }
-
-    /**
-     * Whether one entity satisfies the query under the given mode, matching on the
-     * accent-folded plain text of its searchable fields.
+     * Whether one entity satisfies the query under the given mode, matching on its
+     * already-folded field values.
      *
      *   - AllTerms (AND): every term must appear in *some* field (not necessarily
      *     the same one). An empty term list never matches.
      *   - AnyTerm / ExactPhrase (OR / single literal): any term in any field.
      *
-     * @param  array<int, string>  $columns
-     * @param  array<int, string>  $terms
+     * @param  array<string, string>  $foldedValues  db_column => folded plain text
+     * @param  array<int, string>  $foldedTerms
      */
-    private function entityMatches(Model $entity, array $columns, array $terms, SearchMode $mode): bool
+    private function entityMatches(array $foldedValues, array $foldedTerms, SearchMode $mode): bool
     {
-        $foldedValues = array_map(
-            static fn (string $value) => AccentFolder::fold($value),
-            $this->plainFieldValues($entity, $columns),
-        );
-
-        $usableTermCount = 0;
         $matchedTermCount = 0;
 
-        foreach ($terms as $term) {
-            if ($term === '') {
-                continue;
-            }
-
-            $usableTermCount++;
-            $foldedTerm = AccentFolder::fold($term);
-
+        foreach ($foldedTerms as $term) {
             foreach ($foldedValues as $value) {
-                if ($value !== '' && str_contains($value, $foldedTerm)) {
+                if ($value !== '' && str_contains($value, $term)) {
                     // OR / exact-phrase: a single hit is enough.
                     if ($mode !== SearchMode::AllTerms) {
                         return true;
@@ -247,8 +263,8 @@ class ProjectSearch
         // AllTerms: every usable term must have matched. OR / exact only reach here
         // when no term matched at all.
         return $mode === SearchMode::AllTerms
-            && $usableTermCount > 0
-            && $matchedTermCount === $usableTermCount;
+            && $foldedTerms !== []
+            && $matchedTermCount === count($foldedTerms);
     }
 
     /**
@@ -278,68 +294,68 @@ class ProjectSearch
     }
 
     /**
-     * Collapse each matched entity into ONE result row that lists every field
-     * the terms appeared in. The text preview (snippet) is built from the first
+     * Collapse one matched entity into ONE result row listing every field the
+     * terms appeared in. The text preview (snippet) is built from the first
      * matching field, in the declared field order — the row's matched-fields
      * list tells the reader where else the terms appeared.
      *
-     * The field-match check runs in PHP against the already-fetched, plain-text
-     * field value (see {@see fieldContainsAnyTerm}). Empty fields are skipped.
+     * Returns null when no field matched. In practice a gated-in entity always
+     * yields at least one label, because {@see entityMatches} compares the same
+     * folded values against the same folded terms — the null is the honest
+     * type, not a case anyone should rely on.
      *
-     * @param  EloquentCollection<int, Model>  $entities
      * @param  array<string, string>  $fields  db_column => label
-     * @param  array<int, string>  $terms
-     * @return Collection<int, SearchResultRow>
+     * @param  array<string, string>  $plainValues  db_column => plain text
+     * @param  array<string, string>  $foldedValues  db_column => folded plain text
+     * @param  array<int, string>  $terms  raw terms, for highlighting
+     * @param  array<int, string>  $foldedTerms
      */
-    private function rowsFor(EloquentCollection $entities, array $fields, array $terms): Collection
-    {
-        $rows = collect();
+    private function rowFor(
+        Model $entity,
+        array $fields,
+        array $plainValues,
+        array $foldedValues,
+        array $terms,
+        array $foldedTerms,
+    ): ?SearchResultRow {
+        $matchedLabels = [];
+        $snippet = null;
 
-        foreach ($entities as $entity) {
-            $values = $this->plainFieldValues($entity, array_keys($fields));
-            $matchedLabels = [];
-            $snippet = null;
-
-            foreach ($fields as $column => $label) {
-                $value = $values[$column];
-
-                if ($value === '' || ! $this->fieldContainsAnyTerm($value, $terms)) {
-                    continue;
-                }
-
-                $matchedLabels[] = $label;
-                // First matching field wins the preview slot.
-                $snippet ??= SearchSnippet::highlight($value, $terms);
+        foreach ($fields as $column => $label) {
+            if ($plainValues[$column] === '' || ! $this->containsAnyTerm($foldedValues[$column], $foldedTerms)) {
+                continue;
             }
 
-            if ($matchedLabels !== []) {
-                $rows->push(new SearchResultRow(
-                    entity: $entity,
-                    fieldLabels: $matchedLabels,
-                    snippet: $snippet,
-                ));
-            }
+            $matchedLabels[] = $label;
+            // First matching field wins the preview slot. Highlighting runs on the
+            // *unfolded* text: the reader must see their own accents and casing.
+            $snippet ??= SearchSnippet::highlight($plainValues[$column], $terms);
         }
 
-        return $rows;
+        if ($matchedLabels === []) {
+            return null;
+        }
+
+        return new SearchResultRow(
+            entity: $entity,
+            fieldLabels: $matchedLabels,
+            snippet: $snippet,
+        );
     }
 
     /**
-     * Whether a field's plain-text value contains at least one of the terms
-     * (case- and accent-insensitive). This is what makes a field a "matching
-     * field" listed in its entity's result row; it folds accents exactly like
-     * {@see entityMatches} so a gated-in entity always yields at least one label.
+     * Whether a folded field value contains at least one folded term. This is what
+     * makes a field a "matching field" listed in its entity's result row.
      *
-     * @param  array<int, string>  $terms
+     * `AccentFolder::fold` already lowercases, so a plain `str_contains` on two
+     * folded strings is the correct case- and accent-insensitive check.
+     *
+     * @param  array<int, string>  $foldedTerms
      */
-    private function fieldContainsAnyTerm(string $value, array $terms): bool
+    private function containsAnyTerm(string $foldedValue, array $foldedTerms): bool
     {
-        // Fold once; AccentFolder::fold already lowercases, so a plain
-        // str_contains is the correct case- and accent-insensitive check.
-        $foldedValue = AccentFolder::fold($value);
-
-        foreach ($terms as $term) {
-            if ($term !== '' && str_contains($foldedValue, AccentFolder::fold($term))) {
+        foreach ($foldedTerms as $term) {
+            if (str_contains($foldedValue, $term)) {
                 return true;
             }
         }
