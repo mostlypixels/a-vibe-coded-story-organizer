@@ -78,27 +78,50 @@
                 <article aria-labelledby="diff-{{ $comparison->field }}">
                     <x-card>
                         <x-slot name="header">
-                            <div class="flex flex-wrap items-center justify-between gap-3">
-                                <x-heading level="3" id="diff-{{ $comparison->field }}">
-                                    {{ Str::headline($comparison->field) }}
-                                    @if ($comparison->isNewField())
-                                        <x-badge variant="success">{{ __('New') }}</x-badge>
-                                    @endif
-                                </x-heading>
-
-                                {{-- Restore the older side. Hidden when that side
-                                     is already the live value, where restoring it
-                                     would be a no-op dressed up as an action. --}}
-                                @if ($comparison->from !== null && ! $from->isCurrent)
-                                    <x-revert-revision-button
-                                        :revision="$comparison->from"
-                                        :base-hash="$baseHashes[$comparison->field]"
-                                    />
+                            {{-- Names the whole comparison, not just the field:
+                                 a bare "Description" left the reader to work out
+                                 what they were looking at, and which of the
+                                 seven entity types it belonged to. --}}
+                            <x-heading level="3" id="diff-{{ $comparison->field }}">
+                                {{ __("Comparing changes to :entity field ':field'", [
+                                    'entity' => Str::headline($entity),
+                                    'field' => Str::headline($comparison->field),
+                                ]) }}
+                                @if ($comparison->isNewField())
+                                    <x-badge variant="success">{{ __('New') }}</x-badge>
                                 @endif
-                            </div>
+                            </x-heading>
                         </x-slot>
 
-                        <x-diff :html="$comparison->result->html" :kind="$comparison->kind" />
+                        {{-- Three panes, one shell: what moved, what it was,
+                             what it became. The diff is labelled like the two
+                             columns are, so it reads as one of the three things
+                             being shown rather than as loose text above them.
+
+                             "Revert to this" lives under the version it restores
+                             — in the card header it pointed at neither side,
+                             which is what made it unreadable next to an inline
+                             diff. --}}
+                        <x-revision-panel :title="__('What changed')">
+                            <x-diff :html="$comparison->result->html" :kind="$comparison->kind" />
+                        </x-revision-panel>
+
+                        <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            <x-revision-version
+                                :revision="$comparison->from"
+                                :kind="$comparison->kind"
+                                :label="__('Older')"
+                                :base-hash="$baseHashes[$comparison->field]"
+                                :is-current="$from->isCurrent"
+                            />
+                            <x-revision-version
+                                :revision="$comparison->to"
+                                :kind="$comparison->kind"
+                                :label="__('Newer')"
+                                :base-hash="$baseHashes[$comparison->field]"
+                                :is-current="$to->isCurrent"
+                            />
+                        </div>
                     </x-card>
                 </article>
             @empty

@@ -17,6 +17,22 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Show both versions where "Revert to this" can point at one
+
+### Added
+
+- The compare page shows each changed field's **whole value on both sides**, in two columns
+  under the inline diff, with **Revert to this** under the version it restores. The button used
+  to sit in the card header, where it pointed at neither side of an inline diff and read as
+  "revert to… what?". A side that is already the field's live value shows a "Current version"
+  badge instead of a no-op button.
+
+### Changed
+
+- A compare card now names what it is showing — *Comparing changes to Scene field 'Contents'*
+  rather than a bare *Contents* — and the diff sits in a titled *What changed* pane, the same
+  shell as the two value columns, so all three labelled panes read as one comparison.
+
 ## 2026-07-26 — Write down what the review learned, where it will be read (#58)
 
 ### Changed
