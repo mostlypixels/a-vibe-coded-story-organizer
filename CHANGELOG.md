@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — No blank rows in an exported book's contents
+## 2026-07-26 — No blank rows in an exported book's contents (#56)
 
 ### Fixed
 
