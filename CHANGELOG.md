@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — Say why a revert was refused, and never half-apply one
+## 2026-07-26 — Say why a revert was refused, and never half-apply one (#47)
 
 ### Fixed
 
