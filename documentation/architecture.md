@@ -179,13 +179,38 @@ scenes stay hidden regardless of the global toggle).
 > authenticated user may edit it. This is deliberate (no `is_admin` role); do not "fix" it into
 > a project walk.
 
-## Revisions (autosave + field history)
+## Revisions (autosave + entity history)
 
 Fourteen long-text fields across the project tree (`Scene.contents` above all) autosave
 via AJAX as the writer types, and every save that matters is recoverable through a
-per-field history/compare/revert UI. There is **no draft-vs-published split** — autosave
-writes the live column directly, so exports, search, share links, and
-`SceneReferenceMatcher` always read the same value the writer sees.
+history / compare / undo UI. There is **no draft-vs-published split** — autosave writes
+the live column directly, so exports, search, share links, and `SceneReferenceMatcher`
+always read the same value the writer sees.
+
+**Read this first: the feature works at two altitudes, and they deliberately do not
+match.**
+
+| | The unit | Where it lives |
+|---|---|---|
+| **Storage** | one immutable row **per field, per moment** | the `revisions` table — append-only, and nothing but an explicit purge ever deletes a row |
+| **Interface** | one **save point** per Save (or per autosave burst), covering every field that save touched | `revisions.save_id`, folded into `SavePoint`s by `App\Services\RevisionHistory` |
+
+A writer does not think *"I changed `Scene.notes` at 14:03"* — they think *"I saved"*. So
+every screen — history, compare, undo — is addressed by **entity + save point**, and a
+single field is a `?field=` **filter** on top of that rather than a page of its own. That
+split is the key to reading the rest of this section: everything up to *Save points* is
+about storage, everything from there down is the interface built on it.
+
+> [!NOTE]
+> **"Why is my history empty?"** The save-grouping migration
+> (`2026_07_25_000000_add_save_grouping_to_revisions_table`) **deletes every pre-existing
+> revision row** before adding `save_id`. Rows written before save points existed have no
+> group to belong to, and a null grouping key poisons every read path — see the migration's
+> own docblock for the full reasoning. History is not broken:
+> `RevisionRecorder::ensureBaseline()` writes a fresh `baseline` row from the live value the
+> next time each field is edited, so it restarts rather than staying empty. This was safe
+> to do because the
+> project is pre-V1 and the only data in existence is the Melusine demo seed.
 
 **The registry (`App\Support\AutosavableFields::REGISTRY`).** One associative array,
 keyed by the URL slug the feature's routes accept (`project`, `act`, `chapter`,
@@ -228,6 +253,16 @@ write path and a fresh install's backfill can never diverge.
   `manual`, `revert`, `import`, `baseline` — always inserts a fresh row, so a form-submit
   Save, a revert, or an import stays individually visible in history even seconds after
   an autosave closed a coalescing window.
+
+  > [!WARNING]
+  > **A coalescing row keeps its *original* `save_id`**, exactly as it keeps its original
+  > `created_at` — it is the same row being overwritten, and the save point it was born in
+  > is the one it belongs to. The consequence is real and accepted: if a Save touches three
+  > fields and one of them coalesces into a burst still open from earlier, that field lands
+  > in the **earlier** save point. The group the writer thinks of as "the save I just made"
+  > then lists two fields, and *Undo this save* leaves the third alone. The alternative —
+  > rewriting an existing group's membership after the fact — makes a save point mutable,
+  > which is worse. Also documented on `RevisionRecorder::record()`.
 - **Byte-identical no-op.** `RevisionRecorder` doesn't decide whether to write at all —
   each caller compares first and skips when nothing changed. The autosave endpoint
   (`FieldAutosaveController`) compares the incoming value against the current column value
@@ -296,7 +331,31 @@ depends on who authored the markup:
 | `Markdown` (`Scene.contents`, the project front/back matter) and `Plain` (`Project.rights`) | **Source diff** — `App\Services\Diff\SourceDiffer`, wrapping `jfcherng/php-diff` side by side, word detail | She types the Markdown herself. There the markup *is* the content. |
 
 Both return a `RevisionDiffResult` (`html` plus a `changeCount` of change hunks) whose
-`html` is safe to `{!! !!}`, because in both cases the producer escapes the text.
+`html` is safe to `{!! !!}`, because in both cases the producer escapes the text. The
+visual pipeline is three focused classes: **`HtmlTokenizer`** turns markup into blocks of
+text plus a formatting *signature* (so "same words, now bold" is detectable at all) →
+**`VisualHtmlDiffer`** matches blocks first and then words inside the blocks that actually
+changed → **`DiffHtmlRenderer`** rebuilds the output from its own `EMITTED_TAGS`
+allow-list.
+
+> [!NOTE]
+> **Why the visual differ is in-house rather than a package.** Every off-the-shelf PHP
+> HTML-diff library was rejected on licence or maintenance. `caxy/php-htmldiff` — the only
+> maintained one, and the algorithmic reference — is **GPL-2.0**; so is
+> `rashid2538/php-htmldiff`, which is additionally a PHP 5.3-era codebase with one release;
+> `icap/html-diff` is an unmaintained DaisyDiff port with no declared licence at all. This
+> app ships **as source** (`install.sh`, Docker images, the repo itself), so taking a
+> GPL-2.0 dependency is a licensing decision far bigger than a diff view. `jfcherng/php-diff`
+> is BSD-3 and already installed, but is line/word oriented and not HTML-aware, so it cannot
+> be the whole answer. The three classes above are built on *its* transitive dependency
+> `jfcherng/php-sequence-matcher` (BSD-3, already in `vendor/`): no new dependency, no
+> licence question. The full evaluation table is in the feature's `expanded/diffing.md`.
+
+This is also what retired the old **"Formatting changed only."** dead end. Rich fields used
+to be flattened to plain text before diffing, so bolding a sentence produced two identical
+strings and the UI had nothing to show. With a real visual diff, a formatting-only change
+renders the passage as written with an *x-badge* naming what changed ("formatting changed:
+bold added").
 
 **Summaries (`App\Services\RevisionSummarizer`)** answer the same question in one line, for
 a history row. The two engines above each hand it a `ChangeExcerpt` — the first thing that
@@ -460,12 +519,30 @@ scatter of unrelated rows.
   malformed id 404s at the router. It is a lookup key, never a capability — authorization
   still walks from the group's entity up to its owning `Project`.
 
-**Revisions browser (Tools ▸ Revisions).** Besides the per-field History icon on each
-edit page, the whole of a project's history is reachable from one place: the **Tools**
-toolbar dropdown → **Revisions** (`RevisionBrowserController`, route
-`projects.revisions.index`). Its left sidebar is a tree — entity type → entity → field —
-of everything in the project that *has* revisions, each field showing its revision count
-and linking to that field's existing history page. The tree is built by
+**Getting there — three entry points, one destination.** All three land on the *same*
+entity history page; they differ only in whether they pre-set the `?field=` filter.
+
+| From | Control | Goes to |
+|---|---|---|
+| Any revisionable edit screen | **History** in the Actions card (`<x-entity-history-link>`) | that entity's whole history, unfiltered |
+| Any autosaving field | the small **History** icon beside its label (`<x-autosave-field>`) | the same page, `?field=` set to that field |
+| The **Tools** toolbar dropdown | **Revisions** | the project-wide browser landing page |
+
+`<x-entity-history-link>` takes the **model** and derives the URL slug itself via
+`AutosavableFields::slugFor($model::class)`. Do not add a slug prop: every call site that
+hand-writes `"act"`/`"codex"`/… is another chance to typo one into a 404 that shows up only
+when a writer clicks it. `<x-edit-actions>` renders it when given a `historyModel`; the one
+screen without an Actions card (`plotlines/edit`) renders the component directly beside its
+Save button.
+
+**Revisions browser (Tools ▸ Revisions).** The whole of a project's history is also
+reachable from one place: the **Tools** toolbar dropdown → **Revisions**
+(`RevisionBrowserController`, route `projects.revisions.index`). Its left sidebar is a tree
+— entity type → entity → field — of everything in the project that *has* revisions. **Both
+levels are links to the same page**: the entity name opens its unfiltered history, and each
+field leaf opens it with `?field=` set, showing that field's revision count. Every one of
+those URLs is built in the service, never assembled in Blade — the tree owns its own links.
+The tree is built by
 `App\Services\ProjectRevisionsBrowser` (following the `ProjectSearch` service pattern): a
 single grouped query over `revisions.project_id` yields the `(type, id, field)` triples
 with counts, then one tiny name query per present type — and, per the rule above, it
@@ -476,15 +553,48 @@ groups **default-collapse** (only the group holding the entity currently being v
 starts open); and a client-side (Alpine) **filter box** narrows the list by entity name —
 matching groups auto-expand, the rest hide. All filter/collapse logic is plain Alpine
 *expressions* (never a component method), so a child element reads the ancestor `filter`
-state without the `this`-binding pitfall. The landing page, the per-field history, and the
+state without the `this`-binding pitfall. The landing page, the entity history and the
 compare view all render inside one shared shell, `<x-revisions-layout>` (a class-based
 component that owns the tree build so the three controllers stay thin), so the sidebar
-stays in view while a reader drills from a field's history into a diff and back. Because
-the sidebar is the single per-field navigation surface, the history page carries **no
-separate field switcher** — reaching a sibling field that has no revisions yet goes back
-through the edit page. The compare diff itself is a
-borderless **Old / New** side-by-side (`resources/views/revisions/compare.blade.php`
+stays in view while a reader drills from a history into a diff and back. That shell is also
+where both revert outcomes are flashed, once, rather than per page.
+
+The sidebar's **active row follows the filter**: the field leaf is marked
+`aria-current="page"` when `?field=` names it, and the entity name is marked instead when
+there is no field filter — which is exactly what the unfiltered entity page is. Assert on
+that attribute in tests, never on the swapped Tailwind classes (see *best-practices.md*).
+
+The history page carries its own **field filter** — a plain `<select>` offering only the
+fields that actually have history, alongside a label search and a "manual saves only"
+checkbox. All four controls (with the page number) live in the URL, so a filtered view is
+bookmarkable and the Back button means what it looks like it means. The compare diff itself
+is a borderless **Old / New** side-by-side (`resources/views/revisions/compare.blade.php`
 restyles `jfcherng/php-diff`'s `SideBySide` table) with only the changed words tinted.
+
+**Routes and the `view` / `update` split.**
+
+| Route name | Verb + path | What it is |
+|---|---|---|
+| `projects.revisions.index` | `GET /projects/{project}/revisions` | browser landing page (sidebar, no selection) |
+| `revisions.index` | `GET /revisions/{entity}/{id}` | **the** history page; `?field=` `?label=` `?manual=` `?page=` are filters |
+| `revisions.compare` | `GET /revisions/{entity}/{id}/compare` | compare two save points (`?from=` / `?to=` are save ids) |
+| `revisions.field` | `GET /revisions/{entity}/{id}/{field}` | **legacy redirect** → `revisions.index?field=` |
+| `revisions.field-compare` | `GET /revisions/{entity}/{id}/{field}/compare` | **legacy redirect** → `revisions.compare`, translating its old *revision* ids into save ids |
+| `revisions.revert` | `POST /revisions/{revision}/revert` | revert one field to one older revision |
+| `revisions.saves.revert` | `POST /revisions/saves/{save}/revert` | undo a whole save point |
+| `autosave.update` | `PATCH /autosave/{entity}/{id}/{field}` | the one generic autosave endpoint (JSON) |
+
+> [!NOTE]
+> **Reading history authorizes `view`; changing it authorizes `update`.** The history,
+> compare and browser pages all call `$this->authorize('view', ...)`, while both revert
+> endpoints demand `update`. In this single-owner app the two resolve to the same person
+> today — the altitude is set on purpose so a future read-only collaborator could read
+> history without being able to rewrite it. Every one of them walks from the entity up to
+> its owning `Project`: the id in the URL (and the `{save}` ULID) is a **lookup key, never
+> a capability**.
+>
+> The two legacy redirects exist because the field-scoped *page* is gone — it is the same
+> page with `?field=` set. An old bookmark still lands on a page about what it was about.
 
 **Known gap (deliberately out of scope for this feature).** Short fields and relations —
 `name`, `chapter_id`, `status`, `event_id`, `mentioned_events` — still only save on the
@@ -502,6 +612,12 @@ For the full design rationale and rejected alternatives (why no draft/published 
 no `laravel-auditing`/`laravel-versionable`/`revisionable` package, why no server-side
 collaborative locking), see `.specs/shipped/2026-07/autosave-with-revisions/` — its
 `handoff.md` and `resolution-log.md`.
+
+The move from per-field screens to entity + save point is its own feature folder,
+`.specs/shipped/2026-07/revision-history-rework/`. Two files there are worth opening before
+you change any of this: `resolution-log.md` (what was decided and what deviated, including
+the diff-library evaluation) and **`standing-issues.md` — what is still wrong with the code
+on `master`**, separating real defects from consequences that were accepted with eyes open.
 
 ## Enum convention
 

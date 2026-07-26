@@ -84,8 +84,10 @@ in its home:
 - Tests run against in-memory SQLite. Run the suite with `composer test`.
 
 > [!NOTE]
-> Coverage gaps to fill as you touch them: there are still no feature tests for Acts,
-> Chapters, or the Story overview. `SceneTest` is the pattern to copy.
+> Acts, Chapters, Scenes and the Story overview each have a dedicated feature test now
+> (`ActTest` / `ChapterTest` / `SceneTest` / `StoryTest`) covering CRUD, authorization,
+> validation, the `position` invariant and reordering. Keep them in step as you touch those
+> controllers; `SceneTest` is still the pattern to copy for anything new.
 
 ## Database & queries
 
@@ -96,6 +98,35 @@ in its home:
 - Add indexes deliberately, based on real query patterns. Keep queries readable; avoid raw SQL
   unless necessary.
 - Wrap multi-step writes in a database transaction.
+
+### Derived columns: store the answer when the question has a constant answer
+
+Sometimes the cheapest read is one that computes nothing. `revisions.summary_html` /
+`change_count` are the example: a diff between two **immutable** rows can never change, so
+it is computed once at write time and stored, and the history list renders without diffing
+anything. Compute-at-read would have made the first visitor to a ninety-revision history
+pay for ninety diffs, and caching only moves that cost around.
+
+Store a derived value when all three hold:
+
+1. **The inputs are immutable**, so the stored answer cannot silently become wrong.
+2. **The read is much more frequent than the write**, or much more expensive.
+3. **A stale value is cosmetic, not dangerous** — you can name what breaks and live with it.
+
+What it buys, and what it costs:
+
+> [!WARNING]
+> A derived column is a promise you have to keep in **every** write path, including the ones
+> that are not the obvious one. `revisions.summary_html` is written by the live recorder, by
+> the import replay, *and* by the baseline-backfill migration — miss one and that era of
+> rows is silently summary-less. It also owes a **backfill migration** the day the
+> computation changes, and it can be invalidated by deletes elsewhere: pruning an old
+> revision leaves its successor's summary describing a predecessor that no longer exists.
+> That staleness was accepted deliberately (recomputing during a mass prune turns a cheap
+> `DELETE` into an O(n) diff job) and is documented where a reader will meet it.
+
+The rule of thumb: **derive at read until a read is provably expensive**, then store — and
+write down what goes stale, in the same commit.
 
 ## Developer tooling (shells, package managers)
 
@@ -113,8 +144,11 @@ in its home:
 - Every commit message body explains **why** the change was made — that is the per-commit
   record.
 - Maintain a single root `CHANGELOG.md` in [Keep a Changelog](https://keepachangelog.com)
-  format: entries under `## [Unreleased]`, grouped by `Added` / `Changed` / `Fixed` /
-  `Removed`, updated per feature or pull request (not per commit).
+  format, adapted so the heading answers *when something shipped*: each PR adds its own
+  dated `## YYYY-MM-DD — <title> (#PR)` section at the top, below `[Unreleased]`, grouped by
+  `Added` / `Changed` / `Fixed` / `Removed`. Update it per feature or pull request, not per
+  commit; `[Unreleased]` holds only work not yet merged to `master`. Leave the `(#PR)`
+  suffix off — `scripts/pr-land.sh` stamps it once the number exists.
 
 ## Testing UI state: assert on semantic hooks, not Tailwind classes
 
