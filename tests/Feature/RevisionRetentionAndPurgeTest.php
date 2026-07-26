@@ -88,6 +88,59 @@ class RevisionRetentionAndPurgeTest extends TestCase
         $this->assertSame([$revision->id], (new Revision)->prunable()->pluck('id')->all());
     }
 
+    /**
+     * The prune protects "the newest revision for this field" — that is the
+     * promise that makes deleting old rows safe at all. Every other query in the
+     * feature decides "newest" by `(created_at, id)`.
+     *
+     * This pins the promise against rows whose timestamp order and insertion
+     * order disagree: the surviving row must be the newest one a *reader* would
+     * see in the history, not merely the last one written. Baselines are
+     * deliberately back-dated to the entity's `updated_at`, so out-of-order
+     * timestamps are a shape this table genuinely holds.
+     */
+    public function test_the_prune_keeps_the_newest_revision_even_when_it_was_inserted_first(): void
+    {
+        RevisionSetting::current()->update(['retention_days' => 90]);
+
+        $project = Project::factory()->create();
+
+        // Inserted first, so it holds the LOWEST id — but it is the newest by
+        // timestamp, and therefore the one the history page shows as current.
+        $newest = $this->automaticRevision($project, 'description', now()->subDays(200));
+
+        // Inserted second (higher id), but older: a back-dated row.
+        $older = $this->automaticRevision($project, 'description', now()->subDays(300));
+
+        $prunable = (new Revision)->prunable()->pluck('id')->all();
+
+        $this->assertContains($older->id, $prunable, 'the older revision is past retention and should be prunable');
+        $this->assertNotContains(
+            $newest->id,
+            $prunable,
+            'the newest revision for a field must never be prunable — losing it is data loss, not tidying',
+        );
+
+        $this->artisan('model:prune', ['--model' => [Revision::class]])->assertSuccessful();
+
+        $this->assertModelExists($newest);
+        $this->assertModelMissing($older);
+    }
+
+    /** An automatic, unlabeled revision on the project's `$field`, created at `$createdAt`. */
+    private function automaticRevision(Project $project, string $field, \DateTimeInterface $createdAt): Revision
+    {
+        return Revision::factory()->create([
+            'revisionable_type' => Project::class,
+            'revisionable_id' => $project->id,
+            'project_id' => $project->id,
+            'field' => $field,
+            'origin' => RevisionOrigin::Automatic,
+            'label' => null,
+            'created_at' => $createdAt,
+        ]);
+    }
+
     // ---------------------------------------------------------------------
     // model:prune scheduling
     // ---------------------------------------------------------------------

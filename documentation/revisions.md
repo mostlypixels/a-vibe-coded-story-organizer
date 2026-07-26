@@ -100,11 +100,20 @@ same rule.
 > [!WARNING]
 > Only `origin: automatic`, **unlabeled** rows are eligible for the unattended sweep — and
 > never the newest row of any `(entity, field)` pair. `Revision::prunable()` expresses
-> "keep the newest per field" with a `whereNotIn(... MAX(id) GROUP BY ...)` subquery and
-> **no window function**, for portability across sqlite/mysql/mariadb/pgsql/sqlsrv (see
-> `.specs/draft/multiple-database-engines`). This is the most safety-critical query in the
-> feature. Any change needs a test proving a labeled row, a non-automatic row, and each
-> field's newest row all survive regardless of age.
+> "keep the newest per field" as *"delete this row only if a strictly newer sibling exists"*,
+> newest meaning `(created_at, id)` — the same ordering every other query in the feature
+> walks — and with **no window function**, for portability across
+> sqlite/mysql/mariadb/pgsql/sqlsrv (see `.specs/draft/multiple-database-engines`). This is
+> the most safety-critical query in the feature. Any change needs a test proving a labeled
+> row, a non-automatic row, and each field's newest row all survive regardless of age.
+
+> [!CAUTION]
+> It used to say `whereNotIn('id', SELECT MAX(id) … GROUP BY …)`, which is the same thing
+> **only while insertion order matches timestamp order** within a triple. Baselines are
+> back-dated to the entity's `updated_at`, so that does not always hold — and where it broke,
+> `MAX(id)` protected the *older* row and left the newest one prunable, deleting the version
+> the writer would have been shown. `RevisionRetentionAndPurgeTest::test_the_prune_keeps_the_newest_revision_even_when_it_was_inserted_first()`
+> is the guard. Do not trade the correlated lookup back for a grouped one.
 
 | | Prune | Purge |
 |---|---|---|

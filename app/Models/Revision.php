@@ -92,11 +92,29 @@ class Revision extends Model
      * triple — losing the only remaining history for a field would be a real
      * data loss, not just tidying.
      *
-     * The `whereNotIn(... MAX(id) group by ...)` subquery expresses "keep the
-     * newest row per field" without a window function (ROW_NUMBER() /
-     * PARTITION BY are not portable across sqlite/mysql/mariadb/pgsql/sqlsrv —
-     * see .specs/draft/multiple-database-engines), so every supported engine
-     * runs the exact same plan.
+     * "Newest" is `(created_at, id)`, the same ordering the history list, the
+     * snapshot and the reverter all walk — so the row this refuses to delete is
+     * exactly the one a reader sees as current.
+     *
+     * > [!WARNING]
+     * > This used to read `whereNotIn('id', SELECT MAX(id) … GROUP BY …)`, which
+     * > is only the same thing while insertion order matches timestamp order
+     * > within a triple. It does not always: baselines are deliberately
+     * > back-dated to the entity's `updated_at`. Given a field whose newest
+     * > revision by timestamp was inserted *before* an older one, `MAX(id)`
+     * > protected the older row and left the newest one prunable — deleting the
+     * > version the writer would have been shown. Do not "simplify" it back.
+     *
+     * Expressed as "a strictly newer sibling exists" rather than as a grouped
+     * subquery: it is the same portable SQL shape (no ROW_NUMBER() / PARTITION
+     * BY — not portable across sqlite/mysql/mariadb/pgsql/sqlsrv, see
+     * .specs/draft/multiple-database-engines), it states the rule the way the
+     * docblock above states it, and the existing
+     * `(revisionable_type, revisionable_id, field, created_at)` index serves it.
+     *
+     * The sibling lookup is deliberately unfiltered by origin or label: a manual
+     * or labeled revision newer than an automatic one still means that automatic
+     * row is not the field's current version, so it may be pruned.
      *
      * Reads RevisionSetting::current()->retention_days (task 12's admin-
      * configurable singleton) rather than a raw config value, so lowering the
@@ -109,10 +127,17 @@ class Revision extends Model
             ->where('origin', RevisionOrigin::Automatic)
             ->whereNull('label')
             ->where('created_at', '<', now()->subDays(RevisionSetting::current()->retention_days))
-            ->whereNotIn('id', function ($query) {
-                $query->selectRaw('MAX(id)')
-                    ->from('revisions')
-                    ->groupBy(['revisionable_type', 'revisionable_id', 'field']);
+            ->whereExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('revisions as newer_revisions')
+                    ->whereColumn('newer_revisions.revisionable_type', 'revisions.revisionable_type')
+                    ->whereColumn('newer_revisions.revisionable_id', 'revisions.revisionable_id')
+                    ->whereColumn('newer_revisions.field', 'revisions.field')
+                    ->where(fn ($newer) => $newer
+                        ->whereColumn('newer_revisions.created_at', '>', 'revisions.created_at')
+                        ->orWhere(fn ($tie) => $tie
+                            ->whereColumn('newer_revisions.created_at', 'revisions.created_at')
+                            ->whereColumn('newer_revisions.id', '>', 'revisions.id')));
             });
     }
 }

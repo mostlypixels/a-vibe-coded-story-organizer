@@ -17,6 +17,23 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Keep the newest revision, whichever order it was written in (#54)
+
+### Fixed
+
+- The scheduled prune could delete a field's **newest** revision. It protected "the newest row
+  per field" by highest database id, while every other query in the feature — the history list,
+  the snapshot, the reverter — decides newest by `(created_at, id)`. Those two agree only while
+  rows are inserted in timestamp order, and baselines are deliberately back-dated to the entity's
+  `updated_at`. Where they disagreed, the prune kept the *older* row and deleted the version the
+  writer would have been shown. It now deletes a row only when a strictly newer sibling exists,
+  by the same ordering as the rest of the feature.
+
+### Added
+
+- A prune test whose two revisions have timestamp order and insertion order deliberately
+  reversed. The previous query fails it.
+
 ## 2026-07-26 — Two fewer queries on every autosave (#53)
 
 ### Changed
