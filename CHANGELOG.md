@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — A way in to history from everything you edit
+## 2026-07-26 — A way in to history from everything you edit (#45)
 
 ### Added
 
