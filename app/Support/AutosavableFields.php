@@ -155,7 +155,7 @@ class AutosavableFields
     /**
      * How long a run of autosaves to this field keeps overwriting the same open
      * revision row before the next save opens a new one (RevisionRecorder's
-     * coalescing window). Reads config('revisions.windows'), keyed "Model.field"
+     * coalescing window). Reads config('revisions.windows'), keyed "entity.field"
      * with a "default" fallback — never hard-code a per-field number here.
      */
     public static function windowSeconds(string $slug, string $field): int
@@ -165,7 +165,7 @@ class AutosavableFields
 
     /**
      * The maximum character length allowed for this field. Reads
-     * config('revisions.caps'), keyed "Model.field" with a "default" fallback —
+     * config('revisions.caps'), keyed "entity.field" with a "default" fallback —
      * the same source validationRule() uses, so the autosave endpoint and the
      * existing Form Requests can never drift.
      */
@@ -223,20 +223,25 @@ class AutosavableFields
     }
 
     /**
-     * Look up a "Model.field" keyed config value (config/revisions.php's
+     * Look up an "entity.field" keyed config value (config/revisions.php's
      * 'windows'/'caps' arrays), falling back to that array's 'default' entry.
      *
-     * Deliberately not a single `config('revisions.windows.Model.field')` dotted
-     * call: Laravel's config() helper splits on every dot, which would treat
-     * "Model.field" as two nested array levels instead of the single literal
-     * string key config/revisions.php actually uses.
+     * The key is the slug this registry is already keyed by — `scene.contents`,
+     * not `Scene.contents`. It used to be the model's class basename, so the
+     * same fourteen fields were named one way here and another in config, and
+     * this method existed largely to translate. Anyone adding a fifteenth field
+     * had to get both schemes right, and a wrong key does not raise: it falls
+     * through to 'default' and silently applies the wrong window or cap.
+     *
+     * Deliberately not a single `config('revisions.windows.scene.contents')`
+     * dotted call: Laravel's config() helper splits on every dot, which would
+     * treat "scene.contents" as two nested array levels instead of the single
+     * literal string key config/revisions.php actually uses.
      */
     private static function configuredValue(string $configKey, string $slug, string $field): int
     {
         $values = config("revisions.{$configKey}");
 
-        $lookupKey = class_basename(self::modelFor($slug)).'.'.$field;
-
-        return $values[$lookupKey] ?? $values['default'];
+        return $values["{$slug}.{$field}"] ?? $values['default'];
     }
 }

@@ -22,16 +22,20 @@ return [
     | Coalescing windows (seconds)
     |--------------------------------------------------------------------------
     |
-    | How long a run of autosaves to the same (Model, field) keeps overwriting
+    | How long a run of autosaves to the same (entity, field) keeps overwriting
     | the same open revision row before the next save opens a new one. Keyed
-    | "Model.field" with a "default" fallback — read by
+    | "entity.field" with a "default" fallback — read by
     | App\Support\AutosavableFields, never hard-coded per field in the
     | controller.
+    |
+    | "entity" is the URL slug from AutosavableFields::REGISTRY (`scene`,
+    | `codex`), the same word the address bar uses — not the model class name.
+    | One vocabulary for these fourteen fields, everywhere.
     |
     */
 
     'windows' => [
-        'Scene.contents' => 60, // seconds
+        'scene.contents' => 60, // seconds
         'default' => 300,
     ],
 
@@ -42,7 +46,8 @@ return [
     |
     | Enforced identically by the autosave endpoint and the existing Form
     | Requests, so the two can never drift (handoff.md §9.8). Keyed
-    | "Model.field" with a "default" fallback.
+    | "entity.field" — the URL slug, as in 'windows' above — with a "default"
+    | fallback.
     |
     | This array is the *only* place a cap is written down: every Form Request
     | reaches it through AutosavableFields::validationRule(), and
@@ -54,16 +59,16 @@ return [
     */
 
     'caps' => [
-        'Scene.contents' => 1_000_000,
-        'Project.rights' => 1_000,
+        'scene.contents' => 1_000_000,
+        'project.rights' => 1_000,
 
         // Front/back matter: a dedication or preface is a page or two, not a
         // chapter. 20,000 characters (~8 pages) was the Save form's long-standing
         // limit and stays the limit — autosave was the outlier at 100,000.
-        'Project.dedication' => 20_000,
-        'Project.acknowledgements' => 20_000,
-        'Project.preface' => 20_000,
-        'Project.postface' => 20_000,
+        'project.dedication' => 20_000,
+        'project.acknowledgements' => 20_000,
+        'project.preface' => 20_000,
+        'project.postface' => 20_000,
 
         'default' => 100_000, // descriptions
     ],

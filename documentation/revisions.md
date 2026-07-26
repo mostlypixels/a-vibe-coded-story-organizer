@@ -33,8 +33,16 @@ that must not drift:
   expressed. The autosave endpoint and the Form Requests — Store *and* Update — both call it.
 
 Coalescing windows (`config('revisions.windows')`) and per-field caps
-(`config('revisions.caps')`) live in `config/revisions.php`, keyed `"Model.field"` with a
-`"default"` fallback. Nothing hard-codes either elsewhere.
+(`config('revisions.caps')`) live in `config/revisions.php`, keyed `"entity.field"` — the same
+slug this registry uses, `scene.contents` — with a `"default"` fallback. Nothing hard-codes
+either elsewhere.
+
+> [!WARNING]
+> A key that names no registered field is not an error anyone sees: the lookup falls through to
+> `default` and silently applies the wrong window or cap. `RevisionDataModelTest` walks the
+> registry in both directions to catch it. The keys used to be the model's class basename
+> (`Scene.contents`) while the registry used slugs, so the same fourteen fields had two names and
+> a translation step between them — adding a field meant getting both right.
 
 > [!WARNING]
 > A `max:` literal in a Form Request for an autosaved field is a bug, not a style choice.
