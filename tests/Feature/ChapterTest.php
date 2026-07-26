@@ -593,4 +593,22 @@ class ChapterTest extends TestCase
 
         $this->assertSame(1, $chapter->fresh()->position);
     }
+
+    public function test_the_edit_page_links_to_the_chapters_revision_history(): void
+    {
+        // Task 18: the Actions card carries the entity-level History link. The
+        // closing quote keeps this from being satisfied by the per-field
+        // `?field=` icon link that sits beside the description editor.
+        $user = User::factory()->create();
+        $act = Act::factory()->for(Project::factory()->for($user))->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        $this->actingAs($user)
+            ->get(route('chapters.edit', $chapter))
+            ->assertOk()
+            ->assertSee(
+                'href="'.route('revisions.index', ['entity' => 'chapter', 'id' => $chapter->id]).'"',
+                false,
+            );
+    }
 }

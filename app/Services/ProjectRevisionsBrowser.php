@@ -65,6 +65,7 @@ class ProjectRevisionsBrowser
      *     entities: Collection<int, object{
      *         id: int,
      *         name: string,
+     *         url: string,
      *         fields: Collection<int, object{field: string, label: string, count: int, url: string, entity: string}>
      *     }>
      * }>
@@ -107,7 +108,7 @@ class ProjectRevisionsBrowser
      *
      * @param  class-string  $modelClass
      * @param  Collection<int, object>  $rows  grouped revision rows for this type
-     * @return Collection<int, object{id: int, name: string, fields: Collection}>
+     * @return Collection<int, object{id: int, name: string, url: string, fields: Collection}>
      */
     private function entitiesFor(string $slug, string $modelClass, Collection $rows): Collection
     {
@@ -130,6 +131,11 @@ class ProjectRevisionsBrowser
                 return (object) [
                     'id' => $id,
                     'name' => (string) ($names->get($id)?->getAttribute($displayColumn) ?? '#'.$id),
+                    // The entity's *unfiltered* history — the whole-entity view
+                    // its field leaves are a `?field=` filter on top of. Built
+                    // here rather than in Blade for the same reason the leaves'
+                    // URLs are (see fieldsFor()): the tree owns its own links.
+                    'url' => route('revisions.index', ['entity' => $slug, 'id' => $id]),
                     'fields' => $this->fieldsFor($slug, $id, $fieldRows),
                 ];
             })

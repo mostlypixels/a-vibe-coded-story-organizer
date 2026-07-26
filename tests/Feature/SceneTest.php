@@ -698,4 +698,21 @@ class SceneTest extends TestCase
             ->assertDontSee('SecretCodexEntity')
             ->assertDontSee('Codex references');
     }
+
+    public function test_the_edit_page_links_to_the_scenes_revision_history(): void
+    {
+        // Task 18: the Actions card carries the entity-level History link. The
+        // closing quote keeps this from being satisfied by one of the per-field
+        // `?field=` icon links beside the scene's three autosaved fields.
+        $user = User::factory()->create();
+        $scene = Scene::factory()->for($this->chapterFor($user))->create();
+
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertSee(
+                'href="'.route('revisions.index', ['entity' => 'scene', 'id' => $scene->id]).'"',
+                false,
+            );
+    }
 }

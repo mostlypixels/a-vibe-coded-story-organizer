@@ -163,6 +163,32 @@ before extending the feature.
   `Revision`. Three ten-line queries reading the same way beat one parameterised helper
   that has to explain which of the three it is doing.
 
+* **Task 18's History link is its own component, `x-entity-history-link`, not markup inside
+  `x-edit-actions`.** The task assumed all seven revisionable edit screens route through the
+  Actions card. **`plotlines/edit` does not** — it has no sidebar at all; its Save button and
+  delete live inside the form card. Rather than restructure that page (which would silently
+  hand it "Save and stay" and a different delete affordance — a change nobody asked for),
+  the link became a one-line component that `x-edit-actions` renders when given a
+  `historyModel`, and that `plotlines/edit` renders directly beside Save. Two real callers
+  existed the moment the task started, so this is not abstraction ahead of need.
+* **The link derives its URL slug from the model class**, via
+  `AutosavableFields::slugFor($model::class)`, rather than taking the slug as a prop. Eight
+  call sites hand-writing `"act"`/`"codex"`/… is eight chances to typo a slug into a 404 that
+  only shows up when a writer clicks it; an unregistered model now throws at render time
+  instead.
+* **The sidebar's entity row is a link with the same active treatment as its field leaves.**
+  The task asked only for the name to become a link. Left as a plain bold `<div>` turned
+  anchor it would have been the one row in the tree that never shows where you are, since
+  the entity-level page is exactly the page with no field selected. Its active test is
+  therefore `$activeField === null` — the leaves' test with the field clause inverted.
+* **Task 18's last bullet was already satisfied**, as the handoff predicted: tasks 13 and 14
+  had already moved every three-argument `route('revisions.index', [... 'field' => ...])`
+  call site to the `?field=` form. Nothing to change.
+* **Task 18 was checked in a browser** (`/run-imagoldfish`), the first thing in this feature
+  to be. The Actions-card button and the sidebar entity link were both confirmed rendering
+  and navigating, with the entity row highlighted on arrival. It does **not** close
+  `standing-issues.md` #4 — the alert paths still have not been seen.
+
 ## Known gaps
 
 **Moved to [`standing-issues.md`](standing-issues.md).** A gap that survives the task that

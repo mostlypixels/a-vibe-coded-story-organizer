@@ -500,4 +500,22 @@ class CodexEntryTest extends TestCase
         $this->actingAs($other)->put(route('codex.update', $entry), ['name' => 'Hijacked'])->assertForbidden();
         $this->actingAs($other)->delete(route('codex.destroy', $entry))->assertForbidden();
     }
+
+    public function test_the_edit_page_links_to_the_entrys_revision_history(): void
+    {
+        // Task 18: the Actions card carries the entity-level History link. The
+        // closing quote keeps this from being satisfied by the per-field
+        // `?field=` icon link beside the description editor.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($user)
+            ->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee(
+                'href="'.route('revisions.index', ['entity' => 'codex', 'id' => $entry->id]).'"',
+                false,
+            );
+    }
 }

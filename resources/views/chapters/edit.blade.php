@@ -48,7 +48,7 @@
         <x-slot:sidebar>
             @if ($chapter->scenes_count > 0)
                 {{-- Chapter has scenes: offer "move them elsewhere, then delete" or a full cascade. --}}
-                <x-edit-actions form="chapter-edit-form">
+                <x-edit-actions form="chapter-edit-form" :history-model="$chapter">
                     <x-slot:delete>
                         <x-button
                             variant="danger"
@@ -77,6 +77,7 @@
                 {{-- No scenes: nothing to move or count — keep the original plain confirm(). --}}
                 <x-edit-actions
                     form="chapter-edit-form"
+                    :history-model="$chapter"
                     :delete-action="route('chapters.destroy', $chapter)"
                     :delete-confirm="__('Are you sure you want to delete this chapter?')"
                 >

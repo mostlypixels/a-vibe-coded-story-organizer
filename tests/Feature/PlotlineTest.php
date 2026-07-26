@@ -240,4 +240,23 @@ class PlotlineTest extends TestCase
         $this->actingAs($other)->delete(route('plotlines.destroy', $plotline))->assertForbidden();
         $this->assertNotNull($plotline->fresh());
     }
+
+    public function test_the_edit_page_links_to_the_plotlines_revision_history(): void
+    {
+        // Task 18: this screen has no sidebar Actions card, so the entity-level
+        // History link sits beside Save — same component, same destination. The
+        // closing quote keeps this from being satisfied by the per-field
+        // `?field=` icon link beside the description editor.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create();
+
+        $this->actingAs($user)
+            ->get(route('plotlines.edit', $plotline))
+            ->assertOk()
+            ->assertSee(
+                'href="'.route('revisions.index', ['entity' => 'plotline', 'id' => $plotline->id]).'"',
+                false,
+            );
+    }
 }

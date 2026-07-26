@@ -4,6 +4,10 @@
     beneath it. Built by App\Services\ProjectRevisionsBrowser — only entities
     and fields that actually have history appear here.
 
+    Both levels are links, and both go to the same page: the entity name opens
+    its whole history, a field leaf opens it filtered to that field (`?field=`).
+    Every URL comes from the tree, never assembled in this template.
+
     Expects: $tree, $project, and the active $activeEntity / $activeId /
     $activeField (any may be null on the landing page).
 
@@ -82,9 +86,23 @@
             <ul x-show="filter.trim() !== '' || open" class="mt-1 space-y-2">
                 @foreach ($group->entities as $treeEntity)
                     <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from(\Illuminate\Support\Str::lower($treeEntity->name)) }}.includes(filter.trim().toLowerCase())">
-                        <div class="px-2 py-1 font-medium text-gray-800 truncate" title="{{ $treeEntity->name }}">
+                        @php
+                            // The entity name links to its whole history; a field
+                            // leaf below is the same page with `?field=` set. So
+                            // the name is the active row exactly when this entity
+                            // is being viewed with no field filter.
+                            $entityIsActive = $activeEntity === $group->type
+                                && $activeId === $treeEntity->id
+                                && $activeField === null;
+                        @endphp
+                        <a
+                            href="{{ $treeEntity->url }}"
+                            @if ($entityIsActive) aria-current="page" @endif
+                            title="{{ $treeEntity->name }}"
+                            class="block px-2 py-1 font-medium truncate border-s-2 no-underline hover:no-underline {{ $entityIsActive ? $activeClasses : $inactiveClasses }}"
+                        >
                             {{ $treeEntity->name }}
-                        </div>
+                        </a>
 
                         <ul class="ms-2 border-s border-gray-200">
                             @foreach ($treeEntity->fields as $leaf)

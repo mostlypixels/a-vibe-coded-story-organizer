@@ -369,4 +369,22 @@ class EventTest extends TestCase
         $this->assertTrue($originalDatetime->equalTo($fresh->event_datetime));
         $this->assertSame($start->id, $project->startEvent()->id);
     }
+
+    public function test_the_edit_page_links_to_the_events_revision_history(): void
+    {
+        // Task 18: the Actions card carries the entity-level History link. The
+        // closing quote keeps this from being satisfied by the per-field
+        // `?field=` icon link beside the description editor.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create();
+
+        $this->actingAs($user)
+            ->get(route('events.edit', $event))
+            ->assertOk()
+            ->assertSee(
+                'href="'.route('revisions.index', ['entity' => 'event', 'id' => $event->id]).'"',
+                false,
+            );
+    }
 }

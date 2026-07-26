@@ -29,6 +29,11 @@
 
                 <div class="flex items-center gap-4">
                     <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
+
+                    {{-- This screen has no sidebar Actions card (see the other
+                         revisionable edit pages), so the entity-level History
+                         link sits beside Save rather than in x-edit-actions. --}}
+                    <x-entity-history-link :model="$plotline" />
                 </div>
             </form>
 

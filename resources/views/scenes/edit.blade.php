@@ -99,6 +99,7 @@
         <x-slot:sidebar>
             <x-edit-actions
                 form="scene-edit-form"
+                :history-model="$scene"
                 :delete-action="route('scenes.destroy', $scene)"
                 :delete-confirm="__('Are you sure you want to delete this scene?')"
             >

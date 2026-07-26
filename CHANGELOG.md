@@ -17,6 +17,21 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — A way in to history from everything you edit
+
+### Added
+
+- **A *History* button on every screen that keeps history** — project, act, chapter, scene,
+  plotline, event and codex entry. It opens that item's whole history, so "what have I done
+  to this scene" no longer starts with picking a field.
+- **The item's name in the history sidebar is now a link**, and goes to the same whole-item
+  history. The field entries beneath it still narrow that page to one field.
+
+### Changed
+
+- The history sidebar highlights the item's own name when you are looking at its unfiltered
+  history, the same way it already highlighted a field you had picked.
+
 ## 2026-07-25 — Undo a whole save (#44)
 
 ### Added
