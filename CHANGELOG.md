@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-26 — Show both versions where "Revert to this" can point at one
+## 2026-07-26 — Show both versions where "Revert to this" can point at one (#59)
 
 ### Added
 
