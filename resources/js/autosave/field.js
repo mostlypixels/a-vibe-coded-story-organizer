@@ -352,13 +352,27 @@ export function registerAutosaveField(Alpine) {
             this.wasReplay = state === STATES.SESSION_EXPIRED;
 
             if (state === STATES.SAVED) {
-                this.dirty = false;
-                Alpine.store('autosave').dirty[this.key] = false;
+                // This response is about `value`, the text as it was when the PATCH
+                // left. If the writer kept typing while it was in flight, the field
+                // has moved on and is still unsaved: `onInput()` already scheduled a
+                // debounce tick that will send the newer text a couple of seconds
+                // later. Clearing `dirty` here would tell the navigation guard and the
+                // beforeunload fallback that everything is saved during exactly the
+                // window they exist to cover — the tab would close without a word.
+                const settled = this.fieldValue() === value;
+
+                if (settled) {
+                    this.dirty = false;
+                    Alpine.store('autosave').dirty[this.key] = false;
+                    clearDraft(this.key);
+                }
+
                 this.attempt = 0;
                 // §9.13: adopt the server's hash, never write `data.value` back into
-                // the editor DOM (would yank the caret mid-sentence).
+                // the editor DOM (would yank the caret mid-sentence). Adopted even
+                // when the field has moved on: the server stored what this request
+                // sent, so the pending save must build on that hash or it 409s.
                 this.baseHash = data.hash;
-                clearDraft(this.key);
                 this.setState(state);
                 setTimeout(() => {
                     if (this.state === STATES.SAVED) {

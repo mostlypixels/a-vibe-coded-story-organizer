@@ -183,6 +183,58 @@ describe('registerAutosaveField store dirty tracking', () => {
         expect(Alpine.store('autosave').isDirty()).toBe(false);
     });
 
+    it('typing while a save is in flight leaves the field dirty when the response lands', async () => {
+        vi.useFakeTimers();
+
+        let respond;
+        window.axios = {
+            patch: vi.fn(() => new Promise((resolve) => {
+                respond = () => resolve({ status: 200, headers: {}, data: { hash: 'new-hash' } });
+            })),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'first';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // The PATCH is in flight, describing 'first'.
+        const inFlight = field.save({});
+
+        // The writer keeps typing before the response lands.
+        textarea.value = 'first and second';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        respond();
+        await inFlight;
+
+        // The save succeeded — but for text the field no longer holds, so the
+        // page still has unsaved changes and the leave-page warning must fire.
+        expect(field.dirty).toBe(true);
+        expect(Alpine.store('autosave').dirty[field.key]).toBe(true);
+        expect(Alpine.store('autosave').isDirty()).toBe(true);
+
+        // The hash still advances, or the pending save would 409 against a value
+        // the server has already stored.
+        expect(field.baseHash).toBe('new-hash');
+    });
+
+    it('a save whose text is unchanged on arrival still clears dirty', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        await field.save({});
+
+        expect(field.dirty).toBe(false);
+        expect(Alpine.store('autosave').isDirty()).toBe(false);
+    });
+
     it('destroy() removes the key from store.dirty entirely, mirroring fields/elements', () => {
         const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
 

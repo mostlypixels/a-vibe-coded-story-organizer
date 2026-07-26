@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Don't say "saved" while the last words are still unsaved
+
+### Fixed
+
+- Typing while an autosave was in flight left the page believing everything was saved. The
+  response cleared the field's unsaved-changes flag unconditionally, including when it described
+  text the field no longer held — so for the couple of seconds until the pending save fired, the
+  "you have unsaved changes" prompt would let a tab close or a link navigate away in silence.
+  That is the exact window the warning exists to cover. The flag is now cleared only when the
+  text that was sent still matches what is in the field. No text was ever lost; the warning was.
+
 ## 2026-07-26 — Keep the newest revision, whichever order it was written in (#54)
 
 ### Fixed
