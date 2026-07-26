@@ -17,6 +17,25 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Strip and fold each searched field once
+
+### Changed
+
+- Search stripped and accent-folded the same text two or three times per matching entity: the
+  membership check folded every field, then the row builder stripped them all again and folded
+  each one once more. For a matching scene that was up to a megabyte through
+  `RichText::toPlainText()` and `AccentFolder::fold()` twice over, per search. `ProjectSearch`
+  now derives both maps once per entity — folded text for comparison, plain text for the
+  preview — and passes them down. Search terms are folded once per search rather than once per
+  entity per field. No change to what matches.
+
+### Added
+
+- A test that the result preview keeps the writer's own accents and casing while matching stays
+  accent-insensitive. The two texts now travel side by side, so handing the folded one to the
+  snippet builder is a one-word mistake, and every existing accent test asserts only that the
+  row came back.
+
 ## 2026-07-26 — Undo a save without reading every word of it (#51)
 
 ### Fixed
