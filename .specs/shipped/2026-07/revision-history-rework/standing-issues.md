@@ -18,15 +18,35 @@ Two kinds of entry:
   are not bugs and are not "to do"; they are here so nobody rediscovers them as surprises.
 
 > [!NOTE]
-> The defects below were found by **review, not by testing** — `composer test` is green
-> (1071 tests) and none of them is caught by it. Nothing in this feature has been exercised
-> in a browser. That is itself one of the entries.
+> The defects below were found by **review, not by testing** — the suite was green and
+> caught none of them. Three are now fixed (#1, #2, #4, on 2026-07-26), each with a
+> regression test verified to fail before its fix. A fixed entry keeps its original text
+> below the fix note, because *how it got there* is the part worth not repeating.
+>
+> **What has been seen in a browser**, via `/run-imagoldfish`: the entity-level History link
+> and the sidebar's entity links (task 18); the compare screen; and the validation alert from
+> #1, reproduced by temporarily lowering `config('revisions.caps')` to 10 and clicking
+> *Revert to this*. Still only ever exercised by the test suite: the **conflict** alert (it
+> needs a stale base hash, which cannot be produced by clicking), the undo flow, and the
+> history list.
 
 ---
 
 ## Defects
 
-### 1. A revert that fails validation says nothing at all
+### 1. A revert that fails validation says nothing at all — ✅ FIXED 2026-07-26
+
+**Severity was: high.** `<x-revisions-layout>` now renders `$errors` in the same alert area
+as the two flashes, under a sentence explaining that the value no longer passes today's
+rules and that nothing was written. The validator is also given the field's headline as the
+attribute name, so the message reads *"The Description must not be greater than…"* rather
+than naming the internal `value` key. Covered by
+`RevertRevisionTest::test_a_revert_that_fails_todays_validation_explains_itself_and_writes_nothing`,
+which tightens the caps config mid-test to reproduce "the rules tightened since this was
+saved", follows the redirect, and asserts against the rendered HTML. Verified to fail before
+the fix.
+
+Original entry:
 
 **Severity: high.** The writer clicks *Revert to this*, the page comes back looking
 identical, and there is no message, no change, and no explanation.
@@ -48,7 +68,24 @@ which now renders `session('error')` and `session('status')` but not `$errors`.
 **Fix sketch:** render `$errors` in the same block as the two flashes. There is no form field
 on these pages to attach a field-level error to, so it belongs in the shared alert area.
 
-### 2. A revert is two writes with nothing tying them together
+### 2. A revert is two writes with nothing tying them together — ✅ FIXED 2026-07-26
+
+**Severity was: high.** `restore()`'s two writes are now wrapped in `DB::transaction`, as the
+fix sketch below describes; task 17's outer transaction nests into it harmlessly, so the
+single-field and whole-save paths can no longer fail differently. The re-validation stays
+*outside* the transaction — a rejected value should not open one at all. Covered by
+`RevertRevisionTest::test_a_failure_recording_the_revert_leaves_the_column_untouched`, which
+mocks `RevisionRecorder::record()` to throw after the column write has already succeeded.
+Verified to fail before the fix: the column moved and no history row existed, exactly the
+defect described.
+
+> [!NOTE]
+> The `> [!IMPORTANT]` below said to fix this *before* task 17. That did not happen — task 17
+> shipped first, so `revertSave()`'s transaction was already in place when this one was
+> added. It nested without incident, which is what the fix sketch predicted, but the ordering
+> advice was sound and was simply overtaken.
+
+Original entry:
 
 **Severity: high.** If the second write fails, the value silently changes with no record that
 it ever did — the one thing this whole feature exists to prevent.
@@ -86,7 +123,16 @@ which remains compare-only.
 **Fix sketch:** reword to "the page you were on" when the entry is next touched. Not worth a
 commit of its own.
 
-### 4. Nothing checks that the alert is ever visible
+### 4. Nothing checks that the alert is ever visible — ✅ FIXED 2026-07-26
+
+**Severity was: medium.** Closed alongside #1 and #2, since it is the hole that let #1 hide.
+`RevertRevisionTest::test_the_conflict_alert_is_actually_rendered_on_the_page_it_returns_to`
+performs a conflicting revert, follows the redirect, and asserts the message text appears in
+the HTML; the #1 test does the same for the validation alert. The **validation** alert was
+also eyeballed in a browser. The **conflict** alert still has not been: producing it needs a
+stale base hash, which no amount of clicking will do — only the test reaches it.
+
+Original entry:
 
 **Severity: medium (a hole in the safety net, not a live bug).** `RevertRevisionTest` asserts
 that the app *decided* to flash a message (`assertSessionHas('error')`). No test asserts that

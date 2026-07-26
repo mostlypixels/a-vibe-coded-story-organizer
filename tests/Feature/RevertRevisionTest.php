@@ -7,7 +7,10 @@ use App\Models\Act;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Models\User;
+use App\Services\RevisionRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery\MockInterface;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -192,6 +195,116 @@ class RevertRevisionTest extends TestCase
 
         $act->refresh();
         $this->assertSame('<p>Current text</p>', $act->description);
+    }
+
+    /**
+     * standing-issues.md #4: every conflict test above asserts the app *decided*
+     * to flash a message. None asserted any page renders it — so the alert could
+     * have been wired into the wrong shell, or given the wrong props, and the
+     * whole suite would still have passed with the feature exactly as broken as
+     * it was before task 16.
+     */
+    public function test_the_conflict_alert_is_actually_rendered_on_the_page_it_returns_to(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user, ['description' => '<p>Current text</p>']);
+
+        $old = $this->revisionFor($act, [
+            'user_id' => $user->id,
+            'value' => '<p>Older text</p>',
+            'created_at' => now()->subDay(),
+        ]);
+
+        $historyUrl = route('revisions.index', ['entity' => 'act', 'id' => $act->id]);
+
+        $response = $this->actingAs($user)
+            ->followingRedirects()
+            ->from($historyUrl)
+            ->post(route('revisions.revert', $old), ['base_hash' => 'not-the-real-hash']);
+
+        $response->assertOk();
+        $response->assertSee('This changed somewhere else since you opened this page', false);
+    }
+
+    /**
+     * standing-issues.md #1: reverting re-validates the old value against
+     * *today's* rules, which is correct — rules can have tightened since it was
+     * recorded, and an old value must not reach the column through a door a
+     * normal save would have closed. But the resulting message went into
+     * $errors, which no revisions view rendered: the page came back looking
+     * identical, with no message, no change, and no explanation.
+     */
+    public function test_a_revert_that_fails_todays_validation_explains_itself_and_writes_nothing(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user, ['description' => '<p>Current text</p>']);
+
+        $old = $this->revisionFor($act, [
+            'user_id' => $user->id,
+            'value' => '<p>A value that was perfectly legal when it was saved</p>',
+            'created_at' => now()->subDay(),
+        ]);
+
+        // The rules tighten *after* that value was recorded — the exact situation
+        // the re-validation exists for.
+        config(['revisions.caps' => ['default' => 10]]);
+
+        $countBefore = Revision::count();
+        $historyUrl = route('revisions.index', ['entity' => 'act', 'id' => $act->id]);
+
+        $response = $this->actingAs($user)
+            ->followingRedirects()
+            ->from($historyUrl)
+            ->post(route('revisions.revert', $old), [
+                'base_hash' => $this->hashOf($act->description),
+            ]);
+
+        $response->assertOk();
+        // The writer is told what happened, and which rule refused it — naming
+        // the field, not the internal "value" key.
+        $response->assertSee('That value cannot be restored as it stands.', false);
+        $response->assertSee('Description', false);
+
+        // And nothing was written: not the column, not a revision row.
+        $act->refresh();
+        $this->assertSame('<p>Current text</p>', $act->description);
+        $this->assertSame($countBefore, Revision::count());
+    }
+
+    /**
+     * standing-issues.md #2: `restore()` changed the column and recorded the
+     * change as two separate statements outside any transaction. If the second
+     * failed, the value moved with nothing in the history saying so — the one
+     * outcome this whole feature exists to prevent.
+     */
+    public function test_a_failure_recording_the_revert_leaves_the_column_untouched(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user, ['description' => '<p>Current text</p>']);
+
+        $old = $this->revisionFor($act, [
+            'user_id' => $user->id,
+            'value' => '<p>Older text</p>',
+            'created_at' => now()->subDay(),
+        ]);
+
+        // The second write blows up after the first has already succeeded.
+        $this->mock(RevisionRecorder::class, function (MockInterface $recorder) {
+            $recorder->shouldReceive('record')->andThrow(new RuntimeException('history write failed'));
+        });
+
+        try {
+            $this->actingAs($user)->post(route('revisions.revert', $old), [
+                'base_hash' => $this->hashOf($act->description),
+            ]);
+        } catch (RuntimeException) {
+            // Whether the exception surfaces here or is rendered as a 500 by the
+            // handler is beside the point — the database state is.
+        }
+
+        $act->refresh();
+        $this->assertSame('<p>Current text</p>', $act->description);
+        $this->assertSame(0, Revision::query()->where('origin', RevisionOrigin::Revert)->count());
     }
 
     public function test_reverting_twice_undoes_the_revert_and_both_are_visible_in_history(): void
