@@ -394,7 +394,19 @@ class RevisionController extends Controller
      */
     public function revertSave(Request $request, string $save, RevisionReverter $reverter): RedirectResponse
     {
-        $group = Revision::query()->where('save_id', $save)->get();
+        // Never `select *` here. These rows are read only for the morph target,
+        // the dominant origin, and the (created_at, id, field) ordering that
+        // picks one row per field — RevisionReverter fetches each field's
+        // predecessor separately, and *that* query is the one that legitimately
+        // needs `value`. Hydrating it here would read up to a megabyte of
+        // longText per row to look at four scalars, which is exactly what the
+        // feature's "list and whole-save queries never load `value`" rule
+        // exists to prevent (RevisionHistory::rowsFor(), RevisionSnapshot::COLUMNS
+        // and ProjectRevisionsBrowser hold the same line).
+        $group = Revision::query()
+            ->where('save_id', $save)
+            ->select(['id', 'save_id', 'field', 'created_at', 'origin', 'revisionable_type', 'revisionable_id'])
+            ->get();
 
         abort_if($group->isEmpty(), 404);
 

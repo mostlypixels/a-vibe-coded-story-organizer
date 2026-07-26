@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Undo a save without reading every word of it
+
+### Fixed
+
+- "Undo this save" fetched its revision group with a bare `select *`, so undoing a save of a
+  scene's contents read up to a megabyte of stored text per row in order to look at four scalar
+  columns. The group is read for the morph target, the origin and the `(created_at, id, field)`
+  ordering; the one stored value an undo needs belongs to a *predecessor* row and has always
+  come from its own query. This was the single place the feature's "list and whole-save queries
+  never hydrate `value`" rule was not held — a query-listener test in `RevertSaveTest` now holds
+  it there too.
+
 ## 2026-07-26 — Make Save and autosave agree on how long a field may be (#50)
 
 ### Fixed
