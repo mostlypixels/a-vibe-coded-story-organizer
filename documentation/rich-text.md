@@ -1,23 +1,19 @@
 # Rich text (WYSIWYG)
 
-Most of the app's free-text fields are **rich HTML**: authored in a WYSIWYG editor, stored as a
-small allow-listed subset of HTML, and rendered back with formatting. This page explains the
-field taxonomy, the security model that makes rendering user HTML safe, the one Markdown-only
-carve-out, and the editor.
+Most free-text fields are **rich HTML**: authored in a WYSIWYG editor, stored as a small
+allow-listed subset of HTML, rendered back with formatting.
 
-The driving constraint of the feature is *"avoid security issues."* Turning a `<textarea>` into
-an HTML field introduces **stored XSS** as the primary risk, so the whole design is organised
-around a single rule: the DB never holds unsafe HTML, because everything is sanitized on write.
+The driving constraint is *"avoid security issues."* Turning a `<textarea>` into an HTML field
+makes **stored XSS** the primary risk, so the whole design serves one rule: **the DB never
+holds unsafe HTML, because everything is sanitized on write.**
 
 ## Field taxonomy — one source of truth
 
-`App\Support\RichTextFields` is the single source of truth for which model + field pairs are
-rich HTML (mirroring `PlotlineColors` / `CodexMediaRules` — reference data lives in
-`app/Support`, never as magic-string lists scattered across views, requests, and models).
+`App\Support\RichTextFields` is the single source of truth for which model+field pairs are rich
+HTML (mirroring `PlotlineColors` / `CodexMediaRules` — reference data lives in `app/Support`,
+never as magic-string lists scattered across views, requests and models).
 
-The rich-HTML fields:
-
-| Model | Field(s) |
+| Model | Rich-HTML field(s) |
 | --- | --- |
 | `Project` | `description` |
 | `Act` | `description` |
@@ -30,40 +26,36 @@ The rich-HTML fields:
 Everything else is one of:
 
 - **Markdown** — `Scene.contents` only (see the carve-out below).
-- **Plain text, untouched** — names/titles, aliases, tags, attribute values, etc. These stay
-  escaped (`{{ }}`) and never go near the sanitizer or the editor.
+- **Plain text, untouched** — names/titles, aliases, tags, attribute values. These stay escaped
+  (`{{ }}`) and never go near the sanitizer or the editor.
 
-`RichTextFields` also owns the sanitizer **allow-list** (`ALLOWED_TAGS`, `ALLOWED_SCHEMES`) and
-the helpers that render it into HTMLPurifier directives, plus small predicates
-(`RichTextFields::isRich($model, $field)`, `::forModel()`, `::all()`). If you add a rich field,
-add it here — nothing else hardcodes the list.
+`RichTextFields` also owns the sanitizer **allow-list** (`ALLOWED_TAGS`, `ALLOWED_SCHEMES`),
+the helpers rendering it into HTMLPurifier directives, and the predicates (`isRich()`,
+`forModel()`, `all()`). **Add a rich field here** — nothing else hardcodes the list.
 
 ## Security model
 
-The editor's client-side output is **untrusted input**. A WYSIWYG editor that "sanitizes in the
-browser" is a UX nicety, not a security control: the payload can be crafted to bypass the editor
-entirely (a direct POST or a tampered form field). Safety comes entirely from the server.
+The editor's client-side output is **untrusted input**. A WYSIWYG that "sanitizes in the
+browser" is a UX nicety, not a security control: the payload can be crafted to bypass the
+editor entirely (a direct POST, a tampered form field). Safety comes entirely from the server.
 
 ### 1. Sanitize on write (the real gate)
 
-`App\Services\HtmlSanitizer` wraps [HTMLPurifier](http://htmlpurifier.org/) — the well-audited
-standard — configured from the `RichTextFields` allow-list (`HTML.Allowed`,
-`URI.AllowedSchemes`, plus `AutoFormat.RemoveEmpty` to drop empty elements the editor leaves
-behind). It exposes a single `clean(string $html): string`.
-
-Sanitization runs through **per-field set-mutators**, wired via the
-`App\Models\Concerns\SanitizesRichHtml` trait. Every model with a rich field uses the trait; the
-shared `description` mutator lives in the trait, and a model with an extra rich field adds its
-own mutator delegating to `cleanRichHtml()` (see `Scene::notes()`). Null/empty is preserved
-as-is so a nullable column keeps storing `null` rather than `""`.
-
-A **set-mutator, not a `booted()` hook**, is the deliberate choke point: mutators still run under
-`WithoutModelEvents`, whereas model events do not. So the DB can never hold unsafe HTML
-regardless of the write path — controller, seeder, or tinker.
-
-`App\Rules\SanitizeHtml` is a Form Request rule attached to every rich field (mirroring how
-`ValidMarkdown` guards the Markdown fields). It only asserts the value is *processable* HTML; the
-actual cleaning is the mutator's job on the model write path.
+- `App\Services\HtmlSanitizer` wraps [HTMLPurifier](http://htmlpurifier.org/), configured from
+  the `RichTextFields` allow-list (`HTML.Allowed`, `URI.AllowedSchemes`, plus
+  `AutoFormat.RemoveEmpty` to drop empty elements the editor leaves behind). One method:
+  `clean(string $html): string`.
+- It runs through **per-field set-mutators**, wired by the
+  `App\Models\Concerns\SanitizesRichHtml` trait. The shared `description` mutator lives in the
+  trait; a model with an extra rich field adds its own delegating to `cleanRichHtml()` (see
+  `Scene::notes()`). Null/empty is preserved, so a nullable column keeps storing `null`, not
+  `""`.
+- **A set-mutator, not a `booted()` hook** — the deliberate choke point. Mutators still run
+  under `WithoutModelEvents`; model events don't. The DB can't hold unsafe HTML regardless of
+  write path: controller, seeder or tinker.
+- `App\Rules\SanitizeHtml` is a Form Request rule on every rich field (mirroring
+  `ValidMarkdown` for Markdown fields). It only asserts the value is *processable* HTML — the
+  cleaning is the mutator's job.
 
 ### 2. The allow-list
 
@@ -77,156 +69,147 @@ img,
 label, input, span, div
 ```
 
-The second and third rows were added by the `expand-tip-tap` feature: `table`/`thead`/`tbody`/
-`tr`/`th`/`td` for the table extension, `img` for image references (uploading new images is
-still out of scope — only referencing an existing URL is supported), and `label`/`input`/
-`span`/`div` for the task-list checkbox markup TipTap's `TaskItem`/`TaskList` extensions render.
+Rows 3–5 came from `expand-tip-tap`: the table extension; `img` for image *references*
+(uploading is still out of scope); and `label`/`input`/`span`/`div` for the checkbox markup
+TipTap's `TaskItem`/`TaskList` render.
 
-`RichTextFields::ALLOWED_ATTRIBUTES` (a separate `tag => list<attribute>` map, kept apart from
-`ALLOWED_TAGS` on purpose) lists which attributes survive per tag: `a[href]` (restricted to the
-`http`/`https` schemes in `ALLOWED_SCHEMES` — relative URLs carry no scheme and remain allowed;
-`javascript:` and `data:` are blocked by omission), `img[src|alt|title|width|height]`,
-`ul[data-type]`, `li[data-type|data-checked]`, `input[type|checked|disabled]`,
-`td[colspan|rowspan]`/`th[colspan|rowspan]` (table merge/split, structural not presentational),
-and `blockquote[data-callout-type]` (the callout node — see below). A tag absent from this map is
-allowed bare, with no attributes at all. Deliberately still **no** `<script>` / `<iframe>` /
-`<object>`, no `style`/`class`, and no event-handler attributes anywhere.
+`RichTextFields::ALLOWED_ATTRIBUTES` is a separate `tag => list<attribute>` map — kept apart
+from `ALLOWED_TAGS` on purpose — listing what survives per tag:
+
+- `a[href]` — restricted to the `http`/`https` schemes in `ALLOWED_SCHEMES`. Relative URLs
+  carry no scheme and remain allowed; `javascript:` and `data:` are blocked by omission.
+- `img[src|alt|title|width|height]`
+- `ul[data-type]`, `li[data-type|data-checked]`, `input[type|checked|disabled]`
+- `td[colspan|rowspan]` / `th[colspan|rowspan]` — table merge/split, structural not
+  presentational.
+- `blockquote[data-callout-type]` — the callout node.
+
+A tag absent from the map is allowed bare, with no attributes. Deliberately still **no**
+`<script>` / `<iframe>` / `<object>`, no `style`/`class`, no event handlers anywhere.
 
 ### 3. Render only sanitized content, only via `x-rich-text`
 
-Because content is cleaned on write, rendering it back with `{!! !!}` is "intentionally rendering
-trusted HTML." Two display components exist:
+Because content is cleaned on write, rendering it with `{!! !!}` is "intentionally rendering
+trusted HTML". Two components:
 
-- **`x-rich-text`** (`resources/views/components/rich-text.blade.php`) — the **only** place rich
-  user HTML is echoed with `{!! !!}`. Used on detail/show pages. Its `prose` classes mirror the
-  Story overview's Markdown rendering so rich HTML reads consistently across the app.
-- **`x-rich-text-excerpt`** — a short, **plain-text** preview for index/list table cells:
-  `stripTags` + `squish` + `limit`, rendered *escaped* (`{{ }}`). No markup ever leaks into a
-  striped `x-table` row, and the layout stays intact. Full rich rendering happens only on detail
-  pages.
+- **`x-rich-text`** — the **only** place rich user HTML is echoed with `{!! !!}`. Detail/show
+  pages. Its `prose` classes mirror the Story overview's Markdown rendering so rich HTML reads
+  consistently.
+- **`x-rich-text-excerpt`** — a short **plain-text** preview for index/table cells: `stripTags`
+  + `squish` + `limit`, rendered *escaped* (`{{ }}`). No markup leaks into a striped `x-table`
+  row.
 
 > [!WARNING]
 > **Never trust the client, and never `{!! !!}` a rich field anywhere but `x-rich-text`.** The
-> stored HTML is safe *only* because it was sanitized on write. Do not add a second `{!! !!}` on
-> user content, do not "sanitize in the browser and skip the server," and do not ship a rich
-> field before its write-path sanitization exists — a rich field rendered with `{!! !!}` and no
-> server-side sanitization is a direct stored-XSS hole. If the sanitizer isn't wired for a field,
-> keep it escaped (`{{ }}`) or Markdown until it is.
+> stored HTML is safe *only* because it was sanitized on write. Don't add a second `{!! !!}` on
+> user content, don't "sanitize in the browser and skip the server", and don't ship a rich
+> field before its write-path sanitization exists — that combination is a direct stored-XSS
+> hole. If the sanitizer isn't wired for a field, keep it escaped or Markdown until it is.
 
 ## The `Scene.contents` Markdown carve-out
 
-`Scene.contents` — the actual manuscript prose — is **not** a rich-HTML field. Its stored value
-stays **clean CommonMark**: validated with the `ValidMarkdown` rule and rendered via
-`Illuminate\Support\Str::markdown()` on the Story overview, exactly as before this feature. It is
-deliberately absent from `RichTextFields`, has no set-mutator (see the comment on
-`Scene::notes()`), and never touches `HtmlSanitizer`.
+`Scene.contents` — the manuscript prose — is **not** a rich-HTML field:
 
-What *did* change is only the **editing UI**: `contents` now uses the same `x-wysiwyg` editor as
-the other fields, but in **`markdown` mode** — the editor hydrates from the stored Markdown and
-serializes back to Markdown on save (see "The editor" below). The storage contract is unchanged;
-the field just gained a WYSIWYG authoring experience over a Markdown value.
+- Stored as clean CommonMark, validated by `ValidMarkdown`, rendered via `Str::markdown()`.
+- Deliberately absent from `RichTextFields`, no set-mutator (see the comment on
+  `Scene::notes()`), never touches `HtmlSanitizer`.
+- What changed is only the **editing UI**: it uses `x-wysiwyg` in **`markdown` mode**,
+  hydrating from and serializing back to Markdown. The storage contract is unchanged.
 
-Why Markdown at all: manuscript content is long-form prose that authors often paste, diff, and
-export; a plain-text Markdown source is the right storage format for it (portable, greppable,
-merge-friendly), whereas the shorter *descriptions* and *notes* store HTML. `Scene.notes` (a
-short annotation) is **rich HTML**; `Scene.contents` (the prose) is **Markdown** — the two Scene
-text fields intentionally differ in both storage format and editor mode.
+**Why Markdown at all:** manuscript content is long-form prose that authors paste, diff and
+export, so a plain-text source is the right storage format (portable, greppable,
+merge-friendly). The shorter *descriptions* and *notes* store HTML. The two Scene text fields
+intentionally differ in both storage format and editor mode.
 
 ## The editor
 
-`x-wysiwyg` (`resources/views/components/wysiwyg.blade.php`) is the single reuse point that
-replaces a `<textarea>` on the forms. Props: `name`, `id`, `value`, `rows`, `minHeight`,
-`placeholder`, `disabled`, and **`markdown`** (a boolean that switches the field from HTML mode
-to Markdown mode — see below).
+`x-wysiwyg` (`resources/views/components/wysiwyg.blade.php`) is the single reuse point
+replacing a `<textarea>`. Props: `name`, `id`, `value`, `rows`, `minHeight`, `placeholder`,
+`disabled`, and **`markdown`**.
 
-**Progressive enhancement.** The component renders a real `<textarea>` holding the value, so a
-JS-off submit still works and `old()` repopulates on validation failure. Alpine (see
-`resources/js/wysiwyg.js`, registered in `resources/js/app.js`) mounts the editor over the
-textarea, hydrates from it, and syncs edits back into it on every change and again on submit.
-Pre-mount state is hidden with `style="display:none"` (no `x-cloak`), matching the other
-interactive components. Placeholder + slash-menu styling live in `resources/css/app.css`.
+- **Progressive enhancement.** The component renders a real `<textarea>` holding the value, so
+  a JS-off submit still works and `old()` repopulates on validation failure. Alpine
+  (`resources/js/wysiwyg.js`, registered in `app.js`) mounts the editor over it, hydrates from
+  it, and syncs edits back on every change and again on submit. Pre-mount state is hidden with
+  `style="display:none"` (no `x-cloak`), matching the other interactive components.
+- **Library: Tiptap** — `@tiptap/core` + `@tiptap/starter-kit` v3, plus `@tiptap/suggestion`
+  (slash menu) and `@tiptap/markdown`. One editor framework only; the integration is fully
+  encapsulated behind the component and `wysiwyg.js`, so swapping libraries never touches a
+  view or controller.
 
-**Library: Tiptap** (`@tiptap/core` + `@tiptap/starter-kit` v3, plus `@tiptap/suggestion` for the
-slash menu and `@tiptap/markdown` for the Markdown field). One editor framework only (anti-bloat)
-— the integration is fully encapsulated behind `x-wysiwyg` and `resources/js/wysiwyg.js`, so every
-view talks to the editor only through the Blade component and swapping libraries never touches a
-view or controller.
+**Two modes:**
 
-**Two modes.**
+| Mode | Value | Serializes with | Used by |
+|---|---|---|---|
+| HTML (default) | sanitized HTML | `getHTML()` | every rich-HTML field above |
+| Markdown (`markdown` prop) | CommonMark/GFM | `getMarkdown()` | `Scene.contents` only |
 
-- **HTML mode (default).** The value is sanitized HTML; the editor serializes with `getHTML()`.
-  Used by every rich-HTML field in the taxonomy above.
-- **Markdown mode (`markdown` prop).** Used only by `Scene.contents`. The `@tiptap/markdown`
-  extension hydrates the editor from the stored Markdown (`contentType: 'markdown'`) and
-  serializes back with `editor.getMarkdown()` on write. Underline and Strikethrough are **both
-  enabled** in this mode: Strikethrough round-trips as plain GFM (`ValidMarkdown` now parses GFM,
-  not plain CommonMark), and Underline serializes to a literal `<u>…</u>` passthrough, which GFM's
-  raw-inline-HTML tolerance carries through unchanged (see `MarkdownUnderline` in
-  `resources/js/wysiwyg.js`). Table merge/split and image resize stay **HTML-mode only** — both
-  are lossy in Markdown, which is why they're on the fallback-warning list below. The stored value
-  stays Markdown; `ValidMarkdown` + `Str::markdown()` remain the gate.
+In Markdown mode, Underline and Strikethrough are **both** enabled: Strikethrough round-trips
+as plain GFM (`ValidMarkdown` parses GFM, not plain CommonMark), and Underline serializes to a
+literal `<u>…</u>` passthrough that GFM's raw-inline-HTML tolerance carries through (see
+`MarkdownUnderline`). Table merge/split and image resize stay **HTML-mode only** — both are
+lossy in Markdown, hence the fallback warnings below.
 
-**Toolbar + slash menu.** Two ways to format, both producing the same commands: an always-visible
-toolbar, and a Notion-style `/` slash command menu (headings H1–H4, bold/italic + underline/strike,
-bullet/ordered/task lists, blockquote, callout, inline code and code block, link, horizontal rule,
-table, image). The slash menu reuses `@tiptap/suggestion` (already a dependency) for the trigger
-and its bundled `@floating-ui/dom` for popup positioning — **no extra dependency**. Because every
-slash item invokes the same underlying command the toolbar calls, the menu adds no new node/mark
-surface of its own.
+**Toolbar + slash menu.** Two ways to format, producing the same commands: an always-visible
+toolbar, and a Notion-style `/` menu (headings H1–H4, bold/italic/underline/strike,
+bullet/ordered/task lists, blockquote, callout, inline code and code block, link, horizontal
+rule, table, image). The menu reuses `@tiptap/suggestion` and its bundled `@floating-ui/dom` —
+**no extra dependency** — and every item invokes the same command the toolbar calls, so it adds
+no new node/mark surface.
 
-**Tables, images, task lists, and callouts** (`expand-tip-tap`) round-trip in both editor modes.
-Adding/removing a table row or column (toolbar buttons alongside the Table button) is available
-in both modes too, since it always keeps the grid rectangular — unlike merge/split (below), it
-never produces a shape GFM can't represent. Table merge/split and image resize are HTML-mode-only
-affordances (see the fallback-warning section below for why). A **callout** is a `> [!NOTE]`/`[!TIP]`/`[!IMPORTANT]`/`[!WARNING]`/
-`[!CAUTION]` blockquote — GitHub's own alert convention, recognized on a blockquote's first line
-in both formats — implemented as a custom `Callout` node (`resources/js/wysiwyg.js`) that presents
-over the existing `<blockquote>` element via a `data-callout-type` attribute in HTML mode, and
-re-serializes as `> [!TYPE]` + `> `-prefixed body in Markdown mode. The toolbar button inserts a
-new callout or cycles an existing one through the five types.
+**Tables, images, task lists and callouts** (`expand-tip-tap`) round-trip in both modes.
+
+- Adding/removing a table row or column works in both modes: it always keeps the grid
+  rectangular, unlike merge/split.
+- A **callout** is a `> [!NOTE]` / `[!TIP]` / `[!IMPORTANT]` / `[!WARNING]` / `[!CAUTION]`
+  blockquote — GitHub's alert convention, recognized on a blockquote's first line in both
+  formats. Implemented as a custom `Callout` node presenting over `<blockquote>` via
+  `data-callout-type` in HTML mode, re-serializing as `> [!TYPE]` + `> `-prefixed body in
+  Markdown. The toolbar button inserts one or cycles an existing one through the five types.
 
 > [!IMPORTANT]
-> **Editor output must stay ⊆ the allow-list.** Whatever the toolbar *or slash menu* can produce
-> must survive `HtmlSanitizer` unchanged — otherwise formatting a user applies is silently
-> stripped on save. StarterKit v3 is configured to match `RichTextFields::ALLOWED_TAGS` exactly:
-> headings capped at levels 1–4, links restricted to `http`/`https`, and the link prompt rejects
-> any other scheme. The server sanitizer is the real gate; this client-side alignment is
-> belt-and-braces. If you extend the allow-list, extend the StarterKit config **and** the slash
-> item list to match, and vice versa.
+> **Editor output must stay ⊆ the allow-list.** Whatever the toolbar *or slash menu* can
+> produce must survive `HtmlSanitizer` unchanged, or formatting a user applies is silently
+> stripped on save. StarterKit v3 is configured to match `ALLOWED_TAGS` exactly: headings
+> capped at 1–4, links restricted to `http`/`https`, and the link prompt rejects other schemes.
+> The server sanitizer is the real gate; this is belt-and-braces. Extend the allow-list and you
+> extend the StarterKit config **and** the slash item list, and vice versa.
 
 > [!CAUTION]
-> **Never store the Tiptap `Editor` in Alpine reactive state.** Alpine wraps reactive properties
-> in a `@vue/reactivity` Proxy, and ProseMirror's view/state do not survive being proxied —
-> commands run through the proxied instance silently no-op (this once made the toolbar dead while
-> the slash menu, which uses the raw editor, still worked). `wysiwyg.js` keeps the editor in a
-> **non-reactive closure variable**; only `ready`/`tick` are reactive. Same rule for any stateful
-> third-party instance. See `.specs/shipped/2026-07/wysiwig/resolution-log.md` for the full incident.
+> **Never store the Tiptap `Editor` in Alpine reactive state.** Alpine wraps reactive
+> properties in a `@vue/reactivity` Proxy, and ProseMirror's view/state don't survive being
+> proxied — commands run through the proxied instance silently no-op (this once made the
+> toolbar dead while the slash menu, using the raw editor, still worked). `wysiwyg.js` keeps
+> the editor in a **non-reactive closure variable**; only `ready`/`tick` are reactive. Same
+> rule for any stateful third-party instance. Full incident:
+> `.specs/shipped/2026-07/wysiwig/resolution-log.md`.
 
 > [!NOTE]
-> **Image upload (a new file) is still deferred.** The toolbar's Image button (`expand-tip-tap`)
-> only inserts a reference to an existing URL — there is still no upload endpoint and no
-> `project_media` table. Because nothing can be uploaded, the related concerns —
-> unauthenticated-upload authorization and orphaned-image garbage collection — remain **not
-> applicable**. Adding real upload later would introduce an `auth`-protected,
-> `authorize('update', $project)`-guarded route plus file validation (reuse `CodexMediaService` /
-> `CodexMediaRules`); `<img[src|alt|title|width|height]>` is already in the allow-list today.
+> **Image upload (a new file) is still deferred.** The Image button only inserts a reference to
+> an existing URL — no upload endpoint, no `project_media` table. Because nothing can be
+> uploaded, unauthenticated-upload authorization and orphaned-image GC remain **not
+> applicable**. Real upload would need an `auth`-protected,
+> `authorize('update', $project)`-guarded route plus file validation (reuse
+> `CodexMediaService` / `CodexMediaRules`); the `img` attributes are already allow-listed.
 
 ## Fallback-warning structural checks
 
-Three constructs are lossless in HTML mode but **lossy in Markdown mode**: a merged table cell
-(GFM has no `colspan`/`rowspan` concept), a resized image (GFM has no width/height syntax), and an
-unmatched raw-HTML wrapper tag pasted or imported into the document (CommonMark's raw-HTML
-passthrough unwraps a tag with no registered ProseMirror node and keeps only its content). None of
-these are prevented — they're detected, so a caller can warn the user before the loss happens.
+Three constructs are lossless in HTML mode but **lossy in Markdown mode**:
 
-`resources/js/wysiwyg/fallbackChecks.js` is a standalone module (no import of `wysiwyg.js`, so it
-can be depended on without pulling in toolbar/Alpine code) exporting `hasMergedTableCell(doc)`,
-`hasResizedImage(doc)`, `hasUnmatchedHtmlWrapperTag(source, editor)`, and the combined
-`findFallbackWarnings({ editor, source })`. `autosave-with-revisions` (§11.5.2) is this module's
-first real consumer — it surfaces these as a save-time warning. See
-`resources/js/wysiwyg/fallbackChecks.test.js` for the exhaustive positive/negative cases (including
-regression guards so a plain table/image/task-list, an underline mark, or a callout block never
-false-positives).
+1. A **merged table cell** — GFM has no `colspan`/`rowspan`.
+2. A **resized image** — GFM has no width/height syntax.
+3. An **unmatched raw-HTML wrapper tag** pasted or imported in — CommonMark's raw-HTML
+   passthrough unwraps a tag with no registered ProseMirror node and keeps only its content.
+
+None are prevented; they're **detected**, so a caller can warn the user before the loss.
+
+`resources/js/wysiwyg/fallbackChecks.js` is standalone (it doesn't import `wysiwyg.js`, so
+depending on it doesn't pull in toolbar/Alpine code), exporting `hasMergedTableCell(doc)`,
+`hasResizedImage(doc)`, `hasUnmatchedHtmlWrapperTag(source, editor)` and the combined
+`findFallbackWarnings({ editor, source })`. Autosave is its first real consumer, surfacing them
+as a save-time warning. `fallbackChecks.test.js` holds the exhaustive cases, including
+regression guards so a plain table/image/task-list, an underline mark, or a callout never
+false-positives.
 
 ## Where things live
 

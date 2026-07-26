@@ -64,12 +64,13 @@ an importer must ignore keys it does not recognize.
 
 ## `data/publication-setting.json`
 
-The project's EPUB **publication settings** — the include-toggles, formatting
-choices, section order, and appendix options edited on the Export-ebook config
-page (the `App\Models\PublicationSetting` row, one per project). A flat,
-project-level descriptor like `data/tags.json`, written **only when the project
-has a saved `publication_settings` row**; a project that never visited the config
-form omits the file entirely (its lossless meaning is "the lazy default").
+The project's EPUB **publication settings** — the include-toggles, formatting choices, section
+order and appendix options from the Export-ebook config page (the
+`App\Models\PublicationSetting` row, one per project).
+
+A flat project-level descriptor like `data/tags.json`, written **only when the project has a
+saved `publication_settings` row**. A project that never visited the config form omits the file
+entirely; its lossless meaning is "the lazy default".
 
 ```json
 {
@@ -176,13 +177,15 @@ data/acts/<id>-slug/
       notes.html
 ```
 
-`chapter.json`'s `cover_file` (epub-configuration, task 07) is present only when the chapter
-has a cover image; it links a co-located `cover/<name>` file, exactly like a codex entry's
-`cover/…` media. The **bytes** ship only when the export includes media (the "Include images &
-files" toggle) — a metadata-only export declares `cover_file` but ships no bytes, and the
-importer then restores the chapter with a **null** cover. The cover is a plain path field with
-no declared mime, so the import security gate content-sniffs it on **bytes alone** (`finfo` +
-`getimagesize` must agree on an allowed image type); a forged image rejects the archive.
+`chapter.json`'s `cover_file`:
+
+- Present only when the chapter has a cover image, linking a co-located `cover/<name>` file —
+  exactly like a codex entry's `cover/…` media.
+- The **bytes** ship only when the export includes media. A metadata-only export declares
+  `cover_file` but ships no bytes, and the importer restores the chapter with a **null** cover.
+- The cover is a plain path field with no declared mime, so the import security gate
+  content-sniffs it on **bytes alone** (`finfo` + `getimagesize` must agree on an allowed image
+  type). A forged image rejects the archive.
 
 `scene.json`:
 
@@ -218,8 +221,8 @@ The scene share-link columns (`share_token`, `share_expires_at`) are **deliberat
 
 > [!NOTE]
 > **Codex references are excluded too, for a different reason.** `scene_codex_entry` (which
-> codex entries a scene's contents mention — see `documentation/architecture.md` → *Scene
-> references*) is a derived cache, not source-of-truth content: it is fully recomputed from
+> codex entries a scene's contents mention — see [`codex.md` → Scene
+> references](codex.md#scene-references--appservicesscenereferencematcher)) is a derived cache, not source-of-truth content: it is fully recomputed from
 > `contents` and the Codex branch's aliases/names, so the exporter never writes it, and an
 > archive predating this feature imports and re-derives references identically to a newer one.
 > Do not add `codex_entry_ids` to `scene.json` — see `ProjectImporter::run()`, which calls
@@ -228,11 +231,12 @@ The scene share-link columns (`share_token`, `share_expires_at`) are **deliberat
 
 ## The Timeline branch
 
-The project's chronology — every **plotline** and **event**, grouped by type under
-`data/timeline/`. Unlike the Story branch these are **not nested** (an event belongs to
-many plotlines, not one), so both live in flat type folders. Each entity is a `<id>-slug`
-directory with a JSON descriptor plus its raw `description.html` fragment (same field-file
-and null-handling rules as the Story branch above).
+The project's chronology — every **plotline** and **event**, under `data/timeline/`.
+
+- **Not nested**, unlike the Story branch: an event belongs to many plotlines, not one, so
+  both live in flat type folders.
+- Each entity is a `<id>-slug` directory with a JSON descriptor plus its raw
+  `description.html` fragment — same field-file and null-handling rules as the Story branch.
 
 > [!IMPORTANT]
 > The auto-created **anchors are exported like any other row**: the `is_main` **main
@@ -291,10 +295,10 @@ data/timeline/events/<id>-slug/
 
 ## The Codex branch
 
-The project's world bible — every **Codex entry** (characters, locations, organizations)
-plus its **aliases**, **tags**, **attribute values over time**, and **media**, together
-with the project's flat **attribute definitions** and **tag** lists. This is the richest
-branch, and the one that carries the feature's crucial *attribute-over-time* relationship.
+The project's world bible: every **Codex entry** (characters, locations, organizations) plus
+its **aliases**, **tags**, **attribute values over time** and **media**, alongside the
+project's flat **attribute definitions** and **tag** lists. The richest branch, and the one
+carrying the *attribute-over-time* relationship.
 
 ### Layout & shapes
 
@@ -383,15 +387,15 @@ by stable id:
 
 ### Media & the "Include images & files" toggle
 
-Media live only on Codex entries (the `codex_media` table) in three collections: `cover`
-(single), `reference_image`, and `reference_file`. Each row is described in the entry's
-`media[]` array — **the entry.json IS the manifest; there is deliberately no separate
-`images/manifest.json`.**
+Media live only on Codex entries (`codex_media`), in three collections: `cover` (single),
+`reference_image`, `reference_file`.
 
-Each media entry's `file` is a path **relative to the entry directory**, grouped by
-collection. The single cover keeps its original name (`cover/portrait.jpg`); the multi-item
-reference collections prefix a zero-padded position so two files with the same original name
-never collide (`reference-images/01-sketch.png`, `reference-files/01-notes.pdf`).
+- Each row is described in the entry's `media[]` array — **`entry.json` IS the manifest**;
+  there is deliberately no separate `images/manifest.json`.
+- Each `file` is a path **relative to the entry directory**, grouped by collection.
+- The single cover keeps its original name (`cover/portrait.jpg`). The multi-item reference
+  collections prefix a zero-padded position so two files with the same original name never
+  collide (`reference-images/01-sketch.png`, `reference-files/01-notes.pdf`).
 
 > [!IMPORTANT]
 > The **"Include images & files" toggle governs BYTES only**. The `media[]` **metadata is
@@ -404,10 +408,9 @@ never collide (`reference-images/01-sketch.png`, `reference-files/01-notes.pdf`)
 
 ## The `book/` reading layer
 
-Everything above specifies `data/` — the raw, lossless machine layer. `book/` is the other
-top-level folder: the **human reading version** of the manuscript. It is deliberately narrow —
-just the prose, readable — and is **not** a source of truth. Import ignores it entirely
-and reconstructs the project from `data/`.
+`book/` is the **human reading version** of the manuscript: deliberately narrow — just the
+prose, readable — and **not** a source of truth. Import ignores it entirely and reconstructs
+the project from `data/`.
 
 > [!IMPORTANT]
 > **`book/` is the ONE place the export renders Markdown to HTML.** Each scene's `contents`
@@ -425,18 +428,21 @@ book/NN/NN.html          one compiled page per chapter, named by the chapter's
                          zero-padded PER-ACT position
 ```
 
-Both numbers come straight from the app-wide `position` column, zero-padded to two digits. The
-act folder uses the **act** position; the chapter file uses the chapter's **per-act** position
-(chapter positions restart at `01` inside each act — act 2's first chapter is `02/01.html`, not a
-global `03`). Reordering positions in the app renumbers the files on the next export.
+Both numbers come from the app-wide `position` column, zero-padded to two digits:
+
+- The act folder uses the **act** position.
+- The chapter file uses the chapter's **per-act** position — positions restart at `01` inside
+  each act, so act 2's first chapter is `02/01.html`, not a global `03`.
+- Reordering positions in the app renumbers the files on the next export.
 
 ### `book/index.html` — the table of contents
 
-Lists every **act** (its title as a heading) with its **chapters** (titles) as links to the
-compiled chapter pages, in `position` order. Links are relative to `book/` (e.g.
-`01/01.html`, `02/01.html`). Act and chapter titles are **plain text and HTML-escaped** — the
-title columns are not rich fields. An empty project still emits a valid `index.html` with no
-chapter links.
+- Lists every **act** (title as a heading) with its **chapters** as links to the compiled
+  pages, in `position` order.
+- Links are relative to `book/` (`01/01.html`, `02/01.html`).
+- Act and chapter titles are **plain text and HTML-escaped** — the title columns are not rich
+  fields.
+- An empty project still emits a valid `index.html`, with no chapter links.
 
 ### `book/NN/NN.html` — a compiled chapter page
 
@@ -447,14 +453,16 @@ Each chapter page contains:
   — with **no scene titles** (the reading layer is continuous prose, not a scene-by-scene index);
 - **prev/next** reading links at **both the top and the bottom** of the page.
 
-Prev/next follow the **global reading order across act boundaries**: the last chapter of act *n*
-links forward to the first chapter of act *n+1*. Because chapter pages sit one level below
-`index.html`, a sibling chapter link is `../NN/NN.html` (crossing into another act's folder when
-needed, e.g. `../02/01.html`), and at the ends the first chapter's *prev* and the last chapter's
-*next* point back to the TOC at `../index.html`.
+Prev/next follow the **global reading order across act boundaries**:
 
-Pages are **self-contained**: a single full HTML document each, with **minimal inline CSS** (a
-readable serif body, a constrained `max-width`) and **no external assets**, so a page opens
-directly from the unzipped archive. The HTML lives in Blade templates under
-`resources/views/exports/book/` (`layout`, `index`, `chapter`) rendered to string by
-`StaticSiteExporter` — HTML is never string-built in the service.
+- The last chapter of act *n* links forward to the first chapter of act *n+1*.
+- Chapter pages sit one level below `index.html`, so a sibling link is `../NN/NN.html`,
+  crossing into another act's folder when needed (`../02/01.html`).
+- At the ends, the first chapter's *prev* and the last chapter's *next* point back to the TOC
+  at `../index.html`.
+
+Pages are **self-contained**: one full HTML document each, **minimal inline CSS** (readable
+serif body, constrained `max-width`), **no external assets** — so a page opens directly from
+the unzipped archive. The HTML lives in Blade templates under `resources/views/exports/book/`
+(`layout`, `index`, `chapter`), rendered to string by `StaticSiteExporter`. HTML is never
+string-built in the service.

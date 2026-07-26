@@ -52,7 +52,7 @@ step function**: each `codex_attribute_values` row means *"from this event onwar
 is X."* A **period** runs from its anchor until the next one (or the *End* event); there is no
 stored end, so periods tile the timeline with no gaps or overlaps. The value "as of" a moment
 is the anchor whose datetime is the greatest ≤ that moment. See
-[attribute timeline](architecture.md#attribute-definitions-and-the-step-function).
+[attribute timeline](codex.md#attribute-definitions-and-the-step-function).
 
 **Anchor event** — the `Event` a period is pinned to (`start_event_id`): the value takes
 effect *from* that event. Anchors are ordered canonically by `(event_datetime, events.id)` —
@@ -67,8 +67,9 @@ exist (the guard returns a `403`).
 
 ## Revisions, history & diffs
 
-The vocabulary the revision feature made load-bearing. All of it is expanded in
-[architecture](architecture.md#revisions-autosave--entity-history).
+The vocabulary the revision feature made load-bearing. Summarised in
+[architecture](architecture.md#revisions-autosave--entity-history); expanded in full in
+[revisions](revisions.md).
 
 **Revision** — one immutable row holding what a **single field** held at a moment. Never
 edited after it is written; a revert *adds* a new revision rather than rewinding, which is
