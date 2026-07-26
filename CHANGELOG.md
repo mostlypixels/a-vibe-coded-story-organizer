@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — No blank rows in an exported book's contents
+
+### Fixed
+
+- A chapter whose name is blank, exported under the "Title only" chapter format, produced an
+  empty label in the EPUB's navigation and table of contents — a blank row in the reader's
+  contents list. The export's own validity check inspects the package metadata, not the
+  navigation, so the book exported clean and only looked broken once opened. Navigation labels
+  now fall back to "Chapter {position}", matching what a nameless act or scene already does.
+  The chapter's own page heading is untouched: a writer who asks for the title alone, and has
+  none, still gets none.
+
 ## 2026-07-26 — Don't say "saved" while the last words are still unsaved (#55)
 
 ### Fixed
