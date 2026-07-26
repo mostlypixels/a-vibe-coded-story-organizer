@@ -17,6 +17,31 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Documentation you can actually read
+
+### Added
+
+- `documentation/revisions.md`, `documentation/codex.md`, `documentation/epub-export.md` — the
+  three biggest features' full references (invariants, pitfalls, rejected alternatives), each
+  restructured into scannable lists.
+- `documentation/architecture.md` → *The rest of the documentation*: a table mapping every
+  page in `documentation/` to what it covers.
+- `tests/Unit/DocumentationLinksTest` — guards the docs' cross-references: every relative
+  `.md` link resolves, every `#anchor` matches a real heading, and every page is listed in
+  the architecture index. A heading moving between pages used to break links silently.
+
+### Changed
+
+- `documentation/architecture.md` is the map, not the manual: Revisions, The Codex and EPUB
+  export are now short entry-point sections linking to their deep dives. The file drops from
+  1189 lines to 532.
+- `documentation/rich-text.md` and `documentation/export-format.md` converted from paragraph
+  prose to lists and tables.
+- `CLAUDE.md` gains a **Verbosity** rule: lists by default, prose only to explain *why*, no
+  restating code, short entry point + linked deep dive.
+- `plan-implementer` and `ship-plan` now treat `resolution-log.md` as an exception log rather
+  than a work journal — a task that went to plan gets no entry.
+
 ## 2026-07-26 — Say why a revert was refused, and never half-apply one (#47)
 
 ### Fixed

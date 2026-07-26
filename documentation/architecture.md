@@ -181,443 +181,47 @@ scenes stay hidden regardless of the global toggle).
 
 ## Revisions (autosave + entity history)
 
-Fourteen long-text fields across the project tree (`Scene.contents` above all) autosave
-via AJAX as the writer types, and every save that matters is recoverable through a
-history / compare / undo UI. There is **no draft-vs-published split** — autosave writes
-the live column directly, so exports, search, share links, and `SceneReferenceMatcher`
-always read the same value the writer sees.
+Fourteen long-text fields across the project tree (`Scene.contents` above all) autosave as
+the writer types, and every save that matters is recoverable through history / compare /
+undo. There is **no draft-vs-published split**: autosave writes the live column, so exports,
+search, share links and `SceneReferenceMatcher` always read what the writer sees.
 
-**Read this first: the feature works at two altitudes, and they deliberately do not
-match.**
+The feature works at two altitudes, and they deliberately do not match:
 
 | | The unit | Where it lives |
 |---|---|---|
-| **Storage** | one immutable row **per field, per moment** | the `revisions` table — append-only, and nothing but an explicit purge ever deletes a row |
-| **Interface** | one **save point** per Save (or per autosave burst), covering every field that save touched | `revisions.save_id`, folded into `SavePoint`s by `App\Services\RevisionHistory` |
+| **Storage** | one immutable row **per field, per moment** | `revisions` table — append-only; only an explicit purge deletes |
+| **Interface** | one **save point** per Save (or autosave burst), covering every field it touched | `revisions.save_id`, folded into `SavePoint`s by `RevisionHistory` |
 
-A writer does not think *"I changed `Scene.notes` at 14:03"* — they think *"I saved"*. So
-every screen — history, compare, undo — is addressed by **entity + save point**, and a
-single field is a `?field=` **filter** on top of that rather than a page of its own. That
-split is the key to reading the rest of this section: everything up to *Save points* is
-about storage, everything from there down is the interface built on it.
+Writers don't think *"I changed `Scene.notes` at 14:03"* — they think *"I saved"*. So every
+screen is addressed by **entity + save point**; a single field is a `?field=` filter, not a
+page of its own.
 
-> [!NOTE]
-> **"Why is my history empty?"** The save-grouping migration
-> (`2026_07_25_000000_add_save_grouping_to_revisions_table`) **deletes every pre-existing
-> revision row** before adding `save_id`. Rows written before save points existed have no
-> group to belong to, and a null grouping key poisons every read path — see the migration's
-> own docblock for the full reasoning. History is not broken:
-> `RevisionRecorder::ensureBaseline()` writes a fresh `baseline` row from the live value the
-> next time each field is edited, so it restarts rather than staying empty. This was safe
-> to do because the
-> project is pre-V1 and the only data in existence is the Melusine demo seed.
+The load-bearing pieces:
 
-**The registry (`App\Support\AutosavableFields::REGISTRY`).** One associative array,
-keyed by the URL slug the feature's routes accept (`project`, `act`, `chapter`,
-`plotline`, `event`, `scene`, `codex`), each mapping to `[model class, [field =>
-FieldKind, ...]]`. This is the **single source of truth** for three different concerns
-that must never drift apart:
+- **`App\Support\AutosavableFields::REGISTRY`** — single source of truth for what autosaves,
+  how routes resolve, and how each field validates.
+- **`App\Services\RevisionRecorder`** — the only writer of `revisions` rows. Coalesces
+  `automatic` saves within a window; every other origin always inserts.
+- **`Revision::prunable()` (prune) vs `App\Services\RevisionPurger` (purge)** — the
+  unattended sweep may only touch unlabeled `automatic` rows, and never a field's newest.
+- **`RevisionDiffer`** — visual diff for TipTap HTML, source diff for Markdown/Plain.
+- **`RevisionHistory` / `RevisionSnapshot` / `RevisionReverter`** — save-point folding,
+  point-in-time state, and revert/undo (additive, all-or-nothing).
 
-- Which fields autosave at all, and what kind of editor (`FieldKind::Plain` / `Rich` /
-  `Markdown`) each one uses.
-- Route resolution: `routes/web.php` gates the `{entity}` segment with
-  `->whereIn('entity', AutosavableFields::slugs())`, so an unregistered slug 404s at the
-  router — there is **one generic `FieldAutosaveController` route, never one per model**.
-  The remaining slug+field→model step lives in **`AutosavableFields::resolveField($slug,
-  $field)`**, the single home of the "unknown *field* 404s" contract: both
-  `FieldAutosaveController` and `RevisionController` reach a model+field through it, so the
-  check can never drift between them.
-- Validation: `AutosavableFields::validationRule($slug, $field)` is the *only* place a
-  character cap or content rule is expressed; `FieldAutosaveController` and the existing
-  Form Requests both call it, so the two paths can never validate the same field two
-  different ways.
+Rules that bite if you don't know them:
 
-Coalescing windows (`config('revisions.windows')`, keyed `"Model.field"` with a
-`"default"` fallback) and per-field character caps (`config('revisions.caps')`, same
-keying) live in `config/revisions.php` for the same "configuration in one place" reason —
-`AutosavableFields` reads them, nothing hard-codes a window or cap per field elsewhere.
-
-**Writing to `revisions` (`App\Services\RevisionRecorder`).** The one class that ever
-inserts or updates a `Revision` row. Two entry points reach it: `FieldAutosaveController`
-for every `origin: automatic` autosave, and each of the 7 entity controllers' `update()`
-— through the shared `App\Http\Controllers\Concerns\RecordsManualRevisions` trait
-(`snapshotAutosaved()` before the save, `recordManualSave()` after) — for the labeled
-`origin: manual` checkpoint a full-form Save writes. The manual half is one trait, not
-copy-pasted per controller, and the recorder defaults the "Saved &lt;date&gt;" label so
-no caller names it. The baseline-backfill migration also calls the recorder, so the live
-write path and a fresh install's backfill can never diverge.
-
-- **Coalescing.** Within a field's configured window, a run of `origin: automatic` saves
-  overwrites the same still-open revision row in place (a plain `UPDATE`, not a new
-  insert) rather than creating one row per keystroke-debounce tick. Every other origin —
-  `manual`, `revert`, `import`, `baseline` — always inserts a fresh row, so a form-submit
-  Save, a revert, or an import stays individually visible in history even seconds after
-  an autosave closed a coalescing window.
-
-  > [!WARNING]
-  > **A coalescing row keeps its *original* `save_id`**, exactly as it keeps its original
-  > `created_at` — it is the same row being overwritten, and the save point it was born in
-  > is the one it belongs to. The consequence is real and accepted: if a Save touches three
-  > fields and one of them coalesces into a burst still open from earlier, that field lands
-  > in the **earlier** save point. The group the writer thinks of as "the save I just made"
-  > then lists two fields, and *Undo this save* leaves the third alone. The alternative —
-  > rewriting an existing group's membership after the fact — makes a save point mutable,
-  > which is worse. Also documented on `RevisionRecorder::record()`.
-- **Byte-identical no-op.** `RevisionRecorder` doesn't decide whether to write at all —
-  each caller compares first and skips when nothing changed. The autosave endpoint
-  (`FieldAutosaveController`) compares the incoming value against the current column value
-  and skips the call entirely when they're identical (typing something and undoing it
-  leaves no trace). The manual path (`recordManualChanges()`) independently compares each
-  field's pre-edit snapshot against its post-save value and records only the fields the
-  writer actually touched, so clicking Save after editing one of a form's several
-  autosaved fields doesn't spam empty-diff `manual` rows for the rest.
-- **Baseline seeding (`ensureBaseline()`).** The very first time a field is ever touched
-  (autosave or backfill), a `origin: baseline` row is written holding the *pre-edit*
-  value, stamped with the entity's own `updated_at` (not `now()`) so it accurately
-  represents "this value held from this timestamp onward" for compare-by-date. Skipped
-  when the field is currently empty — nothing worth preserving.
-
-**Origin (`App\Enums\RevisionOrigin`).** `automatic` / `manual` / `revert` / `import` /
-`baseline` — see its own docblock for the label shown on the history page. This is the
-axis that decides *how a row was created*; it is deliberately not the same taxonomy as
-"category" below.
-
-**Prune vs. purge — the safety-critical distinction.**
-
-> [!WARNING]
-> Only `origin: automatic`, unlabeled revisions are ever eligible for the unattended
-> daily sweep, and even then never the *newest* revision of any `(entity, field)` pair.
-> `Revision::prunable()`'s `whereNotIn(... MAX(id) group by ...)` subquery expresses "keep
-> the newest row per field" **without a window function** (portable across
-> sqlite/mysql/mariadb/pgsql/sqlsrv — see `.specs/draft/multiple-database-engines`). This
-> is the single most safety-critical query in the feature; any change to it needs a test
-> proving a labeled row, a non-automatic-origin row, and the newest row of a field all
-> survive regardless of age.
-
-- **Prune** = the unattended path. `Revision::prunable()` (an instance method
-  `MassPrunable` calls via the scheduled `model:prune` command — not a query-builder
-  macro, so tests call it as `(new Revision())->prunable()`) reads
-  `RevisionSetting::current()->retention_days`, an admin-configurable singleton, rather
-  than the raw `config('revisions.retention_days')` — lowering retention in the admin
-  panel takes effect on the very next scheduled prune with no deploy.
-- **Purge** = the deliberate, explicit path (`App\Services\RevisionPurger`), the opposite
-  number of prune: it *is* allowed to remove labeled and non-automatic rows, because
-  without a release valve an imported project's history or a two-year `manual` trail
-  would be a one-way ratchet. Both `revisions:purge` (console) and the admin "Revisions"
-  page's storage panel call this one service, so a dry-run preview and the real deletion
-  can never report different counts. Its four **categories** — `automatic` / `manual` /
-  `labeled` / `imported` — are a cross-cutting slice, not a fifth `RevisionOrigin`: three
-  map directly to an origin, but `labeled` matches `whereNotNull('label')` regardless of
-  origin (a manual or automatic row can both carry a label).
-
-**List queries never hydrate `value`.** The history index, the storage panel, and every
-purge-preview query select explicit columns only — `size_bytes` exists precisely so
-`SUM(size_bytes)` never needs to touch `value`, since a field's full text history can be
-large. Any new query against `revisions` should follow the same rule.
-
-**`project_id` is always set explicitly**, never inferred from the polymorphic
-`revisionable_type`/`revisionable_id` pair — `App\Models\Concerns\HasRevisions::
-revisionProject()` walks up to the owning `Project` (its own id for `Project` itself),
-mirroring `ProjectPolicy::update`'s authorization walk. This matters because deleting a
-`Project` cascades to its acts/chapters/scenes at the DB level without firing Eloquent
-events, so a polymorphic-column-based lookup would silently break for orphaned rows.
-
-**Diffing (`App\Services\RevisionDiffer`)** is a router, and which strategy it picks
-depends on who authored the markup:
-
-| `FieldKind` | Strategy | Why |
-|---|---|---|
-| `Rich` (the TipTap HTML fields) | **Visual diff** — `App\Services\Diff\HtmlTokenizer` → `VisualHtmlDiffer` → `DiffHtmlRenderer`, built in-house on `jfcherng/php-sequence-matcher` | The writer never types that HTML. She should see her paragraphs with the changes marked in place, not `</p><p>` churn. |
-| `Markdown` (`Scene.contents`, the project front/back matter) and `Plain` (`Project.rights`) | **Source diff** — `App\Services\Diff\SourceDiffer`, wrapping `jfcherng/php-diff` side by side, word detail | She types the Markdown herself. There the markup *is* the content. |
-
-Both return a `RevisionDiffResult` (`html` plus a `changeCount` of change hunks) whose
-`html` is safe to `{!! !!}`, because in both cases the producer escapes the text. The
-visual pipeline is three focused classes: **`HtmlTokenizer`** turns markup into blocks of
-text plus a formatting *signature* (so "same words, now bold" is detectable at all) →
-**`VisualHtmlDiffer`** matches blocks first and then words inside the blocks that actually
-changed → **`DiffHtmlRenderer`** rebuilds the output from its own `EMITTED_TAGS`
-allow-list.
-
-> [!NOTE]
-> **Why the visual differ is in-house rather than a package.** Every off-the-shelf PHP
-> HTML-diff library was rejected on licence or maintenance. `caxy/php-htmldiff` — the only
-> maintained one, and the algorithmic reference — is **GPL-2.0**; so is
-> `rashid2538/php-htmldiff`, which is additionally a PHP 5.3-era codebase with one release;
-> `icap/html-diff` is an unmaintained DaisyDiff port with no declared licence at all. This
-> app ships **as source** (`install.sh`, Docker images, the repo itself), so taking a
-> GPL-2.0 dependency is a licensing decision far bigger than a diff view. `jfcherng/php-diff`
-> is BSD-3 and already installed, but is line/word oriented and not HTML-aware, so it cannot
-> be the whole answer. The three classes above are built on *its* transitive dependency
-> `jfcherng/php-sequence-matcher` (BSD-3, already in `vendor/`): no new dependency, no
-> licence question. The full evaluation table is in the feature's `expanded/diffing.md`.
-
-This is also what retired the old **"Formatting changed only."** dead end. Rich fields used
-to be flattened to plain text before diffing, so bolding a sentence produced two identical
-strings and the UI had nothing to show. With a real visual diff, a formatting-only change
-renders the passage as written with an *x-badge* naming what changed ("formatting changed:
-bold added").
-
-**Summaries (`App\Services\RevisionSummarizer`)** answer the same question in one line, for
-a history row. The two engines above each hand it a `ChangeExcerpt` — the first thing that
-changed, as a run of words, plus the total hunk count — and it spends
-`config('revisions.summary.max_length')` characters of *text* outward from that change,
-then renders the result through `DiffHtmlRenderer`.
-
-> [!NOTE]
-> Three things about summaries are deliberate and easy to get wrong if you change this
-> code. They are computed at **write** time and stored on the row (`summary_html`,
-> `change_count`), because a diff between two immutable revisions is a constant — so
-> rendering a page of history diffs nothing. They are bounded by rendered **length**, not
-> by hunk count: a find-and-replace on a character's name produces forty hunks, and forty
-> hunks in a list row is unreadable. And the budget is spent **outward from the change**,
-> never from the top of the field down, so the thing the row exists to show can never be
-> the part that gets cut. Cutting happens on words, before rendering — trimming a
-> marked-up string could leave an `<ins>` open, trimming tokens cannot.
-
-`RevisionRecorder` is the only caller on the live write path. It resolves the row's
-**predecessor** — the newest revision for the same `(entity, field)` strictly older than
-the row being written — and stores the summary alongside the value, on an insert *and* on
-a coalescing update (a coalesced row's value is being replaced, so its summary is stale;
-and the row is never its own predecessor). Baselines store `null` / `0`: nothing came
-before them, so the list renders them as *Initial value*. `ProjectGraphImporter` does the
-same during a replay, computing each row's summary from the row before it in the sidecar —
-which is oldest-first, so **do not reorder that loop**. Summaries are never read from an
-archive: they are derived from values the archive already contains.
-
-> [!WARNING]
-> **A failed summary must never cost a save.** Both callers wrap the summarizer: if the
-> diff layer throws, the row is written with a `null` summary and the failure is logged.
-> A revision with no summary is a cosmetic problem; a lost save is not.
-
-> [!WARNING]
-> **Stale summaries after a prune.** `Revision::prunable()` deletes old `automatic` rows.
-> The row that *followed* a deleted one keeps a summary computed against a predecessor
-> that no longer exists, so it under-reports — it describes a smaller change than the one
-> now visible between the surviving neighbours. This is accepted: recomputing during a
-> mass prune would turn a cheap `DELETE` into an O(n) diff job. The compare screen always
-> diffs live, so the detail view is never wrong; only the list excerpt can be.
-
-> [!WARNING]
-> Never run diff output through `HtmlSanitizer`. The author allow-list
-> (`RichTextFields::ALLOWED_TAGS`) deliberately has no `ins`/`del` in it — so that the
-> editor's strikethrough `<s>` ("no longer accurate") stays distinct from `<del>`
-> ("removed between these revisions") — and purifying afterwards would eat exactly the
-> markers the diff exists to add. `DiffHtmlRenderer` is safe by *construction* instead:
-> it rebuilds every tag from its own `EMITTED_TAGS` list and escapes every text node.
-> Equally, never route a Markdown or Plain field through the tokenizer: it would eat the
-> `**`, `#` and `>` the writer actually changed.
-
-**All diff styling lives in `<x-diff>`** (`resources/views/components/diff.blade.php`)
-and the `.revision-diff` rules in `resources/css/app.css`. Both diff kinds render through
-it, so a rich field's visual diff and a Markdown field's side-by-side table read as one
-feature — and none of that styling can bleed into `x-rich-text`, which renders the
-author's own content and must never look like a diff. It is written as plain CSS rather
-than Tailwind utilities for the same reason the `.tiptap` rules are: it styles markup the
-app generates but no template ever sees.
-
-Every change is signalled three ways at once — background tint, a `+` / `−` gutter glyph,
-and a visually-hidden "inserted"/"removed" label. Colour alone is not information, and
-`<ins>`/`<del>` announcement is inconsistent across screen readers, so each channel covers
-for the others.
-
-> [!WARNING]
-> **Never use `text-decoration` as a change marker.** The writer can apply `<s>` and `<u>`
-> herself — both are in `RichTextFields::ALLOWED_TAGS` — so a struck-out passage has to
-> keep meaning "she struck this out". The marker rules explicitly clear the underline and
-> strikethrough browsers put on `<ins>`/`<del>` by default.
-
-> [!NOTE]
-> The **source diff carries two channels, not three**: `jfcherng` writes that markup
-> itself and offers no hook for a visually-hidden label, so it gets the tint and the glyph
-> plus the semantic `<ins>`/`<del>` elements. Closing the gap means the source path
-> producing its own markers instead of delegating to the library — a bigger change than
-> the styling layer should make on its own.
-
-**Save points — storage is per field, everything above it is per entity.** The
-`revisions` table keeps one immutable row per (field, moment), but a save that touched
-three fields is *one* thing the writer remembers doing, so it is one thing to look at,
-compare against and undo. `revisions.save_id` ties those rows together, and
-`App\Services\RevisionHistory` folds them into `SavePoint`s (each holding `SaveEntry`s in
-registry field order). It runs two queries — a `GROUP BY save_id` for the page, then that
-page's rows — and folds them in PHP. No window functions and no `GROUP_CONCAT`: this app
-runs on five database engines, and the only way to be sure they all behave is to ask each
-of them for very little.
-
-Three details are easy to break:
-
-* **Ordering is `(MAX(created_at), MAX(id))`.** An autosave burst and the Save that closes
-  it land in the same second; `created_at` alone orders them arbitrarily.
-* **The page fetches one group beyond its limit.** That group is never rendered — it
-  exists so the last row on the page can still name the save point before it, which is
-  what its *compare with previous* link addresses.
-* **`isCurrent` is resolved with no filters applied.** "Current" is a fact about the
-  entity, not about the list being looked at. Deriving it from a filtered page would crown
-  whatever sat at the top of it and tell the writer an old save is her current text.
+- No history query ever selects `revisions.value` — `size_bytes`, `summary_html` and
+  `change_count` exist so it doesn't have to. A query-listener test guards this.
+- `project_id` is always set explicitly, never inferred from the polymorphic pair.
+- Never run diff output through `HtmlSanitizer`; it would eat the `<ins>`/`<del>` markers.
+- Revert is additive. Nothing but an explicit purge ever deletes history.
 
 > [!IMPORTANT]
-> No history query ever selects `revisions.value`. A page can span dozens of revisions of
-> a scene's contents; `size_bytes`, `summary_html` and `change_count` exist precisely so
-> it never has to read them. There is a query-listener test guarding this.
-
-**A save point is a moment, not a set of values.** `App\Services\RevisionSnapshot::asOf()`
-resolves, *for every registered field*, the newest revision at or before that moment — so
-a save that touched only `notes` still implies a state for `description` and `contents`.
-`RevisionComparison::between()` diffs two such snapshots and skips every field whose two
-sides resolve to the same revision id, hydrating `value` only for the ones that actually
-changed.
-
-> [!NOTE]
-> This means a field that **neither** save touched can appear as changed, when some save
-> between them changed it. That is correct, not a bug: the writer is comparing two states
-> of the scene, not two lists of edits. The pair is also never reordered by the
-> comparison — putting `from` before `to` is the caller's job, because the caller is what
-> accepted two ids from a query string.
-
-**Revert is additive, never destructive.** `RevisionController::revert` writes a new
-`origin: revert` revision holding the older value; no user action ever deletes history
-except the explicit purge above.
-
-The work itself lives in `App\Services\RevisionReverter`, not in the controller, so the
-single-field revert and the whole-save undo run the same four steps and cannot drift:
-check the base hash → re-validate the old value against **today's**
-`AutosavableFields::validationRule()` (rules can have tightened since it was recorded) →
-assign and `save()` so the model's mutators run → record the value the database actually
-ended up holding. The controller is resolve → authorize → delegate → redirect.
-
-> [!NOTE]
-> **The two conflict surfaces answer differently, on purpose.** The base hash is what
-> stops a revert from overwriting a value a second tab (or an in-flight autosave) wrote
-> after the page was drawn. When it no longer matches, `RevisionReverter` throws
-> `RevisionConflictException` and the **browser** paths redirect back with an error alert
-> — the writer did nothing wrong and needs a page they can reload and retry from, not a
-> bare error screen. The **409 status** survives only on the JSON autosave endpoint
-> (`FieldAutosaveController`), where a client actually reads it. Both revert outcomes are
-> rendered once in `<x-revisions-layout>`, the shell the history and compare pages share,
-> rather than per page.
-
-**Undo this save** (`revisions.saves.revert` → `RevisionController::revertSave`) is the
-same machinery applied to a whole save point: every field that save touched goes back to
-the value it held *before* it. `RevisionReverter::revertSave()` wraps the lot in one
-`DB::transaction`, checks **every** field's base hash before writing **any** of them, and
-calls `RevisionRecorder::startNewSave()` so the result is one new save point rather than a
-scatter of unrelated rows.
-
-* **Only the fields that save touched** — never a whole-entity rollback to that moment,
-  which would silently discard unrelated later edits to other fields.
-* **All-or-nothing.** A half-applied undo is a state the writer never asked for and cannot
-  recognise; refusing outright is kinder.
-* **The value restored is the one *before* the save**, which is a different row from the
-  one the save wrote — the newest revision of that field strictly older than it, by
-  `(created_at, id)`. When there is none, the save *created* that field's content and the
-  undo empties it (every registered field is `nullable`).
-* **Any save point can be undone, including the current one.** Undo runs backwards, so
-  undoing the newest save is "undo what I just saved" — the most useful case, not a no-op.
-  It is also what makes an undo undoable in turn. The one exception is a **baseline**: it
-  is the seeded pre-history value and has nothing before it, so the button is hidden and
-  the endpoint refuses it.
-* The `{save}` segment is constrained to the ULID alphabet in `routes/web.php`, so a
-  malformed id 404s at the router. It is a lookup key, never a capability — authorization
-  still walks from the group's entity up to its owning `Project`.
-
-**Getting there — three entry points, one destination.** All three land on the *same*
-entity history page; they differ only in whether they pre-set the `?field=` filter.
-
-| From | Control | Goes to |
-|---|---|---|
-| Any revisionable edit screen | **History** in the Actions card (`<x-entity-history-link>`) | that entity's whole history, unfiltered |
-| Any autosaving field | the small **History** icon beside its label (`<x-autosave-field>`) | the same page, `?field=` set to that field |
-| The **Tools** toolbar dropdown | **Revisions** | the project-wide browser landing page |
-
-`<x-entity-history-link>` takes the **model** and derives the URL slug itself via
-`AutosavableFields::slugFor($model::class)`. Do not add a slug prop: every call site that
-hand-writes `"act"`/`"codex"`/… is another chance to typo one into a 404 that shows up only
-when a writer clicks it. `<x-edit-actions>` renders it when given a `historyModel`; the one
-screen without an Actions card (`plotlines/edit`) renders the component directly beside its
-Save button.
-
-**Revisions browser (Tools ▸ Revisions).** The whole of a project's history is also
-reachable from one place: the **Tools** toolbar dropdown → **Revisions**
-(`RevisionBrowserController`, route `projects.revisions.index`). Its left sidebar is a tree
-— entity type → entity → field — of everything in the project that *has* revisions. **Both
-levels are links to the same page**: the entity name opens its unfiltered history, and each
-field leaf opens it with `?field=` set, showing that field's revision count. Every one of
-those URLs is built in the service, never assembled in Blade — the tree owns its own links.
-The tree is built by
-`App\Services\ProjectRevisionsBrowser` (following the `ProjectSearch` service pattern): a
-single grouped query over `revisions.project_id` yields the `(type, id, field)` triples
-with counts, then one tiny name query per present type — and, per the rule above, it
-**never selects `value`**. Only revised entities/fields appear, so a large project's
-sidebar stays focused. It is bounded three further ways so a heavily-revised project stays
-navigable: each group heading carries a **count badge** of the revised entities it holds;
-groups **default-collapse** (only the group holding the entity currently being viewed
-starts open); and a client-side (Alpine) **filter box** narrows the list by entity name —
-matching groups auto-expand, the rest hide. All filter/collapse logic is plain Alpine
-*expressions* (never a component method), so a child element reads the ancestor `filter`
-state without the `this`-binding pitfall. The landing page, the entity history and the
-compare view all render inside one shared shell, `<x-revisions-layout>` (a class-based
-component that owns the tree build so the three controllers stay thin), so the sidebar
-stays in view while a reader drills from a history into a diff and back. That shell is also
-where both revert outcomes are flashed, once, rather than per page.
-
-The sidebar's **active row follows the filter**: the field leaf is marked
-`aria-current="page"` when `?field=` names it, and the entity name is marked instead when
-there is no field filter — which is exactly what the unfiltered entity page is. Assert on
-that attribute in tests, never on the swapped Tailwind classes (see *best-practices.md*).
-
-The history page carries its own **field filter** — a plain `<select>` offering only the
-fields that actually have history, alongside a label search and a "manual saves only"
-checkbox. All four controls (with the page number) live in the URL, so a filtered view is
-bookmarkable and the Back button means what it looks like it means. The compare diff itself
-is a borderless **Old / New** side-by-side (`resources/views/revisions/compare.blade.php`
-restyles `jfcherng/php-diff`'s `SideBySide` table) with only the changed words tinted.
-
-**Routes and the `view` / `update` split.**
-
-| Route name | Verb + path | What it is |
-|---|---|---|
-| `projects.revisions.index` | `GET /projects/{project}/revisions` | browser landing page (sidebar, no selection) |
-| `revisions.index` | `GET /revisions/{entity}/{id}` | **the** history page; `?field=` `?label=` `?manual=` `?page=` are filters |
-| `revisions.compare` | `GET /revisions/{entity}/{id}/compare` | compare two save points (`?from=` / `?to=` are save ids) |
-| `revisions.field` | `GET /revisions/{entity}/{id}/{field}` | **legacy redirect** → `revisions.index?field=` |
-| `revisions.field-compare` | `GET /revisions/{entity}/{id}/{field}/compare` | **legacy redirect** → `revisions.compare`, translating its old *revision* ids into save ids |
-| `revisions.revert` | `POST /revisions/{revision}/revert` | revert one field to one older revision |
-| `revisions.saves.revert` | `POST /revisions/saves/{save}/revert` | undo a whole save point |
-| `autosave.update` | `PATCH /autosave/{entity}/{id}/{field}` | the one generic autosave endpoint (JSON) |
-
-> [!NOTE]
-> **Reading history authorizes `view`; changing it authorizes `update`.** The history,
-> compare and browser pages all call `$this->authorize('view', ...)`, while both revert
-> endpoints demand `update`. In this single-owner app the two resolve to the same person
-> today — the altitude is set on purpose so a future read-only collaborator could read
-> history without being able to rewrite it. Every one of them walks from the entity up to
-> its owning `Project`: the id in the URL (and the `{save}` ULID) is a **lookup key, never
-> a capability**.
->
-> The two legacy redirects exist because the field-scoped *page* is gone — it is the same
-> page with `?field=` set. An old bookmark still lands on a page about what it was about.
-
-**Known gap (deliberately out of scope for this feature).** Short fields and relations —
-`name`, `chapter_id`, `status`, `event_id`, `mentioned_events` — still only save on the
-existing manual form submit; they carry cross-field validation rules that don't survive a
-field-level autosave. Closing that gap is `.specs/draft/data-loss-warnings`'s job, shipped
-independently by design.
-
-> [!NOTE]
-> **`Ctrl-S` is claimed.** Autosave binds `Ctrl-S`/`Cmd-S` inside an autosaving field to
-> flush the pending save and close the current coalescing window (it does not open the
-> browser's native "Save page" dialog). Whoever picks up `.specs/draft/keyboard-shortcuts`
-> next should treat this binding as already spoken for rather than reassigning it.
-
-For the full design rationale and rejected alternatives (why no draft/published split, why
-no `laravel-auditing`/`laravel-versionable`/`revisionable` package, why no server-side
-collaborative locking), see `.specs/shipped/2026-07/autosave-with-revisions/` — its
-`handoff.md` and `resolution-log.md`.
-
-The move from per-field screens to entity + save point is its own feature folder,
-`.specs/shipped/2026-07/revision-history-rework/`. Two files there are worth opening before
-you change any of this: `resolution-log.md` (what was decided and what deviated, including
-the diff-library evaluation) and **`standing-issues.md` — what is still wrong with the code
-on `master`**, separating real defects from consequences that were accepted with eyes open.
+> Before changing any of this, read **[`revisions.md`](revisions.md)** — the invariants,
+> pitfalls and rejected alternatives in full — and
+> `.specs/shipped/2026-07/revision-history-rework/standing-issues.md`, which lists what is
+> still wrong with the code on `master`.
 
 ## Enum convention
 
@@ -636,187 +240,36 @@ every existing convention — authorization walks up to `Project`, shallow route
 Requests, index filtering in the controller — and adds the project's **first `app/Services`
 layer** for the one genuinely non-trivial piece: temporal attribute values.
 
-### One table, one controller, a type enum
+The shape:
 
-All three entity kinds live in a single `codex_entries` table with a `type` column cast to
-`App\Enums\CodexEntryType` (`Character` / `Location` / `Organization`). The columns are
-identical across types, and the *type-specific* data is exactly what the flexible attribute
-system handles — so one table stays DRY. A single `CodexEntryController` serves all three;
-the type is a **route segment** (`{type}` ∈ `characters|locations|organizations`), resolved
-via `CodexEntryType::fromRouteKey()`. The constraint, the nav links, and `fromRouteKey` all
-derive from the enum — there are no hardcoded route-key string lists to keep in sync:
+- **One table, one controller.** All three kinds live in `codex_entries` with a `type` column
+  cast to `App\Enums\CodexEntryType`; the type is a route segment, and the route constraint,
+  nav links and `fromRouteKey()` all derive from the enum.
+- **Attribute values are a start-anchored step function.** Each row means "from this event
+  onward, the value is X" — no stored end event, so periods tile the timeline with no holes or
+  overlaps by construction.
+- **Three services:** `AttributeTimeline` (temporal resolution and gap-free mutation),
+  `CodexMediaService` (storage paths, the single-cover rule, deleting files off disk), and
+  `SceneReferenceMatcher` (which entries a scene's prose mentions).
 
-```php
-// One grouped constraint, from CodexEntryType::routeKeys(); an unknown {type}
-// 404s before the controller runs. Adding a fourth type needs no route edits.
-Route::whereIn('type', CodexEntryType::routeKeys())->group(function () {
-    Route::get('/projects/{project}/codex/{type}', [CodexEntryController::class, 'index'])
-        ->name('projects.codex.index');
-    // ...create, store...
-});
-```
+Rules that bite if you don't know them:
 
-The navigation dropdown (both the desktop and responsive menus) `@foreach`es
-`CodexEntryType::cases()` instead of listing three literal links, and highlights the
-**current** codex type rather than always the first link.
-
-`edit` / `update` / `destroy` are flat (`/codex/{codexEntry}`) — the entry alone resolves them.
-
-Around each entry hang: **aliases** (`codex_aliases`, sync-managed from a repeatable input),
-flat **tags** (`tags` + `codex_entry_tag`, `firstOrCreate`d per project and `sync`ed), and
-**media** (`codex_media`).
-
-> [!NOTE]
-> There is deliberately **no `cover_media_id` column**. The cover is simply the `codex_media`
-> row whose `collection` is `Cover`, exposed via a `CodexEntry::cover()` `hasOne`. A FK would
-> be a second source of truth *and* a circular reference (`codex_entries` → `codex_media` →
-> `codex_entries`).
-
-### Attribute definitions and the step function
-
-An **attribute definition** (`codex_attributes`: e.g. "Hair color", "Frescoes") carries an
-`applies_to` JSON array of `CodexEntryType` values deciding which sheets show it. Its
-**values** (`codex_attribute_values`) are temporal: each row says *"from this event onward,
-the value is X"* — a **start-anchored step function**. There is no stored end event; a period
-runs from its `start_event`'s datetime until the next anchor (or the project's **End**), so
-periods tile the timeline with **no holes or overlaps by construction**, and deleting a middle
-anchor simply lets the previous value extend (which is why `start_event_id` can safely
-`cascadeOnDelete`).
-
-Resolving a value **at moment `t`** = the anchor whose datetime is the greatest `≤ t`.
-Ordering is always the canonical `(event_datetime, events.id)` — never datetime alone —
-because two events may share a datetime. When resolving *at an event*, an **anchor-identity
-match wins first**: a scene "during Halloween" sees the Halloween value even if another event
-shares its datetime.
-
-"The project's **Start** / **End** event" — the sentinels every timeline resolves against —
-has a **single definition**: `Project::startEvent()` / `Project::endEvent()` (the
-earliest / latest `is_fixed` event, in canonical `(event_datetime, id)` order). Everything
-that needs a bookend (`AttributeTimeline`, the entry controller) delegates to these methods
-rather than re-running the query. Because the resolution is datetime-ordered, Start must stay
-the **earliest** `is_fixed` event — but its date need not be frozen to guarantee that. Instead
-the bookends form a **containment window**: `App\Rules\WithinEventWindow` (applied on every
-event write — store/update and the Scene inline `new_event_datetime`) requires every non-fixed
-event to satisfy `Start ≤ event_datetime ≤ End`, and forbids a bookend edit from swallowing an
-existing event (Start can't pass the earliest regular event nor reach End; End the mirror).
-Since `startEvent()`/`endEvent()` filter on `is_fixed`, regular events never compete for the
-anchor, so the baseline can be neither deleted (undeletable events) **nor re-ordered** (nothing
-sorts before Start) out from under the step function.
-
-All of this lives in **`App\Services\AttributeTimeline`** (constructed for one entry+attribute
-pair), not in the controller or a model hook:
-
-- `valueAt(Event|Carbon)` — the resolution above (used by scene/event "as of" panels via the
-  thin `CodexEntry::attributeValueAt()` wrapper).
-- `ensureBaseline()` / `upsertAt()` / `removeAt()` — gap-free mutations. `upsertAt` is an
-  **upsert** (`updateOrCreate` on the anchor), so the store endpoint has **no update route**:
-  editing an existing period posts the same route with the row's anchor. **`upsertAt` enforces
-  the baseline itself** — when the anchor isn't Start it calls `ensureBaseline()` first, so
-  storing a mid-timeline period for a never-valued pair can't open a leading hole. The invariant
-  therefore holds on *every* write path (period store, seeder), not only entry-create; a caller
-  can't accidentally bypass it. `removeAt` refuses to delete the Start baseline while other
-  values exist, returning a **`403`** (`abort_if`) rather than throwing a `RuntimeException`.
-
-The store endpoint validates `value` as `['present', 'nullable', 'string', 'max:255']`, so an
-**empty value is a first-class "recorded as blank"** — an empty baseline is savable and a value
-can be cleared back to blank (`required` would forbid both). `nullable` is present because the
-global `ConvertEmptyStringsToNull` middleware rewrites a blank input's `""` to `null`; the
-controller casts it back with `(string)` before `upsertAt` (whose signature is `string $value`).
-The timeline editor renders validation errors under `value` / `start_event_id` and re-fills
-`old()` on failure, so a rejected save no longer silently does nothing.
+- **Every (entry, attribute) with any value has one anchored at the project's Start event**, so
+  `valueAt(t)` is total and callers never handle "no value". `upsertAt` enforces it on every
+  write path.
+- **These are services, not `booted()` hooks** — hooks are suppressed under
+  `WithoutModelEvents`, which the seeder and importer both use.
+- **A DB cascade bypasses model hooks, so it bypasses file cleanup.** `Project::deleting` and
+  `User::deleting` exist solely to close that leak.
+- **`SceneReferenceMatcher` is always a full `sync()`** for its scope, never an incremental
+  attach/detach — that is what stops the derived pivot from drifting.
+- Disk I/O stays **outside** the entry-save transaction, deliberately, with an accepted
+  trade-off.
 
 > [!IMPORTANT]
-> **Invariant — leading anchor at Start.** Every (entry, attribute) with any value has exactly
-> one value anchored at the project's *Start* event, so `valueAt(t)` is **total** for
-> `t ≥ Start` and callers never handle "no value". The Start/End events are `is_fixed` and
-> undeletable, and the containment window keeps Start earliest, so the anchor can be neither
-> orphaned nor re-ordered.
-> `upsertAt` enforces this on every write (not just entry-create). This invariant lives in
-> `AttributeTimeline` (a service the seeder can call directly), **not** a `booted()` hook —
-> hooks are suppressed under `WithoutModelEvents`.
-
-`App\Services\CodexMediaService` is the second service: it owns the storage path/naming, the
-single-cover rule (replace the existing `Cover` row + its file), position assignment, and —
-critically — **deleting files off disk** on every removal path. `CodexEntry`'s `deleting` hook
-calls `purge()` *before* the FK cascade drops the rows, because `cascadeOnDelete` removes the
-DB rows but never the files.
-
-> [!WARNING]
-> **A DB cascade bypasses model hooks — so it bypasses file cleanup.** Deleting a *project*
-> (or a *user account*) cascades `project → codex_entries → codex_media` entirely at the
-> database level; `CodexEntry`'s `deleting` hook never fires, so on its own it would leak
-> every media file on disk. Two hooks close this: `Project::deleting` calls
-> `CodexMediaService::purgeProject()` (one query for the paths, delete the files, let the
-> cascade drop the rows), and `User::deleting` Eloquent-deletes its projects
-> (`$user->projects->each->delete()`) so the `Project` hook fires per project. That keeps
-> `purgeProject()` the **single** purge trigger for a project's files.
-
-The entry save flow (`CodexEntryController@store` / `@update`) keeps **disk I/O outside the
-`DB::transaction`**. The transaction does DB-only work and *returns the paths* of the media
-rows it removed; only after it commits does the controller delete those files
-(`CodexMediaService::deleteFiles`) and write the new uploads (`storeMediaUploads`, which
-unlinks a just-written file if its row insert throws).
-
-> [!WARNING]
-> **Why post-commit, and the trade-off.** Doing disk deletes/writes *inside* the transaction
-> is unsafe both ways: a rollback after a file delete leaves a surviving row pointing at a
-> missing file (404), and files written before a later failure survive the rollback as
-> orphans. Acting after commit fixes both — at the cost that a post-commit **upload** failure
-> yields a *saved entry with fewer media than requested* plus a 500. That is deliberately
-> accepted: a saved entry with one missing image beats a rolled-back edit with corrupted
-> disk state.
-
-### Scene references (`SceneReferenceMatcher`)
-
-`App\Services\SceneReferenceMatcher` is the third Codex service. It owns the whole-word,
-**case-sensitive**, Unicode-aware rule that decides which codex entries a scene's `contents`
-mention, and persists the result in the derived `scene_codex_entry` pivot (see the data-model
-doc). A term is an entry's `name` **or** any of its aliases (aliases shorter than 3 characters
-are excluded — a false-positive guard; `name` has no floor). Matching runs on the raw Markdown
-`contents`, never `description`/`notes`, and never on rendered HTML.
-
-- `syncScene(Scene $scene)` recomputes one scene's links; `syncProject(Project $project)`
-  recomputes every scene's, reusing one per-project regex it builds once.
-- **Every call is a full `sync()`** for its scope — never an incremental attach/detach. This is
-  the invariant that keeps the pivot from ever drifting from "what should match": there is no
-  code path that adds or removes a single row. A stale row is always dropped on the next sync.
-- Both sides are normalized to Unicode **NFC** (`ext-intl`'s `Normalizer`) before matching so
-  visually-identical accented text (French/Italian names) from different input sources compares
-  byte-equal. Malformed UTF-8 in a scene's `contents` is caught, logged via `Log::warning`, and
-  degrades that scene to "no references" — it never throws and never blocks the scene's save.
-- Hyphens are part of the word: "Jean" does not match inside "Jean-Luc". The boundary lookaround
-  includes `-` alongside `\p{L}\p{N}`, and there is deliberately **no `i` flag** (a character
-  named "Luck" must not match the common noun "luck").
-
-> [!IMPORTANT]
-> **It is a service, not a `booted()` hook** — for the same reason as `AttributeTimeline`. The
-> codex-entry update path only rescans when the alias set or `name` actually changed (a
-> before/after comparison a hook cannot express), the project-wide rescan touches records well
-> beyond the model being saved, and a service can be called directly by a seeder or the importer
-> without `WithoutModelEvents` silently suppressing it. Do **not** move this into a model hook.
-
-> [!NOTE]
-> This is **not** the codex index page's name-or-alias search. `CodexEntryController::index` does
-> a case-insensitive SQL `LIKE` substring match to help a writer *find* an entry;
-> `SceneReferenceMatcher` answers a different question (does this exact term appear as a whole,
-> case-sensitive word in this prose). Keep the two separate — their semantics differ on purpose.
-
-Normal editing never needs a manual resync — scene and codex entry saves call `syncScene`/
-`syncProject` themselves. Two escape hatches exist for everything else: the
-`codex:sync-references {project?}` artisan command (every project, or one by id) and, per
-project, a **"Resync codex references"** footer form on the project edit page
-(`ProjectController::syncCodexReferences`, `update` authorization) — its own form, separate from
-the main project-fields form, since it isn't part of that resource's own data. Both call
-`syncProject()` and exist to backfill scenes that predate this feature or recover from a
-suspected drift.
-
-### Seeding caveat
-
-Like acts/chapters and the main plotline, the Codex is subject to `WithoutModelEvents`:
-`MelusineSeeder` sets `position` explicitly on `codex_attributes`, and seeds temporal values
-by calling `AttributeTimeline::ensureBaseline` / `upsertAt` **directly** rather than relying on
-any hook. It seeds the hair-color story (Mélusine: raven black → silver on Saturdays after the
-curse → wild once she transforms) end to end.
+> Before changing any of this, read **[`codex.md`](codex.md)** — the step function, the
+> containment window that keeps Start earliest, the matching rules, and the reasoning behind
+> each trade-off.
 
 ## Rich text (WYSIWYG)
 
@@ -928,165 +381,37 @@ is the same **[`documentation/export-format.md`](export-format.md)** the exporte
 
 ## EPUB export (publication settings)
 
-**Admin → Export & import → Export → Ebook** lets a signed-in owner download one of their
-projects as a standard `.epub`, built by `App\Services\EpubExporter` on top of the
-`rampmaster/phpepub` library. Like `StaticSiteExporter` it is **HTTP-agnostic** (takes a
-`Project`, returns a finished temp-file path, cleans up on exception) so a future queued job
-could reuse it. The library owns the mechanical package (mimetype, `container.xml`, the OPF
-metadata/manifest/spine, the EPUB 3 nav document, the NCX, the zip); this service owns the
-**content** — every XHTML document (Blade under `resources/views/exports/epub/`, never
-string-built in PHP), the CSS, the metadata *values*, and the navigation shape.
-
-Two isolation rules are load-bearing and must not be "simplified" away:
-
-- **Scene bodies and the four front-/back-matter Markdown pages render through the service's
-  own private SmartPunct `CommonMarkConverter`** (smart dashes/ellipses/quotes), *never*
-  `Scene::renderedContents` — that accessor is the shared render path for the Story overview,
-  the share page, and the `book/` export, and must stay byte-for-byte identical.
-- **Rich-HTML fields (act/chapter/scene `description`, codex entry `description`) go through
-  one shared `App\Support\RichText::toXhtmlFragment()`** (`DOMDocument` load-HTML → save the
-  body fragment as XML) so a sanitized-but-not-necessarily-XHTML fragment — an unclosed `<p>`,
-  a bare `<br>` — becomes well-formed XHTML. Embedding such a fragment raw would fail the
-  package's hard XML gate (below). Markdown fields never touch this helper; rich-HTML fields
-  never touch the Markdown converter.
-
-> [!IMPORTANT]
-> **`validatePackage()` is a hard gate, run inside every `export()`.** Every shipped `.xhtml`
-> (this service's pages *and* the library's nav/cover pages) must parse with
-> `DOMDocument::loadXML()`, and the OPF must validate against the vendored EPUB 3 RelaxNG
-> schema (`resources/epub-schemas/`, no JVM/epubcheck at runtime). A failure there is a
-> **generator bug** and throws a plain `RuntimeException` (let it 500 and be logged) — it is
-> *not* `EpubExportException`, which is reserved for the one user-facing case: a project whose
-> skip-empty `filteredTree()` came back empty (nothing to export).
-
-### `PublicationSetting` drives everything
+**Admin → Export & import → Export → Ebook** downloads a project as a standard `.epub`, built
+by `App\Services\EpubExporter` on `rampmaster/phpepub`. Like `StaticSiteExporter` it is
+HTTP-agnostic (takes a `Project`, returns a temp-file path, cleans up on exception), so a
+queued job could reuse it. The library owns the mechanical package (OPF, nav, NCX, zip); the
+service owns the content — every XHTML document (Blade under `resources/views/exports/epub/`,
+never string-built), the CSS, the metadata values, and the navigation shape.
 
 The whole export is parameterised by one lazily-resolved `PublicationSetting`
-(`Project::publicationSettingOrDefault()` — an **unsaved default** instance when the project
-has no row; see the *Publication settings* model note). `export()` resolves it once and threads
-it through every private method. All formatting/ordering choices live on **enums**
-(`ChapterTitleFormat::format()`, `DividerType::dividerHtml()`,
-`TableOfContentsDepth::includesChapters()/includesScenes()`), never a `match` on a raw string
-in the service or a Blade view — `ChapterTitleFormat::format()` in particular is the single
-source of truth shared by the chapter page heading *and* its nav/TOC label, so the two can
-never drift.
+(`Project::publicationSettingOrDefault()` returns an *unsaved* default when the project has no
+row). `addSections()` walks its `section_order` array and dispatches each key —
+`title` / matter pages / `toc` / `body` / `appendix` — through a `match`.
+
+Rules that bite if you don't know them:
+
+- **`validatePackage()` is a hard gate inside every `export()`**: every shipped `.xhtml` must
+  parse as XML and the OPF must validate against the vendored EPUB 3 RelaxNG schema. A failure
+  is a generator bug (`RuntimeException`), not the user-facing `EpubExportException`.
+- **Defaults must reproduce the pre-feature output byte-for-byte.** `EpubExporterTest`'s
+  `defaults_v1_regression` guards this; every new gated feature ships off-by-default.
+- **Scene bodies never render through `Scene::renderedContents`** — the exporter has its own
+  SmartPunct converter, and the shared accessor must stay identical for the other consumers.
+- **Rich HTML always goes through `RichText::toXhtmlFragment()`**; Markdown never does.
+- **All formatting/ordering choices live on enums**, never a `match` on a raw string in the
+  service or a view.
+- **The library couples spine placement and nav entries**, which is why `Acts` depth renders
+  one combined page per act rather than hiding chapter nav points.
 
 > [!IMPORTANT]
-> **Defaults reproduce the pre-feature output byte-for-byte.** Every metadata/cover toggle
-> defaults `true`; every *new* rendering (scene titles, all descriptions, front/back matter,
-> chapter covers, the codex appendix) defaults **off**. `EpubExporterTest`'s
-> `defaults_v1_regression` guard exports the same project twice — once on the lazy default
-> (no row) and once on an explicit `PublicationSetting::factory()` row — and asserts the two
-> `.epub`s are **content-identical**. Every later exporter change must keep it green; a new
-> gated feature that is off-by-default cannot alter a default project's output.
-
-> [!WARNING]
-> **The guard normalises the OPF timestamps; it does not compare raw `.epub` bytes.** The
-> library stamps `dc:date` / `dcterms:modified` from `time()` at finalize, so two back-to-back
-> exports that straddle a wall-clock second differ by those two lines even though every content
-> document is identical — under the parallel test runner that raced into an intermittent
-> failure. The guard therefore unzips both packages and compares **entry-by-entry**,
-> normalising only those two `time()`-derived OPF lines (`stripOpfTimestamps()`). Do not
-> "restore" it to a single raw-byte `assertSame` — that is the latent flake, not a stricter
-> check.
-
-### The `section_order` walk
-
-`addSections()` replaces what was once a hard-coded `title → toc → body` sequence: it walks
-`PublicationSetting::section_order` (an ordered JSON array of component keys — `title` pinned
-first by the model, `toc`/`body`/the matter sections movable via the config form's
-move-up/move-down idiom) and dispatches each key through a `match`:
-
-| Key | Method | Notes |
-| --- | --- | --- |
-| `title` | `addTitleSection()` | The story title page. Always first (the model pins it). |
-| `dedication`, `acknowledgements`, `preface`, `postface` | `addMatterSection()` | Markdown pages, one shared `matter.blade.php` view driven by `MATTER_SECTIONS`. |
-| `toc` | `addTocSection()` | The in-book TOC page (a real spine page, distinct from the reader-chrome nav). |
-| `body` | `addBody()` | The act/chapter/scene tree — the manuscript itself. |
-| `appendix` | `addAppendixSection()` | The optional codex appendix (below). |
-
-Each front-/back-matter section renders **only when its `include_*` toggle is on AND the
-Project's Markdown column is non-empty** — a disabled toggle *or* an empty field renders
-nothing, and this "enabled AND has content" rule extends to the appendix. A toggle gates a
-section on/off **independently** of its position in the order.
-
-### TOC/nav depth (`table_of_contents_depth`)
-
-The depth setting changes both the in-book TOC page (`renderToc()`) and the library nav that
-`addBody()` builds, in lockstep:
-
-- **`Chapters` (default)** — the two-level Act → Chapter tree. Each act is its own divider
-  page (a root nav entry); each chapter a nested page beneath it.
-- **`Scenes`** — adds a *third* nav level. Each chapter page emits `id="scene-{id}"` anchors
-  (`chapter-body.blade.php`, gated on this depth **only**, so the default depth stays
-  byte-for-byte as before), and the nav hangs a per-scene entry under the chapter whose href is
-  `chapter-{id}.xhtml#scene-{id}` — added with **null content**, which the library registers as
-  an in-page anchor entry *without* a new spine page.
-- **`Acts`** — the nav lists **only acts**. This one is not a simple "skip the chapter nav
-  points" branch, and the reason is a hard library constraint:
-
-> [!WARNING]
-> **`rampmaster/phpepub` couples spine placement and nav entries — there is no
-> spine-without-nav API.** Every content-bearing `addChapter()` adds a manifest item *and* a
-> spine `itemref` *and* a nav point together; `NavPoint::setNavHidden(true)` is honoured by the
-> NCX but **not** by the EPUB 3 nav document (confirmed by a standalone spike). So you cannot
-> put a chapter page in the reading order at `Acts` depth while keeping it out of the nav.
-> `Acts` depth therefore renders **one combined spine page per act**
-> (`renderActWithChapters()` → `act-combined.blade.php`): the act divider plus all its chapters
-> in a single `act-{id}.xhtml` document (each chapter still its own `<section>` for the
-> page-break CSS). One `addChapter()` per act ⇒ exactly one nav entry per act, and **no
-> standalone `chapter-{id}.xhtml` files are packaged** at this depth. The standalone-page shape
-> is impossible here without shipping an unreadable book (chapters in neither spine nor nav) or
-> fragile regex-surgery on the finalized nav.
-
-`act-combined.blade.php` and the standalone `act`/`chapter` pages share their inner bodies via
-`partials/act-body.blade.php` / `partials/chapter-body.blade.php` (and the exporter's
-`actViewData()` / `chapterViewData()` helpers), so the two rendering paths cannot drift.
-
-### Chapter cover pages
-
-`addChapterCoverPage()` inserts a full-page cover image before a chapter, gated by
-`include_chapter_covers` **and** a `cover_image` set on the chapter **and** the file still
-existing on the `public` disk (a missing file is skipped silently — the export never fails,
-mirroring the project cover). It is a **nav sibling** of the chapter (same level under the act,
-immediately before the chapter's own entry), *not* a child, so it never disturbs the `Scenes`
-depth's own nested scene anchors. At `Acts` depth — where there is no standalone chapter page —
-each cover page is a root-level nav entry immediately before the combined act page that holds
-that chapter. The image bytes go through the library's generic `addFile()` (manifest-only),
-namespaced `images/chapter-cover-{id}-{basename}`, never `setCoverImage()` (that one-shot API is
-reserved for the single package-level project cover in `applyCover()`).
-
-### The codex appendix
-
-`addAppendixSection()` fills the reserved `appendix` slot: an optional back-matter appendix of
-codex entries — a heading page (a root nav entry) plus one page per entry nested beneath it
-(entry name + `description` run through `RichText::toXhtmlFragment()`). It is a **true no-op**
-unless all three hold: `include_codex_appendix` is on, at least one `appendix_entry_types` is
-selected, **and** the project actually has entries of those types (a lone heading with no
-entries is pointless). Entries load filtered to the selected types, ordered `(type, name)`.
-
-When `appendix_include_images` is on, each entry's `media` relation is eager-loaded (ordered
-`(collection, position)`, matching the archive) and `addAppendixEntryImage()` embeds the
-entry's **first image only** — deliberately the first media row that is *both* an `image/*` MIME
-type *and* has bytes on disk, so a metadata-only imported row (null path) or a non-image
-reference file (a PDF) is skipped over rather than embedded as a broken `<img>`. A missing file
-returns null and the entry page renders text-only. Embedding all images, and a `Review` entity,
-are explicit V2 non-goals. When the images toggle is off, `media` is never loaded — no wasted
-query.
-
-### Publication settings (the model)
-
-`App\Models\PublicationSetting` is **one lazy row per project**: never auto-created in
-`booted()`, no backfill migration. `Project::publicationSettingOrDefault()` returns an unsaved
-instance whose field defaults match `PublicationSettingFactory::definition()` field-for-field
-(the two are the reference the defaults===v1 guard leans on — keep them in sync). The config
-form is `PublicationSettingController` + `UpdatePublicationSettingRequest`, whose shared
-`configRules()` static method is the single rule set used by **both** the form's `rules()` and
-the archive importer's untrusted-config validation (see *Static site import* / the export-format
-doc), so the form and the import path can never validate differently. Authorization is the
-ordinary `ProjectPolicy` walk (`update` to write, `view` to read/export) — no new policy.
-`SECTION_KEYS` / `PINNED_FIRST_SECTION` and the `moveSectionUp/Down` helpers keep the sortable
-section order's membership and pinning rules in exactly one place.
+> Before changing any of this, read **[`epub-export.md`](epub-export.md)** — the isolation
+> rules, the nav-depth shapes, the chapter-cover and appendix gating, and why the regression
+> guard normalises OPF timestamps instead of comparing raw bytes.
 
 ## Project search
 
@@ -1187,3 +512,21 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 | Reusable UI | `resources/views/components` (Blade components) |
 | Containerized dev/prod environment | `Dockerfile`(`.dev`), `docker-compose*.yml`, `docker/` — see [`documentation/docker.md`](docker.md) |
 | Forced versions of transitive npm packages | `overrides` in `package.json` — see [`documentation/dependency-overrides.md`](dependency-overrides.md) |
+
+## The rest of the documentation
+
+This file is the map. Each feature with more to say than fits here has its own page:
+
+| Page | What it covers |
+| --- | --- |
+| [`revisions.md`](revisions.md) | Autosave, save points, diffing, prune vs purge, revert/undo |
+| [`codex.md`](codex.md) | The temporal step function, the three codex services, scene references |
+| [`epub-export.md`](epub-export.md) | Publication settings, nav depth, the EPUB package gate |
+| [`export-format.md`](export-format.md) | The static-archive file format — layouts, shapes, the `version` contract |
+| [`rich-text.md`](rich-text.md) | The WYSIWYG field list, the sanitizer allow-list, the rendering rule |
+| [`ui-components.md`](ui-components.md) | The Blade component catalogue — reuse one before writing a new one |
+| [`best-practices.md`](best-practices.md) | How to write code here, including testing UI state |
+| [`code-style.md`](code-style.md) | Formatting and naming conventions |
+| [`glossary.md`](glossary.md) | The vocabulary — read this first if a term is unfamiliar |
+| [`docker.md`](docker.md) | Running the project without a local PHP/Node setup |
+| [`dependency-overrides.md`](dependency-overrides.md) | Why a transitive npm version is pinned |

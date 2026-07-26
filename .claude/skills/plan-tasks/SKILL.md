@@ -84,10 +84,13 @@ suffix rule when this folder moves in step 8. Below, **`<dir>`** means the match
    ```markdown
    # <Feature> — resolution log
 
-   The running record of feedback/decisions, deviations from the spec/plan, and
-   issues → resolutions found while implementing and verifying this feature. The
-   `plan-implementer` agent appends here per task; `ship-plan` consolidates it. Read it
-   before extending the feature.
+   Feedback/decisions, deviations from the spec/plan, and issues → resolutions found while
+   implementing this feature. Read it before extending the feature.
+
+   > [!IMPORTANT]
+   > An **exception log, not a work journal**. A task that went to plan gets no entry — the
+   > diff and the task file already record what was built. Bullets under the headings below,
+   > root cause first, no per-task sections.
 
    ## Feedback & decisions
 
