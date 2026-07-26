@@ -17,6 +17,22 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Write down what the review learned, where it will be read (#58)
+
+### Changed
+
+- `documentation/epub-export.md` now says what `validatePackage()` does **not** check: it is XML
+  well-formedness plus an OPF schema, so a book with an empty navigation label validates clean
+  and only looks broken in the reader (the defect fixed in #56). Also records which large
+  services — `EpubExporter`, `StaticSiteExporter`, `ProjectGraphImporter`, `ArchiveValidator` —
+  have never been read closely, so their size reads as unexamined rather than endorsed.
+- The `ship-pr` skill warns not to edit the working tree while `scripts/pr-land.sh` runs: its
+  final `git checkout master` aborts on uncommitted changes, and the script then exits non-zero
+  for a PR that merged perfectly well.
+- `ProjectSearch` explains why its query loads every column rather than the searchable ones —
+  for a scene those are the same columns, so narrowing trades a rounding error for a runtime
+  risk.
+
 ## 2026-07-26 — One name for each autosaved field (#57)
 
 ### Changed

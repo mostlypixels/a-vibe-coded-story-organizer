@@ -53,6 +53,14 @@ invoking this, not as part of it.
    PR URL and state: surface the failing check's output and fix forward on the same
    branch.
 
+   > [!WARNING]
+   > **Do not touch the working tree while it runs.** Its last step is `git checkout master
+   > && git pull`, which aborts on uncommitted edits to a tracked file it needs to move —
+   > `CHANGELOG.md` above all, since the next change set's entry goes there. The PR merges
+   > and the script still exits 1, which reads like a CI failure and is not one. When
+   > shipping several change sets in a row, prepare the next one only after the landing
+   > reports `MERGED`; a stash is the cheap way to hold work that is already written.
+
 ## Notes
 
 - Only invoke this when the user asked for a commit/ship — committing stays an explicit

@@ -172,6 +172,12 @@ class ProjectSearch
         // Fetching every project row for the entity is the design decision above;
         // the base query is already project-scoped, so this can never cross the
         // project boundary.
+        //
+        // Every column is loaded, deliberately. Narrowing to the searchable ones
+        // looks like a saving and is not: for a Scene those *are* the big columns
+        // (contents, notes, description), so what would be dropped is a handful of
+        // scalars — against the risk of a result row's link or accessor finding a
+        // column missing at runtime.
         foreach ($query->get() as $entity) {
             $plainValues = $this->plainFieldValues($entity, $columns);
             $foldedValues = array_map(AccentFolder::fold(...), $plainValues);

@@ -39,6 +39,16 @@ converter.
 > `EpubExportException`, which is reserved for the one user-facing case — a project whose
 > skip-empty `filteredTree()` came back empty.
 
+> [!WARNING]
+> **What the gate does *not* check: whether the book reads sensibly.** It is XML
+> well-formedness plus an OPF schema — not the nav's contents, not the TOC's, not whether a
+> label says anything. A chapter with a blank name under `ChapterTitleFormat::Title` used to
+> produce an *empty* nav label, and the package validated clean; the blank row only appeared
+> in the reader (fixed in #56 by `chapterNavTitle()`'s fallback). Assume the same blind spot
+> for any other "valid but meaningless" output, and cover those with export tests that open
+> the produced `.epub` and assert on its contents — `EpubExportTest` has the `ZipArchive`
+> helper for it.
+
 ## `PublicationSetting` drives everything
 
 The whole export is parameterised by one lazily-resolved `PublicationSetting`
@@ -177,3 +187,20 @@ Embedding all images, and a `Review` entity, are explicit V2 non-goals.
   read/export) — no new policy.
 - `SECTION_KEYS` / `PINNED_FIRST_SECTION` and the `moveSectionUp/Down` helpers keep the
   sortable order's membership and pinning rules in one place.
+
+## Review coverage — what has *not* been read closely
+
+`EpubExporter` (1252 lines) is the largest single-responsibility stretch in the codebase: it
+filters the tree, renders pages, packages, writes metadata, normalises the OPF, validates
+against the RNG schema and generates filenames. The 2026-07 review of the revisions work read
+it at method-signature level only, and `StaticSiteExporter` (856), `Import/ProjectGraphImporter`
+(949) and `ArchiveValidator` (473) not at all.
+
+Two consequences worth carrying:
+
+- **Splitting packaging and validation out is a plausible next refactor**, but nobody has read
+  enough of it to plan one. Treat the size as unexamined, not as endorsed.
+- **The importer and the archive validator write entity rows directly**, bypassing the Form
+  Requests. That is the door a blank `chapters.name` comes through even though `NOT NULL` plus
+  `required` closes the form path — so export-side defences against odd data are not
+  belt-and-braces (see the `> [!WARNING]` on `validatePackage()` above).
