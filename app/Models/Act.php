@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Act extends Model
 {
@@ -32,6 +33,22 @@ class Act extends Model
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class);
+    }
+
+    /**
+     * Every scene under this act, through its chapters — the grandchildren a
+     * plain cascade delete also destroys, which is what the edit page's
+     * "move or delete" dialog counts before offering the choice.
+     *
+     * A real `hasManyThrough` (one intermediate, `chapters`) rather than a
+     * `whereHas` walk, so it can be counted, eager-loaded and constrained like
+     * any other relation. Callers that order or select on it must qualify the
+     * columns (`scenes.position`), since the join brings `chapters`' own
+     * `name`/`position` into scope.
+     */
+    public function scenes(): HasManyThrough
+    {
+        return $this->hasManyThrough(Scene::class, Chapter::class);
     }
 
     /**

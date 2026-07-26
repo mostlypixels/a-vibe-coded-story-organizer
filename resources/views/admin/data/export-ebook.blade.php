@@ -311,11 +311,11 @@
                             <li class="flex items-center justify-between px-4 py-2">
                                 <span class="text-sm text-gray-700">{{ ucfirst(str_replace('_', ' ', $sectionKey)) }}</span>
                                 <div class="flex gap-1">
-                                    <x-icon-move-up-button
+                                    <x-icon-move-button direction="up"
                                         :action="route('admin.data.publication-settings.section-order.move-up', ['project' => $selectedProject, 'section' => $sectionKey])"
                                         :disabled="$sectionKey === \App\Models\PublicationSetting::PINNED_FIRST_SECTION || $loop->index <= 1"
                                     />
-                                    <x-icon-move-down-button
+                                    <x-icon-move-button direction="down"
                                         :action="route('admin.data.publication-settings.section-order.move-down', ['project' => $selectedProject, 'section' => $sectionKey])"
                                         :disabled="$sectionKey === \App\Models\PublicationSetting::PINNED_FIRST_SECTION || $loop->last"
                                     />

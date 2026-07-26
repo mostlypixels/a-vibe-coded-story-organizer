@@ -3,13 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
+use App\Http\Controllers\Concerns\RedirectsAfterSave;
+use App\Http\Controllers\Concerns\ReordersSiblings;
+use App\Http\Controllers\Concerns\ReparentsChildren;
+use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\DestroyActRequest;
 use App\Http\Requests\StoreActRequest;
 use App\Http\Requests\UpdateActRequest;
 use App\Models\Act;
-use App\Models\Chapter;
 use App\Models\Project;
-use App\Models\Scene;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,13 +20,16 @@ use Illuminate\View\View;
 class ActController extends Controller
 {
     use RecordsManualRevisions;
+    use RedirectsAfterSave;
+    use ReordersSiblings;
+    use ReparentsChildren;
+    use ResolvesIndexSorting;
 
     public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
 
-        $sort = in_array($request->query('sort'), ['name', 'position']) ? $request->query('sort') : 'position';
-        $direction = $request->query('direction') === 'desc' ? 'desc' : 'asc';
+        [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
         $acts = $project->acts()
             ->withCount('chapters')
@@ -68,7 +73,7 @@ class ActController extends Controller
         // direct children (chapters) plus its grandchildren (scenes, counted through
         // the chapters) — both are destroyed by a plain cascade delete.
         $act->loadCount('chapters');
-        $sceneCount = Scene::whereHas('chapter', fn ($query) => $query->where('act_id', $act->id))->count();
+        $sceneCount = $act->scenes()->count();
 
         // Every *other* act in the project is a candidate destination for moving this
         // act's chapters. An empty list collapses the dialog to "delete everything".
@@ -93,9 +98,7 @@ class ActController extends Controller
 
         $this->recordManualSave($act, $beforeAutosavedFields);
 
-        return $request->boolean('stay')
-            ? redirect()->route('acts.edit', $act)->with('status', 'saved')
-            : redirect()->route('projects.acts.index', $act->project);
+        return $this->redirectAfterSave($request, ['acts.edit', $act], ['projects.acts.index', $act->project]);
     }
 
     public function destroy(DestroyActRequest $request, Act $act): RedirectResponse
@@ -111,21 +114,7 @@ class ActController extends Controller
             if ($destinationId = $request->validated('move_children_to')) {
                 $destination = $act->project->acts()->findOrFail($destinationId);
 
-                // Chapter::booted() only assigns `position` on create, never on a plain
-                // act_id update, so we set it explicitly here — appending each moved
-                // chapter after the destination's existing ones, in ascending original
-                // order, so their relative order survives the move and no two chapters
-                // ever share a position within the destination act.
-                $nextPosition = $destination->chapters()->max('position') + 1;
-
-                $act->chapters()->orderBy('position')->get()->each(function (Chapter $chapter) use ($destination, &$nextPosition) {
-                    // act_id is intentionally not mass-assignable (see Chapter::$fillable),
-                    // so reparent through the relationship — a plain update(['act_id' => …])
-                    // is silently dropped. Mirrors ChapterController::update()'s associate().
-                    $chapter->position = $nextPosition++;
-                    $chapter->act()->associate($destination);
-                    $chapter->save();
-                });
+                $this->reparentChildren($act, $destination, 'chapters', 'act');
             }
 
             // Same cascade path as before — just nothing left to cascade if the
@@ -138,18 +127,14 @@ class ActController extends Controller
 
     public function moveUp(Act $act): RedirectResponse
     {
-        $this->authorize('update', $act->project);
-
-        $act->moveUp();
+        $this->reorderSibling($act, $act->project, up: true);
 
         return redirect()->back();
     }
 
     public function moveDown(Act $act): RedirectResponse
     {
-        $this->authorize('update', $act->project);
-
-        $act->moveDown();
+        $this->reorderSibling($act, $act->project, up: false);
 
         return redirect()->back();
     }

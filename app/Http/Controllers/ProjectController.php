@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
+use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
@@ -16,6 +17,7 @@ use Throwable;
 class ProjectController extends Controller
 {
     use RecordsManualRevisions;
+    use RedirectsAfterSave;
 
     public function __construct(private CoverImageService $coverImageService) {}
 
@@ -139,9 +141,7 @@ class ProjectController extends Controller
 
         $this->recordManualSave($project, $beforeAutosavedFields);
 
-        return $request->boolean('stay')
-            ? redirect()->route('projects.edit', $project)->with('status', 'saved')
-            : redirect()->route('projects.show', $project);
+        return $this->redirectAfterSave($request, ['projects.edit', $project], ['projects.show', $project]);
     }
 
     public function destroy(Project $project): RedirectResponse

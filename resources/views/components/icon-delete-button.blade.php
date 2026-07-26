@@ -1,10 +1,11 @@
 @props(['action', 'confirm'])
 
+{{--
+    Delete as a real DELETE form, gated by a native confirm(). For a delete that
+    needs the richer "move or delete" dialog instead, see <x-icon-dialog-button>.
+--}}
 <form method="POST" action="{{ $action }}" onsubmit="return confirm('{{ $confirm }}')">
     @csrf
     @method('DELETE')
-    <button type="submit" {{ $attributes->merge(['class' => 'inline-flex items-center justify-center p-1.5 rounded-md border border-red-600 bg-transparent text-red-600 hover:bg-red-50']) }} title="{{ __('Delete') }}">
-        <span class="sr-only">{{ __('Delete') }}</span>
-        <x-tabler-trash class="h-4 w-4" />
-    </button>
+    <x-icon-button type="submit" icon="trash" variant="danger" :label="__('Delete')" {{ $attributes }} />
 </form>

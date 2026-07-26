@@ -5,12 +5,10 @@ namespace App\Services;
 use App\Enums\CodexEntryType;
 use App\Enums\SearchMode;
 use App\Models\Act;
-use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
-use App\Models\Scene;
 use App\Support\AccentFolder;
 use App\Support\RichText;
 use App\Support\RichTextFields;
@@ -91,78 +89,72 @@ class ProjectSearch
             return $this->emptyResults();
         }
 
-        $codexRows = $this->rowsFor(
-            $this->matches(
-                CodexEntry::query()->where('project_id', $project->id)->orderBy('name'),
-                $terms,
-                $mode,
-                self::CODEX_ENTRY_FIELDS,
-            ),
+        // One query per entity type. The three codex columns are sliced out of a
+        // single CodexEntry search below rather than searched three times.
+        $codexRows = $this->searchEntity(
+            CodexEntry::query()->where('project_id', $project->id)->orderBy('name'),
             self::CODEX_ENTRY_FIELDS,
             $terms,
+            $mode,
         );
 
         return new SearchResults(
-            plotlines: $this->rowsFor(
-                $this->matches(
-                    Plotline::query()->where('project_id', $project->id)->orderBy('name'),
-                    $terms,
-                    $mode,
-                    self::PLOTLINE_FIELDS,
-                ),
+            plotlines: $this->searchEntity(
+                Plotline::query()->where('project_id', $project->id)->orderBy('name'),
                 self::PLOTLINE_FIELDS,
                 $terms,
+                $mode,
             ),
-            events: $this->rowsFor(
-                $this->matches(
-                    Event::query()->where('project_id', $project->id)
-                        ->orderBy('event_datetime')->orderBy('id'),
-                    $terms,
-                    $mode,
-                    self::EVENT_FIELDS,
-                ),
+            events: $this->searchEntity(
+                Event::query()->where('project_id', $project->id)
+                    ->orderBy('event_datetime')->orderBy('id'),
                 self::EVENT_FIELDS,
                 $terms,
+                $mode,
             ),
-            acts: $this->rowsFor(
-                $this->matches(
-                    Act::query()->where('project_id', $project->id)
-                        ->orderBy('position')->orderBy('id'),
-                    $terms,
-                    $mode,
-                    self::ACT_FIELDS,
-                ),
+            acts: $this->searchEntity(
+                Act::query()->where('project_id', $project->id)
+                    ->orderBy('position')->orderBy('id'),
                 self::ACT_FIELDS,
                 $terms,
+                $mode,
             ),
-            chapters: $this->rowsFor(
-                $this->matches(
-                    Chapter::query()
-                        ->whereHas('act', fn (Builder $q) => $q->where('project_id', $project->id))
-                        ->orderBy('position')->orderBy('id'),
-                    $terms,
-                    $mode,
-                    self::CHAPTER_FIELDS,
-                ),
+            chapters: $this->searchEntity(
+                $project->chapterQuery()->orderBy('position')->orderBy('id'),
                 self::CHAPTER_FIELDS,
                 $terms,
+                $mode,
             ),
-            scenes: $this->rowsFor(
-                $this->matches(
-                    Scene::query()
-                        ->whereHas('chapter.act', fn (Builder $q) => $q->where('project_id', $project->id))
-                        ->orderBy('position')->orderBy('id'),
-                    $terms,
-                    $mode,
-                    self::SCENE_FIELDS,
-                ),
+            scenes: $this->searchEntity(
+                $project->sceneQuery()->orderBy('position')->orderBy('id'),
                 self::SCENE_FIELDS,
                 $terms,
+                $mode,
             ),
             characters: $this->codexRowsOfType($codexRows, CodexEntryType::Character),
             locations: $this->codexRowsOfType($codexRows, CodexEntryType::Location),
             organizations: $this->codexRowsOfType($codexRows, CodexEntryType::Organization),
         );
+    }
+
+    /**
+     * One entity type's search: fetch its project-scoped rows, keep the ones that
+     * match, and turn each into a result row.
+     *
+     * The two halves are separate methods because they answer different questions
+     * ("is this entity in the result set?" vs "which of its fields matched?"), but
+     * no caller ever wants one without the other — and each call previously had to
+     * pass `$fields` to both, which is the kind of repetition that eventually gets
+     * passed two *different* field maps by mistake.
+     *
+     * @param  Builder  $query  the project-scoped base query for one entity
+     * @param  array<string, string>  $fields  db_column => label
+     * @param  array<int, string>  $terms
+     * @return Collection<int, SearchResultRow>
+     */
+    private function searchEntity(Builder $query, array $fields, array $terms, SearchMode $mode): Collection
+    {
+        return $this->rowsFor($this->matches($query, $terms, $mode, $fields), $fields, $terms);
     }
 
     /**

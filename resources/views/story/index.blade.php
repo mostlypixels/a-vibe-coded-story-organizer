@@ -80,14 +80,29 @@
                                                     <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-red-500 px-2 py-0.5 text-xs font-medium text-red-600">{{ __('Unassigned') }}</span>
                                                 @endif
                                                 <x-scene-status-badge :status="$scene->status" />
-                                                <button type="button" data-move="up" onclick="moveScene(this, '{{ route('scenes.move-up', $scene) }}', 'up')" @disabled($loop->first) class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:text-gray-200 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-200" title="{{ __('Move up') }}">
-                                                    <span class="sr-only">{{ __('Move up') }}</span>
-                                                    <x-tabler-chevron-up class="h-4 w-4" />
-                                                </button>
-                                                <button type="button" data-move="down" onclick="moveScene(this, '{{ route('scenes.move-down', $scene) }}', 'down')" @disabled($loop->last) class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:text-gray-200 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-200" title="{{ __('Move down') }}">
-                                                    <span class="sr-only">{{ __('Move down') }}</span>
-                                                    <x-tabler-chevron-down class="h-4 w-4" />
-                                                </button>
+                                                {{-- Reordering here is AJAX (moveScene below re-evaluates which
+                                                     buttons are at the ends and toggles `disabled` in place), so
+                                                     these are plain buttons rather than <x-icon-move-button>'s
+                                                     PATCH form. The `ghost` variant styles its own disabled
+                                                     state, so the JS toggle restyles them with no extra work. --}}
+                                                <x-icon-button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    icon="chevron-up"
+                                                    :label="__('Move up')"
+                                                    data-move="up"
+                                                    onclick="moveScene(this, '{{ route('scenes.move-up', $scene) }}', 'up')"
+                                                    :disabled="$loop->first"
+                                                />
+                                                <x-icon-button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    icon="chevron-down"
+                                                    :label="__('Move down')"
+                                                    data-move="down"
+                                                    onclick="moveScene(this, '{{ route('scenes.move-down', $scene) }}', 'down')"
+                                                    :disabled="$loop->last"
+                                                />
                                                 <x-icon-edit-link :href="route('scenes.edit', $scene)" />
                                             </div>
                                         </div>

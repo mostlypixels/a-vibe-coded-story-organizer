@@ -64,8 +64,8 @@
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1">
                                 @if ($sort === 'position' && request()->filled('chapter'))
-                                    <x-icon-move-up-button :action="route('scenes.move-up', $scene)" :disabled="$loop->first" />
-                                    <x-icon-move-down-button :action="route('scenes.move-down', $scene)" :disabled="$loop->last" />
+                                    <x-icon-move-button direction="up" :action="route('scenes.move-up', $scene)" :disabled="$loop->first" />
+                                    <x-icon-move-button direction="down" :action="route('scenes.move-down', $scene)" :disabled="$loop->last" />
                                 @endif
                                 <x-icon-edit-link :href="route('scenes.edit', $scene)" />
                                 <x-icon-delete-button :action="route('scenes.destroy', $scene)" :confirm="__('Are you sure you want to delete this scene?')" />

@@ -53,11 +53,9 @@ class SceneReferenceMatcher
     {
         $candidates = $this->buildCandidates($project);
 
-        // Scenes hang off the project via chapter → act; reuse the same walk the
-        // SceneController index uses rather than adding a hasManyThrough.
-        $scenes = Scene::query()
-            ->whereHas('chapter.act', fn ($query) => $query->where('project_id', $project->id))
-            ->get();
+        // Scenes hang off the project via chapter → act; Project::sceneQuery() owns
+        // that walk (see its docblock for why it is a Builder, not a relation).
+        $scenes = $project->sceneQuery()->get();
 
         foreach ($scenes as $scene) {
             $scene->codexReferences()->sync($this->matchScene($scene, $candidates));
