@@ -50,6 +50,78 @@ class FieldAutosaveTest extends TestCase
     // Happy path
     // ---------------------------------------------------------------------
 
+    /**
+     * The server is the sole hash authority (§9.13): what it reports must be what
+     * it stored, *after* the sanitizer rewrote it. If it ever reported the value
+     * the client sent, the next autosave would arrive with a base hash that can
+     * never match the stored value and 409 forever.
+     *
+     * This is also what makes reading the value back from the model — rather than
+     * with a `fresh()` re-SELECT of every column — correct: `SanitizesRichHtml` is
+     * a set-mutator, so it has already rewritten the in-memory attribute.
+     */
+    public function test_the_response_reports_the_sanitized_value_so_the_next_autosave_does_not_conflict(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $dirty = '<p onclick="steal()">Kept</p><script>bad()</script>';
+
+        $response = $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
+            ['value' => $dirty, 'base_hash' => $this->hashOf($act->description)],
+        )->assertOk();
+
+        $stored = (string) $act->fresh()->description;
+
+        $this->assertNotSame($dirty, $stored, 'the sanitizer must have changed the value, or this test proves nothing');
+        $this->assertSame($stored, $response->json('value'));
+        $this->assertSame($this->hashOf($stored), $response->json('hash'));
+
+        // The recorded revision agrees with the column, so later diffs are honest.
+        $this->assertSame($stored, Revision::where('field', 'description')->latest('id')->first()->value);
+
+        // The second autosave, hashing what the first reported, must not 409.
+        $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
+            ['value' => '<p>Second</p>', 'base_hash' => $response->json('hash')],
+        )->assertOk();
+    }
+
+    /**
+     * `revision_id` is reported from the row `record()` returned rather than
+     * re-queried. The no-op branch — same text sent twice — still has to look it
+     * up, because nothing was recorded and the client should still learn which
+     * revision its text corresponds to.
+     */
+    public function test_the_response_names_the_revision_it_wrote_and_the_previous_one_on_a_no_op(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $written = $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
+            ['value' => '<p>One</p>', 'base_hash' => $this->hashOf($act->description)],
+        )->assertOk();
+
+        $revision = Revision::where('field', 'description')
+            ->where('origin', RevisionOrigin::Automatic)
+            ->latest('id')
+            ->first();
+
+        $this->assertSame($revision->id, $written->json('revision_id'));
+
+        // Byte-identical resend: nothing is recorded, and the id still points at
+        // the revision that holds this text.
+        $noOp = $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
+            ['value' => '<p>One</p>', 'base_hash' => $written->json('hash')],
+        )->assertOk();
+
+        $this->assertSame($revision->id, $noOp->json('revision_id'));
+        $this->assertSame(1, Revision::where('field', 'description')->where('origin', RevisionOrigin::Automatic)->count());
+    }
+
     public function test_autosaving_a_rich_field_updates_the_column_and_creates_one_revision(): void
     {
         $user = User::factory()->create();

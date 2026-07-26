@@ -51,16 +51,23 @@ class FieldAutosaveController extends Controller
         $model->{$field} = $validated['value'] ?? '';
         $model->save(); // mutators run here, e.g. SanitizesRichHtml for rich fields.
 
-        $storedValue = (string) ($model->fresh()->getAttribute($field) ?? '');
+        // Read back from memory, not with a fresh() round-trip. SanitizesRichHtml is
+        // an `Attribute::make(set:)` mutator, so it ran at *assignment* above and the
+        // in-memory attribute already holds exactly what was written — re-SELECTing
+        // the row would return the same string at the cost of reading every column,
+        // Scene.contents included. It is also the safer of the two: fresh() would
+        // hand back a concurrent writer's value, and this endpoint must hash what
+        // *it* stored (§9.13 — the server is the sole hash authority).
+        $storedValue = (string) ($model->getAttribute($field) ?? '');
 
         // This AJAX endpoint only ever records origin: automatic, and skips the write
         // entirely when the persisted value didn't change — so typing something and
         // undoing it leaves no trace. The full-form Save button's permanent, labeled
         // manual checkpoint is recorded separately, server-side, by the entity
         // controllers' update() via RevisionRecorder::recordManualChanges().
-        if ($storedValue !== $currentValue) {
-            $recorder->record($model, $field, $storedValue, $request->user(), RevisionOrigin::Automatic);
-        }
+        $recorded = $storedValue !== $currentValue
+            ? $recorder->record($model, $field, $storedValue, $request->user(), RevisionOrigin::Automatic)
+            : null;
 
         // Coarse trigger (blur/Ctrl-S/submit) only, never a bare debounce tick, and
         // only for Scene.contents specifically (handoff.md §2.5/§9.10) — this is
@@ -75,7 +82,13 @@ class FieldAutosaveController extends Controller
         return response()->json([
             'value' => $storedValue,
             'hash' => hash('sha256', $storedValue),
-            'revision_id' => $recorder->lastRevisionFor($model, $field)?->id,
+            // record() already returned the row it wrote or coalesced into, so the
+            // lookup is only needed for the no-op branch, where the client still
+            // wants to know which revision its text currently corresponds to. Reusing
+            // it is also the more precise answer: lastRevisionFor() breaks a
+            // same-second tie by `created_at` alone, and an autosave burst plus the
+            // Save that follows it land in the same second.
+            'revision_id' => ($recorded ?? $recorder->lastRevisionFor($model, $field))?->id,
             'saved_at' => now()->toIso8601String(),
         ]);
     }

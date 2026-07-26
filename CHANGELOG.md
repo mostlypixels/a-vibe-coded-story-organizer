@@ -17,6 +17,28 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Two fewer queries on every autosave
+
+### Changed
+
+- Every autosave re-`SELECT`ed the whole row it had just written — all columns, `Scene.contents`
+  included — to read one field back. `SanitizesRichHtml` is a set-mutator, so the in-memory
+  attribute already holds exactly what was stored; the round-trip returned the same string.
+  Reading it in memory is also the safer answer for the response hash, since a `fresh()` between
+  a concurrent writer's save and this one would hash a value this request never stored. Same
+  change in `RevisionReverter::restore()`.
+- The autosave response reported `revision_id` by re-querying for the newest revision, though
+  `record()` had just returned that exact row. It is reused, and the lookup kept only for the
+  no-op branch where nothing was recorded. Reuse is also the more precise answer: the lookup
+  breaks a same-second tie by `created_at` alone, and an autosave burst plus the Save after it
+  land in the same second.
+
+### Added
+
+- Tests pinning both: that the response reports the *sanitized* value and hash (the contract that
+  stops a rich field's second autosave from 409ing forever), and that `revision_id` names the
+  revision just written — or, on a byte-identical resend, the one that already holds the text.
+
 ## 2026-07-26 — Strip and fold each searched field once (#52)
 
 ### Changed
