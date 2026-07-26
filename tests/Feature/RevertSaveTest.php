@@ -10,6 +10,7 @@ use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -293,6 +294,48 @@ class RevertSaveTest extends TestCase
 
         $this->assertSame('<p>D2</p>', $scene->refresh()->description);
         $this->assertSame(0, Revision::query()->where('origin', RevisionOrigin::Revert)->count());
+    }
+
+    /**
+     * The feature's standing rule — list and whole-save queries never hydrate
+     * `revisions.value` — held everywhere except here, where the group was
+     * fetched with a bare `get()`. The rows are read for the morph target, the
+     * dominant origin and the (created_at, id, field) ordering; the predecessor's
+     * value comes from its own query in RevisionReverter. Undoing a save of
+     * `Scene.contents` therefore used to read up to a megabyte of longText per
+     * row to look at four scalars.
+     */
+    public function test_the_group_lookup_never_hydrates_the_value_column(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->withHistory($this->sceneFor($user));
+
+        $lookups = [];
+        DB::listen(function ($query) use (&$lookups) {
+            // The group fetch only — the predecessor queries the reverter runs
+            // are *supposed* to read `value`, and are filtered by field, not by
+            // save_id.
+            if (str_contains($query->sql, 'from "revisions"') && str_contains($query->sql, '"save_id" =')) {
+                $lookups[] = $query->sql;
+            }
+        });
+
+        $this->undo($user, $this->saveB, $this->hashesFor($scene))->assertRedirect();
+
+        $this->assertNotEmpty($lookups, 'the listener caught nothing — the assertions below would pass vacuously');
+
+        foreach ($lookups as $sql) {
+            $this->assertStringNotContainsString(
+                'select *',
+                $sql,
+                "The save-group lookup must name its columns, or the next added column ships unnoticed:\n{$sql}",
+            );
+            $this->assertStringNotContainsString(
+                '"value"',
+                $sql,
+                "The undo hydrated `value`. It can be megabytes of scene contents:\n{$sql}",
+            );
+        }
     }
 
     public function test_an_unknown_save_id_404s_and_a_malformed_one_never_reaches_the_controller(): void

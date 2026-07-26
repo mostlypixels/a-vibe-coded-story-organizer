@@ -89,8 +89,11 @@ mirroring `ProjectPolicy::update`. Deleting a Project cascades at the DB level w
 firing Eloquent events, so a polymorphic lookup would silently break on orphaned rows.
 
 **List queries never hydrate `value`.** History index, storage panel, purge previews select
-explicit columns; `size_bytes` exists so `SUM()` never touches `value`. A query-listener
-test guards this. New queries against `revisions` follow the same rule.
+explicit columns; `size_bytes` exists so `SUM()` never touches `value`. So does the whole-save
+undo, which reads its group for the morph target, the origin and the `(created_at, id, field)`
+ordering — the one `value` it needs belongs to a *predecessor* row, fetched by its own query in
+`RevisionReverter`. Query-listener tests guard both. New queries against `revisions` follow the
+same rule.
 
 ## Prune vs purge
 
