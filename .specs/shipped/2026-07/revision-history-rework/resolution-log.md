@@ -189,6 +189,33 @@ before extending the feature.
   and navigating, with the entity row highlighted on arrival. It does **not** close
   `standing-issues.md` #4 — the alert paths still have not been seen.
 
+* **Task 19's feature-level changelog section was not written — it would have been pure
+  duplication.** The task specifies one dated `## YYYY-MM-DD — Revision history rework
+  (#PR)` section covering the whole feature: the entity-level URLs and their redirects, the
+  whole-save undo, the visual diff, the conflict-UX change, the removal of *"Formatting
+  changed only."*, and a `Removed` line for the migration that clears the `revisions` table.
+  Every one of those already ships in `CHANGELOG.md` under the PR that landed it — #38
+  (save points + the `Removed` line), #39 (visual diff + the formatting dead end), #40
+  (summaries), #41 (save-point reads), #42 (the new URLs + redirects), #43 (conflict UX),
+  #44 (undo), #45 (entry points). The task predates the split of this plan into eight PRs,
+  each of which carries its own dated entry per the repo's changelog convention. Restating
+  them under one heading would have described the same work twice, in a file whose headings
+  answer *when something shipped*. **What the bullet was really protecting** — that each of
+  those things is findable in the changelog — was verified entry by entry instead. This PR
+  gets an ordinary dated section for its own documentation work.
+* **The architecture section was reworked, not rewritten.** By task 19 the section had
+  already been kept in step by tasks 13–17: save points, snapshots, the conflict split and
+  `revertSave` were all documented and accurate. What was genuinely missing or stale is what
+  changed — the two-altitude opening, the routes table and `view`/`update` split, the
+  in-house-differ rationale with its rejected candidates, the coalescing/`save_id` warning,
+  the migration's "why is my history empty" note, the entry points, and one **false** claim
+  (that the history page has "no separate field switcher" — it has had a field filter since
+  task 13).
+* **Two stale passages in `best-practices.md` were fixed in passing**: a note claiming Acts,
+  Chapters and the Story overview have no feature tests, and a changelog description
+  predating the dated per-PR convention. Both are in a file task 19 edits anyway, and both
+  were documentation stating something untrue about the repo.
+
 ## Known gaps
 
 **Moved to [`standing-issues.md`](standing-issues.md).** A gap that survives the task that

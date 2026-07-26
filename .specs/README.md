@@ -84,7 +84,7 @@ is done. Standing issues are facts about the *code*, and each stays until someon
 a decision retires it: defects nobody has got to yet, and accepted costs of the design that
 should not be rediscovered as surprises. Create the file when a feature has its first one —
 it is not part of the generated scaffold. See
-`.specs/planned/2026-07/revision-history-rework/standing-issues.md` for the shape.
+`.specs/shipped/2026-07/revision-history-rework/standing-issues.md` for the shape.
 
 ## Lifecycle
 

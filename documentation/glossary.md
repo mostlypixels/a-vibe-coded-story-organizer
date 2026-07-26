@@ -65,6 +65,52 @@ and `upsertAt()` calls it automatically whenever a non-Start period is stored �
 path can leave a leading hole. Like the main plotline, it cannot be deleted while later periods
 exist (the guard returns a `403`).
 
+## Revisions, history & diffs
+
+The vocabulary the revision feature made load-bearing. All of it is expanded in
+[architecture](architecture.md#revisions-autosave--entity-history).
+
+**Revision** — one immutable row holding what a **single field** held at a moment. Never
+edited after it is written; a revert *adds* a new revision rather than rewinding, which is
+what makes the history trustworthy.
+
+**Save point (correlation id)** — the set of revisions written by one Save, or by one
+autosave burst, tied together by a `save_id` ULID stamped on each. **This is the unit the
+whole interface is addressed by** — a writer remembers saving, not touching a field — so
+storage is per field while history, compare and undo are per save point. "Correlation id"
+is the general name for an id generated once per request and stamped on every row it
+creates.
+
+**Snapshot** — the state of *every* registered field of an entity as of a given moment,
+resolved by taking the newest revision at or before it per field
+(`RevisionSnapshot::asOf()`). Comparing two save points compares two snapshots, which is
+why a field that neither save touched can still show as changed — something in between
+changed it.
+
+**Source diff vs visual diff** — a *source* diff compares the stored markup (right for
+Markdown, which the writer types herself); a *visual* diff compares the **rendered**
+output, so a formatting change reads as "bolded" rather than as inserted tags (right for
+WYSIWYG fields, whose HTML the writer never sees).
+
+**Hunk** — one contiguous changed region of a diff. A find-and-replace on a character's
+name produces forty of them, which is why a list row shows the first and counts the rest.
+
+**Compute-at-write** — doing work once when data is created instead of every time someone
+looks at it. A diff between two immutable revisions is a *constant*, so `summary_html` and
+`change_count` are computed at write time and stored; the history list never diffs
+anything. The cost of a precomputed column is that it can go stale — here, after a prune
+deletes the predecessor it was computed against.
+
+**Boundary row** — the extra row a paginated page fetches beyond its own limit, because
+each row is described relative to its predecessor and the last row of a page needs the
+first row of the next one. Fetch N+1, render N.
+
+**Combobox (vs select-only listbox)** — a *combobox* is a text input **plus** a popup list;
+a plain HTML `<select>` is a *listbox*. The moment a filter field goes inside a dropdown
+panel it is a combobox and inherits that pattern's keyboard and ARIA contract (↓/↑, Enter,
+Escape, `aria-expanded`, `aria-activedescendant`). The save pickers on the compare screen
+are the *select-only* variant — custom-built, but no free typing.
+
 ## Design patterns & Laravel concepts
 
 **Aggregate** (domain-driven design) — a cluster of related objects treated as a unit for data

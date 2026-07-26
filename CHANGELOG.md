@@ -17,6 +17,32 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Document the revision rework (#46)
+
+### Changed
+
+- The revisions chapter of the architecture guide now describes the feature that exists.
+  It opens by naming the two altitudes it works at — storage is one immutable row per
+  field, everything you see is a **save point** — because almost every confusing thing
+  about the code follows from that one split. Added: the routes table with the two legacy
+  redirects, why reading history authorizes `view` while reverting authorizes `update`,
+  why the visual diff engine is written in-house (and which packages were rejected, and on
+  what licence), what a coalescing autosave does to the save point it lands in, and where
+  the three entry points into history are.
+- Answered "why is my history empty?" in the place someone will look for it: the
+  save-grouping migration clears the table, and history restarts from a fresh baseline.
+- The glossary gained the terms this feature made load-bearing — save point, snapshot,
+  source vs visual diff, hunk, compute-at-write, boundary row, combobox.
+- Best practices gained an entry on derived, precomputed columns: when storing an answer
+  beats computing it, and the upkeep that buys.
+
+### Fixed
+
+- Two stale claims in the best-practices guide: that Acts, Chapters and the Story overview
+  have no feature tests (they have had dedicated ones for a while), and the old changelog
+  convention, which described a single `[Unreleased]` list rather than the dated per-PR
+  sections this file has used since July 17.
+
 ## 2026-07-26 — A way in to history from everything you edit (#45)
 
 ### Added
