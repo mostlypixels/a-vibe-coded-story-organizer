@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 /**
  * The one implementation of "put an older value back" (task 16,
@@ -157,24 +158,45 @@ class RevisionReverter
      * database actually holds — the model's mutators (e.g. `SanitizesRichHtml`
      * on a rich field) may well have changed it on the way in, and a revision
      * that disagreed with its own column would poison every later diff.
+     *
+     * **The two writes are one transaction.** Changing the column and recording
+     * that it changed are halves of the same fact: if the second failed on its
+     * own, the value would have moved with nothing in the history saying so —
+     * precisely the outcome this whole feature exists to prevent. When
+     * {@see self::revertSave()} calls this, its own outer transaction simply
+     * absorbs this one (Laravel counts transaction depth and only the outermost
+     * commits), so the whole-save path keeps its all-or-nothing guarantee across
+     * every field.
      */
     private function restore(Model $entity, string $field, string $value, string $label, User $user): string
     {
         $slug = AutosavableFields::slugFor($entity::class);
 
+        // Outside the transaction on purpose: a rejected value must not open one
+        // at all. ValidationException propagates uncaught to Laravel's handler,
+        // which redirects back with the message in $errors —
+        // <x-revisions-layout> renders it.
+        //
+        // The attribute is named after the field so the message reads "The
+        // Description must not be greater than…" rather than naming the internal
+        // key "value", which means nothing to a writer.
         Validator::make(
             ['value' => $value],
             ['value' => AutosavableFields::validationRule($slug, $field)],
+            [],
+            ['value' => Str::headline($field)],
         )->validate();
 
-        $entity->{$field} = $value;
-        $entity->save(); // Mutators run here, e.g. SanitizesRichHtml for rich fields.
+        return DB::transaction(function () use ($entity, $field, $value, $label, $user): string {
+            $entity->{$field} = $value;
+            $entity->save(); // Mutators run here, e.g. SanitizesRichHtml for rich fields.
 
-        $storedValue = (string) ($entity->fresh()->getAttribute($field) ?? '');
+            $storedValue = (string) ($entity->fresh()->getAttribute($field) ?? '');
 
-        $this->recorder->record($entity, $field, $storedValue, $user, RevisionOrigin::Revert, $label);
+            $this->recorder->record($entity, $field, $storedValue, $user, RevisionOrigin::Revert, $label);
 
-        return $field;
+            return $field;
+        });
     }
 
     /**

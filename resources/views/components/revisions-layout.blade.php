@@ -33,7 +33,7 @@
             {{--
                 Every revert redirects back to the page it was fired from, and
                 both of those pages (history and compare) live in this shell —
-                so the two outcomes are rendered once, here, rather than
+                so all three outcomes are rendered once, here, rather than
                 duplicated per page.
 
                 `error` carries an App\Exceptions\RevisionConflictException's
@@ -42,6 +42,31 @@
             --}}
             @if (session('error'))
                 <x-alert variant="danger" dismissible>{{ session('error') }}</x-alert>
+            @endif
+
+            {{--
+                The third outcome: the old value no longer passes the rules the
+                field enforces *today* (RevisionReverter re-validates before
+                writing, deliberately — an old value must not reach the column
+                through a door a normal save would have closed). Laravel puts
+                that message in $errors and redirects back.
+
+                It belongs here rather than beside a field, because there is no
+                form field on these pages to attach it to — the revert is a
+                button, and the value it would have written is not on screen.
+                Without this block the writer sees an unchanged page and no
+                explanation at all.
+            --}}
+            @if ($errors->any())
+                <x-alert variant="danger" dismissible :title="__('That value cannot be restored as it stands.')">
+                    <p>{{ __('It no longer passes the rules this field enforces today — the rules have tightened since it was saved. The text is still in the history; nothing was changed.') }}</p>
+
+                    <ul class="mt-1 list-disc list-inside">
+                        @foreach ($errors->all() as $message)
+                            <li>{{ $message }}</li>
+                        @endforeach
+                    </ul>
+                </x-alert>
             @endif
 
             @if (session('status') === 'reverted')

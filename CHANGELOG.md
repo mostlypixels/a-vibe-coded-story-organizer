@@ -17,6 +17,20 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-26 — Say why a revert was refused, and never half-apply one (#47)
+
+### Fixed
+
+- **A revert that can't be restored now says so.** Old text is re-checked against the rules
+  the field enforces *today* before it goes back — rules can have tightened since it was
+  saved, and an old value must not get in through a door a normal save would have closed.
+  When that check refused, the page simply came back unchanged: no message, no explanation,
+  nothing to act on. It now says what happened, which rule refused it, and that your text is
+  still in the history and nothing was changed.
+- **A revert can no longer half-happen.** Putting the value back and recording that it went
+  back are now one operation. If the second half failed, the text changed with nothing in
+  the history saying so — the one outcome this whole feature exists to prevent.
+
 ## 2026-07-26 — Document the revision rework (#46)
 
 ### Changed
