@@ -17,6 +17,21 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-27 — Say which field moved when a revert is refused
+
+### Fixed
+
+- **A refused revert now names the field that moved.** The compare screen shows several
+  fields at once, each with its own revert button, and the alert only said "this changed
+  somewhere else" — leaving you to work out which one. It also told you to reload, which
+  the app had already done for you; it now says the page is up to date and you can simply
+  click again.
+- **Two reverts landing at the same moment can no longer overwrite each other.** The check
+  that stops a revert from discarding text you never chose to lose was made one step with
+  the write it guards, rather than a step before it.
+- A revert's alert can no longer be impersonated by an unrelated part of the app that
+  happens to report an error while you are on a history page.
+
 ## 2026-07-26 — Show both versions where "Revert to this" can point at one (#59)
 
 ### Added
@@ -322,10 +337,9 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 ### Changed
 
 - **Reverting a value that changed while you had the page open no longer dumps you on an
-  error page.** You come back to the history you were reading, with an alert explaining
-  that something else changed it and to reload and try again — nothing is written. The
-  check itself is unchanged: it is what stops a revert from quietly overwriting text you
-  never chose to discard.
+  error page.** You come back to the page you were on, with an alert explaining that
+  something else changed it — nothing is written. The check itself is unchanged: it is what
+  stops a revert from quietly overwriting text you never chose to discard.
 - A successful revert now says so. The confirmation was being sent and never displayed.
 
 ## 2026-07-25 — Browse history and compare saves, not fields (#42)

@@ -142,6 +142,15 @@ and removes the PID file; it's idempotent if the server is already gone.
 | `console --errors` | print any console/page errors seen so far |
 | `eval <js>` | run JS in the page, print the result |
 
+### Snags that cost time
+
+* **No session carries between driver invocations.** Every script logs in from
+  scratch — put the login block at the top of each one, not just the first.
+* **Sidebar groups start collapsed.** A sidebar link is not clickable until its
+  group is expanded; click the group heading first, then `wait-for` the link.
+* **Destructive buttons open a confirm dialog.** Clicking the visible button is
+  never the last step — the flow only happens after the dialog is confirmed.
+
 ## Run (human path)
 
 ```bash

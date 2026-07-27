@@ -23,6 +23,24 @@ use Illuminate\View\View;
 class RevisionsLayout extends Component
 {
     /**
+     * The flash key this shell renders its danger alert from, and the one
+     * `RevisionController` writes when a revert is refused.
+     *
+     * Namespaced rather than the generic `error` on purpose. This shell renders
+     * whatever sits in the key, so with `error` any *other* feature that flashed
+     * it and redirected to a revisions page would have its message appear
+     * dressed as a revert conflict. Nothing else writes `error` today; naming
+     * the key makes that a property of the code rather than a coincidence
+     * somebody has to keep rechecking.
+     *
+     * It lives here, on the component that renders it, rather than on the
+     * controller that writes it — the alert is this shell's, and a Blade
+     * template reaching into a controller for a constant would be the wrong way
+     * round.
+     */
+    public const ERROR_KEY = 'revision_error';
+
+    /**
      * The sidebar tree — see ProjectRevisionsBrowser::tree() for its shape.
      *
      * @var Collection<int, object>
@@ -37,6 +55,15 @@ class RevisionsLayout extends Component
         public ?string $field = null,
     ) {
         $this->tree = $browser->tree($project);
+    }
+
+    /**
+     * The refusal message to show, if a revert flashed one — resolved here so
+     * the template asks for a value rather than reaching into the session.
+     */
+    public function errorMessage(): ?string
+    {
+        return session(self::ERROR_KEY);
     }
 
     public function render(): View

@@ -49,6 +49,7 @@ class RevisionReverter
         return $this->restore(
             $entity,
             $revision->field,
+            $baseHash,
             (string) $revision->value,
             __('Reverted to :date', ['date' => $revision->created_at->format('d F H:i')]),
             $user,
@@ -105,6 +106,7 @@ class RevisionReverter
                 ->map(fn (Revision $row): string => $this->restore(
                     $entity,
                     $row->field,
+                    $baseHashes[$row->field] ?? '',
                     // No predecessor means the save *created* this field's
                     // content, so "before it" is empty. Every registered field
                     // is `nullable`, so emptying one is a legal state.
@@ -120,11 +122,17 @@ class RevisionReverter
     /**
      * Fail unless the field's stored value still hashes to `$baseHash`.
      *
-     * Split out from {@see self::restore()} rather than inlined because the
+     * The cheap **pre-flight** check, against the model already in memory. It is
+     * split out from {@see self::restore()} rather than inlined because the
      * whole-save undo has to check *every* field before writing *any* of them —
      * a half-applied undo is worse than none. Same hashing as
      * FieldAutosaveController and RevisionController's `baseHashes()`: the
      * server hashes what it stored, never what a client sent.
+     *
+     * This is not the check that makes the revert safe — {@see self::assertStillUnchanged()}
+     * is, inside the write transaction. This one runs first so a conflict is
+     * reported as a conflict rather than surfacing later as a validation error,
+     * and so the undo can refuse before it opens a transaction at all.
      *
      * @throws RevisionConflictException
      */
@@ -133,14 +141,52 @@ class RevisionReverter
         $currentValue = (string) ($entity->getAttribute($field) ?? '');
 
         if ($baseHash !== hash('sha256', $currentValue)) {
-            throw RevisionConflictException::valueChangedElsewhere();
+            throw RevisionConflictException::valueChangedElsewhere($field);
+        }
+    }
+
+    /**
+     * Re-check the base hash against the row as the **database** holds it, and
+     * hold a lock on that row for the rest of the transaction.
+     *
+     * Without this, the check and the write are two separate steps: two reverts
+     * arriving together can both pass {@see self::assertUnchanged()} against
+     * their own hydrated copy of the model, and the second silently overwrites
+     * the first. That is the whole point of the base hash — a revert must never
+     * clobber a value nobody chose to discard — so the check has to happen where
+     * the write happens, not one step earlier.
+     *
+     * Reading the column raw (`->value()`) rather than through the model is
+     * deliberate and matches how the hash was produced: every registered rich
+     * field mutates on `set` only (see `SanitizesRichHtml`), so no accessor sits
+     * between the column and the hash.
+     *
+     * `lockForUpdate()` compiles to nothing on SQLite, which serialises writers
+     * anyway — so the dev and test databases lose no correctness, and MySQL and
+     * Postgres get the row lock that closes the window.
+     *
+     * @throws RevisionConflictException
+     */
+    private function assertStillUnchanged(Model $entity, string $field, string $baseHash): void
+    {
+        $storedValue = (string) ($entity->newQuery()
+            ->whereKey($entity->getKey())
+            ->lockForUpdate()
+            ->value($field) ?? '');
+
+        if ($baseHash !== hash('sha256', $storedValue)) {
+            throw RevisionConflictException::valueChangedElsewhere($field);
         }
     }
 
     /**
      * Write an old value back onto the live column and record the revert.
      *
-     * Assumes the base hash has already been checked ({@see self::assertUnchanged()}).
+     * The base hash is checked **again here**, inside the transaction and under
+     * a row lock ({@see self::assertStillUnchanged()}). The caller's
+     * {@see self::assertUnchanged()} is a pre-flight against a model that was
+     * hydrated before this transaction opened; only the locked re-read can say
+     * what the row holds at the moment it is written.
      *
      * Takes a value and a label rather than the `Revision` they came from,
      * because the two callers reach them differently: a single-field revert
@@ -171,7 +217,7 @@ class RevisionReverter
      * commits), so the whole-save path keeps its all-or-nothing guarantee across
      * every field.
      */
-    private function restore(Model $entity, string $field, string $value, string $label, User $user): string
+    private function restore(Model $entity, string $field, string $baseHash, string $value, string $label, User $user): string
     {
         $slug = AutosavableFields::slugFor($entity::class);
 
@@ -190,7 +236,9 @@ class RevisionReverter
             ['value' => Str::headline($field)],
         )->validate();
 
-        return DB::transaction(function () use ($entity, $field, $value, $label, $user): string {
+        return DB::transaction(function () use ($entity, $field, $baseHash, $value, $label, $user): string {
+            $this->assertStillUnchanged($entity, $field, $baseHash);
+
             $entity->{$field} = $value;
             $entity->save(); // Mutators run here, e.g. SanitizesRichHtml for rich fields.
 

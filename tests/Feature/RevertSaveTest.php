@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\User;
+use App\View\Components\RevisionsLayout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -182,7 +183,7 @@ class RevertSaveTest extends TestCase
         $response = $this->undo($user, $this->saveB, $this->hashesFor($scene, ['notes' => 'stale']));
 
         $response->assertRedirect();
-        $response->assertSessionHas('error');
+        $response->assertSessionHas(RevisionsLayout::ERROR_KEY);
 
         $scene->refresh();
         $this->assertSame('<p>D2</p>', $scene->description);
