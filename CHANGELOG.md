@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-27 — Say which field moved when a revert is refused
+## 2026-07-27 — Say which field moved when a revert is refused (#60)
 
 ### Fixed
 
