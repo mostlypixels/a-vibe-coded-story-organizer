@@ -86,6 +86,10 @@ should not be rediscovered as surprises. Create the file when a feature has its 
 it is not part of the generated scaffold. See
 `.specs/shipped/2026-07/revision-history-rework/standing-issues.md` for the shape.
 
+**Delete a defect's entry once it is fixed**, and the whole file once the last one is — the
+fix, its reasoning and its regression test are in git history and the PR. What outlives a
+fix is an accepted cost, which is why that example file is now only accepted costs.
+
 ## Lifecycle
 
 Create the folder and its `spec.md` yourself, then run the pipeline. Each stage stamps

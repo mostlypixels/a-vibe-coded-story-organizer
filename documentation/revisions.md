@@ -454,6 +454,6 @@ own **Revert to this** underneath.
   `laravel-auditing` / `laravel-versionable` / `revisionable` package, why no server-side
   collaborative locking (`handoff.md`, `resolution-log.md`).
 - `.specs/shipped/2026-07/revision-history-rework/` — the move to entity + save point.
-  `resolution-log.md` holds the diff-library evaluation; **`standing-issues.md` is what is
-  still wrong with the code on `master`**, separating real defects from consequences
-  accepted with eyes open. Open both before changing any of this.
+  `resolution-log.md` holds the diff-library evaluation; **`standing-issues.md` holds the
+  costs accepted with eyes open** — still true of `master`, and not to be "fixed" without
+  re-opening the decision behind them. Open both before changing any of this.
