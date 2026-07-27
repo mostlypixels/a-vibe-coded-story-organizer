@@ -221,8 +221,8 @@ Rules that bite if you don't know them:
 > Before changing any of this, read **[`revisions.md`](revisions.md)** — the invariants,
 > pitfalls and rejected alternatives in full — and
 > `.specs/shipped/2026-07/revision-history-rework/standing-issues.md`, which holds the
-> feature's **accepted costs** (known consequences of decisions, not bugs — do not "fix"
-> them without re-opening the decision) and the record of every defect review found in it.
+> feature's **accepted costs** — known consequences of decisions, not bugs. Do not "fix"
+> one without re-opening the decision it came from.
 
 ## Enum convention
 
