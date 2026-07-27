@@ -283,22 +283,36 @@ row holding the older value. No user action deletes history except an explicit p
 The work lives in `App\Services\RevisionReverter`, so single-field revert and whole-save
 undo run the same four steps and can't drift:
 
-1. Check the base hash.
+1. Check the base hash (`assertUnchanged()`, pre-flight, against the hydrated model).
 2. Re-validate the old value against **today's** `AutosavableFields::validationRule()` —
    rules can have tightened since it was recorded.
-3. Assign and `save()`, so the model's mutators run.
+3. Open the transaction, **re-check the base hash under a row lock**
+   (`assertStillUnchanged()`), then assign and `save()`, so the model's mutators run.
 4. Record the value the database actually ended up holding.
 
 The controller is resolve → authorize → delegate → redirect.
+
+> [!IMPORTANT]
+> **The base hash is checked twice, and only the second one makes the revert safe.** A
+> pre-flight check followed by a write is two steps with nothing holding the row still
+> between them: two reverts arriving together both pass, and the second overwrites the
+> first. So `restore()` re-reads the column inside its transaction with `lockForUpdate()`
+> before writing. Do not "simplify" the duplicate away — the pre-flight one earns its place
+> separately, by letting the whole-save undo refuse *every* field before opening a
+> transaction, and by reporting a conflict as a conflict rather than as a validation error.
+> `lockForUpdate()` compiles to nothing on SQLite, which serialises writers anyway.
 
 > [!NOTE]
 > **The two conflict surfaces answer differently, on purpose.** The base hash stops a revert
 > from overwriting a value a second tab (or in-flight autosave) wrote after the page was
 > drawn. On mismatch `RevisionReverter` throws `RevisionConflictException`; **browser** paths
-> redirect back with an error alert — the writer did nothing wrong and needs a page to
-> reload and retry from, not a bare error screen. The **409** survives only on the JSON
-> autosave endpoint, where a client reads it. Both revert outcomes are rendered once in
-> `<x-revisions-layout>`, not per page.
+> redirect back with an error alert — the writer did nothing wrong and needs a page they can
+> act on, not a bare error screen. The **409** survives only on the JSON autosave endpoint,
+> where a client reads it. Both revert outcomes are rendered once in `<x-revisions-layout>`,
+> not per page, from `RevisionsLayout::ERROR_KEY` — a namespaced flash key, so an unrelated
+> feature's `error` can never surface dressed as a revert conflict. The message **names the
+> field** that moved (a compare page shows several) and does not tell the writer to reload:
+> the redirect already re-rendered the page, so clicking again is all that is left.
 
 **Undo this save** (`revisions.saves.revert` → `RevisionController::revertSave`) applies the
 same machinery to a whole save point. `RevisionReverter::revertSave()` wraps it in one

@@ -11,6 +11,7 @@ use App\Services\RevisionReverter;
 use App\Support\AutosavableFields;
 use App\Support\FieldComparison;
 use App\Support\SavePoint;
+use App\View\Components\RevisionsLayout;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -369,7 +370,7 @@ class RevisionController extends Controller
         try {
             $reverter->revertField($entity, $revision, $validated['base_hash'], $request->user());
         } catch (RevisionConflictException $exception) {
-            return back()->with('error', $exception->getMessage());
+            return back()->with(RevisionsLayout::ERROR_KEY, $exception->getMessage());
         }
 
         return back()->with('status', 'reverted');
@@ -427,13 +428,13 @@ class RevisionController extends Controller
         // saved: it has no "before" to go back to, and undoing it would empty
         // the field. The list hides its button for the same reason.
         if (SavePoint::dominantOrigin($group->pluck('origin')) === RevisionOrigin::Baseline) {
-            return back()->with('error', __('That is the initial value — there is no earlier version to go back to.'));
+            return back()->with(RevisionsLayout::ERROR_KEY, __('That is the initial value — there is no earlier version to go back to.'));
         }
 
         try {
             $restored = $reverter->revertSave($entity, $group, $validated['base_hashes'], $request->user());
         } catch (RevisionConflictException $exception) {
-            return back()->with('error', $exception->getMessage());
+            return back()->with(RevisionsLayout::ERROR_KEY, $exception->getMessage());
         }
 
         // Lands on the edit form, not back on the history: the writer undid a

@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Enums\RevisionOrigin;
+use App\Exceptions\RevisionConflictException;
 use App\Models\Act;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Models\User;
 use App\Services\RevisionRecorder;
+use App\Services\RevisionReverter;
+use App\View\Components\RevisionsLayout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
@@ -150,7 +154,7 @@ class RevertRevisionTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $response->assertSessionHas('error');
+        $response->assertSessionHas(RevisionsLayout::ERROR_KEY);
         $response->assertSessionMissing('status');
 
         $act->refresh();
@@ -223,7 +227,61 @@ class RevertRevisionTest extends TestCase
             ->post(route('revisions.revert', $old), ['base_hash' => 'not-the-real-hash']);
 
         $response->assertOk();
-        $response->assertSee('This changed somewhere else since you opened this page', false);
+        // standing-issues.md #6: the message names the field that moved — a
+        // compare page shows several at once, each with its own revert button —
+        // and no longer tells the writer to reload, which is a step the redirect
+        // has already taken for them.
+        $response->assertSee('"Description" changed somewhere else while this page was open');
+        $response->assertDontSee('reload and try again');
+    }
+
+    /**
+     * standing-issues.md #5: the base hash was checked against the model already
+     * hydrated in memory, and the value was written afterwards — two steps with
+     * nothing holding the row still in between. Two reverts arriving together
+     * could both pass the check, and the second would silently overwrite the
+     * first: exactly the outcome the base hash exists to prevent.
+     *
+     * A real race cannot be scheduled in a test, so this reproduces its *shape*.
+     * The row moves after the reverter has been handed an entity whose in-memory
+     * copy still hashes to what the page showed, so the cheap pre-flight check
+     * passes and only the locked re-read inside the write transaction can catch
+     * it. The service is driven directly here rather than through the endpoint,
+     * because the window being closed opens after the controller has resolved
+     * the model.
+     */
+    public function test_a_value_that_moves_after_the_preflight_check_is_still_refused(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user, ['description' => '<p>Current text</p>']);
+
+        $old = $this->revisionFor($act, [
+            'user_id' => $user->id,
+            'value' => '<p>Older text</p>',
+            'created_at' => now()->subDay(),
+        ]);
+
+        $baseHash = $this->hashOf($act->description);
+
+        // Somebody else writes the column. Straight to the database, so the
+        // model the reverter is about to be handed still holds — and still
+        // hashes to — what the page was showing.
+        DB::table('acts')->where('id', $act->id)->update([
+            'description' => '<p>Someone else was here</p>',
+        ]);
+
+        $countBefore = Revision::count();
+
+        try {
+            app(RevisionReverter::class)->revertField($act, $old, $baseHash, $user);
+            $this->fail('The revert should have been refused: the row moved after the pre-flight check.');
+        } catch (RevisionConflictException $exception) {
+            $this->assertStringContainsString('Description', $exception->getMessage());
+        }
+
+        // The other writer's text survives, and no revert row was recorded.
+        $this->assertSame('<p>Someone else was here</p>', $act->fresh()->description);
+        $this->assertSame($countBefore, Revision::count());
     }
 
     /**

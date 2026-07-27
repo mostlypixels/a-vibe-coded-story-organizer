@@ -36,12 +36,15 @@
                 so all three outcomes are rendered once, here, rather than
                 duplicated per page.
 
-                `error` carries an App\Exceptions\RevisionConflictException's
+                $errorMessage carries an App\Exceptions\RevisionConflictException's
                 message: someone else moved the value while this page was open,
                 which is a situation to act on, not a failure to apologise for.
+                Its flash key is namespaced (RevisionsLayout::ERROR_KEY) rather
+                than the generic `error`, so no unrelated feature's flash can
+                arrive here wearing a revert conflict's clothes.
             --}}
-            @if (session('error'))
-                <x-alert variant="danger" dismissible>{{ session('error') }}</x-alert>
+            @if ($errorMessage())
+                <x-alert variant="danger" dismissible>{{ $errorMessage() }}</x-alert>
             @endif
 
             {{--

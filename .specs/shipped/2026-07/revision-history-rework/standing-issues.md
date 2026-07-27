@@ -1,6 +1,8 @@
 # Revision History Rework — standing issues
 
-**What is still wrong with the shipped code.** Read this before extending the feature.
+**What is still true of the shipped code, and what was wrong with it.** Read this before
+extending the feature. Every defect found by review is now fixed; what remains live are the
+**accepted costs** at the bottom.
 
 Distinct from `resolution-log.md` on purpose. That file is the *record of the work*: what
 was decided, what deviated from the plan, what went wrong during a task and how it was
@@ -19,16 +21,18 @@ Two kinds of entry:
 
 > [!NOTE]
 > The defects below were found by **review, not by testing** — the suite was green and
-> caught none of them. Three are now fixed (#1, #2, #4, on 2026-07-26), each with a
-> regression test verified to fail before its fix. A fixed entry keeps its original text
-> below the fix note, because *how it got there* is the part worth not repeating.
+> caught none of them. **All seven are now fixed** (#1, #2, #4 and then #3, #5, #6, #7, all
+> on 2026-07-26), each with a regression test verified to fail before its fix. A fixed entry
+> keeps its original text below the fix note, because *how it got there* is the part worth
+> not repeating. The **accepted costs** at the bottom are not defects and are still true.
 >
 > **What has been seen in a browser**, via `/run-imagoldfish`: the entity-level History link
-> and the sidebar's entity links (task 18); the compare screen; and the validation alert from
-> #1, reproduced by temporarily lowering `config('revisions.caps')` to 10 and clicking
-> *Revert to this*. Still only ever exercised by the test suite: the **conflict** alert (it
-> needs a stale base hash, which cannot be produced by clicking), the undo flow, and the
-> history list.
+> and the sidebar's entity links (task 18), and the validation alert from #1, reproduced by
+> temporarily lowering `config('revisions.caps')` to 10 and clicking *Revert to this*. The
+> compare screen was seen too, but **before #59 rebuilt it** into three panes with a revert
+> button per side — nothing here vouches for the version now on `master`. Still only ever
+> exercised by the test suite: the **conflict** alert (it needs a stale base hash, which
+> cannot be produced by clicking), the undo flow, and the history list.
 
 ---
 
@@ -109,7 +113,15 @@ the whole-save path still gets all-or-nothing across every field.
 > Fix this **before** task 17. That task builds directly on `restore()`, and adding the
 > transaction afterwards means re-reasoning about a nested one.
 
-### 3. The changelog entry describes a page that has no Revert button
+### 3. The changelog entry describes a page that has no Revert button — ✅ FIXED 2026-07-26
+
+**Severity was: low.** The `2026-07-25` entry now reads "You come back to the page you were
+on", which is true of both revert paths. The same edit dropped its "and to reload and try
+again", which described the old conflict message that #6 has since replaced — a changelog
+entry quoting a message is a second place for that message to go stale, so it now describes
+the outcome instead.
+
+Original entry:
 
 **Severity: low (wrong documentation, working code). Mostly overtaken by task 17.** The
 `2026-07-25 — Revert conflicts come back to the page you were reading` entry says the writer
@@ -146,7 +158,27 @@ suite would still pass and the feature would be exactly as broken as it was befo
 **Fix sketch:** one feature test that performs a conflicting revert, follows the redirect, and
 asserts the message text appears in the HTML. `/run-imagoldfish` for a one-time eyeball.
 
-### 5. The conflict check can still be raced
+### 5. The conflict check can still be raced — ✅ FIXED 2026-07-26
+
+**Severity was: very low in practice.** `RevisionReverter::restore()` now re-reads the column
+inside its own transaction with `lockForUpdate()` (`assertStillUnchanged()`) and compares the
+base hash again there, so the check and the write are one step. The original
+`assertUnchanged()` stays as a **pre-flight**: it is what lets the whole-save undo refuse
+every field before opening a transaction at all, and it keeps a conflict being reported as a
+conflict rather than surfacing later as a validation error. Both are documented in
+`documentation/revisions.md` under a `> [!IMPORTANT]` telling the next reader not to
+"simplify" the pair into one.
+
+Covered by `RevertRevisionTest::test_a_value_that_moves_after_the_preflight_check_is_still_refused`.
+A race cannot be scheduled in a test, so it reproduces the *shape*: the row is moved with a
+raw `DB::table()->update()` after the hash is taken, leaving the hydrated model still
+matching it, so only the locked re-read can catch it. Verified to fail before the fix — the
+revert went through and overwrote the other writer's text.
+
+`lockForUpdate()` compiles to nothing on SQLite, which serialises writers anyway; the lock is
+what MySQL and Postgres need.
+
+Original entry:
 
 **Severity: very low in practice, but the docs overclaim.** The base hash is compared, and
 *then* the value is written, as two separate steps with no lock and no condition on the
@@ -160,7 +192,17 @@ actually happens (a second tab, or an autosave still in flight).
 **Fix sketch:** either narrow the documentation's claim, or make the update conditional on the
 value still hashing as expected.
 
-### 6. The conflict message is vague, and its advice is stale
+### 6. The conflict message is vague, and its advice is stale — ✅ FIXED 2026-07-26
+
+**Severity was: low.** `RevisionConflictException::valueChangedElsewhere()` now takes the
+field name and reads *«"Description" changed somewhere else while this page was open, so
+nothing was reverted. This page now shows the current version — click again if you still want
+to go back.»* `Str::headline()` gives the writer the same label the rest of the feature shows
+them, never a raw column name. Covered by the `assertSee` in
+`RevertRevisionTest::test_the_conflict_alert_is_actually_rendered_on_the_page_it_returns_to`,
+which also `assertDontSee`s the old "reload and try again". Verified to fail before the fix.
+
+Original entry:
 
 **Severity: low.** Two small things in the same sentence — *"This changed somewhere else since
 you opened this page — reload and try again."*
@@ -172,7 +214,21 @@ you opened this page — reload and try again."*
 
 **Where:** `App\Exceptions\RevisionConflictException::valueChangedElsewhere()`.
 
-### 7. `session('error')` is a generic key on a shared shell
+### 7. `session('error')` is a generic key on a shared shell — ✅ FIXED 2026-07-26
+
+**Severity was: negligible today.** The key is now `RevisionsLayout::ERROR_KEY`
+(`revision_error`). It lives on the **view component that renders the alert**, not on the
+controller that writes it — the alert belongs to that shell, and a Blade template reaching
+into a controller for a constant would be the wrong way round. The template asks the
+component for `$errorMessage()` rather than touching the session itself.
+
+Fixed rather than left waiting for a second writer of `error` to appear, per the original
+sketch: naming the key costs one constant and makes "nothing else can land in this alert" a
+property of the code instead of a coincidence somebody has to re-verify. Both existing
+conflict tests assert against the constant, and the end-to-end render test (#4) covers the
+wiring.
+
+Original entry:
 
 **Severity: negligible today.** `x-revisions-layout` renders whatever is in `session('error')`.
 `RevisionController::revert()` is currently the only writer of that key in the whole app, so
