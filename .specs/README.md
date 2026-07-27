@@ -74,7 +74,7 @@ still appears twice anywhere in the tree — the backstop for a collision create
     NN-<slug>.md       #   one file per task, dependency-ordered
     implemented/       #   completed task files are moved here
   resolution-log.md    # running record of deviations, issues→resolutions, feedback
-  standing-issues.md   # what is still wrong with the shipped code (optional)
+  standing-issues.md   # unfixed defects + accepted costs, still true of master (optional)
 ```
 
 `resolution-log.md` and `standing-issues.md` divide the same subject on a simple line: **is
