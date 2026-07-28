@@ -11,7 +11,10 @@
     </x-slot>
 
     <div class="space-y-6">
-        <x-heading level="1">{{ __('Story Overview') }}</x-heading>
+        <div class="flex items-center justify-between">
+            <x-heading level="1">{{ __('Story Overview') }}</x-heading>
+            <x-word-count :count="$wordCount" />
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {{-- Left column: Table of Contents, sticky so it stays in view while the
@@ -53,14 +56,23 @@
             <div class="lg:col-span-9 space-y-10">
                 @forelse ($acts as $act)
                     <div class="space-y-6">
-                        <h2 id="act-{{ $act->id }}" class="text-2xl font-bold text-white bg-gray-600 rounded-md px-4 py-2 scroll-mt-16">
-                            {{ __('Act :number', ['number' => $act->position]) }} &mdash; {{ $act->name }}
+                        <h2 id="act-{{ $act->id }}" class="text-2xl font-bold text-white bg-gray-600 rounded-md px-4 py-2 scroll-mt-16 flex items-center justify-between">
+                            <span>{{ __('Act :number', ['number' => $act->position]) }} &mdash; {{ $act->name }}</span>
+                            {{-- Scenes are already eager-loaded (StoryController::index), so this
+                                 ->sum() over the loaded chapters/scenes collections is free — no query. --}}
+                            <x-word-count
+                                :count="$act->chapters->sum(fn ($chapter) => $chapter->scenes->sum('word_count'))"
+                                variant="inline"
+                                class="text-base font-normal"
+                            />
                         </h2>
 
                         @forelse ($act->chapters as $chapter)
                             <article class="bg-white shadow-sm rounded-lg p-6 space-y-4">
-                                <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-gray-800 scroll-mt-16">
-                                    {{ __('Chapter :number', ['number' => $chapter->position]) }} &mdash; {{ $chapter->name }}
+                                <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-gray-800 scroll-mt-16 flex items-center justify-between">
+                                    <span>{{ __('Chapter :number', ['number' => $chapter->position]) }} &mdash; {{ $chapter->name }}</span>
+                                    {{-- $chapter->scenes is already eager-loaded, so this ->sum() is free. --}}
+                                    <x-word-count :count="$chapter->scenes->sum('word_count')" />
                                 </h3>
 
                                 @forelse ($chapter->scenes as $scene)
