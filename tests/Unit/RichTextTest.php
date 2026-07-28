@@ -42,6 +42,55 @@ class RichTextTest extends TestCase
         );
     }
 
+    /**
+     * The regression this class exists to pin: `strip_tags()` alone glues the last
+     * word of one block to the first of the next, so a heading ran into its
+     * paragraph ("Chapter OneShe waited.") — wrong in search snippets, and one word
+     * short per boundary for anything counting words.
+     */
+    public function test_every_block_boundary_becomes_a_line_break(): void
+    {
+        $this->assertSame(
+            "Chapter One\nShe waited.",
+            RichText::toPlainText('<h1>Chapter One</h1><p>She waited.</p>')
+        );
+
+        $this->assertSame(
+            "alpha\nbeta",
+            RichText::toPlainText('<ul><li>alpha</li><li>beta</li></ul>')
+        );
+
+        $this->assertSame(
+            "quoted words\nafter",
+            RichText::toPlainText('<blockquote>quoted words</blockquote><p>after</p>')
+        );
+
+        $this->assertSame(
+            "left\nright",
+            RichText::toPlainText('<table><tbody><tr><td>left</td><td>right</td></tr></tbody></table>')
+        );
+    }
+
+    public function test_nested_blocks_break_once_per_boundary_not_once_per_tag(): void
+    {
+        // </p> and </blockquote> land back to back; the blank-line collapse keeps
+        // that to a single blank line rather than a stack of newlines.
+        $this->assertSame(
+            "a\n\nb",
+            RichText::toPlainText('<blockquote><p>a</p></blockquote><p>b</p>')
+        );
+    }
+
+    public function test_inline_elements_do_not_break_the_line(): void
+    {
+        // The counterpart to the block rule: breaking on <strong>/<code>/<a> would
+        // split a sentence — and a word count — at every emphasis.
+        $this->assertSame(
+            'She read the tome of naming aloud.',
+            RichText::toPlainText('<p>She <strong>read</strong> the <em>tome</em> of <code>naming</code> <a href="https://example.test">aloud</a>.</p>')
+        );
+    }
+
     public function test_it_decodes_html_entities(): void
     {
         $this->assertSame('Salt & pepper', RichText::toPlainText('<p>Salt &amp; pepper</p>'));
