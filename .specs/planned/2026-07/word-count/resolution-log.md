@@ -66,3 +66,54 @@ Settled in the `plan-tasks` grill, 2026-07-27. Reasoning in `expanded/open-quest
   No existing assertion pinned the glued output, so the task's expected "update the tests
   that encode the bug" turned out to be nothing to update — the whole suite (1133) was green
   on the fix alone.
+
+* **`DatabaseSeeder` uses `WithoutModelEvents`**, which wraps the whole `db:seed` run — every
+  seeder it `$this->call()`s, including MelusineSeeder{En,Fr,It} — in `Model::withoutEvents()`.
+  Task 4's assumption ("the seeders write through the model, so the hook fills word_count
+  with no seeder change") was half right: they do write through `$chapter->scenes()->create()`,
+  but the hook itself never fires there, so every seeded scene landed at `word_count = 0`
+  until confirmed by the seeded-scene assertion `data-model.md` asked for. `MelusineSeederEn`
+  already carried a visible scar from the same cause — its main-plotline creation has a
+  `firstWhere('is_main', true) ?? Plotline::create([...])` fallback because `Project::booted()`'s
+  auto-create-on-`created` hook is equally suppressed there.
+
+  Fixed with `Database\Seeders\Concerns\BackfillsSceneWordCounts` (one `backfillSceneWordCounts()`
+  call per project, added to all three Melusine seeders right after their story tree is built),
+  mirroring the `scenes.word_count` migration's own raw `DB::table()` backfill rather than
+  re-enabling model events for the whole seeded run — removing `WithoutModelEvents` would also
+  turn on `HasRevisions`'s baseline-seeding for every autosavable field on every seeded row, a
+  much larger and unrelated behavior change.
+
+* **`WordCounter::count()` threw on malformed UTF-8** (`Str::markdown()` requires valid
+  UTF-8/ASCII and throws `League\CommonMark\Exception\UnexpectedEncodingException` otherwise).
+  Latent since task 2 — nothing called `WordCounter` at write time yet — task 4's
+  `Scene::booted()` hook made it reachable on every save, and `Scene.contents` has no
+  sanitizing mutator (unlike the rich fields), so a writer's paste or an old import can leave
+  bad bytes in the column. Surfaced by `SceneReferenceMatcherTest`'s own malformed-UTF-8
+  fixture scene, which stopped being creatable at all. Fixed by guarding `WordCounter::count()`
+  with `mb_check_encoding()`, returning 0 for invalid input — the same treatment
+  `SceneReferenceMatcher` already gives this exact failure mode, so the two agree rather than
+  one crashing where the other degrades.
+
+* **`AddWordCountToScenesMigrationTest` (task 3) broke** once the hook existed: it simulated
+  "a scene from before this migration" by calling the migration's `down()` (dropping the
+  column) and then `Scene::factory()->create()` — which now tries to write `word_count` into a
+  column that test had just removed. Rewrote it to insert those fixture rows with a raw
+  `DB::table('scenes')->insertGetId()` instead, which is actually the more honest simulation:
+  a real pre-migration row never went through this hook (or any Scene model code) either.
+
+* **Confirmed, not assumed:** `ProjectGraphImporter::importScene()` creates through
+  `$chapter->scenes()->create()` — no bulk `insert()`, hook fires, no importer change needed.
+
+* **Task 4's test 7 did not test what it claimed.** The plan called it "proves the `isDirty`
+  guard", and it was written as: rename a scene, assert `word_count` is unchanged. That passes
+  whether or not the guard exists — recounting unchanged contents returns the same number, so
+  there is nothing for the assertion to catch. Verified by deleting the guard and watching it
+  still pass. Rewritten to write a deliberately wrong count (`999`) straight to the column
+  first, so only a guarded hook leaves it standing; that version fails with the guard removed.
+
+  Worth generalising: the plan's *Tests* sections say what each test is **for**, and a test
+  that names an invariant is not the same as one that would notice the invariant breaking.
+  The task file already demanded this proof for tests 3 and 4 (patch the hook out, watch them
+  fail) — the same treatment was owed to test 7 and was not applied. Re-verified tests 3 and 4
+  independently at review time: with the hook removed all 8 fail, so those two are honest.

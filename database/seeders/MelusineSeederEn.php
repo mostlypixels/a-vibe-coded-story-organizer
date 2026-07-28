@@ -12,10 +12,13 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\AttributeTimeline;
 use App\Support\PlotlineColors;
+use Database\Seeders\Concerns\BackfillsSceneWordCounts;
 use Illuminate\Database\Seeder;
 
 class MelusineSeederEn extends Seeder
 {
+    use BackfillsSceneWordCounts;
+
     /**
      * Seed a sample "Roman of Melusine" project (English) with plotlines and events.
      */
@@ -406,6 +409,10 @@ class MelusineSeederEn extends Seeder
                 }
             }
         }
+
+        // See BackfillsSceneWordCounts: model events (and so Scene::booted()'s
+        // word_count hook) are off for the whole seeded run.
+        $this->backfillSceneWordCounts($project);
 
         $this->seedCodex($project, $eventsByTitle);
     }

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\FieldKind;
 use App\Enums\SceneStatus;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
+use App\Support\WordCounter;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -141,6 +143,21 @@ class Scene extends Model
         static::creating(function (Scene $scene) {
             if (is_null($scene->position)) {
                 $scene->position = static::where('chapter_id', $scene->chapter_id)->max('position') + 1;
+            }
+        });
+
+        // Keeps word_count true to contents on every write path that goes through
+        // $model->save() — autosave, manual save, revert/undo (RevisionReverter),
+        // import, and seeders/factories. A controller-level implementation would
+        // miss RevisionReverter, which never touches FieldAutosaveController, so
+        // the count would go stale the moment someone uses Undo (word-count spec,
+        // expanded/architecture.md "The write path").
+        //
+        // `saving`, not `saved`: it sets an attribute on the row already about to
+        // be written, so there is no second UPDATE and no half-applied state.
+        static::saving(function (Scene $scene): void {
+            if ($scene->isDirty('contents')) {
+                $scene->word_count = WordCounter::count($scene->contents, FieldKind::Markdown);
             }
         });
     }

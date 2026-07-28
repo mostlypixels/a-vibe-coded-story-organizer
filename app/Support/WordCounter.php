@@ -54,6 +54,16 @@ class WordCounter
             return 0;
         }
 
+        // A malformed byte sequence can reach a stored field (Scene.contents has
+        // no sanitizing mutator — see Scene::renderedContents()'s docblock) from
+        // a writer's paste or an old import. Str::markdown() throws on anything
+        // that is not valid UTF-8/ASCII; degrading to zero rather than letting
+        // that propagate into a 500 on save matches how SceneReferenceMatcher
+        // already treats the same failure mode for the same column.
+        if (! mb_check_encoding($value, 'UTF-8')) {
+            return 0;
+        }
+
         $text = match ($kind) {
             FieldKind::Rich => RichText::toPlainText($value),
             // Str::markdown() is what stops "**bold**" counting as one word and

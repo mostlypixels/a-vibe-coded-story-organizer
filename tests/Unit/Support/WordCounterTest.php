@@ -33,6 +33,20 @@ class WordCounterTest extends TestCase
         $this->assertSame(3, WordCounter::count('one two   three', FieldKind::Plain));
     }
 
+    /**
+     * word-count spec, task 4 (`Scene::booted()`'s saving hook) made this
+     * reachable on every save: `Scene.contents` has no sanitizing mutator, so a
+     * writer's paste or an old import can leave a malformed byte sequence in the
+     * column. `Str::markdown()` throws on anything that is not valid
+     * UTF-8/ASCII (`SceneReferenceMatcherTest::test_malformed_utf8_contents_do_not_throw_and_log_a_warning`
+     * is what surfaced this — its fixture scene failed to even save). Degrading
+     * to zero matches how `SceneReferenceMatcher` already treats the same input.
+     */
+    public function test_malformed_utf8_is_zero_words(): void
+    {
+        $this->assertSame(0, WordCounter::count("valid text \x80 broken", FieldKind::Markdown));
+    }
+
     public function test_blank_lines_are_separators(): void
     {
         $this->assertSame(2, WordCounter::count("one\n\ntwo", FieldKind::Plain));

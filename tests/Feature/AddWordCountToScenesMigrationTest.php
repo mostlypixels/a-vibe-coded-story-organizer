@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Chapter;
 use App\Models\Revision;
 use App\Models\Scene;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -19,6 +21,16 @@ use Tests\TestCase;
  * each test calls the migration's own down()/up() directly against rows it
  * has just created, exactly as the migration would run against an existing
  * install's data.
+ *
+ * Scenes below are inserted with a raw `DB::table('scenes')->insertGetId()`,
+ * never `Scene::factory()->create()`: task 4 added a `Scene::booted()` hook
+ * that writes `word_count` on every save, and that hook assumes the column
+ * it writes to already exists — exactly what `$migration->down()` has just
+ * removed. Going through Eloquent here would fail with "no column named
+ * word_count" for the same reason it never would in a real install (the
+ * migration has always run by the time any model code executes); the raw
+ * insert is what actually reproduces "a row written before this feature
+ * shipped".
  */
 class AddWordCountToScenesMigrationTest extends TestCase
 {
@@ -32,6 +44,25 @@ class AddWordCountToScenesMigrationTest extends TestCase
         return $migration;
     }
 
+    /**
+     * Insert a scene row directly, bypassing Eloquent (and so Scene::booted()'s
+     * word_count hook) entirely — see the class docblock.
+     */
+    private function insertScene(?string $contents): Scene
+    {
+        $chapter = Chapter::factory()->create();
+
+        $id = DB::table('scenes')->insertGetId([
+            'chapter_id' => $chapter->id,
+            'name' => 'Fixture scene',
+            'contents' => $contents,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return Scene::findOrFail($id);
+    }
+
     public function test_a_scene_created_before_the_migration_gets_the_correct_count_after_it(): void
     {
         $migration = $this->migration();
@@ -41,7 +72,7 @@ class AddWordCountToScenesMigrationTest extends TestCase
         // exactly like an existing install before this migration ships.
         $migration->down();
 
-        $scene = Scene::factory()->create(['contents' => 'One two three four.']);
+        $scene = $this->insertScene('One two three four.');
 
         $migration->up();
 
@@ -53,8 +84,8 @@ class AddWordCountToScenesMigrationTest extends TestCase
         $migration = $this->migration();
         $migration->down();
 
-        $sceneWithNullContents = Scene::factory()->create(['contents' => null]);
-        $sceneWithBlankContents = Scene::factory()->create(['contents' => "  \n  "]);
+        $sceneWithNullContents = $this->insertScene(null);
+        $sceneWithBlankContents = $this->insertScene("  \n  ");
 
         $migration->up();
 
@@ -67,7 +98,9 @@ class AddWordCountToScenesMigrationTest extends TestCase
         $migration = $this->migration();
         $migration->down();
 
-        Scene::factory()->count(3)->create();
+        $this->insertScene('One.');
+        $this->insertScene('Two.');
+        $this->insertScene('Three.');
 
         $revisionCountBeforeBackfill = Revision::query()->count();
 
@@ -84,7 +117,7 @@ class AddWordCountToScenesMigrationTest extends TestCase
         $migration = $this->migration();
         $migration->down();
 
-        $scene = Scene::factory()->create();
+        $scene = $this->insertScene('Some words.');
         $updatedAtBeforeBackfill = $scene->updated_at;
 
         $migration->up();
@@ -94,6 +127,9 @@ class AddWordCountToScenesMigrationTest extends TestCase
 
     public function test_down_then_up_leaves_the_column_and_counts_correct(): void
     {
+        // Created while the column exists, through the model as normal — this
+        // test is about the column surviving a down()/up() cycle, not about
+        // reproducing pre-feature data.
         $scene = Scene::factory()->create(['contents' => 'One two three.']);
 
         $migration = $this->migration();
