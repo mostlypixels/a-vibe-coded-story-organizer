@@ -24,12 +24,25 @@ use Illuminate\Support\Str;
 class WordCounter
 {
     /**
-     * A fenced code block: an opening line of 3+ backticks or tildes (with an
-     * optional info string, e.g. "```php"), its content, and a closing line of the
-     * same fence character repeated exactly as many times. The backreference
-     * (`\1`) is what stops a closing ``` from matching an opening ~~~ fence.
+     * A closed fenced code block: an opening line of 3+ backticks or tildes (with
+     * an optional info string, e.g. "```php"), its content, and a closing line of
+     * the same character, at least as long.
+     *
+     * Group 2 is the single fence character and group 1 the whole opening run, so
+     * `\1\2*` means "the opening fence, possibly longer" — CommonMark lets ````
+     * close ```, but never lets ~~~ close ```. Both lines may be indented up to
+     * three spaces and still be a fence — at four CommonMark stops seeing a fence
+     * at all and the line is ordinary indented code, which this feature counts.
      */
-    private const FENCE_PATTERN = '/^(`{3,}|~{3,})[^\n]*\n.*?\n\1[^\n]*$/ms';
+    private const CLOSED_FENCE_PATTERN = '/^ {0,3}((`|~)\2{2,})[^\n]*\n(?:.*?\n)? {0,3}\1\2*[ \t]*$/ms';
+
+    /**
+     * An opening fence with no closing one. CommonMark treats the rest of the
+     * document as code, so this strips to the end of the input. Applied only after
+     * {@see CLOSED_FENCE_PATTERN} has run, so anything still matching here really
+     * is unclosed.
+     */
+    private const UNCLOSED_FENCE_PATTERN = '/^ {0,3}((`|~)\2{2,})[^\n]*(?:\n.*)?\z/ms';
 
     /**
      * Count the words in a stored field value. Null and whitespace-only input are
@@ -64,9 +77,15 @@ class WordCounter
      * the source text, not on the rendered HTML: finding a stripped `<pre>` after
      * the fact would mean re-deriving what was already known here, more cheaply
      * and less fragilely.
+     *
+     * Closed fences go first so that what remains matching an *opening* fence is
+     * genuinely unclosed. Reversing the order would let an unclosed-fence match
+     * swallow the rest of a document whose fences were all closed.
      */
     private static function stripFencedCodeBlocks(string $markdown): string
     {
-        return preg_replace(self::FENCE_PATTERN, '', $markdown) ?? $markdown;
+        $withoutClosedFences = preg_replace(self::CLOSED_FENCE_PATTERN, '', $markdown) ?? $markdown;
+
+        return preg_replace(self::UNCLOSED_FENCE_PATTERN, '', $withoutClosedFences) ?? $withoutClosedFences;
     }
 }

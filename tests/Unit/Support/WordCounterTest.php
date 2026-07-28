@@ -112,6 +112,45 @@ class WordCounterTest extends TestCase
         $this->assertSame(2, WordCounter::count("before\n```\ncode\n```\nafter", FieldKind::Markdown));
     }
 
+    public function test_markdown_tilde_fence_is_removed(): void
+    {
+        $this->assertSame(2, WordCounter::count("before\n~~~\ncode words\n~~~\nafter", FieldKind::Markdown));
+    }
+
+    public function test_markdown_fence_info_string_is_not_counted(): void
+    {
+        $this->assertSame(2, WordCounter::count("before\n```php\n\$x = 1;\n```\nafter", FieldKind::Markdown));
+    }
+
+    public function test_markdown_empty_fence_is_removed(): void
+    {
+        $this->assertSame(2, WordCounter::count("before\n```\n```\nafter", FieldKind::Markdown));
+    }
+
+    public function test_markdown_indented_fence_is_removed(): void
+    {
+        // Up to three spaces is still a fence to CommonMark, so it must not count.
+        $this->assertSame(2, WordCounter::count("before\n   ```\n   code words\n   ```\nafter", FieldKind::Markdown));
+    }
+
+    public function test_markdown_longer_closing_fence_closes_the_block(): void
+    {
+        // ```` closes ``` — so "after" is prose, not part of the code block.
+        $this->assertSame(2, WordCounter::count("before\n```\ncode words\n````\nafter", FieldKind::Markdown));
+    }
+
+    public function test_markdown_a_tilde_fence_does_not_close_a_backtick_fence(): void
+    {
+        // CommonMark keeps the block open, so everything after it is code.
+        $this->assertSame(1, WordCounter::count("before\n```\ncode words\n~~~\nmore code", FieldKind::Markdown));
+    }
+
+    public function test_markdown_unclosed_fence_runs_to_the_end(): void
+    {
+        // CommonMark treats the rest of the document as code, so only "before" counts.
+        $this->assertSame(1, WordCounter::count("before\n```php\nsecret code here", FieldKind::Markdown));
+    }
+
     public function test_rich_heading_must_not_glue_into_the_next_paragraph(): void
     {
         // Q9: proves task 1's RichText::toPlainText() fix landed — without it this
