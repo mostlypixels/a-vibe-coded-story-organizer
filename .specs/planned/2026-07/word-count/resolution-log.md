@@ -38,6 +38,15 @@ Settled in the `plan-tasks` grill, 2026-07-27. Reasoning in `expanded/open-quest
   $field === 'contents'` specifically, and computes every other field (`Scene.description`,
   `Scene.notes` included) on the fly with `WordCounter`.
 
+* **The app has no `lang/`/`resources/lang` files at all** — confirmed by searching, not
+  assumed. Every `trans_choice` call in the codebase (`ProjectController`,
+  `delete-with-move-dialog.blade.php`, `projects/show.blade.php`,
+  `revisions/compare.blade.php`) uses the inline pluralisation string directly as the
+  translation key (`'{0} :count words|{1} :count word|[2,*] :count words'`), never a lang
+  file lookup. `x-word-count` follows that exact convention rather than introducing a lang
+  file — no French/Italian string was added, matching that no comparable existing string has
+  one either.
+
 ## Deviations from the spec/plan
 
 * **Task 1's block-tag set is the allow-list ∪ what `Str::markdown()` emits, not the task's
@@ -48,6 +57,17 @@ Settled in the `plan-tasks` grill, 2026-07-27. Reasoning in `expanded/open-quest
 * **Tests went into the existing `tests/Unit/RichTextTest.php`**, not the
   `tests/Unit/Support/` path the task named — the class already existed one directory up, and
   a second `RichTextTest` would have been a duplicate rather than a move.
+
+* **Task 6's claim that `x-word-count` "should be picked up by `BladeComponentCompilationTest`
+  automatically" does not hold yet — confirmed, not assumed.** That test only walks a fixed
+  list of routes (`BladeComponentCompilationTest::pages()`); no page renders
+  `<x-word-count>` until tasks 7–9 wire it into the story overview and the index pages, so it
+  currently passes on this feature's changes vacuously, not because it exercises the new
+  component. `WordCountComponentTest` (this task) is what actually pins the component's
+  markup down in the meantime. Whoever implements task 8 or 9 should expect
+  `BladeComponentCompilationTest` to start covering `x-word-count` only once a listed page
+  actually contains it — no action needed here, just don't mistake today's green run for
+  that coverage already existing.
 
 ## Issues → resolutions
 
