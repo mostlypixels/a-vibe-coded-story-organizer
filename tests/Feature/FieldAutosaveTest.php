@@ -381,6 +381,97 @@ class FieldAutosaveTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
+    // Word count (word-count spec, task 5)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Scene.contents is the one field with a stored `word_count` column, kept
+     * true to the saved value by Scene::booted()'s `saving` hook (task 4). This
+     * asserts the response reads that column *after* save rather than deriving
+     * its own number, and pins the exact count so a regression that reads stale
+     * state (e.g. the pre-save value) would be caught.
+     */
+    public function test_the_response_reports_the_stored_word_count_for_scene_contents(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user, ['contents' => 'Old contents here.']);
+
+        $response = $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']),
+            ['value' => 'New scene contents with five words.', 'base_hash' => $this->hashOf('Old contents here.')],
+        )->assertOk();
+
+        // New, scene, contents, with, five, words. — 6 words.
+        $this->assertSame(6, $scene->fresh()->word_count);
+        $this->assertSame(6, $response->json('word_count'));
+    }
+
+    /**
+     * The reconciliation contract this feature exists for: the JS counter is
+     * indicative and does not strip fenced code blocks (open-questions.md Q2),
+     * so the response is what tells it "6, not 11" once the fence is excluded.
+     *
+     * The expected count (6) is hand-counted from the prose alone, deliberately
+     * chosen to differ from what a naive whitespace split of the raw, unrendered
+     * markdown would produce (13 tokens, or 11 once bare `` ``` `` markers are
+     * dropped as non-words) — a controller that stopped reading the
+     * fence-stripped, rendered count would fail this assertion, not merely
+     * satisfy a looser one.
+     */
+    public function test_a_fenced_code_block_is_excluded_from_the_response_word_count(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user, ['contents' => 'Old contents here.']);
+
+        $withFence = "Real prose here.\n\n```\none two three four five\n```\n\nMore prose after.";
+
+        $response = $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']),
+            ['value' => $withFence, 'base_hash' => $this->hashOf('Old contents here.')],
+        )->assertOk();
+
+        // Real, prose, here., More, prose, after. — the fenced 5 words are excluded.
+        $this->assertSame(6, $scene->fresh()->word_count);
+        $this->assertSame(6, $response->json('word_count'));
+    }
+
+    /**
+     * Only `scenes.contents` has a stored column (word-count spec's binding
+     * decision). Every other autosaved field — an act's Rich `description` here
+     * — has nothing to read back, so the response counts it on the fly from the
+     * value that was actually persisted.
+     */
+    public function test_a_non_scene_field_also_returns_a_word_count(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $response = $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
+            ['value' => '<p>Hello brave new world</p>', 'base_hash' => $this->hashOf($act->description)],
+        )->assertOk();
+
+        // Hello, brave, new, world — 4 words, tags stripped before counting.
+        $this->assertSame(4, $response->json('word_count'));
+    }
+
+    /**
+     * This task adds a key; it must not reshape the existing payload.
+     */
+    public function test_word_count_is_added_alongside_the_existing_response_keys(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $response = $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
+            ['value' => '<p>Fresh text</p>', 'base_hash' => $this->hashOf($act->description)],
+        )->assertOk();
+
+        $response->assertJsonStructure(['value', 'hash', 'word_count', 'revision_id', 'saved_at']);
+    }
+
+    // ---------------------------------------------------------------------
     // Rate limiting
     // ---------------------------------------------------------------------
 

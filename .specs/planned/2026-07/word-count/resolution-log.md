@@ -29,6 +29,14 @@ Settled in the `plan-tasks` grill, 2026-07-27. Reasoning in `expanded/open-quest
   paid four write paths that must each fix up two ancestors.
 * **Goals/targets/progress deferred** to a `word-count-goals` follow-up: counting needs one
   integer per scene, progress needs a per-day time series.
+* **Task 5's "non-scene field" means "not `scene.contents`", not "not on the `Scene`
+  model".** Only `scenes.word_count` is a stored column (binding decision, task 3), and only
+  `contents` keeps it current (task 4's hook checks `isDirty('contents')`). So `Scene`'s own
+  `description`/`notes` autosaves — same model, different field — read `$model->word_count`
+  too if taken literally, which would report the *contents* count while editing notes.
+  `FieldAutosaveController::update()` therefore special-cases `$model instanceof Scene &&
+  $field === 'contents'` specifically, and computes every other field (`Scene.description`,
+  `Scene.notes` included) on the fly with `WordCounter`.
 
 ## Deviations from the spec/plan
 
