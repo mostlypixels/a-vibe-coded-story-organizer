@@ -235,6 +235,48 @@ describe('registerAutosaveField store dirty tracking', () => {
         expect(Alpine.store('autosave').isDirty()).toBe(false);
     });
 
+    /**
+     * Word-count spec, task 7: `notifyWordCount()` is the field's half of the
+     * counter-reconciliation channel — resources/js/word-count.js only ever
+     * trusts this dispatch for the authoritative number. Covered here in
+     * isolation (a hand-added `[data-word-count]` element, not the real
+     * component) so this contract stays pinned independently of
+     * word-count.js's own tests.
+     */
+    it('a successful save dispatches word-count:reconcile on this field\'s [data-word-count] element, carrying the response word_count', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash', word_count: 7 } }),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+        const counter = document.createElement('div');
+        counter.setAttribute('data-word-count', '');
+        field.$root.appendChild(counter);
+        const handler = vi.fn();
+        counter.addEventListener('word-count:reconcile', handler);
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        await field.save({});
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(handler.mock.calls[0][0].detail.wordCount).toBe(7);
+    });
+
+    it('a save on a field with no [data-word-count] element (e.g. this test file\'s other mounts) never throws', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash', word_count: 7 } }),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 43, field: 'contents', url: '/scenes/43', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        await expect(field.save({})).resolves.toBeUndefined();
+    });
+
     it('destroy() removes the key from store.dirty entirely, mirroring fields/elements', () => {
         const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
 

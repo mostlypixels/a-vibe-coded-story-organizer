@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Editor } from '@tiptap/core';
-import { buildExtensions, buildSlashItems } from './wysiwyg.js';
+import { buildExtensions, buildSlashItems, registerWysiwyg } from './wysiwyg.js';
 
 /**
  * Round-trip tests for the Tiptap extension configuration `wysiwyg.js` builds
@@ -406,5 +406,87 @@ describe('slash menu — no merge/split entry in either format (task 04)', () =>
 
             expect(titles.some((title) => title.includes('merge') || title.includes('split'))).toBe(false);
         }
+    });
+});
+
+/**
+ * Word-count spec, task 7: `resources/js/word-count.js` cannot reach `editor`
+ * directly (it's a closure variable — see this file's own docblock on why),
+ * so it relies on this dispatch to learn the rendered text as the writer
+ * types. This is a probe, not a read of the source: it mounts the *real*
+ * `registerWysiwyg()` Alpine component (the exact factory app.js registers)
+ * over a real, attached DOM node and drives it through an actual editor
+ * transaction, rather than asserting the CustomEvent exists by inspecting
+ * the code — proving the event genuinely fires from a live edit, for both
+ * formats the editor supports.
+ */
+describe('wysiwyg:text-changed CustomEvent (word-count spec, task 7)', () => {
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    /** Minimal Alpine stand-in, matching field.test.js's precedent. */
+    function createAlpineStub() {
+        const factories = {};
+
+        return {
+            data(name, factory) {
+                factories[name] = factory;
+            },
+            factory(name) {
+                return factories[name];
+            },
+        };
+    }
+
+    /** Mounts `wysiwyg()` on a real, attached `<div><textarea/><div/></div>`,
+     *  matching wysiwyg.blade.php's `x-ref="textarea"` / `x-ref="editor"` shape. */
+    function mountWysiwyg(format) {
+        const el = document.createElement('div');
+        const textarea = document.createElement('textarea');
+        const editorMount = document.createElement('div');
+        el.appendChild(textarea);
+        el.appendChild(editorMount);
+        document.body.appendChild(el);
+
+        const Alpine = createAlpineStub();
+        registerWysiwyg(Alpine);
+
+        const component = Alpine.factory('wysiwyg')({ format });
+        component.$el = el;
+        component.$refs = { textarea, editor: editorMount };
+        component.init();
+
+        return { el, component };
+    }
+
+    it.each(['markdown', 'html'])('fires with the rendered text when the %s-format editor changes', (format) => {
+        const { el, component } = mountWysiwyg(format);
+        const handler = vi.fn();
+        el.addEventListener('wysiwyg:text-changed', handler);
+
+        // A real editor transaction (the same kind a keystroke produces),
+        // not a hand-fired event — this is what proves onUpdate itself does
+        // the dispatching, not just that the event shape is right.
+        component.cmd('insertContent', 'hello world');
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(handler.mock.calls[0][0].detail.text).toBe('hello world');
+
+        component.destroy();
+    });
+
+    it('fires again, with the updated text, on a second edit', () => {
+        const { el, component } = mountWysiwyg('markdown');
+        const handler = vi.fn();
+        el.addEventListener('wysiwyg:text-changed', handler);
+
+        component.cmd('insertContent', 'hello');
+        component.cmd('insertContent', ' world');
+
+        expect(handler).toHaveBeenCalledTimes(2);
+        expect(handler.mock.calls[1][0].detail.text).toBe('hello world');
+
+        component.destroy();
     });
 });

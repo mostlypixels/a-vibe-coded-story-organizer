@@ -7,6 +7,7 @@ import { registerAutosaveBadge } from './autosave/badge';
 import { registerDraftRecoveryModal } from './autosave/draft-recovery';
 import { registerNavigationGuard } from './navigation-guard';
 import { registerRevisionPicker } from './revision-picker';
+import { registerWordCount } from './word-count';
 
 window.Alpine = Alpine;
 
@@ -16,6 +17,7 @@ registerAutosaveBadge(Alpine);
 registerDraftRecoveryModal(Alpine);
 registerNavigationGuard(Alpine);
 registerRevisionPicker(Alpine);
+registerWordCount(Alpine);
 
 Alpine.start();
 

@@ -3,10 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Chapter;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Models\User;
+use App\Support\WordCountFormat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
@@ -176,5 +180,77 @@ class AutosaveFieldComponentTest extends TestCase
 
         $this->assertStringContainsString('compareUrl:', $html);
         $this->assertStringContainsString(str_replace('/', '\/', $expectedUrl), $html);
+    }
+
+    /**
+     * Word-count spec, task 7: the live in-field counter renders on every
+     * `x-autosave-field`, starting from the server-computed count so the
+     * first paint is exact rather than an estimate the writer has to wait
+     * out (ui.md / architecture.md's "The live counter (JS)").
+     */
+    public function test_the_live_word_count_renders_with_the_servers_initial_count(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create(['description' => 'One two three four']);
+
+        $html = Blade::render(
+            '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
+            ['act' => $act],
+        );
+
+        $this->assertStringContainsString('data-word-count', $html);
+        $this->assertStringContainsString('x-data="wordCount(', $html);
+        $this->assertStringContainsString(WordCountFormat::text(4), $html);
+    }
+
+    /**
+     * A number that changes on every keystroke must never be announced to a
+     * screen reader (ui.md) — it stays available on demand, not as an event.
+     */
+    public function test_the_live_word_count_carries_aria_live_off(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create(['description' => 'Hello world']);
+
+        $html = Blade::render(
+            '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
+            ['act' => $act],
+        );
+
+        $this->assertStringContainsString('aria-live="off"', $html);
+    }
+
+    /**
+     * `WordCounter::count()` for `Scene.contents` should not be re-derived
+     * here: `Scene::booted()`'s saving hook (task 4) already keeps
+     * `word_count` current, and this component reuses that stored number
+     * rather than re-rendering the Markdown a second time.
+     *
+     * The stored count is planted *wrong* on purpose. Asserting against a
+     * correct one would pass whether the component reads the column or
+     * recounts the contents — both return the same number — which is the same
+     * hole WordCountTest's own rename test documents. Only a wrong stored
+     * value reaching the page distinguishes the two.
+     */
+    public function test_the_live_word_count_for_scene_contents_reuses_the_stored_column(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create(['contents' => 'One two three']);
+
+        // Written straight to the column so the saving hook never corrects it.
+        DB::table('scenes')->where('id', $scene->id)->update(['word_count' => 999]);
+
+        $html = Blade::render(
+            '<x-autosave-field entity="scene" :model="$scene" field="contents" :label="__(\'Contents\')" />',
+            ['scene' => $scene->fresh()],
+        );
+
+        $this->assertStringContainsString(WordCountFormat::text(999), $html);
+        $this->assertStringContainsString('initialCount: 999', $html);
     }
 }

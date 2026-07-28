@@ -145,3 +145,46 @@ Settled in the `plan-tasks` grill, 2026-07-27. Reasoning in `expanded/open-quest
   The task file already demanded this proof for tests 3 and 4 (patch the hook out, watch them
   fail) — the same treatment was owed to test 7 and was not applied. Re-verified tests 3 and 4
   independently at review time: with the hook removed all 8 fail, so those two are honest.
+
+* **Task 7's bottom-left badge / bottom-right counter row used `justify-content: space-between`,
+  which broke at the common case (idle, no autosave in flight).** The badge span is
+  `style="display: none;"` at idle, and a `display:none` flex child is removed from layout
+  entirely, not just hidden — with one visible child left, `justify-between` has nothing to
+  distribute the space against and collapses to flex-start, so the counter rendered bottom-left
+  instead of bottom-right. No test caught this (jsdom/Blade::render() never lays anything out);
+  found only by driving `scenes/edit` in a real browser per the task's own instruction. Fixed by
+  dropping `justify-between` and giving the counter `ml-auto` instead, so its position no longer
+  depends on the badge's visibility.
+
+* **Task 7 shipped the same could-not-fail test shape as task 4's test 7, one task later.**
+  `AutosaveFieldComponentTest::test_the_live_word_count_for_scene_contents_reuses_the_stored_column`
+  asserted the rendered count against a *correct* `scenes.word_count`, which is the number
+  `WordCounter::count()` returns for the same contents anyway — so it passed with the
+  `$model instanceof Scene` branch deleted (verified by deleting it). Rewritten to plant
+  `word_count = 999` straight into the column first, the same fix task 4's test 7 got; it now
+  fails without the branch and passes with it. The lesson generalises: whenever a test asserts a
+  number two code paths both produce, the number has to be one only the intended path can yield.
+
+## Deviations from the spec/plan (task 7)
+
+* **Extracted `App\Support\WordCountFormat`, and edited task 6's `word-count.blade.php` to use
+  it**, though task 7 named only `word-count.js` and `autosave-field.blade.php`. The live counter
+  needs the same "N words" pluralisation as `x-word-count` but as an unfilled template (a literal
+  `%d`, not a number baked in) to fill in client-side — duplicating the translation key inline in
+  both files would leave two copies to update in step. `WordCountFormat::text()` is what
+  `word-count.blade.php` now calls (byte-for-byte the same output as before); `jsTemplates()` is
+  the new method `autosave-field.blade.php` uses to hand the three branches to
+  `resources/js/word-count.js`.
+
+* **Mechanism for reading editor text**: `resources/js/wysiwyg.js`'s `onUpdate` now also dispatches
+  a bubbling `wysiwyg:text-changed` CustomEvent carrying `editor.getText()`, mirroring the
+  `autosave:explicit-leave` arm's-length pattern already used between `navigation-guard.js` and
+  `field.js`. The counter's Alpine component wraps the field's editor/textarea (not just its own
+  `<span>`) specifically so this event, and a plain textarea's native `input` event, both bubble
+  up to something it's listening on.
+
+* **Mechanism for reconciliation**: `resources/js/autosave/field.js`'s `save()` looks up this same
+  wrapping element via `this.$root.querySelector('[data-word-count]')` (the same DOM-querying
+  pattern `fieldValue()` already uses to reach the textarea across the `x-wysiwyg` nested-`x-data`
+  boundary) and dispatches `word-count:reconcile` on it with the response's `word_count`,
+  unconditionally on every successful save.

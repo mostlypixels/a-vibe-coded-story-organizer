@@ -246,6 +246,27 @@ export function registerAutosaveField(Alpine) {
         },
 
         /**
+         * Snap the live in-field counter (resources/js/word-count.js, word-count
+         * spec task 7) to the authoritative number the server just persisted.
+         * That component lives in its own nested Alpine scope on a
+         * `[data-word-count]` element inside this field, reached the same
+         * DOM-querying way `fieldValue()` reaches the textarea rather than via
+         * Alpine internals — the file docblock explains why `$refs` can't cross
+         * a nested `x-data` boundary here. Dispatched unconditionally: even if
+         * the writer has kept typing since this save left, `word_count`
+         * describes what this request actually wrote, and the counter must
+         * reflect the true stored count rather than sit on a stale estimate.
+         * A field rendered without a counter (only ever in a test) is a no-op.
+         */
+        notifyWordCount(wordCount) {
+            const counter = this.$root.querySelector('[data-word-count]');
+
+            if (counter && typeof wordCount === 'number') {
+                counter.dispatchEvent(new CustomEvent('word-count:reconcile', { detail: { wordCount } }));
+            }
+        },
+
+        /**
          * The dirty-only gate: the very first real edit event flips `dirty` and mirrors
          * a draft immediately; every edit after that (re)starts the debounce timer.
          * Create forms (no `config.id` yet, handoff.md §9.1) never PATCH — the
@@ -373,6 +394,7 @@ export function registerAutosaveField(Alpine) {
                 // when the field has moved on: the server stored what this request
                 // sent, so the pending save must build on that hash or it 409s.
                 this.baseHash = data.hash;
+                this.notifyWordCount(data.word_count);
                 this.setState(state);
                 setTimeout(() => {
                     if (this.state === STATES.SAVED) {

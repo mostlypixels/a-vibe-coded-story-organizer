@@ -17,14 +17,12 @@
 @php
     $classes = $variant === 'inline' ? '' : 'text-xs text-gray-400';
 
-    // Thousands-separated + pluralised via this app's inline trans_choice convention
-    // (see delete-with-move-dialog.blade.php) rather than a ternary — the app is
-    // translated (projects carry a `language`; French/Italian seeders exist).
-    $text = trans_choice(
-        '{0} :count words|{1} :count word|[2,*] :count words',
-        $count,
-        ['count' => number_format($count)],
-    );
+    // Thousands-separated + pluralised via App\Support\WordCountFormat, the one
+    // place this translation key lives — task 7's live counter (resources/js/
+    // word-count.js) renders the same three branches client-side and must never
+    // drift from this string, so both read it from there rather than each
+    // carrying their own copy.
+    $text = \App\Support\WordCountFormat::text($count);
 @endphp
 
 <span {{ $attributes->merge(['class' => $classes]) }}>{{ $text }}</span>
