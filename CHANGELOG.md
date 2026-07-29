@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-29 — See how long it is
+## 2026-07-29 — See how long it is (#63)
 
 ### Added
 
