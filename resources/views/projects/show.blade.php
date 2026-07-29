@@ -4,9 +4,12 @@
             <x-heading level="2">
                 {{ $project->name }}
             </x-heading>
-            <a href="{{ route('projects.edit', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
-                {{ __('Edit Project') }}
-            </a>
+            <div class="flex items-center gap-4">
+                <x-word-count :count="$wordCount" />
+                <a href="{{ route('projects.edit', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+                    {{ __('Edit Project') }}
+                </a>
+            </div>
         </div>
     </x-slot>
 

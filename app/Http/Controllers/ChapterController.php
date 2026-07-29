@@ -38,11 +38,20 @@ class ChapterController extends Controller
         $chapters = $project->chapterQuery()
             ->with('act')
             ->withCount('scenes')
+            // One grouped query for the whole page (word-count spec, task 9) — never a
+            // per-row sum() in the view, which would be an N+1 over the chapter list.
+            ->withSum('scenes as word_count', 'word_count')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
             ->when($request->filled('act'), fn ($query) => $query->where('act_id', $request->query('act')))
             ->when($sort === 'position', fn ($query) => $query->orderBy('act_id'))
             ->orderBy($sort, $direction)
             ->get();
+
+        // withSum leaves word_count as NULL for a chapter with no scenes (SQL SUM has
+        // no rows to sum). A chapter with no scenes renders "0 words", not blank.
+        foreach ($chapters as $chapter) {
+            $chapter->word_count ??= 0;
+        }
 
         // The delete-with-move dialog on each row needs the full set of the project's
         // chapters as move destinations, independent of the current search/act filter

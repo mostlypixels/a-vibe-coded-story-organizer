@@ -188,3 +188,44 @@ Settled in the `plan-tasks` grill, 2026-07-27. Reasoning in `expanded/open-quest
   pattern `fieldValue()` already uses to reach the textarea across the `x-wysiwyg` nested-`x-data`
   boundary) and dispatches `word-count:reconcile` on it with the response's `word_count`,
   unconditionally on every successful save.
+
+* **Task 8's totals test used round numbers, and `assertSee` is a substring match.** Its
+  fixture read 1,075 / 1,050 / 1,000 / 50 / 25 / 20 / 5, so the chapter asserting `50 words`
+  was satisfied by its own act's `1,050 words`, and `5 words` by `25 words` — both assertions
+  passed with those chapter totals never rendered. The docblock claimed the opposite, and the
+  break-it probe missed it because breaking the view failed the *other* assertions first.
+  Refixtured to values where no total is a tail of another (1,343 / 1,062 / 1,015 / 47 / 281 /
+  213 / 68). **The general rule, now paid for three times on this feature:** an assertion has
+  to name a value only the intended element can produce — distinct is not enough when the
+  matcher is `str_contains`.
+
+* **Task 9's acts-index test gave each act a single chapter**, so it could not distinguish
+  "sums every chapter through `Act::scenes()`" from "sums the first one". Act A now spans two
+  chapters (821 + 179 + 500 = 1,500), which is what actually exercises the `HasManyThrough`.
+
+## Task 9 — index page totals
+
+* **The plan's `$acts = $project->acts()->withSum('chapters.scenes as word_count', 'word_count')`
+  does not work — confirmed, not assumed.** `withSum`/`withCount` resolve their argument as a
+  literal relation *method name* on the model, not a dot-nested path; calling it throws
+  `BadMethodCallException: Call to undefined method App\Models\Act::chapters.scenes()`
+  (verified via a tinker scratch script before writing any controller code). The fix needed no
+  new relation: `Act::scenes(): HasManyThrough` already exists (added for the edit page's
+  cascade-count dialog), so `ActController::index()` sums through that directly —
+  `->withSum('scenes as word_count', 'word_count')` — one query, confirmed via query log.
+
+* **`Project` has no equivalent one-hop relation to sum through** — project → act → chapter →
+  scene is two levels of indirection, and Eloquent's `hasManyThrough` only bridges one
+  intermediate table, so neither a dot-nested path nor a plain `hasManyThrough` covers it.
+  `ProjectController::show()` also only ever renders one project, not a list, so `withSum`
+  (built for eager-loading an aggregate onto a *collection*) is the wrong shape regardless.
+  Used the project's own `sceneQuery()` Builder instead (already walks chapter → act → project
+  for the scene index and search): `$project->sceneQuery()->sum('word_count') ?? 0` — one query,
+  confirmed via query log.
+
+* **`Builder::sum()` already returns `0`, not `null`, for zero matching rows** (confirmed via
+  tinker on an empty project) — unlike `withSum`, which leaves the raw SQL `NULL` on the
+  model attribute when a chapter/act has no scenes (also confirmed). The `?? 0` on the
+  `sceneQuery()->sum(...)` line in `ProjectController::show()` is therefore redundant in
+  practice; kept anyway so the line reads the same "never blank" invariant as the two `withSum`
+  coalesce loops, rather than depending on a reader knowing `sum()`'s own default.
