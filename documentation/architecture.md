@@ -249,7 +249,10 @@ the project header.
 > [!IMPORTANT]
 > Before touching any of this, read **[`word-count.md`](word-count.md)** — the counting rule
 > in full, the bulk-write pitfall (`DB::table()`, never `$model->save()`), why seeding needs
-> its own backfill, and the `withSum`-returns-`NULL` trap.
+> its own backfill, and the `withSum`-returns-`NULL` trap — and
+> `.specs/shipped/2026-07/word-count/standing-issues.md`, which holds the feature's **accepted
+> costs**: known consequences of decisions, not bugs. Do not "fix" one without re-opening the
+> decision it came from.
 
 ## Enum convention
 
