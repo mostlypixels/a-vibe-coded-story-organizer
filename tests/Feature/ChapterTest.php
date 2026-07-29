@@ -10,6 +10,7 @@ use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -30,6 +31,14 @@ class ChapterTest extends TestCase
             'name' => 'A Quiet Chapter',
             'description' => 'A test chapter.',
         ], $overrides);
+    }
+
+    /** A scene with exactly $wordCount words, built from a repeated token (mirrors StoryTest). */
+    private function sceneWithWordCount(Chapter $chapter, int $wordCount): Scene
+    {
+        return Scene::factory()->for($chapter)->create([
+            'contents' => trim(str_repeat('word ', $wordCount)),
+        ]);
     }
 
     public function test_the_chapters_index_lists_chapters_for_the_owning_user(): void
@@ -610,5 +619,74 @@ class ChapterTest extends TestCase
                 'href="'.route('revisions.index', ['entity' => 'chapter', 'id' => $chapter->id]).'"',
                 false,
             );
+    }
+
+    // --- Word count column (word-count spec, task 9) ------------------------
+
+    public function test_the_chapters_index_shows_each_chapters_total_word_count(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapterA = Chapter::factory()->for($act)->create(['name' => 'Chapter A']);
+        $chapterB = Chapter::factory()->for($act)->create(['name' => 'Chapter B']);
+
+        // Totals deliberately far outside the range a position, id, or the
+        // scenes_count column already on this row could produce, so the assertion
+        // can only be satisfied by the summed word count.
+        $this->sceneWithWordCount($chapterA, 613);
+        $this->sceneWithWordCount($chapterA, 402); // chapter A total: 1,015
+        $this->sceneWithWordCount($chapterB, 47);
+
+        $this->actingAs($user)
+            ->get(route('projects.chapters.index', $project))
+            ->assertOk()
+            ->assertSee('1,015 words')
+            ->assertSee('47 words');
+    }
+
+    public function test_a_chapter_with_no_scenes_shows_zero_words_on_the_index(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        Chapter::factory()->for($act)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.chapters.index', $project))
+            ->assertOk()
+            ->assertSee('0 words');
+    }
+
+    /**
+     * withSum() must fold every chapter's total into the same query as the row
+     * list itself. A naive per-row sum() (in the controller loop or the view)
+     * would issue one query per chapter — 10 here instead of 1 — so this counts
+     * queries against the scenes table specifically, the same isolation
+     * StoryTest's own N+1 test (task 8) uses.
+     */
+    public function test_the_chapters_index_issues_one_grouped_query_for_word_counts(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+
+        foreach (range(1, 10) as $chapterNumber) {
+            $chapter = Chapter::factory()->for($act)->create();
+            $this->sceneWithWordCount($chapter, $chapterNumber * 10);
+        }
+
+        $sceneQueries = [];
+        DB::listen(function ($query) use (&$sceneQueries) {
+            if (str_contains($query->sql, '"scenes"')) {
+                $sceneQueries[] = $query->sql;
+            }
+        });
+
+        $this->actingAs($user)
+            ->get(route('projects.chapters.index', $project))
+            ->assertOk();
+
+        $this->assertCount(1, $sceneQueries);
     }
 }

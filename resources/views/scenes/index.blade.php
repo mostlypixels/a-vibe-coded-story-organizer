@@ -40,6 +40,7 @@
                     <x-table-heading>{{ __('Chapter') }}</x-table-heading>
                     <x-table-heading>{{ __('Status') }}</x-table-heading>
                     <x-table-heading>{{ __('Event') }}</x-table-heading>
+                    <x-table-heading class="text-right">{{ __('Words') }}</x-table-heading>
                     <x-table-heading />
                 </x-slot:head>
 
@@ -61,6 +62,9 @@
                                 <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-red-500 px-2 py-0.5 text-xs font-medium text-red-600">{{ __('Unassigned') }}</span>
                             @endif
                         </td>
+                        <td class="px-4 py-3 text-right text-sm text-gray-500 whitespace-nowrap">
+                            <x-word-count :count="$scene->word_count" variant="inline" />
+                        </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1">
                                 @if ($sort === 'position' && request()->filled('chapter'))
@@ -74,7 +78,7 @@
                     </x-table-row>
                 @empty
                     <x-table-empty
-                        :colspan="6"
+                        :colspan="7"
                         :filtered="request()->hasAny(['search', 'chapter'])"
                         :create-url="route('projects.scenes.create', $project)"
                         :create-label="__('New Scene')"

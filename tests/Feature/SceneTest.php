@@ -715,4 +715,35 @@ class SceneTest extends TestCase
                 false,
             );
     }
+
+    // --- Word count column (word-count spec, task 9) ------------------------
+
+    public function test_the_scenes_index_shows_each_scenes_word_count(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        // A total far outside the range a position or id on this row could
+        // produce, so the assertion can only be satisfied by scenes.word_count.
+        Scene::factory()->for($chapter)->create([
+            'name' => 'A wordy scene',
+            'contents' => trim(str_repeat('word ', 358)),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('projects.scenes.index', $chapter->act->project))
+            ->assertOk()
+            ->assertSee('358 words');
+    }
+
+    public function test_a_scene_with_no_contents_shows_zero_words_on_the_index(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        Scene::factory()->for($chapter)->create(['name' => 'Blank scene', 'contents' => '']);
+
+        $this->actingAs($user)
+            ->get(route('projects.scenes.index', $chapter->act->project))
+            ->assertOk()
+            ->assertSee('0 words');
+    }
 }

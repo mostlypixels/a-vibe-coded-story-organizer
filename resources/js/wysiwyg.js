@@ -510,6 +510,23 @@ export function registerWysiwyg(Alpine) {
                     textarea.value = isMarkdown ? instance.getMarkdown() : instance.getHTML();
                 };
 
+                // The live word counter (resources/js/word-count.js) needs this
+                // editor's text but cannot reach `editor` directly — it is a
+                // closure variable for the same ProseMirror-proxy reason described
+                // above, and lives in its own, separately-mounted Alpine scope
+                // (word-count spec, task 7). A bubbling CustomEvent is the arm's
+                // -length channel between the two, mirroring how field.js already
+                // talks to navigation-guard.js via `autosave:explicit-leave`.
+                // `getText()` is already *rendered* text in both formats (see this
+                // file's own docblock on Markdown mode), so the counter never has
+                // to know it's reading a ProseMirror document.
+                const notifyWordCount = (instance) => {
+                    this.$el.dispatchEvent(new CustomEvent('wysiwyg:text-changed', {
+                        detail: { text: instance.getText() },
+                        bubbles: true,
+                    }));
+                };
+
                 const extensions = buildExtensions(config.format || 'html', {
                     placeholder: config.placeholder || '',
                     onLink: () => this.setLink(),
@@ -528,7 +545,10 @@ export function registerWysiwyg(Alpine) {
                             style: config.minHeight ? `min-height: ${config.minHeight}` : '',
                         },
                     },
-                    onUpdate: ({ editor: instance }) => syncTextarea(instance),
+                    onUpdate: ({ editor: instance }) => {
+                        syncTextarea(instance);
+                        notifyWordCount(instance);
+                    },
                     onTransaction: () => {
                         this.tick++;
                     },

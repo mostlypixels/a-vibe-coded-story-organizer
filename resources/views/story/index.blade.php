@@ -11,7 +11,10 @@
     </x-slot>
 
     <div class="space-y-6">
-        <x-heading level="1">{{ __('Story Overview') }}</x-heading>
+        <div class="flex items-center justify-between">
+            <x-heading level="1">{{ __('Story Overview') }}</x-heading>
+            <x-word-count :count="$wordCount" />
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {{-- Left column: Table of Contents, sticky so it stays in view while the
@@ -53,15 +56,34 @@
             <div class="lg:col-span-9 space-y-10">
                 @forelse ($acts as $act)
                     <div class="space-y-6">
-                        <h2 id="act-{{ $act->id }}" class="text-2xl font-bold text-white bg-gray-600 rounded-md px-4 py-2 scroll-mt-16">
-                            {{ __('Act :number', ['number' => $act->position]) }} &mdash; {{ $act->name }}
-                        </h2>
+                        {{-- The coloured bar is this wrapper, not the heading, so the count can sit
+                             *beside* the <h2> instead of inside it. A heading's own text is its
+                             accessible name: with the count nested in, screen-reader heading
+                             navigation announced "Act 1 — Melusine's Youth 490 words", and the act
+                             was renamed every time the writer added a sentence. --}}
+                        <div class="flex items-center justify-between gap-4 text-white bg-gray-600 rounded-md px-4 py-2">
+                            <h2 id="act-{{ $act->id }}" class="text-2xl font-bold scroll-mt-16">
+                                {{ __('Act :number', ['number' => $act->position]) }} &mdash; {{ $act->name }}
+                            </h2>
+                            {{-- Scenes are already eager-loaded (StoryController::index), so this
+                                 ->sum() over the loaded chapters/scenes collections is free — no query. --}}
+                            <x-word-count
+                                :count="$act->chapters->sum(fn ($chapter) => $chapter->scenes->sum('word_count'))"
+                                variant="inline"
+                                class="shrink-0 text-base font-normal"
+                            />
+                        </div>
 
                         @forelse ($act->chapters as $chapter)
                             <article class="bg-white shadow-sm rounded-lg p-6 space-y-4">
-                                <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-gray-800 scroll-mt-16">
-                                    {{ __('Chapter :number', ['number' => $chapter->position]) }} &mdash; {{ $chapter->name }}
-                                </h3>
+                                {{-- Sibling, not child, for the same reason as the act bar above. --}}
+                                <div class="flex items-center justify-between gap-4">
+                                    <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-gray-800 scroll-mt-16">
+                                        {{ __('Chapter :number', ['number' => $chapter->position]) }} &mdash; {{ $chapter->name }}
+                                    </h3>
+                                    {{-- $chapter->scenes is already eager-loaded, so this ->sum() is free. --}}
+                                    <x-word-count :count="$chapter->scenes->sum('word_count')" class="shrink-0" />
+                                </div>
 
                                 @forelse ($chapter->scenes as $scene)
                                     <section x-data="{ open: true }" @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="space-y-2 pb-4 border-b border-gray-200 last:border-b-0 last:pb-0 {{ $scene->event ? '' : 'border-l-4 border-l-red-500 pl-4' }}">

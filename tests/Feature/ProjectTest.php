@@ -538,4 +538,36 @@ class ProjectTest extends TestCase
                 false,
             );
     }
+
+    // --- Total word count on the project header (word-count spec, task 9) ---
+
+    public function test_the_project_page_shows_the_total_word_count(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        // A total far outside the range the plotline/event counts shown on the
+        // same page could produce, so the assertion can only be satisfied by
+        // summing every scene in the project.
+        Scene::factory()->for($chapter)->create(['contents' => trim(str_repeat('word ', 725))]);
+        Scene::factory()->for($chapter)->create(['contents' => trim(str_repeat('word ', 275))]); // total: 1,000
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee('1,000 words');
+    }
+
+    public function test_a_project_with_no_scenes_shows_zero_words_on_its_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee('0 words');
+    }
 }

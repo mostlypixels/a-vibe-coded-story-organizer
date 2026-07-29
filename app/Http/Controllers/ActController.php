@@ -33,9 +33,20 @@ class ActController extends Controller
 
         $acts = $project->acts()
             ->withCount('chapters')
+            // One grouped query for the whole page (word-count spec, task 9), via the
+            // act's own scenes() HasManyThrough — a dot-nested relation path like
+            // 'chapters.scenes' is not a real relation name and throws
+            // BadMethodCallException, so it must go through that relation directly.
+            ->withSum('scenes as word_count', 'word_count')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
             ->orderBy($sort, $direction)
             ->get();
+
+        // withSum leaves word_count as NULL for an act with no scenes (SQL SUM has no
+        // rows to sum). An act with no scenes renders "0 words", not blank.
+        foreach ($acts as $act) {
+            $act->word_count ??= 0;
+        }
 
         // The delete-with-move dialog on each row needs the full set of sibling acts as
         // move destinations, independent of the current search filter above (moving is

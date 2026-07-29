@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\ProjectSearch;
+use App\Support\RichText;
 use App\Support\SearchResultRow;
 use App\Support\SearchResults;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -163,6 +164,56 @@ class ProjectSearchTest extends TestCase
 
         $this->assertCount(1, $results->scenes);
         $this->assertSame($match->id, $results->scenes->first()->entity->id);
+    }
+
+    /**
+     * A rich-HTML field is flattened by {@see RichText::toPlainText()},
+     * which breaks on every block boundary. The preview must therefore show
+     * "Chapter One / She waited", never the glued "Chapter OneShe waited" it used to.
+     */
+    public function test_a_snippet_spanning_a_block_boundary_keeps_the_words_apart(): void
+    {
+        $project = $this->project();
+        $chapter = $this->chapterIn($project);
+
+        Scene::factory()->for($chapter)->create([
+            'name' => 'plain',
+            'contents' => 'plain',
+            'notes' => '<h2>Chapter One</h2><p>She waited.</p>',
+            'description' => 'x',
+        ]);
+
+        $snippet = $this->search($project, 'waited')->scenes->first()->snippet;
+
+        $this->assertStringContainsString('<mark', $snippet);
+        $this->assertStringContainsString('Chapter One', $snippet);
+        $this->assertStringNotContainsString('OneShe', $snippet, 'the heading must not glue onto the paragraph');
+    }
+
+    /**
+     * Deliberate, asserted both ways: the boundary separator is a newline, and
+     * AccentFolder::fold() does not normalise whitespace, so an exact phrase still
+     * cannot span two blocks. That is the intent — a phrase the writer never wrote
+     * on one line is not a phrase match — and the fix does not silently change it.
+     */
+    public function test_an_exact_phrase_does_not_match_across_a_block_boundary(): void
+    {
+        $project = $this->project();
+        $chapter = $this->chapterIn($project);
+
+        Scene::factory()->for($chapter)->create([
+            'name' => 'plain',
+            'contents' => 'plain',
+            'notes' => '<h2>Chapter One</h2><p>She waited.</p>',
+            'description' => 'x',
+        ]);
+
+        // Within one block: matches.
+        $this->assertCount(1, $this->search($project, 'Chapter One', SearchMode::ExactPhrase)->scenes);
+
+        // Across the heading → paragraph boundary: no match, in any spelling.
+        $this->assertCount(0, $this->search($project, 'One She', SearchMode::ExactPhrase)->scenes);
+        $this->assertCount(0, $this->search($project, 'OneShe', SearchMode::ExactPhrase)->scenes);
     }
 
     public function test_like_wildcards_in_a_term_are_escaped_and_match_literally(): void

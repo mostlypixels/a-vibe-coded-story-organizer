@@ -16,10 +16,36 @@ use DOMDocument;
 class RichText
 {
     /**
-     * Reduce a stored rich-HTML fragment to plain text. Block boundaries (`</p>`,
-     * `<br>`) become line breaks so paragraphs survive, remaining tags are stripped,
-     * entities are decoded, and runs of blank lines are collapsed. A null/empty value
-     * yields an empty string (callers then omit the block entirely).
+     * Block-level elements whose closing tag ends a run of text. Every one of them is
+     * in {@see RichTextFields::ALLOWED_TAGS} (`h5`/`h6` excepted: the sanitizer stops
+     * at `h4`, but `Str::markdown()` — the Scene.contents path — emits all six).
+     *
+     * Inline elements (`strong`, `em`, `code`, `a`, `span`, `label`, …) are absent on
+     * purpose: they sit *inside* a sentence, so breaking on them would split a word's
+     * own line.
+     *
+     * @var list<string>
+     */
+    private const BLOCK_TAGS = [
+        'p',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'ul', 'ol', 'li',
+        'blockquote', 'pre', 'div',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td',
+    ];
+
+    /**
+     * Reduce a stored rich-HTML fragment to plain text. Block boundaries (the closing
+     * tag of any element in {@see BLOCK_TAGS}, plus `<br>`) become line breaks,
+     * remaining tags are stripped, entities are decoded, and runs of blank lines are
+     * collapsed. A null/empty value yields an empty string (callers then omit the
+     * block entirely).
+     *
+     * > [!IMPORTANT]
+     * > The separator matters beyond readability. Without it `strip_tags()` glues the
+     * > last word of one block to the first of the next — `<h1>Chapter One</h1><p>She
+     * > waited.</p>` became `Chapter OneShe waited.` — which both mangles search
+     * > snippets and makes any word count of the text short by one per boundary.
      */
     public static function toPlainText(?string $html): string
     {
@@ -27,9 +53,14 @@ class RichText
             return '';
         }
 
-        // Turn paragraph/line-break boundaries into newlines before stripping tags, so
-        // multi-paragraph text doesn't collapse into one run-on line.
-        $withBreaks = preg_replace('/<\/p>|<br\s*\/?>/i', "\n", $html);
+        // Turn block/line-break boundaries into newlines before stripping tags, so
+        // neighbouring blocks neither collapse into one run-on line nor glue their
+        // adjoining words together.
+        $blockPattern = sprintf(
+            '/<\/(?:%s)\s*>|<br\s*\/?>/i',
+            implode('|', self::BLOCK_TAGS)
+        );
+        $withBreaks = preg_replace($blockPattern, "\n", $html);
         $text = html_entity_decode(strip_tags($withBreaks), ENT_QUOTES | ENT_HTML5);
 
         // Collapse 3+ newlines to a single blank line and trim trailing spaces per line.

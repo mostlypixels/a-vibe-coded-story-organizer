@@ -224,6 +224,33 @@ Rules that bite if you don't know them:
 > feature's **accepted costs** — known consequences of decisions, not bugs. Do not "fix"
 > one without re-opening the decision it came from.
 
+## Word count
+
+A live counter in every prose field, per-scene counts on the story overview and the scene
+index, and chapter / act / project totals on the overview, the act and chapter indexes and
+the project header.
+
+- **`scenes.word_count` is the only stored count.** Chapter, act and project totals are a
+  `SUM` over it — benchmarked (widest gap versus denormalising every level: 0.6 ms at 4,320
+  scenes / 6.3 M words), and the Story overview already eager-loads its scenes, so its totals
+  cost nothing. Do not add a column to `chapters`, `acts` or `projects`.
+- **Only `scenes.contents` is ever counted** — never `description`, never `notes`.
+- `App\Support\WordCounter` is the one definition of "a word"; `x-word-count` the one place a
+  count is formatted (including "0 words", which is never rendered blank).
+- The column is kept true by a **`Scene` `saving()` hook**, so it survives autosave, manual
+  save, revert/undo, import and seeding. Do **not** move it into a controller:
+  `RevisionReverter` saves the model directly and never reaches `FieldAutosaveController`.
+- Totals are aggregated in the controller (`withSum`, or `sum()` over already-loaded
+  relations) — never with a `->sum()` inside a Blade loop, and there is deliberately no
+  `wordCount()` accessor to tempt one.
+- The in-field live counter is **indicative**, the server authoritative; they reconcile via
+  `word_count` in the autosave response. Being approximate between saves is an accepted cost.
+
+> [!IMPORTANT]
+> Before touching any of this, read **[`word-count.md`](word-count.md)** — the counting rule
+> in full, the bulk-write pitfall (`DB::table()`, never `$model->save()`), why seeding needs
+> its own backfill, and the `withSum`-returns-`NULL` trap.
+
 ## Enum convention
 
 Enums live in `app/Enums`. The pattern (see `SceneStatus`):
@@ -525,6 +552,7 @@ This file is the map. Each feature with more to say than fits here has its own p
 | [`epub-export.md`](epub-export.md) | Publication settings, nav depth, the EPUB package gate |
 | [`export-format.md`](export-format.md) | The static-archive file format — layouts, shapes, the `version` contract |
 | [`rich-text.md`](rich-text.md) | The WYSIWYG field list, the sanitizer allow-list, the rendering rule |
+| [`word-count.md`](word-count.md) | What counts as a word, the one stored column, totals without an N+1 |
 | [`ui-components.md`](ui-components.md) | The Blade component catalogue — reuse one before writing a new one |
 | [`best-practices.md`](best-practices.md) | How to write code here, including testing UI state |
 | [`code-style.md`](code-style.md) | Formatting and naming conventions |

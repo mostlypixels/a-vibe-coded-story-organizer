@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -19,6 +20,14 @@ use Tests\TestCase;
 class ActTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** A scene with exactly $wordCount words, built from a repeated token (mirrors StoryTest). */
+    private function sceneWithWordCount(Chapter $chapter, int $wordCount): Scene
+    {
+        return Scene::factory()->for($chapter)->create([
+            'contents' => trim(str_repeat('word ', $wordCount)),
+        ]);
+    }
 
     public function test_the_acts_index_lists_acts_for_the_owning_user(): void
     {
@@ -446,5 +455,79 @@ class ActTest extends TestCase
                 'href="'.route('revisions.index', ['entity' => 'act', 'id' => $act->id]).'"',
                 false,
             );
+    }
+
+    // --- Word count column (word-count spec, task 9) ------------------------
+
+    public function test_the_acts_index_shows_each_acts_total_word_count(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $actA = Act::factory()->for($project)->create(['name' => 'Act A']);
+        $actB = Act::factory()->for($project)->create(['name' => 'Act B']);
+        // Act A spans *two* chapters on purpose: the total is summed through the
+        // act's scenes() HasManyThrough, and with a single chapter per act the
+        // assertion could not tell "sums every chapter" from "sums the first one".
+        $chapterA1 = Chapter::factory()->for($actA)->create();
+        $chapterA2 = Chapter::factory()->for($actA)->create();
+        $chapterB = Chapter::factory()->for($actB)->create();
+
+        // Totals deliberately far outside the range a position, id, or the
+        // chapters_count column already on this row could produce, so the
+        // assertion can only be satisfied by the summed word count.
+        $this->sceneWithWordCount($chapterA1, 821);
+        $this->sceneWithWordCount($chapterA1, 179);
+        $this->sceneWithWordCount($chapterA2, 500); // act A total: 1,500 across both chapters
+        $this->sceneWithWordCount($chapterB, 33);
+
+        $this->actingAs($user)
+            ->get(route('projects.acts.index', $project))
+            ->assertOk()
+            ->assertSee('1,500 words')
+            ->assertSee('33 words');
+    }
+
+    public function test_an_act_with_no_scenes_shows_zero_words_on_the_index(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        Chapter::factory()->for($act)->create(); // has a chapter, but no scenes on it
+
+        $this->actingAs($user)
+            ->get(route('projects.acts.index', $project))
+            ->assertOk()
+            ->assertSee('0 words');
+    }
+
+    /**
+     * Act's own scenes() HasManyThrough (through chapters) must fold every act's
+     * total into the same query as the row list itself. A naive per-row sum()
+     * would issue one query per act — 10 here instead of 1 — the same isolation
+     * ChapterTest's equivalent test (this task) and StoryTest's (task 8) use.
+     */
+    public function test_the_acts_index_issues_one_grouped_query_for_word_counts(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        foreach (range(1, 10) as $actNumber) {
+            $act = Act::factory()->for($project)->create();
+            $chapter = Chapter::factory()->for($act)->create();
+            $this->sceneWithWordCount($chapter, $actNumber * 10);
+        }
+
+        $sceneQueries = [];
+        DB::listen(function ($query) use (&$sceneQueries) {
+            if (str_contains($query->sql, '"scenes"')) {
+                $sceneQueries[] = $query->sql;
+            }
+        });
+
+        $this->actingAs($user)
+            ->get(route('projects.acts.index', $project))
+            ->assertOk();
+
+        $this->assertCount(1, $sceneQueries);
     }
 }

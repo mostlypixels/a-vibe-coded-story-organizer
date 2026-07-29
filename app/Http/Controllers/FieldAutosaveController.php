@@ -8,6 +8,7 @@ use App\Models\Scene;
 use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
 use App\Support\AutosavableFields;
+use App\Support\WordCounter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -60,6 +61,18 @@ class FieldAutosaveController extends Controller
         // *it* stored (§9.13 — the server is the sole hash authority).
         $storedValue = (string) ($model->getAttribute($field) ?? '');
 
+        // The authoritative word count, read after save (word-count spec, task 5) —
+        // never computed from what the client sent, the same rule the hash above
+        // follows. Scene.contents is the one field with a stored column: Scene's
+        // `saving` hook (task 4) has already recounted it as part of this save, so
+        // reading $model->word_count reuses that number instead of recounting it a
+        // second time. Every other field (including Scene.description/notes, which
+        // share the model but not that column) has nothing stored to read, so it is
+        // counted here, on the value that was actually persisted.
+        $wordCount = $model instanceof Scene && $field === 'contents'
+            ? $model->word_count
+            : WordCounter::count($storedValue, AutosavableFields::kindOf($entity, $field));
+
         // This AJAX endpoint only ever records origin: automatic, and skips the write
         // entirely when the persisted value didn't change — so typing something and
         // undoing it leaves no trace. The full-form Save button's permanent, labeled
@@ -82,6 +95,7 @@ class FieldAutosaveController extends Controller
         return response()->json([
             'value' => $storedValue,
             'hash' => hash('sha256', $storedValue),
+            'word_count' => $wordCount,
             // record() already returned the row it wrote or coalesced into, so the
             // lookup is only needed for the no-op branch, where the client still
             // wants to know which revision its text currently corresponds to. Reusing

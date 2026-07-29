@@ -39,6 +39,7 @@
                     <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
                     <x-table-heading>{{ __('Act') }}</x-table-heading>
                     <x-table-heading>{{ __('Scenes') }}</x-table-heading>
+                    <x-table-heading class="text-right">{{ __('Words') }}</x-table-heading>
                     <x-table-heading />
                 </x-slot:head>
 
@@ -53,6 +54,9 @@
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->act->name }}</td>
                         <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->scenes_count }}</td>
+                        <td class="px-4 py-3 text-right text-sm text-gray-500 whitespace-nowrap">
+                            <x-word-count :count="$chapter->word_count" variant="inline" />
+                        </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1">
                                 @if ($sort === 'position' && request()->filled('act'))
@@ -71,7 +75,7 @@
                     </x-table-row>
                 @empty
                     <x-table-empty
-                        :colspan="5"
+                        :colspan="6"
                         :filtered="request()->hasAny(['search', 'act'])"
                         :create-url="route('projects.chapters.create', $project)"
                         :create-label="__('New Chapter')"
