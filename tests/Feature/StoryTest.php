@@ -159,6 +159,47 @@ class StoryTest extends TestCase
     }
 
     /**
+     * A heading's own text is its accessible name. With the total nested inside
+     * the `<h2>`/`<h3>`, screen-reader heading navigation announced "Act 1 —
+     * Melusine's Youth 490 words", and the act was silently renamed every time
+     * the writer added a sentence — so the count sits *beside* the heading, in
+     * the same flex row.
+     *
+     * Asserted against each heading's own inner HTML rather than the page as a
+     * whole: on the whole page "613 words" is present either way, which is the
+     * shape of assertion that would pass with the count moved back inside.
+     */
+    public function test_totals_render_beside_the_act_and_chapter_headings_not_inside_them(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $this->sceneWithWordCount($chapter, 613);
+
+        $content = $this->actingAs($user)
+            ->get(route('projects.story.index', $project))
+            ->assertOk()
+            ->assertSee('613 words') // It does render — just not in the headings.
+            ->getContent();
+
+        foreach ([['h2', 'act', $act->id], ['h3', 'chapter', $chapter->id]] as [$tag, $prefix, $id]) {
+            $this->assertSame(
+                1,
+                preg_match('/<'.$tag.'[^>]*id="'.$prefix.'-'.$id.'"[^>]*>(.*?)<\/'.$tag.'>/s', $content, $matches),
+                "Expected one <$tag id=\"$prefix-$id\"> on the story overview."
+            );
+
+            $this->assertStringNotContainsString(
+                'words',
+                $matches[1],
+                "The $prefix total is inside its <$tag>, which makes the count part of the "
+                .'heading\'s accessible name. Render it as a sibling in the same flex row.'
+            );
+        }
+    }
+
+    /**
      * The whole point of task 8: the story overview already eager-loads
      * every scene (`StoryController::index()`'s `with('chapters.scenes.event')`),
      * so summing chapter/act/project totals must not add a single query no
