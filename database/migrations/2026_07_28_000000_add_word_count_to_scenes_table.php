@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Adds `scenes.word_count` (word-count spec,
- * `.specs/planned/2026-07/word-count/expanded/data-model.md`) and backfills it
+ * `.specs/shipped/2026-07/word-count/expanded/data-model.md`) and backfills it
  * for every existing scene.
  *
  * Only `scenes.contents` is ever counted — never `description` or `notes` — and
