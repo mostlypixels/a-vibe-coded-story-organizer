@@ -211,11 +211,30 @@ as a save-time warning. `fallbackChecks.test.js` holds the exhaustive cases, inc
 regression guards so a plain table/image/task-list, an underline mark, or a callout never
 false-positives.
 
+## Plain text from rich HTML
+
+`RichText::toPlainText()` reduces stored HTML to text for consumers that must not see markup —
+search snippets today, [word counting](word-count.md) since. It breaks on the closing tag of
+**every block element** (`p`, `h1`–`h6`, `ul`/`ol`/`li`, `blockquote`, `pre`, `div`, and the
+table tags), plus `<br>`, then strips what remains.
+
+> [!WARNING]
+> The break is load-bearing, not cosmetic. Breaking only on `</p>` let `strip_tags()` glue the
+> last word of one block to the first of the next — `<h1>Chapter One</h1><p>She waited.</p>`
+> became `Chapter OneShe waited.`, which mangles search snippets and makes any word count
+> short by one per boundary. Inline elements (`strong`, `em`, `code`, `a`, `span`, …) are
+> excluded on purpose: they sit *inside* a sentence, and breaking on them would split a word's
+> own line.
+
+`h5`/`h6` are in the list although the sanitizer stops at `h4` — `Str::markdown()`, the
+`Scene.contents` path, emits all six.
+
 ## Where things live
 
 | Concern | Location |
 | --- | --- |
 | Field taxonomy + allow-list (source of truth) | `app/Support/RichTextFields.php` |
+| Rich HTML → plain text | `app/Support/RichText.php` (`toPlainText()`) |
 | Sanitization service (HTMLPurifier) | `app/Services/HtmlSanitizer.php` |
 | Write-path mutators | `app/Models/Concerns/SanitizesRichHtml.php` (+ per-model extra mutators) |
 | Form Request rule | `app/Rules/SanitizeHtml.php` |

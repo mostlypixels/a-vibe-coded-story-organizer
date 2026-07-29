@@ -229,3 +229,32 @@ Settled in the `plan-tasks` grill, 2026-07-27. Reasoning in `expanded/open-quest
   `sceneQuery()->sum(...)` line in `ProjectController::show()` is therefore redundant in
   practice; kept anyway so the line reads the same "never blank" invariant as the two `withSum`
   coalesce loops, rather than depending on a reader knowing `sum()`'s own default.
+
+## Final pass — browser verification (tasks 1, 8, 9)
+
+* **The act/chapter totals were inside the headings.** Task 8 rendered `x-word-count` as a
+  child of the `<h2>`/`<h3>`, so each heading's accessible name became "Act 1 — Melusine's
+  Youth 490 words" — screen-reader heading navigation read the count as part of the title, and
+  the act was silently renamed every time the writer added a sentence. Deferred at the time
+  because nobody had looked at the page; confirmed in a browser (`h2.innerText`) and fixed by
+  making the coloured bar a wrapper `<div>` and the count a sibling of the heading. Visually
+  identical; `id` and `scroll-mt-16` stay on the heading, so the table-of-contents anchors
+  still land on a heading element (the page nav is `position: static`, so the 8 px of bar
+  padding above it changes nothing).
+
+  `StoryTest::test_totals_render_beside_the_act_and_chapter_headings_not_inside_them` guards it
+  by asserting against each heading's **own inner HTML** — on the page as a whole "613 words"
+  is present either way, which is exactly the shape of assertion that would pass with the count
+  moved back inside. Verified by moving it back in and watching the test fail.
+
+* **Task 1's search snippets were checked in a browser at last.** The scene snippets prove
+  nothing about it — `ProjectSearch::plainFieldValues()` only routes **rich** fields through
+  `RichText::toPlainText()`, and `Scene.contents` is Markdown, used raw. No seeded searchable
+  rich field spans more than one block (only the project's own description does, and the
+  project is not itself searched), so a two-paragraph description was written to a codex entry
+  in the dev DB: the snippet renders "…the tower Quillon guards…", separated, with both terms
+  highlighted independently. The dev DB was reseeded afterwards.
+
+* **The seeder backfill was confirmed end-to-end** by `migrate:fresh --seed` followed by a
+  browser load: the story overview still totals 2,946 words, so neither the migration's
+  backfill nor `BackfillsSceneWordCounts` is quietly a no-op.

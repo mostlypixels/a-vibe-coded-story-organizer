@@ -17,6 +17,28 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-29 — See how long it is
+
+### Added
+
+- **A word count under every text field, updating as you type.** It appears on all fourteen
+  autosaving fields — scene text above all, but also descriptions, notes and the rest — so you
+  can watch a session's work add up without leaving the page. It is an estimate while you type
+  and settles to the exact figure when the field saves a moment later; in between it counts a
+  little generously — inside a code block, for instance, which the saved count ignores.
+- **Word counts everywhere you look at your story.** Each scene, chapter and act carries its
+  own, the story overview shows the whole book, and the project page puts the total in its
+  header. The scene, chapter and act lists each gained a **Words** column.
+- Counts follow the same rule everywhere: anything with a letter or a digit in it is a word,
+  so a scene break like `* * *` counts as nothing, and `mother-in-law` counts as one.
+  Formatting marks are never counted, and neither is a fenced code block.
+
+### Fixed
+
+- **Search results no longer run the end of one paragraph into the start of the next.** A
+  heading followed by a paragraph used to appear in the snippet as `Chapter OneShe waited.`,
+  which also cost you a word at every such join.
+
 ## 2026-07-27 — Say which field moved when a revert is refused (#60)
 
 ### Fixed
