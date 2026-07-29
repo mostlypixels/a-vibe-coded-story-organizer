@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 
 /**
  * The one definition of "a word" in this app (word-count spec,
- * `.specs/planned/2026-07/word-count/expanded/architecture.md`). Pure text-in,
+ * `.specs/shipped/2026-07/word-count/expanded/architecture.md`). Pure text-in,
  * int-out — no model, no controller, no DB access (CLAUDE.md's "Where logic
  * lives": reference logic belongs in app/Support, beside {@see RichText}).
  *

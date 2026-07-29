@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 /**
  * The fixture table in
- * `.specs/planned/2026-07/word-count/expanded/testing.md` IS the specification
+ * `.specs/shipped/2026-07/word-count/expanded/testing.md` IS the specification
  * of "what is a word" — every row there has a test here.
  */
 class WordCounterTest extends TestCase
