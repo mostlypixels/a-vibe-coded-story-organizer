@@ -636,6 +636,24 @@ export function registerWysiwyg(Alpine) {
             isOn(name, arg) {
                 return this.tick >= 0 && !!editor && editor.isActive(name, arg);
             },
+
+            /**
+             * The Headings dropdown trigger: its label is the active level
+             * ("H1".."H4") or a plain "H" outside a heading, and it highlights
+             * whenever any level is active. The levels come from the same PHP
+             * array that renders the dropdown items (App\Support\WysiwygToolbar
+             * ::HEADING_LEVELS, passed in via config), so trigger and dropdown
+             * cannot disagree. Both read isOn(), so both are reactive.
+             */
+            headingLevel() {
+                return (config.headingLevels || []).find((level) => this.isOn('heading', { level })) ?? null;
+            },
+
+            headingLabel() {
+                const level = this.headingLevel();
+
+                return level === null ? 'H' : `H${level}`;
+            },
         };
     });
 }

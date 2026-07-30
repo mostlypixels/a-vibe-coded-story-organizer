@@ -157,6 +157,17 @@ rule, table, image). The menu reuses `@tiptap/suggestion` and its bundled `@floa
 **no extra dependency** — and every item invokes the same command the toolbar calls, so it adds
 no new node/mark surface.
 
+The toolbar's buttons are **data**, in `App\Support\WysiwygToolbar` (one array per cluster;
+merge/split-cell gated on the field's format there, not in the template). Every button renders
+through `x-wysiwyg.toolbar-button`, which owns the one `<button>` shape and the base classes,
+and takes either a `command` (+`args`) or a raw JS `action` for the bespoke helpers
+(`setLink()`, `setImage()`, `toggleCallout()`).
+
+> [!WARNING]
+> Don't give that component a `class=""` of your own alongside its `$attributes->merge()` —
+> two `class` attributes on one element are not merged by the browser, the second is dropped.
+> That silently cost the table-structure buttons their sizing until it was fixed.
+
 **Tables, images, task lists and callouts** (`expand-tip-tap`) round-trip in both modes.
 
 - Adding/removing a table row or column works in both modes: it always keeps the grid

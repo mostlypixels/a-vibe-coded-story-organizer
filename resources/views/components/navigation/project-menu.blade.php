@@ -1,0 +1,95 @@
+@props(['navigation'])
+
+{{-- Desktop primary menu: top-level links plus one dropdown per section.
+     All active-state decisions come from the ProjectNavigation view model, so
+     this and navigation.responsive-project-menu can never drift apart. --}}
+<x-nav-link :href="route('projects.show', $navigation->project)" :active="$navigation->homeActive">
+    {{ __('Dashboard') }}
+</x-nav-link>
+
+<div class="flex items-center">
+    <x-dropdown align="left" width="48">
+        <x-slot name="trigger">
+            <x-navigation.dropdown-trigger :active="$navigation->storyActive">{{ __('Story') }}</x-navigation.dropdown-trigger>
+        </x-slot>
+
+        <x-slot name="content">
+            <x-dropdown-link :href="route('projects.story.index', $navigation->project)" :active="$navigation->storyOverviewActive">
+                {{ __('Story Overview') }}
+            </x-dropdown-link>
+
+            <x-dropdown-link :href="route('projects.acts.index', $navigation->project)" :active="$navigation->actsActive">
+                {{ __('Acts') }}
+            </x-dropdown-link>
+
+            <x-dropdown-link :href="route('projects.chapters.index', $navigation->project)" :active="$navigation->chaptersActive">
+                {{ __('Chapters') }}
+            </x-dropdown-link>
+
+            <x-dropdown-link :href="route('projects.scenes.index', $navigation->project)" :active="$navigation->scenesActive">
+                {{ __('Scenes') }}
+            </x-dropdown-link>
+        </x-slot>
+    </x-dropdown>
+</div>
+
+<div class="flex items-center">
+    <x-dropdown align="left" width="48">
+        <x-slot name="trigger">
+            <x-navigation.dropdown-trigger :active="$navigation->timelineActive">{{ __('Timeline') }}</x-navigation.dropdown-trigger>
+        </x-slot>
+
+        <x-slot name="content">
+            <x-dropdown-link :href="route('projects.plotlines.index', $navigation->project)" :active="$navigation->plotlinesActive">
+                {{ __('Plotlines') }}
+            </x-dropdown-link>
+
+            <x-dropdown-link :href="route('projects.events.index', $navigation->project)" :active="$navigation->eventsActive">
+                {{ __('Events') }}
+            </x-dropdown-link>
+        </x-slot>
+    </x-dropdown>
+</div>
+
+<div class="flex items-center">
+    <x-dropdown align="left" width="48">
+        <x-slot name="trigger">
+            <x-navigation.dropdown-trigger :active="$navigation->codexActive">{{ __('Codex') }}</x-navigation.dropdown-trigger>
+        </x-slot>
+
+        <x-slot name="content">
+            @foreach (\App\Enums\CodexEntryType::cases() as $codexType)
+                <x-dropdown-link
+                    :href="route('projects.codex.index', [$navigation->project, $codexType->routeKey()])"
+                    :active="$navigation->codexTypeIsActive($codexType)">
+                    {{ __($codexType->pluralLabel()) }}
+                </x-dropdown-link>
+            @endforeach
+
+            <x-dropdown-link :href="route('projects.codex-attributes.index', $navigation->project)" :active="$navigation->attributesActive">
+                {{ __('Attributes') }}
+            </x-dropdown-link>
+        </x-slot>
+    </x-dropdown>
+</div>
+
+<div class="flex items-center">
+    <x-dropdown align="left" width="48">
+        <x-slot name="trigger">
+            <x-navigation.dropdown-trigger :active="$navigation->toolsActive">{{ __('Tools') }}</x-navigation.dropdown-trigger>
+        </x-slot>
+
+        <x-slot name="content">
+            <x-dropdown-link :href="route('projects.revisions.index', $navigation->project)" :active="$navigation->toolsActive">
+                {{ __('Revisions') }}
+            </x-dropdown-link>
+        </x-slot>
+    </x-dropdown>
+</div>
+
+<x-nav-link
+    :href="route('projects.search.index', $navigation->project)"
+    :active="$navigation->searchActive"
+    :aria-current="$navigation->searchActive ? 'page' : false">
+    {{ __('Search') }}
+</x-nav-link>

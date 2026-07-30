@@ -17,6 +17,33 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-30 — Templates hold markup, not logic (#66)
+
+### Changed
+
+- The primary navigation's route matching moved out of the Blade template into
+  `App\Support\ProjectNavigation`, supplied by a view composer. The desktop and responsive
+  menus are now Blade components (`x-navigation.project-menu`,
+  `x-navigation.responsive-project-menu`) reading the same view model, plus shared
+  `dropdown-trigger` and `section-heading` components.
+- The Configuration sidebar and the Export & import subnav now get their links from
+  `App\Support\AdminNavigation` instead of inline `@php`, and all three sidebar-style link
+  lists (those two plus the revisions browser's) render through one `x-sidebar-link`
+  component — the active-state classes had been copy-pasted between them.
+- The WYSIWYG toolbar's button definitions moved out of the Blade template into
+  `App\Support\WysiwygToolbar`, and every toolbar button now renders through
+  `x-wysiwyg.toolbar-button`. The Headings dropdown trigger's label comes from
+  `headingLabel()` in `wysiwyg.js` instead of a nested-ternary JS expression built as a
+  string in PHP.
+
+### Fixed
+
+- The responsive menu's Tools highlight no longer depends on `$toolsActive` leaking from the
+  desktop menu's `@php` block — a latent break for any reordering of the layout.
+- Toolbar buttons with no active state (the four table-structure row/column ops) rendered two
+  `class` attributes, so the browser dropped the second one and they lost their sizing and
+  padding.
+
 ## 2026-07-29 — See how long it is (#63)
 
 ### Added

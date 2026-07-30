@@ -22,75 +22,9 @@
     // Give the editable region roughly the height of the textarea it replaces.
     $resolvedMinHeight = $minHeight ?? (($rows * 1.5) + 1).'rem';
 
-    // Heading level buttons (H1-H4), collapsed into the Headings dropdown. Each drives
-    // x-wysiwyg.toolbar-button with the plain cmd(command, args) + isOn(active, args)
-    // shape.
-    $headings = collect(range(1, 4))->map(fn ($level) => [
-        'label' => "H{$level}",
-        'command' => 'toggleHeading',
-        'args' => ['level' => $level],
-        'active' => ['heading', ['level' => $level]],
-        'title' => __('Heading :level', ['level' => $level]),
-    ]);
-
-    // The Headings dropdown trigger shows the active level's label (H1-H4) when the
-    // cursor sits in a heading, or a plain "H" otherwise — built as a nested-ternary JS
-    // expression from the $headings array above so it stays in sync with it. Built
-    // right-to-left (reverse order) so the final expression checks level 1 first.
-    $headingTriggerLabelExpr = Illuminate\Support\Js::from('H');
-    foreach ($headings->reverse() as $heading) {
-        $headingTriggerLabelExpr = "isOn('heading', ".Illuminate\Support\Js::from($heading['args']).') ? '
-            .Illuminate\Support\Js::from($heading['label']).' : ('.$headingTriggerLabelExpr.')';
-    }
-    $headingTriggerActiveExpr = $headings
-        ->map(fn ($heading) => "isOn('heading', ".Illuminate\Support\Js::from($heading['args']).')')
-        ->implode(' || ');
-
-    // Text format: Bold/Italic/Underline/Strike. Underline/Strike round-trip in both
-    // formats (expand-tip-tap task 05: Strike is standard GFM; Underline serializes via
-    // the sanctioned `<u>` HTML-passthrough exception, see resources/js/wysiwyg.js's
-    // MarkdownUnderline), so both join the unconditional base array — no per-format
-    // gate needed, matching the slash menu.
-    $textFormat = [
-        ['label' => 'B', 'command' => 'toggleBold', 'active' => ['bold'], 'title' => __('Bold')],
-        ['label' => 'I', 'command' => 'toggleItalic', 'active' => ['italic'], 'title' => __('Italic')],
-        ['label' => 'U', 'command' => 'toggleUnderline', 'active' => ['underline'], 'title' => __('Underline')],
-        ['label' => 'S', 'command' => 'toggleStrike', 'active' => ['strike'], 'title' => __('Strikethrough')],
-    ];
-
-    // Lists & blocks: bullet/ordered/task list, blockquote, inline code, code block.
-    $listsAndBlocks = [
-        ['label' => '&bull;', 'command' => 'toggleBulletList', 'active' => ['bulletList'], 'title' => __('Bulleted list')],
-        ['label' => '1.', 'command' => 'toggleOrderedList', 'active' => ['orderedList'], 'title' => __('Numbered list')],
-        // Task list: same plain-toggle shape as the two list types above — no
-        // isMarkdown gate needed on the toggle itself (task lists round-trip in both
-        // formats, expand-tip-tap task 03); only resize/merge are format-gated below.
-        ['label' => '&#9744;', 'command' => 'toggleTaskList', 'active' => ['taskList'], 'title' => __('Task list')],
-        ['label' => '&rdquo;', 'command' => 'toggleBlockquote', 'active' => ['blockquote'], 'title' => __('Blockquote')],
-        ['label' => '&lt;/&gt;', 'command' => 'toggleCode', 'active' => ['code'], 'title' => __('Inline code')],
-        ['label' => '{ }', 'command' => 'toggleCodeBlock', 'active' => ['codeBlock'], 'title' => __('Code block')],
-    ];
-
-    // Table structure: row/column ops (both formats) plus merge/split (HTML-mode only),
-    // collapsed into the Table structure dropdown. Row/column ops keep the grid
-    // rectangular, so — unlike merge/split — they're available in both formats, no
-    // @if ($markdown) gate needed.
-    $tableStructure = [
-        ['label' => '&#8213;+', 'command' => 'addRowAfter', 'title' => __('Add row below')],
-        ['label' => '&#8213;&minus;', 'command' => 'deleteRow', 'title' => __('Delete row')],
-        ['label' => '&#8214;+', 'command' => 'addColumnAfter', 'title' => __('Add column right')],
-        ['label' => '&#8214;&minus;', 'command' => 'deleteColumn', 'title' => __('Delete column')],
-    ];
-
-    // Merge/split-cell: HTML-mode fields only. A merged cell (colspan) is lossless
-    // there but loses its structure in Markdown, so this affordance is not rendered at
-    // all for Markdown-mode fields — prevent, don't just warn, per architecture.md §2.
-    if (! $markdown) {
-        $tableStructure[] = ['label' => '&#8676;&#8677;', 'command' => 'mergeCells', 'title' => __('Merge cells')];
-        $tableStructure[] = ['label' => '&#8677;&#8676;', 'command' => 'splitCell', 'title' => __('Split cell')];
-    }
-
-    $btnBase = 'inline-flex min-w-[2rem] items-center justify-center rounded px-2 py-1 text-sm font-medium';
+    // Every button definition lives in the support class; this template only lays
+    // them out. Merge/split-cell is gated there on $markdown.
+    $toolbar = new \App\Support\WysiwygToolbar($markdown);
 @endphp
 
 <div
@@ -102,6 +36,7 @@
         linkPrompt: @js(__('Enter a URL (http:// or https://)')),
         imagePrompt: @js(__('Enter an image URL (http:// or https://)')),
         imageAltPrompt: @js(__('Alt text (optional, for accessibility)')),
+        headingLevels: @js(\App\Support\WysiwygToolbar::HEADING_LEVELS),
     })"
     data-format="{{ $format }}"
     class="mt-1"
@@ -123,22 +58,19 @@
             @unless ($disabled)
                 <div class="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1" role="toolbar" aria-label="{{ __('Formatting') }}">
                     {{-- Cluster 1: Headings, collapsed into a dropdown. The trigger's
-                         label and active-state highlighting are computed from the same
-                         $headings array that populates the dropdown content, so they
-                         can't drift out of sync with it. --}}
+                         label and highlight come from headingLabel()/headingLevel() in
+                         wysiwyg.js, driven by the same HEADING_LEVELS that fill the
+                         dropdown, so the two can't drift out of sync. --}}
                     <x-dropdown align="left" width="auto" contentClasses="p-1 bg-white flex items-center gap-0.5">
                         <x-slot name="trigger">
-                            <button
-                                type="button"
-                                :class="({{ $headingTriggerActiveExpr }}) ? 'bg-ocean-100 text-ocean-800' : 'text-gray-600 hover:bg-gray-200'"
-                                class="{{ $btnBase }}"
-                                title="{{ __('Heading') }}"
-                                aria-label="{{ __('Heading') }}"
-                            ><span x-text="{{ $headingTriggerLabelExpr }}"></span></button>
+                            <x-wysiwyg.toolbar-button
+                                active-expression="headingLevel() !== null"
+                                :title="__('Heading')"
+                            ><span x-text="headingLabel()"></span></x-wysiwyg.toolbar-button>
                         </x-slot>
 
                         <x-slot name="content">
-                            @foreach ($headings as $heading)
+                            @foreach ($toolbar->headings() as $heading)
                                 <x-wysiwyg.toolbar-button
                                     :command="$heading['command']"
                                     :args="$heading['args']"
@@ -152,9 +84,8 @@
 
                     <span class="mx-1 h-5 w-px bg-gray-300"></span>
 
-                    {{-- Cluster 2: Text format — Bold/Italic/Underline/Strike, unchanged
-                         inline row. --}}
-                    @foreach ($textFormat as $toggle)
+                    {{-- Cluster 2: Text format — Bold/Italic/Underline/Strike. --}}
+                    @foreach ($toolbar->textFormat() as $toggle)
                         <x-wysiwyg.toolbar-button
                             :command="$toggle['command']"
                             :active="$toggle['active']"
@@ -165,8 +96,8 @@
 
                     <span class="mx-1 h-5 w-px bg-gray-300"></span>
 
-                    {{-- Cluster 3: Lists & blocks, unchanged inline row. --}}
-                    @foreach ($listsAndBlocks as $toggle)
+                    {{-- Cluster 3: Lists & blocks. --}}
+                    @foreach ($toolbar->listsAndBlocks() as $toggle)
                         <x-wysiwyg.toolbar-button
                             :command="$toggle['command']"
                             :active="$toggle['active']"
@@ -178,55 +109,44 @@
                     <span class="mx-1 h-5 w-px bg-gray-300"></span>
 
                     {{-- Cluster 4: Insert — Link, Horizontal rule, Table, Image, Callout.
-                         Table and Image live here now (moved up from after the
-                         table-structure ops) so every "insert something new" action sits
-                         together. Link/Image/Callout call bespoke no-arg helpers rather
-                         than cmd(), so they stay hand-written instead of using
-                         x-wysiwyg.toolbar-button. --}}
-                    <button
-                        type="button"
-                        @click="setLink()"
-                        :class="isOn('link') ? 'bg-ocean-100 text-ocean-800' : 'text-gray-600 hover:bg-gray-200'"
-                        class="{{ $btnBase }}"
-                        title="{{ __('Link') }}"
-                        aria-label="{{ __('Link') }}"
-                    >&#128279;</button>
+                         Every "insert something new" action sits together. Link, Image
+                         and Callout call bespoke no-arg helpers rather than cmd(), so
+                         they pass `action` (a raw JS expression) instead of `command`.
+                         Callout (`> [!TYPE]`) is available in both formats; clicking
+                         inserts a note callout, or cycles the type of the one the cursor
+                         is in. --}}
+                    <x-wysiwyg.toolbar-button
+                        action="setLink()"
+                        :active="['link']"
+                        label="&#128279;"
+                        :title="__('Link')"
+                    />
 
-                    <button
-                        type="button"
-                        @click="cmd('setHorizontalRule')"
-                        class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                        title="{{ __('Horizontal rule') }}"
-                        aria-label="{{ __('Horizontal rule') }}"
-                    >&mdash;</button>
+                    <x-wysiwyg.toolbar-button
+                        command="setHorizontalRule"
+                        label="&mdash;"
+                        :title="__('Horizontal rule')"
+                    />
 
-                    <button
-                        type="button"
-                        @click="cmd('insertTable', { rows: 3, cols: 3, withHeaderRow: true })"
-                        class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                        title="{{ __('Table') }}"
-                        aria-label="{{ __('Table') }}"
-                    >&#9638;</button>
+                    <x-wysiwyg.toolbar-button
+                        command="insertTable"
+                        :args="['rows' => 3, 'cols' => 3, 'withHeaderRow' => true]"
+                        label="&#9638;"
+                        :title="__('Table')"
+                    />
 
-                    <button
-                        type="button"
-                        @click="setImage()"
-                        class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                        title="{{ __('Image') }}"
-                        aria-label="{{ __('Image') }}"
-                    >&#128247;</button>
+                    <x-wysiwyg.toolbar-button
+                        action="setImage()"
+                        label="&#128247;"
+                        :title="__('Image')"
+                    />
 
-                    {{-- Callout (`> [!TYPE]`): available in both formats (expand-tip-tap
-                         task 06 — callouts round-trip in both). Clicking inserts a note
-                         callout, or cycles the type of the callout the cursor is in. --}}
-                    <button
-                        type="button"
-                        @click="toggleCallout()"
-                        :class="isOn('callout') ? 'bg-ocean-100 text-ocean-800' : 'text-gray-600 hover:bg-gray-200'"
-                        class="{{ $btnBase }}"
-                        title="{{ __('Callout') }}"
-                        aria-label="{{ __('Callout') }}"
-                    >&#9432;</button>
+                    <x-wysiwyg.toolbar-button
+                        action="toggleCallout()"
+                        :active="['callout']"
+                        label="&#9432;"
+                        :title="__('Callout')"
+                    />
 
                     <span class="mx-1 h-5 w-px bg-gray-300"></span>
 
@@ -234,20 +154,18 @@
                          trigger glyph (square + pencil) is deliberately distinct from
                          cluster 4's plain-square "insert table" glyph so the two aren't
                          confused, and its title/aria-label reads "Table structure" vs.
-                         cluster 4's "Table". Merge/split still only appear when
-                         ! $markdown — see the $tableStructure array above. --}}
+                         cluster 4's "Table". Merge/split only appear for HTML-mode
+                         fields — see WysiwygToolbar::tableStructure(). --}}
                     <x-dropdown align="left" width="auto" contentClasses="p-1 bg-white flex items-center gap-0.5">
                         <x-slot name="trigger">
-                            <button
-                                type="button"
-                                class="{{ $btnBase }} text-gray-600 hover:bg-gray-200"
-                                title="{{ __('Table structure') }}"
-                                aria-label="{{ __('Table structure') }}"
-                            >&#9638;&#9998;</button>
+                            <x-wysiwyg.toolbar-button
+                                label="&#9638;&#9998;"
+                                :title="__('Table structure')"
+                            />
                         </x-slot>
 
                         <x-slot name="content">
-                            @foreach ($tableStructure as $op)
+                            @foreach ($toolbar->tableStructure() as $op)
                                 <x-wysiwyg.toolbar-button
                                     :command="$op['command']"
                                     :label="$op['label']"

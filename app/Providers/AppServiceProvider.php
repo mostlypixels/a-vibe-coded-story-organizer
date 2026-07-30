@@ -5,8 +5,11 @@ namespace App\Providers;
 use App\Models\User;
 use App\Services\HtmlSanitizer;
 use App\Services\RevisionRecorder;
+use App\Support\AdminNavigation;
+use App\Support\ProjectNavigation;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -52,5 +55,18 @@ class AppServiceProvider extends ServiceProvider
         if (! $this->app->environment('local', 'testing')) {
             URL::forceScheme('https');
         }
+
+        // The primary nav needs the current project and the active section on
+        // every authenticated page. Computing it here — once per render, in one
+        // place — is what lets layouts/navigation.blade.php stay markup-only and
+        // keeps its desktop and responsive menus provably in step.
+        View::composer('layouts.navigation', function ($view) {
+            $view->with('navigation', new ProjectNavigation(request()));
+        });
+
+        // Same deal for the Configuration area's two link lists.
+        View::composer(['admin.partials.sidebar', 'admin.data.partials.subnav'], function ($view) {
+            $view->with('adminNavigation', new AdminNavigation);
+        });
     }
 }
