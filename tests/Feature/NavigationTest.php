@@ -289,6 +289,34 @@ class NavigationTest extends TestCase
         $this->assertLinkIsNotCurrent($html, route('projects.search.index', $project));
     }
 
+    public function test_both_menus_mark_the_same_active_item(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.revisions.index', $project))
+            ->assertOk()
+            ->getContent();
+
+        $href = preg_quote(e(route('projects.revisions.index', $project)), '/');
+
+        // Desktop: the dropdown item is the aria-current one.
+        $this->assertLinkIsCurrent($html, route('projects.revisions.index', $project));
+
+        // Responsive: the same section is highlighted in the collapsed menu.
+        // Tools is the regression case — its flag used to be computed only in
+        // the desktop block and read by the responsive block through PHP scope
+        // leak, so reordering the file would have silently dropped this.
+        // Lookaheads because attribute order in the rendered <a> is not ours.
+        // `border-flame-500 text-start` is unique to responsive-nav-link active.
+        $this->assertMatchesRegularExpression(
+            '/<a(?=[^>]*href="'.$href.'")(?=[^>]*border-flame-500 text-start)[^>]*>/',
+            $html,
+            'Revisions should be highlighted in the responsive menu too.',
+        );
+    }
+
     public function test_the_search_link_points_at_the_project_search_route(): void
     {
         $user = User::factory()->create();

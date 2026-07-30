@@ -24,11 +24,6 @@
     logic is plain Alpine expressions (never a method), so a child element can
     read the ancestor `filter` without the `this`-binding pitfall.
 --}}
-@php
-    $activeClasses = 'border-flame-500 bg-aqua-50 text-navy-900 font-semibold';
-    $inactiveClasses = 'border-transparent text-gray-700 hover:bg-gray-100 hover:text-navy-900';
-@endphp
-
 <nav aria-label="{{ __('Revision history') }}" class="text-sm" x-data="{ filter: '' }">
     <a
         href="{{ route('projects.show', $project) }}"
@@ -95,14 +90,14 @@
                                 && $activeId === $treeEntity->id
                                 && $activeField === null;
                         @endphp
-                        <a
-                            href="{{ $treeEntity->url }}"
-                            @if ($entityIsActive) aria-current="page" @endif
-                            title="{{ $treeEntity->name }}"
-                            class="block px-2 py-1 font-medium truncate border-s-2 no-underline hover:no-underline {{ $entityIsActive ? $activeClasses : $inactiveClasses }}"
+                        <x-sidebar-link
+                            :href="$treeEntity->url"
+                            :active="$entityIsActive"
+                            :title="$treeEntity->name"
+                            class="block px-2 py-1 font-medium truncate border-s-2"
                         >
                             {{ $treeEntity->name }}
-                        </a>
+                        </x-sidebar-link>
 
                         <ul class="ms-2 border-s border-gray-200">
                             @foreach ($treeEntity->fields as $leaf)
@@ -112,14 +107,14 @@
                                         && $activeField === $leaf->field;
                                 @endphp
                                 <li>
-                                    <a
-                                        href="{{ $leaf->url }}"
-                                        @if ($isActive) aria-current="page" @endif
-                                        class="flex items-center justify-between gap-2 ps-3 pe-2 py-1 border-s-2 no-underline hover:no-underline {{ $isActive ? $activeClasses : $inactiveClasses }}"
+                                    <x-sidebar-link
+                                        :href="$leaf->url"
+                                        :active="$isActive"
+                                        class="flex items-center justify-between gap-2 ps-3 pe-2 py-1 border-s-2"
                                     >
                                         <span class="truncate">{{ $leaf->label }}</span>
                                         <x-badge>{{ $leaf->count }}</x-badge>
-                                    </a>
+                                    </x-sidebar-link>
                                 </li>
                             @endforeach
                         </ul>

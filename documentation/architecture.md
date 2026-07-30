@@ -517,19 +517,33 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
   `aria-current="page"` on the `<a>`. The prop defaults to `false`, so existing menus that don't
   pass it (the Settings dropdown) are visually unchanged. Active state is never colour-only — the
   `aria-current` is what tests assert on.
-- **One source of truth for matching.** All the route-match booleans (`$storyActive`,
-  `$plotlinesActive`, `$codexActive`, …) live in a single `@php` block at the top of the
-  `@if ($project = …)` guard, and are reused by the desktop triggers, the desktop dropdown items,
-  **and** the responsive menu. A trigger is active when any of its child booleans is (using
-  `x-nav-link`'s look, `text-white border-flame-500`). Per-codex-type highlighting is enum-aware and
-  computed inline in the `CodexEntryType::cases()` loop. There is deliberately **no** `Nav` support
-  class or view composer — that would be new architecture for a pure styling tweak.
+- **One source of truth for matching.** `App\Support\ProjectNavigation` is a per-request view
+  model built by a view composer in `AppServiceProvider` and handed to the layout as
+  `$navigation`. It answers both of the nav's questions: which `Project` the request belongs to
+  (walking a shallow child route — `/scenes/{scene}/edit` — up its aggregate), and which section
+  is active (`storyActive`, `plotlinesActive`, `toolsActive`, …). Per-codex-type highlighting is
+  enum-aware: `codexTypeIsActive(CodexEntryType $type)`.
+- **The menus are markup only.** `x-navigation.project-menu` (desktop) and
+  `x-navigation.responsive-project-menu` (collapsed) both read the same `$navigation`, so they
+  cannot drift. `x-navigation.dropdown-trigger` is the shared trigger button (label + chevron,
+  `text-white border-flame-500` when active); `x-navigation.section-heading` is the collapsed
+  menu's stand-in for a dropdown. A trigger is active when any of its children is.
+
+- **The Configuration area works the same way.** `App\Support\AdminNavigation` supplies both the
+  sidebar (`sections()`) and the Export & import subnav (`dataSubnav()`), also via a view
+  composer, as `$adminNavigation`. Entries are `['label', 'href', 'active']`, ready for
+  `x-sidebar-link`.
+- **`x-sidebar-link` owns the state, the caller owns the geometry.** It renders the `<a>` with
+  `aria-current` and the active/inactive colours for its `variant` (`sidebar` = accent border
+  row, `tab` = underline). Padding, border width/side and layout come from the caller's `class`,
+  because the Configuration sidebar, the revisions sidebar and the subnav are deliberately
+  different sizes. Used by all three.
 
 > [!NOTE]
-> When you add a new nav section, add its matcher to that `@php` block (the desktop and responsive
-> copies stay identical) and reference the named boolean — do **not** scatter fresh inline
-> `request()->routeIs(...)` calls through the template. Reuse the exact `routeIs(...)` globs the
-> menu already uses so exactly one section is active at a time.
+> Adding a nav section is a change to `ProjectNavigation` plus a link in each menu component. Do
+> **not** put `request()->routeIs(...)` back in the templates. This used to be two duplicated
+> `@php` blocks in the layout, which is exactly how `$toolsActive` came to be defined in the
+> desktop copy only and read by the responsive copy through PHP scope leak.
 
 ## Where things live
 
