@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-30 — Templates hold markup, not logic
+## 2026-07-30 — Templates hold markup, not logic (#66)
 
 ### Changed
 
