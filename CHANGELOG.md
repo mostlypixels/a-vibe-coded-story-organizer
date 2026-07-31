@@ -17,6 +17,8 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-31 — AVCSO: a project picker, page titles, and a demo seed worth showing
+
 ### Added
 
 - The English Melusine demo seed is a fuller book: the scene prose is expanded and
