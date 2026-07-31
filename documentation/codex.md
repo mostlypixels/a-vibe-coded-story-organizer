@@ -43,7 +43,7 @@ flat **tags** (`tags` + `codex_entry_tag`, `firstOrCreate`d per project then `sy
 
 ## Attribute definitions and the step function
 
-An **attribute definition** (`codex_attributes` — "Hair color", "Frescoes") carries an
+An **attribute definition** (`codex_attributes` — "Hair color", "Architecture style") carries an
 `applies_to` JSON array of `CodexEntryType` values deciding which sheets show it.
 
 Its **values** (`codex_attribute_values`) are temporal — a **start-anchored step function**:

@@ -17,6 +17,28 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+### Added
+
+- The English Melusine demo seed is a fuller book: the scene prose is expanded and
+  Markdown-formatted, and the Codex gains 8 characters, 6 locations, and the default
+  character-sheet attributes (Skin color, Eye color, Build, Height, Gender, Religion,
+  Race, Occupation, Priorities, Secrets, Hobbies, Fears) — defined but left unvalued, the
+  way a real project starts.
+- `Architecture style` (Location-scoped) replaces the removed `Frescoes` attribute and
+  carries the Castle of Lusignan's timeline: bare promontory → raw white marble → roofless
+  ruin. It keeps a location attribute demoed end to end, so `applies_to` filtering is
+  exercised from both the Location and the shared Character+Organization side.
+
+### Changed
+
+- Location and Organization codex entries in the demo seed dropped their leading "The"
+  (`Castle of Lusignan`, `Branded Mountain`, …). `SceneReferenceMatcher` is case-sensitive
+  and whole-word, so the article kept entries from matching prose that says "the Branded
+  Mountain" — the castle went from 15 scene references to 17, and the mountain from 0 to 1.
+- Four locations gained a lower-case common-noun alias (`fountain`, `caves`, `cellar`,
+  `the tower`), the only way the prose ever names them. Singular `cave` and bare `tower`
+  are deliberately excluded: they also mean other places in the text.
+
 ## 2026-07-30 — Templates hold markup, not logic (#66)
 
 ### Changed

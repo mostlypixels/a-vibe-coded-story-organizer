@@ -59,6 +59,7 @@ thin alias documented in the root `Makefile` (`make help` lists them all).
 | `make test` | `composer test` inside the container |
 | `make lint` | `composer lint` inside the container |
 | `make migrate` / `make seed` / `make fresh` | database setup |
+| `make fresh-seeded` | `fresh`, then `codex:sync-references` — the seeder runs `WithoutModelEvents`, so scene→codex links are not built by seeding alone |
 | `make tinker` | Laravel REPL |
 | `make logs` | follow container logs |
 | `make clean` | remove containers **and volumes** (resets the dev database) |

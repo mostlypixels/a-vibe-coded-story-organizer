@@ -1,4 +1,4 @@
-.PHONY: help up down build rebuild logs shell tinker test lint migrate seed fresh ps restart clean
+.PHONY: help up down build rebuild logs shell tinker test lint migrate seed fresh fresh-seeded ps restart clean
 
 # `docker compose` (v2, a subcommand) rather than `docker-compose` (v1, a separate
 # Python binary that reached end of life in 2023).
@@ -39,6 +39,7 @@ help:
 	@echo "  make migrate         - Run database migrations"
 	@echo "  make seed            - Seed database"
 	@echo "  make fresh           - Fresh database migration and seed"
+	@echo "  make fresh-seeded    - Fresh database migration and seed, then rebuild codex references"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make restart         - Restart containers"
@@ -97,6 +98,14 @@ seed:
 fresh:
 	$(APP_EXEC) php artisan migrate:fresh --seed
 
+# `fresh` alone leaves the demo half-built: DatabaseSeeder runs WithoutModelEvents, which
+# switches off the model hooks SceneReferenceMatcher rides on, so every seeded scene lands
+# with an empty scene_codex_entry pivot and the Codex sheets show no linked scenes at all.
+# codex:sync-references rebuilds that pivot from the seeded prose. Use this rather than
+# `fresh` whenever you want a demo database that actually looks like the app in use.
+fresh-seeded: fresh
+	$(APP_EXEC) php artisan codex:sync-references
+
 clean:
 	$(COMPOSE_DEV) down -v
 	$(REMOVE_DEV_DATABASE)
@@ -125,3 +134,4 @@ dev-lint: lint
 dev-migrate: migrate
 dev-seed: seed
 dev-fresh: fresh
+dev-fresh-seeded: fresh-seeded
