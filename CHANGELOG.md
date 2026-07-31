@@ -29,8 +29,15 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
   ruin. It keeps a location attribute demoed end to end, so `applies_to` filtering is
   exercised from both the Location and the shared Character+Organization side.
 
+- A project picker in the navigation bar: the left block names the open project and switches to
+  another without going through the dashboard. The list is capped at five (ordered by name) with
+  "All projects" as the complete list, and both the desktop and responsive menus share one query
+  for it.
+
 ### Changed
 
+- The page header is full-bleed and shallower, matching the navigation bar it sits under rather
+  than the `max-w-7xl` content box below it.
 - Location and Organization codex entries in the demo seed dropped their leading "The"
   (`Castle of Lusignan`, `Branded Mountain`, …). `SceneReferenceMatcher` is case-sensitive
   and whole-word, so the article kept entries from matching prose that says "the Branded

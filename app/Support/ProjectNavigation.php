@@ -5,7 +5,9 @@ namespace App\Support;
 use App\Enums\CodexEntryType;
 use App\Models\CodexEntry;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * View model for the primary navigation.
@@ -23,6 +25,9 @@ use Illuminate\Http\Request;
  */
 class ProjectNavigation
 {
+    /** How many projects the picker offers before deferring to "All projects". */
+    private const PICKER_PROJECT_LIMIT = 5;
+
     /** The project the current page belongs to, or null outside a project. */
     public readonly ?Project $project;
 
@@ -57,9 +62,16 @@ class ProjectNavigation
     /** The codex type being viewed, if any. Read via codexTypeIsActive(). */
     private readonly ?CodexEntryType $activeCodexType;
 
+    /** Signed-in user, for the picker's project list. Null on guest renders. */
+    private readonly ?User $user;
+
+    /** Memoized otherProjects() result — both menus ask for it. */
+    private ?Collection $otherProjects = null;
+
     public function __construct(Request $request)
     {
         $this->project = $this->resolveProject($request);
+        $this->user = $request->user();
 
         $this->homeActive = $request->routeIs('projects.show');
 
@@ -96,6 +108,35 @@ class ProjectNavigation
     public function hasProject(): bool
     {
         return $this->project !== null;
+    }
+
+    /**
+     * The user's other projects, for the picker's "switch to" list.
+     *
+     * Capped at five and ordered by name: the picker is a shortcut, not an
+     * index. An uncapped list would grow past the fold for a prolific writer,
+     * and the "All projects" link at the bottom of the panel is the complete,
+     * paginated answer — so truncating here costs nothing but a click. Name
+     * order (not id) because the list is read, not iterated: the same project
+     * sits in the same place every time.
+     *
+     * Lazy and memoized: the desktop and responsive menus both render the
+     * picker, and without the cache that is two identical queries on every
+     * authenticated page.
+     *
+     * @return Collection<int, Project>
+     */
+    public function otherProjects(): Collection
+    {
+        if ($this->user === null) {
+            return collect();
+        }
+
+        return $this->otherProjects ??= $this->user->projects()
+            ->when($this->project, fn ($query) => $query->whereKeyNot($this->project->getKey()))
+            ->orderBy('name')
+            ->limit(self::PICKER_PROJECT_LIMIT)
+            ->get(['id', 'name']);
     }
 
     /** Whether the page currently shown belongs to this codex type. */

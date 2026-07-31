@@ -545,6 +545,25 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 > `@php` blocks in the layout, which is exactly how `$toolsActive` came to be defined in the
 > desktop copy only and read by the responsive copy through PHP scope leak.
 
+## Project picker
+
+The bar's left block names the open project and switches between them —
+`ProjectNavigation::otherProjects()`, rendered by both `layouts.navigation` menus.
+
+- **Capped at five, ordered by name.** A shortcut, not an index: the "All projects" link is the
+  complete list, so the cap costs a click and never a project. Both menus call the method, so it
+  is memoized — otherwise every authenticated page pays for two identical queries.
+- **The open project is absent from the desktop panel** (the trigger already names it) but
+  present, marked active, in the responsive menu, which has no trigger.
+- **The nav bar is full-bleed**, unlike `<main>`'s `max-w-7xl`: the logo and the picker anchor the
+  left corner, the account menu the right. Above 1280px the bar deliberately does not line up
+  with the content under it.
+
+> [!WARNING]
+> `x-dropdown`'s `width` prop maps only the legacy `'48'`; everything else is passed through as a
+> raw class. `width="56"` silently renders a junk `56` class and an unsized panel — pass
+> `width="w-56"`.
+
 ## Page title
 
 `App\Support\PageTitle` renders the `<title>` of the authenticated layout: `"<project name> -

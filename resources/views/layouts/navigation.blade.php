@@ -1,20 +1,72 @@
 {{-- $navigation is a ProjectNavigation, supplied by the view composer in
      AppServiceProvider. It owns the "which project / which active section"
      logic that used to be inline @php in this file. --}}
-<nav x-data="{ open: false }" class="bg-navy-950 border-b border-black">
-    <!-- Primary Navigation Menu -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<nav x-data="{ open: false }" class="bg-navy-950">
+    {{-- Primary Navigation Menu. Deliberately NOT inside the max-w-7xl container
+         that <header> and <main> use: the logo anchors the left corner and the
+         account menu the right, so the bar spans the viewport. The consequence is
+         that on screens wider than 1280px the nav no longer lines up with the page
+         content below it.
+
+         The bar itself carries NO horizontal padding: the gutter lives inside the
+         edge elements instead (logo on the left, account menu on the right), so the
+         logo's yellow reaches the viewport edge while its mark still sits a
+         comfortable distance in. --}}
+    <div>
         <div class="flex justify-between h-12">
             <div class="flex">
-                <!-- Logo -->
-                <div class="shrink-0 flex items-center">
+                {{-- Logo. Shares the picker's ocean-900 fill so the two read as one
+                     block in the corner. --}}
+                <div class="shrink-0 flex items-center bg-ocean-900 px-2">
                     <a href="{{ route('dashboard') }}">
                         <x-application-logo class="block h-6 w-auto fill-current text-white" />
                     </a>
                 </div>
 
+                {{-- The project picker. Its list is capped — see
+                     ProjectNavigation::otherProjects() for why, and why "All
+                     projects" is not optional decoration. --}}
+                <div class="hidden sm:flex">
+                    {{-- width takes a raw class, not a number: the component maps
+                         only the legacy '48'. `56` would render as a junk class and
+                         leave the panel unsized. --}}
+                    <x-dropdown align="left" width="w-56" offset-classes="mt-0">
+                        <x-slot name="trigger">
+                            {{-- Square corners, full bar height: the block reads as part of the
+                                 bar's structure rather than a control floating on it. --}}
+                            @if ($navigation->hasProject())
+                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-ocean-900 px-4 text-sm font-semibold leading-5 text-white hover:bg-ocean-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-aqua-300 transition ease-in-out duration-150">
+                                    {{ $navigation->project->name }}
+                                    <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                </button>
+                            @else
+                                {{-- Nothing chosen yet: same block, lighter fill and a
+                                     dimmer label. --}}
+                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-ocean-800 px-4 text-sm font-semibold leading-5 text-aqua-100 hover:bg-ocean-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-aqua-300 transition ease-in-out duration-150">
+                                    {{ __('Choose a project') }}
+                                    <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                </button>
+                            @endif
+                        </x-slot>
+
+                        <x-slot name="content">
+                            {{-- The open project is deliberately absent: the trigger
+                                 already names it, so listing it again is a dead entry. --}}
+                            @foreach ($navigation->otherProjects() as $otherProject)
+                                <x-dropdown-link :href="route('projects.show', $otherProject)">
+                                    {{ $otherProject->name }}
+                                </x-dropdown-link>
+                            @endforeach
+
+                            <div class="border-t border-gray-200"></div>
+
+                            <x-dropdown-link :href="route('dashboard')">{{ __('All projects') }} &rarr;</x-dropdown-link>
+                        </x-slot>
+                    </x-dropdown>
+                </div>
+
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                <div class="hidden space-x-8 sm:-my-px sm:ms-6 sm:flex">
                     @if ($navigation->hasProject())
                         <x-navigation.project-menu :navigation="$navigation" />
                     @endif
@@ -22,7 +74,7 @@
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+            <div class="hidden sm:flex sm:items-center sm:ms-6 sm:pe-2">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-aqua-100 bg-transparent hover:text-white focus:outline-none transition ease-in-out duration-150">
@@ -60,7 +112,9 @@
             </div>
 
             <!-- Hamburger -->
-            <div class="-me-2 flex items-center sm:hidden">
+            {{-- pe-2, not the old -me-2: that negative margin existed to cancel the
+                 bar's px-2, which is gone — it would now push the button off-screen. --}}
+            <div class="pe-2 flex items-center sm:hidden">
                 <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-aqua-100 hover:text-white hover:bg-navy-800 focus:outline-none focus:bg-navy-800 focus:text-white transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -73,6 +127,27 @@
 
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+        {{-- Mobile half of the picker: the same capped list, laid out as rows
+             rather than a panel. The open project stays visible here (marked
+             active) because there is no trigger naming it. --}}
+        <div class="px-4 py-3 border-b border-navy-800">
+            <div class="text-xs uppercase tracking-wide text-aqua-300 mb-2">{{ __('Project') }}</div>
+
+            @if ($navigation->hasProject())
+                <x-responsive-nav-link :href="route('projects.show', $navigation->project)" :active="true">
+                    {{ $navigation->project->name }}
+                </x-responsive-nav-link>
+            @endif
+
+            @foreach ($navigation->otherProjects() as $otherProject)
+                <x-responsive-nav-link :href="route('projects.show', $otherProject)">
+                    {{ $otherProject->name }}
+                </x-responsive-nav-link>
+            @endforeach
+
+            <x-responsive-nav-link :href="route('dashboard')">{{ __('All projects') }} &rarr;</x-responsive-nav-link>
+        </div>
+
         <div class="pt-2 pb-3 space-y-1">
             @if ($navigation->hasProject())
                 <x-navigation.responsive-project-menu :navigation="$navigation" />
