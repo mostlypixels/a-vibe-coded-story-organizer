@@ -179,6 +179,14 @@ Adapt `docker-compose.yml` for your deployment target (Swarm, Kubernetes, etc.).
 - **Permission errors on `storage`/`bootstrap/cache`** — the app runs as the
   `laravel` (UID 1000) user; `chmod -R 775 storage bootstrap/cache` on the host if
   volumes were created with a different owner.
+- **A style change doesn't show up, however hard you refresh** — wait a minute, then
+  refresh again. The dev container runs Vite (`docker/supervisord.dev.conf`, port 5173)
+  and `@vite` serves from it, so `npm run build` is not the answer. A bind mount delivers
+  no filesystem events from a Windows/macOS host, so Vite watches by polling instead
+  (`VITE_USE_POLLING` in `docker-compose.dev.yml`, read by `vite.config.js`) — on a 60s
+  interval, to keep the CPU cost down. Without it Tailwind would serve the CSS it
+  generated at start-up forever, and a new utility class would have no rule behind it.
+  `make restart` to skip the wait.
 - **Slow on Mac/Windows** — allocate more CPU/RAM to Docker Desktop; `vendor/` and
   `node_modules/` are already excluded from the bind mount in `docker-compose.dev.yml`
   to reduce sync overhead.

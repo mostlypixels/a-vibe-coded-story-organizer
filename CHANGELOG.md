@@ -39,6 +39,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
   `the tower`), the only way the prose ever names them. Singular `cave` and bare `tower`
   are deliberately excluded: they also mean other places in the text.
 
+### Fixed
+
+- Vite in the dev container watches the bind-mounted source by polling
+  (`VITE_USE_POLLING`, 60s interval), so a new Tailwind class in a template reaches the
+  browser. No filesystem event crosses the Windows/macOS→container boundary, so without
+  it the served CSS never regenerates — indistinguishable from a stuck browser cache.
+
 ## 2026-07-30 — Templates hold markup, not logic (#66)
 
 ### Changed
