@@ -47,6 +47,10 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ### Fixed
 
+- Seeding builds the `scene_codex_entry` cache it writes the data for: each Melusine seeder
+  ends by calling `SceneReferenceMatcher::syncProject()`
+  (`Database\Seeders\Concerns\SyncsCodexReferences`). No seeded write reaches the call sites
+  that normally sync it, so every Codex sheet in the demo used to claim no scene mentions it.
 - Vite in the dev container watches the bind-mounted source by polling
   (`VITE_USE_POLLING`, 60s interval), so a new Tailwind class in a template reaches the
   browser. No filesystem event crosses the Windows/macOS→container boundary, so without

@@ -205,3 +205,9 @@ Like acts/chapters and the main plotline, the Codex is subject to `WithoutModelE
 calling `AttributeTimeline::ensureBaseline` / `upsertAt` **directly**, never relying on a hook.
 It seeds the hair-color story end to end (Mélusine: raven black → silver on Saturdays after
 the curse → wild once she transforms).
+
+`scene_codex_entry` is the same story: no seeded write reaches the call sites that sync it, so
+each Melusine seeder ends by calling `syncProject()` itself
+(`Database\Seeders\Concerns\SyncsCodexReferences`). Without it every seeded sheet claims no
+scene mentions it. **Anything that seeds scenes or entries must do the same, last** — the sync
+only sees what already exists when it runs.

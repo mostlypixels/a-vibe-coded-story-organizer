@@ -13,11 +13,13 @@ use App\Models\User;
 use App\Services\AttributeTimeline;
 use App\Support\PlotlineColors;
 use Database\Seeders\Concerns\BackfillsSceneWordCounts;
+use Database\Seeders\Concerns\SyncsCodexReferences;
 use Illuminate\Database\Seeder;
 
 class MelusineSeederEn extends Seeder
 {
     use BackfillsSceneWordCounts;
+    use SyncsCodexReferences;
 
     /**
      * Seed a sample "Roman of Melusine" project (English) with plotlines and events.
@@ -415,6 +417,10 @@ class MelusineSeederEn extends Seeder
         $this->backfillSceneWordCounts($project);
 
         $this->seedCodex($project, $eventsByTitle);
+
+        // Last, once scenes and codex entries both exist: see
+        // SyncsCodexReferences for why seeding has to do this itself.
+        $this->syncCodexReferences($project);
     }
 
     /**
