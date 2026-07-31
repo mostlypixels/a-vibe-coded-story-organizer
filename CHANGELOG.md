@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-07-31 — AVCSO: a project picker, page titles, and a demo seed worth showing
+## 2026-07-31 — AVCSO: a project picker, page titles, and a demo seed worth showing (#67)
 
 ### Added
 
