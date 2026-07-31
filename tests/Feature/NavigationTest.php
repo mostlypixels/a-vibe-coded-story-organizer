@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -332,5 +333,105 @@ class NavigationTest extends TestCase
             'href="'.e(route('projects.search.index', $project)).'"',
             $html,
         );
+    }
+
+    public function test_the_picker_names_the_open_project_and_offers_the_others(): void
+    {
+        $user = User::factory()->create();
+        $open = Project::factory()->for($user)->create(['name' => 'The open one']);
+        $other = Project::factory()->for($user)->create(['name' => 'Another one']);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.show', $open))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('The open one', $html);
+        $this->assertStringContainsString('href="'.e(route('projects.show', $other)).'"', $html);
+
+        // "All projects" is the overflow route out of a capped list, so it is
+        // part of the contract, not decoration.
+        $this->assertStringContainsString('href="'.e(route('dashboard')).'"', $html);
+
+        // x-dropdown maps only the legacy width="48" and passes anything else
+        // through verbatim, so width="56" would emit a junk `56` class and leave
+        // the panel unsized. Pin the rendered class, not the attribute.
+        $this->assertMatchesRegularExpression('/class="absolute z-50 mt-0 w-56 /', $html);
+    }
+
+    public function test_the_picker_never_lists_another_users_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $stranger = Project::factory()->for(User::factory())->create(['name' => 'Not yours']);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->getContent();
+
+        // The list is built off the signed-in user's own relation; a leak here
+        // would hand out another writer's project names, not just a bad link.
+        $this->assertStringNotContainsString('Not yours', $html);
+        $this->assertStringNotContainsString(route('projects.show', $stranger), $html);
+    }
+
+    public function test_the_picker_caps_its_list_and_leaves_the_rest_to_all_projects(): void
+    {
+        $user = User::factory()->create();
+        $open = Project::factory()->for($user)->create(['name' => 'Aaa open']);
+
+        // Named so alphabetical order is predictable: the first five sortable
+        // names are offered, the sixth is not.
+        foreach (['Bbb', 'Ccc', 'Ddd', 'Eee', 'Fff', 'Ggg'] as $name) {
+            Project::factory()->for($user)->create(['name' => $name]);
+        }
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.show', $open))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Bbb', $html);
+        $this->assertStringContainsString('Fff', $html);
+        $this->assertStringNotContainsString('Ggg', $html);
+    }
+
+    public function test_the_picker_asks_for_a_project_when_none_is_open(): void
+    {
+        $user = User::factory()->create();
+        Project::factory()->for($user)->create(['name' => 'Somewhere else']);
+
+        // The dashboard is inside the app layout but belongs to no project: the
+        // trigger has nothing to name, so it prompts instead of rendering blank.
+        $html = $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Choose a project', $html);
+        $this->assertStringContainsString('Somewhere else', $html);
+    }
+
+    public function test_both_menus_share_one_query_for_the_picker_list(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Project::factory()->for($user)->create();
+
+        // The desktop panel and the responsive menu each render the list. Without
+        // memoization in ProjectNavigation that is a second identical query on
+        // every authenticated page in the app.
+        $pickerQueries = 0;
+
+        DB::listen(function ($query) use (&$pickerQueries) {
+            if (str_contains($query->sql, 'from "projects"') && str_contains($query->sql, 'order by "name"')) {
+                $pickerQueries++;
+            }
+        });
+
+        $this->actingAs($user)->get(route('projects.show', $project))->assertOk();
+
+        $this->assertSame(1, $pickerQueries);
     }
 }

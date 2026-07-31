@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CodexEntry;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
@@ -54,5 +55,40 @@ class DatabaseSeederTest extends TestCase
         $scene = Scene::query()->whereNotNull('contents')->where('contents', '!=', '')->firstOrFail();
 
         $this->assertGreaterThan(0, $scene->word_count);
+    }
+
+    /**
+     * Same gap as the word count above, on the other derived cache: nothing in a
+     * seeded run goes through the controller paths that call
+     * `SceneReferenceMatcher`, so `scene_codex_entry` stayed empty and every
+     * Codex sheet in the demo showed no scenes. Each Melusine seeder now syncs
+     * its own project (`Database\Seeders\Concerns\SyncsCodexReferences`).
+     */
+    public function test_seeded_scenes_are_linked_to_the_codex_entries_they_mention(): void
+    {
+        $this->seed();
+
+        $castle = CodexEntry::query()->where('name', 'Castle of Lusignan')->firstOrFail();
+
+        $this->assertGreaterThan(0, $castle->referencingScenes()->count());
+    }
+
+    /**
+     * The sync is a full resync per project, so a second seeded run must leave
+     * the pivot exactly as the first did — not a duplicated or widened set.
+     */
+    public function test_a_second_seeded_run_does_not_change_the_reference_set(): void
+    {
+        $this->seed();
+
+        $castle = CodexEntry::query()->where('name', 'Castle of Lusignan')->firstOrFail();
+        $referencesAfterFirstRun = $castle->referencingScenes()->pluck('scenes.id')->sort()->values()->all();
+
+        $this->seed();
+
+        $this->assertSame(
+            $referencesAfterFirstRun,
+            $castle->referencingScenes()->pluck('scenes.id')->sort()->values()->all(),
+        );
     }
 }

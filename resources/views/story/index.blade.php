@@ -97,7 +97,7 @@
 
                                             <div class="flex items-center gap-2">
                                                 @if ($scene->event)
-                                                    <span class="text-xs text-gray-500">{{ __('during') }} {{ $scene->event->title }}</span>
+                                                    <span class="text-xs text-gray-500">{{ __('Set during') }} {{ $scene->event->title }}</span>
                                                 @else
                                                     <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-red-500 px-2 py-0.5 text-xs font-medium text-red-600">{{ __('Unassigned') }}</span>
                                                 @endif

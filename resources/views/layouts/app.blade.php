@@ -7,7 +7,7 @@
 
         <x-robots-meta />
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ $pageTitle }}</title>
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -18,8 +18,11 @@
 
             <!-- Page Heading -->
             @isset($header)
-                <header class="bg-ocean-800 shadow [&_h2]:text-white [&_a]:text-aqua-200 [&_a:hover]:text-white">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <header class="bg-ocean-700 shadow [&_h2]:text-sm [&_h2]:text-white [&_a]:text-aqua-100 [&_a:hover]:text-white">
+                    {{-- Same full-bleed treatment as layouts.navigation: spans the
+                         viewport with a px-2 gutter rather than the max-w-7xl box
+                         <main> still uses. --}}
+                    <div class="py-3 px-4">
                         {{ $header }}
                     </div>
                 </header>

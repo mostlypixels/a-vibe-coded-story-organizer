@@ -9,7 +9,7 @@
              regardless of the global crawler toggle. --}}
         <x-robots-meta :force="true" />
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name') }}</title>
 
         <!-- Scripts (compiled CSS gives us Tailwind Typography `prose` + app styles; Alpine for the collapse) -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])

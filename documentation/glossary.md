@@ -44,7 +44,7 @@ act/chapter/scene tree with a table of contents and Markdown-rendered scene cont
 kind is a route segment (`/projects/{project}/codex/characters`, `.../locations`, `...`).
 
 **Attribute definition** — a named, reusable attribute (`codex_attributes`, e.g. "Hair
-color", "Frescoes") the project owner defines once. Its `applies_to` array decides which
+color", "Architecture style") the project owner defines once. Its `applies_to` array decides which
 entry types show it on their sheet. Distinct from its *values*, which are temporal (below).
 
 **Attribute period / step function** — an attribute's value over time is a **start-anchored

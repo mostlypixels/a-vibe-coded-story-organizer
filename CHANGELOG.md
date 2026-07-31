@@ -17,6 +17,54 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-07-31 — AVCSO: a project picker, page titles, and a demo seed worth showing (#67)
+
+### Added
+
+- The English Melusine demo seed is a fuller book: the scene prose is expanded and
+  Markdown-formatted, and the Codex gains 8 characters, 6 locations, and the default
+  character-sheet attributes (Skin color, Eye color, Build, Height, Gender, Religion,
+  Race, Occupation, Priorities, Secrets, Hobbies, Fears) — defined but left unvalued, the
+  way a real project starts.
+- `Architecture style` (Location-scoped) replaces the removed `Frescoes` attribute and
+  carries the Castle of Lusignan's timeline: bare promontory → raw white marble → roofless
+  ruin. It keeps a location attribute demoed end to end, so `applies_to` filtering is
+  exercised from both the Location and the shared Character+Organization side.
+
+- A project picker in the navigation bar: the left block names the open project and switches to
+  another without going through the dashboard. The list is capped at five (ordered by name) with
+  "All projects" as the complete list, and both the desktop and responsive menus share one query
+  for it.
+
+### Changed
+
+- The page header is full-bleed and shallower, matching the navigation bar it sits under rather
+  than the `max-w-7xl` content box below it.
+- Location and Organization codex entries in the demo seed dropped their leading "The"
+  (`Castle of Lusignan`, `Branded Mountain`, …). `SceneReferenceMatcher` is case-sensitive
+  and whole-word, so the article kept entries from matching prose that says "the Branded
+  Mountain" — the castle went from 15 scene references to 17, and the mountain from 0 to 1.
+- Four locations gained a lower-case common-noun alias (`fountain`, `caves`, `cellar`,
+  `the tower`), the only way the prose ever names them. Singular `cave` and bare `tower`
+  are deliberately excluded: they also mean other places in the text.
+- The app is named **AVCSO** (`APP_NAME`), and the browser tab now says which project you are in:
+  `"<project> - AVCSO"` on authenticated pages inside a project, `"AVCSO"` everywhere else. The
+  title comes from `App\Support\PageTitle`, fed by the same view composer as the navigation, so a
+  shallow route like `/scenes/{scene}/edit` still resolves its project.
+- A scene's event on the Story overview reads `Set during <event>` rather than
+  `during <event>`.
+
+### Fixed
+
+- Seeding builds the `scene_codex_entry` cache it writes the data for: each Melusine seeder
+  ends by calling `SceneReferenceMatcher::syncProject()`
+  (`Database\Seeders\Concerns\SyncsCodexReferences`). No seeded write reaches the call sites
+  that normally sync it, so every Codex sheet in the demo used to claim no scene mentions it.
+- Vite in the dev container watches the bind-mounted source by polling
+  (`VITE_USE_POLLING`, 60s interval), so a new Tailwind class in a template reaches the
+  browser. No filesystem event crosses the Windows/macOS→container boundary, so without
+  it the served CSS never regenerates — indistinguishable from a stuck browser cache.
+
 ## 2026-07-30 — Templates hold markup, not logic (#66)
 
 ### Changed

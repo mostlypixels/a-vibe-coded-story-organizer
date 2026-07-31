@@ -43,7 +43,7 @@ flat **tags** (`tags` + `codex_entry_tag`, `firstOrCreate`d per project then `sy
 
 ## Attribute definitions and the step function
 
-An **attribute definition** (`codex_attributes` — "Hair color", "Frescoes") carries an
+An **attribute definition** (`codex_attributes` — "Hair color", "Architecture style") carries an
 `applies_to` JSON array of `CodexEntryType` values deciding which sheets show it.
 
 Its **values** (`codex_attribute_values`) are temporal — a **start-anchored step function**:
@@ -205,3 +205,9 @@ Like acts/chapters and the main plotline, the Codex is subject to `WithoutModelE
 calling `AttributeTimeline::ensureBaseline` / `upsertAt` **directly**, never relying on a hook.
 It seeds the hair-color story end to end (Mélusine: raven black → silver on Saturdays after
 the curse → wild once she transforms).
+
+`scene_codex_entry` is the same story: no seeded write reaches the call sites that sync it, so
+each Melusine seeder ends by calling `syncProject()` itself
+(`Database\Seeders\Concerns\SyncsCodexReferences`). Without it every seeded sheet claims no
+scene mentions it. **Anything that seeds scenes or entries must do the same, last** — the sync
+only sees what already exists when it runs.
