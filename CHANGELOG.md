@@ -42,6 +42,8 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
   `"<project> - AVCSO"` on authenticated pages inside a project, `"AVCSO"` everywhere else. The
   title comes from `App\Support\PageTitle`, fed by the same view composer as the navigation, so a
   shallow route like `/scenes/{scene}/edit` still resolves its project.
+- A scene's event on the Story overview reads `Set during <event>` rather than
+  `during <event>`.
 
 ### Fixed
 
