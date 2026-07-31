@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\HtmlSanitizer;
 use App\Services\RevisionRecorder;
 use App\Support\AdminNavigation;
+use App\Support\PageTitle;
 use App\Support\ProjectNavigation;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
@@ -60,8 +61,15 @@ class AppServiceProvider extends ServiceProvider
         // every authenticated page. Computing it here — once per render, in one
         // place — is what lets layouts/navigation.blade.php stay markup-only and
         // keeps its desktop and responsive menus provably in step.
-        View::composer('layouts.navigation', function ($view) {
-            $view->with('navigation', new ProjectNavigation(request()));
+        //
+        // layouts.app gets the same treatment for its <title>: the page title
+        // asks the same question the nav does ("which project are we in?"), so
+        // it reads the answer off the same object instead of re-deriving it.
+        View::composer(['layouts.navigation', 'layouts.app'], function ($view) {
+            $navigation = new ProjectNavigation(request());
+
+            $view->with('navigation', $navigation)
+                ->with('pageTitle', new PageTitle($navigation->project));
         });
 
         // Same deal for the Configuration area's two link lists.

@@ -38,6 +38,10 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 - Four locations gained a lower-case common-noun alias (`fountain`, `caves`, `cellar`,
   `the tower`), the only way the prose ever names them. Singular `cave` and bare `tower`
   are deliberately excluded: they also mean other places in the text.
+- The app is named **AVCSO** (`APP_NAME`), and the browser tab now says which project you are in:
+  `"<project> - AVCSO"` on authenticated pages inside a project, `"AVCSO"` everywhere else. The
+  title comes from `App\Support\PageTitle`, fed by the same view composer as the navigation, so a
+  shallow route like `/scenes/{scene}/edit` still resolves its project.
 
 ### Fixed
 

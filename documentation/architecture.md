@@ -545,6 +545,20 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 > `@php` blocks in the layout, which is exactly how `$toolsActive` came to be defined in the
 > desktop copy only and read by the responsive copy through PHP scope leak.
 
+## Page title
+
+`App\Support\PageTitle` renders the `<title>` of the authenticated layout: `"<project name> -
+<app name>"` inside a project, the bare app name (`config('app.name')`, i.e. `APP_NAME`) outside
+one. The project name leads because browser tabs truncate from the right, and the tab is the only
+way to tell two open projects apart.
+
+- The same view composer that builds `$navigation` also hands `layouts.app` a `$pageTitle`, built
+  from `$navigation->project` — project resolution (including shallow child routes) stays in one
+  place.
+- `layouts.guest`, `layouts.public` and `welcome` show `config('app.name')` alone: no project is
+  open, and a share link should not put the project's name in the visitor's tab.
+- The app name is never a literal in a template — change it in `APP_NAME`.
+
 ## Where things live
 
 | Concern | Location |
