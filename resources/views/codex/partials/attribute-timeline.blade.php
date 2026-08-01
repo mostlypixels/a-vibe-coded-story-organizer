@@ -85,7 +85,7 @@
                             <select
                                 id="add_event_{{ $attribute->id }}"
                                 name="start_event_id"
-                                class="w-40 shrink-0 border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs text-sm"
+                                class="w-40 shrink-0 border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs text-sm"
                                 required
                             >
                                 <option value="">{{ __('Add period at…') }}</option>

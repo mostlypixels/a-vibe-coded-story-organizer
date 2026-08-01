@@ -23,7 +23,7 @@
 
                 <div>
                     <x-input-label for="act_id" :value="__('Act')" />
-                    <select id="act_id" name="act_id" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs" required>
+                    <select id="act_id" name="act_id" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs" required>
                         @foreach ($project->acts as $act)
                             <option value="{{ $act->id }}" @selected(old('act_id', $chapter->act_id) == $act->id)>{{ $act->name }}</option>
                         @endforeach
@@ -92,7 +92,7 @@
                     <img src="{{ $coverUrl }}" alt="{{ $chapter->name }}" class="mt-3 w-full rounded-md border border-gray-200 object-cover">
 
                     <label class="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                        <input type="checkbox" name="remove_cover_image" value="1" form="chapter-edit-form" class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                        <input type="checkbox" name="remove_cover_image" value="1" form="chapter-edit-form" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
                         {{ __('Remove cover image') }}
                     </label>
                 @endif

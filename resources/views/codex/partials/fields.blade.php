@@ -102,7 +102,7 @@
                 <img src="{{ $cover->url() }}" alt="{{ $entry->name }}" class="w-full rounded-md border border-gray-200 object-cover">
 
                 <label class="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                    <input type="checkbox" name="remove_media[]" value="{{ $cover->id }}" class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                    <input type="checkbox" name="remove_media[]" value="{{ $cover->id }}" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
                     {{ __('Remove cover') }}
                 </label>
             @endif
@@ -204,7 +204,7 @@
                                 <img src="{{ $image->url() }}" alt="{{ $image->original_name }}" class="w-full aspect-square rounded-md border border-gray-200 object-cover">
                             </button>
                             <label class="mt-1 flex items-center gap-1 text-xs text-gray-600">
-                                <input type="checkbox" name="remove_media[]" value="{{ $image->id }}" class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                                <input type="checkbox" name="remove_media[]" value="{{ $image->id }}" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
                                 {{ __('Remove') }}
                             </label>
                         </li>
@@ -245,7 +245,7 @@
                                 <x-icon-download-button :href="$file->url()" :download="$file->original_name" class="shrink-0" />
                             </span>
                             <label class="flex shrink-0 items-center gap-1 text-xs text-gray-600">
-                                <input type="checkbox" name="remove_media[]" value="{{ $file->id }}" class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                                <input type="checkbox" name="remove_media[]" value="{{ $file->id }}" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
                                 {{ __('Remove') }}
                             </label>
                         </li>

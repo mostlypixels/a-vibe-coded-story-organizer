@@ -15,7 +15,7 @@
 
     $variants = [
         'primary'   => 'bg-navy-900 border-transparent text-white hover:bg-navy-800 active:bg-navy-950 focus:ring-ocean-500',
-        'secondary' => 'bg-white border-gray-300 text-gray-700 shadow-2xs hover:bg-gray-50 focus:ring-ocean-500',
+        'secondary' => 'bg-white border-gray-300 text-gray-700 shadow-xs hover:bg-gray-50 focus:ring-ocean-500',
         'danger'    => 'bg-red-600 border-transparent text-white hover:bg-red-500 active:bg-red-700 focus:ring-red-500',
         'success'   => 'bg-green-600 border-transparent text-white hover:bg-green-500 active:bg-green-700 focus:ring-green-500',
         'warning'   => 'bg-yellow-500 border-transparent text-white hover:bg-yellow-400 active:bg-yellow-600 focus:ring-yellow-500',

@@ -108,7 +108,63 @@ Corrections to the expanded docs, found by probing Tailwind 4.3.3 directly durin
   the class rename otherwise (it fully round-tripped: the old string is just no longer in the
   rendered HTML, string match silently stops passing to failing, not to erroring).
 
+## Accepted differences found by the browser pass (task 09)
+
+Task 10 must carry these into `standing-issues.md`; each was measured on ~40 pages against
+`master` and judged not worth Blade churn to undo.
+
+- **`space-y-*` and `divide-*` changed which sibling carries the spacing.** v3 put
+  `margin-top` / `border-top` on every child but the first; v4 puts `margin-bottom` /
+  `border-bottom` on every child but the last, inside `:where()`. Same rendering — verified
+  element-by-element — but two consequences: computed-style comparisons look noisy, and a
+  child's own `mt-*` now **wins** over its parent's `space-y-*` (zero specificity). One place
+  in the app hits that: `codex/partials/fields.blade.php`'s `<div class="mt-6">` under
+  `space-y-10` on `codex/edit` — 40px gap becomes 24px. Left alone because the same partial
+  renders on `codex/create`, where 24px is already the v3 rendering.
+- **Checked checkboxes/radios keep a `gray-300` border.** `@tailwindcss/forms` sets
+  `border-color: transparent` on `:checked`; in v3 that out-specified `border-gray-300`, in v4
+  the utilities layer beats the plugin's base layer regardless of specificity. Dropping the
+  utility is not the fix — it would change the *unchecked* border to the plugin's gray-500.
+- **`outline-hidden` computes as `outline-style: none`** where v3's `outline-none` computed as
+  `2px solid transparent`. That is the intended v4 shape: the transparent outline is emitted
+  inside `@media (forced-colors: active)`, so high-contrast users keep the affordance and
+  everyone else sees no change. All focus **rings** (`box-shadow`) are byte-identical to
+  `master` at rest, on focus and in the error state.
+- **`rounded-full` is `calc(infinity * 1px)` (~3.4e38px) instead of 9999px** — identical pills.
+- **Stock palette colours are OKLCH now** and a few resolve slightly differently in sRGB:
+  `red-500/600`, `blue-600/800`, `green-800`, `gray-400`. Expected (plan bullet 3).
+- **The desktop nav's active item is `navigation/dropdown-trigger`, which has no focus ring** —
+  in v3 either. Task 06's `focus:ring-2` landed on `nav-link` / `responsive-nav-link`; on a
+  1280px viewport those render only inside the responsive menu, so the ring is not visible in
+  the top bar. Not a regression, but the accessibility gap task 06 closed for nav links is
+  still open for dropdown triggers.
+
 ## Issues → resolutions
+
+- **v4 auto-detection scans Markdown, so `.specs/` and `documentation/` were leaking utilities
+  into the production stylesheet.** Found in the final sanity pass, after all ten tasks were
+  done. v4 replaced v3's explicit `content` array with whole-project scanning, and it does not
+  care whether a file can render HTML — a class name written in prose becomes a real rule.
+  `.caret-transparent` and `.indent-8`, both merely *described* in this log as throwaway
+  watcher probes, were shipping in the built CSS. Fixed with `@source not '../../.specs'` and
+  `@source not '../../documentation'`, commented at the rule. Excluding beats narrowing to
+  `resources/`: auto-detection is what makes a new Blade file work with no config.
+  **This bites any doc that names a utility class** — the more the project documents its own
+  CSS, the more phantom rules it ships.
+
+- **The Docker polling watcher still drives Tailwind 4's scanner — no change needed.** Verified
+  empirically on 2026-08-01 rather than assumed, because v4 scans for classes itself instead of
+  reading a `content` array: a previously unused utility (`caret-transparent`) added to a Blade
+  file appeared in the stylesheet the dev server served ~40s later, inside the 60s poll
+  interval. `vite.config.js`'s comment now records the verification and its date; the polling
+  block is unchanged, and `docker-compose.dev.yml` was not touched.
+- **Task 08 stalled three times in an unbounded monitor loop and had to be finished by hand.**
+  The implementing agent restarted the app container repeatedly, resetting its health-check
+  clock, and each restart put it back to polling instead of concluding. It also left its probe
+  markup (`<div class="indent-8" data-docker-watcher-probe>`) in `auth/login.blade.php`, which
+  its own task file requires reverting. Both the probe and the loop were cleaned up externally.
+  **Anyone re-running a task like this should bound the wait and report a blocker instead of
+  polling indefinitely** — and grep for leftover probe markup before trusting a "reverted" claim.
 
 - **A `git checkout -- resources/css/app.css` run while cleaning up a temporary test fixture
   during task 02 discarded task 01's entire uncommitted rewrite** (task 01's diff was never
@@ -126,3 +182,38 @@ Corrections to the expanded docs, found by probing Tailwind 4.3.3 directly durin
   feature before the final commit should assume every task's changes are uncommitted and
   fragile**: a bulk `git checkout`/`restore`/`reset` anywhere in the tree can silently destroy
   a prior task's work with no error, because there is no commit to fall back to.
+
+- **The codemod ran twice over `resources/`, shifting every affected utility one step too far
+  down the v4 scale.** Root cause: the recovery above re-ran `npx @tailwindcss/upgrade --force`
+  after only `app.css` and the config files had been reverted — the Blade templates still held
+  the *first* run's output, so the renames applied a second time. `shadow-sm` → `shadow-xs` →
+  `shadow-2xs` (66 usages), `shadow` → `shadow-sm` → `shadow-xs` (1), `rounded` → `rounded-sm`
+  → `rounded-xs` (26). `rounded-sm` → `rounded-xs` (5) survived because `rounded-xs` has no
+  next step, and idempotent renames (`outline-none` → `outline-hidden`, `flex-shrink-0` →
+  `shrink-0`, arbitrary values → named scale) were unharmed. Every card, button, input and
+  table in the app was rendering a lighter shadow and squarer corners than `master`; the green
+  suite, the `var()` guard and `npm run build` all passed throughout. Fixed in task 09 by
+  mapping each site back from the `master` token (93 corrections across 43 files).
+- **`ring-opacity-5` silently became an opaque black ring.** v4 removed the `ring-opacity-*`
+  utilities, so `ring-1 ring-black ring-opacity-5` on `dropdown` and `popover` painted a solid
+  1px black hairline instead of a 5% one. Rewritten as `ring-black/5`. No codemod, test or
+  build step flags a class name that no longer exists.
+- **Page-header headings lost 2.5px of line-height on every app page.** `layouts/app.blade.php`
+  styles them with `[&_h2]:text-sm` while the headings themselves carry `leading-tight`. In v3
+  the descendant selector out-specified the utility, so `text-sm`'s 20px won; in v4 `leading-*`
+  writes `--tw-leading` on the element itself, which always beats an ancestor's value, so the
+  header band shrank 44px → 41.5px. Restored by stating `[&_h2]:leading-5` in the layout, with a
+  comment at the class. This is the shape of every "specificity used to decide it" bug in v4:
+  the fix is to say the value explicitly.
+- **Verification method, for whoever re-runs this.** Screenshot-by-eye across ~40 pages misses
+  1px shadow and 2px radius drift. What worked: serve `master` from a second `git worktree` on
+  port 8001 (junction its `vendor`, point `.env` at the same SQLite file) alongside the branch
+  on 8000, walk both with the same driver script dumping `getComputedStyle` for every element
+  on every page, then diff the dumps with OKLCH→sRGB conversion so the palette re-notation
+  collapses to noise and only real differences remain. That is what surfaced all three bugs
+  above in one pass. Scripts are throwaway; the technique is not.
+- **The dev Docker containers restarted mid-pass and re-created `public/hot`,** pointing `@vite`
+  at a dead origin and re-binding port 8000 under the local server. Symptom: pages that had
+  been loading built assets suddenly loaded from `:5173`. `docker compose -f
+  docker-compose.dev.yml down` before a browser pass, and re-check `public/hot` if anything
+  starts rendering unstyled.

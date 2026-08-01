@@ -22,6 +22,14 @@ export default defineConfig({
         // like a caching problem in the browser, and no amount of Ctrl+F5 fixes
         // it). Polling is the only watcher that works across that boundary.
         //
+        // Verified against Tailwind 4 on 2026-08-01: v4 scans for classes itself
+        // rather than reading a `content` array, so this setting had to be
+        // re-checked rather than assumed. Adding a previously unused utility to
+        // a Blade file in the dev container made its rule appear in the served
+        // stylesheet within the poll interval — the polling watcher still drives
+        // v4's scanner, and the failure described above is still what you get
+        // without it.
+        //
         // Gated on VITE_USE_POLLING, which docker-compose.dev.yml sets, so a
         // local `npm run dev` keeps the cheap native watcher.
         //

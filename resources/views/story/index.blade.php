@@ -20,7 +20,7 @@
             {{-- Left column: Table of Contents, sticky so it stays in view while the
                  (potentially very long) act/chapter/scene content scrolls beside it. --}}
             <div class="lg:col-span-3">
-                <div x-data="{ open: true }" class="bg-white shadow-2xs rounded-lg lg:sticky lg:top-6">
+                <div x-data="{ open: true }" class="bg-white shadow-xs rounded-lg lg:sticky lg:top-6">
                     <button type="button" @click="open = ! open" class="w-full flex items-center justify-between px-6 py-4 text-left">
                         <span class="font-semibold text-gray-800">{{ __('Table of Contents') }}</span>
                         <svg class="h-4 w-4 fill-current text-gray-500 transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -75,7 +75,7 @@
                         </div>
 
                         @forelse ($act->chapters as $chapter)
-                            <article class="bg-white shadow-2xs rounded-lg p-6 space-y-4">
+                            <article class="bg-white shadow-xs rounded-lg p-6 space-y-4">
                                 {{-- Sibling, not child, for the same reason as the act bar above. --}}
                                 <div class="flex items-center justify-between gap-4">
                                     <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-gray-800 scroll-mt-16">

@@ -5,6 +5,20 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
+/*
+  v4 scans the whole project for class names instead of reading v3's `content`
+  array, and it does not care whether a file can render HTML: a utility merely
+  *named* in Markdown prose becomes a real rule in the stylesheet. Our specs and
+  docs discuss class names constantly, so without these exclusions the build
+  ships utilities no template uses (`.caret-transparent` and `.indent-8` from a
+  throwaway probe described in a log, for instance).
+
+  Excluded rather than narrowed to `resources/`: auto-detection is what keeps a
+  new Blade file working with no config, and that is worth keeping.
+*/
+@source not '../../.specs';
+@source not '../../documentation';
+
 @theme {
   --font-sans:
     Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif,

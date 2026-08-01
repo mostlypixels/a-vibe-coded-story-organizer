@@ -23,7 +23,7 @@
                     name="{{ $name }}[]"
                     x-model="items[index]"
                     placeholder="{{ $placeholder }}"
-                    class="block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs text-sm"
+                    class="block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs text-sm"
                 />
                 <button type="button" @click="items.splice(index, 1)" class="text-sm text-red-600 hover:text-red-800" aria-label="{{ $removeLabel }}">&times;</button>
             </div>

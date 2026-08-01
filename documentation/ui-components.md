@@ -12,9 +12,10 @@ alerts, breadcrumbs, tooltips, popovers, modals) plus a unified heading scale.
 
 - Declared with `@props([...])`; extra HTML attributes flow through via `$attributes->merge([...])`,
   so you can always add `class`, `id`, `x-on:click`, etc. at the call site.
-- Colours are written as **full Tailwind class strings** per variant. This is deliberate: Tailwind's
-  purge step only keeps classes it can see as literal text, so you must never build a class name by
-  interpolating a variant (e.g. `bg-{$color}-100` would be purged).
+- Colours are written as **full Tailwind class strings** per variant. This is deliberate:
+  Tailwind 4 auto-detects classes by scanning the project for literal text (there is no
+  `content` array to configure), so you must never build a class name by interpolating a
+  variant (e.g. `bg-{$color}-100` would never be found).
 - Interactive components use **Alpine.js** and hide their initial state with `style="display: none;"`
   (matching `x-modal` / `x-dropdown`) rather than `x-cloak`, so no extra CSS is required.
 - User-facing strings go through `{{ __('...') }}`; icons are inline 20×20 `currentColor` SVGs.

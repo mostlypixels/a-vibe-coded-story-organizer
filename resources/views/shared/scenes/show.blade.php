@@ -10,7 +10,7 @@
         {{-- Description in a COLLAPSED card (starts closed, per spec). The body
              is already-sanitized rich HTML, rendered only via x-rich-text. --}}
         @if (filled($scene->description))
-            <div x-data="{ open: false }" class="bg-white shadow-2xs rounded-lg">
+            <div x-data="{ open: false }" class="bg-white shadow-xs rounded-lg">
                 <button type="button" @click="open = ! open"
                         class="w-full flex items-center justify-between px-6 py-4 text-left">
                     <span class="font-semibold text-gray-800">{{ __('Description') }}</span>

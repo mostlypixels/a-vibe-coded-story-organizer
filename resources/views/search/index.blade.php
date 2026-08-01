@@ -9,7 +9,7 @@
         {{-- Search form. Plain GET (no AJAX): q/mode round-trip via the query string
              so results are bookmarkable and survive a refresh. The mode control is a
              <fieldset> radio group (keyboard-accessible, semantic) over SearchMode. --}}
-        <form method="GET" action="{{ route('projects.search.index', $project) }}" class="bg-white shadow-2xs rounded-lg p-6 space-y-4">
+        <form method="GET" action="{{ route('projects.search.index', $project) }}" class="bg-white shadow-xs rounded-lg p-6 space-y-4">
             <div class="space-y-1">
                 <x-input-label for="q" :value="__('Search this project')" />
                 <div class="flex gap-2">
@@ -50,7 +50,7 @@
              three empty per-section blocks. --}}
         @if ($results !== null)
             @if ($results->isEmpty())
-                <div class="bg-white shadow-2xs rounded-lg px-6 py-10 text-center text-gray-500">
+                <div class="bg-white shadow-xs rounded-lg px-6 py-10 text-center text-gray-500">
                     <p class="font-medium text-gray-600">
                         {{ __('No results match “:query”.', ['query' => $query]) }}
                     </p>
