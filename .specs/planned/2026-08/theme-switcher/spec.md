@@ -1,5 +1,7 @@
 ---
-status: draft
+status: planned
+planned: 2026-08-01
+expanded: 2026-08-01
 ---
 
 # Theme Switcher
