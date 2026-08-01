@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-01 — Port the build to Tailwind 4
+## 2026-08-01 — Port the build to Tailwind 4 (#69)
 
 ### Changed
 
