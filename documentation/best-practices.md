@@ -149,6 +149,10 @@ write down what goes stale, in the same commit.
   `Added` / `Changed` / `Fixed` / `Removed`. Update it per feature or pull request, not per
   commit; `[Unreleased]` holds only work not yet merged to `master`. Leave the `(#PR)`
   suffix off — `scripts/pr-land.sh` stamps it once the number exists.
+- Keep entries to one line each (~20 words): what changed, not how or why, no class names
+  or file paths, 1–5 entries per PR. The file is never pruned, so it has to stay readable
+  years from now; rationale belongs in the PR description. Sections dated before
+  `2026-08-02` predate this rule — don't imitate them.
 
 ## Testing UI state: assert on semantic hooks, not Tailwind classes
 

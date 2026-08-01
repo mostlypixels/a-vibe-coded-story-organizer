@@ -183,6 +183,24 @@ agents, commit bodies, PR descriptions.
   `[Unreleased]` holds only work not yet merged to `master`. Richer rationale for a change set belongs
   in the PR description, which links its commits automatically.
 
+##### Entry style
+
+`CHANGELOG.md` is append-only and never pruned, so it must stay readable at ten times its
+current length. Every entry is a line someone will scroll past for years — earn it.
+
+* **One line, one change.** One sentence, ~20 words. Needing a second sentence means the
+  detail belongs in the PR description.
+* **What changed, not how or why.** No class names, file paths, method or prop signatures —
+  unless the path *is* the change (`public/robots.txt` removed). No before/after narration,
+  no worked examples, no counts of internals.
+* **No bold lead-ins.** An entry is not a headline with a body.
+* **A normal PR is 1–5 entries.** More usually means implementation steps were listed
+  instead of user-visible changes.
+
+> [!WARNING]
+> Sections dated before `2026-08-02` predate this rule and read as PR descriptions. Do not
+> imitate them, and do not rewrite them — the history is fine where it is.
+
 
 ### Naming conventions
 

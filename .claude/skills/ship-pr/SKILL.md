@@ -25,6 +25,11 @@ invoking this, not as part of it.
    the number does not exist yet, and `pr-land.sh` stamps it onto the newest dated
    heading automatically once `gh pr create` has assigned one.
 
+   Follow **Changelog → Entry style** in `CLAUDE.md`: one line per change, ~20 words, no
+   class names or file paths, 1–5 entries for a normal PR. The rationale goes in the PR
+   body you write in step 4, not here. Sections dated before `2026-08-02` predate the rule
+   — don't copy their shape.
+
 3. **Branch.** If still on `master`, create a short kebab-case feature branch named for
    the change set (`git checkout -b <name>`). If already on a feature branch, stay on it.
 
