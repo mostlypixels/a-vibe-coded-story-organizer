@@ -23,16 +23,12 @@
             @if ($fieldOptions !== [])
                 <div>
                     <x-input-label for="field-filter" :value="__('Field')" />
-                    <select
-                        id="field-filter"
-                        name="field"
-                        class="mt-1 block border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs text-sm"
-                    >
+                    <x-select id="field-filter" name="field" class="mt-1 block text-sm">
                         <option value="">{{ __('All fields') }}</option>
                         @foreach ($fieldOptions as $value => $headline)
                             <option value="{{ $value }}" @selected($field === $value)>{{ $headline }}</option>
                         @endforeach
-                    </select>
+                    </x-select>
                 </div>
             @endif
 

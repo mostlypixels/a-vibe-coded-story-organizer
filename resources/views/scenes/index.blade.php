@@ -17,12 +17,12 @@
                     <input type="hidden" name="direction" value="{{ $direction }}">
                     <x-text-input type="text" name="search" placeholder="{{ __('Search by name...') }}" class="text-sm" :value="request('search')" />
 
-                    <select name="chapter" class="text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs">
+                    <x-select name="chapter" class="text-sm">
                         <option value="">{{ __('All chapters') }}</option>
                         @foreach ($chapters as $chapter)
                             <option value="{{ $chapter->id }}" @selected(request('chapter') == $chapter->id)>{{ $chapter->act->name }} &mdash; {{ $chapter->name }}</option>
                         @endforeach
-                    </select>
+                    </x-select>
 
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search') || request()->filled('chapter'))

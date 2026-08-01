@@ -47,6 +47,51 @@ Renders `<h1>`–`<h6>` on one shared typographic scale. Choose the level for **
 > level 2 *is* the header-title level by definition, and any other level renders a different tag
 > that CSS selector won't reach.
 
+## Form controls
+
+Three components — `x-text-input`, `x-select`, `x-textarea` — one per native tag. Each carries the
+same base string and nothing else:
+
+```
+border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs
+```
+
+Layout stays at the call site, so the component never has to guess a width or a margin:
+
+```blade
+<x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name')" required />
+
+<x-select id="act_id" name="act_id" class="mt-1 block w-full" required>
+    @foreach ($project->acts as $act)
+        <option value="{{ $act->id }}" @selected(old('act_id') == $act->id)>{{ $act->name }}</option>
+    @endforeach
+</x-select>
+
+<x-textarea id="rights" name="rights" rows="5" class="mt-1 block w-full">{{ $value }}</x-textarea>
+```
+
+| Prop | Meaning | Default |
+|------|---------|---------|
+| `disabled` | Renders the `disabled` attribute | `false` |
+
+Everything else — `id`, `name`, `type`, `rows`, `required`, `form`, `x-model`, Alpine bindings —
+flows through `$attributes`.
+
+> [!WARNING]
+> **Never hand-roll the base string on a raw `<input>`, `<select>` or `<textarea>`.** It was
+> previously retyped at 37 call sites; a form control that misses one class is invisible until
+> someone tabs into it and no focus ring appears. If a control needs to look different, add a
+> variant to the component rather than opening a fourth copy of the string.
+
+The three copies of the string (one per component) are deliberate: literal and greppable beats a
+shared `@utility` a junior reader has to chase, and the `theme-switcher` spec rewrites all three in
+one pass. `x-wysiwyg`'s no-JS fallback delegates to `x-textarea` rather than keeping a fourth copy.
+
+> [!NOTE]
+> A `<textarea>`'s content is literal — every space and newline between the tags is part of the
+> value. `x-textarea` therefore closes its opening tag hard against the slot. Keep call sites the
+> same shape: `>{{ $value }}</x-textarea>`, never on separate lines.
+
 ## Button
 
 One button for every style. Renders an `<a>` when `href` is given, otherwise a `<button>`.

@@ -12,12 +12,12 @@
 
                 <div>
                     <x-input-label for="act_id" :value="__('Act')" />
-                    <select id="act_id" name="act_id" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs" required>
+                    <x-select id="act_id" name="act_id" class="mt-1 block w-full" required>
                         <option value="">{{ __('Select an act...') }}</option>
                         @foreach ($project->acts as $act)
                             <option value="{{ $act->id }}" @selected(old('act_id') == $act->id)>{{ $act->name }}</option>
                         @endforeach
-                    </select>
+                    </x-select>
                     <x-input-error :messages="$errors->get('act_id')" class="mt-2" />
                 </div>
 

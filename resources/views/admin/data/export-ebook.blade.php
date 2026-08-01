@@ -50,17 +50,13 @@
             <form method="GET" action="{{ route('admin.data.export-ebook') }}" class="mt-6 max-w-lg flex items-end gap-3">
                 <div class="flex-1">
                     <x-input-label for="epub_project_id" :value="__('Project')" />
-                    <select
-                        id="epub_project_id"
-                        name="project"
-                        class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
-                    >
+                    <x-select id="epub_project_id" name="project" class="mt-1 block w-full">
                         @foreach ($projects as $project)
                             <option value="{{ $project->id }}" @selected($selectedProject?->id === $project->id)>
                                 {{ $project->name }}
                             </option>
                         @endforeach
-                    </select>
+                    </x-select>
                 </div>
                 <x-button variant="primary">{{ __('Load') }}</x-button>
             </form>
@@ -191,49 +187,37 @@
 
                         <div>
                             <x-input-label for="chapter_title_format" :value="__('Chapter title format')" />
-                            <select
-                                id="chapter_title_format"
-                                name="chapter_title_format"
-                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
-                            >
+                            <x-select id="chapter_title_format" name="chapter_title_format" class="mt-1 block w-full">
                                 @foreach (\App\Enums\ChapterTitleFormat::cases() as $format)
                                     <option value="{{ $format->value }}" @selected(old('chapter_title_format', $setting->chapter_title_format->value) === $format->value)>
                                         {{ $format->label() }}
                                     </option>
                                 @endforeach
-                            </select>
+                            </x-select>
                             <x-input-error :messages="$errors->get('chapter_title_format')" class="mt-2" />
                         </div>
 
                         <div>
                             <x-input-label for="table_of_contents_depth" :value="__('Table of contents depth')" />
-                            <select
-                                id="table_of_contents_depth"
-                                name="table_of_contents_depth"
-                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
-                            >
+                            <x-select id="table_of_contents_depth" name="table_of_contents_depth" class="mt-1 block w-full">
                                 @foreach (\App\Enums\TableOfContentsDepth::cases() as $depth)
                                     <option value="{{ $depth->value }}" @selected(old('table_of_contents_depth', $setting->table_of_contents_depth->value) === $depth->value)>
                                         {{ $depth->label() }}
                                     </option>
                                 @endforeach
-                            </select>
+                            </x-select>
                             <x-input-error :messages="$errors->get('table_of_contents_depth')" class="mt-2" />
                         </div>
 
                         <div>
                             <x-input-label for="divider_type" :value="__('Divider style')" />
-                            <select
-                                id="divider_type"
-                                name="divider_type"
-                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
-                            >
+                            <x-select id="divider_type" name="divider_type" class="mt-1 block w-full">
                                 @foreach (\App\Enums\DividerType::cases() as $divider)
                                     <option value="{{ $divider->value }}" @selected(old('divider_type', $setting->divider_type->value) === $divider->value)>
                                         {{ $divider->label() }}
                                     </option>
                                 @endforeach
-                            </select>
+                            </x-select>
                             <x-input-error :messages="$errors->get('divider_type')" class="mt-2" />
                         </div>
                     </fieldset>

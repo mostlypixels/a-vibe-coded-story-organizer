@@ -74,17 +74,17 @@
 
             <div x-show="mode === 'move'" class="pl-6">
                 <x-input-label for="{{ $name }}-destination" :value="__('Destination')" class="sr-only" />
-                <select
+                <x-select
                     id="{{ $name }}-destination"
                     name="{{ $destinationField }}"
                     x-bind:required="mode === 'move'"
                     x-bind:disabled="mode !== 'move'"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-ocean-500 focus:ring-ocean-500 sm:text-sm"
+                    class="mt-1 block w-full sm:text-sm"
                 >
                     @foreach ($destinations as $destination)
                         <option value="{{ $destination->id }}">{{ $destination->name }}</option>
                     @endforeach
-                </select>
+                </x-select>
             </div>
 
             <label class="flex items-start gap-2">

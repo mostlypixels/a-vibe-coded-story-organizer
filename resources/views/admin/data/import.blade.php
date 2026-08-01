@@ -44,14 +44,14 @@
 
             <div>
                 <x-input-label for="max_archive_megabytes" :value="__('Maximum archive size (MB)')" />
-                <input
+                <x-text-input
                     id="max_archive_megabytes"
                     type="number"
                     name="max_archive_megabytes"
                     min="1"
-                    value="{{ old('max_archive_megabytes', intdiv($importSetting->max_archive_kilobytes, 1024)) }}"
-                    class="mt-1 block w-32 border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
-                >
+                    :value="old('max_archive_megabytes', intdiv($importSetting->max_archive_kilobytes, 1024))"
+                    class="mt-1 block w-32"
+                />
                 <x-input-error :messages="$errors->get('max_archive_megabytes')" class="mt-2" />
             </div>
 

@@ -30,17 +30,13 @@
 
                 <div>
                     <x-input-label for="project_id" :value="__('Project')" />
-                    <select
-                        id="project_id"
-                        name="project_id"
-                        class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
-                    >
+                    <x-select id="project_id" name="project_id" class="mt-1 block w-full">
                         @foreach ($projects as $project)
                             <option value="{{ $project->id }}" @selected(old('project_id') == $project->id)>
                                 {{ $project->name }}
                             </option>
                         @endforeach
-                    </select>
+                    </x-select>
                     <x-input-error :messages="$errors->get('project_id')" class="mt-2" />
                 </div>
 

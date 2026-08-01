@@ -101,14 +101,14 @@
                 to the nearest ancestor <form>), so this is safe to always emit rather
                 than needing a conditional that would break the tag's attribute parsing.
             --}}
-            <textarea
+            <x-textarea
                 id="{{ $field }}"
                 name="{{ $field }}"
                 rows="{{ $rows }}"
                 data-hash="{{ $hash }}"
                 form="{{ $form }}"
-                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
-            >{{ $currentValue }}</textarea>
+                class="mt-1 block w-full"
+            >{{ $currentValue }}</x-textarea>
         @else
             <x-wysiwyg
                 id="{{ $field }}"
