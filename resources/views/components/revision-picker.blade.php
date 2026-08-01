@@ -78,11 +78,7 @@
     {{-- The baseline. Alpine hides it on mount; without Alpine it is the whole
          control, and the form's Compare button submits it. --}}
     <div x-show="! ready">
-        <select
-            name="{{ $side }}"
-            aria-labelledby="{{ $labelId }}"
-            class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs text-sm"
-        >
+        <x-select name="{{ $side }}" aria-labelledby="{{ $labelId }}" class="mt-1 block w-full text-sm">
             @foreach ($options as $option)
                 <option
                     value="{{ $option['id'] }}"
@@ -90,7 +86,7 @@
                     @disabled($option['disabled'])
                 >{{ $option['label'] }}</option>
             @endforeach
-        </select>
+        </x-select>
     </div>
 
     <div x-show="ready" style="display: none;">
@@ -129,7 +125,7 @@
             <div class="space-y-2 border-b border-gray-200 p-3">
                 <label class="block">
                     <span class="sr-only">{{ __('Filter saves') }}</span>
-                    <input
+                    <x-text-input
                         type="search"
                         x-ref="search"
                         x-model="query"
@@ -141,8 +137,8 @@
                         x-on:keydown.home.prevent="jump('first')"
                         x-on:keydown.end.prevent="jump('last')"
                         placeholder="{{ __('Filter saves…') }}"
-                        class="block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-ocean-500 focus:ring-ocean-500"
-                    >
+                        class="block w-full text-sm"
+                    />
                 </label>
 
                 <label class="flex items-center gap-2 text-sm text-gray-700">
@@ -158,12 +154,12 @@
                 <div class="flex items-center gap-2 text-sm">
                     <label class="flex-1">
                         <span class="sr-only">{{ __('From date') }}</span>
-                        <input type="date" x-model="dateFrom" x-on:change="onFilterChange()" class="block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-ocean-500 focus:ring-ocean-500">
+                        <x-text-input type="date" x-model="dateFrom" x-on:change="onFilterChange()" class="block w-full text-sm" />
                     </label>
                     <span class="text-gray-400" aria-hidden="true">&rarr;</span>
                     <label class="flex-1">
                         <span class="sr-only">{{ __('To date') }}</span>
-                        <input type="date" x-model="dateTo" x-on:change="onFilterChange()" class="block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-ocean-500 focus:ring-ocean-500">
+                        <x-text-input type="date" x-model="dateTo" x-on:change="onFilterChange()" class="block w-full text-sm" />
                     </label>
                 </div>
             </div>

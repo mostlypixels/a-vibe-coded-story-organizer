@@ -17,6 +17,23 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-01 — Collapse the form controls into components, drop two dead fonts (#70)
+
+### Added
+
+- `x-select` and `x-textarea` components, completing the set alongside `x-text-input`.
+
+### Changed
+
+- 37 raw `<select>`, `<textarea>` and `<input>` elements that retyped the shared border/focus/shape
+  class string now use the components. `x-wysiwyg`'s no-JS fallback delegates to `x-textarea`.
+
+### Removed
+
+- The Figtree and Instrument Sans `@font-face` blocks and their 12 `.woff2` files. Left over from
+  the Laravel starter kit; `--font-sans` names only Atkinson Hyperlegible Next, and no rendered page
+  could reach either family.
+
 ## 2026-08-01 — Port the build to Tailwind 4 (#69)
 
 ### Changed

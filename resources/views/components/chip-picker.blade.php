@@ -87,15 +87,15 @@
     </div>
 
     <div class="relative">
-        <input
+        <x-text-input
             type="text"
             x-model="query"
             @keydown.enter.prevent="addFromInput()"
             @keydown.escape="query = ''"
             placeholder="{{ $placeholder }}"
-            class="block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
+            class="block w-full"
             autocomplete="off"
-        >
+        />
 
         <ul x-show="results.length || canAddFreeText" x-transition style="display: none;" class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg">
             <template x-for="opt in results" :key="opt.value">

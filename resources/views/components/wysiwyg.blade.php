@@ -42,15 +42,15 @@
     class="mt-1"
 >
     {{-- No-JS fallback: submits raw (still sanitized server-side); Alpine hides it once the editor mounts. --}}
-    <textarea
+    <x-textarea
         x-ref="textarea"
         id="{{ $id }}"
         name="{{ $name }}"
         rows="{{ $rows }}"
-        @disabled($disabled)
+        :disabled="$disabled"
         x-show="! ready"
-        {{ $attributes->merge(['class' => 'block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs']) }}
-    >{{ $value }}</textarea>
+        {{ $attributes->merge(['class' => 'block w-full']) }}
+    >{{ $value }}</x-textarea>
 
     {{-- Editor UI: hidden until Alpine mounts (style="display:none", no x-cloak). --}}
     <div x-show="ready" style="display: none;">

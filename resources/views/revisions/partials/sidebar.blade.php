@@ -36,14 +36,14 @@
     @if ($tree->isNotEmpty())
         <div class="mt-4">
             <label for="revision-filter" class="sr-only">{{ __('Filter revised items') }}</label>
-            <input
+            <x-text-input
                 id="revision-filter"
                 type="search"
                 x-model="filter"
                 placeholder="{{ __('Filter…') }}"
                 autocomplete="off"
-                class="w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs text-sm"
-            >
+                class="w-full text-sm"
+            />
         </div>
     @endif
 

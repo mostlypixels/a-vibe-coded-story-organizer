@@ -16,12 +16,12 @@
                     <input type="hidden" name="direction" value="{{ $direction }}">
                     <x-text-input type="text" name="search" placeholder="{{ __('Search by name or alias…') }}" class="text-sm" :value="request('search')" />
 
-                    <select name="tag" class="text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs">
+                    <x-select name="tag" class="text-sm">
                         <option value="">{{ __('All tags') }}</option>
                         @foreach ($tags as $tag)
                             <option value="{{ $tag->id }}" @selected(request('tag') == $tag->id)>{{ $tag->name }}</option>
                         @endforeach
-                    </select>
+                    </x-select>
 
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search') || request()->filled('tag'))

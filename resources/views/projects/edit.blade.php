@@ -46,11 +46,11 @@
             <div class="mt-4 space-y-6">
                 <div>
                     <x-input-label for="language" :value="__('Language')" />
-                    <select id="language" name="language" form="project-edit-form" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs" required>
+                    <x-select id="language" name="language" form="project-edit-form" class="mt-1 block w-full" required>
                         @foreach (\App\Enums\BookLanguage::cases() as $language)
                             <option value="{{ $language->value }}" @selected(old('language', $project->language->value) === $language->value)>{{ $language->label() }}</option>
                         @endforeach
-                    </select>
+                    </x-select>
                     <x-input-error :messages="$errors->get('language')" class="mt-2" />
                 </div>
 

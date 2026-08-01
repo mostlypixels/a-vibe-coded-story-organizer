@@ -51,15 +51,15 @@
 
             <div>
                 <x-input-label for="retention_days" :value="__('Retention window (days)')" />
-                <input
+                <x-text-input
                     id="retention_days"
                     type="number"
                     name="retention_days"
                     min="7"
                     max="3650"
-                    value="{{ old('retention_days', $retentionDays) }}"
-                    class="mt-1 block w-32 border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
-                >
+                    :value="old('retention_days', $retentionDays)"
+                    class="mt-1 block w-32"
+                />
                 <x-input-error :messages="$errors->get('retention_days')" class="mt-2" />
             </div>
 

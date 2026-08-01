@@ -82,17 +82,17 @@
                         <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
                             @csrf
                             <label class="sr-only" for="add_event_{{ $attribute->id }}">{{ __('Add period at event') }}</label>
-                            <select
+                            <x-select
                                 id="add_event_{{ $attribute->id }}"
                                 name="start_event_id"
-                                class="w-40 shrink-0 border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs text-sm"
+                                class="w-40 shrink-0 text-sm"
                                 required
                             >
                                 <option value="">{{ __('Add period at…') }}</option>
                                 @foreach ($events as $event)
                                     <option value="{{ $event->id }}" @selected(old('start_event_id') == $event->id)>{{ $event->title }} — {{ $event->event_datetime->format('M j, Y') }}</option>
                                 @endforeach
-                            </select>
+                            </x-select>
                             <label class="sr-only" for="add_value_{{ $attribute->id }}">{{ __('New value') }}</label>
                             <x-text-input
                                 id="add_value_{{ $attribute->id }}"

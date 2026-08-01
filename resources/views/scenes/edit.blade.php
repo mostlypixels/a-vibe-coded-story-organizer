@@ -19,22 +19,22 @@
 
                     <div>
                         <x-input-label for="chapter_id" :value="__('Chapter')" />
-                        <select id="chapter_id" name="chapter_id" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs" required>
+                        <x-select id="chapter_id" name="chapter_id" class="mt-1 block w-full" required>
                             @foreach ($chapters as $chapter)
                                 <option value="{{ $chapter->id }}" @selected(old('chapter_id', $scene->chapter_id) == $chapter->id)>{{ $chapter->act->name }} &mdash; {{ $chapter->name }}</option>
                             @endforeach
-                        </select>
+                        </x-select>
                         <x-input-error :messages="$errors->get('chapter_id')" class="mt-2" />
                     </div>
 
                     <div x-data="{ newEvent: {{ old('new_event_title') ? 'true' : 'false' }} }">
                         <x-input-label for="event_id" :value="__('Happens during')" />
-                        <select id="event_id" name="event_id" x-bind:disabled="newEvent" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs disabled:bg-gray-100 disabled:text-gray-400">
+                        <x-select id="event_id" name="event_id" x-bind:disabled="newEvent" class="mt-1 block w-full disabled:bg-gray-100 disabled:text-gray-400">
                             <option value="">{{ __('— Not assigned —') }}</option>
                             @foreach ($events as $event)
                                 <option value="{{ $event->id }}" @selected(old('event_id', $scene->event_id) == $event->id)>{{ $event->title }} &mdash; {{ $event->event_datetime->format('M j, Y') }}</option>
                             @endforeach
-                        </select>
+                        </x-select>
                         <x-input-error :messages="$errors->get('event_id')" class="mt-2" />
 
                         <button type="button" @click="newEvent = ! newEvent" class="mt-2 text-sm text-ocean-600 hover:text-ocean-800">
@@ -66,11 +66,11 @@
 
                     <div>
                         <x-input-label for="status" :value="__('Status')" />
-                        <select id="status" name="status" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs" required>
+                        <x-select id="status" name="status" class="mt-1 block w-full" required>
                             @foreach (\App\Enums\SceneStatus::cases() as $status)
                                 <option value="{{ $status->value }}" @selected(old('status', $scene->status->value) === $status->value)>{{ $status->label() }}</option>
                             @endforeach
-                        </select>
+                        </x-select>
                         <x-input-error :messages="$errors->get('status')" class="mt-2" />
                     </div>
 
@@ -113,11 +113,11 @@
 
                         <div>
                             <x-input-label for="duration" :value="__('Link duration')" />
-                            <select id="duration" name="duration" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs">
+                            <x-select id="duration" name="duration" class="mt-1 block w-full">
                                 @foreach ($shareDurations as $label => $value)
                                     <option value="{{ $value }}" @selected(old('duration', $shareDefaultDuration) === $value)>{{ $label }}</option>
                                 @endforeach
-                            </select>
+                            </x-select>
                             <p class="mt-1 text-sm text-gray-500">
                                 {{ __('Creates a public, read-only link. Choose how long it stays valid: :choices.', ['choices' => implode(', ', array_keys($shareDurations))]) }}
                             </p>
