@@ -18,7 +18,7 @@
 
             <!-- Page Heading -->
             @isset($header)
-                <header class="bg-ocean-700 shadow [&_h2]:text-sm [&_h2]:text-white [&_a]:text-aqua-100 [&_a:hover]:text-white">
+                <header class="bg-ocean-700 shadow-xs [&_h2]:text-sm [&_h2]:text-white [&_a]:text-aqua-100 [&_a:hover]:text-white">
                     {{-- Same full-bleed treatment as layouts.navigation: spans the
                          viewport with a px-2 gutter rather than the max-w-7xl box
                          <main> still uses. --}}

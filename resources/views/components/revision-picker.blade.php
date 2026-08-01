@@ -81,7 +81,7 @@
         <select
             name="{{ $side }}"
             aria-labelledby="{{ $labelId }}"
-            class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm text-sm"
+            class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs text-sm"
         >
             @foreach ($options as $option)
                 <option
@@ -110,7 +110,7 @@
             x-on:keydown.escape.prevent="closePanel()"
             x-on:keydown.home.prevent="open && jump('first')"
             x-on:keydown.end.prevent="open && jump('last')"
-            class="mt-1 flex w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm shadow-sm focus:border-ocean-500 focus:outline-none focus:ring-1 focus:ring-ocean-500"
+            class="mt-1 flex w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm shadow-2xs focus:border-ocean-500 focus:outline-hidden focus:ring-1 focus:ring-ocean-500"
         >
             <span class="truncate" x-text="selected ? selected.label : @js(__('Choose a save'))"></span>
             <svg class="h-4 w-4 shrink-0 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -141,7 +141,7 @@
                         x-on:keydown.home.prevent="jump('first')"
                         x-on:keydown.end.prevent="jump('last')"
                         placeholder="{{ __('Filter saves…') }}"
-                        class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-ocean-500 focus:ring-ocean-500"
+                        class="block w-full rounded-md border-gray-300 text-sm shadow-2xs focus:border-ocean-500 focus:ring-ocean-500"
                     >
                 </label>
 
@@ -150,7 +150,7 @@
                         type="checkbox"
                         x-model="manualOnly"
                         x-on:change="onFilterChange()"
-                        class="rounded border-gray-300 text-ocean-600 focus:ring-ocean-500"
+                        class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500"
                     >
                     {{ __('Manual saves only') }}
                 </label>
@@ -158,12 +158,12 @@
                 <div class="flex items-center gap-2 text-sm">
                     <label class="flex-1">
                         <span class="sr-only">{{ __('From date') }}</span>
-                        <input type="date" x-model="dateFrom" x-on:change="onFilterChange()" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-ocean-500 focus:ring-ocean-500">
+                        <input type="date" x-model="dateFrom" x-on:change="onFilterChange()" class="block w-full rounded-md border-gray-300 text-sm shadow-2xs focus:border-ocean-500 focus:ring-ocean-500">
                     </label>
                     <span class="text-gray-400" aria-hidden="true">&rarr;</span>
                     <label class="flex-1">
                         <span class="sr-only">{{ __('To date') }}</span>
-                        <input type="date" x-model="dateTo" x-on:change="onFilterChange()" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-ocean-500 focus:ring-ocean-500">
+                        <input type="date" x-model="dateTo" x-on:change="onFilterChange()" class="block w-full rounded-md border-gray-300 text-sm shadow-2xs focus:border-ocean-500 focus:ring-ocean-500">
                     </label>
                 </div>
             </div>

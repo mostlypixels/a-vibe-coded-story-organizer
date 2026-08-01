@@ -35,14 +35,14 @@
                             {{-- Square corners, full bar height: the block reads as part of the
                                  bar's structure rather than a control floating on it. --}}
                             @if ($navigation->hasProject())
-                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-ocean-900 px-4 text-sm font-semibold leading-5 text-white hover:bg-ocean-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-aqua-300 transition ease-in-out duration-150">
+                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-ocean-900 px-4 text-sm font-semibold leading-5 text-white hover:bg-ocean-800 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-aqua-300 transition ease-in-out duration-150">
                                     {{ $navigation->project->name }}
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
                                 </button>
                             @else
                                 {{-- Nothing chosen yet: same block, lighter fill and a
                                      dimmer label. --}}
-                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-ocean-800 px-4 text-sm font-semibold leading-5 text-aqua-100 hover:bg-ocean-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-aqua-300 transition ease-in-out duration-150">
+                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-ocean-800 px-4 text-sm font-semibold leading-5 text-aqua-100 hover:bg-ocean-700 hover:text-white focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-aqua-300 transition ease-in-out duration-150">
                                     {{ __('Choose a project') }}
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
                                 </button>
@@ -77,7 +77,7 @@
             <div class="hidden sm:flex sm:items-center sm:ms-6 sm:pe-2">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-aqua-100 bg-transparent hover:text-white focus:outline-none transition ease-in-out duration-150">
+                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-aqua-100 bg-transparent hover:text-white focus:outline-hidden transition ease-in-out duration-150">
                             <div>{{ Auth::user()->name }}</div>
 
                             <div class="ms-1">
@@ -115,7 +115,7 @@
             {{-- pe-2, not the old -me-2: that negative margin existed to cancel the
                  bar's px-2, which is gone — it would now push the button off-screen. --}}
             <div class="pe-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-aqua-100 hover:text-white hover:bg-navy-800 focus:outline-none focus:bg-navy-800 focus:text-white transition duration-150 ease-in-out">
+                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-aqua-100 hover:text-white hover:bg-navy-800 focus:outline-hidden focus:bg-navy-800 focus:text-white transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

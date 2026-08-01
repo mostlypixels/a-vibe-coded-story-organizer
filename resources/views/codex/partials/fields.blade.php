@@ -102,7 +102,7 @@
                 <img src="{{ $cover->url() }}" alt="{{ $entry->name }}" class="w-full rounded-md border border-gray-200 object-cover">
 
                 <label class="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                    <input type="checkbox" name="remove_media[]" value="{{ $cover->id }}" class="rounded border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                    <input type="checkbox" name="remove_media[]" value="{{ $cover->id }}" class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500">
                     {{ __('Remove cover') }}
                 </label>
             @endif
@@ -158,7 +158,7 @@
                     :class="activeTab === 'images'
                         ? 'border-ocean-500 text-gray-900'
                         : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'"
-                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-sm transition ease-in-out duration-150"
+                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-xs transition ease-in-out duration-150"
                 >
                     {{ __('Reference images') }}
                 </button>
@@ -177,7 +177,7 @@
                     :class="activeTab === 'files'
                         ? 'border-ocean-500 text-gray-900'
                         : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'"
-                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-sm transition ease-in-out duration-150"
+                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-xs transition ease-in-out duration-150"
                 >
                     {{ __('Reference files') }}
                 </button>
@@ -190,7 +190,7 @@
             aria-labelledby="tab-reference-images"
             tabindex="0"
             x-show="activeTab === 'images'"
-            class="mt-6 focus:outline-none"
+            class="mt-6 focus:outline-hidden"
         >
             @if ($referenceImages->isNotEmpty())
                 <ul class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -199,12 +199,12 @@
                             <button
                                 type="button"
                                 @click="lightbox = { url: @js($image->url()), alt: @js($image->original_name) }"
-                                class="block w-full focus:outline-none focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-md"
+                                class="block w-full focus:outline-hidden focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-md"
                             >
                                 <img src="{{ $image->url() }}" alt="{{ $image->original_name }}" class="w-full aspect-square rounded-md border border-gray-200 object-cover">
                             </button>
                             <label class="mt-1 flex items-center gap-1 text-xs text-gray-600">
-                                <input type="checkbox" name="remove_media[]" value="{{ $image->id }}" class="rounded border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                                <input type="checkbox" name="remove_media[]" value="{{ $image->id }}" class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500">
                                 {{ __('Remove') }}
                             </label>
                         </li>
@@ -228,7 +228,7 @@
             tabindex="0"
             x-show="activeTab === 'files'"
             style="display: none"
-            class="mt-6 focus:outline-none"
+            class="mt-6 focus:outline-hidden"
         >
             @if ($referenceFiles->isNotEmpty())
                 <ul class="space-y-2">
@@ -238,14 +238,14 @@
                                 <button
                                     type="button"
                                     @click="filePreview = { url: @js($file->url()), name: @js($file->original_name) }"
-                                    class="truncate text-ocean-600 hover:text-ocean-800 focus:outline-none focus:ring-2 focus:ring-ocean-500 rounded-sm"
+                                    class="truncate text-ocean-600 hover:text-ocean-800 focus:outline-hidden focus:ring-2 focus:ring-ocean-500 rounded-xs"
                                 >
                                     {{ $file->original_name }}
                                 </button>
                                 <x-icon-download-button :href="$file->url()" :download="$file->original_name" class="shrink-0" />
                             </span>
                             <label class="flex shrink-0 items-center gap-1 text-xs text-gray-600">
-                                <input type="checkbox" name="remove_media[]" value="{{ $file->id }}" class="rounded border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                                <input type="checkbox" name="remove_media[]" value="{{ $file->id }}" class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500">
                                 {{ __('Remove') }}
                             </label>
                         </li>

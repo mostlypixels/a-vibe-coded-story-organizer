@@ -46,7 +46,7 @@
                                 id="baseline_{{ $attribute->id }}"
                                 name="value"
                                 type="text"
-                                class="flex-1 min-w-[10rem]"
+                                class="flex-1 min-w-40"
                                 :value="old('value', $sheet['baseline']?->value)"
                                 :placeholder="__('Starting value')"
                             />
@@ -68,7 +68,7 @@
                                         id="period_{{ $period->id }}"
                                         name="value"
                                         type="text"
-                                        class="flex-1 min-w-[10rem]"
+                                        class="flex-1 min-w-40"
                                         :value="old('value', $period->value)"
                                     />
                                     <x-icon-save-button />
@@ -85,7 +85,7 @@
                             <select
                                 id="add_event_{{ $attribute->id }}"
                                 name="start_event_id"
-                                class="w-40 shrink-0 border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm text-sm"
+                                class="w-40 shrink-0 border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs text-sm"
                                 required
                             >
                                 <option value="">{{ __('Add period at…') }}</option>
@@ -98,7 +98,7 @@
                                 id="add_value_{{ $attribute->id }}"
                                 name="value"
                                 type="text"
-                                class="flex-1 min-w-[10rem]"
+                                class="flex-1 min-w-40"
                                 :value="old('value')"
                                 :placeholder="__('New value')"
                             />

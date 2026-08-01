@@ -16,7 +16,7 @@
           empty
             x-table-empty :colspan="N" (no-results message)
 --}}
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+<div class="bg-white overflow-hidden shadow-2xs sm:rounded-lg">
     <table {{ $attributes->merge(['class' => 'min-w-full divide-y divide-gray-200']) }}>
         @isset($head)
             <thead class="bg-sun-400">

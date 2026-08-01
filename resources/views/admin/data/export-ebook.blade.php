@@ -53,7 +53,7 @@
                     <select
                         id="epub_project_id"
                         name="project"
-                        class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+                        class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs"
                     >
                         @foreach ($projects as $project)
                             <option value="{{ $project->id }}" @selected($selectedProject?->id === $project->id)>
@@ -106,7 +106,7 @@
                                         name="{{ $field }}"
                                         value="1"
                                         @checked(old($field, $setting->{$field}))
-                                        class="mt-1 rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                                        class="mt-1 rounded-xs border-gray-300 text-ocean-600 shadow-2xs focus:ring-ocean-500"
                                     >
                                     <span class="text-sm text-gray-700">{{ $label }}</span>
                                 </label>
@@ -139,7 +139,7 @@
                                         name="{{ $field }}"
                                         value="1"
                                         @checked(old($field, $setting->{$field}))
-                                        class="mt-1 rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                                        class="mt-1 rounded-xs border-gray-300 text-ocean-600 shadow-2xs focus:ring-ocean-500"
                                     >
                                     <span class="text-sm text-gray-700">
                                         {{ $info['label'] }}
@@ -168,7 +168,7 @@
                                         name="{{ $field }}"
                                         value="1"
                                         @checked(old($field, $setting->{$field}))
-                                        class="mt-1 rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                                        class="mt-1 rounded-xs border-gray-300 text-ocean-600 shadow-2xs focus:ring-ocean-500"
                                     >
                                     <span class="text-sm text-gray-700">
                                         {{ $info['label'] }}: <em>{{ $info['value'] ?: __('not set') }}</em>
@@ -194,7 +194,7 @@
                             <select
                                 id="chapter_title_format"
                                 name="chapter_title_format"
-                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs"
                             >
                                 @foreach (\App\Enums\ChapterTitleFormat::cases() as $format)
                                     <option value="{{ $format->value }}" @selected(old('chapter_title_format', $setting->chapter_title_format->value) === $format->value)>
@@ -210,7 +210,7 @@
                             <select
                                 id="table_of_contents_depth"
                                 name="table_of_contents_depth"
-                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs"
                             >
                                 @foreach (\App\Enums\TableOfContentsDepth::cases() as $depth)
                                     <option value="{{ $depth->value }}" @selected(old('table_of_contents_depth', $setting->table_of_contents_depth->value) === $depth->value)>
@@ -226,7 +226,7 @@
                             <select
                                 id="divider_type"
                                 name="divider_type"
-                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+                                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs"
                             >
                                 @foreach (\App\Enums\DividerType::cases() as $divider)
                                     <option value="{{ $divider->value }}" @selected(old('divider_type', $setting->divider_type->value) === $divider->value)>
@@ -249,7 +249,7 @@
                                 value="1"
                                 x-model="appendixOpen"
                                 @checked(old('include_codex_appendix', $setting->include_codex_appendix))
-                                class="mt-1 rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                                class="mt-1 rounded-xs border-gray-300 text-ocean-600 shadow-2xs focus:ring-ocean-500"
                             >
                             <span class="text-sm text-gray-700">{{ __('Include codex appendix') }}</span>
                         </label>
@@ -267,7 +267,7 @@
                                         name="appendix_entry_types[]"
                                         value="{{ $type->value }}"
                                         @checked(in_array($type->value, $checkedTypes, true))
-                                        class="rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                                        class="rounded-xs border-gray-300 text-ocean-600 shadow-2xs focus:ring-ocean-500"
                                     >
                                     <span class="text-sm text-gray-700">{{ $type->pluralLabel() }}</span>
                                 </label>
@@ -282,7 +282,7 @@
                                     name="appendix_include_images"
                                     value="1"
                                     @checked(old('appendix_include_images', $setting->appendix_include_images))
-                                    class="mt-1 rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                                    class="mt-1 rounded-xs border-gray-300 text-ocean-600 shadow-2xs focus:ring-ocean-500"
                                 >
                                 <span class="text-sm text-gray-700">{{ __('Include images') }}</span>
                             </label>
@@ -339,7 +339,7 @@
 
                 <p class="mt-4 text-xs text-gray-500">
                     {{ __('For full EPUB conformance verification, validate the downloaded file with the official') }}
-                    <a href="https://www.w3.org/publishing/epubcheck/" class="text-ocean-600 underline hover:text-ocean-800 focus:outline-none focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-sm" target="_blank" rel="noopener">
+                    <a href="https://www.w3.org/publishing/epubcheck/" class="text-ocean-600 underline hover:text-ocean-800 focus:outline-hidden focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-xs" target="_blank" rel="noopener">
                         {{ __('epubcheck') }}
                     </a>
                     {{ __('tool.') }}

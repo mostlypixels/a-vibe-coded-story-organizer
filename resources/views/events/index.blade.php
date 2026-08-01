@@ -17,7 +17,7 @@
                     <input type="hidden" name="direction" value="{{ $direction }}">
                     <x-text-input type="text" name="search" placeholder="{{ __('Search by title...') }}" class="text-sm" :value="request('search')" />
 
-                    <select name="plotline" class="text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm">
+                    <select name="plotline" class="text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs">
                         <option value="">{{ __('All plotlines') }}</option>
                         @foreach ($project->plotlines as $plotline)
                             <option value="{{ $plotline->id }}" @selected(request('plotline') == $plotline->id)>{{ $plotline->name }}</option>

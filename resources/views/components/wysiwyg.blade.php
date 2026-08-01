@@ -49,12 +49,12 @@
         rows="{{ $rows }}"
         @disabled($disabled)
         x-show="! ready"
-        {{ $attributes->merge(['class' => 'block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm']) }}
+        {{ $attributes->merge(['class' => 'block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs']) }}
     >{{ $value }}</textarea>
 
     {{-- Editor UI: hidden until Alpine mounts (style="display:none", no x-cloak). --}}
     <div x-show="ready" style="display: none;">
-        <div class="overflow-hidden rounded-md border border-gray-300 shadow-sm focus-within:border-ocean-500 focus-within:ring-1 focus-within:ring-ocean-500">
+        <div class="overflow-hidden rounded-md border border-gray-300 shadow-2xs focus-within:border-ocean-500 focus-within:ring-1 focus-within:ring-ocean-500">
             @unless ($disabled)
                 <div class="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1" role="toolbar" aria-label="{{ __('Formatting') }}">
                     {{-- Cluster 1: Headings, collapsed into a dropdown. The trigger's

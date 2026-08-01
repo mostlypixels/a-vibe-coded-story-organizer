@@ -19,14 +19,14 @@
              the Back button means what it looks like it means. A native <select>
              is right here: a handful of options, no search, and it is
              keyboard-operable and screen-reader-announced for free. --}}
-        <form method="GET" class="bg-white shadow-sm rounded-lg px-6 py-4 flex flex-wrap items-end gap-4">
+        <form method="GET" class="bg-white shadow-2xs rounded-lg px-6 py-4 flex flex-wrap items-end gap-4">
             @if ($fieldOptions !== [])
                 <div>
                     <x-input-label for="field-filter" :value="__('Field')" />
                     <select
                         id="field-filter"
                         name="field"
-                        class="mt-1 block border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm text-sm"
+                        class="mt-1 block border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs text-sm"
                     >
                         <option value="">{{ __('All fields') }}</option>
                         @foreach ($fieldOptions as $value => $headline)
@@ -55,7 +55,7 @@
                     name="manual"
                     value="1"
                     @checked($manualOnly)
-                    class="rounded border-gray-300 text-ocean-600 focus:ring-ocean-500"
+                    class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500"
                 >
                 <span class="text-sm text-gray-700">{{ __('Manual saves only') }}</span>
             </label>
@@ -72,7 +72,7 @@
         </form>
 
         @if ($savePoints->isEmpty())
-            <div class="bg-white shadow-sm rounded-lg px-6 py-10 text-center text-gray-500">
+            <div class="bg-white shadow-2xs rounded-lg px-6 py-10 text-center text-gray-500">
                 @if ($field !== null || $label !== '' || $manualOnly)
                     <p class="font-medium text-gray-600">{{ __('No saves match these filters.') }}</p>
                     <p class="mt-1 text-sm">{{ __('Try clearing them to see the whole history.') }}</p>

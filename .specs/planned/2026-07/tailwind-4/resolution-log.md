@@ -40,6 +40,11 @@ Resolved in the planning grill, 2026-07-31.
   instead.
 - **`admin/appearance` docblock corrected, page untouched.** Its "no later task enriches it"
   claim is falsified by `display-configurator`.
+- **Task 10's `standing-issues.md` needs an entry for the border shim itself**, not only the
+  two intended visual changes: the `@layer base` rule in `resources/css/app.css` restoring
+  v3's `gray-200` border default is a deliberate, temporary accepted difference from v4's own
+  behaviour, removed when the theme-switcher spec lands `--color-border`. Flagged here (task
+  05) so task 10 doesn't have to rediscover it.
 
 ## Deviations from the spec/plan
 
@@ -54,7 +59,70 @@ Corrections to the expanded docs, found by probing Tailwind 4.3.3 directly durin
   actual gap is `vendor/…/Pagination/resources/views`, rendered by `revisions/index.blade.php`
   via `->links()`.
 - **86 `theme()` calls, not 81.** 81 was the line count; five lines carry two calls.
+- **The codemod already wrote the border shim (task 05's deliverable) into `app.css`.** It
+  emits its own `@layer base` rule setting `border-color: var(--color-gray-200, currentcolor)`
+  with a generic comment. Task 01 accepts the codemod diff wholesale, so it is in the tree
+  now: task 05 must *rework that rule's comment* (self-explaining, names spec 2 as its
+  removal) rather than add a second one.
+- **The codemod rewrote 85 of the 86 `theme()` calls.** One survives at `app.css:598`
+  (`theme('borderRadius.full')`). Task 04 is a much smaller audit than planned, but it still
+  owns that line and the correctness of the other 85.
+- **The `var()` guard (02) only flags references with no fallback.** A literal reading of
+  "fail on `references - declarations`" flags several Tailwind-core preflight variables that
+  are *never* declared anywhere by design (`--default-font-feature-settings`,
+  `--default-mono-font-feature-settings`, `--tw-empty`, etc.) — they exist purely as
+  `var(--x, fallback)` extension points, and the browser uses the fallback rather than
+  dropping anything. The guard therefore only treats a bare `var(--x)` (no second argument) as
+  dangling; `var(--x, fallback)` is excluded from the reference set. `@property --x { ... }`
+  is also accepted as a declaration (Tailwind emits its `--tw-*` internals that way, not via
+  `--x:`).
+
+- **Codemod kept a redundant `@source` for `storage/framework/views/*.php`.** Task 03's own
+  table says to drop it (compiled output of `resources/views`, already auto-detected); the
+  codemod left it in anyway. Removed — `npm run build` output shrank slightly, no class lost
+  (pagination and `.prose` utilities confirmed still present).
+- **Task 04's mapping table is wrong about `borderRadius.full`: there is no `--radius-full`.**
+  v4's radius scale stops at `--radius-xs … --radius-4xl`; `rounded-full` is hard-coded to
+  `calc(infinity * 1px)` (emitted as `3.40282e38px`) with no theme variable behind it. Writing
+  `var(--radius-full)` would have dangled. `.revision-diff .diff-note` therefore carries the
+  literal `calc(infinity * 1px)`, with a comment saying why, so it stays identical to the
+  `rounded-full` badge component it mirrors. Spec 2 cannot make this one themeable without
+  inventing its own variable.
+- **Spacing is `--spacing(N)`, not the literal `calc(var(--spacing) * N)` the table names.**
+  The codemod used v4's CSS function form; it compiles to exactly `calc(var(--spacing) * N)`
+  (verified in the built output), so it is themeable and was left as written. Read the table
+  row as naming the semantics, not the source spelling.
+
+- **`--radius` dangling `var()` confirmed, left for task 04.** Task 02's guard already flags it
+  (`css-build.test.js`, 1 failing assertion); task 02's own scope note says fixing it is task
+  04's job, so it stays red through task 03 despite that task's verification bullet implying
+  the guard should pass at this checkpoint — read that bullet as "passes once 04 lands," not
+  literally at 03.
+
+- **`NavigationTest.php` hard-coded `border-flame-500`/`focus:border-flame-600` strings.**
+  Task 06 didn't list this file, but five assertions across
+  `test_the_story_trigger_reflects_the_active_section`,
+  `assertTriggerIsActive`/`assertTriggerIsNotActive`, and the responsive-menu regex in the
+  revisions-highlighting test matched the literal v3 class name. Updated all five to
+  `border-nav-active` alongside the component changes — the green suite would not have caught
+  the class rename otherwise (it fully round-tripped: the old string is just no longer in the
+  rendered HTML, string match silently stops passing to failing, not to erroring).
 
 ## Issues → resolutions
 
-_None yet._
+- **A `git checkout -- resources/css/app.css` run while cleaning up a temporary test fixture
+  during task 02 discarded task 01's entire uncommitted rewrite** (task 01's diff was never
+  committed, per the "leave changes in the working tree" convention, so `checkout` silently
+  reverted it to `HEAD`'s v3 file — no warning, since git has no way to distinguish "revert my
+  scratch edit" from "revert the last real change" on an uncommitted file). Recovered by
+  restoring `tailwind.config.js`/`postcss.config.js` from `HEAD`, installing
+  `tailwindcss@3.4.19`/`postcss`/`autoprefixer` alongside v4 (temporarily pinning
+  `package.json`'s `tailwindcss` to `3.4.19` — the upgrade tool refuses a version mismatch
+  between `package.json` and `node_modules`), and re-running
+  `npx @tailwindcss/upgrade --force`. The regenerated `app.css` reproduced the same diff stats,
+  the same border shim, the same single surviving `theme('borderRadius.full')` at line 598,
+  and the same dangling `--radius` reference as the pre-incident build — confirmed a faithful
+  reconstruction rather than a fresh, differently-lossy migration. **Anyone touching this
+  feature before the final commit should assume every task's changes are uncommitted and
+  fragile**: a bulk `git checkout`/`restore`/`reset` anywhere in the tree can silently destroy
+  a prior task's work with no error, because there is no commit to fall back to.

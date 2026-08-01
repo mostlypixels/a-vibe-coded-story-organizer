@@ -14,7 +14,7 @@
         'indigo'  => 'bg-ocean-100 text-ocean-800',
     ][$variant];
 
-    $shape = $pill ? 'rounded-full' : 'rounded';
+    $shape = $pill ? 'rounded-full' : 'rounded-xs';
 @endphp
 
 <span {{ $attributes->merge(['class' => "inline-flex items-center px-2 py-0.5 text-xs font-medium whitespace-nowrap $shape $variants"]) }}>

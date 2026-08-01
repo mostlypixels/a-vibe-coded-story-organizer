@@ -33,7 +33,7 @@
                     <select
                         id="project_id"
                         name="project_id"
-                        class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+                        class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs"
                     >
                         @foreach ($projects as $project)
                             <option value="{{ $project->id }}" @selected(old('project_id') == $project->id)>
@@ -52,7 +52,7 @@
                             name="include_images"
                             value="1"
                             @checked(old('include_images', true))
-                            class="rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                            class="rounded-xs border-gray-300 text-ocean-600 shadow-2xs focus:ring-ocean-500"
                         >
                         <span class="ms-2 text-sm text-gray-700">{{ __('Include images & files') }}</span>
                     </label>
@@ -67,7 +67,7 @@
                             name="include_revisions"
                             value="1"
                             @checked(old('include_revisions'))
-                            class="rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                            class="rounded-xs border-gray-300 text-ocean-600 shadow-2xs focus:ring-ocean-500"
                         >
                         <span class="ms-2 text-sm text-gray-700">{{ __('Include revision history') }}</span>
                     </label>

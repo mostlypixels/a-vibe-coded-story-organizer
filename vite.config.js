@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
     plugins: [
@@ -7,6 +8,10 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.js'],
             refresh: true,
         }),
+        // Tailwind 4 compiles the stylesheet inside Vite; there is no PostCSS
+        // config any more. Must come after laravel() so it sees the CSS entry
+        // point the Laravel plugin declares.
+        tailwindcss(),
     ],
     server: {
         // Bind-mounted source does not deliver filesystem events into a Linux

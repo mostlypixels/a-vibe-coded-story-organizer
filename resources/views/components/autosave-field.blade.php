@@ -107,7 +107,7 @@
                 rows="{{ $rows }}"
                 data-hash="{{ $hash }}"
                 form="{{ $form }}"
-                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+                class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs"
             >{{ $currentValue }}</textarea>
         @else
             <x-wysiwyg

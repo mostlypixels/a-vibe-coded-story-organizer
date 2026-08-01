@@ -8,7 +8,7 @@
     $hasHeader = isset($header) || filled($title);
 @endphp
 
-<div {{ $attributes->merge(['class' => 'bg-white overflow-hidden shadow-sm sm:rounded-lg']) }}>
+<div {{ $attributes->merge(['class' => 'bg-white overflow-hidden shadow-2xs sm:rounded-lg']) }}>
     @if ($hasHeader)
         <div class="border-b border-gray-200 px-6 py-4">
             @isset($header)

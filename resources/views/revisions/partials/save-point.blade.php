@@ -23,7 +23,7 @@
     Two levels — the save itself, then the fields it touched — which is why the
     history list is a <ul> of these rather than a table. See App\Support\SavePoint.
 --}}
-<article class="bg-white shadow-sm rounded-lg overflow-hidden" aria-labelledby="save-{{ $point->saveId }}">
+<article class="bg-white shadow-2xs rounded-lg overflow-hidden" aria-labelledby="save-{{ $point->saveId }}">
     <div class="border-b border-gray-200 px-6 py-3 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2 text-sm">
             <span id="save-{{ $point->saveId }}" class="font-medium text-gray-800">

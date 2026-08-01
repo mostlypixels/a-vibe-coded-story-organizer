@@ -22,7 +22,7 @@
     <div class="mt-2 space-y-2">
         @foreach ($types as $type)
             <label class="flex items-center gap-2">
-                <input type="checkbox" name="applies_to[]" value="{{ $type->value }}" @checked(in_array($type->value, $selectedTypes)) class="rounded border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                <input type="checkbox" name="applies_to[]" value="{{ $type->value }}" @checked(in_array($type->value, $selectedTypes)) class="rounded-xs border-gray-300 text-ocean-600 focus:ring-ocean-500">
                 <span>{{ $type->label() }}</span>
             </label>
         @endforeach

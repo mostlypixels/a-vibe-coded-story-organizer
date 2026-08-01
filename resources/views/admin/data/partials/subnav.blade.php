@@ -9,7 +9,7 @@
                     variant="tab"
                     :href="$link['href']"
                     :active="$link['active']"
-                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium rounded-sm focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2"
+                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium rounded-xs focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2"
                 >
                     {{ $link['label'] }}
                 </x-sidebar-link>

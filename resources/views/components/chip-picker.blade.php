@@ -93,7 +93,7 @@
             @keydown.enter.prevent="addFromInput()"
             @keydown.escape="query = ''"
             placeholder="{{ $placeholder }}"
-            class="block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+            class="block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-2xs"
             autocomplete="off"
         >
 

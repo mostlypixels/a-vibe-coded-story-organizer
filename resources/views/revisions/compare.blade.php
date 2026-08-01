@@ -17,7 +17,7 @@
     <div class="space-y-6">
         @if ($from === null || $to === null)
             {{-- Fewer than two save points: there is no pair to be had yet. --}}
-            <div class="bg-white shadow-sm rounded-lg px-6 py-10 text-center text-gray-500">
+            <div class="bg-white shadow-2xs rounded-lg px-6 py-10 text-center text-gray-500">
                 <p class="font-medium text-gray-600">{{ __('Nothing to compare yet.') }}</p>
                 <p class="mt-1 text-sm">{{ __('This entity needs at least two saves before they can be compared.') }}</p>
             </div>
@@ -31,7 +31,7 @@
                  Each picker is a native <select> that the Alpine combobox
                  replaces once it mounts; the surrounding form is what makes the
                  no-JS baseline work. --}}
-            <form method="GET" class="bg-white shadow-sm rounded-lg px-6 py-4">
+            <form method="GET" class="bg-white shadow-2xs rounded-lg px-6 py-4">
                 @if ($field !== null)
                     <input type="hidden" name="field" value="{{ $field }}">
                 @endif
@@ -125,7 +125,7 @@
                     </x-card>
                 </article>
             @empty
-                <div class="bg-white shadow-sm rounded-lg px-6 py-10 text-center text-gray-500">
+                <div class="bg-white shadow-2xs rounded-lg px-6 py-10 text-center text-gray-500">
                     <p class="font-medium text-gray-600">{{ __('These two saves left every field identical.') }}</p>
                 </div>
             @endforelse

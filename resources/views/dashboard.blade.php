@@ -15,7 +15,7 @@
     --}}
     <div class="space-y-6" x-data="{ view: localStorage.getItem('dashboardProjectView') || 'list' }" x-effect="localStorage.setItem('dashboardProjectView', view)">
             <div class="flex items-center justify-between">
-                <div class="inline-flex rounded-md shadow-sm" role="group" aria-label="{{ __('View') }}">
+                <div class="inline-flex rounded-md shadow-2xs" role="group" aria-label="{{ __('View') }}">
                     <button
                         type="button"
                         @click="view = 'list'"
@@ -52,9 +52,9 @@
                             <td class="px-4 py-3">
                                 <a href="{{ route('projects.edit', $project) }}">
                                     @if ($project->cover_image)
-                                        <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-10 w-10 rounded object-cover border border-gray-200">
+                                        <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-10 w-10 rounded-xs object-cover border border-gray-200">
                                     @else
-                                        <div class="h-10 w-10 rounded bg-gray-100 border border-gray-200" aria-hidden="true"></div>
+                                        <div class="h-10 w-10 rounded-xs bg-gray-100 border border-gray-200" aria-hidden="true"></div>
                                     @endif
                                 </a>
                             </td>
@@ -86,7 +86,7 @@
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4">
                     @endif
 
-                    <a href="{{ route('projects.edit', $project) }}" class="block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+                    <a href="{{ route('projects.edit', $project) }}" class="block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xs hover:shadow-md transition-shadow">
                         @if ($project->cover_image)
                             <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-24 w-full object-cover">
                         @else
