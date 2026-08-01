@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-01 — Collapse the form controls into components, drop two dead fonts
+## 2026-08-01 — Collapse the form controls into components, drop two dead fonts (#70)
 
 ### Added
 
