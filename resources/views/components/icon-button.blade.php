@@ -1,4 +1,4 @@
-@props(['as' => 'button', 'variant' => 'outline', 'icon', 'label'])
+@props(['as' => 'button', 'variant' => 'outline-solid', 'icon', 'label'])
 
 {{--
     The shared shape of every icon-only control in the app: a square 1.5-unit
@@ -25,7 +25,7 @@
 @php
     $variants = [
         // The default outline: the app's navy on white.
-        'outline' => 'border border-navy-500 bg-transparent text-navy-500 hover:bg-navy-50',
+        'outline-solid' => 'border border-navy-500 bg-transparent text-navy-500 hover:bg-navy-50',
         // Destructive actions only (delete, revoke) — red is a warning, not a colour choice.
         'danger' => 'border border-red-600 bg-transparent text-red-600 hover:bg-red-50',
         // For placement over a dark or photographic backdrop (e.g. the reference-image

@@ -16,7 +16,7 @@
                     <input type="hidden" name="direction" value="{{ $direction }}">
                     <x-text-input type="text" name="search" placeholder="{{ __('Search by name or alias…') }}" class="text-sm" :value="request('search')" />
 
-                    <select name="tag" class="text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm">
+                    <select name="tag" class="text-sm border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs">
                         <option value="">{{ __('All tags') }}</option>
                         @foreach ($tags as $tag)
                             <option value="{{ $tag->id }}" @selected(request('tag') == $tag->id)>{{ $tag->name }}</option>
@@ -46,9 +46,9 @@
                         <td class="px-4 py-3">
                             <a href="{{ route('codex.edit', $entry) }}">
                                 @if ($entry->cover)
-                                    <img src="{{ $entry->cover->url() }}" alt="{{ $entry->name }}" class="h-10 w-10 rounded object-cover border border-gray-200">
+                                    <img src="{{ $entry->cover->url() }}" alt="{{ $entry->name }}" class="h-10 w-10 rounded-sm object-cover border border-gray-200">
                                 @else
-                                    <div class="h-10 w-10 rounded bg-gray-100 border border-gray-200" aria-hidden="true"></div>
+                                    <div class="h-10 w-10 rounded-sm bg-gray-100 border border-gray-200" aria-hidden="true"></div>
                                 @endif
                             </a>
                         </td>

@@ -18,7 +18,14 @@
 
             <!-- Page Heading -->
             @isset($header)
-                <header class="bg-ocean-700 shadow [&_h2]:text-sm [&_h2]:text-white [&_a]:text-aqua-100 [&_a:hover]:text-white">
+                {{-- [&_h2]:leading-5 restores what Tailwind 3 did implicitly: there,
+                     `text-sm` set font-size *and* line-height in one rule, and the
+                     descendant selector out-specified the `leading-tight` the page
+                     headings carry. In v4 `leading-*` sets a custom property on the
+                     element itself, which always wins over an ancestor's, so the
+                     line-height has to be stated here to keep the header band at its
+                     original height. --}}
+                <header class="bg-ocean-700 shadow-sm [&_h2]:text-sm [&_h2]:leading-5 [&_h2]:text-white [&_a]:text-aqua-100 [&_a:hover]:text-white">
                     {{-- Same full-bleed treatment as layouts.navigation: spans the
                          viewport with a px-2 gutter rather than the max-w-7xl box
                          <main> still uses. --}}

@@ -46,7 +46,7 @@
             <div class="mt-4 space-y-6">
                 <div>
                     <x-input-label for="language" :value="__('Language')" />
-                    <select id="language" name="language" form="project-edit-form" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm" required>
+                    <select id="language" name="language" form="project-edit-form" class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs" required>
                         @foreach (\App\Enums\BookLanguage::cases() as $language)
                             <option value="{{ $language->value }}" @selected(old('language', $project->language->value) === $language->value)>{{ $language->label() }}</option>
                         @endforeach
@@ -118,7 +118,7 @@
                     <img src="{{ $coverUrl }}" alt="{{ $project->name }}" class="w-full rounded-md border border-gray-200 object-cover">
 
                     <label class="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                        <input type="checkbox" name="remove_cover_image" value="1" form="project-edit-form" class="rounded border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                        <input type="checkbox" name="remove_cover_image" value="1" form="project-edit-form" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
                         {{ __('Remove cover image') }}
                     </label>
                 @endif

@@ -1,11 +1,12 @@
 @props(['active' => false])
 
 {{-- The button that opens a primary-nav dropdown: label + chevron, underlined
-     in flame when its section is active. Mirrors nav-link's active look so a
-     dropdown section and a plain link read the same in the bar. --}}
+     in the nav-active colour when its section is active. Mirrors nav-link's
+     active look so a dropdown section and a plain link read the same in the
+     bar. --}}
 <button {{ $attributes->class([
-    'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 hover:text-white focus:outline-none transition duration-150 ease-in-out',
-    'text-white border-flame-500' => $active,
+    'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 hover:text-white focus:outline-hidden transition duration-150 ease-in-out',
+    'text-white border-nav-active' => $active,
     'text-aqua-100 border-transparent' => ! $active,
 ]) }}>
     {{ $slot }}

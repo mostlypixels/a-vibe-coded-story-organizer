@@ -79,7 +79,7 @@
                     name="{{ $destinationField }}"
                     x-bind:required="mode === 'move'"
                     x-bind:disabled="mode !== 'move'"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-ocean-500 focus:ring-ocean-500 sm:text-sm"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-ocean-500 focus:ring-ocean-500 sm:text-sm"
                 >
                     @foreach ($destinations as $destination)
                         <option value="{{ $destination->id }}">{{ $destination->name }}</option>

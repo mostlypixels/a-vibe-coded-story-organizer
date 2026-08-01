@@ -35,7 +35,7 @@
     // These must be merged into $attributes rather than written as a second
     // class="" — duplicate attributes are not merged by the browser, they are
     // dropped, which silently cost these buttons their sizing and padding.
-    $classes = 'inline-flex min-w-[2rem] items-center justify-center rounded px-2 py-1 text-sm font-medium'
+    $classes = 'inline-flex min-w-8 items-center justify-center rounded-sm px-2 py-1 text-sm font-medium'
         .($isActiveExpression ? '' : ' text-gray-600 hover:bg-gray-200');
 @endphp
 

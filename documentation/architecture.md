@@ -578,6 +578,28 @@ way to tell two open projects apart.
   open, and a share link should not put the project's name in the visitor's tab.
 - The app name is never a literal in a template — change it in `APP_NAME`.
 
+## CSS build pipeline (Tailwind 4)
+
+`@tailwindcss/vite` compiles the stylesheet directly inside Vite — there is no PostCSS config
+and no `tailwind.config.js`; `resources/css/app.css`'s `@theme` block is the single source of
+theme values, and Tailwind auto-detects classes by scanning the project instead of reading a
+`content` array.
+
+- **Theme tokens are runtime CSS custom properties** (`--color-ocean-500`, `--radius-sm`, …),
+  not compile-time JS values. That is what lets `theme-switcher` (spec 2) override them per
+  request instead of rebuilding the stylesheet.
+- **Browser floor: Safari 16.4+ / Chrome 111+ / Firefox 128+** — v4 relies on `@property`,
+  `color-mix()`, and cascade layers. Documented, not enforced at runtime: this is a self-hosted
+  app with a small, known user base.
+- A base-layer shim in `app.css` restores v3's default border colour; see that feature's
+  `standing-issues.md` for why, and what removes it.
+
+> [!WARNING]
+> Scanning does not stop at templates — a utility class **named in Markdown prose** becomes a
+> real rule in the stylesheet. `.specs/` and `documentation/` are therefore excluded via
+> `@source not` in `app.css`. Add the same exclusion for any new folder that discusses class
+> names, or the build ships utilities nothing renders.
+
 ## Where things live
 
 | Concern | Location |

@@ -26,7 +26,7 @@
                     name="enabled"
                     value="1"
                     @checked(old('enabled', $setting->enabled))
-                    class="mt-1 rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                    class="mt-1 rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
                 >
                 <div>
                     <x-input-label for="enabled" :value="__('Hide this site from search engines')" />
@@ -52,7 +52,7 @@
                     id="user_agent_whitelist"
                     name="user_agent_whitelist"
                     rows="5"
-                    class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+                    class="mt-1 block w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
                 >{{ $whitelistText }}</textarea>
                 <p class="mt-1 text-sm text-gray-600">
                     {{ __('One user-agent term per line (e.g. Googlebot). These crawlers stay allowed while hidden mode is on.') }}

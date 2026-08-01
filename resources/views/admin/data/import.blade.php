@@ -50,7 +50,7 @@
                     name="max_archive_megabytes"
                     min="1"
                     value="{{ old('max_archive_megabytes', intdiv($importSetting->max_archive_kilobytes, 1024)) }}"
-                    class="mt-1 block w-32 border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm"
+                    class="mt-1 block w-32 border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs"
                 >
                 <x-input-error :messages="$errors->get('max_archive_megabytes')" class="mt-2" />
             </div>
@@ -62,7 +62,7 @@
                     name="run_in_background"
                     value="1"
                     @checked(old('run_in_background', $importSetting->run_in_background))
-                    class="mt-1 rounded border-gray-300 text-ocean-600 shadow-sm focus:ring-ocean-500"
+                    class="mt-1 rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
                 >
                 <div>
                     <x-input-label for="run_in_background" :value="__('Process imports in the background')" />

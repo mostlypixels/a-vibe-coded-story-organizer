@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-01 — Port the build to Tailwind 4 (#69)
+
+### Changed
+
+- Build moved to Tailwind 4; PostCSS and Autoprefixer removed — `@tailwindcss/vite` compiles
+  the stylesheet directly inside Vite.
+- The active nav link now shows a focus ring, closing a keyboard-accessibility gap the v3
+  design left open.
+- Browser floor: Safari 16.4+ / Chrome 111+ / Firefox 128+, documented not enforced.
+
 ## 2026-07-31 — AVCSO: a project picker, page titles, and a demo seed worth showing (#67)
 
 ### Added

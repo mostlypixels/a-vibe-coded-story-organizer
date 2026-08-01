@@ -38,7 +38,7 @@
     role="alert"
     {{ $attributes->merge(['class' => "flex items-start gap-3 rounded-md border px-4 py-3 {$variants['container']}"]) }}
 >
-    <svg class="h-5 w-5 flex-shrink-0 {{ $variants['icon'] }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+    <svg class="h-5 w-5 shrink-0 {{ $variants['icon'] }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
         <path fill-rule="evenodd" d="{{ $variants['path'] }}" clip-rule="evenodd" />
     </svg>
 
@@ -50,7 +50,7 @@
     </div>
 
     @if ($dismissible)
-        <button type="button" @click="show = false" class="-mr-1 flex-shrink-0 rounded-md p-1 opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current" title="{{ __('Dismiss') }}">
+        <button type="button" @click="show = false" class="-mr-1 shrink-0 rounded-md p-1 opacity-70 hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-current" title="{{ __('Dismiss') }}">
             <span class="sr-only">{{ __('Dismiss') }}</span>
             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />

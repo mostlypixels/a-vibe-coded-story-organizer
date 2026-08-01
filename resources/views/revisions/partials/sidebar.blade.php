@@ -42,7 +42,7 @@
                 x-model="filter"
                 placeholder="{{ __('Filter…') }}"
                 autocomplete="off"
-                class="w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-sm text-sm"
+                class="w-full border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs text-sm"
             >
         </div>
     @endif
