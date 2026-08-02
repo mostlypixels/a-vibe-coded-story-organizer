@@ -35,6 +35,9 @@ class FormControlComponentTest extends TestCase
      */
     private const BASE_CLASSES = [
         'bg-surface-raised',
+        // A form control does not inherit the page's `color` — without this it keeps the
+        // browser's near-black and a dark preset renders dark text on a dark box.
+        'text-content',
         'border-border-strong',
         'focus:border-focus',
         'focus:ring-focus',

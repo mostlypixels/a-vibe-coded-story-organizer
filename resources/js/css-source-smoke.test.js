@@ -51,6 +51,18 @@ describe('built CSS contains utilities from every source the app depends on', ()
         expect(css).toContain('.prose');
     });
 
+    /**
+     * The plugin hard-codes its own grey scale, so `prose` content ignores the active
+     * theme even though its container sets a token — bold text stayed near-black and
+     * vanished under the dark preset. `app.css` re-points the scale at the role tokens;
+     * this asserts the override survived the build, since nothing else would notice.
+     */
+    it('re-points Tailwind Typography at the role tokens', () => {
+        // The built CSS is minified — no space after the colon.
+        expect(css).toContain('--tw-prose-bold:var(--color-content)');
+        expect(css).toContain('--tw-prose-links:var(--color-link)');
+    });
+
     it('loads @tailwindcss/forms via @plugin', () => {
         expect(css).toContain('input:where([type=checkbox])');
     });

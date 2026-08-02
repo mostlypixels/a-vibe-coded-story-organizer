@@ -11,8 +11,8 @@
     and obvious to a junior reader, and the theme-switcher spec rewrites all three
     in one pass anyway.
 
-    `bg-surface-raised` is new here — see <x-text-input> for why.
+    `bg-surface-raised` and `text-content` are new here — see <x-text-input> for why.
 --}}
-<select @disabled($disabled) {{ $attributes->merge(['class' => 'bg-surface-raised border-border-strong focus:border-focus focus:ring-focus rounded-md shadow-xs']) }}>
+<select @disabled($disabled) {{ $attributes->merge(['class' => 'bg-surface-raised text-content border-border-strong focus:border-focus focus:ring-focus rounded-md shadow-xs']) }}>
     {{ $slot }}
 </select>

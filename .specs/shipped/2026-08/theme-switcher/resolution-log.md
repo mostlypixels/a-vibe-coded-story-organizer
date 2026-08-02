@@ -494,3 +494,28 @@ implementing this feature. Read it before extending the feature.
   PHPUnit calls a provider before `setUp()`, so no application is booted and the helper is not
   available. The test body still resolves through `ThemePreset::fromSlug()`, so the ceiling comes
   from the real code path — only the list of slugs and pairs is read off disk.
+
+- **Tailwind Typography's `prose` scale is a second, hidden colour system, and the sweep never
+  touched it.** The plugin paints `strong`, headings, links, `code`, quotes and the table/quote
+  borders from its own `--tw-prose-*` variables — hard-coded greys, `--tw-prose-bold` near-black
+  — so those elements ignore the `text-content-muted` every `prose` callsite sets. Bold text was
+  effectively invisible under the dark preset. Found by the user on the project view, after the
+  full plan was green. Fixed by re-pointing the whole scale at role tokens in `app.css`, unlayered
+  and after the `@plugin` line so it wins on source order at equal specificity. Two things this
+  says for later: `NoHueNamedColorsTest` cannot see a colour the app never names, and a
+  `prose-invert` usage would reintroduce the bug, since the `--tw-prose-invert-*` half is still
+  the plugin's greys.
+
+- **A form control does not inherit the page's `color`.** Task 06 gave the three controls
+  `bg-surface-raised` after the dark preset showed them as white boxes, but set no foreground —
+  so they kept the browser's near-black default and the dark preset rendered dark text on a dark
+  box. The same miss as the background one, one property over, and it survived because
+  `FormControlComponentTest` asserts the class list the component *has*, which cannot notice a
+  class it never had. `text-content` and `placeholder:text-content-subtle` added to all three,
+  and to the test's `BASE_CLASSES`.
+
+- **Neither of these was reachable by the contrast matrix or the computed-style gate.**
+  `ThemeContrastTest` measures pairs the vocabulary declares, and neither the plugin's greys nor
+  a UA default is a token. Task 11's gate compares Daylight against `master`, where both bugs
+  render identically correct — they only appear under a preset the gate never runs. The dark
+  preset remains the only thing that finds this class of bug, and it finds it by eye.
