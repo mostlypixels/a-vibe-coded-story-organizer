@@ -534,3 +534,39 @@ implementing this feature. Read it before extending the feature.
   Consequence for Daylight: anything that was inheriting black now renders `content` (navy-900) —
   the same app-wide shift task 11's diff already accepted for `text-gray-800`/`-900`, arriving by
   inheritance rather than by rename.
+
+- **A crawl-and-measure audit found what `ThemeContrastTest` structurally cannot.** The matrix
+  measures the pairs the vocabulary *declares*; it says nothing about what the app actually
+  paints. `dark-contrast-audit.mjs` (next to the browser driver) walks ~45 pages and measures
+  every text element against its effective background, as painted. Three real findings, two
+  fixed here:
+  - **`x-word-count` rendered `content-subtle` on the page-header band** in `projects/show` —
+    2.25:1 in Daylight, 2.14:1 in Dusk. The token is authored against `surface`; the nav family
+    has its own foregrounds precisely so a component on the band does not borrow one. Added a
+    `band` variant (`nav-content-muted`) rather than letting the caller hand-patch a class.
+    The `Edit Project` link beside it has the same shape of mistake (`content-muted` on
+    `nav-raised`) but clears the floor, so it was left alone.
+  - **The table sort arrow was `table-header-content/70`** — 4.11:1 on the dark preset, 3.88:1
+    on Dusk. Alpha on a legible token is not automatically legible. It renders at full strength
+    now: the arrow is the only thing stating which column is sorted and which way, so it is not
+    decoration that may fade.
+
+- **The status tokens are never measured as foregrounds, and `warning` fails badly — not fixed,
+  needs a decision.** `PAIRS` maps `danger`/`success`/`warning`/`info` only as *backgrounds*
+  (`warning` → `warning-content`). Measured the other direction, on the three surfaces:
+
+  | token | Daylight | Dusk | Low-glare |
+  |---|---|---|---|
+  | `warning` | **1.74–1.92** | **1.55–1.96** | 4.83–5.68 |
+  | `danger` | 4.44–4.89 | 4.44–5.63 | 4.61–5.42 |
+  | `success` | 4.55–5.01 | 3.89–4.93 | 5.13–6.03 |
+  | `info` | 4.78–5.26 | 4.22–5.36 | 4.82–5.67 |
+
+  Yellow on white cannot clear 4.5 while staying yellow, so this is not a value to re-author —
+  it is the wrong token for the job. `<status>-surface-content` already exists, is authored to
+  be read, and `app.css`'s callout labels already use it for exactly this reason (logged in task
+  10). The candidates painting a solid status token as text or icon are `x-alert`'s icon and
+  border, `x-scene-status-badge`, `x-input-error`, and the `x-button`/`x-icon-button` outline
+  variants. Deferred rather than swept: it changes how every alert and status badge looks in all
+  three presets, which is an authoring pass, and the plan's own rule is that a vocabulary
+  decision is not made alone.

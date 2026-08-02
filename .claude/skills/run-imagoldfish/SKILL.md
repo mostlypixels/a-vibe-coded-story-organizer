@@ -172,6 +172,29 @@ string for each, and writes `chromium_cli/diff/*.json` (gitignored) for drilling
 * **Default states only** — no hover, focus or disabled, and no page reached by a
   redirect (flash-message alerts, for one). Those still need eyes.
 
+### Finding unreadable text under a theme
+
+`dark-contrast-audit.mjs` (next to `driver.mjs`) crawls the same ~45 pages on one running
+instance and measures every text-bearing element against its effective background,
+reporting anything under its WCAG floor. Use it after a change to colours, tokens or a
+preset — and note it measures *as painted*, so it catches what `ThemeContrastTest` cannot:
+an element that names no colour at all, or one painted with a token the vocabulary never
+paired with that background.
+
+```bash
+# set the dev user's theme_slug to the preset under test, then:
+cd .claude/skills/run-imagoldfish
+node dark-contrast-audit.mjs --origin http://localhost:8000
+```
+
+* **Check the `--color-primary as painted` line**, same as the diff harness — it is the
+  only proof of which preset the run measured.
+* Findings are grouped by colour pair, since one unthemed rule shows up on many pages.
+* **`sr-only` text is reported but is not a real failure** — it is clipped to a pixel.
+  What matters is whether the *visible* thing at that colour (usually an icon) clears
+  the 3:1 non-text floor.
+* Default states only, like the diff harness: no hover, focus or disabled.
+
 ### Snags that cost time
 
 * **No session carries between driver invocations.** Every script logs in from

@@ -5,7 +5,7 @@
                 {{ $project->name }}
             </x-heading>
             <div class="flex items-center gap-4">
-                <x-word-count :count="$wordCount" />
+                <x-word-count :count="$wordCount" variant="band" />
                 <a href="{{ route('projects.edit', $project) }}" class="text-sm text-content-muted hover:text-content">
                     {{ __('Edit Project') }}
                 </a>
