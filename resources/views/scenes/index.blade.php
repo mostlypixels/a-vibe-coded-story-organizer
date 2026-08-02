@@ -59,7 +59,7 @@
                             @if ($scene->event)
                                 <span class="text-content-muted">{{ $scene->event->title }}</span>
                             @else
-                                <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-danger px-2 py-0.5 text-xs font-medium text-danger">{{ __('Unassigned') }}</span>
+                                <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-danger px-2 py-0.5 text-xs font-medium text-danger-surface-content">{{ __('Unassigned') }}</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right text-sm text-content-muted whitespace-nowrap">

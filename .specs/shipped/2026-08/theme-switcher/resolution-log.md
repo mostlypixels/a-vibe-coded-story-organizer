@@ -570,3 +570,31 @@ implementing this feature. Read it before extending the feature.
   variants. Deferred rather than swept: it changes how every alert and status badge looks in all
   three presets, which is an authoring pass, and the plan's own rule is that a vocabulary
   decision is not made alone.
+
+- **The status-foreground gap is closed: `<status>-surface-content` is the status text token,
+  everywhere.** Measured, the solid `<status>` token as a foreground reads 4.44:1 (danger) to
+  **1.74:1** (warning) on light surfaces, and 1.85/1.34 for warning even on its *own* tint —
+  so `x-alert`'s warning icon was effectively invisible in Daylight and Dusk, on the one variant
+  most needing to be seen. `<status>-surface-content` reads 5.6–10.4 against every surface in
+  every preset, so it becomes the single status foreground: `x-alert`'s icon (all four variants,
+  for consistency rather than patching warning alone), `x-input-error`, `x-auth-session-status`,
+  the profile verification notice, `x-string-list`'s remove glyph, and the "Unassigned" pill in
+  `scenes/index` + `story/index`.
+
+  Left as solid `<status>`: every fill with its declared `-content` partner (`x-button`'s
+  danger/success/warning), all borders (`x-alert`'s, the callout edges, the diff markers) since
+  borders are exempt by design and carry nothing the icon and tint do not, and `x-icon-button`'s
+  `danger` variant, whose glyph is non-text and clears the 3:1 floor at 4.44.
+
+- **`PAIRS` now declares `<status>-surface-content` against all three surfaces, which is what
+  stops this recurring.** The gap was structural, not an oversight: the matrix measures declared
+  pairs, and nothing declared what happens when a status foreground lands on the page. Naming
+  those twelve combinations puts them under `ThemeContrastTest` permanently (+40 assertions).
+
+- **Declaring them forced a real re-authoring in low-glare-dark.** The four `-surface-content`
+  values sat at the ramp's 200 step (L=0.806) and measured up to 10.92:1 on `surface-sunken` —
+  over that preset's own 10.0 ceiling, which had never applied because the pair was undeclared.
+  Moved to L=0.77, off-step deliberately: every declared combination now lands inside the band
+  (max 9.66) while holding 6.25:1 on the tint. This is the ceiling doing its job rather than a
+  value being wrong — and a reminder that adding a `PAIRS` row can change a preset, so the two
+  belong in the same change.

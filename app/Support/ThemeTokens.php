@@ -123,15 +123,33 @@ final class ThemeTokens
      * @var array<string, list<string>>
      */
     public const PAIRS = [
+        /*
+         * The `<status>-surface-content` entries are not a mistake. Those tokens are
+         * named for the tint they were authored against, but the app also paints them
+         * straight onto the page — a validation error, an "Unassigned" pill, a
+         * "verification link sent" line. They are the *only* status foreground that
+         * may go there: solid `<status>` is the value chosen to carry white on a fill,
+         * and as text on a light surface it reads 4.44:1 (danger) down to 1.74:1
+         * (warning). Declaring them here is what puts that under the matrix, so the
+         * next preset cannot quietly re-break it.
+         */
         'surface' => [
             'content', 'content-muted', 'content-subtle', 'link', 'link-hover',
             'accent', 'border', 'border-strong', 'focus',
+            'danger-surface-content', 'success-surface-content',
+            'warning-surface-content', 'info-surface-content',
         ],
         'surface-raised' => [
             'content', 'content-muted', 'content-subtle', 'link', 'link-hover',
             'accent', 'border', 'border-strong', 'focus',
+            'danger-surface-content', 'success-surface-content',
+            'warning-surface-content', 'info-surface-content',
         ],
-        'surface-sunken' => ['content', 'content-muted', 'content-subtle', 'link', 'link-hover'],
+        'surface-sunken' => [
+            'content', 'content-muted', 'content-subtle', 'link', 'link-hover',
+            'danger-surface-content', 'success-surface-content',
+            'warning-surface-content', 'info-surface-content',
+        ],
         'surface-overlay' => ['content', 'content-muted', 'content-subtle', 'link', 'link-hover'],
 
         'primary' => ['primary-content'],

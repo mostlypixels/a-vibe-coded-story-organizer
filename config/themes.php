@@ -361,22 +361,30 @@ return [
 
                 // Each status is a mid-lightness fill carrying dark text, plus a dark
                 // tinted panel carrying light text.
+                //
+                // The four `-surface-content` values sit at L=0.77, off the ramp's own
+                // 200 step (0.806). They are not only the tint's foreground: the app also
+                // paints them straight onto the page, so `ThemeTokens::PAIRS` declares
+                // them against all three surfaces — and at 0.806 they read up to 10.92:1
+                // on `surface-sunken`, over this preset's 10.0 ceiling. 0.77 lands every
+                // combination inside the band (max 9.66) while holding 6.25:1 on the tint,
+                // well clear of the 4.5 floor.
                 'danger' => 'oklch(0.642 0.12 27)',               // danger-400
                 'danger-content' => 'oklch(0.15 0.018 250)',      // neutral-950
                 'danger-surface' => 'oklch(0.314 0.12 27)',       // danger-800
-                'danger-surface-content' => 'oklch(0.806 0.1104 27)', // danger-200
+                'danger-surface-content' => 'oklch(0.77 0.1104 27)',  // between danger-200/300
                 'success' => 'oklch(0.642 0.12 150)',             // success-400
                 'success-content' => 'oklch(0.15 0.018 250)',     // neutral-950
                 'success-surface' => 'oklch(0.314 0.0865 150)',   // success-800
-                'success-surface-content' => 'oklch(0.806 0.12 150)', // success-200
+                'success-surface-content' => 'oklch(0.77 0.12 150)',  // between success-200/300
                 'warning' => 'oklch(0.642 0.12 86)',              // warning-400
                 'warning-content' => 'oklch(0.15 0.018 250)',     // neutral-950
                 'warning-surface' => 'oklch(0.314 0.0643 86)',    // warning-800
-                'warning-surface-content' => 'oklch(0.806 0.12 86)', // warning-200
+                'warning-surface-content' => 'oklch(0.77 0.12 86)',  // between warning-200/300
                 'info' => 'oklch(0.642 0.12 263)',                // info-400
                 'info-content' => 'oklch(0.15 0.018 250)',        // neutral-950
                 'info-surface' => 'oklch(0.314 0.12 263)',        // info-800
-                'info-surface-content' => 'oklch(0.806 0.0971 263)', // info-200
+                'info-surface-content' => 'oklch(0.77 0.0971 263)',  // between info-200/300
             ],
         ],
 

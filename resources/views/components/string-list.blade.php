@@ -25,7 +25,7 @@
                     placeholder="{{ $placeholder }}"
                     class="block w-full text-sm"
                 />
-                <button type="button" @click="items.splice(index, 1)" class="text-sm text-danger hover:text-danger/80" aria-label="{{ $removeLabel }}">&times;</button>
+                <button type="button" @click="items.splice(index, 1)" class="text-sm text-danger-surface-content hover:text-danger-surface-content/80" aria-label="{{ $removeLabel }}">&times;</button>
             </div>
         </template>
     </div>

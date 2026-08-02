@@ -23,6 +23,26 @@ anything is painted on). Both are named in `ThemeTokens::DECORATIVE`, which the 
 matrix (`ThemeContrastTest`) skips. `border-strong` and `focus` are *not* exempt — they do
 identify a control or its state, so they keep the 3:1 floor.
 
+### Status colours: four tokens, and only one of them is text
+
+Each status has `<status>` (the solid fill), `<status>-content` (what rides on that fill),
+`<status>-surface` (the tinted panel) and `<status>-surface-content` (what rides on the
+tint). The trap is reaching for the one whose name sounds right:
+
+> [!WARNING]
+> **`text-warning` is not "warning-coloured text".** `<status>` is chosen to carry white on
+> a button; painted as text it reads 4.44:1 (`danger`) down to **1.74:1** (`warning`) on a
+> light surface. Yellow on white cannot be re-authored into legibility — it is the wrong
+> token, not a bad value.
+
+`<status>-surface-content` is the status foreground for text and icons **wherever they
+land**, including straight on the page: a validation error, an "Unassigned" pill, an
+alert's icon. It measures 5.6–10.4 against every surface in every preset, and `PAIRS`
+declares it against all three surfaces so the matrix keeps it that way.
+
+Solid `<status>` is for fills and borders only. `x-button`'s `danger` variant
+(`bg-danger text-danger-content`) is the shape to copy.
+
 ## The flat vocabulary — no shade suffixes
 
 There is `bg-primary`, never `bg-primary-600`. Ramps (`php artisan theme:ramp`, below) are
