@@ -2,6 +2,10 @@
 status: draft
 ---
 
-# Archive And Delete
+# Active project persistence
 
-action to allow the user to archive entities and restore them
+The active project is persisted in the database, to the user's account (to a nullable field).
+
+The project navigation is shown whenever a project is active.
+
+Field is set back to null when the project is deleted.
