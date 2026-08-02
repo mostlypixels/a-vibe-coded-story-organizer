@@ -519,3 +519,18 @@ implementing this feature. Read it before extending the feature.
   a UA default is a token. Task 11's gate compares Daylight against `master`, where both bugs
   render identically correct — they only appear under a preset the gate never runs. The dark
   preset remains the only thing that finds this class of bug, and it finds it by eye.
+
+- **The `<body>` named no text colour in two of the four layouts, so the app's fallback was the
+  browser's black.** `layouts/guest` and `welcome` set `text-content`; `layouts/app` and
+  `layouts/public` — every authenticated page and the share page — did not. Any element that
+  does not name a colour therefore inherited black: correct-looking in Daylight, invisible on a
+  dark surface. The revision compare view's "What changed" panel is where the user hit it
+  (`.revision-diff` styles size and overflow but never colour, because it never needed to).
+  This is the root cause the two earlier fixes in this section were each a symptom of, and it is
+  the reason they kept appearing one component at a time. `LayoutTextColorTest` now asserts all
+  four themed layouts set the class; the EPUB and print-book layouts are excluded, since they
+  render to a file with its own stylesheet and never see a preset.
+
+  Consequence for Daylight: anything that was inheriting black now renders `content` (navy-900) —
+  the same app-wide shift task 11's diff already accepted for `text-gray-800`/`-900`, arriving by
+  inheritance rather than by rename.

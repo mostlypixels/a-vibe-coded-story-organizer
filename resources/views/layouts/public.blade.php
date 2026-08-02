@@ -16,7 +16,8 @@
 
         <x-theme-style />
     </head>
-    <body class="font-sans antialiased">
+    {{-- See `layouts/app` for why `text-content` matters here rather than being cosmetic. --}}
+    <body class="font-sans text-content antialiased">
         {{-- No navigation and no user chrome: this page is link-only and the
              visitor is unauthenticated. A wide, comfortable reading column. --}}
         <div class="min-h-screen bg-surface">

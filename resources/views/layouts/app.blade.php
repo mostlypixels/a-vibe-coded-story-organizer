@@ -14,7 +14,11 @@
 
         <x-theme-style />
     </head>
-    <body class="font-sans antialiased">
+    {{-- `text-content` is the page's default voice, and it is load-bearing rather than
+         cosmetic: without it the body falls back to the browser's black, so anything that
+         forgets to name a colour is invisible under a dark preset. `layouts/guest` and
+         `welcome` already set it; this and `layouts/public` were the two that did not. --}}
+    <body class="font-sans text-content antialiased">
         <div class="min-h-screen bg-surface">
             @include('layouts.navigation')
 
