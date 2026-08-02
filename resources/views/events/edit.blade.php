@@ -25,7 +25,7 @@
                     <x-input-label for="event_datetime" :value="__('Date & Time')" />
                     <x-text-input id="event_datetime" name="event_datetime" type="datetime-local" class="mt-1 block w-full" :value="old('event_datetime', $event->event_datetime->format('Y-m-d\TH:i'))" min="{{ $windowMin }}" max="{{ $windowMax }}" required />
                     @if ($event->is_fixed)
-                        <p class="mt-1 text-xs text-gray-500">{{ __('This bookend anchors the timeline; every other event must stay between Start and End.') }}</p>
+                        <p class="mt-1 text-xs text-content-muted">{{ __('This bookend anchors the timeline; every other event must stay between Start and End.') }}</p>
                     @endif
                     <x-input-error :messages="$errors->get('event_datetime')" class="mt-2" />
                 </div>
@@ -58,20 +58,20 @@
 
             <x-card>
                 <div>
-                    <h3 class="text-sm font-semibold text-gray-800">{{ __('Scenes happening during') }}</h3>
+                    <h3 class="text-sm font-semibold text-content">{{ __('Scenes happening during') }}</h3>
                     @forelse ($event->scenes as $scene)
-                        <a href="{{ route('scenes.edit', $scene) }}" class="mt-1 block text-sm text-ocean-600 hover:text-ocean-800">{{ $scene->name }}</a>
+                        <a href="{{ route('scenes.edit', $scene) }}" class="mt-1 block text-sm text-link hover:text-link-hover">{{ $scene->name }}</a>
                     @empty
-                        <p class="mt-1 text-sm text-gray-500">{{ __('None yet.') }}</p>
+                        <p class="mt-1 text-sm text-content-muted">{{ __('None yet.') }}</p>
                     @endforelse
                 </div>
 
                 <div class="mt-6">
-                    <h3 class="text-sm font-semibold text-gray-800">{{ __('Mentioned in scenes') }}</h3>
+                    <h3 class="text-sm font-semibold text-content">{{ __('Mentioned in scenes') }}</h3>
                     @forelse ($event->mentioningScenes as $scene)
-                        <a href="{{ route('scenes.edit', $scene) }}" class="mt-1 block text-sm text-ocean-600 hover:text-ocean-800">{{ $scene->name }}</a>
+                        <a href="{{ route('scenes.edit', $scene) }}" class="mt-1 block text-sm text-link hover:text-link-hover">{{ $scene->name }}</a>
                     @empty
-                        <p class="mt-1 text-sm text-gray-500">{{ __('None yet.') }}</p>
+                        <p class="mt-1 text-sm text-content-muted">{{ __('None yet.') }}</p>
                     @endforelse
                 </div>
             </x-card>

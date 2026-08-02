@@ -4,7 +4,7 @@
             <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Chapters') }}
             </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('projects.show', $project) }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to Project') }}
             </a>
         </div>
@@ -26,7 +26,7 @@
 
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search') || request()->filled('act'))
-                        <a href="{{ route('projects.chapters.index', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Clear') }}</a>
+                        <a href="{{ route('projects.chapters.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
                     @endif
                 </form>
 
@@ -45,16 +45,16 @@
 
                 @forelse ($chapters as $chapter)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $chapter->position }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $chapter->position }}</td>
                         <td class="px-4 py-3">
-                            <a href="{{ route('chapters.edit', $chapter) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $chapter->name }}</a>
+                            <a href="{{ route('chapters.edit', $chapter) }}" class="font-semibold text-content hover:text-link">{{ $chapter->name }}</a>
                             @if ($chapter->description)
-                                <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$chapter->description" /></div>
+                                <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$chapter->description" /></div>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->act->name }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-500">{{ $chapter->scenes_count }}</td>
-                        <td class="px-4 py-3 text-right text-sm text-gray-500 whitespace-nowrap">
+                        <td class="px-4 py-3 text-sm text-content-muted">{{ $chapter->act->name }}</td>
+                        <td class="px-4 py-3 text-sm text-content-muted">{{ $chapter->scenes_count }}</td>
+                        <td class="px-4 py-3 text-right text-sm text-content-muted whitespace-nowrap">
                             <x-word-count :count="$chapter->word_count" variant="inline" />
                         </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">

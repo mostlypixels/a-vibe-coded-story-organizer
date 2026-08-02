@@ -21,7 +21,7 @@
             x-transition
             x-init="setTimeout(() => show = false, 4000)"
             role="status"
-            class="rounded-md border border-aqua-200 bg-aqua-50 px-4 py-3 text-sm text-navy-900 mb-6"
+            class="rounded-md border border-info bg-info-surface px-4 py-3 text-sm text-info-surface-content mb-6"
         >
             {{ session('status') === 'import-settings-updated' ? __('Import settings saved.') : session('status') }}
         </div>
@@ -62,11 +62,11 @@
                     name="run_in_background"
                     value="1"
                     @checked(old('run_in_background', $importSetting->run_in_background))
-                    class="mt-1 rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                    class="mt-1 rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                 >
                 <div>
                     <x-input-label for="run_in_background" :value="__('Process imports in the background')" />
-                    <p class="mt-1 text-sm text-gray-600">
+                    <p class="mt-1 text-sm text-content-muted">
                         {{ __('Requires a running queue worker (php artisan queue:work). Leave this off unless you\'ve set one up — imports will otherwise sit queued forever.') }}
                     </p>
                 </div>
@@ -81,7 +81,7 @@
             <x-heading level="3">{{ __('Import') }}</x-heading>
         </x-slot>
 
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-content-muted">
             {{ __('Upload a .zip previously exported from this app (or another instance of it) to create a new project from it.') }}
         </p>
 
@@ -95,9 +95,9 @@
                     type="file"
                     name="archive"
                     accept=".zip"
-                    class="mt-1 block w-full text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-ocean-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-ocean-700 hover:file:bg-ocean-100"
+                    class="mt-1 block w-full text-sm text-content-muted file:mr-4 file:rounded-md file:border-0 file:bg-info-surface file:px-4 file:py-2 file:text-sm file:font-medium file:text-info-surface-content hover:file:bg-info-surface/80"
                 >
-                <p class="mt-1 text-xs text-gray-500">{{ __('Up to :size MB', ['size' => intdiv($importSetting->max_archive_kilobytes, 1024)]) }}</p>
+                <p class="mt-1 text-xs text-content-muted">{{ __('Up to :size MB', ['size' => intdiv($importSetting->max_archive_kilobytes, 1024)]) }}</p>
                 <x-input-error :messages="$errors->get('archive')" class="mt-2" />
             </div>
 
@@ -117,10 +117,10 @@
                 <x-heading level="4" id="imports-heading">{{ __('In-progress imports') }}</x-heading>
 
                 @foreach ($imports as $import)
-                    <div class="flex items-center justify-between rounded-md border border-gray-200 p-4">
+                    <div class="flex items-center justify-between rounded-md border border-border p-4">
                         <div>
-                            <p class="text-sm font-medium text-navy-900">{{ $import->archiveOriginalName() }}</p>
-                            <p class="text-sm text-gray-600">
+                            <p class="text-sm font-medium text-content">{{ $import->archiveOriginalName() }}</p>
+                            <p class="text-sm text-content-muted">
                                 {{ __('Status: :phase', ['phase' => $import->phase->label()]) }}
                                 @if ($import->failure_message)
                                     &mdash; {{ $import->failure_message }}

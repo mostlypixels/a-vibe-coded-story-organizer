@@ -12,11 +12,14 @@
     // $attributes, because the three lists that use this component are
     // deliberately different sizes — what must not drift is the active look and
     // the aria-current that goes with it.
+    // 'sidebar' active is tinted with `accent-surface`/`accent-content`, the same
+    // "this is the one you're on" pair `dropdown-link` and `responsive-nav-link`
+    // use. 'tab' active has no tint to sit on, so it stays plain `content`.
     $stateClasses = match ([$variant, $active]) {
-        ['sidebar', true] => 'border-nav-active bg-aqua-50 text-navy-900 font-semibold',
-        ['sidebar', false] => 'border-transparent text-gray-700 hover:bg-gray-100 hover:text-navy-900',
-        ['tab', true] => 'border-nav-active text-navy-900',
-        ['tab', false] => 'border-transparent text-gray-500 hover:text-navy-900 hover:border-gray-300',
+        ['sidebar', true] => 'border-accent bg-accent-surface text-accent-content font-semibold',
+        ['sidebar', false] => 'border-transparent text-content-muted hover:bg-neutral hover:text-content',
+        ['tab', true] => 'border-accent text-content',
+        ['tab', false] => 'border-transparent text-content-muted hover:text-content hover:border-border-strong',
     };
 @endphp
 

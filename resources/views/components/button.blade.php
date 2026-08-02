@@ -11,16 +11,25 @@
     // buttons share one look), otherwise a <button>. Colours are written out in
     // full so Tailwind's purge step keeps them — do not build class names by
     // interpolating the variant.
+    //
+    // Every variant's focus ring is `focus`, never its own fill: `focus` is a
+    // token in its own right so a theme can move the focus affordance
+    // independently of the button colours. See App\Support\ThemeTokens.
     $base = 'inline-flex items-center justify-center gap-2 border rounded-md font-semibold uppercase tracking-widest transition ease-in-out duration-150 focus:outline-hidden focus:ring-2 focus:ring-offset-2 disabled:opacity-25 disabled:cursor-not-allowed';
 
+    // `primary` is the only fill with its own hover/active tokens. The three
+    // status fills express the press states as alpha on the same token
+    // (`bg-danger/90`), which stays legible whichever way a preset runs: the fill
+    // blends toward the surface behind it, so it lightens on a light theme and
+    // darkens on a dark one.
     $variants = [
-        'primary'   => 'bg-navy-900 border-transparent text-white hover:bg-navy-800 active:bg-navy-950 focus:ring-ocean-500',
-        'secondary' => 'bg-white border-gray-300 text-gray-700 shadow-xs hover:bg-gray-50 focus:ring-ocean-500',
-        'danger'    => 'bg-red-600 border-transparent text-white hover:bg-red-500 active:bg-red-700 focus:ring-red-500',
-        'success'   => 'bg-green-600 border-transparent text-white hover:bg-green-500 active:bg-green-700 focus:ring-green-500',
-        'warning'   => 'bg-yellow-500 border-transparent text-white hover:bg-yellow-400 active:bg-yellow-600 focus:ring-yellow-500',
-        'ghost'     => 'bg-transparent border-transparent text-gray-600 hover:bg-gray-100 focus:ring-ocean-500',
-        'link'      => 'bg-transparent border-transparent normal-case tracking-normal text-ocean-600 hover:text-ocean-800 hover:underline focus:ring-ocean-500',
+        'primary'   => 'bg-primary border-transparent text-primary-content hover:bg-primary-hover active:bg-primary-active focus:ring-focus',
+        'secondary' => 'bg-surface-raised border-border-strong text-content-muted shadow-xs hover:bg-surface-sunken focus:ring-focus',
+        'danger'    => 'bg-danger border-transparent text-danger-content hover:bg-danger/90 active:bg-danger/80 focus:ring-focus',
+        'success'   => 'bg-success border-transparent text-success-content hover:bg-success/90 active:bg-success/80 focus:ring-focus',
+        'warning'   => 'bg-warning border-transparent text-warning-content hover:bg-warning/90 active:bg-warning/80 focus:ring-focus',
+        'ghost'     => 'bg-transparent border-transparent text-content-muted hover:bg-neutral focus:ring-focus',
+        'link'      => 'bg-transparent border-transparent normal-case tracking-normal text-link hover:text-link-hover hover:underline focus:ring-focus',
     ][$variant];
 
     $sizes = [

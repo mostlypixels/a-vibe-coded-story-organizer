@@ -8,7 +8,7 @@
             <button
                 type="button"
                 @click="selected = '{{ $hex }}'"
-                :class="{ 'ring-2 ring-offset-2 ring-gray-800': selected === '{{ $hex }}' }"
+                :class="{ 'ring-2 ring-offset-2 ring-border-strong': selected === '{{ $hex }}' }"
                 class="h-6 w-6 rounded-full"
                 style="background-color: {{ $hex }}"
                 aria-label="{{ $hex }}"

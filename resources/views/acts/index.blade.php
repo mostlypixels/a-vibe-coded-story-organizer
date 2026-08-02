@@ -4,7 +4,7 @@
             <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Acts') }}
             </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('projects.show', $project) }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to Project') }}
             </a>
         </div>
@@ -18,7 +18,7 @@
                     <x-text-input type="text" name="search" placeholder="{{ __('Search by name...') }}" class="text-sm" :value="request('search')" />
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search'))
-                        <a href="{{ route('projects.acts.index', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Clear') }}</a>
+                        <a href="{{ route('projects.acts.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
                     @endif
                 </form>
 
@@ -36,15 +36,15 @@
 
                 @forelse ($acts as $act)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $act->position }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $act->position }}</td>
                         <td class="px-4 py-3">
-                            <a href="{{ route('acts.edit', $act) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $act->name }}</a>
+                            <a href="{{ route('acts.edit', $act) }}" class="font-semibold text-content hover:text-link">{{ $act->name }}</a>
                             @if ($act->description)
-                                <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$act->description" /></div>
+                                <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$act->description" /></div>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-500">{{ $act->chapters_count }}</td>
-                        <td class="px-4 py-3 text-right text-sm text-gray-500 whitespace-nowrap">
+                        <td class="px-4 py-3 text-sm text-content-muted">{{ $act->chapters_count }}</td>
+                        <td class="px-4 py-3 text-right text-sm text-content-muted whitespace-nowrap">
                             <x-word-count :count="$act->word_count" variant="inline" />
                         </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">

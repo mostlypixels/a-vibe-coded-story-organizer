@@ -4,7 +4,7 @@
             <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Attributes') }}
             </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('projects.show', $project) }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to Project') }}
             </a>
         </div>
@@ -25,7 +25,7 @@
                 @forelse ($attributes as $attribute)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3">
-                            <a href="{{ route('codex-attributes.edit', $attribute) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $attribute->name }}</a>
+                            <a href="{{ route('codex-attributes.edit', $attribute) }}" class="font-semibold text-content hover:text-link">{{ $attribute->name }}</a>
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex flex-wrap gap-1">

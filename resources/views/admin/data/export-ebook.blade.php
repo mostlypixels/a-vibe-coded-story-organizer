@@ -18,7 +18,7 @@
             x-transition
             x-init="setTimeout(() => show = false, 4000)"
             role="status"
-            class="rounded-md border border-aqua-200 bg-aqua-50 px-4 py-3 text-sm text-navy-900 mb-6"
+            class="rounded-md border border-info bg-info-surface px-4 py-3 text-sm text-info-surface-content mb-6"
         >
             {{ session('status') === 'publication-settings-updated' ? __('Ebook configuration saved.') : session('status') }}
         </div>
@@ -29,14 +29,14 @@
             <x-heading level="3">{{ __('Export ebook') }}</x-heading>
         </x-slot>
 
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-content-muted">
             {{ __('Configure and download one of your projects as an EPUB e-book, ready to open in any e-reader.') }}
         </p>
 
         @if ($projects->isEmpty())
-            <p class="mt-4 text-sm text-gray-600">
+            <p class="mt-4 text-sm text-content-muted">
                 {{ __('Create a project first to export it.') }}
-                <a href="{{ route('projects.create') }}" class="text-ocean-600 underline hover:text-ocean-800">
+                <a href="{{ route('projects.create') }}" class="text-link underline hover:text-link-hover">
                     {{ __('Create a project') }}
                 </a>
             </p>
@@ -64,8 +64,8 @@
             @if ($selectedProject)
                 @php $sectionOrder = $setting->section_order ?? \App\Models\PublicationSetting::SECTION_KEYS; @endphp
 
-                <fieldset class="mt-8 border border-gray-200 rounded-md px-4 pb-4">
-                    <legend class="px-2 text-sm font-semibold text-navy-900">{{ $selectedProject->name }}</legend>
+                <fieldset class="mt-8 border border-border rounded-md px-4 pb-4">
+                    <legend class="px-2 text-sm font-semibold text-content">{{ $selectedProject->name }}</legend>
 
                 {{--
                     The config form (task 04): persists PublicationSetting.
@@ -84,7 +84,7 @@
                     @endforeach
 
                     <fieldset class="space-y-3">
-                        <legend class="text-sm font-semibold text-navy-900">{{ __('Content options') }}</legend>
+                        <legend class="text-sm font-semibold text-content">{{ __('Content options') }}</legend>
 
                         @foreach ([
                             'include_project_cover' => __('Include project cover'),
@@ -102,9 +102,9 @@
                                         name="{{ $field }}"
                                         value="1"
                                         @checked(old($field, $setting->{$field}))
-                                        class="mt-1 rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                                        class="mt-1 rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                                     >
-                                    <span class="text-sm text-gray-700">{{ $label }}</span>
+                                    <span class="text-sm text-content-muted">{{ $label }}</span>
                                 </label>
                                 <x-input-error :messages="$errors->get($field)" class="mt-1" />
                             </div>
@@ -112,11 +112,11 @@
                     </fieldset>
 
                     <fieldset class="space-y-3">
-                        <legend class="text-sm font-semibold text-navy-900">{{ __('Front & back matter') }}</legend>
+                        <legend class="text-sm font-semibold text-content">{{ __('Front & back matter') }}</legend>
 
-                        <p class="text-sm text-gray-600">
+                        <p class="text-sm text-content-muted">
                             {{ __('The dedication, acknowledgements, preface, and postface text itself is edited on the') }}
-                            <a href="{{ route('projects.edit', $selectedProject) }}" class="text-ocean-600 underline hover:text-ocean-800">
+                            <a href="{{ route('projects.edit', $selectedProject) }}" class="text-link underline hover:text-link-hover">
                                 {{ __('project edit page') }}
                             </a>. {{ __("Toggle which of the ones you've written are included below.") }}
                         </p>
@@ -135,11 +135,11 @@
                                         name="{{ $field }}"
                                         value="1"
                                         @checked(old($field, $setting->{$field}))
-                                        class="mt-1 rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                                        class="mt-1 rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                                     >
-                                    <span class="text-sm text-gray-700">
+                                    <span class="text-sm text-content-muted">
                                         {{ $info['label'] }}
-                                        <span class="text-gray-400">({{ filled($info['value']) ? __('text set') : __('empty') }})</span>
+                                        <span class="text-content-subtle">({{ filled($info['value']) ? __('text set') : __('empty') }})</span>
                                     </span>
                                 </label>
                                 <x-input-error :messages="$errors->get($field)" class="mt-1" />
@@ -148,7 +148,7 @@
                     </fieldset>
 
                     <fieldset class="space-y-3">
-                        <legend class="text-sm font-semibold text-navy-900">{{ __('Metadata') }}</legend>
+                        <legend class="text-sm font-semibold text-content">{{ __('Metadata') }}</legend>
 
                         @foreach ([
                             'include_author' => ['label' => __('Include author'), 'value' => $selectedProject->author],
@@ -164,9 +164,9 @@
                                         name="{{ $field }}"
                                         value="1"
                                         @checked(old($field, $setting->{$field}))
-                                        class="mt-1 rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                                        class="mt-1 rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                                     >
-                                    <span class="text-sm text-gray-700">
+                                    <span class="text-sm text-content-muted">
                                         {{ $info['label'] }}: <em>{{ $info['value'] ?: __('not set') }}</em>
                                     </span>
                                 </label>
@@ -174,16 +174,16 @@
                             </div>
                         @endforeach
 
-                        <p class="text-xs text-gray-500">
+                        <p class="text-xs text-content-muted">
                             {{ __('Change the underlying values on the') }}
-                            <a href="{{ route('projects.edit', $selectedProject) }}" class="text-ocean-600 underline hover:text-ocean-800">
+                            <a href="{{ route('projects.edit', $selectedProject) }}" class="text-link underline hover:text-link-hover">
                                 {{ __('project edit page') }}
                             </a>.
                         </p>
                     </fieldset>
 
                     <fieldset class="space-y-4">
-                        <legend class="text-sm font-semibold text-navy-900">{{ __('Formatting') }}</legend>
+                        <legend class="text-sm font-semibold text-content">{{ __('Formatting') }}</legend>
 
                         <div>
                             <x-input-label for="chapter_title_format" :value="__('Chapter title format')" />
@@ -223,7 +223,7 @@
                     </fieldset>
 
                     <fieldset x-data="{ appendixOpen: {{ $setting->include_codex_appendix ? 'true' : 'false' }} }" class="space-y-3">
-                        <legend class="text-sm font-semibold text-navy-900">{{ __('Appendix') }}</legend>
+                        <legend class="text-sm font-semibold text-content">{{ __('Appendix') }}</legend>
 
                         <label for="include_codex_appendix" class="flex items-start gap-3">
                             <input
@@ -233,14 +233,14 @@
                                 value="1"
                                 x-model="appendixOpen"
                                 @checked(old('include_codex_appendix', $setting->include_codex_appendix))
-                                class="mt-1 rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                                class="mt-1 rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                             >
-                            <span class="text-sm text-gray-700">{{ __('Include codex appendix') }}</span>
+                            <span class="text-sm text-content-muted">{{ __('Include codex appendix') }}</span>
                         </label>
                         <x-input-error :messages="$errors->get('include_codex_appendix')" class="mt-1" />
 
                         <div x-show="appendixOpen" class="ms-7 space-y-3">
-                            <p class="text-sm font-medium text-gray-700">{{ __('Which entry types') }}</p>
+                            <p class="text-sm font-medium text-content-muted">{{ __('Which entry types') }}</p>
 
                             @php $checkedTypes = old('appendix_entry_types', $setting->appendix_entry_types ?? []); @endphp
                             @foreach (\App\Enums\CodexEntryType::cases() as $type)
@@ -251,9 +251,9 @@
                                         name="appendix_entry_types[]"
                                         value="{{ $type->value }}"
                                         @checked(in_array($type->value, $checkedTypes, true))
-                                        class="rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                                        class="rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                                     >
-                                    <span class="text-sm text-gray-700">{{ $type->pluralLabel() }}</span>
+                                    <span class="text-sm text-content-muted">{{ $type->pluralLabel() }}</span>
                                 </label>
                             @endforeach
                             <x-input-error :messages="$errors->get('appendix_entry_types')" class="mt-1" />
@@ -266,9 +266,9 @@
                                     name="appendix_include_images"
                                     value="1"
                                     @checked(old('appendix_include_images', $setting->appendix_include_images))
-                                    class="mt-1 rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                                    class="mt-1 rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                                 >
-                                <span class="text-sm text-gray-700">{{ __('Include images') }}</span>
+                                <span class="text-sm text-content-muted">{{ __('Include images') }}</span>
                             </label>
                         </div>
                     </fieldset>
@@ -286,14 +286,14 @@
                 --}}
                 <div class="mt-8 max-w-2xl">
                     <x-heading level="4">{{ __('Section order') }}</x-heading>
-                    <p class="mt-1 text-sm text-gray-600">
+                    <p class="mt-1 text-sm text-content-muted">
                         {{ __('The order enabled sections render in. A section only renders when it is both enabled above and has content.') }}
                     </p>
 
-                    <ul class="mt-3 divide-y divide-gray-200 border border-gray-200 rounded-md">
+                    <ul class="mt-3 divide-y divide-border border border-border rounded-md">
                         @foreach ($sectionOrder as $sectionKey)
                             <li class="flex items-center justify-between px-4 py-2">
-                                <span class="text-sm text-gray-700">{{ ucfirst(str_replace('_', ' ', $sectionKey)) }}</span>
+                                <span class="text-sm text-content-muted">{{ ucfirst(str_replace('_', ' ', $sectionKey)) }}</span>
                                 <div class="flex gap-1">
                                     <x-icon-move-button direction="up"
                                         :action="route('admin.data.publication-settings.section-order.move-up', ['project' => $selectedProject, 'section' => $sectionKey])"
@@ -318,12 +318,12 @@
                     @csrf
                     <input type="hidden" name="project_id" value="{{ $selectedProject->id }}">
                     <x-button variant="primary">{{ __('Download EPUB') }}</x-button>
-                    <p class="mt-2 text-xs text-gray-500">{{ __('Exports using the saved configuration above.') }}</p>
+                    <p class="mt-2 text-xs text-content-muted">{{ __('Exports using the saved configuration above.') }}</p>
                 </form>
 
-                <p class="mt-4 text-xs text-gray-500">
+                <p class="mt-4 text-xs text-content-muted">
                     {{ __('For full EPUB conformance verification, validate the downloaded file with the official') }}
-                    <a href="https://www.w3.org/publishing/epubcheck/" class="text-ocean-600 underline hover:text-ocean-800 focus:outline-hidden focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-xs" target="_blank" rel="noopener">
+                    <a href="https://www.w3.org/publishing/epubcheck/" class="text-link underline hover:text-link-hover focus:outline-hidden focus:ring-2 focus:ring-focus focus:ring-offset-2 rounded-xs" target="_blank" rel="noopener">
                         {{ __('epubcheck') }}
                     </a>
                     {{ __('tool.') }}

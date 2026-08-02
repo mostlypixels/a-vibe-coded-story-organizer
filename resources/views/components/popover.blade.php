@@ -34,16 +34,16 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="absolute z-50 {{ $positions }} {{ $width }} rounded-lg bg-white shadow-lg ring-1 ring-black/5"
+        class="absolute z-50 {{ $positions }} {{ $width }} rounded-lg bg-surface-overlay shadow-lg ring-1 ring-black/5"
         style="display: none;"
     >
         @if ($title)
-            <div class="border-b border-gray-200 px-4 py-2 text-sm font-semibold text-gray-800">
+            <div class="border-b border-border px-4 py-2 text-sm font-semibold text-content">
                 {{ $title }}
             </div>
         @endif
 
-        <div class="px-4 py-3 text-sm text-gray-600">
+        <div class="px-4 py-3 text-sm text-content-muted">
             {{ $content }}
         </div>
     </div>

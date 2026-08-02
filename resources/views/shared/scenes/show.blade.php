@@ -10,11 +10,11 @@
         {{-- Description in a COLLAPSED card (starts closed, per spec). The body
              is already-sanitized rich HTML, rendered only via x-rich-text. --}}
         @if (filled($scene->description))
-            <div x-data="{ open: false }" class="bg-white shadow-xs rounded-lg">
+            <div x-data="{ open: false }" class="bg-surface-raised shadow-xs rounded-lg">
                 <button type="button" @click="open = ! open"
                         class="w-full flex items-center justify-between px-6 py-4 text-left">
-                    <span class="font-semibold text-gray-800">{{ __('Description') }}</span>
-                    <svg class="h-4 w-4 fill-current text-gray-500 transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <span class="font-semibold text-content">{{ __('Description') }}</span>
+                    <svg class="h-4 w-4 fill-current text-content-muted transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
                 </button>
@@ -27,7 +27,7 @@
         {{-- Contents rendered as formatted HTML (Markdown → HTML) via the single
              Scene::renderedContents accessor, the same render path as the Story
              overview and the book export. `notes` is NEVER rendered here. --}}
-        <article class="prose prose-sm max-w-none text-gray-700 text-justify [&_p]:my-4">
+        <article class="prose prose-sm max-w-none text-content-muted text-justify [&_p]:my-4">
             {!! $scene->renderedContents !!}
         </article>
     </div>

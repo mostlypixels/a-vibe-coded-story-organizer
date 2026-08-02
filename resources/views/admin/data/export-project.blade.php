@@ -12,15 +12,15 @@
             <x-heading level="3">{{ __('Export project') }}</x-heading>
         </x-slot>
 
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-content-muted">
             {{ __('Download one of your projects as a .zip archive: a human-readable reading version plus a lossless data copy.') }}
         </p>
 
         @if ($projects->isEmpty())
             {{-- Empty state: nothing to export until the user owns a project. --}}
-            <p class="mt-4 text-sm text-gray-600">
+            <p class="mt-4 text-sm text-content-muted">
                 {{ __('Create a project first to export it.') }}
-                <a href="{{ route('projects.create') }}" class="text-ocean-600 underline hover:text-ocean-800">
+                <a href="{{ route('projects.create') }}" class="text-link underline hover:text-link-hover">
                     {{ __('Create a project') }}
                 </a>
             </p>
@@ -48,9 +48,9 @@
                             name="include_images"
                             value="1"
                             @checked(old('include_images', true))
-                            class="rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                            class="rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                         >
-                        <span class="ms-2 text-sm text-gray-700">{{ __('Include images & files') }}</span>
+                        <span class="ms-2 text-sm text-content-muted">{{ __('Include images & files') }}</span>
                     </label>
                     <x-input-error :messages="$errors->get('include_images')" class="mt-2" />
                 </div>
@@ -63,9 +63,9 @@
                             name="include_revisions"
                             value="1"
                             @checked(old('include_revisions'))
-                            class="rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                            class="rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                         >
-                        <span class="ms-2 text-sm text-gray-700">{{ __('Include revision history') }}</span>
+                        <span class="ms-2 text-sm text-content-muted">{{ __('Include revision history') }}</span>
                     </label>
                     <x-input-error :messages="$errors->get('include_revisions')" class="mt-2" />
                 </div>

@@ -18,8 +18,10 @@ import { fileURLToPath } from 'node:url';
  *   directive in `resources/css/app.css` reaches into `vendor/`.
  * - `.prose` proves `@tailwindcss/typography` loaded via `@plugin`.
  * - the `input:where([type=checkbox])` reset proves `@tailwindcss/forms` loaded via `@plugin`.
- * - `.border-nav-active` proves `@theme` custom colours (task 06's `--color-nav-active`)
- *   still emit utility classes.
+ * - `.border-accent` proves the `@theme static` role tokens still emit utility classes.
+ *   (It used to be `.border-nav-active`, the Tailwind 4 port's loud placeholder; the
+ *   theme-switcher spec deleted that variable along with the five hue ramps, and
+ *   `--color-accent` is the token the active-nav indicator landed on.)
  */
 
 const buildAssetsDir = path.join(
@@ -49,11 +51,23 @@ describe('built CSS contains utilities from every source the app depends on', ()
         expect(css).toContain('.prose');
     });
 
+    /**
+     * The plugin hard-codes its own grey scale, so `prose` content ignores the active
+     * theme even though its container sets a token — bold text stayed near-black and
+     * vanished under the dark preset. `app.css` re-points the scale at the role tokens;
+     * this asserts the override survived the build, since nothing else would notice.
+     */
+    it('re-points Tailwind Typography at the role tokens', () => {
+        // The built CSS is minified — no space after the colon.
+        expect(css).toContain('--tw-prose-bold:var(--color-content)');
+        expect(css).toContain('--tw-prose-links:var(--color-link)');
+    });
+
     it('loads @tailwindcss/forms via @plugin', () => {
         expect(css).toContain('input:where([type=checkbox])');
     });
 
-    it('emits a utility for the @theme nav-active custom colour', () => {
-        expect(css).toContain('.border-nav-active');
+    it('emits a utility for an @theme static role token', () => {
+        expect(css).toContain('.border-accent');
     });
 });

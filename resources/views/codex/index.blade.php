@@ -4,7 +4,7 @@
             <x-heading level="2">
                 {{ $project->name }} &mdash; {{ $type->pluralLabel() }}
             </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('projects.show', $project) }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to Project') }}
             </a>
         </div>
@@ -25,7 +25,7 @@
 
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search') || request()->filled('tag'))
-                        <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Clear') }}</a>
+                        <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
                     @endif
                 </form>
 
@@ -46,16 +46,16 @@
                         <td class="px-4 py-3">
                             <a href="{{ route('codex.edit', $entry) }}">
                                 @if ($entry->cover)
-                                    <img src="{{ $entry->cover->url() }}" alt="{{ $entry->name }}" class="h-10 w-10 rounded-sm object-cover border border-gray-200">
+                                    <img src="{{ $entry->cover->url() }}" alt="{{ $entry->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
                                 @else
-                                    <div class="h-10 w-10 rounded-sm bg-gray-100 border border-gray-200" aria-hidden="true"></div>
+                                    <div class="h-10 w-10 rounded-sm bg-surface border border-border" aria-hidden="true"></div>
                                 @endif
                             </a>
                         </td>
                         <td class="px-4 py-3">
-                            <a href="{{ route('codex.edit', $entry) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $entry->name }}</a>
+                            <a href="{{ route('codex.edit', $entry) }}" class="font-semibold text-content hover:text-link">{{ $entry->name }}</a>
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-500">
+                        <td class="px-4 py-3 text-sm text-content-muted">
                             {{ $entry->aliases->pluck('alias')->join(', ') ?: '—' }}
                         </td>
                         <td class="px-4 py-3">
@@ -63,7 +63,7 @@
                                 @forelse ($entry->tags as $tag)
                                     <x-badge>{{ $tag->name }}</x-badge>
                                 @empty
-                                    <span class="text-sm text-gray-400">—</span>
+                                    <span class="text-sm text-content-subtle">—</span>
                                 @endforelse
                             </div>
                         </td>

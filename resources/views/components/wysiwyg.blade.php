@@ -54,14 +54,14 @@
 
     {{-- Editor UI: hidden until Alpine mounts (style="display:none", no x-cloak). --}}
     <div x-show="ready" style="display: none;">
-        <div class="overflow-hidden rounded-md border border-gray-300 shadow-xs focus-within:border-ocean-500 focus-within:ring-1 focus-within:ring-ocean-500">
+        <div class="overflow-hidden rounded-md border border-border-strong shadow-xs focus-within:border-focus focus-within:ring-1 focus-within:ring-focus">
             @unless ($disabled)
-                <div class="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1" role="toolbar" aria-label="{{ __('Formatting') }}">
+                <div class="flex flex-wrap items-center gap-0.5 border-b border-border bg-surface-sunken px-2 py-1" role="toolbar" aria-label="{{ __('Formatting') }}">
                     {{-- Cluster 1: Headings, collapsed into a dropdown. The trigger's
                          label and highlight come from headingLabel()/headingLevel() in
                          wysiwyg.js, driven by the same HEADING_LEVELS that fill the
                          dropdown, so the two can't drift out of sync. --}}
-                    <x-dropdown align="left" width="auto" contentClasses="p-1 bg-white flex items-center gap-0.5">
+                    <x-dropdown align="left" width="auto" contentClasses="p-1 bg-surface-overlay flex items-center gap-0.5">
                         <x-slot name="trigger">
                             <x-wysiwyg.toolbar-button
                                 active-expression="headingLevel() !== null"
@@ -82,7 +82,7 @@
                         </x-slot>
                     </x-dropdown>
 
-                    <span class="mx-1 h-5 w-px bg-gray-300"></span>
+                    <span class="mx-1 h-5 w-px bg-border"></span>
 
                     {{-- Cluster 2: Text format — Bold/Italic/Underline/Strike. --}}
                     @foreach ($toolbar->textFormat() as $toggle)
@@ -94,7 +94,7 @@
                         />
                     @endforeach
 
-                    <span class="mx-1 h-5 w-px bg-gray-300"></span>
+                    <span class="mx-1 h-5 w-px bg-border"></span>
 
                     {{-- Cluster 3: Lists & blocks. --}}
                     @foreach ($toolbar->listsAndBlocks() as $toggle)
@@ -106,7 +106,7 @@
                         />
                     @endforeach
 
-                    <span class="mx-1 h-5 w-px bg-gray-300"></span>
+                    <span class="mx-1 h-5 w-px bg-border"></span>
 
                     {{-- Cluster 4: Insert — Link, Horizontal rule, Table, Image, Callout.
                          Every "insert something new" action sits together. Link, Image
@@ -148,7 +148,7 @@
                         :title="__('Callout')"
                     />
 
-                    <span class="mx-1 h-5 w-px bg-gray-300"></span>
+                    <span class="mx-1 h-5 w-px bg-border"></span>
 
                     {{-- Cluster 5: Table structure, collapsed into a dropdown. Its
                          trigger glyph (square + pencil) is deliberately distinct from
@@ -156,7 +156,7 @@
                          confused, and its title/aria-label reads "Table structure" vs.
                          cluster 4's "Table". Merge/split only appear for HTML-mode
                          fields — see WysiwygToolbar::tableStructure(). --}}
-                    <x-dropdown align="left" width="auto" contentClasses="p-1 bg-white flex items-center gap-0.5">
+                    <x-dropdown align="left" width="auto" contentClasses="p-1 bg-surface-overlay flex items-center gap-0.5">
                         <x-slot name="trigger">
                             <x-wysiwyg.toolbar-button
                                 label="&#9638;&#9998;"

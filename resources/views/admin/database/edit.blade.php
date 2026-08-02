@@ -14,19 +14,19 @@
 
         <dl class="space-y-4 text-sm">
             <div>
-                <dt class="font-medium text-gray-500">{{ __('Driver') }}</dt>
-                <dd class="mt-1 text-gray-900">{{ $connection['driver'] ?? '—' }}</dd>
+                <dt class="font-medium text-content-muted">{{ __('Driver') }}</dt>
+                <dd class="mt-1 text-content">{{ $connection['driver'] ?? '—' }}</dd>
             </div>
 
             <div>
-                <dt class="font-medium text-gray-500">{{ __('Database') }}</dt>
-                <dd class="mt-1 break-all text-gray-900">{{ $connection['database'] ?? '—' }}</dd>
+                <dt class="font-medium text-content-muted">{{ __('Database') }}</dt>
+                <dd class="mt-1 break-all text-content">{{ $connection['database'] ?? '—' }}</dd>
             </div>
 
             @if (! empty($connection['host']))
                 <div>
-                    <dt class="font-medium text-gray-500">{{ __('Host') }}</dt>
-                    <dd class="mt-1 text-gray-900">{{ $connection['host'] }}</dd>
+                    <dt class="font-medium text-content-muted">{{ __('Host') }}</dt>
+                    <dd class="mt-1 text-content">{{ $connection['host'] }}</dd>
                 </div>
             @endif
         </dl>

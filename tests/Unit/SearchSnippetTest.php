@@ -29,7 +29,7 @@ class SearchSnippetTest extends TestCase
     {
         $snippet = SearchSnippet::highlight('The castle stood tall.', 'castle');
 
-        $this->assertStringContainsString('<mark class="bg-sun-200">castle</mark>', $snippet);
+        $this->assertStringContainsString('<mark class="bg-highlight text-highlight-content">castle</mark>', $snippet);
     }
 
     public function test_matching_is_case_insensitive(): void
@@ -37,7 +37,7 @@ class SearchSnippetTest extends TestCase
         $snippet = SearchSnippet::highlight('A fearsome dragon appeared.', 'Dragon');
 
         // The original casing of the source text is preserved inside the mark.
-        $this->assertStringContainsString('<mark class="bg-sun-200">dragon</mark>', $snippet);
+        $this->assertStringContainsString('<mark class="bg-highlight text-highlight-content">dragon</mark>', $snippet);
     }
 
     public function test_it_escapes_html_special_characters_in_surrounding_text(): void
@@ -61,7 +61,7 @@ class SearchSnippetTest extends TestCase
         // The only real tag in the output is our <mark> wrapper.
         $this->assertStringNotContainsString('<script>', $snippet);
         $this->assertStringContainsString('&lt;script&gt;', $snippet);
-        $this->assertStringContainsString('<mark class="bg-sun-200">dragon</mark>', $snippet);
+        $this->assertStringContainsString('<mark class="bg-highlight text-highlight-content">dragon</mark>', $snippet);
     }
 
     public function test_it_highlights_multiple_terms_from_an_array(): void
@@ -70,8 +70,8 @@ class SearchSnippetTest extends TestCase
 
         $snippet = SearchSnippet::highlight($text, ['dragon', 'castle']);
 
-        $this->assertStringContainsString('<mark class="bg-sun-200">dragon</mark>', $snippet);
-        $this->assertStringContainsString('<mark class="bg-sun-200">castle</mark>', $snippet);
+        $this->assertStringContainsString('<mark class="bg-highlight text-highlight-content">dragon</mark>', $snippet);
+        $this->assertStringContainsString('<mark class="bg-highlight text-highlight-content">castle</mark>', $snippet);
     }
 
     public function test_matching_is_accent_insensitive_and_preserves_accents_in_the_mark(): void
@@ -80,14 +80,14 @@ class SearchSnippetTest extends TestCase
         // the highlighted slice keeps the original accented characters.
         $snippet = SearchSnippet::highlight('A tale of Mélusine the fae.', 'Melusine');
 
-        $this->assertStringContainsString('<mark class="bg-sun-200">Mélusine</mark>', $snippet);
+        $this->assertStringContainsString('<mark class="bg-highlight text-highlight-content">Mélusine</mark>', $snippet);
     }
 
     public function test_an_accented_term_matches_unaccented_text(): void
     {
         $snippet = SearchSnippet::highlight('A tale of Melusine the fae.', 'Mélusine');
 
-        $this->assertStringContainsString('<mark class="bg-sun-200">Melusine</mark>', $snippet);
+        $this->assertStringContainsString('<mark class="bg-highlight text-highlight-content">Melusine</mark>', $snippet);
     }
 
     public function test_it_returns_an_escaped_excerpt_when_no_term_matches(): void

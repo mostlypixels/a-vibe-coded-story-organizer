@@ -25,10 +25,10 @@
                     placeholder="{{ $placeholder }}"
                     class="block w-full text-sm"
                 />
-                <button type="button" @click="items.splice(index, 1)" class="text-sm text-red-600 hover:text-red-800" aria-label="{{ $removeLabel }}">&times;</button>
+                <button type="button" @click="items.splice(index, 1)" class="text-sm text-danger-surface-content hover:text-danger-surface-content/80" aria-label="{{ $removeLabel }}">&times;</button>
             </div>
         </template>
     </div>
 
-    <button type="button" @click="items.push('')" class="mt-2 text-sm text-ocean-600 hover:text-ocean-800">{{ $addLabel }}</button>
+    <button type="button" @click="items.push('')" class="mt-2 text-sm text-link hover:text-link-hover">{{ $addLabel }}</button>
 </div>

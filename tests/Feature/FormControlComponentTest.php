@@ -11,9 +11,9 @@ use Tests\TestCase;
  *
  * Rendered standalone via `Blade::render()`, following {@see IconButtonComponentTest}'s
  * precedent, and for the same reason: 37 call sites used to re-type
- * `border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs`
+ * `border-border-strong focus:border-focus focus:ring-focus rounded-md shadow-xs`
  * by hand. A page test that asserts a 200 cannot tell a styled control from an
- * unstyled one, and a control that silently loses `focus:ring-ocean-500` is invisible
+ * unstyled one, and a control that silently loses `focus:ring-focus` is invisible
  * until someone tabs into it and no focus ring appears.
  *
  * What is load-bearing here:
@@ -34,9 +34,13 @@ class FormControlComponentTest extends TestCase
      * exactly what a test should not depend on.
      */
     private const BASE_CLASSES = [
-        'border-gray-300',
-        'focus:border-ocean-500',
-        'focus:ring-ocean-500',
+        'bg-surface-raised',
+        // A form control does not inherit the page's `color` — without this it keeps the
+        // browser's near-black and a dark preset renders dark text on a dark box.
+        'text-content',
+        'border-border-strong',
+        'focus:border-focus',
+        'focus:ring-focus',
         'rounded-md',
         'shadow-xs',
     ];

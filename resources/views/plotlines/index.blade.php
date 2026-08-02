@@ -4,7 +4,7 @@
             <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Plotlines') }}
             </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('projects.show', $project) }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to Project') }}
             </a>
         </div>
@@ -18,7 +18,7 @@
                     <x-text-input type="text" name="search" placeholder="{{ __('Search by name...') }}" class="text-sm" :value="request('search')" />
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search'))
-                        <a href="{{ route('projects.plotlines.index', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Clear') }}</a>
+                        <a href="{{ route('projects.plotlines.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
                     @endif
                 </form>
 
@@ -34,7 +34,7 @@
                 @forelse ($plotlines as $plotline)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3">
-                            <a href="{{ route('plotlines.edit', $plotline) }}" class="font-semibold text-gray-800 hover:text-ocean-600 flex items-center gap-2">
+                            <a href="{{ route('plotlines.edit', $plotline) }}" class="font-semibold text-content hover:text-link flex items-center gap-2">
                                 <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
                                 {{ $plotline->name }}
                                 @if ($plotline->is_main)
@@ -42,7 +42,7 @@
                                 @endif
                             </a>
                             @if ($plotline->description)
-                                <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$plotline->description" /></div>
+                                <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$plotline->description" /></div>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">

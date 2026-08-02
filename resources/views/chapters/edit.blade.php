@@ -34,7 +34,7 @@
                 <div>
                     <x-input-label for="name" :value="__('Title')" />
                     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $chapter->name)" placeholder="{{ __('e.g. The Oath at the Fountain') }}" required autofocus />
-                    <p class="mt-1 text-sm text-gray-500">{{ __('Currently chapter #:position within its act. Use the move up/down buttons on the list to reorder.', ['position' => $chapter->position]) }}</p>
+                    <p class="mt-1 text-sm text-content-muted">{{ __('Currently chapter #:position within its act. Use the move up/down buttons on the list to reorder.', ['position' => $chapter->position]) }}</p>
                     <x-input-error :messages="$errors->get('name')" class="mt-2" />
                 </div>
 
@@ -86,19 +86,19 @@
             @endif
 
             <x-card :title="$coverUrl ? __('Replace cover image') : __('Cover image')">
-                <p class="text-sm text-gray-500">{{ __('Optional. Included before this chapter in the EPUB export when chapter covers are enabled.') }}</p>
+                <p class="text-sm text-content-muted">{{ __('Optional. Included before this chapter in the EPUB export when chapter covers are enabled.') }}</p>
 
                 @if ($coverUrl)
-                    <img src="{{ $coverUrl }}" alt="{{ $chapter->name }}" class="mt-3 w-full rounded-md border border-gray-200 object-cover">
+                    <img src="{{ $coverUrl }}" alt="{{ $chapter->name }}" class="mt-3 w-full rounded-md border border-border object-cover">
 
-                    <label class="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                        <input type="checkbox" name="remove_cover_image" value="1" form="chapter-edit-form" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                    <label class="mt-2 flex items-center gap-2 text-sm text-content-muted">
+                        <input type="checkbox" name="remove_cover_image" value="1" form="chapter-edit-form" class="rounded-sm border-border-strong text-link focus:ring-focus">
                         {{ __('Remove cover image') }}
                     </label>
                 @endif
 
-                <input id="cover_image" name="cover_image" type="file" form="chapter-edit-form" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
-                <p class="mt-1 text-xs text-gray-400">{{ CodexMediaRules::imageHint() }}</p>
+                <input id="cover_image" name="cover_image" type="file" form="chapter-edit-form" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-2 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
+                <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::imageHint() }}</p>
                 <x-input-error :messages="$errors->get('cover_image')" class="mt-2" />
             </x-card>
         </x-slot:sidebar>

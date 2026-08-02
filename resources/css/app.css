@@ -23,95 +23,172 @@
   --font-sans:
     Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-
-  --color-ocean-50: #ecf7fb;
-  --color-ocean-100: #cfeaf2;
-  --color-ocean-200: #a4d8e7;
-  --color-ocean-300: #6dc0d8;
-  --color-ocean-400: #40acc9;
-  --color-ocean-500: #219ebc;
-  --color-ocean-600: #1b809a;
-  --color-ocean-700: #18697e;
-  --color-ocean-800: #185767;
-  --color-ocean-900: #184a58;
-  --color-ocean-950: #0c2f3a;
-
-  --color-aqua-50: #f2f9fc;
-  --color-aqua-100: #ddeff7;
-  --color-aqua-200: #c2e4f1;
-  --color-aqua-300: #8ecae6;
-  --color-aqua-400: #63b4db;
-  --color-aqua-500: #429cc9;
-  --color-aqua-600: #327ea8;
-  --color-aqua-700: #2b6688;
-  --color-aqua-800: #285571;
-  --color-aqua-900: #26485f;
-  --color-aqua-950: #132d3e;
-
-  --color-navy-50: #ecf6fb;
-  --color-navy-100: #d5e8f1;
-  --color-navy-200: #a2c4d4;
-  --color-navy-300: #6fa1b7;
-  --color-navy-400: #3d7d9a;
-  --color-navy-500: #0a5a7d;
-  --color-navy-600: #074a68;
-  --color-navy-700: #054157;
-  --color-navy-800: #033a4d;
-  --color-navy-900: #023047;
-  --color-navy-950: #011f2f;
-
-  --color-sun-50: #fff9e6;
-  --color-sun-100: #fff0c2;
-  --color-sun-200: #ffe494;
-  --color-sun-300: #ffd766;
-  --color-sun-400: #ffc933;
-  --color-sun-500: #ffb703;
-  --color-sun-600: #d99b00;
-  --color-sun-700: #a67700;
-  --color-sun-800: #785600;
-  --color-sun-900: #4a3500;
-  --color-sun-950: #2c2000;
-
-  --color-flame-50: #fff3e6;
-  --color-flame-100: #ffe0c2;
-  --color-flame-200: #ffcc94;
-  --color-flame-300: #ffb866;
-  --color-flame-400: #fd9d33;
-  --color-flame-500: #fb8500;
-  --color-flame-600: #d67100;
-  --color-flame-700: #a85800;
-  --color-flame-800: #7a3f00;
-  --color-flame-900: #4e2800;
-  --color-flame-950: #2e1800;
-
-  /*
-   * Deliberately loud placeholder for the active-nav indicator. `fuchsia` is
-   * not a design choice — it exists so the colour announces itself during
-   * the browser pass, so spec 2 (theme-switcher) knows exactly where this
-   * token lands. See standing-issues.md.
-   */
-  --color-nav-active: var(--color-fuchsia-500);
 }
 
 /*
- * Tailwind 3 defaulted every border to gray-200; Tailwind 4 defaults to
- * currentColor, which would turn 88 width-only `border` usages into
- * text-coloured hairlines. This restores the v3 behaviour so the port
- * changes nothing visually.
- *
- * Deliberately temporary: the theme-switcher spec introduces a
- * --color-border token and rewrites those usages, and removes this block
- * in the same pass. See .specs/planned/2026-07/tailwind-4/standing-issues.md.
+ * The five hand-authored hue ramps that used to live above (ocean / aqua / navy /
+ * sun / flame) are gone, together with the loud placeholder the Tailwind 4 port
+ * left on the active-nav indicator. Nothing may declare a colour here again: a
+ * value a template can reach by hue is a value no preset can repaint. Colours are
+ * the role tokens below, and their runtime values come from `config/themes.php`.
  */
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
+
+/*
+ * ROLE TOKENS — the public colour vocabulary. A class names what a colour is *for*
+ * (`bg-surface`, `text-content-muted`), never which hue it happens to be, so a theme
+ * can repaint the app by overriding these custom properties at runtime. The full list
+ * and each background's chosen foreground live in App\Support\ThemeTokens.
+ *
+ * `static`, not plain `@theme`: Tailwind 4 tree-shakes theme variables it sees no
+ * utility for, and until the sweep renames the templates no utility references these
+ * at all — they would vanish from the compiled `:root` and the runtime override would
+ * have nothing to override. `static` emits every variable regardless.
+ *
+ * NEVER `@theme inline`. `inline` bakes the value into each utility rule instead of
+ * referencing the custom property, which silently breaks every runtime override — the
+ * single failure mode that looks like "the switcher does nothing", with no error
+ * anywhere.
+ *
+ * The values below are the **Daylight preset's**, copied literally from
+ * `config/themes.php`. They are a fallback, not the source of truth: every rendered
+ * page ships a `:root` block (`<x-theme-style />`) that overrides all of them with the
+ * active preset's values, so these only paint if that block is missing. They exist so
+ * the compiled stylesheet is never colourless on its own.
+ *
+ * Duplication of the Daylight values is the price of deleting the ramps — until then
+ * these were `var()` references to them. `ThemePresetTest` compares this block against
+ * `config('themes.presets.daylight.tokens')` value-for-value, so the two cannot drift.
+ * Change a Daylight colour in `config/themes.php` and mirror it here, or that test
+ * fails.
+ *
+ * The mixed hex/oklch notation is deliberate and matches the config exactly: Tailwind
+ * 4's own palette is oklch, and a hex approximation would move the pixel by a digit.
+ *
+ * There is deliberately no `dark:` variant and no `@custom-variant dark`. Dark mode is
+ * the `low-glare-dark` preset — one axis, not two.
+ */
+@theme static {
+  /* Surfaces — by elevation. */
+  --color-surface: oklch(96.7% 0.003 264.542);
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: oklch(98.5% 0.002 247.839);
+  --color-surface-overlay: #ffffff;
+
+  /* The modal backdrop — an effect, not a surface, so it has no foreground
+     partner and no contrast floor. See ThemeTokens::DECORATIVE. */
+  --color-scrim: oklch(55.1% 0.027 264.364);
+
+  /* Content — by emphasis. */
+  --color-content: #023047;
+  --color-content-muted: oklch(44.6% 0.03 256.802);
+  --color-content-subtle: oklch(53% 0.027 264.364);
+
+  /* Lines and rings. `focus` is its own token, never an alias of `primary`. */
+  --color-border: oklch(92.8% 0.006 264.531);
+  --color-border-strong: oklch(62% 0.024 261.325);
+  --color-focus: #1e93af;
+
+  /* Interactive. */
+  --color-primary: #023047;
+  --color-primary-content: #ffffff;
+  --color-primary-hover: #033a4d;
+  --color-primary-active: #011f2f;
+  --color-link: #18697e;
+  --color-link-hover: #185767;
+  --color-accent: #1b809a;
+  --color-accent-content: #185767;
+  --color-accent-surface: #cfeaf2;
+  --color-neutral: oklch(96.7% 0.003 264.542);
+  --color-neutral-content: oklch(37.3% 0.034 259.733);
+  --color-highlight: #ffe494;
+  --color-highlight-content: #023047;
+  --color-table-header: #ffc933;
+  --color-table-header-content: #023047;
+
+  /* The nav band — a dark band above a light page, not an elevated surface. */
+  --color-nav: #011f2f;
+  --color-nav-content: #ddeff7;
+  --color-nav-content-muted: #8ecae6;
+  --color-nav-raised: #123c49;
+
+  /*
+   * Status: the solid fill, the text on it, the tinted background, and the text on
+   * *that*. Four per status, not three — the tint's foreground has to be nameable,
+   * or it defaults to the fill and lands under 4.5:1 on three statuses out of four.
+   */
+  --color-danger: oklch(57.7% 0.245 27.325);
+  --color-danger-content: #ffffff;
+  --color-danger-surface: oklch(97.1% 0.013 17.38);
+  --color-danger-surface-content: oklch(44.4% 0.177 26.899);
+  --color-success: oklch(52.7% 0.154 150.069);
+  --color-success-content: #ffffff;
+  --color-success-surface: oklch(98.2% 0.018 155.826);
+  --color-success-surface-content: oklch(44.8% 0.119 151.328);
+  --color-warning: oklch(79.5% 0.184 86.047);
+  --color-warning-content: #023047;
+  --color-warning-surface: oklch(98.7% 0.026 102.212);
+  --color-warning-surface-content: oklch(47.6% 0.114 61.907);
+  --color-info: oklch(54.6% 0.245 262.881);
+  --color-info-content: #ffffff;
+  --color-info-surface: oklch(97% 0.014 254.604);
+  --color-info-surface-content: oklch(42.4% 0.199 265.638);
 }
+
+/*
+ * Tailwind Typography (`prose`) ships its own colour scale as `--tw-prose-*`
+ * variables, hard-coded to greys — `--tw-prose-bold` is near-black. Those beat the
+ * `text-content-muted` every `prose` callsite sets, because the plugin paints
+ * `strong`, headings, links, `code` and the table/quote borders by variable rather
+ * than letting them inherit. Under a dark preset that renders bold text nearly
+ * invisible against a dark surface.
+ *
+ * So the plugin's scale is re-pointed at the role tokens. Unlayered and after the
+ * `@plugin` line, which is what lets it win: same specificity as the plugin's own
+ * `.prose` rule, later in source order.
+ *
+ * > [!WARNING]
+ * > Adding a `prose` usage needs nothing here, but adding a `prose-invert` one does
+ * > — the `--tw-prose-invert-*` half of the scale is still the plugin's greys. The
+ * > app has no `prose-invert` usage today; a preset is how it gets a dark theme.
+ */
+.prose {
+    --tw-prose-body: var(--color-content-muted);
+    --tw-prose-headings: var(--color-content);
+    --tw-prose-lead: var(--color-content-muted);
+    --tw-prose-links: var(--color-link);
+    --tw-prose-bold: var(--color-content);
+    --tw-prose-counters: var(--color-content-muted);
+    --tw-prose-bullets: var(--color-border-strong);
+    --tw-prose-hr: var(--color-border);
+    --tw-prose-quotes: var(--color-content);
+    --tw-prose-quote-borders: var(--color-border);
+    --tw-prose-captions: var(--color-content-muted);
+    --tw-prose-kbd: var(--color-content);
+    --tw-prose-code: var(--color-content);
+    /*
+     * A `<pre>` block is light-on-dark in every preset, and the `nav` family is the
+     * only pair in the vocabulary that guarantees that — the same judgement call
+     * `x-tooltip`'s bubble and `x-icon-button`'s `light` variant already make.
+     */
+    --tw-prose-pre-code: var(--color-nav-content);
+    --tw-prose-pre-bg: var(--color-nav);
+    --tw-prose-th-borders: var(--color-border-strong);
+    --tw-prose-td-borders: var(--color-border);
+}
+
+/*
+ * Tailwind 3 defaulted every border to a light grey; Tailwind 4 defaults to
+ * currentColor. The port kept v3's behaviour with a base-layer shim on `*` so ~88
+ * width-only `border` usages did not become text-coloured hairlines overnight.
+ *
+ * The shim is gone: every one of those usages now names `--color-border` (or a
+ * status/accent token) explicitly, which is what makes them themeable at all. A
+ * blanket default would have quietly re-hidden the next one someone forgot.
+ *
+ * > [!WARNING]
+ * > A width-only `border` class now inherits `currentColor` — the element's text
+ * > colour. Always pair a border width with a border colour.
+ */
 
 /*
  * Self-hosted web fonts (latin + latin-ext subsets, matching what fonts.bunny.net
@@ -251,13 +328,16 @@
     float: left;
     height: 0;
     pointer-events: none;
-    color: var(--color-gray-400);
+    color: var(--color-content-subtle);
 }
 
 /*
  * The `/` slash-command menu. The @tiptap/suggestion plugin owns positioning (via
  * floating-ui through props.mount); these rules only style the popup list itself,
- * kept consistent with the editor toolbar's ocean/gray palette.
+ * kept consistent with the editor toolbar. `bg-surface-overlay` matches every other
+ * floating panel in the app (x-dropdown, x-popover); the selected item reuses
+ * `accent-surface`/`accent-content`, the exact pair x-dropdown-link's active state
+ * already carries — and, for Daylight, value-identical to this menu's old tint.
  */
 .wysiwyg-slash {
     z-index: 50;
@@ -265,8 +345,8 @@
     width: 14rem;
     overflow-y: auto;
     border-radius: var(--radius-md);
-    border: 1px solid var(--color-gray-200);
-    background-color: var(--color-white);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface-overlay);
     padding: --spacing(1);
     box-shadow: var(--shadow-lg);
 }
@@ -278,19 +358,19 @@
     padding: --spacing(1) --spacing(2);
     text-align: left;
     font-size: var(--text-sm);
-    color: var(--color-gray-700);
+    color: var(--color-content-muted);
     cursor: pointer;
 }
 
 .wysiwyg-slash__item.is-selected {
-    background-color: var(--color-ocean-100);
-    color: var(--color-ocean-800);
+    background-color: var(--color-accent-surface);
+    color: var(--color-accent-content);
 }
 
 .wysiwyg-slash__empty {
     padding: --spacing(1) --spacing(2);
     font-size: var(--text-sm);
-    color: var(--color-gray-400);
+    color: var(--color-content-subtle);
 }
 
 /*
@@ -309,19 +389,20 @@
 
 .tiptap td,
 .tiptap th {
-    border: 1px solid var(--color-gray-300);
+    border: 1px solid var(--color-border-strong);
     padding: --spacing(1) --spacing(2);
     vertical-align: top;
 }
 
 .tiptap th {
-    background-color: var(--color-gray-50);
+    background-color: var(--color-surface-sunken);
     font-weight: 600;
     text-align: left;
 }
 
+/* Same "this is selected" idea as the slash menu above — reuses its tint. */
 .tiptap .selectedCell {
-    background-color: var(--color-ocean-50);
+    background-color: var(--color-accent-surface);
 }
 
 .tiptap ul[data-type='taskList'] {
@@ -355,6 +436,16 @@
  * accent colour and icon (::before) distinguishes the five types from a plain quote.
  * Styled on `blockquote[data-callout-type]` (not scoped to `.tiptap`) so it looks the
  * same inside the editor and in the rendered HTML fields downstream.
+ *
+ * Four of the five types map onto a status: `note`/info, `tip`/success,
+ * `warning`/warning, `caution`/danger. The border and label both used a shade with no
+ * exact token match (500/700), so — same reasoning as x-alert's own comment — the
+ * label sits on `<status>-surface-content` (the shade already chosen to read on a
+ * tint) rather than the solid `<status>` fill, which measures as low as 1.85:1 as text.
+ *
+ * `important` (purple) has no status equivalent, so it takes `x-badge`'s `accent`
+ * pair wholesale — background included, unlike the other four, which keep the shared
+ * neutral background below.
  */
 blockquote[data-callout-type] {
     margin: --spacing(4) 0;
@@ -362,7 +453,7 @@ blockquote[data-callout-type] {
     border-left-style: solid;
     border-radius: var(--radius-md);
     padding: --spacing(2) --spacing(3);
-    background-color: var(--color-gray-50);
+    background-color: var(--color-surface-sunken);
     font-style: normal;
 }
 
@@ -376,48 +467,49 @@ blockquote[data-callout-type]::before {
 }
 
 blockquote[data-callout-type='note'] {
-    border-left-color: var(--color-blue-500);
+    border-left-color: var(--color-info);
 }
 
 blockquote[data-callout-type='note']::before {
     content: '\2139  Note';
-    color: var(--color-blue-700);
+    color: var(--color-info-surface-content);
 }
 
 blockquote[data-callout-type='tip'] {
-    border-left-color: var(--color-green-500);
+    border-left-color: var(--color-success);
 }
 
 blockquote[data-callout-type='tip']::before {
     content: '\1F4A1  Tip';
-    color: var(--color-green-700);
+    color: var(--color-success-surface-content);
 }
 
 blockquote[data-callout-type='important'] {
-    border-left-color: var(--color-purple-500);
+    background-color: var(--color-accent-surface);
+    border-left-color: var(--color-accent-content);
 }
 
 blockquote[data-callout-type='important']::before {
     content: '\2757  Important';
-    color: var(--color-purple-700);
+    color: var(--color-accent-content);
 }
 
 blockquote[data-callout-type='warning'] {
-    border-left-color: var(--color-amber-500);
+    border-left-color: var(--color-warning);
 }
 
 blockquote[data-callout-type='warning']::before {
     content: '\26A0\FE0F  Warning';
-    color: var(--color-amber-700);
+    color: var(--color-warning-surface-content);
 }
 
 blockquote[data-callout-type='caution'] {
-    border-left-color: var(--color-red-500);
+    border-left-color: var(--color-danger);
 }
 
 blockquote[data-callout-type='caution']::before {
     content: '\1F6D1  Caution';
-    color: var(--color-red-700);
+    color: var(--color-danger-surface-content);
 }
 
 /*
@@ -456,13 +548,13 @@ blockquote[data-callout-type='caution']::before {
 }
 
 .revision-diff ins.diff-ins {
-    background-color: var(--color-green-100);
-    color: var(--color-green-700);
+    background-color: var(--color-success-surface);
+    color: var(--color-success-surface-content);
 }
 
 .revision-diff del.diff-del {
-    background-color: var(--color-red-100);
-    color: var(--color-red-700);
+    background-color: var(--color-danger-surface);
+    color: var(--color-danger-surface-content);
 }
 
 /*
@@ -497,15 +589,15 @@ blockquote[data-callout-type='caution']::before {
 }
 
 .revision-diff .diff-inserted {
-    border-inline-start-color: var(--color-green-400);
+    border-inline-start-color: var(--color-success);
 }
 
 .revision-diff .diff-removed {
-    border-inline-start-color: var(--color-red-400);
+    border-inline-start-color: var(--color-danger);
 }
 
 .revision-diff .diff-formatting-changed {
-    border-inline-start-color: var(--color-blue-300);
+    border-inline-start-color: var(--color-info);
 }
 
 /*
@@ -524,8 +616,8 @@ blockquote[data-callout-type='caution']::before {
      * pill stays identical to the `rounded-full` badge component this rule mirrors.
      */
     border-radius: calc(infinity * 1px);
-    background-color: var(--color-blue-100);
-    color: var(--color-blue-800);
+    background-color: var(--color-info-surface);
+    color: var(--color-info-surface-content);
     font-size: var(--text-xs);
     font-weight: 500;
     white-space: nowrap;
@@ -546,7 +638,7 @@ blockquote[data-callout-type='caution']::before {
 .revision-diff--visual h3,
 .revision-diff--visual h4 {
     font-weight: 600;
-    color: var(--color-gray-900);
+    color: var(--color-content);
 }
 
 .revision-diff--visual h1 { font-size: var(--text-xl); }
@@ -564,20 +656,20 @@ blockquote[data-callout-type='caution']::before {
 .revision-diff--visual ol { list-style-type: decimal; }
 
 .revision-diff--visual blockquote {
-    border-inline-start: 3px solid var(--color-gray-300);
+    border-inline-start: 3px solid var(--color-border-strong);
     padding-inline-start: --spacing(3);
-    color: var(--color-gray-600);
+    color: var(--color-content-muted);
 }
 
 .revision-diff--visual pre {
-    background-color: var(--color-gray-50);
+    background-color: var(--color-surface-sunken);
     padding: --spacing(2);
     border-radius: var(--radius-sm);
     overflow-x: auto;
 }
 
 .revision-diff--visual a {
-    color: var(--color-ocean-700);
+    color: var(--color-link);
     text-decoration: underline;
 }
 
@@ -609,11 +701,11 @@ blockquote[data-callout-type='caution']::before {
 }
 
 .revision-diff--source td.old {
-    border-inline-end: 1px solid var(--color-gray-200);
+    border-inline-end: 1px solid var(--color-border);
 }
 
 .revision-diff--source td.none {
-    background-color: var(--color-gray-50);
+    background-color: var(--color-surface-sunken);
 }
 
 /*
@@ -637,13 +729,13 @@ blockquote[data-callout-type='caution']::before {
 }
 
 .revision-diff--source ins {
-    background-color: var(--color-green-100);
-    color: var(--color-green-700);
+    background-color: var(--color-success-surface);
+    color: var(--color-success-surface-content);
 }
 
 .revision-diff--source del {
-    background-color: var(--color-red-100);
-    color: var(--color-red-700);
+    background-color: var(--color-danger-surface);
+    color: var(--color-danger-surface-content);
 }
 
 .revision-diff--source ins::before {
@@ -669,5 +761,5 @@ blockquote[data-callout-type='caution']::before {
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: var(--color-gray-700);
+    color: var(--color-content-muted);
 }

@@ -8,9 +8,9 @@
     $hasHeader = isset($header) || filled($title);
 @endphp
 
-<div {{ $attributes->merge(['class' => 'bg-white overflow-hidden shadow-xs sm:rounded-lg']) }}>
+<div {{ $attributes->merge(['class' => 'bg-surface-raised overflow-hidden shadow-xs sm:rounded-lg']) }}>
     @if ($hasHeader)
-        <div class="border-b border-gray-200 px-6 py-4">
+        <div class="border-b border-border px-6 py-4">
             @isset($header)
                 {{ $header }}
             @else
@@ -24,7 +24,7 @@
     </div>
 
     @isset($footer)
-        <div class="border-t border-gray-200 bg-gray-50 px-6 py-4">
+        <div class="border-t border-border bg-surface-sunken px-6 py-4">
             {{ $footer }}
         </div>
     @endisset

@@ -133,7 +133,7 @@ class AdminConfigurationTest extends TestCase
     // Section content
     // ---------------------------------------------------------------------
 
-    public function test_appearance_page_is_a_headed_placeholder_with_no_form(): void
+    public function test_appearance_page_shows_its_heading(): void
     {
         $user = User::factory()->create();
 
@@ -141,16 +141,6 @@ class AdminConfigurationTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Appearance & accessibility');
-
-        // Scope the "no form" assertion to the page's <main> content region: the
-        // shared layout always ships a logout <form> + CSRF <input> in the nav,
-        // which are outside <main>. The section itself must have neither.
-        $this->assertMatchesRegularExpression('/<main>(.*)<\/main>/s', $response->getContent());
-        preg_match('/<main>(.*)<\/main>/s', $response->getContent(), $matches);
-        $mainContent = $matches[1];
-
-        $this->assertStringNotContainsString('<form', $mainContent);
-        $this->assertStringNotContainsString('<input', $mainContent);
     }
 
     public function test_section_pages_show_their_headings(): void

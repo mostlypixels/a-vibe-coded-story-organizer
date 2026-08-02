@@ -1,7 +1,7 @@
 {{-- $navigation is a ProjectNavigation, supplied by the view composer in
      AppServiceProvider. It owns the "which project / which active section"
      logic that used to be inline @php in this file. --}}
-<nav x-data="{ open: false }" class="bg-navy-950">
+<nav x-data="{ open: false }" class="bg-nav">
     {{-- Primary Navigation Menu. Deliberately NOT inside the max-w-7xl container
          that <header> and <main> use: the logo anchors the left corner and the
          account menu the right, so the bar spans the viewport. The consequence is
@@ -15,11 +15,11 @@
     <div>
         <div class="flex justify-between h-12">
             <div class="flex">
-                {{-- Logo. Shares the picker's ocean-900 fill so the two read as one
+                {{-- Logo. Shares the picker's nav-raised fill so the two read as one
                      block in the corner. --}}
-                <div class="shrink-0 flex items-center bg-ocean-900 px-2">
+                <div class="shrink-0 flex items-center bg-nav-raised px-2">
                     <a href="{{ route('dashboard') }}">
-                        <x-application-logo class="block h-6 w-auto fill-current text-white" />
+                        <x-application-logo class="block h-6 w-auto fill-current text-nav-content" />
                     </a>
                 </div>
 
@@ -35,14 +35,15 @@
                             {{-- Square corners, full bar height: the block reads as part of the
                                  bar's structure rather than a control floating on it. --}}
                             @if ($navigation->hasProject())
-                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-ocean-900 px-4 text-sm font-semibold leading-5 text-white hover:bg-ocean-800 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-aqua-300 transition ease-in-out duration-150">
+                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
                                     {{ $navigation->project->name }}
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
                                 </button>
                             @else
-                                {{-- Nothing chosen yet: same block, lighter fill and a
-                                     dimmer label. --}}
-                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-ocean-800 px-4 text-sm font-semibold leading-5 text-aqua-100 hover:bg-ocean-700 hover:text-white focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-aqua-300 transition ease-in-out duration-150">
+                                {{-- Nothing chosen yet: same block and fill — the flat
+                                     vocabulary has no second nav-raised shade to dim the
+                                     label with, so both states share nav-content. --}}
+                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
                                     {{ __('Choose a project') }}
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
                                 </button>
@@ -58,7 +59,7 @@
                                 </x-dropdown-link>
                             @endforeach
 
-                            <div class="border-t border-gray-200"></div>
+                            <div class="border-t border-border"></div>
 
                             <x-dropdown-link :href="route('dashboard')">{{ __('All projects') }} &rarr;</x-dropdown-link>
                         </x-slot>
@@ -77,7 +78,7 @@
             <div class="hidden sm:flex sm:items-center sm:ms-6 sm:pe-2">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-aqua-100 bg-transparent hover:text-white focus:outline-hidden transition ease-in-out duration-150">
+                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-nav-content bg-transparent hover:text-nav-content focus:outline-hidden transition ease-in-out duration-150">
                             <div>{{ Auth::user()->name }}</div>
 
                             <div class="ms-1">
@@ -115,7 +116,7 @@
             {{-- pe-2, not the old -me-2: that negative margin existed to cancel the
                  bar's px-2, which is gone — it would now push the button off-screen. --}}
             <div class="pe-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-aqua-100 hover:text-white hover:bg-navy-800 focus:outline-hidden focus:bg-navy-800 focus:text-white transition duration-150 ease-in-out">
+                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-nav-content hover:bg-nav-raised focus:outline-hidden focus:bg-nav-raised transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -130,8 +131,8 @@
         {{-- Mobile half of the picker: the same capped list, laid out as rows
              rather than a panel. The open project stays visible here (marked
              active) because there is no trigger naming it. --}}
-        <div class="px-4 py-3 border-b border-navy-800">
-            <div class="text-xs uppercase tracking-wide text-aqua-300 mb-2">{{ __('Project') }}</div>
+        <div class="px-4 py-3 border-b border-nav-raised">
+            <div class="text-xs uppercase tracking-wide text-nav-content-muted mb-2">{{ __('Project') }}</div>
 
             @if ($navigation->hasProject())
                 <x-responsive-nav-link :href="route('projects.show', $navigation->project)" :active="true">
@@ -155,10 +156,10 @@
         </div>
 
         <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-t border-navy-800">
+        <div class="pt-4 pb-1 border-t border-nav-raised">
             <div class="px-4">
-                <div class="font-medium text-base text-white">{{ Auth::user()->name }}</div>
-                <div class="font-medium text-sm text-aqua-200">{{ Auth::user()->email }}</div>
+                <div class="font-medium text-base text-nav-content">{{ Auth::user()->name }}</div>
+                <div class="font-medium text-sm text-nav-content-muted">{{ Auth::user()->email }}</div>
             </div>
 
             <div class="mt-3 space-y-1">

@@ -17,8 +17,8 @@
     <div class="space-y-6">
         @if ($from === null || $to === null)
             {{-- Fewer than two save points: there is no pair to be had yet. --}}
-            <div class="bg-white shadow-xs rounded-lg px-6 py-10 text-center text-gray-500">
-                <p class="font-medium text-gray-600">{{ __('Nothing to compare yet.') }}</p>
+            <div class="bg-surface-raised shadow-xs rounded-lg px-6 py-10 text-center text-content-muted">
+                <p class="font-medium text-content-muted">{{ __('Nothing to compare yet.') }}</p>
                 <p class="mt-1 text-sm">{{ __('This entity needs at least two saves before they can be compared.') }}</p>
             </div>
         @else
@@ -31,7 +31,7 @@
                  Each picker is a native <select> that the Alpine combobox
                  replaces once it mounts; the surrounding form is what makes the
                  no-JS baseline work. --}}
-            <form method="GET" class="bg-white shadow-xs rounded-lg px-6 py-4">
+            <form method="GET" class="bg-surface-raised shadow-xs rounded-lg px-6 py-4">
                 @if ($field !== null)
                     <input type="hidden" name="field" value="{{ $field }}">
                 @endif
@@ -52,7 +52,7 @@
                 </div>
 
                 <div class="mt-4 flex items-center justify-between gap-4">
-                    <p class="text-sm text-gray-500">
+                    <p class="text-sm text-content-muted">
                         {{ trans_choice('{0}The same save|{1}1 save apart|[2,*]:count saves apart', $savesApart, ['count' => $savesApart]) }}
                         &middot;
                         {{ $from->savedAt->format('d F Y H:i') }} &rarr; {{ $to->savedAt->format('d F Y H:i') }}
@@ -62,11 +62,11 @@
             </form>
 
             @if ($field !== null)
-                <p class="text-sm text-gray-500">
+                <p class="text-sm text-content-muted">
                     {{ __('Showing :field only.', ['field' => Str::headline($field)]) }}
                     <a
                         href="{{ route('revisions.compare', ['entity' => $entity, 'id' => $id, 'from' => $from->saveId, 'to' => $to->saveId]) }}"
-                        class="text-ocean-600 hover:text-ocean-800 hover:underline"
+                        class="text-link hover:text-link-hover hover:underline"
                     >{{ __('Show all fields') }}</a>
                 </p>
             @endif
@@ -125,13 +125,13 @@
                     </x-card>
                 </article>
             @empty
-                <div class="bg-white shadow-xs rounded-lg px-6 py-10 text-center text-gray-500">
-                    <p class="font-medium text-gray-600">{{ __('These two saves left every field identical.') }}</p>
+                <div class="bg-surface-raised shadow-xs rounded-lg px-6 py-10 text-center text-content-muted">
+                    <p class="font-medium text-content-muted">{{ __('These two saves left every field identical.') }}</p>
                 </div>
             @endforelse
 
             @if ($unchangedFields !== [])
-                <p class="text-sm text-gray-500">
+                <p class="text-sm text-content-muted">
                     {{ trans_choice(
                         '{1}1 other field unchanged (:fields)|[2,*]:count other fields unchanged (:fields)',
                         count($unchangedFields),

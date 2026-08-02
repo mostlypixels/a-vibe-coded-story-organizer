@@ -24,13 +24,14 @@
 
 @php
     $variants = [
-        // The default outline: the app's navy on white.
-        'outline-solid' => 'border border-navy-500 bg-transparent text-navy-500 hover:bg-navy-50',
+        // The default outline: the app's link-blue on the page surface.
+        'outline-solid' => 'border border-link bg-transparent text-link hover:bg-info-surface',
         // Destructive actions only (delete, revoke) — red is a warning, not a colour choice.
-        'danger' => 'border border-red-600 bg-transparent text-red-600 hover:bg-red-50',
+        'danger' => 'border border-danger bg-transparent text-danger hover:bg-danger-surface',
         // For placement over a dark or photographic backdrop (e.g. the reference-image
-        // lightbox), where the navy-on-white outline would be low contrast.
-        'light' => 'border border-white bg-transparent text-white hover:bg-white/10',
+        // lightbox), where the outline variant would be low contrast. The nav family is
+        // the one token pair the app already keeps legible on a fixed-dark surface.
+        'light' => 'border border-nav-content bg-transparent text-nav-content hover:bg-nav-content/10',
         // Borderless, for dense repeated controls inside a table row (reordering),
         // where eight outlined boxes per row would out-shout the content.
         //
@@ -40,11 +41,16 @@
         // the button actually works — and the Story overview, which toggles `disabled`
         // from JS after an AJAX reorder, restyles itself for free.
         //
-        // It greys rather than disappears on purpose: a control that vanishes at the
+        // It dims rather than disappears on purpose: a control that vanishes at the
         // ends of a list makes the row's buttons jump around as things are moved.
-        'ghost' => 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-            .' disabled:text-gray-200 disabled:cursor-not-allowed'
-            .' disabled:hover:bg-transparent disabled:hover:text-gray-200',
+        //
+        // The dimming is `opacity`, not a paler colour: the enabled state is already
+        // `content-subtle`, the faintest content token there is, and the flat
+        // vocabulary has no second step below it. `disabled:opacity-25` is what
+        // `x-button` already uses, so the app has one disabled look rather than two.
+        'ghost' => 'text-content-subtle hover:text-content-muted hover:bg-neutral'
+            .' disabled:opacity-25 disabled:cursor-not-allowed'
+            .' disabled:hover:bg-transparent disabled:hover:text-content-subtle',
     ][$variant];
 @endphp
 

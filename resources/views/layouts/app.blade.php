@@ -11,9 +11,15 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        <x-theme-style />
     </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100">
+    {{-- `text-content` is the page's default voice, and it is load-bearing rather than
+         cosmetic: without it the body falls back to the browser's black, so anything that
+         forgets to name a colour is invisible under a dark preset. `layouts/guest` and
+         `welcome` already set it; this and `layouts/public` were the two that did not. --}}
+    <body class="font-sans text-content antialiased">
+        <div class="min-h-screen bg-surface">
             @include('layouts.navigation')
 
             <!-- Page Heading -->
@@ -25,7 +31,7 @@
                      element itself, which always wins over an ancestor's, so the
                      line-height has to be stated here to keep the header band at its
                      original height. --}}
-                <header class="bg-ocean-700 shadow-sm [&_h2]:text-sm [&_h2]:leading-5 [&_h2]:text-white [&_a]:text-aqua-100 [&_a:hover]:text-white">
+                <header class="bg-nav-raised shadow-sm [&_h2]:text-sm [&_h2]:leading-5 [&_h2]:text-nav-content [&_a]:text-nav-content [&_a:hover]:text-nav-content">
                     {{-- Same full-bleed treatment as layouts.navigation: spans the
                          viewport with a px-2 gutter rather than the max-w-7xl box
                          <main> still uses. --}}

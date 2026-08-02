@@ -43,8 +43,8 @@
             {{-- Aliases: a small add/remove-row repeater of free-text inputs (x-string-list). --}}
             <div>
                 <x-input-label :value="__('Aliases')" />
-                <p class="text-sm text-gray-500">{{ __('Other names this entry is known by (optional).') }}</p>
-                <p class="text-sm text-gray-500">{{ __('Scenes are scanned for these names automatically when saved. Matching is case-sensitive and whole-word only, and aliases under 3 characters are ignored. If aliases overlap with another entry\'s name or alias, matches can be ambiguous.') }}</p>
+                <p class="text-sm text-content-muted">{{ __('Other names this entry is known by (optional).') }}</p>
+                <p class="text-sm text-content-muted">{{ __('Scenes are scanned for these names automatically when saved. Matching is case-sensitive and whole-word only, and aliases under 3 characters are ignored. If aliases overlap with another entry\'s name or alias, matches can be ambiguous.') }}</p>
 
                 <x-string-list
                     name="aliases"
@@ -62,7 +62,7 @@
          later periods are added on the edit page once the entry (and its id) exist. --}}
     @if ($entry === null && $attributes->isNotEmpty())
         <x-card :title="__('Attributes')">
-            <p class="text-sm text-gray-500">{{ __('Starting value for each attribute (from the Start of the timeline). You can add later changes after saving.') }}</p>
+            <p class="text-sm text-content-muted">{{ __('Starting value for each attribute (from the Start of the timeline). You can add later changes after saving.') }}</p>
 
             <div class="mt-4 space-y-4">
                 @foreach ($attributes as $attribute)
@@ -99,18 +99,18 @@
 
         <x-card :title="__('Cover')">
             @if ($cover)
-                <img src="{{ $cover->url() }}" alt="{{ $entry->name }}" class="w-full rounded-md border border-gray-200 object-cover">
+                <img src="{{ $cover->url() }}" alt="{{ $entry->name }}" class="w-full rounded-md border border-border object-cover">
 
-                <label class="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                    <input type="checkbox" name="remove_media[]" value="{{ $cover->id }}" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                <label class="mt-2 flex items-center gap-2 text-sm text-content-muted">
+                    <input type="checkbox" name="remove_media[]" value="{{ $cover->id }}" class="rounded-sm border-border-strong text-link focus:ring-focus">
                     {{ __('Remove cover') }}
                 </label>
             @endif
 
             <div class="mt-3">
                 <x-input-label for="cover" :value="$cover ? __('Replace cover') : __('Upload cover')" />
-                <input id="cover" name="cover" type="file" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
-                <p class="mt-1 text-xs text-gray-400">{{ CodexMediaRules::imageHint() }}</p>
+                <input id="cover" name="cover" type="file" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
+                <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::imageHint() }}</p>
                 <x-input-error :messages="$errors->get('cover')" class="mt-2" />
             </div>
         </x-card>
@@ -142,7 +142,7 @@
 --}}
 <div class="mt-6" x-data="{ activeTab: 'images', lightbox: null, filePreview: null }">
     <x-card>
-        <div class="border-b border-gray-200">
+        <div class="border-b border-border">
             <div role="tablist" aria-label="{{ __('Reference media') }}" class="-mb-px flex gap-2">
                 <button
                     id="tab-reference-images"
@@ -156,9 +156,9 @@
                     @keydown.right.prevent="activeTab = 'files'; $refs.tabFiles.focus()"
                     @keydown.left.prevent="activeTab = 'files'; $refs.tabFiles.focus()"
                     :class="activeTab === 'images'
-                        ? 'border-ocean-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'"
-                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-xs transition ease-in-out duration-150"
+                        ? 'border-accent text-content'
+                        : 'border-transparent text-content-muted hover:text-content hover:border-border-strong'"
+                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-focus focus:ring-offset-2 rounded-xs transition ease-in-out duration-150"
                 >
                     {{ __('Reference images') }}
                 </button>
@@ -175,9 +175,9 @@
                     @keydown.right.prevent="activeTab = 'images'; $refs.tabImages.focus()"
                     @keydown.left.prevent="activeTab = 'images'; $refs.tabImages.focus()"
                     :class="activeTab === 'files'
-                        ? 'border-ocean-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'"
-                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-xs transition ease-in-out duration-150"
+                        ? 'border-accent text-content'
+                        : 'border-transparent text-content-muted hover:text-content hover:border-border-strong'"
+                    class="inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-focus focus:ring-offset-2 rounded-xs transition ease-in-out duration-150"
                 >
                     {{ __('Reference files') }}
                 </button>
@@ -199,12 +199,12 @@
                             <button
                                 type="button"
                                 @click="lightbox = { url: @js($image->url()), alt: @js($image->original_name) }"
-                                class="block w-full focus:outline-hidden focus:ring-2 focus:ring-ocean-500 focus:ring-offset-2 rounded-md"
+                                class="block w-full focus:outline-hidden focus:ring-2 focus:ring-focus focus:ring-offset-2 rounded-md"
                             >
-                                <img src="{{ $image->url() }}" alt="{{ $image->original_name }}" class="w-full aspect-square rounded-md border border-gray-200 object-cover">
+                                <img src="{{ $image->url() }}" alt="{{ $image->original_name }}" class="w-full aspect-square rounded-md border border-border object-cover">
                             </button>
-                            <label class="mt-1 flex items-center gap-1 text-xs text-gray-600">
-                                <input type="checkbox" name="remove_media[]" value="{{ $image->id }}" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                            <label class="mt-1 flex items-center gap-1 text-xs text-content-muted">
+                                <input type="checkbox" name="remove_media[]" value="{{ $image->id }}" class="rounded-sm border-border-strong text-link focus:ring-focus">
                                 {{ __('Remove') }}
                             </label>
                         </li>
@@ -214,8 +214,8 @@
 
             <div class="mt-3">
                 <x-input-label for="reference_images" :value="__('Add images')" />
-                <input id="reference_images" name="reference_images[]" type="file" multiple accept="{{ CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
-                <p class="mt-1 text-xs text-gray-400">{{ CodexMediaRules::imageHint() }}</p>
+                <input id="reference_images" name="reference_images[]" type="file" multiple accept="{{ CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
+                <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::imageHint() }}</p>
                 <x-input-error :messages="$errors->get('reference_images')" class="mt-2" />
                 <x-input-error :messages="$errors->get('reference_images.*')" class="mt-2" />
             </div>
@@ -238,14 +238,14 @@
                                 <button
                                     type="button"
                                     @click="filePreview = { url: @js($file->url()), name: @js($file->original_name) }"
-                                    class="truncate text-ocean-600 hover:text-ocean-800 focus:outline-hidden focus:ring-2 focus:ring-ocean-500 rounded-xs"
+                                    class="truncate text-link hover:text-link-hover focus:outline-hidden focus:ring-2 focus:ring-focus rounded-xs"
                                 >
                                     {{ $file->original_name }}
                                 </button>
                                 <x-icon-download-button :href="$file->url()" :download="$file->original_name" class="shrink-0" />
                             </span>
-                            <label class="flex shrink-0 items-center gap-1 text-xs text-gray-600">
-                                <input type="checkbox" name="remove_media[]" value="{{ $file->id }}" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                            <label class="flex shrink-0 items-center gap-1 text-xs text-content-muted">
+                                <input type="checkbox" name="remove_media[]" value="{{ $file->id }}" class="rounded-sm border-border-strong text-link focus:ring-focus">
                                 {{ __('Remove') }}
                             </label>
                         </li>
@@ -255,8 +255,8 @@
 
             <div class="mt-3">
                 <x-input-label for="reference_files" :value="__('Add files')" />
-                <input id="reference_files" name="reference_files[]" type="file" multiple accept="{{ CodexMediaRules::fileAccept() }}" class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
-                <p class="mt-1 text-xs text-gray-400">{{ CodexMediaRules::fileHint() }}</p>
+                <input id="reference_files" name="reference_files[]" type="file" multiple accept="{{ CodexMediaRules::fileAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
+                <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::fileHint() }}</p>
                 <x-input-error :messages="$errors->get('reference_files')" class="mt-2" />
                 <x-input-error :messages="$errors->get('reference_files.*')" class="mt-2" />
             </div>
@@ -274,7 +274,8 @@
         role="dialog"
         aria-modal="true"
     >
-        <div class="fixed inset-0 bg-gray-500 opacity-75" @click="lightbox = null"></div>
+        {{-- Own token, not `content-muted` — see <x-modal>'s identical comment. --}}
+        <div class="fixed inset-0 bg-scrim opacity-75" @click="lightbox = null"></div>
 
         <div class="relative mx-auto max-w-3xl">
             <x-icon-close-button @click="lightbox = null" variant="light" class="absolute -top-10 right-0" />
@@ -295,17 +296,17 @@
         role="dialog"
         aria-modal="true"
     >
-        <div class="fixed inset-0 bg-gray-500 opacity-75" @click="filePreview = null"></div>
+        <div class="fixed inset-0 bg-scrim opacity-75" @click="filePreview = null"></div>
 
         <div class="relative mx-auto flex h-full max-w-4xl flex-col">
-            <div class="flex items-center justify-between rounded-t-lg bg-white px-4 py-2 shadow-xl">
-                <span class="truncate text-sm font-medium text-gray-700" x-text="filePreview?.name"></span>
+            <div class="flex items-center justify-between rounded-t-lg bg-surface-raised px-4 py-2 shadow-xl">
+                <span class="truncate text-sm font-medium text-content-muted" x-text="filePreview?.name"></span>
                 <span class="flex shrink-0 items-center gap-1">
                     <x-icon-download-button x-bind:href="filePreview?.url" x-bind:download="filePreview?.name" />
                     <x-icon-close-button @click="filePreview = null" />
                 </span>
             </div>
-            <iframe :src="filePreview?.url" :title="filePreview?.name" class="flex-1 rounded-b-lg border-0 bg-white shadow-xl"></iframe>
+            <iframe :src="filePreview?.url" :title="filePreview?.name" class="flex-1 rounded-b-lg border-0 bg-surface-raised shadow-xl"></iframe>
         </div>
     </div>
 </div>

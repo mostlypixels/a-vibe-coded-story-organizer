@@ -27,7 +27,7 @@
 <nav aria-label="{{ __('Revision history') }}" class="text-sm" x-data="{ filter: '' }">
     <a
         href="{{ route('projects.show', $project) }}"
-        class="inline-flex items-center gap-1 text-gray-500 hover:text-gray-700 no-underline hover:underline"
+        class="inline-flex items-center gap-1 text-content-muted hover:text-content no-underline hover:underline"
     >
         <span aria-hidden="true">&larr;</span>
         <span class="truncate">{{ $project->name }}</span>
@@ -65,7 +65,7 @@
                 type="button"
                 @click="open = ! open"
                 :aria-expanded="(filter.trim() !== '' || open) ? 'true' : 'false'"
-                class="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700"
+                class="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold uppercase tracking-wider text-content-muted hover:text-content"
             >
                 <span class="flex items-center gap-2">
                     <span>{{ __($group->label) }}</span>
@@ -99,7 +99,7 @@
                             {{ $treeEntity->name }}
                         </x-sidebar-link>
 
-                        <ul class="ms-2 border-s border-gray-200">
+                        <ul class="ms-2 border-s border-border">
                             @foreach ($treeEntity->fields as $leaf)
                                 @php
                                     $isActive = $activeEntity === $leaf->entity
@@ -123,6 +123,6 @@
             </ul>
         </div>
     @empty
-        <p class="mt-4 text-gray-500">{{ __('No revisions recorded in this project yet.') }}</p>
+        <p class="mt-4 text-content-muted">{{ __('No revisions recorded in this project yet.') }}</p>
     @endforelse
 </nav>

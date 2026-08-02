@@ -36,7 +36,7 @@
     // class="" — duplicate attributes are not merged by the browser, they are
     // dropped, which silently cost these buttons their sizing and padding.
     $classes = 'inline-flex min-w-8 items-center justify-center rounded-sm px-2 py-1 text-sm font-medium'
-        .($isActiveExpression ? '' : ' text-gray-600 hover:bg-gray-200');
+        .($isActiveExpression ? '' : ' text-content-muted hover:bg-neutral');
 @endphp
 
 <button
@@ -45,7 +45,7 @@
         @click="{{ $clickExpression }}"
     @endif
     @if ($isActiveExpression)
-        :class="({{ $isActiveExpression }}) ? 'bg-ocean-100 text-ocean-800' : 'text-gray-600 hover:bg-gray-200'"
+        :class="({{ $isActiveExpression }}) ? 'bg-accent-surface text-accent-content' : 'text-content-muted hover:bg-neutral'"
     @endif
     {{ $attributes->merge(['class' => $classes]) }}
     title="{{ $title }}"

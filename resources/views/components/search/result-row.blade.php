@@ -12,22 +12,23 @@
     no separate show page, so "view" opens the same edit page as the name link).
 
     The preview ({!! !!}) is the ONE deliberate un-escaped output on the whole search
-    page — it is HTML that SearchSnippet already escaped and wrapped in
-    <mark class="bg-sun-200"> before the view ever saw it (same trusted-HTML pattern
-    as Scene::renderedContents). The entity name and field labels stay auto-escaped
-    {{ }} so HTML-special characters in a title render literally, never as markup.
+    page — it is HTML that SearchSnippet already escaped and wrapped in a themed
+    <mark> before the view ever saw it (same trusted-HTML pattern as
+    Scene::renderedContents). The mark's classes live on SearchSnippet, not here.
+    The entity name and field labels stay auto-escaped {{ }} so HTML-special
+    characters in a title render literally, never as markup.
 --}}
 <x-table-row :striped="$striped">
     {{-- min-w keeps the w-full preview cell from squeezing names into a wrap-per-word sliver. --}}
     <td class="px-4 py-3 align-top min-w-48">
-        <a href="{{ route($editRoute, $row->entity) }}" class="font-medium text-ocean-600 hover:text-ocean-800 hover:underline">
+        <a href="{{ route($editRoute, $row->entity) }}" class="font-medium text-link hover:text-link-hover hover:underline">
             {{ $row->entity->{$nameField} }}
         </a>
     </td>
-    <td class="px-4 py-3 align-top text-sm text-gray-500 whitespace-nowrap">
+    <td class="px-4 py-3 align-top text-sm text-content-muted whitespace-nowrap">
         {{ $row->matchedFields() }}
     </td>
-    <td class="px-4 py-3 align-top text-sm text-gray-700 w-full">
+    <td class="px-4 py-3 align-top text-sm text-content-muted w-full">
         {!! $row->snippet !!}
     </td>
     <td class="px-4 py-3 align-top text-right text-sm whitespace-nowrap">

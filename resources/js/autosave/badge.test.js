@@ -37,20 +37,20 @@ describe('labelFor', () => {
 });
 
 describe('classesFor', () => {
-    it('marks the states that need a human decision in red', () => {
-        expect(classesFor(STATES.CONFLICT)).toContain('red');
-        expect(classesFor(STATES.FORBIDDEN_AFTER_REPLAY)).toContain('red');
-        expect(classesFor(STATES.ERROR)).toContain('red');
+    it('marks the states that need a human decision with the danger token', () => {
+        expect(classesFor(STATES.CONFLICT)).toContain('danger');
+        expect(classesFor(STATES.FORBIDDEN_AFTER_REPLAY)).toContain('danger');
+        expect(classesFor(STATES.ERROR)).toContain('danger');
     });
 
-    it('marks the soft in-progress states in amber, and a fresh save in green', () => {
-        expect(classesFor(STATES.SESSION_EXPIRED)).toContain('amber');
-        expect(classesFor(STATES.RETRYING)).toContain('amber');
-        expect(classesFor(STATES.SAVED)).toContain('green');
+    it('marks the soft in-progress states with the warning token, and a fresh save with success', () => {
+        expect(classesFor(STATES.SESSION_EXPIRED)).toContain('warning');
+        expect(classesFor(STATES.RETRYING)).toContain('warning');
+        expect(classesFor(STATES.SAVED)).toContain('success');
     });
 
     it('falls back to a neutral style for an unrecognized state', () => {
-        expect(classesFor('made-up-state')).toBe('border-gray-300 bg-white text-gray-600');
+        expect(classesFor('made-up-state')).toBe('border-border-strong bg-surface-raised text-content-muted');
     });
 });
 

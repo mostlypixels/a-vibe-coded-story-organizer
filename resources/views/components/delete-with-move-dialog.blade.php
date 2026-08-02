@@ -69,7 +69,7 @@
         @if ($destinations->isNotEmpty())
             <label class="flex items-start gap-2">
                 <input type="radio" name="delete_mode" value="move" x-model="mode" class="mt-1">
-                <span class="text-sm text-gray-700">{{ __('Move :children to another :destination, then delete', ['children' => $childPhrase, 'destination' => $destinationNoun]) }}</span>
+                <span class="text-sm text-content-muted">{{ __('Move :children to another :destination, then delete', ['children' => $childPhrase, 'destination' => $destinationNoun]) }}</span>
             </label>
 
             <div x-show="mode === 'move'" class="pl-6">
@@ -89,10 +89,10 @@
 
             <label class="flex items-start gap-2">
                 <input type="radio" name="delete_mode" value="delete" x-model="mode" class="mt-1">
-                <span class="text-sm text-gray-700">{{ __('Delete everything (:cascade)', ['cascade' => $cascadePhrase]) }}</span>
+                <span class="text-sm text-content-muted">{{ __('Delete everything (:cascade)', ['cascade' => $cascadePhrase]) }}</span>
             </label>
         @else
-            <p class="text-sm text-gray-700">{{ __('This will also delete :cascade.', ['cascade' => $cascadePhrase]) }}</p>
+            <p class="text-sm text-content-muted">{{ __('This will also delete :cascade.', ['cascade' => $cascadePhrase]) }}</p>
         @endif
 
         <x-slot name="footer">

@@ -32,19 +32,22 @@ const BADGE_COPY = {
     [STATES.ERROR]: "Couldn't save — check your connection.",
 };
 
-/** Tailwind classes per state: red/amber for anything needing a human decision or a
- *  soft retry, green for a fresh save, neutral gray while a save is in flight. */
+/** Role tokens per state: `danger`/`warning` for anything needing a human decision or
+ *  a soft retry, `success` for a fresh save, neutral (surface/border/content-muted)
+ *  while a save is in flight — the same four-token status shape every badge and
+ *  alert in the app uses (see App\Support\ThemeTokens), so this badge repaints with
+ *  the rest of the app under any theme instead of staying hard-coded red/green/gray. */
 const BADGE_STYLES = {
-    [STATES.SESSION_EXPIRED]: 'border-amber-300 bg-amber-50 text-amber-800',
-    [STATES.CONFLICT]: 'border-red-300 bg-red-50 text-red-800',
-    [STATES.FORBIDDEN_AFTER_REPLAY]: 'border-red-300 bg-red-50 text-red-800',
-    [STATES.ERROR]: 'border-red-300 bg-red-50 text-red-800',
-    [STATES.RETRYING]: 'border-amber-300 bg-amber-50 text-amber-800',
-    [STATES.SAVING]: 'border-gray-300 bg-white text-gray-600',
-    [STATES.SAVED]: 'border-green-300 bg-green-50 text-green-700',
+    [STATES.SESSION_EXPIRED]: 'border-warning bg-warning-surface text-warning-surface-content',
+    [STATES.CONFLICT]: 'border-danger bg-danger-surface text-danger-surface-content',
+    [STATES.FORBIDDEN_AFTER_REPLAY]: 'border-danger bg-danger-surface text-danger-surface-content',
+    [STATES.ERROR]: 'border-danger bg-danger-surface text-danger-surface-content',
+    [STATES.RETRYING]: 'border-warning bg-warning-surface text-warning-surface-content',
+    [STATES.SAVING]: 'border-border-strong bg-surface-raised text-content-muted',
+    [STATES.SAVED]: 'border-success bg-success-surface text-success-surface-content',
 };
 
-const DEFAULT_BADGE_STYLE = 'border-gray-300 bg-white text-gray-600';
+const DEFAULT_BADGE_STYLE = 'border-border-strong bg-surface-raised text-content-muted';
 
 /** States a click should never try to "jump to a field" for — the fix there is the
  *  Sign in link (session-expired) or manually copying text before switching accounts

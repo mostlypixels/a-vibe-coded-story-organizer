@@ -29,7 +29,7 @@
 
                     <div x-data="{ newEvent: {{ old('new_event_title') ? 'true' : 'false' }} }">
                         <x-input-label for="event_id" :value="__('Happens during')" />
-                        <x-select id="event_id" name="event_id" x-bind:disabled="newEvent" class="mt-1 block w-full disabled:bg-gray-100 disabled:text-gray-400">
+                        <x-select id="event_id" name="event_id" x-bind:disabled="newEvent" class="mt-1 block w-full disabled:bg-surface-sunken disabled:text-content-subtle">
                             <option value="">{{ __('— Not assigned —') }}</option>
                             @foreach ($events as $event)
                                 <option value="{{ $event->id }}" @selected(old('event_id', $scene->event_id) == $event->id)>{{ $event->title }} &mdash; {{ $event->event_datetime->format('M j, Y') }}</option>
@@ -37,16 +37,16 @@
                         </x-select>
                         <x-input-error :messages="$errors->get('event_id')" class="mt-2" />
 
-                        <button type="button" @click="newEvent = ! newEvent" class="mt-2 text-sm text-ocean-600 hover:text-ocean-800">
+                        <button type="button" @click="newEvent = ! newEvent" class="mt-2 text-sm text-link hover:text-link-hover">
                             <span x-show="! newEvent">{{ __('+ New event') }}</span>
                             <span x-show="newEvent">{{ __('Cancel new event') }}</span>
                         </button>
 
-                        <div x-show="newEvent" style="{{ old('new_event_title') ? '' : 'display: none;' }}" class="mt-3 space-y-3 border-l-2 border-ocean-200 pl-4">
+                        <div x-show="newEvent" style="{{ old('new_event_title') ? '' : 'display: none;' }}" class="mt-3 space-y-3 border-l-2 border-border pl-4">
                             <div>
                                 <x-input-label for="new_event_title" :value="__('New event title')" />
                                 <x-text-input id="new_event_title" name="new_event_title" type="text" class="mt-1 block w-full" :value="old('new_event_title')" />
-                                <p class="mt-1 text-sm text-gray-500">{{ __('Created and attached to the Main plotline.') }}</p>
+                                <p class="mt-1 text-sm text-content-muted">{{ __('Created and attached to the Main plotline.') }}</p>
                                 <x-input-error :messages="$errors->get('new_event_title')" class="mt-2" />
                             </div>
                             <div>
@@ -60,7 +60,7 @@
                     <div>
                         <x-input-label for="name" :value="__('Title')" />
                         <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $scene->name)" placeholder="{{ __('e.g. A Lady at the Fountain') }}" required autofocus />
-                        <p class="mt-1 text-sm text-gray-500">{{ __('Currently scene #:position within its chapter. Use the move up/down buttons on the list to reorder.', ['position' => $scene->position]) }}</p>
+                        <p class="mt-1 text-sm text-content-muted">{{ __('Currently scene #:position within its chapter. Use the move up/down buttons on the list to reorder.', ['position' => $scene->position]) }}</p>
                         <x-input-error :messages="$errors->get('name')" class="mt-2" />
                     </div>
 
@@ -88,7 +88,7 @@
 
                     <div>
                         <x-input-label :value="__('Mentions events')" />
-                        <p class="text-sm text-gray-500">{{ __('Other events this scene refers to (optional).') }}</p>
+                        <p class="text-sm text-content-muted">{{ __('Other events this scene refers to (optional).') }}</p>
                         <x-event-picker name="mentioned_events" :events="$events" :selected="old('mentioned_events', $scene->mentionedEvents->pluck('id')->all())" />
                         <x-input-error :messages="$errors->get('mentioned_events')" class="mt-2" />
                     </div>
@@ -118,7 +118,7 @@
                                     <option value="{{ $value }}" @selected(old('duration', $shareDefaultDuration) === $value)>{{ $label }}</option>
                                 @endforeach
                             </x-select>
-                            <p class="mt-1 text-sm text-gray-500">
+                            <p class="mt-1 text-sm text-content-muted">
                                 {{ __('Creates a public, read-only link. Choose how long it stays valid: :choices.', ['choices' => implode(', ', array_keys($shareDurations))]) }}
                             </p>
                             <x-input-error :messages="$errors->get('duration')" class="mt-2" />
@@ -153,7 +153,7 @@
                             </div>
                         </div>
 
-                        <p class="text-sm text-gray-500">
+                        <p class="text-sm text-content-muted">
                             {{ __('Expires :relative (:absolute).', [
                                 'relative' => $scene->share_expires_at->diffForHumans(),
                                 'absolute' => $scene->share_expires_at->format('M j, Y H:i'),
@@ -176,18 +176,18 @@
             </x-card>
 
             <x-card :title="__('Codex references')">
-                <p class="text-sm text-gray-500">{{ __('Detected from the scene contents on last save.') }}</p>
+                <p class="text-sm text-content-muted">{{ __('Detected from the scene contents on last save.') }}</p>
 
                 @if ($referencedEntries->isEmpty())
-                    <p class="mt-2 text-sm text-gray-500">{{ __('No codex entries referenced yet.') }}</p>
+                    <p class="mt-2 text-sm text-content-muted">{{ __('No codex entries referenced yet.') }}</p>
                 @else
                     <ul class="mt-2 space-y-1">
                         @foreach ($referencedEntries as $entry)
                             <li>
-                                <a href="{{ route('codex.edit', $entry) }}" class="text-sm text-ocean-600 hover:text-ocean-800">
+                                <a href="{{ route('codex.edit', $entry) }}" class="text-sm text-link hover:text-link-hover">
                                     {{ $entry->name }}
                                 </a>
-                                <span class="text-xs text-gray-400">({{ $entry->type->label() }})</span>
+                                <span class="text-xs text-content-subtle">({{ $entry->type->label() }})</span>
                             </li>
                         @endforeach
                     </ul>

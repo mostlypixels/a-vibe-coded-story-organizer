@@ -5,8 +5,8 @@
                 {{ $project->name }}
             </x-heading>
             <div class="flex items-center gap-4">
-                <x-word-count :count="$wordCount" />
-                <a href="{{ route('projects.edit', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+                <x-word-count :count="$wordCount" variant="band" />
+                <a href="{{ route('projects.edit', $project) }}" class="text-sm text-content-muted hover:text-content">
                     {{ __('Edit Project') }}
                 </a>
             </div>
@@ -15,20 +15,20 @@
 
     <div class="space-y-6">
             @if ($project->description)
-                <x-card class="text-gray-900">
+                <x-card class="text-content">
                     <x-rich-text :html="$project->description" />
                 </x-card>
             @endif
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <a href="{{ route('projects.plotlines.index', $project) }}" class="bg-white overflow-hidden shadow-xs sm:rounded-lg p-6 hover:bg-gray-50">
+                <a href="{{ route('projects.plotlines.index', $project) }}" class="bg-surface-raised overflow-hidden shadow-xs sm:rounded-lg p-6 hover:bg-surface-sunken">
                     <x-heading level="3">{{ __('Plotlines') }}</x-heading>
-                    <p class="text-sm text-gray-500 mt-1">{{ trans_choice('{0} No plotlines|{1} :count plotline|[2,*] :count plotlines', $project->plotlines_count, ['count' => $project->plotlines_count]) }}</p>
+                    <p class="text-sm text-content-muted mt-1">{{ trans_choice('{0} No plotlines|{1} :count plotline|[2,*] :count plotlines', $project->plotlines_count, ['count' => $project->plotlines_count]) }}</p>
                 </a>
 
-                <a href="{{ route('projects.events.index', $project) }}" class="bg-white overflow-hidden shadow-xs sm:rounded-lg p-6 hover:bg-gray-50">
+                <a href="{{ route('projects.events.index', $project) }}" class="bg-surface-raised overflow-hidden shadow-xs sm:rounded-lg p-6 hover:bg-surface-sunken">
                     <x-heading level="3">{{ __('Events') }}</x-heading>
-                    <p class="text-sm text-gray-500 mt-1">{{ trans_choice('{0} No events|{1} :count event|[2,*] :count events', $project->events_count, ['count' => $project->events_count]) }}</p>
+                    <p class="text-sm text-content-muted mt-1">{{ trans_choice('{0} No events|{1} :count event|[2,*] :count events', $project->events_count, ['count' => $project->events_count]) }}</p>
                 </a>
             </div>
     </div>

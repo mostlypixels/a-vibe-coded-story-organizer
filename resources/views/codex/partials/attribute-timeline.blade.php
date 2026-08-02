@@ -11,9 +11,9 @@
     form above (which sits directly on the page, not inside a card).
 --}}
 @if ($sheets->isNotEmpty())
-    <div class="border-t border-gray-200 pt-10">
+    <div class="border-t border-border pt-10">
         <x-card :title="__('Attribute timeline')">
-        <p class="text-sm text-gray-500">
+        <p class="text-sm text-content-muted">
             {{ __('Each attribute\'s value over time. A period runs from its event until the next change. Editing a value and pressing Save updates it in place.') }}
         </p>
 
@@ -29,7 +29,7 @@
                     $attribute = $sheet['attribute'];
                 @endphp
                 <div>
-                    <h3 class="font-semibold text-gray-800">{{ $attribute->name }}</h3>
+                    <h3 class="font-semibold text-content">{{ $attribute->name }}</h3>
 
                     <div class="mt-2 space-y-2">
                         {{-- Start baseline: event locked, value editable via upsert, no remove
@@ -37,7 +37,7 @@
                         <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-wrap items-center gap-2">
                             @csrf
                             <input type="hidden" name="start_event_id" value="{{ $startEvent->id }}">
-                            <span class="inline-flex items-center gap-1 w-40 shrink-0 text-sm font-medium text-gray-700">
+                            <span class="inline-flex items-center gap-1 w-40 shrink-0 text-sm font-medium text-content-muted">
                                 <span aria-hidden="true">&#9679;</span>
                                 {{ $startEvent->title }}
                             </span>
@@ -59,7 +59,7 @@
                                 <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-1 flex-wrap items-center gap-2">
                                     @csrf
                                     <input type="hidden" name="start_event_id" value="{{ $period->start_event_id }}">
-                                    <span class="inline-flex items-center gap-1 w-40 shrink-0 text-sm font-medium text-gray-700">
+                                    <span class="inline-flex items-center gap-1 w-40 shrink-0 text-sm font-medium text-content-muted">
                                         <span aria-hidden="true">&#9679;</span>
                                         {{ $period->startEvent->title }}
                                     </span>
@@ -79,7 +79,7 @@
 
                         {{-- Add a period at another event. Posting an event that already has a
                              value simply updates it (the store route is an upsert). --}}
-                        <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
+                        <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-wrap items-center gap-2 border-t border-border pt-2">
                             @csrf
                             <label class="sr-only" for="add_event_{{ $attribute->id }}">{{ __('Add period at event') }}</label>
                             <x-select

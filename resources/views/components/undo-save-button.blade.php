@@ -26,7 +26,7 @@
     >{{ __('Undo this save') }}</x-button>
 
     <x-dialog name="undo-save-{{ $point->saveId }}" :title="__('Undo this save?')">
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-content-muted">
             {{ __('Every field it changed goes back to its previous value. Nothing is deleted — the undo is recorded as a new save.') }}
         </p>
 

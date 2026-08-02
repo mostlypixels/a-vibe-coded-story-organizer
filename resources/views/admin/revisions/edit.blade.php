@@ -20,7 +20,7 @@
             x-transition
             x-init="setTimeout(() => show = false, 4000)"
             role="status"
-            class="rounded-md border border-aqua-200 bg-aqua-50 px-4 py-3 text-sm text-navy-900 mb-6"
+            class="rounded-md border border-info bg-info-surface px-4 py-3 text-sm text-info-surface-content mb-6"
         >
             {{ __('Retention setting saved.') }}
         </div>
@@ -31,7 +31,7 @@
             x-transition
             x-init="setTimeout(() => show = false, 4000)"
             role="status"
-            class="rounded-md border border-aqua-200 bg-aqua-50 px-4 py-3 text-sm text-navy-900 mb-6"
+            class="rounded-md border border-info bg-info-surface px-4 py-3 text-sm text-info-surface-content mb-6"
         >
             {{ __(':count revision(s) removed.', ['count' => session('purgedCount')]) }}
         </div>
@@ -40,7 +40,7 @@
     <x-card class="max-w-xl mb-8">
         <x-slot name="header">
             <x-heading level="3">{{ __('Retention') }}</x-heading>
-            <p class="mt-1 text-sm text-gray-600">
+            <p class="mt-1 text-sm text-content-muted">
                 {{ __('The nightly cleanup keeps unlabeled, autosaved revisions for this many days before removing them. Manual saves, labeled revisions, reverts, and imports are never removed by this — see the storage panel below to clear those explicitly.') }}
             </p>
         </x-slot>
@@ -76,7 +76,7 @@
     <x-card>
         <x-slot name="header">
             <x-heading level="3">{{ __('Revision storage') }}</x-heading>
-            <p class="mt-1 text-sm text-gray-600">
+            <p class="mt-1 text-sm text-content-muted">
                 {{ __('Bulk-delete revisions by category or age. Unlike the nightly cleanup above, this can remove labeled, manual, reverted, and imported revisions — use it deliberately.') }}
             </p>
         </x-slot>
@@ -100,9 +100,9 @@
 
             @foreach ($storage as $category => $result)
                 <x-table-row :striped="$loop->even">
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ $categoryLabels[$category] }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ number_format($result->count) }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">{{ number_format($result->sizeBytes / 1024, 1) }} KB</td>
+                    <td class="px-4 py-3 text-sm text-content-muted">{{ $categoryLabels[$category] }}</td>
+                    <td class="px-4 py-3 text-sm text-content-muted">{{ number_format($result->count) }}</td>
+                    <td class="px-4 py-3 text-sm text-content-muted">{{ number_format($result->sizeBytes / 1024, 1) }} KB</td>
                     <td class="px-4 py-3 text-right">
                         <x-button
                             type="button"
@@ -114,7 +114,7 @@
                         >{{ __('Delete all') }}</x-button>
 
                         <x-dialog name="purge-{{ $category }}" :title="__('Delete :label revisions?', ['label' => $categoryLabels[$category]])">
-                            <p class="text-sm text-gray-600">
+                            <p class="text-sm text-content-muted">
                                 {{ __('This will permanently delete :count revision(s). This cannot be undone.', ['count' => number_format($result->count)]) }}
                             </p>
 
@@ -140,10 +140,10 @@
             revisions older than a year, even the newest one for a field (purge
             is explicitly allowed to do what prune never does).
         --}}
-        <div class="mt-6 flex items-center justify-between rounded-md border border-gray-200 p-4">
+        <div class="mt-6 flex items-center justify-between rounded-md border border-border p-4">
             <div>
-                <p class="text-sm font-medium text-navy-900">{{ __('Automatic revisions older than 1 year') }}</p>
-                <p class="text-sm text-gray-600">{{ __('Removes even the newest automatic revision of a field if it is over a year old.') }}</p>
+                <p class="text-sm font-medium text-content">{{ __('Automatic revisions older than 1 year') }}</p>
+                <p class="text-sm text-content-muted">{{ __('Removes even the newest automatic revision of a field if it is over a year old.') }}</p>
             </div>
 
             <x-button
@@ -154,7 +154,7 @@
             >{{ __('Delete') }}</x-button>
 
             <x-dialog name="purge-old-automatic" :title="__('Delete old automatic revisions?')">
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-content-muted">
                     {{ __('This will permanently delete every automatic revision older than 1 year, including the newest one for a field. This cannot be undone.') }}
                 </p>
 

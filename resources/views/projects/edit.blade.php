@@ -17,7 +17,7 @@
 
     <x-edit-layout>
         @if (session('status') === 'codex-references-synced')
-            <div class="mb-6 rounded-md bg-green-50 p-4 text-sm text-green-700">
+            <div class="mb-6 rounded-md bg-success-surface p-4 text-sm text-success-surface-content">
                 {{ __('Codex references resynced for every scene in this project.') }}
             </div>
         @endif
@@ -41,7 +41,7 @@
         </x-card>
 
         <x-card :title="__('Book metadata')">
-            <p class="text-sm text-gray-500">{{ __('Used when exporting this project as an EPUB.') }}</p>
+            <p class="text-sm text-content-muted">{{ __('Used when exporting this project as an EPUB.') }}</p>
 
             <div class="mt-4 space-y-6">
                 <div>
@@ -68,20 +68,20 @@
 
                 <div>
                     <x-autosave-field entity="project" :model="$project" field="rights" :label="__('Rights')" :rows="3" form="project-edit-form" />
-                    <p class="mt-1 text-xs text-gray-400">{{ __('Copyright or rights statement.') }}</p>
+                    <p class="mt-1 text-xs text-content-subtle">{{ __('Copyright or rights statement.') }}</p>
                 </div>
 
                 <div>
                     <x-input-label for="isbn" :value="__('ISBN')" />
                     <x-text-input id="isbn" name="isbn" form="project-edit-form" type="text" class="mt-1 block w-full" :value="old('isbn', $project->isbn)" />
-                    <p class="mt-1 text-xs text-gray-400">{{ __('ISBN-13, with or without hyphens.') }}</p>
+                    <p class="mt-1 text-xs text-content-subtle">{{ __('ISBN-13, with or without hyphens.') }}</p>
                     <x-input-error :messages="$errors->get('isbn')" class="mt-2" />
                 </div>
             </div>
         </x-card>
 
         <x-card :title="__('Book front & back matter (Markdown)')">
-            <p class="text-sm text-gray-500">{{ __('Optional pages included in the EPUB export when enabled on the Export-ebook configuration page. These fields use Markdown (like scene contents), not the rich-text editor above.') }}</p>
+            <p class="text-sm text-content-muted">{{ __('Optional pages included in the EPUB export when enabled on the Export-ebook configuration page. These fields use Markdown (like scene contents), not the rich-text editor above.') }}</p>
 
             <div class="mt-4 space-y-6">
                 <div>
@@ -98,7 +98,7 @@
 
                 <div>
                     <x-autosave-field entity="project" :model="$project" field="postface" :label="__('Postface')" form="project-edit-form" />
-                    <p class="mt-1 text-xs text-gray-400">{{ __('Rendered before any codex appendix.') }}</p>
+                    <p class="mt-1 text-xs text-content-subtle">{{ __('Rendered before any codex appendix.') }}</p>
                 </div>
             </div>
         </x-card>
@@ -115,23 +115,23 @@
 
             <x-card :title="$coverUrl ? __('Replace cover image') : __('Cover image')">
                 @if ($coverUrl)
-                    <img src="{{ $coverUrl }}" alt="{{ $project->name }}" class="w-full rounded-md border border-gray-200 object-cover">
+                    <img src="{{ $coverUrl }}" alt="{{ $project->name }}" class="w-full rounded-md border border-border object-cover">
 
-                    <label class="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                        <input type="checkbox" name="remove_cover_image" value="1" form="project-edit-form" class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500">
+                    <label class="mt-2 flex items-center gap-2 text-sm text-content-muted">
+                        <input type="checkbox" name="remove_cover_image" value="1" form="project-edit-form" class="rounded-sm border-border-strong text-link focus:ring-focus">
                         {{ __('Remove cover image') }}
                     </label>
                 @endif
 
-                <input id="cover_image" name="cover_image" type="file" form="project-edit-form" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200">
-                <p class="mt-1 text-xs text-gray-400">{{ CodexMediaRules::imageHint() }}</p>
+                <input id="cover_image" name="cover_image" type="file" form="project-edit-form" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-2 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
+                <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::imageHint() }}</p>
                 <x-input-error :messages="$errors->get('cover_image')" class="mt-2" />
             </x-card>
         </x-slot:sidebar>
     </x-edit-layout>
 
     <x-card :title="__('Codex references')" class="mt-6">
-        <p class="text-sm text-gray-500">
+        <p class="text-sm text-content-muted">
             {{ __('Rebuild which codex entries every scene in this project references, from scratch. Scenes and codex entries keep this in sync automatically as you edit them — use this only to backfill existing scenes or recover from a suspected mismatch.') }}
         </p>
         <form method="POST" action="{{ route('projects.codex-references.sync', $project) }}" class="mt-3">

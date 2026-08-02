@@ -27,7 +27,7 @@
     >{{ __('Revert to this') }}</x-button>
 
     <x-dialog name="revert-revision-{{ $revision->id }}" :title="__('Revert to this revision?')">
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-content-muted">
             {{ __('This will make it the new current value and add a new entry to the history — nothing already in the history is removed or changed.') }}
         </p>
 

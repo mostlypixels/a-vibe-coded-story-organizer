@@ -9,7 +9,7 @@
         {{-- Search form. Plain GET (no AJAX): q/mode round-trip via the query string
              so results are bookmarkable and survive a refresh. The mode control is a
              <fieldset> radio group (keyboard-accessible, semantic) over SearchMode. --}}
-        <form method="GET" action="{{ route('projects.search.index', $project) }}" class="bg-white shadow-xs rounded-lg p-6 space-y-4">
+        <form method="GET" action="{{ route('projects.search.index', $project) }}" class="bg-surface-raised shadow-xs rounded-lg p-6 space-y-4">
             <div class="space-y-1">
                 <x-input-label for="q" :value="__('Search this project')" />
                 <div class="flex gap-2">
@@ -27,16 +27,16 @@
             </div>
 
             <fieldset class="space-y-1">
-                <legend class="block font-medium text-sm text-gray-700">{{ __('Match') }}</legend>
+                <legend class="block font-medium text-sm text-content-muted">{{ __('Match') }}</legend>
                 <div class="flex flex-wrap gap-x-6 gap-y-2">
                     @foreach (\App\Enums\SearchMode::cases() as $searchMode)
-                        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <label class="inline-flex items-center gap-2 text-sm text-content-muted">
                             <input
                                 type="radio"
                                 name="mode"
                                 value="{{ $searchMode->value }}"
                                 @checked($mode === $searchMode)
-                                class="border-gray-300 text-navy-900 focus:ring-ocean-500"
+                                class="border-border-strong text-primary focus:ring-focus"
                             />
                             {{ $searchMode->label() }}
                         </label>
@@ -50,8 +50,8 @@
              three empty per-section blocks. --}}
         @if ($results !== null)
             @if ($results->isEmpty())
-                <div class="bg-white shadow-xs rounded-lg px-6 py-10 text-center text-gray-500">
-                    <p class="font-medium text-gray-600">
+                <div class="bg-surface-raised shadow-xs rounded-lg px-6 py-10 text-center text-content-muted">
+                    <p class="font-medium text-content-muted">
                         {{ __('No results match “:query”.', ['query' => $query]) }}
                     </p>
                     <p class="mt-1 text-sm">{{ __('Try a different word or switch the match mode.') }}</p>
