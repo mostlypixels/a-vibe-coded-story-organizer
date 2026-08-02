@@ -96,3 +96,9 @@ Still strictly sequential: finish, verify and move each task file before opening
 a task fails verification and you can't fix it, stop there, leave its `.md` in place, and
 report the failing output. Never move a broken task's file, and never start the next task on
 top of a broken one.
+
+Between tasks, check the session budget with `bash scripts/claude-usage.sh` (Bash tool, no
+args → JSON; a one-word `unavailable`/`unparseable` means the check failed — carry on
+without it). If what's left won't cover the next task, stop at this boundary and report —
+running out mid-task leaves the tree half-swept with the task file still in `plan/`, and the
+next run has to reconstruct what was done.
