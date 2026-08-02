@@ -30,8 +30,8 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 - Every colour in the app now comes from a themeable token instead of a fixed hue, so a
   chosen theme repaints the whole app consistently.
-- The default theme's colours were adjusted where text, icons or focus outlines fell below
-  the contrast minimum.
+- Colours were adjusted across all three themes wherever text, icons or focus outlines fell
+  below the contrast minimum.
 - The landing page is stripped down to the app name and a themed login button.
 
 ## 2026-08-01 — Collapse the form controls into components, drop two dead fonts (#70)
