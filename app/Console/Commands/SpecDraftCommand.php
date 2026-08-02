@@ -18,7 +18,7 @@ use function Laravel\Prompts\text;
  * tests/Unit/SpecsStatusConsistencyTest fails the build otherwise. This
  * command encodes those rules once so a hand-made draft can't get them wrong.
  *
- * Called by the `draft-spec` skill (.claude/skills/draft-spec/SKILL.md), which
+ * Called by the `mp-draft-spec` skill (.claude/skills/mp-draft-spec/SKILL.md), which
  * then replaces the placeholder body with the real spec content. A human can
  * also run it bare: PromptsForMissingInput asks for the name, and handle()
  * prompts for the description when the session is interactive.
@@ -32,12 +32,12 @@ class SpecDraftCommand extends Command implements PromptsForMissingInput
     protected $description = 'Scaffold a new stage-1 draft spec under .specs/draft/<name>/';
 
     /**
-     * Body written when no --description is given: the draft-spec skill's own
+     * Body written when no --description is given: the mp-draft-spec skill's own
      * guidance for what a draft body should contain, so the author (human or
      * skill) knows exactly what to replace the placeholder with.
      */
     private const PLACEHOLDER_BODY = '<A few short paragraphs: the problem, the goals / non-goals, and a rough approach. '
-        .'Concrete but not exhaustive — the detailed design is generated later by /mp-spec-expander. '
+        .'Concrete but not exhaustive — the detailed design is generated later by /mp-expand-spec. '
         .'Reference existing files and conventions rather than inventing new ones.>';
 
     public function handle(): int
@@ -94,7 +94,7 @@ class SpecDraftCommand extends Command implements PromptsForMissingInput
         );
 
         $this->info("Created .specs/draft/$name/spec.md");
-        $this->line("Next step: /mp-spec-expander $name");
+        $this->line("Next step: /mp-expand-spec $name");
 
         return self::SUCCESS;
     }

@@ -25,10 +25,8 @@ invoking this, not as part of it.
    the number does not exist yet, and `pr-land.sh` stamps it onto the newest dated
    heading automatically once `gh pr create` has assigned one.
 
-   Follow **Changelog → Entry style** in `CLAUDE.md`: one line per change, ~20 words, no
-   class names or file paths, 1–5 entries for a normal PR. The rationale goes in the PR
-   body you write in step 4, not here. Sections dated before `2026-08-02` predate the rule
-   — don't copy their shape.
+   Follow **Changelog → Entry style** in `CLAUDE.md` and *Writing style* below. Sections
+   dated before `2026-08-02` predate the rule — don't copy their shape.
 
 3. **Branch.** If still on `master`, create a short kebab-case feature branch named for
    the change set (`git checkout -b <name>`). If already on a feature branch, stay on it.
@@ -37,26 +35,22 @@ invoking this, not as part of it.
    why* — the intent, not a diff restatement (that's this repo's per-commit record).
    End the body with the `Co-Authored-By: Claude` trailer per the harness rules.
 
-5. **Land it.** Write the PR body to a temp file — it carries the richer rationale
-   (per the changelog convention): what changed, why, and how it was verified (test
-   counts, lint, any runtime check). Then run the landing script **in the background**
-   and relay its outcome:
+5. **Land it.** Write the PR body to a temp file (what changed, why, how it was verified),
+   then run the landing script **in the background** and relay its outcome:
    ```bash
    bash scripts/pr-land.sh "<title>" <body-file>
    ```
-   The script does push → `gh pr create` → stamp `(#PR)` onto the newest dated
-   changelog heading and push that fixup → arm squash auto-merge → watch checks →
-   poll until the PR state is `MERGED` → `git checkout master && git pull`, echoing
-   progress lines as it goes. The stamp is skipped when the branch doesn't touch
-   `CHANGELOG.md` or the heading is already numbered, so it needs nothing from you
-   beyond leaving the suffix off in step 2. The *why* still matters: auto-merge is silent, so
-   "armed" is not "shipped" — the script enforces this by exiting 0 only once the
-   PR is actually `MERGED` and local master is updated. Do not declare the change
-   shipped until it does. If auto-merge can't be armed (repo setting off), it prints
-   the manual squash-merge fallback and keeps watching. If it exits non-zero — a CI
-   check failed, or the merge didn't land within its ~2 min poll cap — it prints the
-   PR URL and state: surface the failing check's output and fix forward on the same
-   branch.
+   - It does push → `gh pr create` → stamp `(#PR)` onto the newest dated changelog heading
+     and push that fixup → arm squash auto-merge → watch checks → poll until `MERGED` →
+     `git checkout master && git pull`, echoing progress as it goes.
+   - The stamp is skipped when the branch doesn't touch `CHANGELOG.md` or the heading is
+     already numbered — it needs nothing from you beyond leaving the suffix off in step 2.
+   - **Armed is not shipped.** Auto-merge is silent; the script exits 0 only once the PR is
+     `MERGED` and local master is updated. Don't call it shipped before that.
+   - Auto-merge unavailable (repo setting off) → it prints the manual squash-merge fallback
+     and keeps watching.
+   - Non-zero exit — a failed CI check, or the merge missed its ~2 min poll cap — it prints
+     the PR URL and state. Surface the failing check's output and fix forward on the branch.
 
    > [!WARNING]
    > **Do not touch the working tree while it runs.** Its last step is `git checkout master
@@ -65,6 +59,25 @@ invoking this, not as part of it.
    > and the script still exits 1, which reads like a CI failure and is not one. When
    > shipping several change sets in a row, prepare the next one only after the landing
    > reports `MERGED`; a stash is the cheap way to hold work that is already written.
+
+## Writing style
+
+Three artifacts, three altitudes — say each thing once, in the one place that owns it.
+Same rules as `CLAUDE.md` → Documentation → Verbosity. No length budgets.
+
+| Artifact | Owns | Never |
+|---|---|---|
+| Changelog entry | what shipped, user-visible | class names, file paths, how, why |
+| Commit body | why *this* commit exists, the intent | restating the diff, a file-by-file tour |
+| PR body | the change set's rationale + verification | re-listing the changelog entries |
+
+- **Bullets.** Prose only for a *why* that a bullet can't carry.
+- **Verification is a line, not a report:** "`composer test` green (412), `composer lint` clean."
+  No pasted output, no per-test narration.
+- **No scaffolding** — no "## Summary" heading over three bullets, no closing recap, no
+  "this PR aims to…".
+- **Nothing speculative.** No future work, no alternatives considered, no caveats about
+  things the diff doesn't touch.
 
 ## Notes
 

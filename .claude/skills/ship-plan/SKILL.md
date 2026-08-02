@@ -15,13 +15,13 @@ folder, and its `plan/` subfolder is what this skill runs.
 ## Steps
 
 1. **Validate.** Confirm `<dir>/plan/00-overview.md` exists. No folder or no `plan/` → tell
-   the user to run `/plan-tasks <name>` first and stop. Multiple lines (name collision) →
+   the user to run `/mp-plan-tasks <name>` first and stop. Multiple lines (name collision) →
    take the first; the suffix rule resolves it at step 8.
 
 2. **List remaining tasks** with `bash scripts/plan-next-task.sh <name>`. Exit 2 → report the
    feature is fully implemented and stop.
 
-3. **Drift check — not a re-grill.** The plan was already grilled at `plan-tasks` time; do
+3. **Drift check — not a re-grill.** The plan was already grilled at `mp-plan-tasks` time; do
    not repeat that interview. Compare `<dir>/plan/` against `<dir>/expanded/` and the
    **Feedback & decisions** in `resolution-log.md`, asking one question: has anything
    material shifted? (task added/dropped/reordered, a binding decision reversed, a fresh open
@@ -39,6 +39,8 @@ folder, and its `plan/` subfolder is what this skill runs.
    > supported mode, not a workaround.
 
    For the lowest-numbered remaining task:
+   - Check `bash scripts/claude-usage.sh` first; if the remaining session budget won't cover
+     the next task's weight, say so and stop at this boundary rather than starting it.
    - Launch `plan-implementer` (`Agent` tool, `subagent_type: "plan-implementer"`) with a
      prompt naming the feature and, if useful, the task number. **Nothing else** — the agent
      self-discovers prior progress, including `resolution-log.md`. It defaults to Sonnet; pass

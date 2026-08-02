@@ -8,8 +8,8 @@ secrets from env, `set -euo pipefail`, header naming its callers) is documented 
 
 | Script | Purpose | Called by |
 |--------|---------|-----------|
-| `spec-locate.sh <name>` | Locate a feature folder under `.specs/` (`<status><TAB><path>` per match, earliest-lifecycle-first on collision) | mp-spec-expander, plan-tasks, ship-plan, plan-implementer, spec-advance.sh, plan-next-task.sh |
-| `spec-advance.sh <name> <status>` | Advance a feature one lifecycle stage: validate transition, stamp frontmatter status + date, auto-suffix on name collision, `git mv` to `.specs/<status>/<YYYY-MM>/` | mp-spec-expander, plan-tasks, ship-plan |
+| `spec-locate.sh <name>` | Locate a feature folder under `.specs/` (`<status><TAB><path>` per match, earliest-lifecycle-first on collision) | mp-expand-spec, mp-plan-tasks, ship-plan, plan-implementer, spec-advance.sh, plan-next-task.sh |
+| `spec-advance.sh <name> <status>` | Advance a feature one lifecycle stage: validate transition, stamp frontmatter status + date, auto-suffix on name collision, `git mv` to `.specs/<status>/<YYYY-MM>/` | mp-expand-spec, mp-plan-tasks, ship-plan |
 | `plan-next-task.sh <name>` | List a feature's unimplemented `NN-*.md` plan tasks in numeric order (exit 2 = plan complete, exit 1 = no plan) | ship-plan, plan-implementer |
 | `serve-app.sh [--port N]` | Pre-flight-check (stale `public/hot`, missing build, pending migrations), then start `php artisan serve` in the background with a PID file; idempotent | run-imagoldfish |
 | `stop-app.sh` | Kill the exact dev-server PID recorded by serve-app.sh and remove the PID file; idempotent | run-imagoldfish |
@@ -18,4 +18,4 @@ secrets from env, `set -euo pipefail`, header naming its callers) is documented 
 
 There is also one artisan command extracted from the skills: `php artisan spec:draft`
 (scaffolds a stage-1 draft spec; prompts for missing input when run interactively) —
-see `app/Console/Commands/SpecDraftCommand.php` and the draft-spec skill.
+see `app/Console/Commands/SpecDraftCommand.php` and the mp-draft-spec skill.

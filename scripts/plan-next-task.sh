@@ -31,7 +31,7 @@ dir="${located#*$'\t'}"
 
 plan="$dir/plan"
 if [ ! -d "$plan" ]; then
-    echo "plan-next-task.sh: $dir has no plan/ folder — run /plan-tasks $name first" >&2
+    echo "plan-next-task.sh: $dir has no plan/ folder — run /mp-plan-tasks $name first" >&2
     exit 1
 fi
 

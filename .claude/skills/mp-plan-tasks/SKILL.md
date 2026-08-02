@@ -1,9 +1,9 @@
 ---
-name: plan-tasks
-description: Decompose an already-expanded feature spec (.specs/expanded/<name>/expanded/, the output of mp-spec-expander) into an ordered, dependency-tracked implementation plan under that folder's plan/, then move the folder to .specs/planned/ — the step between "expanded spec" and running /ship-plan or the plan-implementer agent. First grills the user on the expanded design (via the grilling skill) to resolve open questions before decomposing. Use when asked to plan, break down, or sequence an expanded spec into tasks.
+name: mp-plan-tasks
+description: Decompose an already-expanded feature spec (.specs/expanded/<name>/expanded/, the output of mp-expand-spec) into an ordered, dependency-tracked implementation plan under that folder's plan/, then move the folder to .specs/planned/ — the step between "expanded spec" and running /ship-plan or the plan-implementer agent. First grills the user on the expanded design (via the grilling skill) to resolve open questions before decomposing. Use when asked to plan, break down, or sequence an expanded spec into tasks.
 ---
 
-# plan-tasks
+# mp-plan-tasks
 
 Turn an expanded feature spec into the `00-overview.md` + numbered `NN-*.md` task-file
 plan that `/ship-plan` and the `plan-implementer` agent consume.
@@ -11,12 +11,12 @@ plan that `/ship-plan` and the `plan-implementer` agent consume.
 ## Argument
 
 A single argument: the feature name. Locate the feature folder with
-`bash scripts/spec-locate.sh <name>` — after `mp-spec-expander` runs it sits
+`bash scripts/spec-locate.sh <name>` — after `mp-expand-spec` runs it sits
 at `.specs/expanded/<YYYY-MM>/<name>/` (stages past draft bucket features by month) —
 and it must contain an `expanded/` subfolder holding whichever of `overview.md`,
 `data-model.md`, `architecture.md`, `ui.md`, `testing.md`, `open-questions.md` are
 relevant. If the script finds no folder, or the folder has no `expanded/`, tell the user to run
-`/mp-spec-expander <name>` first (on a `.specs/draft/<name>/spec.md` source spec) and stop.
+`/mp-expand-spec <name>` first (on a `.specs/draft/<name>/spec.md` source spec) and stop.
 If it prints more than one line (a name collision), take the *first* — matches are ordered
 earliest-lifecycle-first, and that's the active feature; the collision is auto-resolved by the
 suffix rule when this folder moves in step 8. Below, **`<dir>`** means the matched feature folder.
@@ -60,7 +60,7 @@ suffix rule when this folder moves in step 8. Below, **`<dir>`** means the match
    while you still have them in the grill (step 2).
 
 4. **Write `<dir>/plan/00-overview.md`** — the manual, never itself
-   implemented or moved. Include:
+   implemented or moved. Bullets, in the style below. Include:
    - The execution order and a one-line purpose for each task.
    - The design defaults already decided in the spec docs, stated as binding (later
      tasks must not re-litigate them).
@@ -68,7 +68,8 @@ suffix rule when this folder moves in step 8. Below, **`<dir>`** means the match
      `data-model.md`/`architecture.md` (e.g. an ordering/uniqueness invariant, an
      authorization pattern every new endpoint must follow).
 
-5. **Write one `<dir>/plan/NN-<slug>.md` per task**, each containing:
+5. **Write one `<dir>/plan/NN-<slug>.md` per task**, each a short bulleted brief
+   (see *Writing style*) containing:
    - Scope: exactly what this task builds, and what it explicitly does **not** (name
      the later task that owns the deferred part).
    - Depends on: task numbers that must be in `plan/implemented/` first.
@@ -117,9 +118,26 @@ suffix rule when this folder moves in step 8. Below, **`<dir>`** means the match
    month bucket — and prints the final path; the possibly-suffixed name is what you pass
    to `ship-plan` next. (Lifecycle: `draft` → `expanded` → `planned` → `shipped`.)
 
-9. **Report** the created `plan/` folder, the folder's new location under `.specs/planned/`,
-   the task list with a one-line summary of each, and flag any open question you left
-   unresolved because it didn't block decomposition.
+9. **Report** the plan's new location, the task list one line each, and any open question
+   left unresolved because it didn't block decomposition.
+
+## Writing style
+
+Same rules as `CLAUDE.md` → Documentation → Verbosity. A task file is a brief for an
+implementer agent that will also read the expanded docs — it points, it doesn't re-explain.
+No length budgets; judge by padding, not word count.
+
+- **Bullets and tables.** Prose only where a decision needs its *why*, a sentence or two.
+- **Don't copy the expanded docs into the task.** Link the section (`see
+  expanded/data-model.md → Ordering`) and state only what's binding at this altitude.
+- **Don't restate `CLAUDE.md`, Laravel, or the pipeline.** "Add a feature test, owner + 403"
+  is enough; the conventions are already loaded.
+- **No code in task files** beyond a signature or column list that doesn't exist yet. The
+  implementer writes the code; a spelled-out method body just goes stale.
+- **Scope by boundary, not by narration.** What's in, what's explicitly deferred and to which
+  task. No step-by-step walkthrough of the implementation.
+- **No scaffolding** — no preamble under a heading, no recap of the overview, no closing
+  summary.
 
 ## Notes
 
