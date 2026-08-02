@@ -25,7 +25,7 @@
         x-show="show"
         x-transition
         role="tooltip"
-        class="absolute z-50 {{ $positions }} whitespace-nowrap rounded-sm bg-gray-900 px-2 py-1 text-xs font-medium text-white shadow-lg"
+        class="absolute z-50 {{ $positions }} whitespace-nowrap rounded-sm bg-nav px-2 py-1 text-xs font-medium text-nav-content shadow-lg"
         style="display: none;"
     >
         {{ $text }}

@@ -72,7 +72,7 @@ class WordCountComponentTest extends TestCase
     {
         $rendered = $this->render('<x-word-count :count="$count" />', ['count' => 42]);
 
-        $this->assertStringContainsString('text-xs text-gray-400', $rendered);
+        $this->assertStringContainsString('text-xs text-content-subtle', $rendered);
         $this->assertStringContainsString('42 words', $rendered);
     }
 

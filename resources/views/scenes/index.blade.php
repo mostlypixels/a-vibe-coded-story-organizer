@@ -4,7 +4,7 @@
             <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Scenes') }}
             </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('projects.show', $project) }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to Project') }}
             </a>
         </div>
@@ -26,7 +26,7 @@
 
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search') || request()->filled('chapter'))
-                        <a href="{{ route('projects.scenes.index', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Clear') }}</a>
+                        <a href="{{ route('projects.scenes.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
                     @endif
                 </form>
 
@@ -46,23 +46,23 @@
 
                 @forelse ($scenes as $scene)
                     <x-table-row :striped="$loop->even">
-                        <td @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 {{ $scene->event ? '' : 'border-l-4 border-red-500' }}">{{ $scene->position }}</td>
+                        <td @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="px-4 py-3 whitespace-nowrap text-sm text-content-muted {{ $scene->event ? '' : 'border-l-4 border-danger' }}">{{ $scene->position }}</td>
                         <td class="px-4 py-3">
-                            <a href="{{ route('scenes.edit', $scene) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $scene->name }}</a>
+                            <a href="{{ route('scenes.edit', $scene) }}" class="font-semibold text-content hover:text-link">{{ $scene->name }}</a>
                             @if ($scene->description)
-                                <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$scene->description" /></div>
+                                <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$scene->description" /></div>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-500">{{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }}</td>
+                        <td class="px-4 py-3 text-sm text-content-muted">{{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }}</td>
                         <td class="px-4 py-3 whitespace-nowrap"><x-scene-status-badge :status="$scene->status" /></td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm">
                             @if ($scene->event)
-                                <span class="text-gray-500">{{ $scene->event->title }}</span>
+                                <span class="text-content-muted">{{ $scene->event->title }}</span>
                             @else
-                                <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-red-500 px-2 py-0.5 text-xs font-medium text-red-600">{{ __('Unassigned') }}</span>
+                                <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-danger px-2 py-0.5 text-xs font-medium text-danger">{{ __('Unassigned') }}</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-right text-sm text-gray-500 whitespace-nowrap">
+                        <td class="px-4 py-3 text-right text-sm text-content-muted whitespace-nowrap">
                             <x-word-count :count="$scene->word_count" variant="inline" />
                         </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">

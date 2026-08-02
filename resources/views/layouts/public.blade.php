@@ -13,11 +13,13 @@
 
         <!-- Scripts (compiled CSS gives us Tailwind Typography `prose` + app styles; Alpine for the collapse) -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        <x-theme-style />
     </head>
     <body class="font-sans antialiased">
         {{-- No navigation and no user chrome: this page is link-only and the
              visitor is unauthenticated. A wide, comfortable reading column. --}}
-        <div class="min-h-screen bg-gray-100">
+        <div class="min-h-screen bg-surface">
             <main>
                 {{ $slot }}
             </main>

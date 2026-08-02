@@ -14,9 +14,9 @@
 <div x-data="draftRecoveryModal()">
     <x-dialog name="draft-recovery" :title="__('Unsaved changes found')">
         <template x-for="entry in entries" :key="entry.key">
-            <div class="border-b border-gray-200 py-3 last:border-b-0">
-                <p class="text-sm text-gray-700" x-text="entry.key"></p>
-                <p class="text-xs text-gray-500" x-text="new Date(entry.savedAt).toLocaleString()"></p>
+            <div class="border-b border-border py-3 last:border-b-0">
+                <p class="text-sm text-content-muted" x-text="entry.key"></p>
+                <p class="text-xs text-content-muted" x-text="new Date(entry.savedAt).toLocaleString()"></p>
 
                 {{-- Mirrors the old per-field banner's own rule (still binding,
                      00-overview.md decision 6/handoff.md §9.7): a base-hash

@@ -73,7 +73,7 @@
     })"
     class="relative"
 >
-    <span id="{{ $labelId }}" class="block font-medium text-sm text-gray-700">{{ $label }}</span>
+    <span id="{{ $labelId }}" class="block font-medium text-sm text-content-muted">{{ $label }}</span>
 
     {{-- The baseline. Alpine hides it on mount; without Alpine it is the whole
          control, and the form's Compare button submits it. --}}
@@ -106,10 +106,10 @@
             x-on:keydown.escape.prevent="closePanel()"
             x-on:keydown.home.prevent="open && jump('first')"
             x-on:keydown.end.prevent="open && jump('last')"
-            class="mt-1 flex w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm shadow-xs focus:border-ocean-500 focus:outline-hidden focus:ring-1 focus:ring-ocean-500"
+            class="mt-1 flex w-full items-center justify-between gap-2 rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-left text-sm shadow-xs focus:border-focus focus:outline-hidden focus:ring-1 focus:ring-focus"
         >
             <span class="truncate" x-text="selected ? selected.label : @js(__('Choose a save'))"></span>
-            <svg class="h-4 w-4 shrink-0 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <svg class="h-4 w-4 shrink-0 text-content-subtle" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
             </svg>
         </button>
@@ -119,10 +119,10 @@
             x-on:keydown.escape.prevent="closePanel()"
             x-on:click.outside="closePanel({ refocus: false })"
             style="display: none;"
-            class="absolute z-20 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg"
+            class="absolute z-20 mt-1 w-full rounded-md border border-border bg-surface-overlay shadow-lg"
         >
             {{-- The filters that a <select> could not have held. --}}
-            <div class="space-y-2 border-b border-gray-200 p-3">
+            <div class="space-y-2 border-b border-border p-3">
                 <label class="block">
                     <span class="sr-only">{{ __('Filter saves') }}</span>
                     <x-text-input
@@ -141,12 +141,12 @@
                     />
                 </label>
 
-                <label class="flex items-center gap-2 text-sm text-gray-700">
+                <label class="flex items-center gap-2 text-sm text-content-muted">
                     <input
                         type="checkbox"
                         x-model="manualOnly"
                         x-on:change="onFilterChange()"
-                        class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500"
+                        class="rounded-sm border-border-strong text-link focus:ring-focus"
                     >
                     {{ __('Manual saves only') }}
                 </label>
@@ -156,7 +156,7 @@
                         <span class="sr-only">{{ __('From date') }}</span>
                         <x-text-input type="date" x-model="dateFrom" x-on:change="onFilterChange()" class="block w-full text-sm" />
                     </label>
-                    <span class="text-gray-400" aria-hidden="true">&rarr;</span>
+                    <span class="text-content-subtle" aria-hidden="true">&rarr;</span>
                     <label class="flex-1">
                         <span class="sr-only">{{ __('To date') }}</span>
                         <x-text-input type="date" x-model="dateTo" x-on:change="onFilterChange()" class="block w-full text-sm" />
@@ -179,16 +179,16 @@
                         x-on:click="choose(option)"
                         x-on:mousemove="! option.disabled && (activeIndex = index)"
                         :class="{
-                            'bg-ocean-100 text-ocean-900': index === activeIndex && ! option.disabled,
-                            'text-gray-400 cursor-not-allowed': option.disabled,
-                            'text-gray-700 cursor-pointer': ! option.disabled && index !== activeIndex,
+                            'bg-accent-surface text-accent-content': index === activeIndex && ! option.disabled,
+                            'text-content-subtle cursor-not-allowed': option.disabled,
+                            'text-content-muted cursor-pointer': ! option.disabled && index !== activeIndex,
                         }"
                         class="px-3 py-1.5 text-sm"
                         x-text="option.label"
                     ></li>
                 </template>
 
-                <li x-show="visible.length === 0" class="px-3 py-2 text-sm text-gray-400">
+                <li x-show="visible.length === 0" class="px-3 py-2 text-sm text-content-subtle">
                     {{ __('No saves match these filters.') }}
                 </li>
             </ul>

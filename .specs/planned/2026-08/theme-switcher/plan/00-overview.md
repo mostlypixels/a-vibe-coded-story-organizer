@@ -12,7 +12,7 @@ theme. ~900 class usages move.
 |---|---|---|
 | 01 | `color-primitives` | `Oklch` + `ColorContrast` in `app/Support`, unit-tested. Nothing renders. |
 | 02 | `token-vocabulary-and-style-block` | `ThemeTokens`, `config/themes.php` with Daylight only, `ThemePreset`, `ThemeStyleBlock`, `<x-theme-style />` in every layout. Old ramps still present. |
-| 03 | `theme-ramp-command` | `php artisan theme:ramp` + a **rough** low-glare-dark preset, so later tasks have something to switch to. |
+| 03 | `theme-ramp-command` | `php artisan theme:ramp` + a **rough** low-glare-dark preset, so later tasks have something to switch to. Also `Oklch::fromCss()` and the two vocabulary amendments below. |
 | 04 | `user-theme-preference` | `users.theme_slug` + resolution + the picker on `/admin/appearance`. |
 | 05 | `sweep-components-chrome` | ~140 usages: button, badge, card, table, alert, heading, breadcrumbs, dropdown, modal, popover, dialog. Introduces `NoHueNamedColorsTest`. |
 | 06 | `sweep-components-forms-nav` | ~120 usages: form controls, pickers, `autosave-*`, `revision-*`, `icon-*`, nav/sidebar links. |
@@ -21,7 +21,7 @@ theme. ~900 class usages move.
 | 09 | `sweep-remaining-pages` | ~250 usages across 13 small page folders. |
 | 10 | `sweep-css-and-js` | `app.css`'s 42 hand-written hue references + `resources/js/autosave/badge.js`. |
 | 11 | `delete-legacy-ramps` | Remove the five ramps, the border shim, `--color-nav-active`. Allow-list empty. Computed-style diff vs `master`. |
-| 12 | `final-presets` | Re-author Dusk + Low-glare dark against the settled vocabulary; contrast matrix test; browser pass under all three. |
+| 12 | `final-presets` | Re-author Dusk + Low-glare dark, **and Daylight's six failing values**; contrast matrix test across all three; browser pass. |
 | 13 | `landing-page` | Strip `/` to app name + themed login button. |
 | 14 | `documentation` | `architecture.md` *Theming* section, `documentation/theming.md`, CHANGELOG. |
 
@@ -55,13 +55,28 @@ Settled in the grill. A task that disagrees should stop and raise it, not quietl
 - `x-badge`: `indigo` → `accent-surface`/`accent-content`, `gray` → `neutral`.
 - **No `dark:` variant.** Do not add `@custom-variant dark`. Dark mode is a preset.
 
-**Presets** — exactly three. Daylight holds the **current literal hex values** so the default
-theme is pixel-stable while names change underneath. Dusk and Low-glare dark are `theme:ramp`
-output pasted into config.
+**Presets** — exactly three. Daylight starts as the **current literal values**, so the sweep
+cannot change how the app looks; task 12 then re-authors the values that fail contrast. Dusk
+and Low-glare dark are `theme:ramp` output pasted into config.
 
-**Contrast** — floors 4.5 (text pairs) / 3.0 (`accent`, `border`, `focus`) are global and
-reject. The ceiling is per-preset, defaults from config, and warns. A preset may not declare a
-ceiling below the text floor; clamp it.
+**Status tokens are four, not three** — `<status>`, `<status>-content`, `<status>-surface`,
+`<status>-surface-content`. A trio forces tint text onto `<status>` itself, which measures
+1.85–4.82 against the tints: three of the four statuses land below the text floor, warning
+worst. The fourth token also lets Daylight keep today's `X-800` tint text verbatim, so the
+sweep stays rename-only.
+
+**Contrast** — floors 4.5 (text pairs) / 3.0 (`accent`, `border-strong`, `focus`) are global
+and reject. The ceiling is per-preset, defaults from config, and warns. A preset may not
+declare a ceiling below the text floor; clamp it.
+
+**`border` is decorative and carries no floor.** A hairline between two table rows is not a UI
+component under WCAG 1.4.11, and forcing 3:1 would take it from `#e5e7eb` to `#8a8c90` — every
+card edge and divider in the app as a mid-grey line. `border-strong` and `focus` keep the 3:1
+floor, because those do identify controls and state. `border` stays in `PAIRS` (the vocabulary
+must stay complete) and is listed in `ThemeTokens::DECORATIVE`, which the matrix skips.
+
+**Accessibility outranks pixel-stability.** Where the two conflict, Daylight changes. Task 12
+owns every such change; see the list in that task file.
 
 **CSS**
 - Plain `@theme`, never `@theme inline` — `inline` bakes values into utility rules and silently
@@ -77,8 +92,10 @@ ceiling below the text floor; clamp it.
 
 - **Every token that names a background has a foreground partner**, and they are chosen
   together. This is the whole point: an unreadable combination must be unrepresentable.
-- **Daylight renders pixel-identical to `master`** until task 11's diff says otherwise. Any
-  visual change is a deliberate, recorded exception — not a side effect of a rename.
+- **The sweep is rename-only; task 12 is the only task licensed to move a pixel.** Tasks 05–11
+  must leave Daylight rendering identically to `master`, and task 11's computed-style diff
+  proves it. Task 12 then re-authors Daylight's failing values deliberately. A visual change
+  before task 12 is a bug in the rename.
 - **Focus affordances never regress.** Every `focus:ring-*` lands on `focus`, not `primary`.
   Spec 1 already had to restore a ring lost this way; do not lose another.
 - **`ThemeStyleBlock` emits unescaped CSS**, so it whitelist-validates every value it renders.

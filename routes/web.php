@@ -77,7 +77,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [GeneralSettingsController::class, 'edit'])->name('settings.edit');
         Route::patch('/settings', [GeneralSettingsController::class, 'update'])->name('settings.update');
 
+        // Per-user theme preset picker. Writes only to $request->user(), so
+        // (like appearance.edit) it needs no ProjectPolicy walk.
         Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance.edit');
+        Route::patch('/appearance', [AppearanceController::class, 'update'])->name('appearance.update');
 
         // The Export & import area is three server-rendered pages (not JS tabs),
         // reached by ordinary <a> links in admin/data/partials/subnav.blade.php.

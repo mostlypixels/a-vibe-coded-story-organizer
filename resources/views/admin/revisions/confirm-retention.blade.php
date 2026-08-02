@@ -19,19 +19,19 @@
             <x-heading level="3">{{ __('Confirm lower retention window') }}</x-heading>
         </x-slot>
 
-        <p class="text-sm text-gray-700">
+        <p class="text-sm text-content-muted">
             {{ __('Lowering the retention window from :current to :new days will permanently delete :count version(s) on the next nightly cleanup.', [
                 'current' => $currentRetentionDays,
                 'new' => $newRetentionDays,
                 'count' => number_format($prunableCount),
             ]) }}
         </p>
-        <p class="mt-2 text-sm text-gray-600">
+        <p class="mt-2 text-sm text-content-muted">
             {{ __('Manual saves, labeled revisions, reverts, imports, and the newest revision of every field are never removed by this.') }}
         </p>
 
         <div class="mt-6 flex items-center gap-4">
-            <a href="{{ route('admin.revisions.edit') }}" class="text-sm text-gray-600 underline hover:text-gray-900">
+            <a href="{{ route('admin.revisions.edit') }}" class="text-sm text-content-muted hover:text-content underline">
                 {{ __('Cancel') }}
             </a>
 

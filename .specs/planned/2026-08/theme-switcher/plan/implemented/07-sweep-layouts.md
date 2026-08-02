@@ -7,6 +7,19 @@
 `resources/views/layouts/app.blade.php`, `guest.blade.php`, `public.blade.php`, and
 `navigation.blade.php` (18 usages on its own).
 
+**Plus one vocabulary amendment, settled during task 05** (see `resolution-log.md`): add a
+`scrim` token — `ALL` 45 → 46, `config/themes.php` gains it in both presets, `app.css` gains
+its `var()` reference, and `resources/views/components/modal.blade.php`'s backdrop moves from
+`bg-content-muted` to `bg-scrim`. Daylight's value is `gray-500`
+(`oklch(55.1% 0.027 264.364)`), which is what the backdrop paints today, so this is still
+rename-only for Daylight.
+
+`scrim` is a background nobody writes text on, so it takes no foreground partner and belongs
+in `ThemeTokens::DECORATIVE` alongside `border` — the matrix must skip it or it will demand a
+contrast pair that does not exist. It is deliberately **not** in `PAIRS` as a key;
+`ThemePresetTest` asserts every token in `ALL` appears in `PAIRS`, so that assertion needs to
+exempt `DECORATIVE` tokens.
+
 ## Depends on
 
 06 (the nav link components it renders).

@@ -1,7 +1,7 @@
 <x-card class="max-w-xl">
     <x-slot name="header">
         <x-heading level="3">{{ __('Delete Account') }}</x-heading>
-        <p class="mt-1 text-sm text-gray-600">
+        <p class="mt-1 text-sm text-content-muted">
             {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.') }}
         </p>
     </x-slot>
@@ -22,7 +22,7 @@
                 {{ __('Are you sure you want to delete your account?') }}
             </x-heading>
 
-            <p class="mt-1 text-sm text-gray-600">
+            <p class="mt-1 text-sm text-content-muted">
                 {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
             </p>
 

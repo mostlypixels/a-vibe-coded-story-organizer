@@ -4,7 +4,7 @@
             <x-heading level="2">
                 {{ __('Edit :label', ['label' => $type->label()]) }} &mdash; {{ $entry->name }}
             </x-heading>
-            <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to :label', ['label' => $type->pluralLabel()]) }}
             </a>
         </div>
@@ -18,7 +18,7 @@
             @include('codex.partials.fields')
 
             <div class="flex items-center gap-4">
-                <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cancel') }}</a>
+                <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-content-muted hover:text-content">{{ __('Cancel') }}</a>
             </div>
         </form>
 
@@ -31,18 +31,18 @@
              hidden. Full-width, below the timeline rather than in the sidebar. --}}
         <x-card :title="__('Referenced in scenes')">
             @if ($referencingScenes->isEmpty())
-                <p class="text-sm text-gray-500">{{ __('No scenes reference this entry yet.') }}</p>
+                <p class="text-sm text-content-muted">{{ __('No scenes reference this entry yet.') }}</p>
             @else
                 <ul class="space-y-2">
                     @foreach ($referencingScenes as $scene)
                         <li>
-                            <a href="{{ route('scenes.edit', $scene) }}" class="text-sm text-ocean-600 hover:text-ocean-800">
+                            <a href="{{ route('scenes.edit', $scene) }}" class="text-sm text-link hover:text-link-hover">
                                 {{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }} &mdash; {{ $scene->name }}
                             </a>
                             @if ($scene->event)
-                                <span class="block text-xs text-gray-400">{{ $scene->event->title }} &mdash; {{ $scene->event->event_datetime->format('M j, Y') }}</span>
+                                <span class="block text-xs text-content-subtle">{{ $scene->event->title }} &mdash; {{ $scene->event->event_datetime->format('M j, Y') }}</span>
                             @else
-                                <span class="block text-xs text-gray-400">{{ __('No event assigned') }}</span>
+                                <span class="block text-xs text-content-subtle">{{ __('No event assigned') }}</span>
                             @endif
                         </li>
                     @endforeach

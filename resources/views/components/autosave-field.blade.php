@@ -67,7 +67,7 @@
 
         <a
             href="{{ $historyUrl }}"
-            class="inline-flex items-center justify-center p-1 rounded-md text-navy-500 hover:bg-navy-50"
+            class="inline-flex items-center justify-center p-1 rounded-md text-link hover:bg-info-surface"
             title="{{ __('History') }}"
         >
             <span class="sr-only">{{ __('History') }}</span>
@@ -133,7 +133,7 @@
                  thing (open-questions.md Q5 / architecture.md's "not a save
                  indicator"). --}}
             <span
-                class="text-xs font-medium text-ocean-600"
+                class="text-xs font-medium text-link"
                 data-autosave-indicator
                 x-show="state !== 'idle'"
                 style="display: none;"

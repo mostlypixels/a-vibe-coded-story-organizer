@@ -23,20 +23,26 @@ class SearchSnippet
 {
     /**
      * Approximate number of characters of context in a snippet, centered on the
-     * first match. The `sun` palette highlight shade (`bg-sun-200` = #ffe494) is
-     * a deliberate choice — the palette has no `200` shade and `bg-sun-400` is
-     * already the table-header color.
+     * first match.
      */
     public const CONTEXT_LENGTH = 120;
 
-    private const HIGHLIGHT_CLASS = 'bg-sun-200';
+    /**
+     * The search <mark>'s role tokens. `highlight` is this mark and nothing else —
+     * the band across every table header is `table-header`, a separate token.
+     *
+     * The class is written here rather than in the view because this class builds
+     * the markup the view only prints, so a sweep that touched Blade alone would
+     * leave a dangling utility that silently stops matching any theme.
+     */
+    private const HIGHLIGHT_CLASS = 'bg-highlight text-highlight-content';
 
     private const ELLIPSIS = "\u{2026}";
 
     /**
      * Return pre-escaped HTML: ~120 characters of context centered on the first
-     * case-insensitive match, with every occurrence of the term(s) wrapped in
-     * `<mark class="bg-sun-200">`. All non-mark text is HTML-escaped.
+     * case-insensitive match, with every occurrence of the term(s) wrapped in a
+     * `<mark>` carrying self::HIGHLIGHT_CLASS. All non-mark text is HTML-escaped.
      *
      * @param  string|array<int, string>  $terms  the term(s) to highlight
      */

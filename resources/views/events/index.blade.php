@@ -4,7 +4,7 @@
             <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Events') }}
             </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('projects.show', $project) }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to Project') }}
             </a>
         </div>
@@ -26,7 +26,7 @@
 
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search') || request()->filled('plotline'))
-                        <a href="{{ route('projects.events.index', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Clear') }}</a>
+                        <a href="{{ route('projects.events.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
                     @endif
                 </form>
 
@@ -44,18 +44,18 @@
                 @forelse ($events as $event)
                     <x-table-row :striped="$loop->even">
                         <td class="px-4 py-3">
-                            <a href="{{ route('events.edit', $event) }}" class="flex items-center gap-2 font-semibold text-gray-800 hover:text-ocean-600">
+                            <a href="{{ route('events.edit', $event) }}" class="flex items-center gap-2 font-semibold text-content hover:text-link">
                                 {{ $event->title }}
                                 @if ($event->is_fixed)
                                     <x-badge>{{ __('Fixed') }}</x-badge>
                                 @endif
                             </a>
                             @if ($event->description)
-                                <div class="mt-1 text-sm text-gray-500"><x-rich-text-excerpt :html="$event->description" /></div>
+                                <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$event->description" /></div>
                             @endif
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ $event->event_datetime->format('M j, Y g:i A') }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-400">
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $event->event_datetime->format('M j, Y g:i A') }}</td>
+                        <td class="px-4 py-3 text-sm text-content-subtle">
                             <div class="flex items-center gap-3 flex-wrap">
                                 @foreach ($event->plotlines as $plotline)
                                     <span class="inline-flex items-center gap-1">

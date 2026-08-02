@@ -14,7 +14,7 @@
                 @include('codex-attributes.partials.fields')
 
                 <div class="flex items-center gap-4">
-                    <a href="{{ route('projects.codex-attributes.index', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">{{ __('Cancel') }}</a>
+                    <a href="{{ route('projects.codex-attributes.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Cancel') }}</a>
                 </div>
             </form>
         </x-card>

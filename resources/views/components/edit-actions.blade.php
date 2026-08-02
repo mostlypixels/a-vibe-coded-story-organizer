@@ -45,7 +45,7 @@
     </div>
 
     @if ($deleteAction || isset($delete))
-        <hr class="mt-4 border-gray-200">
+        <hr class="mt-4 border-border">
 
         @isset($delete)
             <div class="mt-4">{{ $delete }}</div>

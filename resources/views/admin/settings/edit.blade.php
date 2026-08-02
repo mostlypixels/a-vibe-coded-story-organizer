@@ -8,7 +8,7 @@
     <x-card class="max-w-xl">
         <x-slot name="header">
             <x-heading level="3">{{ __('General settings') }}</x-heading>
-            <p class="mt-1 text-sm text-gray-600">
+            <p class="mt-1 text-sm text-content-muted">
                 {{ __('Control whether search engines and crawlers may index this site.') }}
             </p>
         </x-slot>
@@ -26,11 +26,11 @@
                     name="enabled"
                     value="1"
                     @checked(old('enabled', $setting->enabled))
-                    class="mt-1 rounded-sm border-gray-300 text-ocean-600 shadow-xs focus:ring-ocean-500"
+                    class="mt-1 rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                 >
                 <div>
                     <x-input-label for="enabled" :value="__('Hide this site from search engines')" />
-                    <p class="mt-1 text-sm text-gray-600">
+                    <p class="mt-1 text-sm text-content-muted">
                         {{ __('When on, the site is hidden from search engines and crawlers.') }}
                     </p>
                 </div>
@@ -54,7 +54,7 @@
                     rows="5"
                     class="mt-1 block w-full"
                 >{{ $whitelistText }}</x-textarea>
-                <p class="mt-1 text-sm text-gray-600">
+                <p class="mt-1 text-sm text-content-muted">
                     {{ __('One user-agent term per line (e.g. Googlebot). These crawlers stay allowed while hidden mode is on.') }}
                 </p>
                 <x-input-error class="mt-2" :messages="$errors->get('user_agent_whitelist.*')" />
@@ -67,7 +67,7 @@
                     href="{{ route('robots.txt') }}"
                     target="_blank"
                     rel="noopener"
-                    class="text-sm text-gray-600 underline hover:text-gray-900"
+                    class="text-sm text-content-muted hover:text-content underline"
                 >{{ __('Preview robots.txt') }}</a>
 
                 @if (session('status') === 'crawler-settings-updated')
@@ -76,7 +76,7 @@
                         x-show="show"
                         x-transition
                         x-init="setTimeout(() => show = false, 2000)"
-                        class="text-sm text-gray-600"
+                        class="text-sm text-content-muted"
                     >{{ __('Saved.') }}</p>
                 @endif
             </div>

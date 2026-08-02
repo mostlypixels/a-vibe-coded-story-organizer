@@ -7,9 +7,14 @@
 //
 // Commands (one per line):
 //   nav <url>
+//   resize <width> <height>         (default viewport is Playwright's desktop
+//                                     default; narrow it to hit sm: breakpoints)
 //   wait-for text=<text>            (or) wait-for <css-selector>
 //   click <css-selector>
 //   fill <css-selector> <value...>
+//   type <text...>                  (keyboard-types into whatever has focus —
+//                                     use for contenteditable/Tiptap, where `fill`
+//                                     doesn't apply; click into the editor first)
 //   set-input-file <css-selector> <path>
 //   press <key>
 //   screenshot [name]
@@ -64,6 +69,12 @@ async function runLine(raw) {
       console.log(`[nav] ${rest} -> ${page.url()}`);
       break;
     }
+    case 'resize': {
+      const [width, height] = parseArgs(rest).map(Number);
+      await page.setViewportSize({ width, height });
+      console.log(`[resize] ${width}x${height}`);
+      break;
+    }
     case 'wait-for': {
       let locator;
       if (rest.startsWith('text=')) {
@@ -86,6 +97,11 @@ async function runLine(raw) {
       const value = rest.slice(selector.length).trim();
       await page.locator(selector).first().fill(value, { timeout: 10000 });
       console.log(`[fill] ${selector} = ${value}`);
+      break;
+    }
+    case 'type': {
+      await page.keyboard.type(rest, { delay: 5 });
+      console.log(`[type] ${rest}`);
       break;
     }
     case 'set-input-file': {

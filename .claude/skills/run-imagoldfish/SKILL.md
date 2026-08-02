@@ -131,9 +131,11 @@ and removes the PID file; it's idempotent if the server is already gone.
 | driver command | what it does |
 |---|---|
 | `nav <url>` | navigate |
+| `resize <width> <height>` | set the viewport (default is desktop-sized; narrow it to hit `sm:` breakpoints) |
 | `wait-for text=<t>` / `wait-for <css>` | wait for visible text or element |
 | `click <css>` | click |
 | `fill <css> <value>` | fill an input |
+| `type <text>` | keyboard-type into whatever has focus (contenteditable/Tiptap) |
 | `set-input-file <css> <path>` | attach a file to a `<input type=file>` |
 | `press <key>` | keyboard press |
 | `screenshot [name]` | full-page screenshot |
@@ -141,6 +143,34 @@ and removes the PID file; it's idempotent if the server is already gone.
 | `text-content <css>` | print an element's text |
 | `console --errors` | print any console/page errors seen so far |
 | `eval <js>` | run JS in the page, print the result |
+
+### Proving a refactor changed no pixel
+
+`computed-style-diff.mjs` (next to `driver.mjs`) crawls the same ~45 pages on two
+running instances and compares the computed colour of every element and its
+`::before`/`::after`. Use it when a change is meant to be visually inert — a class
+rename, a token substitution — and "it looks the same" is not good enough:
+
+```bash
+git worktree add /tmp/app-master master   # junction vendor/ and node_modules/ in,
+                                          # copy .env + database/database.sqlite
+bash scripts/serve-app.sh --port 8000                     # the branch
+(cd /tmp/app-master && bash scripts/serve-app.sh --port 8100)   # master
+cd .claude/skills/run-imagoldfish
+node computed-style-diff.mjs --before http://localhost:8100 --after http://localhost:8000
+```
+
+It prints the differences grouped by `before -> after` colour with an example class
+string for each, and writes `chromium_cli/diff/*.json` (gitignored) for drilling in.
+
+* **It compares only properties that paint.** A `border-left-color` under
+  `border-left-width: 0` is skipped — otherwise a change to the default border colour
+  buries the report in tens of thousands of invisible differences.
+* **Check the `--color-primary as painted` line it prints first.** A signed-in user
+  whose `theme_slug` is a dark preset makes every page differ for a reason that is not
+  your change. `App\Models\User::query()->update(['theme_slug' => null])` first.
+* **Default states only** — no hover, focus or disabled, and no page reached by a
+  redirect (flash-message alerts, for one). Those still need eyes.
 
 ### Snags that cost time
 

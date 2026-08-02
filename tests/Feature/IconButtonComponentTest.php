@@ -58,8 +58,8 @@ class IconButtonComponentTest extends TestCase
         $rendered = $this->render('<x-icon-button icon="pencil" :label="$label" />', ['label' => 'Edit']);
 
         $this->assertStringContainsString('inline-flex items-center justify-center p-1.5 rounded-md', $rendered);
-        // The outline variant's navy, the app default.
-        $this->assertStringContainsString('border-navy-500', $rendered);
+        // The outline variant's link colour, the app default.
+        $this->assertStringContainsString('border-link', $rendered);
         // Both naming channels, not one: a title alone is not reliably announced.
         $this->assertStringContainsString('title="Edit"', $rendered);
         $this->assertStringContainsString('<span class="sr-only">Edit</span>', $rendered);
@@ -87,11 +87,13 @@ class IconButtonComponentTest extends TestCase
     {
         $rendered = $this->render('<x-icon-button variant="ghost" icon="chevron-up" label="Move up" />');
 
-        $this->assertStringContainsString('text-gray-400', $rendered);
-        $this->assertStringContainsString('disabled:text-gray-200', $rendered);
+        $this->assertStringContainsString('text-content-subtle', $rendered);
+        // Dimmed with opacity, not a paler token: `content-subtle` is already the
+        // faintest content token, and the flat vocabulary has no step below it.
+        $this->assertStringContainsString('disabled:opacity-25', $rendered);
         $this->assertStringContainsString('disabled:cursor-not-allowed', $rendered);
         // Never the bordered outline — ghost controls are borderless.
-        $this->assertStringNotContainsString('border-navy-500', $rendered);
+        $this->assertStringNotContainsString('border-link', $rendered);
     }
 
     /**
@@ -114,8 +116,8 @@ class IconButtonComponentTest extends TestCase
     {
         $rendered = $this->render('<x-icon-close-button variant="light" class="absolute" />');
 
-        $this->assertStringContainsString('border-white', $rendered);
-        $this->assertStringContainsString('text-white', $rendered);
+        $this->assertStringContainsString('border-nav-content', $rendered);
+        $this->assertStringContainsString('text-nav-content', $rendered);
         // Caller-supplied classes still land alongside the variant's.
         $this->assertStringContainsString('absolute', $rendered);
     }
@@ -129,8 +131,8 @@ class IconButtonComponentTest extends TestCase
         $this->assertStringContainsString('action="/acts/1"', $rendered);
         $this->assertStringContainsString('name="_method" value="DELETE"', $rendered);
         $this->assertStringContainsString('return confirm(', $rendered);
-        // Destructive, so red rather than the navy outline.
-        $this->assertStringContainsString('border-red-600', $rendered);
+        // Destructive, so danger rather than the default outline.
+        $this->assertStringContainsString('border-danger', $rendered);
     }
 
     public function test_the_move_button_posts_a_patch_and_picks_its_glyph_from_the_direction(): void
@@ -159,8 +161,8 @@ class IconButtonComponentTest extends TestCase
 
         $this->assertStringContainsString("open-modal', 'delete-act-7'", $rendered);
         $this->assertStringContainsString('type="button"', $rendered);
-        // Same red as the plain delete button — the whole point of composing the base.
-        $this->assertStringContainsString('border-red-600', $rendered);
+        // Same danger colour as the plain delete button — the whole point of composing the base.
+        $this->assertStringContainsString('border-danger', $rendered);
         // It must not be a form: this one defers the destruction to the dialog.
         $this->assertStringNotContainsString('<form', $rendered);
     }

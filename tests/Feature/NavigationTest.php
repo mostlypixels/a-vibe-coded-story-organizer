@@ -119,14 +119,14 @@ class NavigationTest extends TestCase
         $this->actingAs($user)
             ->get(route('projects.scenes.index', $project))
             ->assertOk()
-            ->assertSee('text-white border-nav-active', false);
+            ->assertSee('text-nav-content border-accent', false);
 
         // On Home the Story trigger is inactive; the active-trigger token, whose
         // class order is unique to the trigger, must be absent.
         $this->actingAs($user)
             ->get(route('projects.show', $project))
             ->assertOk()
-            ->assertDontSee('text-white border-nav-active', false);
+            ->assertDontSee('text-nav-content border-accent', false);
     }
 
     /**
@@ -139,7 +139,7 @@ class NavigationTest extends TestCase
     private function assertTriggerIsActive(string $html, string $label, string $message = ''): void
     {
         $this->assertMatchesRegularExpression(
-            '/<button[^>]*text-white border-nav-active[^>]*>\s*'.preg_quote($label, '/').'/',
+            '/<button[^>]*text-nav-content border-accent[^>]*>\s*'.preg_quote($label, '/').'/',
             $html,
             $message,
         );
@@ -151,7 +151,7 @@ class NavigationTest extends TestCase
     private function assertTriggerIsNotActive(string $html, string $label, string $message = ''): void
     {
         $this->assertDoesNotMatchRegularExpression(
-            '/<button[^>]*text-white border-nav-active[^>]*>\s*'.preg_quote($label, '/').'/',
+            '/<button[^>]*text-nav-content border-accent[^>]*>\s*'.preg_quote($label, '/').'/',
             $html,
             $message,
         );
@@ -310,9 +310,9 @@ class NavigationTest extends TestCase
         // the desktop block and read by the responsive block through PHP scope
         // leak, so reordering the file would have silently dropped this.
         // Lookaheads because attribute order in the rendered <a> is not ours.
-        // `border-nav-active text-start` is unique to responsive-nav-link active.
+        // `border-accent text-start` is unique to responsive-nav-link active.
         $this->assertMatchesRegularExpression(
-            '/<a(?=[^>]*href="'.$href.'")(?=[^>]*border-nav-active text-start)[^>]*>/',
+            '/<a(?=[^>]*href="'.$href.'")(?=[^>]*border-accent text-start)[^>]*>/',
             $html,
             'Revisions should be highlighted in the responsive menu too.',
         );

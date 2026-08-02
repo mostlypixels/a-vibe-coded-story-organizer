@@ -1,11 +1,16 @@
 @props(['status'])
 
 @php
+    // Same four status tokens x-badge uses (see its own comment for why the
+    // tinted text lands on `<status>-surface-content`, never `<status>` itself).
+    // `to_edit` was `orange`, which has no token of its own — mapped to `danger`,
+    // the more urgent of the two remaining statuses, since `to_proofread` already
+    // claims `warning`.
     $colors = [
-        'draft' => 'bg-gray-100 text-gray-700',
-        'to_proofread' => 'bg-yellow-100 text-yellow-800',
-        'to_edit' => 'bg-orange-100 text-orange-800',
-        'final' => 'bg-green-100 text-green-800',
+        'draft' => 'bg-neutral text-neutral-content',
+        'to_proofread' => 'bg-warning-surface text-warning-surface-content',
+        'to_edit' => 'bg-danger-surface text-danger-surface-content',
+        'final' => 'bg-success-surface text-success-surface-content',
     ][$status->value];
 @endphp
 

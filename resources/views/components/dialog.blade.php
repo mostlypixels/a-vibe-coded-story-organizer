@@ -19,7 +19,7 @@
 --}}
 <x-modal :name="$name" :max-width="$maxWidth" focusable>
     @if ($title)
-        <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+        <div class="flex items-center justify-between border-b border-border px-6 py-4">
             <x-heading level="3">{{ $title }}</x-heading>
             <x-icon-close-button x-on:click="$dispatch('close')" />
         </div>
@@ -30,7 +30,7 @@
     </div>
 
     @isset($footer)
-        <div class="flex justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
+        <div class="flex justify-end gap-2 border-t border-border bg-surface-sunken px-6 py-4">
             {{ $footer }}
         </div>
     @endisset

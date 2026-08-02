@@ -7,9 +7,34 @@ contrast rules across all three.
 
 - Re-generate **Dusk** and **Low-glare dark** with `theme:ramp` and replace task 03's rough
   values in `config/themes.php`.
-- Declare each one's `contrast_ceiling` (Dusk ~12.0, Low-glare ~10.0).
-- `tests/Feature/ThemeContrastTest` — the matrix.
+- Declare each one's `contrast_ceiling` (Dusk ~12.0, Low-glare ~10.0) and **Daylight's, at 18.0**.
+- **Re-author Daylight's six failing values** (below). This is the task that breaks
+  pixel-stability, deliberately and only here.
+- `tests/Feature/ThemeContrastTest` — the matrix, asserted across **all three presets**.
 - The full browser pass under all three presets.
+
+## Daylight's failures — measured, fix all six
+
+The default theme fails 15 of 50 pairs as inherited. Four are `border` (now decorative, no
+floor — see `00-overview.md`), five are duplicates of the same token across surfaces. The
+distinct fixes:
+
+| pair | today | why |
+|---|---|---|
+| `warning-content` on `warning` | **1.92** | white on `yellow-500`; the worst in the app |
+| `success-content` on `success` | **3.29** | white on `green-600` |
+| `content-subtle` on `surface*` | **2.36** | real body text — field hints, timestamps, "No event assigned" — not disabled controls, so no WCAG exemption |
+| `link` on `surface` | **4.15** | near miss, app-wide |
+| `content-muted` on `surface` | **4.39** | near miss, app-wide |
+| `focus` on `surface` | **2.86** | focus indicator; 1.4.11 genuinely applies |
+
+`primary-content` on `primary-active` reads 16.96 and fails as **TooHigh** only against the
+15.0 default. Daylight's own 18.0 ceiling resolves it — do not lighten the navy.
+
+> [!WARNING]
+> `content-muted`, `content-subtle`, `link` and `focus` are four of the most-used tokens in the
+> app. Changing them moves hundreds of usages at once. Do this as a deliberate authoring pass
+> with the browser walk, not by nudging numbers until the test goes green.
 
 ## Depends on
 
@@ -37,13 +62,21 @@ contrast rules across all three.
 
 `tests/Feature/ThemeContrastTest`, data-provided over **every preset in
 `config('themes.presets')` × every pair in `ThemeTokens::PAIRS`** — iterate config, not rows:
-- ≥ 4.5 for text pairs; ≥ 3.0 for `accent`, `border`, `border-strong`, `focus`.
+- ≥ 4.5 for text pairs; ≥ 3.0 for `accent`, `border-strong`, `focus`.
+- Tokens in `ThemeTokens::DECORATIVE` (`border`, `scrim`) are **skipped**, not floored —
+  whether they appear as a pair's foreground or, in `scrim`'s case, have no pair at all. Assert
+  the skip list is non-empty so the exemption stays visible.
+- **`scrim` still needs a browser check under each preset**, since no assertion covers it: open
+  a modal and confirm the page behind it is dimmed rather than washed out.
 - ≤ that preset's ceiling, asserted **hard**. PHPUnit has no warning level, and the presets are
   ours — one breaching its own declared ceiling is a bug. "Warn, don't reject" governs spec 3's
   user input, not our fixtures.
+- **No per-preset exemptions.** All three presets pass the same floors; that is what task 12's
+  re-authoring buys. The one exception is surface-distinctness below.
 - The four surfaces are **distinct values in the generated presets only**. Daylight cannot pass
-  this — `x-card`, `x-table`, `x-dropdown` and `x-modal` are all `bg-white`, so pixel-stability
-  forces `surface-raised == surface-overlay` there.
+  this — `x-card`, `x-table`, `x-dropdown` and `x-modal` are all `bg-white`, and re-authoring
+  the elevation scale is out of scope here (it is the "regularize Daylight" follow-up, not a
+  contrast fix).
 
 Browser pass: every page under each preset. Daylight is the computed-style diff from task 11.
 Dusk and Low-glare are read by eye, looking for two things — a card that vanished into the page

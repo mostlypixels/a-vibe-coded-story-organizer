@@ -16,10 +16,12 @@
           empty
             x-table-empty :colspan="N" (no-results message)
 --}}
-<div class="bg-white overflow-hidden shadow-xs sm:rounded-lg">
-    <table {{ $attributes->merge(['class' => 'min-w-full divide-y divide-gray-200']) }}>
+<div class="bg-surface-raised overflow-hidden shadow-xs sm:rounded-lg">
+    <table {{ $attributes->merge(['class' => 'min-w-full divide-y divide-border']) }}>
         @isset($head)
-            <thead class="bg-sun-400">
+            {{-- `table-header`, not `highlight`: this band is on every table in the
+                 app, whereas `highlight` is the search <mark> alone. --}}
+            <thead class="bg-table-header">
                 <tr>{{ $head }}</tr>
             </thead>
         @endisset

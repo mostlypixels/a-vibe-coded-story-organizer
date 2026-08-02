@@ -10,16 +10,16 @@
 --}}
 <x-card>
     <details open>
-        <summary class="cursor-pointer select-none font-semibold text-gray-800">
+        <summary class="cursor-pointer select-none font-semibold text-content">
             {{ $title }}
         </summary>
 
         <div class="mt-4">
             @if ($moment === null)
                 {{-- Mirrors the red-border unassigned-scene affordance: no event, no values. --}}
-                <p class="text-sm text-gray-500">&mdash; {{ __('Assign an event to this scene to see codex values.') }}</p>
+                <p class="text-sm text-content-muted">&mdash; {{ __('Assign an event to this scene to see codex values.') }}</p>
             @elseif ($groups->isEmpty())
-                <p class="text-sm text-gray-500">{{ __('No codex entries yet.') }}</p>
+                <p class="text-sm text-content-muted">{{ __('No codex entries yet.') }}</p>
             @else
                 <div class="space-y-6">
                     @foreach ($groups as $group)
@@ -28,13 +28,13 @@
                             <div class="mt-2 space-y-3">
                                 @foreach ($group['entries'] as $row)
                                     <div>
-                                        <a href="{{ route('codex.edit', $row['entry']) }}" class="text-sm font-medium text-ocean-600 hover:text-ocean-800">{{ $row['entry']->name }}</a>
+                                        <a href="{{ route('codex.edit', $row['entry']) }}" class="text-sm font-medium text-link hover:text-link-hover">{{ $row['entry']->name }}</a>
                                         @if ($row['attributes']->isNotEmpty())
                                             <dl class="mt-1 space-y-0.5">
                                                 @foreach ($row['attributes'] as $attribute)
                                                     <div class="flex gap-2 text-sm">
-                                                        <dt class="text-gray-500">{{ $attribute['name'] }}:</dt>
-                                                        <dd class="text-gray-800">{{ filled($attribute['value']) ? $attribute['value'] : '—' }}</dd>
+                                                        <dt class="text-content-muted">{{ $attribute['name'] }}:</dt>
+                                                        <dd class="text-content">{{ filled($attribute['value']) ? $attribute['value'] : '—' }}</dd>
                                                     </div>
                                                 @endforeach
                                             </dl>

@@ -4,6 +4,6 @@
     sync. Render with an empty slot (`<x-table-heading />`) for a spacer column,
     e.g. the trailing row-actions column.
 --}}
-<th scope="col" {{ $attributes->merge(['class' => 'px-4 py-3 text-left text-xs font-semibold text-navy-900 uppercase tracking-wider']) }}>
+<th scope="col" {{ $attributes->merge(['class' => 'px-4 py-3 text-left text-xs font-semibold text-table-header-content uppercase tracking-wider']) }}>
     {{ $slot }}
 </th>

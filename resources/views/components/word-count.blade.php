@@ -15,7 +15,7 @@
     reads as "unknown" (see expanded/ui.md, "Empty and zero states").
 --}}
 @php
-    $classes = $variant === 'inline' ? '' : 'text-xs text-gray-400';
+    $classes = $variant === 'inline' ? '' : 'text-xs text-content-subtle';
 
     // Thousands-separated + pluralised via App\Support\WordCountFormat, the one
     // place this translation key lives — task 7's live counter (resources/js/

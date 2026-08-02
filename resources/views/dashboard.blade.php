@@ -19,7 +19,7 @@
                     <button
                         type="button"
                         @click="view = 'list'"
-                        :class="view === 'list' ? 'bg-ocean-50 text-ocean-600 border-ocean-500' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'"
+                        :class="view === 'list' ? 'bg-accent-surface text-accent-content border-accent' : 'bg-surface-raised text-content-muted border-border-strong hover:bg-surface-sunken'"
                         class="inline-flex items-center gap-1.5 rounded-l-md border px-3 py-1.5 text-sm font-medium"
                     >
                         <x-tabler-layout-list class="h-4 w-4" aria-hidden="true" />
@@ -28,7 +28,7 @@
                     <button
                         type="button"
                         @click="view = 'grid'"
-                        :class="view === 'grid' ? 'bg-ocean-50 text-ocean-600 border-ocean-500' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'"
+                        :class="view === 'grid' ? 'bg-accent-surface text-accent-content border-accent' : 'bg-surface-raised text-content-muted border-border-strong hover:bg-surface-sunken'"
                         class="-ml-px inline-flex items-center gap-1.5 rounded-r-md border px-3 py-1.5 text-sm font-medium"
                     >
                         <x-tabler-layout-grid class="h-4 w-4" aria-hidden="true" />
@@ -52,16 +52,16 @@
                             <td class="px-4 py-3">
                                 <a href="{{ route('projects.edit', $project) }}">
                                     @if ($project->cover_image)
-                                        <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-10 w-10 rounded-sm object-cover border border-gray-200">
+                                        <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
                                     @else
-                                        <div class="h-10 w-10 rounded-sm bg-gray-100 border border-gray-200" aria-hidden="true"></div>
+                                        <div class="h-10 w-10 rounded-sm bg-surface border border-border" aria-hidden="true"></div>
                                     @endif
                                 </a>
                             </td>
                             <td class="px-4 py-3">
-                                <a href="{{ route('projects.edit', $project) }}" class="font-semibold text-gray-800 hover:text-ocean-600">{{ $project->name }}</a>
+                                <a href="{{ route('projects.edit', $project) }}" class="font-semibold text-content hover:text-link">{{ $project->name }}</a>
                             </td>
-                            <td class="px-4 py-3 text-sm text-gray-500">
+                            <td class="px-4 py-3 text-sm text-content-muted">
                                 @if ($project->description)
                                     <x-rich-text-excerpt :html="$project->description" />
                                 @else
@@ -86,15 +86,15 @@
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4">
                     @endif
 
-                    <a href="{{ route('projects.edit', $project) }}" class="block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs hover:shadow-md transition-shadow">
+                    <a href="{{ route('projects.edit', $project) }}" class="block overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xs hover:shadow-md transition-shadow">
                         @if ($project->cover_image)
                             <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-24 w-full object-cover">
                         @else
-                            <div class="h-24 w-full bg-gray-100" aria-hidden="true"></div>
+                            <div class="h-24 w-full bg-surface" aria-hidden="true"></div>
                         @endif
                         <div class="p-2">
-                            <div class="text-sm font-semibold text-gray-800 truncate">{{ $project->name }}</div>
-                            <div class="mt-0.5 text-xs text-gray-500 line-clamp-2">
+                            <div class="text-sm font-semibold text-content truncate">{{ $project->name }}</div>
+                            <div class="mt-0.5 text-xs text-content-muted line-clamp-2">
                                 @if ($project->description)
                                     <x-rich-text-excerpt :html="$project->description" :limit="60" />
                                 @else
@@ -108,7 +108,7 @@
                         </div>
                     @endif
                 @empty
-                    <x-card class="text-center text-gray-500">
+                    <x-card class="text-center text-content-muted">
                         {{ __('You have no projects yet.') }}
                     </x-card>
                 @endforelse

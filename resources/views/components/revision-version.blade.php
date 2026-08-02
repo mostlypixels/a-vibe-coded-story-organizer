@@ -42,9 +42,9 @@
     @if ($revision === null)
         {{-- The field had no revision at this point: everything on the other
              side is an insertion, and there is nothing here to restore. --}}
-        <p class="text-sm italic text-gray-500">{{ __('This field had no content yet.') }}</p>
+        <p class="text-sm italic text-content-muted">{{ __('This field had no content yet.') }}</p>
     @elseif (blank($revision->value))
-        <p class="text-sm italic text-gray-500">{{ __('Empty.') }}</p>
+        <p class="text-sm italic text-content-muted">{{ __('Empty.') }}</p>
     @elseif ($kind === \App\Enums\FieldKind::Rich)
         {{-- Sanitized on write, so it goes through the one component allowed
              to echo rich author HTML. --}}
@@ -56,18 +56,18 @@
              (and again by RevisionReverter on restore). Rendering the stored
              source is what makes this column show the same thing the writer
              sees in the app rather than its source. --}}
-        <div class="prose prose-sm max-w-none text-gray-700">{!! \Illuminate\Support\Str::markdown($revision->value) !!}</div>
+        <div class="prose prose-sm max-w-none text-content-muted">{!! \Illuminate\Support\Str::markdown($revision->value) !!}</div>
     @else
         {{-- Plain text has no markup at all: escaped, with its own line
              breaks kept. --}}
-        <p class="whitespace-pre-wrap text-sm text-gray-700">{{ $revision->value }}</p>
+        <p class="whitespace-pre-wrap text-sm text-content-muted">{{ $revision->value }}</p>
     @endif
 
     <x-slot name="footer">
         @if ($revision === null)
             {{-- Nothing to revert to. The empty footer keeps the two columns the
                  same shape, so the other side's button doesn't drift upward. --}}
-            <p class="text-xs text-gray-400">&nbsp;</p>
+            <p class="text-xs text-content-subtle">&nbsp;</p>
         @elseif ($isCurrent)
             {{-- Restoring the value already in the column is a no-op dressed up
                  as an action: say so instead of offering it. --}}

@@ -143,8 +143,8 @@ class SearchTest extends TestCase
         $response->assertSee('The Opening Scene');
         $response->assertSee('Contents');
         // The pre-built highlight HTML — proves the {!! !!} snippet renders raw and
-        // carries the bg-sun-200 class the CSS is built to style.
-        $response->assertSeeHtml('<mark class="bg-sun-200">zephyrqux</mark>');
+        // carries the highlight role tokens the active theme paints.
+        $response->assertSeeHtml('<mark class="bg-highlight text-highlight-content">zephyrqux</mark>');
         // Link points at the scene's existing edit page.
         $response->assertSee(route('scenes.edit', $scene), false);
     }
@@ -164,7 +164,7 @@ class SearchTest extends TestCase
         $response->assertOk();
         // The unaccented query matched, and the highlighted preview keeps the
         // original accented spelling inside the <mark>.
-        $response->assertSeeHtml('<mark class="bg-sun-200">Mélusine</mark>');
+        $response->assertSeeHtml('<mark class="bg-highlight text-highlight-content">Mélusine</mark>');
     }
 
     public function test_a_matched_rich_html_field_strips_tags_from_the_preview(): void
@@ -182,7 +182,7 @@ class SearchTest extends TestCase
             ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
 
         $response->assertOk();
-        $response->assertSeeHtml('<mark class="bg-sun-200">zephyrqux</mark>');
+        $response->assertSeeHtml('<mark class="bg-highlight text-highlight-content">zephyrqux</mark>');
         // The raw tags never reach the page, escaped or otherwise.
         $response->assertDontSee('&lt;p&gt;', false);
         $response->assertDontSee('<p>', false);

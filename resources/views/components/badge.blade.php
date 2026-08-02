@@ -1,17 +1,26 @@
-@props(['variant' => 'gray', 'pill' => true])
+@props(['variant' => 'neutral', 'pill' => true])
 
 @php
     // Small status/label pill. Full class strings per variant keep Tailwind's
     // purge happy. See x-scene-status-badge for a domain-specific version that
     // maps an enum to these same styles.
+    //
+    // Variants are named for the role they carry, never for a hue: the two that
+    // used to be `gray` and `indigo` are now `neutral` and `accent`. `accent` has
+    // to stay visually distinct from `info` — x-revision-origin-badge uses both,
+    // for an imported revision and a manually saved one.
+    //
+    // A tinted variant puts its text on `<status>-surface-content`, never on
+    // `<status>` itself: the fill is chosen to carry white, so reusing it as text
+    // on the tint measures as low as 1.85:1.
     $variants = [
-        'gray'    => 'bg-gray-100 text-gray-700',
-        'primary' => 'bg-navy-900 text-white',
-        'info'    => 'bg-blue-100 text-blue-800',
-        'success' => 'bg-green-100 text-green-800',
-        'warning' => 'bg-yellow-100 text-yellow-800',
-        'danger'  => 'bg-red-100 text-red-800',
-        'indigo'  => 'bg-ocean-100 text-ocean-800',
+        'neutral' => 'bg-neutral text-neutral-content',
+        'primary' => 'bg-primary text-primary-content',
+        'info'    => 'bg-info-surface text-info-surface-content',
+        'success' => 'bg-success-surface text-success-surface-content',
+        'warning' => 'bg-warning-surface text-warning-surface-content',
+        'danger'  => 'bg-danger-surface text-danger-surface-content',
+        'accent'  => 'bg-accent-surface text-accent-content',
     ][$variant];
 
     $shape = $pill ? 'rounded-full' : 'rounded-sm';

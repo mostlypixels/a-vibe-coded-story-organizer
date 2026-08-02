@@ -7,11 +7,11 @@
 --}}
 @php
     $variant = match ($origin) {
-        \App\Enums\RevisionOrigin::Automatic => 'gray',
+        \App\Enums\RevisionOrigin::Automatic => 'neutral',
         \App\Enums\RevisionOrigin::Manual => 'info',
         \App\Enums\RevisionOrigin::Revert => 'warning',
-        \App\Enums\RevisionOrigin::Import => 'indigo',
-        \App\Enums\RevisionOrigin::Baseline => 'gray',
+        \App\Enums\RevisionOrigin::Import => 'accent',
+        \App\Enums\RevisionOrigin::Baseline => 'neutral',
     };
 @endphp
 

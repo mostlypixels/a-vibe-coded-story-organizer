@@ -16,6 +16,20 @@ The usages a Blade-only sweep leaves dangling. Small, and easy to forget entirel
 **`resources/js/autosave/badge.js`** — hard-codes `border-gray-300 bg-white text-gray-600` in
 two places (a state map and a default).
 
+**`tests/Feature/NoHueNamedColorsTest`'s scan pattern is too narrow** — found during task 09.
+It matches only `ocean|aqua|navy|sun|flame|gray|slate`, so every built-in Tailwind status hue
+(`red`, `green`, `blue`, `yellow`, `amber`, `emerald`, `indigo`, `purple`, `orange`, …) passes
+straight through. That guts the guard exactly where the sweep is subtlest — status colors are
+the ones with four tokens and the easiest to get wrong — and it means task 11's "allow-list is
+empty" gate proves less than it looks.
+
+Widen `PATTERN` to cover the built-in hues, and do it **in this task**, before task 11 leans on
+it. A scan with the widened pattern currently reports violations in exactly one file —
+`resources/js/autosave/badge.js`, already in scope above — so widening it costs nothing beyond
+this task's own work. Watch two false-friend cases: `neutral` is a *token* name (`bg-neutral`)
+as well as a Tailwind ramp, and the shade-digit requirement is what keeps them apart, so keep
+the `-(50|[1-9]00|950)` suffix mandatory rather than matching a bare hue word.
+
 ## Depends on
 
 09.

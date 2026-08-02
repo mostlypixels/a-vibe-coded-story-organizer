@@ -16,15 +16,15 @@
     natural height would push this page's revert buttons a novel's length apart,
     and comparing the columns would mean scrolling one past the other.
 --}}
-<section class="flex h-full flex-col rounded-lg border border-gray-200">
-    <header class="border-b border-gray-200 bg-gray-50 px-4 py-2">
+<section class="flex h-full flex-col rounded-lg border border-border">
+    <header class="border-b border-border bg-surface-sunken px-4 py-2">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <span class="text-sm font-semibold text-gray-700">{{ $title }}</span>
+            <span class="text-sm font-semibold text-content-muted">{{ $title }}</span>
             {{ $badge ?? '' }}
         </div>
 
         @isset($meta)
-            <p class="mt-0.5 text-xs text-gray-500">{{ $meta }}</p>
+            <p class="mt-0.5 text-xs text-content-muted">{{ $meta }}</p>
         @endisset
     </header>
 
@@ -33,7 +33,7 @@
     </div>
 
     @isset($footer)
-        <footer class="border-t border-gray-200 px-4 py-3">
+        <footer class="border-t border-border px-4 py-3">
             {{ $footer }}
         </footer>
     @endisset

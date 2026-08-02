@@ -8,7 +8,7 @@
             <x-heading level="2">
                 {{ __('History') }} &mdash; {{ Str::headline($entity) }} "{{ $entityName }}"
             </x-heading>
-            <a href="{{ $editUrl }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ $editUrl }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to editing') }}
             </a>
         </div>
@@ -19,7 +19,7 @@
              the Back button means what it looks like it means. A native <select>
              is right here: a handful of options, no search, and it is
              keyboard-operable and screen-reader-announced for free. --}}
-        <form method="GET" class="bg-white shadow-xs rounded-lg px-6 py-4 flex flex-wrap items-end gap-4">
+        <form method="GET" class="bg-surface-raised shadow-xs rounded-lg px-6 py-4 flex flex-wrap items-end gap-4">
             @if ($fieldOptions !== [])
                 <div>
                     <x-input-label for="field-filter" :value="__('Field')" />
@@ -51,16 +51,16 @@
                     name="manual"
                     value="1"
                     @checked($manualOnly)
-                    class="rounded-sm border-gray-300 text-ocean-600 focus:ring-ocean-500"
+                    class="rounded-sm border-border-strong text-link focus:ring-focus"
                 >
-                <span class="text-sm text-gray-700">{{ __('Manual saves only') }}</span>
+                <span class="text-sm text-content-muted">{{ __('Manual saves only') }}</span>
             </label>
 
             <div class="flex items-center gap-3 pb-1">
                 <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
 
                 @if ($field !== null || $label !== '' || $manualOnly)
-                    <a href="{{ route('revisions.index', ['entity' => $entity, 'id' => $id]) }}" class="text-sm text-gray-500 hover:text-gray-700">
+                    <a href="{{ route('revisions.index', ['entity' => $entity, 'id' => $id]) }}" class="text-sm text-content-muted hover:text-content">
                         {{ __('Clear') }}
                     </a>
                 @endif
@@ -68,12 +68,12 @@
         </form>
 
         @if ($savePoints->isEmpty())
-            <div class="bg-white shadow-xs rounded-lg px-6 py-10 text-center text-gray-500">
+            <div class="bg-surface-raised shadow-xs rounded-lg px-6 py-10 text-center text-content-muted">
                 @if ($field !== null || $label !== '' || $manualOnly)
-                    <p class="font-medium text-gray-600">{{ __('No saves match these filters.') }}</p>
+                    <p class="font-medium text-content-muted">{{ __('No saves match these filters.') }}</p>
                     <p class="mt-1 text-sm">{{ __('Try clearing them to see the whole history.') }}</p>
                 @else
-                    <p class="font-medium text-gray-600">{{ __('No history yet.') }}</p>
+                    <p class="font-medium text-content-muted">{{ __('No history yet.') }}</p>
                     <p class="mt-1 text-sm">{{ __('Editing this and saving will start it.') }}</p>
                 @endif
             </div>

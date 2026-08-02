@@ -4,7 +4,7 @@
             <x-heading level="2">
                 {{ $project->name }} &mdash; {{ __('Story Overview') }}
             </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('projects.show', $project) }}" class="text-sm text-content-muted hover:text-content">
                 {{ __('Back to Project') }}
             </a>
         </div>
@@ -20,10 +20,10 @@
             {{-- Left column: Table of Contents, sticky so it stays in view while the
                  (potentially very long) act/chapter/scene content scrolls beside it. --}}
             <div class="lg:col-span-3">
-                <div x-data="{ open: true }" class="bg-white shadow-xs rounded-lg lg:sticky lg:top-6">
+                <div x-data="{ open: true }" class="bg-surface-raised shadow-xs rounded-lg lg:sticky lg:top-6">
                     <button type="button" @click="open = ! open" class="w-full flex items-center justify-between px-6 py-4 text-left">
-                        <span class="font-semibold text-gray-800">{{ __('Table of Contents') }}</span>
-                        <svg class="h-4 w-4 fill-current text-gray-500 transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <span class="font-semibold text-content">{{ __('Table of Contents') }}</span>
+                        <svg class="h-4 w-4 fill-current text-content-muted transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                         </svg>
                     </button>
@@ -31,7 +31,7 @@
                     <div x-show="open" x-transition class="px-6 pb-4 space-y-3">
                         @foreach ($acts as $act)
                             <div>
-                                <a href="#act-{{ $act->id }}" class="font-semibold text-gray-800 hover:text-gray-600">
+                                <a href="#act-{{ $act->id }}" class="font-semibold text-content hover:text-content-muted">
                                     {{ __('Act :number', ['number' => $act->position]) }} &mdash; {{ $act->name }}
                                 </a>
 
@@ -39,7 +39,7 @@
                                     <ul class="mt-1 ml-4 space-y-1">
                                         @foreach ($act->chapters as $chapter)
                                             <li>
-                                                <a href="#chapter-{{ $chapter->id }}" class="text-sm text-gray-500 hover:text-gray-700">
+                                                <a href="#chapter-{{ $chapter->id }}" class="text-sm text-content-muted hover:text-content">
                                                     {{ __('Chapter :number', ['number' => $chapter->position]) }} &mdash; {{ $chapter->name }}
                                                 </a>
                                             </li>
@@ -61,7 +61,7 @@
                              accessible name: with the count nested in, screen-reader heading
                              navigation announced "Act 1 — Melusine's Youth 490 words", and the act
                              was renamed every time the writer added a sentence. --}}
-                        <div class="flex items-center justify-between gap-4 text-white bg-gray-600 rounded-md px-4 py-2">
+                        <div class="flex items-center justify-between gap-4 text-nav-content bg-nav rounded-md px-4 py-2">
                             <h2 id="act-{{ $act->id }}" class="text-2xl font-bold scroll-mt-16">
                                 {{ __('Act :number', ['number' => $act->position]) }} &mdash; {{ $act->name }}
                             </h2>
@@ -75,10 +75,10 @@
                         </div>
 
                         @forelse ($act->chapters as $chapter)
-                            <article class="bg-white shadow-xs rounded-lg p-6 space-y-4">
+                            <article class="bg-surface-raised shadow-xs rounded-lg p-6 space-y-4">
                                 {{-- Sibling, not child, for the same reason as the act bar above. --}}
                                 <div class="flex items-center justify-between gap-4">
-                                    <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-gray-800 scroll-mt-16">
+                                    <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-content scroll-mt-16">
                                         {{ __('Chapter :number', ['number' => $chapter->position]) }} &mdash; {{ $chapter->name }}
                                     </h3>
                                     {{-- $chapter->scenes is already eager-loaded, so this ->sum() is free. --}}
@@ -86,10 +86,10 @@
                                 </div>
 
                                 @forelse ($chapter->scenes as $scene)
-                                    <section x-data="{ open: true }" @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="space-y-2 pb-4 border-b border-gray-200 last:border-b-0 last:pb-0 {{ $scene->event ? '' : 'border-l-4 border-l-red-500 pl-4' }}">
+                                    <section x-data="{ open: true }" @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="space-y-2 pb-4 border-b border-border last:border-b-0 last:pb-0 {{ $scene->event ? '' : 'border-l-4 border-l-danger pl-4' }}">
                                         <div class="flex items-center justify-between">
-                                            <button type="button" @click="open = ! open" class="flex items-center gap-2 text-sm font-light text-gray-500">
-                                                <svg class="h-4 w-4 fill-current text-gray-500 transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                            <button type="button" @click="open = ! open" class="flex items-center gap-2 text-sm font-light text-content-muted">
+                                                <svg class="h-4 w-4 fill-current text-content-muted transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                                 </svg>
                                                 {{ $scene->name }}
@@ -97,9 +97,9 @@
 
                                             <div class="flex items-center gap-2">
                                                 @if ($scene->event)
-                                                    <span class="text-xs text-gray-500">{{ __('Set during') }} {{ $scene->event->title }}</span>
+                                                    <span class="text-xs text-content-muted">{{ __('Set during') }} {{ $scene->event->title }}</span>
                                                 @else
-                                                    <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-red-500 px-2 py-0.5 text-xs font-medium text-red-600">{{ __('Unassigned') }}</span>
+                                                    <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-danger px-2 py-0.5 text-xs font-medium text-danger">{{ __('Unassigned') }}</span>
                                                 @endif
                                                 <x-scene-status-badge :status="$scene->status" />
                                                 {{-- Reordering here is AJAX (moveScene below re-evaluates which
@@ -129,20 +129,20 @@
                                             </div>
                                         </div>
 
-                                        <div x-show="open" x-transition class="prose prose-sm max-w-none text-gray-700 text-justify text-[0.8125rem] [&_p]:my-4">
+                                        <div x-show="open" x-transition class="prose prose-sm max-w-none text-content-muted text-justify text-[0.8125rem] [&_p]:my-4">
                                             {!! $scene->renderedContents !!}
                                         </div>
                                     </section>
                                 @empty
-                                    <p class="text-sm text-gray-500">{{ __('No scenes in this chapter yet.') }}</p>
+                                    <p class="text-sm text-content-muted">{{ __('No scenes in this chapter yet.') }}</p>
                                 @endforelse
                             </article>
                         @empty
-                            <p class="text-sm text-gray-500">{{ __('No chapters in this act yet.') }}</p>
+                            <p class="text-sm text-content-muted">{{ __('No chapters in this act yet.') }}</p>
                         @endforelse
                     </div>
                 @empty
-                    <p class="text-center text-gray-500">{{ __('No acts yet.') }}</p>
+                    <p class="text-center text-content-muted">{{ __('No acts yet.') }}</p>
                 @endforelse
             </div>
         </div>
