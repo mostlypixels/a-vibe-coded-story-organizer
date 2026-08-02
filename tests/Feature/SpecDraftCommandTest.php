@@ -37,7 +37,7 @@ class SpecDraftCommandTest extends TestCase
     {
         $this->artisan('spec:draft', ['name' => 'plotline-merge', '--description' => 'Merge two plotlines into one.'])
             ->expectsOutputToContain('Created .specs/draft/plotline-merge/spec.md')
-            ->expectsOutputToContain('/mp-spec-expander plotline-merge')
+            ->expectsOutputToContain('/mp-expand-spec plotline-merge')
             ->assertSuccessful();
 
         $spec = $this->specsRoot.'/draft/plotline-merge/spec.md';

@@ -14,7 +14,7 @@
 # rule when that folder next moves; see .specs/README.md → Name-collision handling).
 # Exits 1 with a message when no folder matches.
 #
-# Called by: .claude/skills/mp-spec-expander, .claude/skills/plan-tasks,
+# Called by: .claude/skills/mp-expand-spec, .claude/skills/mp-plan-tasks,
 # .claude/skills/ship-plan, .claude/agents/plan-implementer.md, and the sibling
 # scripts spec-advance.sh and plan-next-task.sh.
 

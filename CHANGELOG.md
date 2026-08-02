@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-02 — Concision rules and consistent spec-skill names (#72)
+
+### Changed
+
+- The spec pipeline skills are now `/mp-draft-spec`, `/mp-expand-spec` and `/mp-plan-tasks`.
+- Drafts, expanded specs, plans, changelog entries and pull requests follow explicit concision rules.
+
 ## 2026-08-02 — Theme switcher (#71)
 
 ### Added

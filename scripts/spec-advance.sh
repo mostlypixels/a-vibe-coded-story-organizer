@@ -24,8 +24,8 @@
 # Prints the final absolute path of the moved folder — its basename is the
 # (possibly suffixed) name to pass to the next pipeline stage.
 #
-# Called by: .claude/skills/mp-spec-expander (→ expanded),
-# .claude/skills/plan-tasks (→ planned), .claude/skills/ship-plan (→ shipped).
+# Called by: .claude/skills/mp-expand-spec (→ expanded),
+# .claude/skills/mp-plan-tasks (→ planned), .claude/skills/ship-plan (→ shipped).
 
 set -euo pipefail
 
