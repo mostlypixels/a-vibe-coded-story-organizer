@@ -17,6 +17,23 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-02 — Theme switcher
+
+### Added
+
+- The app can be switched between three colour themes — Daylight, Dusk, and a low-glare
+  dark theme — from Admin → Appearance.
+- `php artisan theme:ramp`, a developer tool for generating an accessible colour ramp from
+  one anchor colour.
+
+### Changed
+
+- Every colour in the app now comes from a themeable token instead of a fixed hue, so a
+  chosen theme repaints the whole app consistently.
+- The default theme's colours were adjusted where text, icons or focus outlines fell below
+  the contrast minimum.
+- The landing page is stripped down to the app name and a themed login button.
+
 ## 2026-08-01 — Collapse the form controls into components, drop two dead fonts (#70)
 
 ### Added

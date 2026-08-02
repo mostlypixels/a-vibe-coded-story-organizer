@@ -162,7 +162,7 @@ Tailwind class (e.g. a tab `<button>`), give it a real hook — `aria-current`,
 feature tests.
 
 > [!WARNING]
-> Asserting on class-token substrings (`assertSee('text-white border-flame-500')`) is
+> Asserting on class-token substrings (`assertSee('text-nav-content border-accent')`) is
 > brittle: the tokens aren't unique to one element, so a later test covering a *second*
 > instance of the pattern can't tell which one is active and forces a rework of the
 > earlier assertions.

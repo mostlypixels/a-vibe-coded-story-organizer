@@ -476,7 +476,7 @@ a plain `GET` form with a full-page reload — no AJAX;
   (a Scene matching in both `contents` and `notes` yields one row matched in
   "Contents, Notes").
 - **Snippets.** `App\Support\SearchSnippet` builds a ~120-char context window around the first
-  match and wraps matched terms in `<mark class="bg-sun-200">`, escape-then-highlight so raw
+  match and wraps matched terms in `<mark class="bg-highlight text-highlight-content">`, escape-then-highlight so raw
   HTML in scene text can never become live markup. Its output is the **only** `{!! !!}` on the
   page (rendered in `x-search.result-row`); everything else stays auto-escaped `{{ }}`. The
   row's preview is built from the **first** matching field, in the entity's declared field
@@ -513,7 +513,7 @@ the current route in **both** menus: the desktop dropdowns (Timeline / Codex / S
 and their collapsed trigger buttons — and the responsive (mobile) menu.
 
 - **The component.** `x-dropdown-link` mirrors `x-nav-link` / `x-responsive-nav-link`: pass
-  `:active` to get the light-panel highlight (`bg-aqua-50 text-navy-900 font-semibold`) plus
+  `:active` to get the light-panel highlight (`bg-accent-surface text-accent-content font-semibold`) plus
   `aria-current="page"` on the `<a>`. The prop defaults to `false`, so existing menus that don't
   pass it (the Settings dropdown) are visually unchanged. Active state is never colour-only — the
   `aria-current` is what tests assert on.
@@ -526,7 +526,7 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 - **The menus are markup only.** `x-navigation.project-menu` (desktop) and
   `x-navigation.responsive-project-menu` (collapsed) both read the same `$navigation`, so they
   cannot drift. `x-navigation.dropdown-trigger` is the shared trigger button (label + chevron,
-  `text-white border-flame-500` when active); `x-navigation.section-heading` is the collapsed
+  `text-nav-content border-accent` when active); `x-navigation.section-heading` is the collapsed
   menu's stand-in for a dropdown. A trigger is active when any of its children is.
 
 - **The Configuration area works the same way.** `App\Support\AdminNavigation` supplies both the
@@ -578,6 +578,44 @@ way to tell two open projects apart.
   open, and a share link should not put the project's name in the visitor's tab.
 - The app name is never a literal in a template — change it in `APP_NAME`.
 
+## Theming
+
+The whole app can be switched between three colour presets — **Daylight** (the original
+light look), **Dusk** (a dimmed light theme) and **Low-glare dark** (a genuine dark theme
+with a tight contrast ceiling) — with no rebuild. Every class names a *role*
+(`bg-primary`, `text-content-muted`), never a hue: `bg-ocean-600` says a colour is blue and
+says nothing about where it may go, which becomes a lie the moment a preset flips.
+
+- **`App\Support\ThemeTokens`** is the vocabulary — ~46 flat tokens (no `bg-primary-600`
+  shade suffixes), grouped by role, with `PAIRS` mapping every background to the
+  foreground(s) chosen for it. A token cannot ship without a partner chosen at the same
+  time: that pairing is the entire point, and `ThemePresetTest` enforces it.
+- **`config/themes.php`** holds the three presets as plain arrays (`name`, `tokens`,
+  optional `contrast_ceiling`) — no `themes` table, no settings singleton, because
+  nothing about a theme varies per row at runtime. The only runtime-varying value is
+  `users.theme_slug` (nullable — `null` follows `config('themes.default')`).
+  `App\Support\ThemePreset::resolve(?string $slug)` is the one place a stored slug
+  becomes a preset, falling back to the default for `null` *or* a slug no longer
+  configured.
+- **`<x-theme-style />`**, in every layout's `<head>`, renders one unlayered `:root {
+  --color-token:value; … }` rule via `App\Services\ThemeStyleBlock` — unlayered so it
+  outranks Tailwind's `@layer theme` regardless of source order. It prints with `{!! !!}`,
+  so every value is whitelisted against `Oklch::CSS_VALUE_PATTERN` first.
+- **`App\Support\ColorContrast`** measures WCAG ratios for authoring: fixed floors (4.5:1
+  text, 3:1 non-text) reject; a per-preset `contrast_ceiling` (taste, not correctness —
+  more contrast isn't always better, see halation) warns. `php artisan theme:ramp` turns
+  one anchor colour into an eleven-shade OKLCH ramp with contrast verdicts, to hand-pick
+  shades from.
+- The picker lives at `/admin/appearance`; like `CrawlerSetting` it uses the
+  any-authenticated-user authorization exception, because it writes only to
+  `$request->user()` and has no cross-user case.
+
+> [!IMPORTANT]
+> Before adding a token, a preset, or touching contrast, read
+> **[`theming.md`](theming.md)** — the paired-token rule in full, why there is no `dark:`
+> variant, how `theme:ramp` fits values into sRGB, and where the sweep's file-by-file
+> judgement calls are recorded.
+
 ## CSS build pipeline (Tailwind 4)
 
 `@tailwindcss/vite` compiles the stylesheet directly inside Vite — there is no PostCSS config
@@ -585,14 +623,12 @@ and no `tailwind.config.js`; `resources/css/app.css`'s `@theme` block is the sin
 theme values, and Tailwind auto-detects classes by scanning the project instead of reading a
 `content` array.
 
-- **Theme tokens are runtime CSS custom properties** (`--color-ocean-500`, `--radius-sm`, …),
-  not compile-time JS values. That is what lets `theme-switcher` (spec 2) override them per
-  request instead of rebuilding the stylesheet.
+- **Theme tokens are runtime CSS custom properties** (`--color-primary`, `--radius-sm`, …),
+  not compile-time JS values. That is what lets *Theming* (above) override them per request
+  instead of rebuilding the stylesheet.
 - **Browser floor: Safari 16.4+ / Chrome 111+ / Firefox 128+** — v4 relies on `@property`,
   `color-mix()`, and cascade layers. Documented, not enforced at runtime: this is a self-hosted
   app with a small, known user base.
-- A base-layer shim in `app.css` restores v3's default border colour; see that feature's
-  `standing-issues.md` for why, and what removes it.
 
 > [!WARNING]
 > Scanning does not stop at templates — a utility class **named in Markdown prose** becomes a
@@ -624,6 +660,7 @@ This file is the map. Each feature with more to say than fits here has its own p
 | [`epub-export.md`](epub-export.md) | Publication settings, nav depth, the EPUB package gate |
 | [`export-format.md`](export-format.md) | The static-archive file format — layouts, shapes, the `version` contract |
 | [`rich-text.md`](rich-text.md) | The WYSIWYG field list, the sanitizer allow-list, the rendering rule |
+| [`theming.md`](theming.md) | The paired-token rule, the contrast floors/ceiling, `theme:ramp`, why no `dark:` |
 | [`word-count.md`](word-count.md) | What counts as a word, the one stored column, totals without an N+1 |
 | [`ui-components.md`](ui-components.md) | The Blade component catalogue — reuse one before writing a new one |
 | [`best-practices.md`](best-practices.md) | How to write code here, including testing UI state |

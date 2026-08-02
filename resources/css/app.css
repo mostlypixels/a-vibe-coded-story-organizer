@@ -80,22 +80,22 @@
 
   /* Content — by emphasis. */
   --color-content: #023047;
-  --color-content-muted: oklch(55.1% 0.027 264.364);
-  --color-content-subtle: oklch(70.7% 0.022 261.325);
+  --color-content-muted: oklch(44.6% 0.03 256.802);
+  --color-content-subtle: oklch(53% 0.027 264.364);
 
   /* Lines and rings. `focus` is its own token, never an alias of `primary`. */
   --color-border: oklch(92.8% 0.006 264.531);
-  --color-border-strong: oklch(87.2% 0.01 258.338);
-  --color-focus: #219ebc;
+  --color-border-strong: oklch(62% 0.024 261.325);
+  --color-focus: #1e93af;
 
   /* Interactive. */
   --color-primary: #023047;
   --color-primary-content: #ffffff;
   --color-primary-hover: #033a4d;
   --color-primary-active: #011f2f;
-  --color-link: #1b809a;
+  --color-link: #18697e;
   --color-link-hover: #185767;
-  --color-accent: oklch(66.7% 0.295 322.15);
+  --color-accent: #1b809a;
   --color-accent-content: #185767;
   --color-accent-surface: #cfeaf2;
   --color-neutral: oklch(96.7% 0.003 264.542);
@@ -109,7 +109,7 @@
   --color-nav: #011f2f;
   --color-nav-content: #ddeff7;
   --color-nav-content-muted: #8ecae6;
-  --color-nav-raised: #184a58;
+  --color-nav-raised: #123c49;
 
   /*
    * Status: the solid fill, the text on it, the tinted background, and the text on
@@ -120,12 +120,12 @@
   --color-danger-content: #ffffff;
   --color-danger-surface: oklch(97.1% 0.013 17.38);
   --color-danger-surface-content: oklch(44.4% 0.177 26.899);
-  --color-success: oklch(62.7% 0.194 149.214);
+  --color-success: oklch(52.7% 0.154 150.069);
   --color-success-content: #ffffff;
   --color-success-surface: oklch(98.2% 0.018 155.826);
   --color-success-surface-content: oklch(44.8% 0.119 151.328);
   --color-warning: oklch(79.5% 0.184 86.047);
-  --color-warning-content: #ffffff;
+  --color-warning-content: #023047;
   --color-warning-surface: oklch(98.7% 0.026 102.212);
   --color-warning-surface-content: oklch(47.6% 0.114 61.907);
   --color-info: oklch(54.6% 0.245 262.881);

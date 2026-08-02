@@ -97,6 +97,13 @@ implementing this feature. Read it before extending the feature.
   the header band has exactly one chosen foreground. Task 11's diff should expect six classes of
   difference, not three.
 
+- **Dusk is a dimmed *light* theme, not a second dark one.** `spec.md` says only "dim, moderate
+  contrast", which could equally have meant a warmer, punchier dark theme. Read as the middle of
+  the brightness progression Daylight → Dusk → Low-glare dark: no white anywhere, the page at
+  neutral-100, elevation rising from there. Two dark presets differing mainly in hue would have
+  left nobody served between "white page" and "dark page", which is the gap most eye-strain
+  complaints sit in.
+
 ## Deviations from the spec/plan
 
 - **The WCAG floors are `public const` on `ColorContrast`, not `config('themes.contrast')`.**
@@ -164,6 +171,20 @@ implementing this feature. Read it before extending the feature.
   change of kind, not a rename. `accent` (rather than `info`, which the map suggests for
   `bg-aqua-50`) keeps "this is the one you are on" a single colour idea with the active-nav
   indicator.
+
+- **The generated presets' surfaces and content weights are half-steps, not ramp shades.** The
+  ramp's 0.082 lightness stride is a palette step; elevation is a fraction of one. Four surfaces
+  a full stride apart span more contrast than the gap between the 4.5 floor and a 10–12 ceiling,
+  so no single body-text colour can clear the floor on the darkest surface and stay under the
+  ceiling on the lightest. Everything else in both presets is a ramp shade; the anchors are in
+  the config comments.
+
+- **Only a representative walk was done, not "every page under each preset".** Nine surfaces per
+  preset — dashboard, story overview, the scenes table, search with `<mark>` hits, a form-heavy
+  edit page, the import page, the Appearance picker, a flash alert and the modal scrim. Chosen
+  to cover every token this task moved at least once. Task 11's computed-style gate already
+  crawls all 45 pages and is the thing that would catch a page-specific miss; re-running it here
+  would have compared the new Daylight against `master`, which is now expected to differ.
 
 ## Issues → resolutions
 
@@ -436,3 +457,40 @@ implementing this feature. Read it before extending the feature.
   border/icon darkening and `x-badge`'s status tints (`X-100` → `X-50`) — three of the accepted
   differences from task 05 — were never re-confirmed here, because no crawled page renders a
   flash message or a status badge. They stand on task 05's own verification.
+
+- **Daylight's re-authoring is ten values, not the six task 12 lists.** The task file's own
+  measurement folded `border-strong` into "four are `border`", but `border-strong` is in
+  `NON_TEXT`, not `DECORATIVE`, and it keeps the 3:1 floor — it read 1.34 on `surface` and 1.47
+  on `surface-raised` as `gray-300`, the worst non-text failures in the preset and the visible
+  boundary of every input in the app. The four beyond the task's list: `border-strong`,
+  `accent` (task 02 left a fuchsia placeholder on it and said task 12 owns it — no contrast
+  failure, but shipping it would have been absurd), `nav-raised` (forced, see below) and
+  `warning-content` rather than `warning` (see below).
+
+- **`focus` and `nav-raised` are one decision, not two.** `focus` is a single token that must
+  clear 3:1 against the light page *and* against the dark nav band, so a window for it exists
+  only if `surface` is at least 9× `nav-raised` in relative luminance. Daylight's inherited pair
+  (ocean-500 on ocean-900) misses by about 2% — there is no ocean shade that satisfies both — so
+  the band had to darken (`#184a58` → `#123c49`) before `focus` could land at `#1e93af`. The
+  same constraint is why Dusk's nav band is ocean-950/ocean-900 rather than something lighter
+  and friendlier to its dim page. Anyone re-authoring a preset should size the nav band against
+  `surface` first and pick `focus` afterwards, not the other way round.
+
+- **Warning was fixed by moving the foreground, not the fill.** White on yellow-500 is 1.92:1
+  and no yellow rescues it — the fill would have to darken to brown before white worked, which
+  is no longer a warning colour. `warning-content` is navy-900 instead (7.21:1), the hazard
+  convention, and yellow stays yellow. Consequence: `warning-content` is dark while the other
+  three status foregrounds are light, in all three presets. Do not "regularize" that.
+
+- **Low-glare dark's five measured failures were an artefact of the 15.0 default ceiling.** Task
+  03 shipped it without a `contrast_ceiling`, so nothing had ever measured it against the 10.0
+  the plan intended — body text on the darkest surface read 14:1 and passed. Declaring 10.0
+  turned it into a whole re-authoring rather than five fixes: the surfaces compress into roughly
+  half a ramp step and the three content weights into less, because the floor and the ceiling
+  together leave a window only 2.2× wide and the surface spread eats most of it. Widening either
+  end breaks the other, so treat those values as a solved system, not a palette to taste.
+
+- **`ThemeContrastTest`'s data provider reads `config/themes.php` with `require`, not `config()`.**
+  PHPUnit calls a provider before `setUp()`, so no application is booted and the helper is not
+  available. The test body still resolves through `ThemePreset::fromSlug()`, so the ceiling comes
+  from the real code path — only the list of slugs and pairs is read off disk.

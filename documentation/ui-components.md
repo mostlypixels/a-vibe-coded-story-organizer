@@ -27,12 +27,16 @@ Renders `<h1>`–`<h6>` on one shared typographic scale. Choose the level for **
 
 | Level | Classes | Typical use |
 |-------|---------|-------------|
-| 1 | `text-3xl font-bold text-gray-900 leading-tight` | Top-of-page title (e.g. Story Overview, a public shared-scene page) |
-| 2 | `text-xl font-semibold text-gray-800 leading-tight` | The `x-slot name="header"` page title in `app`/`admin` layouts |
-| 3 | `text-lg font-semibold text-gray-800` | Card/section heading within a page |
-| 4 | `text-base font-semibold text-gray-700` | Sub-section heading |
-| 5 | `text-sm font-semibold uppercase tracking-wider text-gray-500` | Small label heading |
-| 6 | `text-xs font-semibold uppercase tracking-wide text-gray-500` | Smallest grouping label (e.g. codex "as of" attribute-type groups) |
+| 1 | `text-3xl font-bold text-content leading-tight` | Top-of-page title (e.g. Story Overview, a public shared-scene page) |
+| 2 | `text-xl font-semibold text-content leading-tight` | The `x-slot name="header"` page title in `app`/`admin` layouts |
+| 3 | `text-lg font-semibold text-content` | Card/section heading within a page |
+| 4 | `text-base font-semibold text-content-muted` | Sub-section heading |
+| 5 | `text-sm font-semibold uppercase tracking-wider text-content-muted` | Small label heading |
+| 6 | `text-xs font-semibold uppercase tracking-wide text-content-muted` | Smallest grouping label (e.g. codex "as of" attribute-type groups) |
+
+Only two content weights across six levels, not six shades of grey — a theme preset only
+gets to choose two body-text emphases (`content` for a page's own voice, `content-muted`
+for secondary labels); size and weight already separate the levels.
 
 ```blade
 <x-heading level="1">Story Overview</x-heading>
@@ -42,8 +46,8 @@ Renders `<h1>`–`<h6>` on one shared typographic scale. Choose the level for **
 > [!WARNING]
 > Level 2 renders an `<h2>` and is deliberately sized to match the existing page-header convention,
 > not a generic "second largest" heading — `layouts/app.blade.php`'s header bar scopes
-> `[&_h2]:text-white` to force readable text on the dark `ocean-800` background. Don't reach for a
-> different level for a `x-slot name="header"` title just because it "looks like" a different size;
+> `[&_h2]:text-nav-content` to force readable text on the dark `bg-nav-raised` band. Don't reach for
+> a different level for a `x-slot name="header"` title just because it "looks like" a different size;
 > level 2 *is* the header-title level by definition, and any other level renders a different tag
 > that CSS selector won't reach.
 
@@ -53,7 +57,7 @@ Three components — `x-text-input`, `x-select`, `x-textarea` — one per native
 same base string and nothing else:
 
 ```
-border-gray-300 focus:border-ocean-500 focus:ring-ocean-500 rounded-md shadow-xs
+bg-surface-raised border-border-strong focus:border-focus focus:ring-focus rounded-md shadow-xs
 ```
 
 Layout stays at the call site, so the component never has to guess a width or a margin:
@@ -84,8 +88,8 @@ flows through `$attributes`.
 > variant to the component rather than opening a fourth copy of the string.
 
 The three copies of the string (one per component) are deliberate: literal and greppable beats a
-shared `@utility` a junior reader has to chase, and the `theme-switcher` spec rewrites all three in
-one pass. `x-wysiwyg`'s no-JS fallback delegates to `x-textarea` rather than keeping a fourth copy.
+shared `@utility` a junior reader has to chase. `x-wysiwyg`'s no-JS fallback delegates to
+`x-textarea` rather than keeping a fourth copy.
 
 > [!NOTE]
 > A `<textarea>`'s content is literal — every space and newline between the tags is part of the
@@ -165,13 +169,14 @@ Card-wrapped, striped, sortable data table — the shared skeleton behind the pl
 act / chapter / scene index pages. Four components work together:
 
 - **`x-table`** — the card wrapper + `<table>`. Header cells go in the `head` slot (rendered as one
-  `bg-sun-400` header row); body rows go in the default slot.
-- **`x-table-heading`** — a non-sortable header cell (themed `bg-sun-400` / `text-navy-900`). Render
+  `bg-table-header` row); body rows go in the default slot.
+- **`x-table-heading`** — a non-sortable header cell (`text-table-header-content`). Render
   it empty (`<x-table-heading />`) for a spacer column such as the trailing row-actions column. Its
   sortable counterpart is [`x-sortable-header`](../resources/views/components/sortable-header.blade.php),
   which shares the same cell styling and adds the sort link/arrow.
-- **`x-table-row`** — a body row. Pass `:striped="$loop->even"` for zebra striping; striped rows use
-  `bg-gray-100` (a step darker than the plain `bg-white` rows).
+- **`x-table-row`** — a body row. Pass `:striped="$loop->even"` for zebra striping; a striped row
+  drops to `bg-surface` (the page tone) while the default row stays on `bg-surface-raised` (the
+  card tone), so the stripe follows the active theme's own elevation scale rather than a fixed grey.
 - **`x-table-empty`** — the full-width empty-state row for the `@empty` branch. It renders one of two
   messages so an empty table never reads as a bare "no results" line:
   - **genuinely empty** (`:filtered="false"`, the default) — friendly "No :items yet." copy plus, when
@@ -223,8 +228,13 @@ Small status/label pill. For scene status specifically, use the domain-aware
 [`x-scene-status-badge`](../resources/views/components/scene-status-badge.blade.php), which maps the
 `SceneStatus` enum onto these same styles.
 
-- `variant`: `gray` (default), `primary`, `info`, `success`, `warning`, `danger`, `indigo`
+- `variant`: `neutral` (default), `primary`, `info`, `success`, `warning`, `danger`, `accent`
 - `pill`: `true` (default, fully rounded) or `false` (slightly rounded)
+
+Named for the role, never a hue — `gray` and `indigo` were renamed to `neutral` and `accent`.
+A tinted variant (`info`/`success`/`warning`/`danger`) puts its text on the status's
+`-surface-content` token, never on the solid `<status>` fill: that fill is chosen to carry
+white, so reusing it as text on its own tint measures as low as 1.85:1.
 
 ```blade
 <x-badge variant="success">Final</x-badge>

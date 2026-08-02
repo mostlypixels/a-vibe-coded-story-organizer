@@ -17,15 +17,10 @@ use SplFileInfo;
  * switcher is that a preset can flip. `bg-primary` cannot lie: the preset owns
  * the value. The vocabulary lives in {@see ThemeTokens}.
  *
- * ## Why an allow-list instead of a red test
- *
- * ~900 usages move across several tasks, and `master` is protected: every pull
- * request needs a green `tests` check, so a test that fails until the last task
- * lands could never ship with the first. The list below is therefore the
- * still-to-sweep surface, and each sweep task deletes its own paths from it. The
- * list is empty when the sweep is done, and {@see
- * self::test_every_allow_listed_path_still_needs_its_exemption()} makes sure a
- * swept file cannot be left on it.
+ * The sweep is complete: every scanned file was checked against an allow-list of
+ * still-to-sweep paths while the ~900-usage rename was in flight, and that
+ * mechanism is gone now the list is empty. Do not re-add it for a one-off
+ * exception — fix the offending file instead.
  *
  * ## What is scanned
  *
@@ -61,18 +56,6 @@ class NoHueNamedColorsTest extends TestCase
     private const EXTENSIONS = ['php', 'js', 'css'];
 
     /**
-     * Paths not yet swept, each owned by a later task in
-     * `.specs/…/theme-switcher/plan/`. Delete a path here in the same commit that
-     * sweeps it — never to make an unrelated failure go away.
-     *
-     * @var list<string>
-     */
-    private const ALLOWED = [
-        // Task 13 — the landing page, stripped to an app name and a login button.
-        'resources/views/welcome.blade.php',
-    ];
-
-    /**
      * A ramp reference (`bg-ocean-600`, `--color-gray-200`, `divide-gray-200`), a
      * built-in Tailwind hue (`bg-red-600`, `border-emerald-300`) or one of the two
      * literals that have role tokens.
@@ -88,46 +71,17 @@ class NoHueNamedColorsTest extends TestCase
      */
     private const PATTERN = '/\b(?:ocean|aqua|navy|sun|flame|gray|slate|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|zinc|neutral|stone)-(?:50|[1-9]00|950)\b|\b(?:text|bg)-white\b/';
 
-    public function test_no_swept_file_names_a_hue(): void
+    public function test_no_file_names_a_hue(): void
     {
         $offenders = [];
 
         foreach ($this->scannableFiles() as $relativePath => $contents) {
-            if (in_array($relativePath, self::ALLOWED, true)) {
-                continue;
-            }
-
             if (preg_match_all(self::PATTERN, $contents, $matches) > 0) {
                 $offenders[$relativePath] = array_values(array_unique($matches[0]));
             }
         }
 
         $this->assertSame([], $offenders, $this->explain($offenders));
-    }
-
-    /**
-     * Guards the guard. An entry that no longer matches is a path someone swept
-     * and forgot to remove, and every stale entry hides the next real offender in
-     * that file.
-     */
-    public function test_every_allow_listed_path_still_needs_its_exemption(): void
-    {
-        $files = $this->scannableFiles();
-        $stale = [];
-
-        foreach (self::ALLOWED as $relativePath) {
-            if (! array_key_exists($relativePath, $files)) {
-                $stale[] = "{$relativePath} (no such file)";
-
-                continue;
-            }
-
-            if (preg_match(self::PATTERN, $files[$relativePath]) !== 1) {
-                $stale[] = "{$relativePath} (already swept)";
-            }
-        }
-
-        $this->assertSame([], $stale, "Remove these from NoHueNamedColorsTest::ALLOWED:\n- ".implode("\n- ", $stale));
     }
 
     /**
