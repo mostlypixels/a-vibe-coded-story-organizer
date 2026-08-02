@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-02 — Concision rules and consistent spec-skill names
+## 2026-08-02 — Concision rules and consistent spec-skill names (#72)
 
 ### Changed
 
