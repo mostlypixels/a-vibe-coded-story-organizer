@@ -252,8 +252,19 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
             git pull
             # The squash merge means git branch -d won't see the branch as merged;
             # the MERGED state above is the real safety check, so force-delete.
-            echo "pr-land.sh: deleting local branch '$branch' (remote twin already deleted by the merge)..."
-            git branch -D "$branch"
+            #
+            # Guarded on the branch still existing: `gh pr merge --delete-branch`
+            # does its own local cleanup, so by the time we get here the branch
+            # is often already gone (the checkout above then reports "Already on
+            # 'master'"). Unguarded, that made `git branch -D` fail under set -e
+            # and turned a completed land into exit 1 — a false failure at the
+            # last line of a successful run.
+            if git show-ref --quiet --verify "refs/heads/$branch"; then
+                echo "pr-land.sh: deleting local branch '$branch' (remote twin already deleted by the merge)..."
+                git branch -D "$branch"
+            else
+                echo "pr-land.sh: local branch '$branch' already removed by gh — nothing to clean up."
+            fi
             echo "pr-land.sh: landed as merge commit $(git rev-parse HEAD) — $(git log -1 --format=%s)"
             exit 0
         fi
