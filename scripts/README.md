@@ -14,7 +14,7 @@ secrets from env, `set -euo pipefail`, header naming its callers) is documented 
 | `serve-app.sh [--port N]` | Pre-flight-check (stale `public/hot`, missing build, pending migrations), then start `php artisan serve` in the background with a PID file; idempotent | run-imagoldfish |
 | `stop-app.sh` | Kill the exact dev-server PID recorded by serve-app.sh and remove the PID file; idempotent | run-imagoldfish |
 | `claude-usage.sh [--text\|--raw]` | Report Claude Code session/week limit usage as JSON (default); failures print one word (`unavailable`, `unparseable`) and exit 1 | plan-implementer |
-| `pr-land.sh <title> <body-file>` | Land the current feature branch on master: push, open PR, stamp the PR number onto the changelog heading, arm squash auto-merge, watch CI, confirm MERGED, update local master | ship-pr |
+| `pr-land.sh <title> <body-file>` | Land the current feature branch on master: push, open PR, stamp the PR number onto the changelog heading, arm squash auto-merge, watch CI, merge, confirm MERGED, update local master | ship-pr |
 
 There is also one artisan command extracted from the skills: `php artisan spec:draft`
 (scaffolds a stage-1 draft spec; prompts for missing input when run interactively) —
