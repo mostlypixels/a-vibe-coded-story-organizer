@@ -17,10 +17,22 @@
       "Bash(./vendor/bin/pint *)",
       "Bash(vendor/bin/phpunit *)",
       "Bash(npm run build)",
+      "Bash(jq *)",
+      "Bash(yq *)",
+      "Bash(fd *)",
+      "Bash(sqlite3 *)",
+      "Bash(shellcheck *)",
+      "Bash(npx ast-grep *)",
       "PowerShell(composer test *)",
       "PowerShell(composer lint *)",
       "PowerShell(php artisan test *)",
-      "PowerShell(Get-CimInstance Win32_Process *)"
+      "PowerShell(Get-CimInstance Win32_Process *)",
+      "PowerShell(jq *)",
+      "PowerShell(yq *)",
+      "PowerShell(fd *)",
+      "PowerShell(sqlite3 *)",
+      "PowerShell(shellcheck *)",
+      "PowerShell(ast-grep *)"
     ]
   }
 }
