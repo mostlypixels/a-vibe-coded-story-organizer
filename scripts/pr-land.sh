@@ -2,9 +2,13 @@
 #
 # pr-land.sh — land the current feature branch on master via the protected-branch
 # PR ritual: push the branch, open a PR, stamp the PR number onto the changelog
-# heading, arm squash auto-merge, watch CI, and only report success once the PR
-# state is actually MERGED (auto-merge is silent, so "armed" is not "shipped" —
-# this script enforces the difference).
+# heading, arm squash auto-merge, watch CI, merge, and only report success once
+# the PR state is actually MERGED (auto-merge is silent, so "armed" is not
+# "shipped" — this script enforces the difference).
+#
+# Auto-merge is a safety net here, not the mechanism: the script blocks on the
+# checks either way, so once they are green it merges the PR itself rather than
+# depending on an arming call that races CI registration (see arm_auto_merge).
 #
 #     usage: pr-land.sh <title> <body-file>
 #
@@ -27,6 +31,11 @@ set -euo pipefail
 # a few seconds behind the last check going green.
 MERGE_POLL_ATTEMPTS=24
 MERGE_POLL_INTERVAL_SECONDS=5   # 24 * 5s = 2 min cap
+
+# Retries for arming auto-merge. See arm_auto_merge() for why one attempt is not
+# enough — the window where GitHub accepts the mutation opens late and shuts again.
+ARM_ATTEMPTS=6
+ARM_INTERVAL_SECONDS=5
 
 usage() {
     echo "usage: pr-land.sh <title> <body-file>" >&2
@@ -116,6 +125,37 @@ warn_dirty_tree() {
     fi
 }
 
+# Arm squash auto-merge, retrying — a single attempt races CI registration.
+#
+# GitHub refuses `enablePullRequestAutoMerge` at BOTH ends of the window that
+# opens right after a push, and the two failures look nothing alike:
+#
+#   "Pull Request is not mergeable" — mergeability is still being computed
+#       asynchronously (`mergeable: UNKNOWN`), i.e. we asked too early.
+#   "Pull request is in clean status" — no required check has registered yet, so
+#       the PR looks immediately mergeable and auto-merge has nothing to wait
+#       for. Same race, seen from the other side.
+#
+# Neither means the repo setting is off, which is what a single attempt used to
+# conclude — so both PRs of a session could fail to arm and then sit open until
+# the poll cap. Retrying spans the window; only an exhausted retry budget is
+# evidence of an actual repo setting.
+#
+# Best-effort by design: main() lands the PR directly once checks are green, so
+# auto-merge is the safety net for this script dying, not the mechanism.
+arm_auto_merge() {
+    local pr_number="$1" attempt
+
+    for attempt in $(seq 1 "$ARM_ATTEMPTS"); do
+        if gh pr merge "$pr_number" --squash --auto --delete-branch 2>/dev/null; then
+            return 0
+        fi
+        [ "$attempt" -lt "$ARM_ATTEMPTS" ] && sleep "$ARM_INTERVAL_SECONDS"
+    done
+
+    return 1
+}
+
 main() {
     validate "$@" || exit 1
     local title="$1" body_file="$2"
@@ -161,15 +201,13 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
     fi
 
     echo "pr-land.sh: arming squash auto-merge..."
-    if gh pr merge "$pr_number" --squash --auto --delete-branch; then
+    if arm_auto_merge "$pr_number"; then
         echo "pr-land.sh: auto-merge armed — CI does the waiting."
     else
-        # The documented fallback (ship-pr skill): if the repo setting was turned
-        # off, watch checks and squash-merge manually when green. We still watch
-        # below either way; the manual merge is the caller's move if needed.
-        echo "pr-land.sh: WARNING: could not arm auto-merge (repo setting may be off)." >&2
-        echo "pr-land.sh: fallback: watch checks, then squash-merge manually when green:" >&2
-        echo "pr-land.sh:     gh pr merge $pr_number --squash --delete-branch" >&2
+        # Not fatal: this script blocks on the checks anyway and merges directly
+        # below. Auto-merge only matters if the script dies mid-watch.
+        echo "pr-land.sh: WARNING: could not arm auto-merge after $ARM_ATTEMPTS attempts (repo setting may be off)." >&2
+        echo "pr-land.sh: continuing — the PR will be merged directly once checks are green." >&2
     fi
 
     # Checks take a few seconds to register after the PR opens; "no checks
@@ -197,10 +235,14 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
         echo "pr-land.sh: PR: $pr_url" >&2
         exit "$checks_status"
     fi
-    echo "pr-land.sh: checks are green — waiting for auto-merge to land..."
+    echo "pr-land.sh: checks are green — landing PR #$pr_number..."
 
-    # Auto-merge can lag a few seconds after checks go green; poll with a cap.
-    local attempt state
+    # Auto-merge can lag a few seconds after checks go green, so give it one
+    # interval before stepping in. From the second attempt on, merge directly:
+    # we are already blocking here with green checks, so there is nothing left
+    # to wait for, and an unarmed PR would otherwise sit until the cap expires
+    # and be reported as a failure it isn't.
+    local attempt state merge_attempted=0
     for attempt in $(seq 1 "$MERGE_POLL_ATTEMPTS"); do
         state="$(gh pr view "$pr_number" --json state --jq .state)"
         if [ "$state" = "MERGED" ]; then
@@ -215,6 +257,16 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
             echo "pr-land.sh: landed as merge commit $(git rev-parse HEAD) — $(git log -1 --format=%s)"
             exit 0
         fi
+        if [ "$attempt" -ge 2 ] && [ "$merge_attempted" -eq 0 ]; then
+            merge_attempted=1
+            echo "pr-land.sh: auto-merge has not landed it (state $state) — merging directly..."
+            # Tolerate failure: a merge that raced auto-merge is already done,
+            # and any real blocker (a missing review, a conflict) shows up as a
+            # non-MERGED state on the next pass and is reported at the cap.
+            gh pr merge "$pr_number" --squash --delete-branch || true
+            continue
+        fi
+
         echo "pr-land.sh: PR state is $state (attempt $attempt/$MERGE_POLL_ATTEMPTS), retrying in ${MERGE_POLL_INTERVAL_SECONDS}s..."
         sleep "$MERGE_POLL_INTERVAL_SECONDS"
     done

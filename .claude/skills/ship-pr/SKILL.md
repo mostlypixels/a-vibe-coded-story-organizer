@@ -41,14 +41,15 @@ invoking this, not as part of it.
    bash scripts/pr-land.sh "<title>" <body-file>
    ```
    - It does push → `gh pr create` → stamp `(#PR)` onto the newest dated changelog heading
-     and push that fixup → arm squash auto-merge → watch checks → poll until `MERGED` →
-     `git checkout master && git pull`, echoing progress as it goes.
+     and push that fixup → arm squash auto-merge → watch checks → merge → poll until
+     `MERGED` → `git checkout master && git pull`, echoing progress as it goes.
    - The stamp is skipped when the branch doesn't touch `CHANGELOG.md` or the heading is
      already numbered — it needs nothing from you beyond leaving the suffix off in step 2.
    - **Armed is not shipped.** Auto-merge is silent; the script exits 0 only once the PR is
      `MERGED` and local master is updated. Don't call it shipped before that.
-   - Auto-merge unavailable (repo setting off) → it prints the manual squash-merge fallback
-     and keeps watching.
+   - Auto-merge is a safety net, not the mechanism — the script blocks on the checks anyway,
+     so once they're green it merges the PR itself. A failed arming is a warning, not a
+     fallback you have to act on.
    - Non-zero exit — a failed CI check, or the merge missed its ~2 min poll cap — it prints
      the PR URL and state. Surface the failing check's output and fix forward on the branch.
 
