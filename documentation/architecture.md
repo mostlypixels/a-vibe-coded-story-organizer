@@ -519,10 +519,25 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
   `aria-current` is what tests assert on.
 - **One source of truth for matching.** `App\Support\ProjectNavigation` is a per-request view
   model built by a view composer in `AppServiceProvider` and handed to the layout as
-  `$navigation`. It answers both of the nav's questions: which `Project` the request belongs to
-  (walking a shallow child route — `/scenes/{scene}/edit` — up its aggregate), and which section
-  is active (`storyActive`, `plotlinesActive`, `toolsActive`, …). Per-codex-type highlighting is
-  enum-aware: `codexTypeIsActive(CodexEntryType $type)`.
+  `$navigation`. It answers both of the nav's questions: which `Project` the request belongs to,
+  and which section is active (`storyActive`, `plotlinesActive`, `toolsActive`, …). Per-codex-type
+  highlighting is enum-aware: `codexTypeIsActive(CodexEntryType $type)`.
+- **The walk lives in `App\Support\RouteProject`.** It maps a route to its project, including the
+  shallow child routes (`/scenes/{scene}/edit`) that carry no `{project}` parameter, by walking
+  whatever model *did* bind up its aggregate. Both the nav and `TrackActiveProject` call it, so
+  they cannot disagree about which project a URL belongs to.
+- **The nav's project is `route ?? account`.** `$navigation->routeProject` is the URL's project;
+  `$navigation->project` falls back to the signed-in user's stored `activeProject` when the URL
+  has none, which is what keeps the menu and picker on screen over the dashboard, `/profile` and
+  `/admin/*`. The route always wins when there is one. The `*Active` flags still match the route
+  alone, so the dashboard renders the menu with nothing highlighted — no section is open.
+- **The stored value is the last project page loaded successfully.**
+  `App\Http\Middleware\TrackActiveProject` (on the `auth` group in `routes/web.php`) writes
+  `users.active_project_id` *after* `$next($request)` and only on a 2xx. That gate **is** the
+  authorization check — the controller's `authorize()` has already run, so a 403 can never park
+  another writer's project in someone's picker. A page with no project in its URL leaves the
+  value alone; that is the persistence. `active_project_id` is not fillable, so nothing
+  user-submitted can reach it.
 - **The menus are markup only.** `x-navigation.project-menu` (desktop) and
   `x-navigation.responsive-project-menu` (collapsed) both read the same `$navigation`, so they
   cannot drift. `x-navigation.dropdown-trigger` is the shared trigger button (label + chevron,
@@ -550,6 +565,10 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 The bar's left block names the open project and switches between them —
 `ProjectNavigation::otherProjects()`, rendered by both `layouts.navigation` menus.
 
+- **It renders outside projects too.** On the dashboard, `/profile` and `/admin/*` it names the
+  account's active project (see *Navigation active state*). "Choose a project" is the empty state
+  for an account that has not opened one yet, not for "you left the project" — there is no leave
+  control, and "All projects" is a link, not an exit.
 - **Capped at five, ordered by name.** A shortcut, not an index: the "All projects" link is the
   complete list, so the cap costs a click and never a project. Both menus call the method, so it
   is memoized — otherwise every authenticated page pays for two identical queries.
@@ -572,11 +591,18 @@ one. The project name leads because browser tabs truncate from the right, and th
 way to tell two open projects apart.
 
 - The same view composer that builds `$navigation` also hands `layouts.app` a `$pageTitle`, built
-  from `$navigation->project` — project resolution (including shallow child routes) stays in one
-  place.
+  from `$navigation->routeProject` — project resolution (including shallow child routes) stays in
+  one place.
 - `layouts.guest`, `layouts.public` and `welcome` show `config('app.name')` alone: no project is
   open, and a share link should not put the project's name in the visitor's tab.
 - The app name is never a literal in a template — change it in `APP_NAME`.
+
+> [!WARNING]
+> The title follows the **URL**, never the account's active project — `routeProject`, not
+> `project`. Switching it to `$navigation->project` "so the title matches the nav" retitles the
+> dashboard, `/profile` and every Configuration page `"<project> - <app>"`, and the dashboard tab
+> becomes indistinguishable from the project's own in a row of tabs. The title answers *what is on
+> this page*; the nav answers *what am I working on*. `PageTitleTest` guards this.
 
 ## Theming
 

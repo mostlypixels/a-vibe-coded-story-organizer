@@ -40,6 +40,22 @@ class PageTitleTest extends TestCase
         $response->assertSee('<title>Melusine - AVCSO</title>', false);
     }
 
+    public function test_the_title_ignores_the_stored_active_project(): void
+    {
+        config(['app.name' => 'AVCSO']);
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
+        $user->forceFill(['active_project_id' => $project->id])->save();
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        // The nav falls back to the account's active project off-route; the title
+        // deliberately does not. Building it from $navigation->project instead of
+        // ->routeProject retitles the dashboard "Melusine - AVCSO" and makes it
+        // indistinguishable from the project's own tab. This is that regression.
+        $response->assertSee('<title>AVCSO</title>', false);
+    }
+
     public function test_a_shallow_child_route_still_finds_its_project(): void
     {
         config(['app.name' => 'AVCSO']);

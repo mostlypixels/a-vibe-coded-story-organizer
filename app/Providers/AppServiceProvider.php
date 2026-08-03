@@ -62,14 +62,19 @@ class AppServiceProvider extends ServiceProvider
         // place — is what lets layouts/navigation.blade.php stay markup-only and
         // keeps its desktop and responsive menus provably in step.
         //
-        // layouts.app gets the same treatment for its <title>: the page title
-        // asks the same question the nav does ("which project are we in?"), so
-        // it reads the answer off the same object instead of re-deriving it.
+        // layouts.app gets the same treatment for its <title>, off the same
+        // object so project resolution stays in one place — but off
+        // `routeProject`, NOT `project`. The title answers "what is on this
+        // page"; the nav answers "what am I working on". Since active-project
+        // persistence those differ: `project` falls back to the account's stored
+        // project, and building the title from it would silently retitle the
+        // dashboard, /profile and every Configuration page "<project> - <app>",
+        // making the dashboard tab indistinguishable from the project's own.
         View::composer(['layouts.navigation', 'layouts.app'], function ($view) {
             $navigation = new ProjectNavigation(request());
 
             $view->with('navigation', $navigation)
-                ->with('pageTitle', new PageTitle($navigation->project));
+                ->with('pageTitle', new PageTitle($navigation->routeProject));
         });
 
         // Same deal for the Configuration area's two link lists.

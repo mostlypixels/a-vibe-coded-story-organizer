@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-03 — Remember the active project (#73)
+
+### Added
+
+- The last project you opened is remembered on your account, so it survives logging out.
+
+### Changed
+
+- The project navigation stays visible on the dashboard, your profile and Configuration.
+- Logging in goes straight to your last project instead of the dashboard.
+
 ## 2026-08-02 — Concision rules and consistent spec-skill names (#72)
 
 ### Changed

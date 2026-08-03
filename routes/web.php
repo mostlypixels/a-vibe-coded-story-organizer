@@ -30,6 +30,7 @@ use App\Http\Controllers\SceneShareController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SharedSceneController;
 use App\Http\Controllers\StoryController;
+use App\Http\Middleware\TrackActiveProject;
 use App\Services\RevisionPurger;
 use App\Support\AutosavableFields;
 use Illuminate\Support\Facades\Route;
@@ -56,7 +57,11 @@ Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+// TrackActiveProject rides along with `auth` so every project page inside this
+// group records itself on users.active_project_id after a successful response.
+// It is deliberately NOT in bootstrap/app.php's `web` group: guests have nothing
+// to track, and the public share/robots routes above sit outside `auth`.
+Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
