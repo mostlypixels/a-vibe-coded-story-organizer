@@ -1,5 +1,8 @@
 ---
-status: draft
+status: shipped
+shipped: 2026-08-03
+planned: 2026-08-03
+expanded: 2026-08-03
 ---
 
 # Active project persistence

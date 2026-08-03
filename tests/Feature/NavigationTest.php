@@ -402,8 +402,11 @@ class NavigationTest extends TestCase
         $user = User::factory()->create();
         Project::factory()->for($user)->create(['name' => 'Somewhere else']);
 
-        // The dashboard is inside the app layout but belongs to no project: the
-        // trigger has nothing to name, so it prompts instead of rendering blank.
+        // The dashboard is inside the app layout but belongs to no project, and
+        // this user has none stored either: the trigger has nothing to name, so
+        // it prompts instead of rendering blank. Factoried users have a null
+        // active_project_id, which is why this case is reachable at all — the
+        // test below makes the other half of that guarantee explicit.
         $html = $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
@@ -411,6 +414,25 @@ class NavigationTest extends TestCase
 
         $this->assertStringContainsString('Choose a project', $html);
         $this->assertStringContainsString('Somewhere else', $html);
+    }
+
+    public function test_the_menu_renders_off_route_from_the_stored_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'The stored one']);
+        $user->forceFill(['active_project_id' => $project->id])->save();
+
+        $html = $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->getContent();
+
+        // Every "no project menu here" case above holds only because a factoried
+        // user has no active project. Set it, and the menu appears off-route —
+        // stated once so that behaviour stops being accidental.
+        $this->assertStringContainsString('The stored one', $html);
+        $this->assertStringContainsString('href="'.e(route('projects.plotlines.index', $project)).'"', $html);
+        $this->assertStringNotContainsString('Choose a project', $html);
     }
 
     public function test_both_menus_share_one_query_for_the_picker_list(): void

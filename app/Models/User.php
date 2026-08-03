@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -62,6 +63,16 @@ class User extends Authenticatable
     public function imports(): HasMany
     {
         return $this->hasMany(Import::class);
+    }
+
+    /**
+     * The last project page the user successfully loaded. Written only by
+     * TrackActiveProject; never mass-assignable (not in $fillable), so it can only be
+     * set through that middleware.
+     */
+    public function activeProject(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     protected static function booted(): void

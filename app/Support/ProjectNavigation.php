@@ -20,15 +20,38 @@ use Illuminate\Support\Collection;
  * AppServiceProvider, is the single source of truth for both menus.
  *
  * Adding a project-scoped section means touching this class and nothing else:
- * add the route-parameter fallback to resolveProject() if the section owns
- * models of its own, and add one `*Active` property below.
+ * add the route-parameter fallback to RouteProject::resolve() if the section
+ * owns models of its own, and add one `*Active` property below.
+ *
+ * The two questions have different answers since active-project persistence:
+ * $project falls back to the account's stored project off-route, while every
+ * `*Active` flag still matches the route alone. The dashboard therefore renders
+ * the project menu with nothing highlighted — correct, no section is open.
  */
 class ProjectNavigation
 {
     /** How many projects the picker offers before deferring to "All projects". */
     private const PICKER_PROJECT_LIMIT = 5;
 
-    /** The project the current page belongs to, or null outside a project. */
+    /**
+     * The project the current *route* belongs to, or null outside a project.
+     *
+     * Distinct from $project on purpose: this one is null on the dashboard,
+     * /profile and /admin/*, and it is what the <title> is built from. See the
+     * note on $project.
+     */
+    public readonly ?Project $routeProject;
+
+    /**
+     * The project the nav works on: the route's project, or the account's stored
+     * active project on a page with none.
+     *
+     * The route always wins when there is one — the stored value is a fallback,
+     * never an override — so inside a project this is exactly $routeProject.
+     * Outside one it is what keeps the project menu and picker on screen over
+     * the dashboard and Configuration, so a settings detour costs one click to
+     * return from.
+     */
     public readonly ?Project $project;
 
     public readonly bool $homeActive;
@@ -70,8 +93,9 @@ class ProjectNavigation
 
     public function __construct(Request $request)
     {
-        $this->project = $this->resolveProject($request);
+        $this->routeProject = RouteProject::resolve($request);
         $this->user = $request->user();
+        $this->project = $this->routeProject ?? $this->user?->activeProject;
 
         $this->homeActive = $request->routeIs('projects.show');
 
@@ -143,24 +167,6 @@ class ProjectNavigation
     public function codexTypeIsActive(CodexEntryType $type): bool
     {
         return $this->activeCodexType === $type;
-    }
-
-    /**
-     * Walk whatever model the route bound back up to its project.
-     *
-     * Shallow child routes (e.g. /scenes/{scene}/edit) carry no {project}
-     * parameter, so the nav has to climb the aggregate to find one.
-     */
-    private function resolveProject(Request $request): ?Project
-    {
-        return $request->route('project')
-            ?? $request->route('plotline')?->project
-            ?? $request->route('event')?->project
-            ?? $request->route('act')?->project
-            ?? $request->route('chapter')?->act?->project
-            ?? $request->route('scene')?->chapter?->act?->project
-            ?? $request->route('codexEntry')?->project
-            ?? $request->route('codexAttribute')?->project;
     }
 
     /**
