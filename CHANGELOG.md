@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-03 — Remember the active project
+## 2026-08-03 — Remember the active project (#73)
 
 ### Added
 
