@@ -8,6 +8,7 @@ import { registerDraftRecoveryModal } from './autosave/draft-recovery';
 import { registerNavigationGuard } from './navigation-guard';
 import { registerRevisionPicker } from './revision-picker';
 import { registerWordCount } from './word-count';
+import { moveScene } from './scene-reorder';
 
 window.Alpine = Alpine;
 
@@ -21,38 +22,7 @@ registerWordCount(Alpine);
 
 Alpine.start();
 
-function updateSceneMoveButtons(article) {
-    const sections = article.querySelectorAll(':scope > section');
-
-    sections.forEach((section, index) => {
-        const up = section.querySelector('[data-move="up"]');
-        const down = section.querySelector('[data-move="down"]');
-
-        if (up) up.disabled = index === 0;
-        if (down) down.disabled = index === sections.length - 1;
-    });
-}
-
-window.moveScene = async function (button, url, direction) {
-    if (button.disabled) return;
-
-    const section = button.closest('section');
-    const article = section.closest('article');
-    const sibling = direction === 'up' ? section.previousElementSibling : section.nextElementSibling;
-
-    if (!sibling || sibling.tagName !== 'SECTION') return;
-
-    try {
-        await window.axios.patch(url);
-    } catch (e) {
-        return;
-    }
-
-    if (direction === 'up') {
-        article.insertBefore(section, sibling);
-    } else {
-        article.insertBefore(sibling, section);
-    }
-
-    updateSceneMoveButtons(article);
-};
+// story/index.blade.php's move buttons call this via a plain inline
+// onclick (see scene-reorder.js's docblock for why it isn't an Alpine
+// component), so it must stay reachable on window.
+window.moveScene = moveScene;

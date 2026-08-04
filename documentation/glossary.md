@@ -32,8 +32,14 @@ order — never re-queried elsewhere.
 a chapter has many scenes. Strictly nested (no many-to-many).
 
 **Position** — the integer that orders acts within a project, chapters within an act, and
-scenes within a chapter. Auto-assigned on create and swapped by move-up/move-down. It **is**
-the displayed number; titles never encode it.
+scenes within a chapter. Auto-assigned on create, gappy (never renumbered), and the only thing
+move-up/move-down writes. Titles never encode it.
+
+**Number** — the project-wide, gap-free display rank shown to the reader/writer: the `#`
+column, edit-page hints, the Story overview, and both exports. Derived from `position` at read
+time by `StoryNumbering`, never stored — acts, chapters and scenes each rank continuously
+across their parent's boundary, so a displayed number never has a gap. See
+[architecture](architecture.md#continuous-numbering).
 
 **Story overview** — the read-only page (`projects.story.index`) that renders the whole
 act/chapter/scene tree with a table of contents and Markdown-rendered scene contents.

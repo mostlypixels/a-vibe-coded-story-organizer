@@ -1,7 +1,7 @@
 {{-- The in-book table of contents. Its depth follows the TableOfContentsDepth setting,
      mirroring the EPUB 3 nav document EpubExporter::addBody() builds:
        - "Acts": one link per Act, no nested lists.
-       - "Chapters" (default): every Act with its surviving Chapters nested underneath.
+       - "Chapters" (default): every Act with its Chapters nested underneath.
        - "Scenes": a third level of per-scene anchor links (chapter-{id}.xhtml#scene-{id})
          nested under each Chapter.
      The nesting is driven purely by whether each entry carries a non-empty children array

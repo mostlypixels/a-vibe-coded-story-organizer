@@ -60,7 +60,12 @@
                     <div>
                         <x-input-label for="name" :value="__('Title')" />
                         <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $scene->name)" placeholder="{{ __('e.g. A Lady at the Fountain') }}" required autofocus />
-                        <p class="mt-1 text-sm text-content-muted">{{ __('Currently scene #:position within its chapter. Use the move up/down buttons on the list to reorder.', ['position' => $scene->position]) }}</p>
+                        <p class="mt-1 text-sm text-content-muted">{{ __('Scene :number — :position of :total in :chapter. Use the move up/down buttons on the list to reorder.', [
+                            'number' => $numbering->scene($scene),
+                            'position' => $positionInChapter,
+                            'total' => $totalInChapter,
+                            'chapter' => __('Chapter :number', ['number' => $numbering->chapter($scene->chapter)]),
+                        ]) }}</p>
                         <x-input-error :messages="$errors->get('name')" class="mt-2" />
                     </div>
 

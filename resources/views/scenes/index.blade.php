@@ -38,6 +38,7 @@
                     <x-sortable-header field="position" :sort="$sort" :direction="$direction">{{ __('#') }}</x-sortable-header>
                     <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
                     <x-table-heading>{{ __('Chapter') }}</x-table-heading>
+                    <x-table-heading>{{ __('In chapter') }}</x-table-heading>
                     <x-table-heading>{{ __('Status') }}</x-table-heading>
                     <x-table-heading>{{ __('Event') }}</x-table-heading>
                     <x-table-heading class="text-right">{{ __('Words') }}</x-table-heading>
@@ -46,7 +47,7 @@
 
                 @forelse ($scenes as $scene)
                     <x-table-row :striped="$loop->even">
-                        <td @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="px-4 py-3 whitespace-nowrap text-sm text-content-muted {{ $scene->event ? '' : 'border-l-4 border-danger' }}">{{ $scene->position }}</td>
+                        <td @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="px-4 py-3 whitespace-nowrap text-sm text-content-muted {{ $scene->event ? '' : 'border-l-4 border-danger' }}">{{ $numbering->scene($scene) }}</td>
                         <td class="px-4 py-3">
                             <a href="{{ route('scenes.edit', $scene) }}" class="font-semibold text-content hover:text-link">{{ $scene->name }}</a>
                             @if ($scene->description)
@@ -54,6 +55,7 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-sm text-content-muted">{{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }}</td>
+                        <td class="px-4 py-3 text-sm text-content-muted">{{ $scene->position }}</td>
                         <td class="px-4 py-3 whitespace-nowrap"><x-scene-status-badge :status="$scene->status" /></td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm">
                             @if ($scene->event)
@@ -78,7 +80,7 @@
                     </x-table-row>
                 @empty
                     <x-table-empty
-                        :colspan="7"
+                        :colspan="8"
                         :filtered="request()->hasAny(['search', 'chapter'])"
                         :create-url="route('projects.scenes.create', $project)"
                         :create-label="__('New Scene')"

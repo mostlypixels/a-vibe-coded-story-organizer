@@ -1,9 +1,9 @@
 <x-public-layout>
     <div class="max-w-3xl mx-auto px-4 py-10 space-y-6">
         {{-- Formatted title: "Chapter 1 — Chapter title: Scene title".
-             Arabic chapter.position + em-dash, matching the Story overview. --}}
+             Continuous, project-wide chapter number, matching the Story overview. --}}
         <x-heading level="1">
-            {{ __('Chapter :number', ['number' => $scene->chapter->position]) }}
+            {{ __('Chapter :number', ['number' => $numbering->chapter($scene->chapter)]) }}
             &mdash; {{ $scene->chapter->name }}: {{ $scene->name }}
         </x-heading>
 

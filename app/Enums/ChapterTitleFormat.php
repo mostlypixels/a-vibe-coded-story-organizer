@@ -31,23 +31,25 @@ enum ChapterTitleFormat: string
      *
      * Guards against dangling ": " when name is empty or blank.
      *
-     * @param  int  $position  The chapter's position (e.g. 12)
+     * @param  int  $number  The chapter's project-wide, gap-free display number (e.g. 12) —
+     *                       see App\Support\StoryNumbering. NOT the chapter's `position`
+     *                       column, which is a per-act, gappy sort key.
      * @param  ?string  $name  The chapter's name (e.g. "The Storm"), or null/empty
      * @return string The formatted heading
      */
-    public function format(int $position, ?string $name): string
+    public function format(int $number, ?string $name): string
     {
         $trimmedName = trim($name ?? '');
 
         return match ($this) {
             self::ChapterNumberTitle => $trimmedName
-                ? "Chapter {$position}: {$trimmedName}"
-                : "Chapter {$position}",
+                ? "Chapter {$number}: {$trimmedName}"
+                : "Chapter {$number}",
             self::NumberTitle => $trimmedName
-                ? "{$position}: {$trimmedName}"
-                : (string) $position,
-            self::ChapterNumber => "Chapter {$position}",
-            self::Number => (string) $position,
+                ? "{$number}: {$trimmedName}"
+                : (string) $number,
+            self::ChapterNumber => "Chapter {$number}",
+            self::Number => (string) $number,
             self::Title => $trimmedName ?: '',
         };
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Support\StoryNumbering;
 use Illuminate\View\View;
 
 class StoryController extends Controller
@@ -37,6 +38,9 @@ class StoryController extends Controller
             'project' => $project,
             'acts' => $acts,
             'wordCount' => $wordCount,
+            // The tree is already fully eager-loaded above, so fromActs()
+            // derives the numbering with zero extra queries.
+            'numbering' => StoryNumbering::fromActs($acts),
         ]);
     }
 }

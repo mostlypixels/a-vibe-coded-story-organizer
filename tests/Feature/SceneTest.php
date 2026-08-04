@@ -716,6 +716,206 @@ class SceneTest extends TestCase
             );
     }
 
+    // --- Index ordering by story order (continuous-numbering, task 2) -------
+
+    /**
+     * Two acts with a chapter and a scene each, then act B is moved above act A.
+     * The `#` column must follow the story, so B's scene comes first — the previous
+     * `orderBy('chapter_id')` grouping kept A first forever, because chapter_id only
+     * matches story order until something is reordered.
+     */
+    public function test_the_scenes_index_orders_by_story_order_after_an_act_is_reordered(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $actA = Act::factory()->for($project)->create(['position' => 1]);
+        $actB = Act::factory()->for($project)->create(['position' => 2]);
+        $chapterA = Chapter::factory()->for($actA)->create(['position' => 1]);
+        $chapterB = Chapter::factory()->for($actB)->create(['position' => 1]);
+        Scene::factory()->for($chapterA)->create(['name' => 'Scene from A', 'position' => 1]);
+        Scene::factory()->for($chapterB)->create(['name' => 'Scene from B', 'position' => 1]);
+
+        $this->actingAs($user)->patch(route('acts.move-up', $actB));
+
+        $this->actingAs($user)
+            ->get(route('projects.scenes.index', ['project' => $project, 'sort' => 'position']))
+            ->assertOk()
+            ->assertSeeInOrder(['Scene from B', 'Scene from A']);
+    }
+
+    /**
+     * Descending must reverse *every* ordering key, so the list reads as the story
+     * backwards — not chapters ascending with their scenes reversed inside them.
+     */
+    public function test_the_scenes_index_reverses_the_whole_story_when_sorted_descending(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $first = Chapter::factory()->for($act)->create(['position' => 1]);
+        $second = Chapter::factory()->for($act)->create(['position' => 2]);
+        Scene::factory()->for($first)->create(['name' => 'Scene One', 'position' => 1]);
+        Scene::factory()->for($first)->create(['name' => 'Scene Two', 'position' => 2]);
+        Scene::factory()->for($second)->create(['name' => 'Scene Three', 'position' => 1]);
+
+        $this->actingAs($user)
+            ->get(route('projects.scenes.index', ['project' => $project, 'sort' => 'position', 'direction' => 'desc']))
+            ->assertOk()
+            ->assertSeeInOrder(['Scene Three', 'Scene Two', 'Scene One']);
+    }
+
+    /**
+     * `chapters` and `acts` both carry `name` and `position` columns of their own, so
+     * the joins added for story order make an unqualified `name` ambiguous. This
+     * covers both places it appears: the search filter and `?sort=name`.
+     */
+    public function test_the_scenes_index_still_sorts_and_searches_by_name(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->project;
+        Scene::factory()->for($chapter)->create(['name' => 'Zebra', 'position' => 1]);
+        Scene::factory()->for($chapter)->create(['name' => 'Antelope', 'position' => 2]);
+
+        $this->actingAs($user)
+            ->get(route('projects.scenes.index', ['project' => $project, 'sort' => 'name']))
+            ->assertOk()
+            ->assertSeeInOrder(['Antelope', 'Zebra']);
+
+        $this->actingAs($user)
+            ->get(route('projects.scenes.index', ['project' => $project, 'search' => 'Zeb']))
+            ->assertOk()
+            ->assertSee('Zebra')
+            ->assertDontSee('Antelope');
+    }
+
+    /**
+     * The joins must not leak their columns onto the hydrated scenes: `chapters` and
+     * `acts` have `name`, `position` and `id` of their own, and without an explicit
+     * `select('scenes.*')` they would overwrite the scene's.
+     */
+    public function test_the_scenes_index_hydrates_scene_columns_not_the_joined_ones(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['name' => 'The scene name', 'position' => 1]);
+
+        $scenes = $this->actingAs($user)
+            ->get(route('projects.scenes.index', $chapter->act->project))
+            ->assertOk()
+            ->viewData('scenes');
+
+        $this->assertSame($scene->id, $scenes->first()->id);
+        $this->assertSame('The scene name', $scenes->first()->name);
+    }
+
+    // --- Continuous numbering (continuous-numbering, task 3) -----------------
+
+    /**
+     * The trimmed, tag-stripped text of the `$index`-th `<td>` (0-based) in the row
+     * whose name is `$rowName` — scoped to a single `<tr>...</tr>` block so it
+     * can't be fooled by an id or word count elsewhere on the page matching.
+     */
+    private function columnCellFor(string $html, string $rowName, int $index): string
+    {
+        preg_match('/<tr[^>]*>((?:(?!<\/tr>).)*?'.preg_quote($rowName, '/').'(?:(?!<\/tr>).)*?)<\/tr>/s', $html, $rowMatch);
+        preg_match_all('/<td[^>]*>(.*?)<\/td>/s', $rowMatch[1] ?? '', $cellMatches);
+
+        return isset($cellMatches[1][$index]) ? trim(strip_tags($cellMatches[1][$index])) : '';
+    }
+
+    /** The '#' column (index 0) is the same across every scenes-index row. */
+    private function numberColumnFor(string $html, string $rowName): string
+    {
+        return $this->columnCellFor($html, $rowName, 0);
+    }
+
+    public function test_the_scenes_index_number_column_is_continuous_not_the_per_chapter_position(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->project;
+        $otherChapter = Chapter::factory()->for($chapter->act)->create(['position' => $chapter->position + 1]);
+        Scene::factory()->for($chapter)->create(['name' => 'Opening', 'position' => 1]);
+        // Gappy per-chapter position (5): a regression back to `$scene->position`
+        // would render this row's '#' cell as "5" instead of "2".
+        Scene::factory()->for($otherChapter)->create(['name' => 'Closing', 'position' => 5]);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.scenes.index', ['project' => $project, 'sort' => 'position']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame('2', $this->numberColumnFor($html, 'Closing'));
+    }
+
+    /**
+     * The new "In chapter" column shows the raw, per-chapter `position` — the
+     * gappy sibling-order value move up/down writes — which is deliberately not
+     * the same number as the continuous '#' column beside it.
+     */
+    public function test_the_scenes_index_shows_the_in_chapter_column_with_the_raw_position(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        Scene::factory()->for($chapter)->create(['name' => 'A gappy scene', 'position' => 7]);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.scenes.index', $chapter->act->project))
+            ->assertOk()
+            ->getContent();
+
+        // Column order: #, Title, Chapter, In chapter, Status, Event, Words, actions.
+        $this->assertSame('7', $this->columnCellFor($html, 'A gappy scene', 3));
+        // The '#' column beside it shows the continuous number (1, the only scene
+        // in the project), deliberately not the same value as the raw position.
+        $this->assertSame('1', $this->numberColumnFor($html, 'A gappy scene'));
+    }
+
+    /**
+     * Filtering the list to one chapter must never renumber it: the map is built
+     * from the whole project, so the first (and only) row shown still reads its
+     * true, project-wide number.
+     */
+    public function test_the_scenes_index_numbers_stay_project_wide_when_filtered_to_one_chapter(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->project;
+        $otherChapter = Chapter::factory()->for($chapter->act)->create(['position' => $chapter->position + 1]);
+        Scene::factory()->for($chapter)->create(['position' => 1]);
+        Scene::factory()->for($chapter)->create(['position' => 2]);
+        Scene::factory()->for($otherChapter)->create(['name' => 'Fresh Start', 'position' => 1]);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.scenes.index', ['project' => $project, 'chapter' => $otherChapter->id, 'sort' => 'position']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame('3', $this->numberColumnFor($html, 'Fresh Start'));
+    }
+
+    /**
+     * The edit page's position hint shows both the continuous, project-wide number
+     * and the scene's rank among its chapter's siblings — the latter a gap-free
+     * rank, not the raw (possibly gappy) `position` column.
+     */
+    public function test_the_edit_page_shows_the_continuous_number_and_position_within_the_chapter(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        Scene::factory()->for($chapter)->create(['position' => 1]);
+        $scene = Scene::factory()->for($chapter)->create(['position' => 2]);
+        Scene::factory()->for($chapter)->create(['position' => 3]);
+
+        // Continuous number 2 (2nd scene overall, the only chapter in the project);
+        // rank 2 of 3 within its chapter, which is itself chapter number 1.
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertSee('Scene 2 — 2 of 3 in Chapter 1. Use the move up/down buttons on the list to reorder.');
+    }
+
     // --- Word count column (word-count spec, task 9) ------------------------
 
     public function test_the_scenes_index_shows_each_scenes_word_count(): void

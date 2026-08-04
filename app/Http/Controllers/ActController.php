@@ -12,6 +12,7 @@ use App\Http\Requests\StoreActRequest;
 use App\Http\Requests\UpdateActRequest;
 use App\Models\Act;
 use App\Models\Project;
+use App\Support\StoryNumbering;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,9 @@ class ActController extends Controller
             'destinationActs' => $destinationActs,
             'sort' => $sort,
             'direction' => $direction,
+            // Built from the whole project, never the (possibly search-filtered)
+            // $acts above — a filtered acts list must still show its true numbers.
+            'numbering' => StoryNumbering::forProject($project),
         ]);
     }
 
@@ -97,6 +101,8 @@ class ActController extends Controller
             'act' => $act,
             'sceneCount' => $sceneCount,
             'destinations' => $destinations,
+            'numbering' => StoryNumbering::forProject($act->project),
+            'totalActs' => $act->project->acts()->count(),
         ]);
     }
 

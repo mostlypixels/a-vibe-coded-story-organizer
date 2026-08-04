@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Models\PublicationSetting;
 use App\Models\Scene;
 use App\Support\RichText;
+use App\Support\StoryNumbering;
 use DOMDocument;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
@@ -29,10 +30,10 @@ use ZipArchive;
  * Builds the in-memory content of a project's EPUB export.
  *
  * HTTP-agnostic and analogous to {@see StaticSiteExporter}: it takes a Project and
- * produces the ordered, filtered act/chapter tree, the rendered XHTML content documents,
- * and — via {@see export()} — packages them into an actual .epub file on disk.
+ * produces the ordered act/chapter tree, the rendered XHTML content documents, and — via
+ * {@see export()} — packages them into an actual .epub file on disk.
  *
- * Task 03 built content generation (loading + filtering + rendering). Task 04 added the
+ * Task 03 built content generation (loading + rendering). Task 04 added the
  * packaging step ({@see export()}): the rampmaster/phpepub library owns the mimetype,
  * container.xml, OPF (metadata/manifest/spine) and the EPUB 3 nav document; this service
  * owns the XHTML content (Blade), the metadata values fed to the library, the CSS, and the
@@ -53,8 +54,8 @@ use ZipArchive;
  * page per selected codex entry (name + rich-HTML description normalised to XHTML), gated by
  * `include_codex_appendix` and the chosen `appendix_entry_types`. Task 05 adds the guards that
  * make a valid package a hard gate:
- *   - An empty filtered tree throws {@see EpubExportException} (a USER problem — nothing to
- *     export), surfaced by the controller as a validation-style error.
+ *   - A project with no scenes anywhere throws {@see EpubExportException} (a USER problem —
+ *     nothing to export), surfaced by the controller as a validation-style error.
  *   - Every shipped XHTML document is checked for XML well-formedness and the OPF is schema-
  *     validated against the vendored EPUB 3 RelaxNG grammar ({@see validatePackage()}). A
  *     failure there is a generator BUG, not user error, so it throws a plain RuntimeException
@@ -183,24 +184,25 @@ class EpubExporter
     ];
 
     /**
-     * Package a Project's filtered/rendered tree into an actual .epub file and return the
-     * path to it on disk. The caller (the controller, task 06) streams the file and deletes
-     * it after send; the temp file is also removed here if packaging throws, so a failed
-     * export never leaks a partial file — mirroring {@see StaticSiteExporter::export()}.
+     * Package a Project's rendered tree into an actual .epub file and return the path to it
+     * on disk. The caller (the controller, task 06) streams the file and deletes it after
+     * send; the temp file is also removed here if packaging throws, so a failed export never
+     * leaks a partial file — mirroring {@see StaticSiteExporter::export()}.
      *
-     * The two-level TOC/nav (Acts as parent entries, surviving Chapters nested underneath,
-     * both in `position` order) is built through the library's chapter/sub-level API, never
+     * The two-level TOC/nav (Acts as parent entries, their Chapters nested underneath, both
+     * in `position` order) is built through the library's chapter/sub-level API, never
      * hand-written XML.
      */
     public function export(Project $project): string
     {
-        $tree = $this->filteredTree($project);
+        $tree = $this->bookTree($project);
 
-        // The one user-input failure of the whole pipeline: nothing survived the
-        // skip-empty filter, so there is no content to package. Thrown BEFORE any temp file
-        // exists; task 06's controller turns it into a redirect-back-with-error. Every other
-        // failure below is a generator bug and throws loudly (see validatePackage()).
-        if ($tree->isEmpty()) {
+        // The one user-input failure of the whole pipeline: the project has not a single
+        // scene anywhere, so the book would be nothing but blank outline pages. Thrown
+        // BEFORE any temp file exists; task 06's controller turns it into a
+        // redirect-back-with-error. Every other failure below is a generator bug and throws
+        // loudly (see validatePackage()).
+        if (! $this->hasAnyScene($tree)) {
             throw EpubExportException::nothingToExport();
         }
 
@@ -211,12 +213,17 @@ class EpubExporter
         // EpubExporterTest).
         $settings = $project->publicationSettingOrDefault();
 
+        // Built once from the already-loaded $tree (fromActs() fires zero queries) and
+        // threaded through every render/nav-label call below, so every act/chapter number
+        // in the package is derived from THIS SAME tree — see StoryNumbering.
+        $numbering = StoryNumbering::fromActs($tree);
+
         $book = new EPub(self::EPUB_VERSION, $this->language($project));
 
         $this->applyMetadata($book, $project, $settings);
         $this->applyCover($book, $project, $settings);
         $book->addCSSFile(self::STYLESHEET_FILENAME, 'epub-styles', $this->stylesheet());
-        $this->addSections($book, $project, $tree, $settings);
+        $this->addSections($book, $project, $tree, $settings, $numbering);
 
         $path = $this->freshTempEpubPath();
 
@@ -255,41 +262,53 @@ class EpubExporter
     private ?CommonMarkConverter $converter = null;
 
     /**
-     * Load the project's act → chapter → scene tree, position-ordered at every level
-     * (mirrors StaticSiteExporter::loadBookTree()'s eager-load shape), then apply the
-     * export-time skip-empty filter:
-     *   - drop any Chapter with zero Scenes, then
-     *   - drop any Act left with zero surviving Chapters.
+     * Load the project's WHOLE act → chapter → scene tree, position-ordered at every level
+     * (mirrors StaticSiteExporter::loadBookTree()'s eager-load shape). Nothing is dropped:
+     * a Chapter with zero Scenes exports as a heading-only page, and an Act with zero
+     * Chapters keeps its divider.
      *
-     * The result is the exact tree the next tasks (04 nav/spine, 05 validation) walk, and
-     * the tree the tests assert against directly. An empty Collection here means "nothing
-     * to export" — task 05 turns that into EpubExportException.
+     * That is a deliberate reversal of the old skip-empty filter. Authors organise before
+     * they write, so an empty chapter is a placeholder, not an accident — filtering it out
+     * shifted every later chapter's number the moment the author started writing it, and the
+     * exported book disagreed with the app in the meantime. Exporting the full outline keeps
+     * export numbers equal to app numbers at all times, and matches what
+     * {@see StaticSiteExporter} has always published.
+     *
+     * The result is the exact tree the nav/spine and validation steps walk, and the tree the
+     * tests assert against directly. "Nothing to export" is no longer an empty tree — it is
+     * {@see hasAnyScene()} returning false, which {@see export()} turns into an
+     * EpubExportException.
      *
      * @return Collection<int, Act>
      */
-    public function filteredTree(Project $project): Collection
+    public function bookTree(Project $project): Collection
     {
-        $acts = $project->acts()
+        return $project->acts()
             ->with([
                 'chapters' => fn ($query) => $query->orderBy('position'),
                 'chapters.scenes' => fn ($query) => $query->orderBy('position'),
             ])
             ->orderBy('position')
             ->get();
+    }
 
-        return $acts
-            ->each(function (Act $act) {
-                // Keep only chapters that actually have scenes; re-index so callers can
-                // rely on a clean 0..n list rather than the pre-filter gaps.
-                $act->setRelation(
-                    'chapters',
-                    $act->chapters->filter(
-                        fn (Chapter $chapter) => $chapter->scenes->isNotEmpty()
-                    )->values()
-                );
-            })
-            ->filter(fn (Act $act) => $act->chapters->isNotEmpty())
-            ->values();
+    /**
+     * Does the exported tree contain a single scene anywhere? The one thing that makes an
+     * export worth producing now that empty chapters and acts are kept: without it a brand
+     * new outline would export as a book of blank pages.
+     *
+     * Reads the already eager-loaded relations rather than issuing a count query, so the
+     * guard costs nothing beyond {@see bookTree()}'s own three queries.
+     *
+     * @param  Collection<int, Act>  $tree
+     */
+    private function hasAnyScene(Collection $tree): bool
+    {
+        return $tree->contains(
+            fn (Act $act) => $act->chapters->contains(
+                fn (Chapter $chapter) => $chapter->scenes->isNotEmpty()
+            )
+        );
     }
 
     /**
@@ -299,13 +318,16 @@ class EpubExporter
      * `include_act_descriptions` is on and the description is non-empty.
      *
      * $settings is nullable so callers/tests can render with the project's lazy default;
-     * the exporter's own pipeline always threads the resolved setting through.
+     * the exporter's own pipeline always threads the resolved setting through. $numbering
+     * is nullable the same way — a caller without a pre-built one (tests calling this
+     * directly) gets it derived fresh via {@see StoryNumbering::forProject()}.
      */
-    public function renderAct(Act $act, Project $project, ?PublicationSetting $settings = null): string
+    public function renderAct(Act $act, Project $project, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $project->publicationSettingOrDefault();
+        $numbering ??= StoryNumbering::forProject($project);
 
-        return view('exports.epub.act', $this->actViewData($act, $project, $settings))->render();
+        return view('exports.epub.act', $this->actViewData($act, $project, $settings, $numbering))->render();
     }
 
     /**
@@ -315,17 +337,19 @@ class EpubExporter
      * act's own page keeps all prose in the reading order behind a single act nav entry.
      * See exports/epub/act-combined.blade.php for why the library forces this shape.
      *
-     * $settings is nullable so callers/tests can render with the project's lazy default.
+     * $settings and $numbering are nullable so callers/tests can render with the project's
+     * lazy default and a freshly-derived numbering, same as {@see renderAct()}.
      */
-    public function renderActWithChapters(Act $act, Project $project, ?PublicationSetting $settings = null): string
+    public function renderActWithChapters(Act $act, Project $project, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $project->publicationSettingOrDefault();
+        $numbering ??= StoryNumbering::forProject($project);
 
         return view('exports.epub.act-combined', array_merge(
-            $this->actViewData($act, $project, $settings),
+            $this->actViewData($act, $project, $settings, $numbering),
             [
                 'chapters' => $act->chapters
-                    ->map(fn (Chapter $chapter) => $this->chapterViewData($chapter, $project, $settings))
+                    ->map(fn (Chapter $chapter) => $this->chapterViewData($chapter, $project, $settings, $numbering))
                     ->all(),
             ]
         ))->render();
@@ -336,12 +360,16 @@ class EpubExporter
      * ({@see renderAct()}) and the combined act page ({@see renderActWithChapters()}) so the
      * two rendering paths can never drift.
      *
+     * `number` is the project-wide, gap-free rank from {@see StoryNumbering} — NOT
+     * `$act->position`, which is the per-parent, gappy sort key. Task 07 made this switch;
+     * see StoryNumbering's own docblock for why the export must never display `position`.
+     *
      * @return array<string, mixed>
      */
-    private function actViewData(Act $act, Project $project, PublicationSetting $settings): array
+    private function actViewData(Act $act, Project $project, PublicationSetting $settings, StoryNumbering $numbering): array
     {
         return [
-            'position' => $act->position,
+            'number' => $numbering->act($act),
             'name' => $act->name,
             'showDescription' => $settings->include_act_descriptions,
             'description' => RichText::toXhtmlFragment($act->description),
@@ -360,14 +388,17 @@ class EpubExporter
      *   - a per-scene `description` (rich HTML → XHTML) above each scene body.
      *
      * Scenes must already be position-ordered — pass a Chapter taken from
-     * {@see filteredTree()}, whose scenes are ordered and non-empty. $settings is
-     * nullable so callers/tests can render with the project's lazy default.
+     * {@see bookTree()}. A Chapter with no scenes is legitimate and renders as a
+     * heading-only page (no app-written filler). $settings and $numbering are nullable so
+     * callers/tests can render with the project's lazy default and a freshly-derived
+     * numbering, same as {@see renderAct()}.
      */
-    public function renderChapter(Chapter $chapter, Project $project, ?PublicationSetting $settings = null): string
+    public function renderChapter(Chapter $chapter, Project $project, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $project->publicationSettingOrDefault();
+        $numbering ??= StoryNumbering::forProject($project);
 
-        return view('exports.epub.chapter', $this->chapterViewData($chapter, $project, $settings))->render();
+        return view('exports.epub.chapter', $this->chapterViewData($chapter, $project, $settings, $numbering))->render();
     }
 
     /**
@@ -380,9 +411,12 @@ class EpubExporter
      * them and the default "Chapters" depth renders byte-for-byte as before. Each scene
      * carries its stable id for that anchor.
      *
+     * `number` — and the number fed into `heading` — is the project-wide, gap-free rank
+     * from {@see StoryNumbering}, NOT `$chapter->position`. See {@see actViewData()}.
+     *
      * @return array<string, mixed>
      */
-    private function chapterViewData(Chapter $chapter, Project $project, PublicationSetting $settings): array
+    private function chapterViewData(Chapter $chapter, Project $project, PublicationSetting $settings, StoryNumbering $numbering): array
     {
         $scenes = $chapter->scenes->map(fn (Scene $scene): array => [
             'id' => $scene->id,
@@ -391,9 +425,11 @@ class EpubExporter
             'body' => $this->renderSceneContents($scene),
         ])->all();
 
+        $number = $numbering->chapter($chapter);
+
         return [
-            'heading' => $settings->chapter_title_format->format($chapter->position, $chapter->name),
-            'position' => $chapter->position,
+            'heading' => $settings->chapter_title_format->format($number, $chapter->name),
+            'number' => $number,
             'showChapterDescription' => $settings->include_chapter_descriptions,
             'chapterDescription' => RichText::toXhtmlFragment($chapter->description),
             'showSceneTitles' => $settings->include_scene_titles,
@@ -418,17 +454,21 @@ class EpubExporter
     }
 
     /**
-     * Render the in-book table of contents: a nested list of every surviving Act (its nav
-     * title) with its surviving Chapters underneath, each linking to the page
+     * Render the in-book table of contents: a nested list of every Act (its nav title) with
+     * its Chapters underneath, each linking to the page
      * {@see addBody()} will give it. Distinct from the EPUB 3 nav document the
      * library builds automatically (that's reader chrome); this is a real page in the
      * spine, at whatever position `section_order` places it.
      *
      * @param  Collection<int, Act>  $tree
      */
-    public function renderToc(Project $project, Collection $tree, ?PublicationSetting $settings = null): string
+    public function renderToc(Project $project, Collection $tree, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $project->publicationSettingOrDefault();
+        // fromActs(), not forProject(): $tree is already the whole loaded tree, so deriving
+        // from it avoids a second set of queries a caller-supplied $numbering would have
+        // avoided anyway.
+        $numbering ??= StoryNumbering::fromActs($tree);
         $format = $settings->chapter_title_format;
         $depth = $settings->table_of_contents_depth;
 
@@ -438,11 +478,11 @@ class EpubExporter
         // chapters with per-scene anchor links.
         $entries = $tree->map(fn (Act $act) => [
             'href' => $this->actFileName($act),
-            'label' => $this->actNavTitle($act),
+            'label' => $this->actNavTitle($act, $numbering),
             'chapters' => $depth->includesChapters()
                 ? $act->chapters->map(fn (Chapter $chapter) => [
                     'href' => $this->chapterFileName($chapter),
-                    'label' => $this->chapterNavTitle($chapter, $format),
+                    'label' => $this->chapterNavTitle($chapter, $format, $numbering),
                     'scenes' => $depth->includesScenes()
                         ? $chapter->scenes->map(fn (Scene $scene) => [
                             'href' => $this->sceneAnchorHref($chapter, $scene),
@@ -570,7 +610,7 @@ class EpubExporter
      *
      * @param  Collection<int, Act>  $tree
      */
-    private function addSections(EPub $book, Project $project, Collection $tree, PublicationSetting $settings): void
+    private function addSections(EPub $book, Project $project, Collection $tree, PublicationSetting $settings, StoryNumbering $numbering): void
     {
         $order = $settings->section_order ?? PublicationSetting::SECTION_KEYS;
 
@@ -578,8 +618,8 @@ class EpubExporter
             match ($section) {
                 'title' => $this->addTitleSection($book, $project),
                 'dedication', 'acknowledgements', 'preface', 'postface' => $this->addMatterSection($book, $project, $settings, $section),
-                'toc' => $this->addTocSection($book, $project, $tree, $settings),
-                'body' => $this->addBody($book, $project, $tree, $settings),
+                'toc' => $this->addTocSection($book, $project, $tree, $settings, $numbering),
+                'body' => $this->addBody($book, $project, $tree, $settings, $numbering),
                 'appendix' => $this->addAppendixSection($book, $project, $settings),
                 // Any unrecognised key renders nothing.
                 default => null,
@@ -599,14 +639,14 @@ class EpubExporter
 
     /**
      * Add the in-book table of contents page as its own root-level nav entry (Acts with
-     * their surviving Chapters nested underneath — the same shape {@see addBody()} wires
-     * into the EPUB 3 nav).
+     * their Chapters nested underneath — the same shape {@see addBody()} wires into the
+     * EPUB 3 nav).
      *
      * @param  Collection<int, Act>  $tree
      */
-    private function addTocSection(EPub $book, Project $project, Collection $tree, PublicationSetting $settings): void
+    private function addTocSection(EPub $book, Project $project, Collection $tree, PublicationSetting $settings, StoryNumbering $numbering): void
     {
-        $tocXhtml = $this->renderToc($project, $tree, $settings);
+        $tocXhtml = $this->renderToc($project, $tree, $settings, $numbering);
         $this->assertXmlWellFormed($tocXhtml, self::TOC_FILE);
         $book->addChapter('Table of Contents', self::TOC_FILE, $tocXhtml);
     }
@@ -808,16 +848,15 @@ class EpubExporter
     }
 
     /**
-     * Add every surviving Act divider page and Chapter page as an EPUB chapter, wiring the
-     * two-level nav as it goes: each Act is a root-level nav entry, and its surviving
-     * Chapters are nested one level below it (subLevel/backLevel bracket the Act's
-     * children). Both levels are walked in `position` order because {@see filteredTree()}
-     * already returns them ordered. This is the `body` entry in `section_order`
-     * ({@see addSections()}).
+     * Add every Act divider page and Chapter page as an EPUB chapter, wiring the two-level
+     * nav as it goes: each Act is a root-level nav entry, and its Chapters are nested one
+     * level below it (subLevel/backLevel bracket the Act's children). Both levels are walked
+     * in `position` order because {@see bookTree()} already returns them ordered. This is the
+     * `body` entry in `section_order` ({@see addSections()}).
      *
      * @param  Collection<int, Act>  $tree
      */
-    private function addBody(EPub $book, Project $project, Collection $tree, PublicationSetting $settings): void
+    private function addBody(EPub $book, Project $project, Collection $tree, PublicationSetting $settings, StoryNumbering $numbering): void
     {
         $format = $settings->chapter_title_format;
         $depth = $settings->table_of_contents_depth;
@@ -840,9 +879,9 @@ class EpubExporter
                     $this->addChapterCoverPage($book, $chapter, $project, $settings);
                 }
 
-                $actXhtml = $this->renderActWithChapters($act, $project, $settings);
+                $actXhtml = $this->renderActWithChapters($act, $project, $settings, $numbering);
                 $this->assertXmlWellFormed($actXhtml, $actFile);
-                $book->addChapter($this->actNavTitle($act), $actFile, $actXhtml);
+                $book->addChapter($this->actNavTitle($act, $numbering), $actFile, $actXhtml);
 
                 continue;
             }
@@ -850,9 +889,9 @@ class EpubExporter
             // "Chapters" (default) and "Scenes": the act divider is its own page and each
             // chapter a nested page. Well-formedness gate BEFORE the document is buried in
             // the package, so a malformed page (a generator bug) is caught at its source.
-            $actXhtml = $this->renderAct($act, $project, $settings);
+            $actXhtml = $this->renderAct($act, $project, $settings, $numbering);
             $this->assertXmlWellFormed($actXhtml, $actFile);
-            $book->addChapter($this->actNavTitle($act), $actFile, $actXhtml);
+            $book->addChapter($this->actNavTitle($act, $numbering), $actFile, $actXhtml);
 
             // Descend into the Act's nav entry so its Chapters nest underneath it.
             $book->subLevel();
@@ -865,9 +904,9 @@ class EpubExporter
                 $this->addChapterCoverPage($book, $chapter, $project, $settings);
 
                 $chapterFile = $this->chapterFileName($chapter);
-                $chapterXhtml = $this->renderChapter($chapter, $project, $settings);
+                $chapterXhtml = $this->renderChapter($chapter, $project, $settings, $numbering);
                 $this->assertXmlWellFormed($chapterXhtml, $chapterFile);
-                $book->addChapter($this->chapterNavTitle($chapter, $format), $chapterFile, $chapterXhtml);
+                $book->addChapter($this->chapterNavTitle($chapter, $format, $numbering), $chapterFile, $chapterXhtml);
 
                 // "Scenes" depth: hang a third nav level of per-scene entries under the
                 // chapter. Each is added with NULL content and a "#"-bearing filename, which
@@ -1100,14 +1139,17 @@ class EpubExporter
     }
 
     /**
-     * The nav label for an Act: "Act {position}", with ": {name}" appended when the Act has
-     * a name (mirroring the page heading + name shape).
+     * The nav label for an Act: "Act {number}", with ": {name}" appended when the Act has
+     * a name (mirroring the page heading + name shape). `number` is the project-wide,
+     * gap-free rank from {@see StoryNumbering} — see {@see actViewData()}.
      */
-    private function actNavTitle(Act $act): string
+    private function actNavTitle(Act $act, StoryNumbering $numbering): string
     {
+        $number = $numbering->act($act);
+
         return filled($act->name)
-            ? "Act {$act->position}: {$act->name}"
-            : "Act {$act->position}";
+            ? "Act {$number}: {$act->name}"
+            : "Act {$number}";
     }
 
     /**
@@ -1124,12 +1166,16 @@ class EpubExporter
      * The fallback lives here rather than in `format()` on purpose: it is the *listing*
      * that cannot cope with an empty label, and it matches what {@see sceneNavTitle()} and
      * {@see actNavTitle()} already do with a nameless scene or act.
+     *
+     * `number` is the project-wide, gap-free rank from {@see StoryNumbering} — see
+     * {@see chapterViewData()}.
      */
-    private function chapterNavTitle(Chapter $chapter, ChapterTitleFormat $format): string
+    private function chapterNavTitle(Chapter $chapter, ChapterTitleFormat $format, StoryNumbering $numbering): string
     {
-        $label = $format->format($chapter->position, $chapter->name);
+        $number = $numbering->chapter($chapter);
+        $label = $format->format($number, $chapter->name);
 
-        return $label !== '' ? $label : "Chapter {$chapter->position}";
+        return $label !== '' ? $label : "Chapter {$number}";
     }
 
     /**

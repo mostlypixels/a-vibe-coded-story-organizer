@@ -457,6 +457,61 @@ class ActTest extends TestCase
             );
     }
 
+    // --- Continuous numbering (continuous-numbering, task 3) -----------------
+
+    /**
+     * The trimmed, tag-stripped text of the `$index`-th `<td>` (0-based) in the row
+     * whose name is `$rowName` — scoped to a single `<tr>...</tr>` block so it
+     * can't be fooled by an id or word count elsewhere on the page matching.
+     */
+    private function columnCellFor(string $html, string $rowName, int $index): string
+    {
+        preg_match('/<tr[^>]*>((?:(?!<\/tr>).)*?'.preg_quote($rowName, '/').'(?:(?!<\/tr>).)*?)<\/tr>/s', $html, $rowMatch);
+        preg_match_all('/<td[^>]*>(.*?)<\/td>/s', $rowMatch[1] ?? '', $cellMatches);
+
+        return isset($cellMatches[1][$index]) ? trim(strip_tags($cellMatches[1][$index])) : '';
+    }
+
+    /**
+     * Acts are always numbered by their project-wide rank, same as their
+     * `position` — but a gap in `position` (from a deleted sibling, say) must
+     * still render a gap-free number.
+     */
+    public function test_the_acts_index_number_column_is_continuous_not_the_raw_position(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Act::factory()->for($project)->create(['position' => 1]);
+        // Gappy position (5): a regression back to `$act->position` would render
+        // this row's '#' cell as "5" instead of "2".
+        Act::factory()->for($project)->create(['name' => 'Closing Act', 'position' => 5]);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.acts.index', ['project' => $project, 'sort' => 'position']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame('2', $this->columnCellFor($html, 'Closing Act', 0));
+    }
+
+    /**
+     * The edit page's position hint shows both the continuous number and the
+     * sibling total.
+     */
+    public function test_the_edit_page_shows_the_continuous_number_and_the_act_total(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Act::factory()->for($project)->create(['position' => 1]);
+        $act = Act::factory()->for($project)->create(['position' => 2]);
+        Act::factory()->for($project)->create(['position' => 3]);
+
+        $this->actingAs($user)
+            ->get(route('acts.edit', $act))
+            ->assertOk()
+            ->assertSee('Act 2 of 3. Use the move up/down buttons on the list to reorder.');
+    }
+
     // --- Word count column (word-count spec, task 9) ------------------------
 
     public function test_the_acts_index_shows_each_acts_total_word_count(): void
@@ -528,6 +583,10 @@ class ActTest extends TestCase
             ->get(route('projects.acts.index', $project))
             ->assertOk();
 
-        $this->assertCount(1, $sceneQueries);
+        // 1 for the withSum() word-count aggregate, 1 more for StoryNumbering::
+        // forProject()'s own eager load of the whole act -> chapter -> scene tree
+        // (continuous-numbering task 3) — both still O(1) per page load, not
+        // O(acts), so the N+1 this test guards against is still absent.
+        $this->assertCount(2, $sceneQueries);
     }
 }

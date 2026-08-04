@@ -23,8 +23,8 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * Service-level tests for EpubExporter's content-generation stage (task 03): the
- * skip-empty filtering, position ordering, Act/Chapter page content, the epub-only
+ * Service-level tests for EpubExporter's content-generation stage (task 03): the full
+ * (unfiltered) outline, position ordering, Act/Chapter page content, the epub-only
  * SmartPunct typography, and the `lang` attribute. Packaging (04) and structural
  * validation (05) are not exercised here.
  *
@@ -137,7 +137,7 @@ class EpubExporterTest extends TestCase
         );
     }
 
-    public function test_it_drops_chapters_with_no_scenes(): void
+    public function test_it_keeps_chapters_with_no_scenes(): void
     {
         $project = Project::factory()->create();
         $act = Act::factory()->for($project)->create();
@@ -145,35 +145,43 @@ class EpubExporterTest extends TestCase
         $withScenes = Chapter::factory()->for($act)->create();
         Scene::factory()->for($withScenes)->create();
 
-        Chapter::factory()->for($act)->create(); // empty chapter, no scenes
+        // An empty chapter is a deliberate placeholder, not an accident: dropping it would
+        // shift every later chapter's number the moment the author starts writing it.
+        $empty = Chapter::factory()->for($act)->create();
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
 
         $this->assertCount(1, $tree);
-        $this->assertCount(1, $tree->first()->chapters);
+        $this->assertCount(2, $tree->first()->chapters);
         $this->assertTrue($tree->first()->chapters->first()->is($withScenes));
+        $this->assertTrue($tree->first()->chapters->last()->is($empty));
     }
 
-    public function test_it_drops_acts_left_with_no_surviving_chapters(): void
+    public function test_it_keeps_acts_whose_chapters_are_all_empty(): void
     {
         $project = Project::factory()->create();
 
-        // Act 1 keeps a chapter with a scene.
-        $keptAct = Act::factory()->for($project)->create();
-        $keptChapter = Chapter::factory()->for($keptAct)->create();
-        Scene::factory()->for($keptChapter)->create();
+        $writtenAct = Act::factory()->for($project)->create();
+        $writtenChapter = Chapter::factory()->for($writtenAct)->create();
+        Scene::factory()->for($writtenChapter)->create();
 
-        // Act 2's only chapter has zero scenes → the whole act must disappear.
-        $emptyAct = Act::factory()->for($project)->create();
-        Chapter::factory()->for($emptyAct)->create();
+        // Act 2's only chapter has zero scenes — the act still exports its divider.
+        $outlinedAct = Act::factory()->for($project)->create();
+        Chapter::factory()->for($outlinedAct)->create();
 
-        $tree = $this->exporter()->filteredTree($project);
+        // Act 3 has no chapters at all — still a divider.
+        $bareAct = Act::factory()->for($project)->create();
 
-        $this->assertCount(1, $tree);
-        $this->assertTrue($tree->first()->is($keptAct));
+        $tree = $this->exporter()->bookTree($project);
+
+        $this->assertSame(
+            [$writtenAct->id, $outlinedAct->id, $bareAct->id],
+            $tree->pluck('id')->all()
+        );
+        $this->assertCount(0, $tree->last()->chapters);
     }
 
-    public function test_the_filtered_tree_is_position_ordered_at_every_level(): void
+    public function test_the_book_tree_is_position_ordered_at_every_level(): void
     {
         $project = Project::factory()->create();
         $act = Act::factory()->for($project)->create();
@@ -193,7 +201,7 @@ class EpubExporterTest extends TestCase
         $chapterOfFirst = Chapter::factory()->for($laterButFirst)->create();
         Scene::factory()->for($chapterOfFirst)->create();
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
 
         $this->assertTrue($tree->first()->is($laterButFirst), 'Acts must sort by position, not insertion.');
 
@@ -202,18 +210,22 @@ class EpubExporterTest extends TestCase
         $this->assertSame(['alpha', 'beta', 'gamma'], $scenes->pluck('contents')->all());
     }
 
-    public function test_act_page_renders_number_and_name_but_never_description(): void
+    public function test_act_page_renders_the_derived_number_not_the_raw_position(): void
     {
         $project = Project::factory()->create();
         $act = Act::factory()->for($project)->create([
             'name' => 'The Gathering Storm',
             'description' => 'SECRET_DESCRIPTION',
         ]);
+        // A gap: the only act in the project, but its `position` is not 1. The rendered
+        // page must show the project-wide RANK (1), never the raw `position` column
+        // (task 07 — continuous numbering, StoryNumbering).
         $act->update(['position' => 2]);
 
         $html = $this->exporter()->renderAct($act, $project);
 
-        $this->assertStringContainsString('Act 2', $html);
+        $this->assertStringContainsString('Act 1', $html);
+        $this->assertStringNotContainsString('Act 2', $html);
         $this->assertStringContainsString('The Gathering Storm', $html);
         $this->assertStringNotContainsString('SECRET_DESCRIPTION', $html);
     }
@@ -239,23 +251,137 @@ class EpubExporterTest extends TestCase
             'name' => 'A Long Expected Party',
             'description' => 'SECRET_DESCRIPTION',
         ]);
+        // A gap: sole chapter in the project, so its derived number is 1 regardless of
+        // `position` (StoryNumbering, task 07).
         $chapter->update(['position' => 3]);
 
         Scene::factory()->for($chapter)->create(['name' => 'SCENE_ONE_TITLE', 'contents' => 'First scene prose.']);
         Scene::factory()->for($chapter)->create(['name' => 'SCENE_TWO_TITLE', 'contents' => 'Second scene prose.']);
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         $html = $this->exporter()->renderChapter($renderedChapter, $project);
 
-        $this->assertStringContainsString('Chapter 3: A Long Expected Party', $html);
+        $this->assertStringContainsString('Chapter 1: A Long Expected Party', $html);
         $this->assertStringContainsString('First scene prose.', $html);
         $this->assertStringContainsString('Second scene prose.', $html);
         $this->assertStringContainsString('<hr/>', $html);
         $this->assertStringNotContainsString('SECRET_DESCRIPTION', $html);
         $this->assertStringNotContainsString('SCENE_ONE_TITLE', $html);
         $this->assertStringNotContainsString('SCENE_TWO_TITLE', $html);
+    }
+
+    // --- Task 07 (continuous-numbering): act/chapter numbers are project-wide ranks ---
+
+    public function test_chapter_numbers_run_continuous_across_an_act_boundary(): void
+    {
+        $project = Project::factory()->create();
+
+        $actOne = Act::factory()->for($project)->create();
+        $actOneChapterOne = Chapter::factory()->for($actOne)->create();
+        $actOneChapterTwo = Chapter::factory()->for($actOne)->create();
+
+        $actTwo = Act::factory()->for($project)->create();
+        $actTwoChapterOne = Chapter::factory()->for($actTwo)->create();
+
+        $tree = $this->exporter()->bookTree($project);
+        $numbering = $tree->pluck('chapters')->flatten();
+
+        // The count does not reset at the act boundary: the first chapter of Act 2 picks
+        // up where Act 1's chapters left off.
+        $this->assertStringContainsString(
+            'Chapter 1',
+            $this->exporter()->renderChapter($numbering->firstWhere('id', $actOneChapterOne->id), $project)
+        );
+        $this->assertStringContainsString(
+            'Chapter 2',
+            $this->exporter()->renderChapter($numbering->firstWhere('id', $actOneChapterTwo->id), $project)
+        );
+        $this->assertStringContainsString(
+            'Chapter 3',
+            $this->exporter()->renderChapter($numbering->firstWhere('id', $actTwoChapterOne->id), $project)
+        );
+    }
+
+    public function test_act_numbers_are_continuous_and_gap_free_after_an_act_is_deleted(): void
+    {
+        $project = Project::factory()->create();
+
+        $first = Act::factory()->for($project)->create(['name' => 'First']);
+        $middle = Act::factory()->for($project)->create(['name' => 'Middle']);
+        $last = Act::factory()->for($project)->create(['name' => 'Last']);
+
+        $middle->delete();
+
+        $survivors = $this->exporter()->bookTree($project->fresh());
+        $this->assertSame([$first->id, $last->id], $survivors->pluck('id')->all());
+
+        // The survivors number 1, 2 — gap-free — never the act with the deleted act's
+        // position left in between (which would read 1, 3).
+        $this->assertStringContainsString('Act 1', $this->exporter()->renderAct($survivors->first(), $project));
+        $this->assertStringContainsString('Act 2', $this->exporter()->renderAct($survivors->last(), $project));
+        $this->assertStringNotContainsString('Act 3', $this->exporter()->renderAct($survivors->last(), $project));
+    }
+
+    public function test_chapter_numbers_stay_gap_free_after_a_chapter_is_deleted_leaving_placeholders(): void
+    {
+        $project = Project::factory()->create();
+        $act = Act::factory()->for($project)->create();
+
+        $first = Chapter::factory()->for($act)->create(['name' => 'Written']);
+        Scene::factory()->for($first)->create();
+
+        $toDelete = Chapter::factory()->for($act)->create(['name' => 'Deleted']);
+
+        // A placeholder with no scenes at all — still exported (task 06) and still counted.
+        $placeholder = Chapter::factory()->for($act)->create(['name' => 'Placeholder']);
+
+        $toDelete->delete();
+
+        $tree = $this->exporter()->bookTree($project->fresh());
+        $survivingChapters = $tree->first()->chapters;
+        $this->assertSame([$first->id, $placeholder->id], $survivingChapters->pluck('id')->all());
+
+        $this->assertStringContainsString(
+            'Chapter 1: Written',
+            $this->exporter()->renderChapter($survivingChapters->first(), $project)
+        );
+        // Gap-free: the placeholder reads 2, not 3 (the deleted chapter's old position).
+        $this->assertStringContainsString(
+            'Chapter 2: Placeholder',
+            $this->exporter()->renderChapter($survivingChapters->last(), $project)
+        );
+    }
+
+    public function test_the_toc_and_nav_agree_with_the_headings_across_an_act_boundary(): void
+    {
+        $project = Project::factory()->create();
+
+        $actOne = Act::factory()->for($project)->create(['name' => 'Act One']);
+        $chapterOne = Chapter::factory()->for($actOne)->create(['name' => 'First']);
+        Scene::factory()->for($chapterOne)->create();
+        $chapterTwo = Chapter::factory()->for($actOne)->create(['name' => 'Second']);
+        Scene::factory()->for($chapterTwo)->create();
+
+        $actTwo = Act::factory()->for($project)->create(['name' => 'Act Two']);
+        $chapterThree = Chapter::factory()->for($actTwo)->create(['name' => 'Third']);
+        Scene::factory()->for($chapterThree)->create();
+
+        $path = $this->exporter()->export($project);
+
+        $nav = (string) $this->entryOf($path, 'OEBPS/epub3toc.xhtml');
+        $toc = (string) $this->entryOf($path, 'OEBPS/toc.xhtml');
+
+        foreach (['Chapter 1: First', 'Chapter 2: Second', 'Chapter 3: Third'] as $label) {
+            $this->assertStringContainsString($label, $nav, "nav label missing: {$label}");
+            $this->assertStringContainsString($label, $toc, "toc label missing: {$label}");
+        }
+
+        $chapterThreeXhtml = (string) $this->entryOf($path, "OEBPS/chapter-{$chapterThree->id}.xhtml");
+        $this->assertStringContainsString('Chapter 3: Third', $chapterThreeXhtml);
+
+        @unlink($path);
     }
 
     public function test_typography_is_smart_in_the_epub_but_scene_rendered_contents_is_unaffected(): void
@@ -267,7 +393,7 @@ class EpubExporterTest extends TestCase
             'contents' => 'A dash -- and a range --- and an ellipsis... and "quotes".',
         ]);
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
 
         // Epub output: SmartPunct converts dashes, ellipsis, and straight quotes.
@@ -300,7 +426,7 @@ class EpubExporterTest extends TestCase
             'contents' => "This is ~~struck~~ text.\n\n- [ ] todo\n- [x] done",
         ]);
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
 
         $this->assertStringContainsString('<del>struck</del>', $html, 'strikethrough must render as <del>, not literal tildes');
@@ -829,12 +955,14 @@ class EpubExporterTest extends TestCase
         }
     }
 
-    public function test_export_throws_epub_export_exception_when_the_tree_is_empty(): void
+    public function test_export_throws_epub_export_exception_when_the_project_has_no_scenes_anywhere(): void
     {
-        // A project whose only act's only chapter has zero scenes: both skip-empty filters
-        // fire and nothing survives.
+        // An outline with acts and chapters but nothing written: the export would be a book
+        // of blank pages, so the guard still refuses — it just triggers on "no scenes"
+        // rather than on an empty (filtered) tree.
         $project = Project::factory()->create();
         $act = Act::factory()->for($project)->create();
+        Chapter::factory()->for($act)->create();
         Chapter::factory()->for($act)->create();
 
         $this->expectException(EpubExportException::class);
@@ -879,7 +1007,7 @@ class EpubExporterTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $actHtml = $this->exporter()->renderAct($tree->first(), $project);
         $chapterHtml = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
 
@@ -896,20 +1024,24 @@ class EpubExporterTest extends TestCase
         $project = Project::factory()->create();
         $act = Act::factory()->for($project)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
+        // The chapter's `position` (12) is deliberately not its display number: it is the
+        // only chapter in the project, so its derived project-wide number is 1
+        // (StoryNumbering, task 07) — proving the heading/label follow the rank, not the
+        // raw `position` column.
         $chapter = Chapter::factory()->for($act)->create(['name' => 'The Storm']);
         $chapter->update(['position' => 12]);
         Scene::factory()->for($chapter)->create();
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         // The enum is the single source of truth: the chapter page heading and the
         // TOC/nav label must always match, format by format.
         $expected = [
-            'chapter_number_title' => 'Chapter 12: The Storm',
-            'number_title' => '12: The Storm',
-            'chapter_number' => 'Chapter 12',
-            'number' => '12',
+            'chapter_number_title' => 'Chapter 1: The Storm',
+            'number_title' => '1: The Storm',
+            'chapter_number' => 'Chapter 1',
+            'number' => '1',
             'title' => 'The Storm',
         ];
 
@@ -928,17 +1060,19 @@ class EpubExporterTest extends TestCase
     {
         $project = Project::factory()->create();
         $act = Act::factory()->for($project)->create();
+        // A gap: sole chapter in the project, `position` 5 but a derived number of 1
+        // (StoryNumbering, task 07).
         $chapter = Chapter::factory()->for($act)->create(['name' => '']);
         $chapter->update(['position' => 5]);
         Scene::factory()->for($chapter)->create();
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
-        // Default format on a nameless chapter: "Chapter 5" with no trailing ": ".
+        // Default format on a nameless chapter: "Chapter 1" with no trailing ": ".
         $html = $this->exporter()->renderChapter($renderedChapter, $project);
-        $this->assertStringContainsString('<h1>Chapter 5</h1>', $html);
-        $this->assertStringNotContainsString('Chapter 5:', $html);
+        $this->assertStringContainsString('<h1>Chapter 1</h1>', $html);
+        $this->assertStringNotContainsString('Chapter 1:', $html);
 
         // Title-only format on a nameless chapter yields no heading element at all.
         $titleOnly = PublicationSetting::factory()->for($project)->make(['chapter_title_format' => 'title']);
@@ -954,7 +1088,7 @@ class EpubExporterTest extends TestCase
         Scene::factory()->for($chapter)->create(['name' => 'The Meeting', 'contents' => 'Prose.']);
         Scene::factory()->for($chapter)->create(['name' => '', 'contents' => 'More prose.']);
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         // Off (default): no scene-title heading at all.
@@ -1002,7 +1136,7 @@ class EpubExporterTest extends TestCase
             'contents' => 'Scene prose.',
         ]);
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         // Off (default): neither description present.
@@ -1027,7 +1161,7 @@ class EpubExporterTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create(['description' => null]);
         Scene::factory()->for($chapter)->create(['description' => null, 'contents' => 'Prose.']);
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         $on = PublicationSetting::factory()->for($project)->make([
@@ -1048,7 +1182,7 @@ class EpubExporterTest extends TestCase
         Scene::factory()->for($chapter)->create(['contents' => 'First.']);
         Scene::factory()->for($chapter)->create(['contents' => 'Second.']);
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         $settings = PublicationSetting::factory()->for($project)->make(['divider_type' => 'decorative']);
@@ -1242,7 +1376,7 @@ class EpubExporterTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        $tree = $this->exporter()->filteredTree($project);
+        $tree = $this->exporter()->bookTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         $default = $this->exporter()->renderChapter($renderedChapter, $project);
