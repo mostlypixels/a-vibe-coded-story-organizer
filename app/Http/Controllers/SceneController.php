@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CodexAsOfResolver;
 use App\Services\SceneReferenceMatcher;
+use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -32,11 +33,38 @@ class SceneController extends Controller
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
         $scenes = $project->sceneQuery()
+            // Only the scene columns: the two joins below are there to sort by, not to
+            // select from, and without this the joined `chapters`/`acts` columns would
+            // overwrite same-named scene attributes on the hydrated models. Safe here
+            // because this query has no withCount/withSum whose aliases a select() would
+            // reset (the chapters index does — see ChapterController::index).
+            ->select('scenes.*')
+            // Joined so the `#` column can sort by story order: act order, then chapter
+            // within the act, then scene within the chapter. Grouping by `chapter_id`
+            // instead — as this did — only matches story order until something is
+            // reordered. `chapters` and `acts` both carry `name` and `position`, so every
+            // column below is table-qualified to stay unambiguous.
+            ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
+            ->join('acts', 'acts.id', '=', 'chapters.act_id')
             ->with('chapter.act', 'event')
-            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
-            ->when($request->filled('chapter'), fn ($query) => $query->where('chapter_id', $request->query('chapter')))
-            ->when($sort === 'position', fn ($query) => $query->orderBy('chapter_id'))
-            ->orderBy($sort, $direction)
+            ->when($request->filled('search'), fn ($query) => $query->where('scenes.name', 'like', '%'.$request->query('search').'%'))
+            ->when($request->filled('chapter'), fn ($query) => $query->where('scenes.chapter_id', $request->query('chapter')))
+            ->when(
+                $sort === 'position',
+                // $direction is applied to every key, so descending reads as the story
+                // backwards rather than acts ascending with scenes reversed inside them.
+                // The id tie-breaks are part of the contract: `position` has no unique
+                // constraint, so two siblings can share one and must still order stably.
+                fn ($query) => $query
+                    ->orderBy('acts.position', $direction)
+                    ->orderBy('acts.id', $direction)
+                    ->orderBy('chapters.position', $direction)
+                    ->orderBy('chapters.id', $direction)
+                    ->orderBy('scenes.position', $direction)
+                    ->orderBy('scenes.id', $direction),
+                // $sort is allow-listed by resolveSorting(), so it is safe to qualify.
+                fn ($query) => $query->orderBy('scenes.'.$sort, $direction)
+            )
             ->get();
 
         return view('scenes.index', [
@@ -45,6 +73,10 @@ class SceneController extends Controller
             'scenes' => $scenes,
             'sort' => $sort,
             'direction' => $direction,
+            // Built from the whole project, never the filtered/paginated $scenes
+            // above — a scenes list filtered to one chapter must still start
+            // counting from that chapter's true project-wide number.
+            'numbering' => StoryNumbering::forProject($project),
         ]);
     }
 
@@ -90,6 +122,12 @@ class SceneController extends Controller
 
         $scene->load('event', 'mentionedEvents');
 
+        // This scene's rank among its chapter's siblings, for the "2 of 5" half of
+        // the position hint — a gap-free rank, not the raw (possibly gappy)
+        // `position` column. Same (position, id) tie-break as StoryNumbering, one
+        // level deep.
+        $siblingIds = $scene->chapter->scenes()->orderBy('position')->orderBy('id')->pluck('id');
+
         return view('scenes.edit', [
             'scene' => $scene,
             'project' => $project,
@@ -97,6 +135,9 @@ class SceneController extends Controller
             'events' => $this->eventsFor($project),
             'windowMin' => $project->startEvent()->event_datetime->format('Y-m-d\TH:i'),
             'windowMax' => $project->endEvent()->event_datetime->format('Y-m-d\TH:i'),
+            'numbering' => StoryNumbering::forProject($project),
+            'positionInChapter' => $siblingIds->search($scene->id) + 1,
+            'totalInChapter' => $siblingIds->count(),
             // Codex values resolved as of the scene's "happens during" event (null when the
             // scene is unassigned → the panel shows the undetermined state). Pre-computed here
             // so no timeline math or N+1 resolution happens in Blade.

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Scene;
+use App\Support\StoryNumbering;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Response;
 
@@ -48,6 +49,12 @@ class SharedSceneController extends Controller
             ], status: 410);
         }
 
-        return view('shared.scenes.show', ['scene' => $scene]);
+        return view('shared.scenes.show', [
+            'scene' => $scene,
+            // One extra query (two indexed columns, over one project) to derive
+            // the continuous chapter number — accepted per expanded/ui.md; measure
+            // before adding a cache.
+            'numbering' => StoryNumbering::forProject($scene->chapter->act->project),
+        ]);
     }
 }

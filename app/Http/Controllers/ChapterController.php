@@ -13,6 +13,7 @@ use App\Http\Requests\UpdateChapterRequest;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Services\CoverImageService;
+use App\Support\StoryNumbering;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,15 +37,35 @@ class ChapterController extends Controller
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
         $chapters = $project->chapterQuery()
+            // Joined so the `#` column can sort by story order (act order, then position
+            // within the act). Grouping by `act_id` instead — as this did — only matches
+            // story order until someone reorders an act. Because `acts` carries `name` and
+            // `position` columns of its own, every column below is table-qualified: the
+            // join makes bare `name`/`position` ambiguous (see Project::chapterQuery()).
+            ->join('acts', 'acts.id', '=', 'chapters.act_id')
             ->with('act')
             ->withCount('scenes')
             // One grouped query for the whole page (word-count spec, task 9) — never a
             // per-row sum() in the view, which would be an N+1 over the chapter list.
+            // Both aggregates add `chapters.*` themselves, so this query must never gain
+            // a select() *after* them: that resets the column list and drops their aliases.
             ->withSum('scenes as word_count', 'word_count')
-            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
-            ->when($request->filled('act'), fn ($query) => $query->where('act_id', $request->query('act')))
-            ->when($sort === 'position', fn ($query) => $query->orderBy('act_id'))
-            ->orderBy($sort, $direction)
+            ->when($request->filled('search'), fn ($query) => $query->where('chapters.name', 'like', '%'.$request->query('search').'%'))
+            ->when($request->filled('act'), fn ($query) => $query->where('chapters.act_id', $request->query('act')))
+            ->when(
+                $sort === 'position',
+                // $direction is applied to every key, so descending reads as the story
+                // backwards rather than acts ascending with chapters reversed inside them.
+                // The id tie-breaks are part of the contract: `position` has no unique
+                // constraint, so two siblings can share one and must still order stably.
+                fn ($query) => $query
+                    ->orderBy('acts.position', $direction)
+                    ->orderBy('acts.id', $direction)
+                    ->orderBy('chapters.position', $direction)
+                    ->orderBy('chapters.id', $direction),
+                // $sort is allow-listed by resolveSorting(), so it is safe to qualify.
+                fn ($query) => $query->orderBy('chapters.'.$sort, $direction)
+            )
             ->get();
 
         // withSum leaves word_count as NULL for a chapter with no scenes (SQL SUM has
@@ -67,6 +88,10 @@ class ChapterController extends Controller
             'destinationChapters' => $destinationChapters,
             'sort' => $sort,
             'direction' => $direction,
+            // Built from the whole project, never the filtered/paginated $chapters
+            // above — a chapters list filtered to one act must still start counting
+            // from that act's true project-wide number.
+            'numbering' => StoryNumbering::forProject($project),
         ]);
     }
 
@@ -106,10 +131,18 @@ class ChapterController extends Controller
             ->orderBy('position')
             ->get();
 
+        // This chapter's rank among its act's siblings, for the "2 of 5" half of the
+        // position hint — a gap-free rank, not the raw (possibly gappy) `position`
+        // column. Same (position, id) tie-break as StoryNumbering, one level deep.
+        $siblingIds = $chapter->act->chapters()->orderBy('position')->orderBy('id')->pluck('id');
+
         return view('chapters.edit', [
             'chapter' => $chapter,
             'project' => $project->load('acts'),
             'destinations' => $destinations,
+            'numbering' => StoryNumbering::forProject($project),
+            'positionInAct' => $siblingIds->search($chapter->id) + 1,
+            'totalInAct' => $siblingIds->count(),
         ]);
     }
 

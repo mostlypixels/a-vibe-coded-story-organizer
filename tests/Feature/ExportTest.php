@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ChapterTitleFormat;
 use App\Enums\CodexEntryType;
 use App\Enums\RevisionOrigin;
 use App\Enums\SceneStatus;
@@ -14,6 +15,7 @@ use App\Models\CodexMedia;
 use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
+use App\Models\PublicationSetting;
 use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\Tag;
@@ -1014,6 +1016,119 @@ class ExportTest extends TestCase
         $this->assertStringContainsString('<hr>', $page);
         $this->assertStringNotContainsString('SCENEONETITLE', $page);
         $this->assertStringNotContainsString('SCENETWOTITLE', $page);
+
+        $zip->close();
+    }
+
+    // ---------------------------------------------------------------------
+    // Continuous numbering in the book/ layer (task 08, continuous-numbering)
+    // ---------------------------------------------------------------------
+
+    public function test_book_index_shows_continuous_chapter_numbers_across_the_act_boundary(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $actOne = Act::factory()->for($project)->create(['name' => 'The Beginning', 'position' => 1]);
+        Chapter::factory()->for($actOne)->create(['name' => 'Opening Chapter', 'position' => 1]);
+        Chapter::factory()->for($actOne)->create(['name' => 'Rising Action', 'position' => 2]);
+
+        $actTwo = Act::factory()->for($project)->create(['name' => 'The Reckoning', 'position' => 2]);
+        Chapter::factory()->for($actTwo)->create(['name' => 'The Climax', 'position' => 1]);
+
+        $zip = $this->exportZip($user, $project);
+
+        $index = $zip->getFromName('book/index.html');
+
+        // Default format is "Chapter N: Name" — chapter numbers run 1..3 straight
+        // through the act boundary, never resetting to 1 for act two.
+        $this->assertStringContainsString('Chapter 1: Opening Chapter', $index);
+        $this->assertStringContainsString('Chapter 2: Rising Action', $index);
+        $this->assertStringContainsString('Chapter 3: The Climax', $index);
+
+        // Acts number too.
+        $this->assertStringContainsString('Act 1: The Beginning', $index);
+        $this->assertStringContainsString('Act 2: The Reckoning', $index);
+
+        $zip->close();
+    }
+
+    public function test_chapter_page_heading_carries_the_continuous_number(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        Chapter::factory()->for($actOne)->create(['name' => 'First', 'position' => 1]);
+
+        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        $chapter = Chapter::factory()->for($actTwo)->create(['name' => 'Second Act, Third Chapter', 'position' => 1]);
+        Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
+
+        $zip = $this->exportZip($user, $project);
+
+        // Act two's only chapter is still the project's SECOND chapter overall, even
+        // though its file lives at book/02/01.html (per-act file identity).
+        $page = $zip->getFromName('book/02/01.html');
+        $this->assertStringContainsString('Chapter 2: Second Act, Third Chapter', $page);
+
+        $zip->close();
+    }
+
+    /**
+     * Every ChapterTitleFormat drives the website's book/ output exactly the way it
+     * drives the EPUB — one setting, both exports, checked in both the TOC and the
+     * chapter page heading.
+     */
+    public function test_every_chapter_title_format_drives_the_website_output(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $chapter = Chapter::factory()->for($act)->create(['name' => 'The Storm', 'position' => 1]);
+        Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
+
+        $expectations = [
+            ChapterTitleFormat::ChapterNumberTitle->value => 'Chapter 1: The Storm',
+            ChapterTitleFormat::NumberTitle->value => '1: The Storm',
+            ChapterTitleFormat::ChapterNumber->value => 'Chapter 1',
+            ChapterTitleFormat::Number->value => '1',
+            ChapterTitleFormat::Title->value => 'The Storm',
+        ];
+
+        foreach ($expectations as $format => $expected) {
+            PublicationSetting::query()->where('project_id', $project->id)->delete();
+            PublicationSetting::factory()->for($project)->create(['chapter_title_format' => $format]);
+
+            $zip = $this->exportZip($user, $project);
+
+            $index = $zip->getFromName('book/index.html');
+            $page = $zip->getFromName('book/01/01.html');
+
+            $this->assertStringContainsString($expected, $index, "format [{$format}] did not appear in the TOC.");
+            $this->assertStringContainsString($expected, $page, "format [{$format}] did not appear on the chapter page.");
+
+            $zip->close();
+        }
+    }
+
+    public function test_a_nameless_chapter_under_the_title_format_still_gets_a_toc_label(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $chapter = Chapter::factory()->for($act)->create(['name' => '', 'position' => 1]);
+        Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
+
+        PublicationSetting::factory()->for($project)->create(['chapter_title_format' => ChapterTitleFormat::Title]);
+
+        $zip = $this->exportZip($user, $project);
+
+        // The TOC falls back to "Chapter 1" rather than an empty link label.
+        $index = $zip->getFromName('book/index.html');
+        $this->assertStringContainsString('Chapter 1', $index);
 
         $zip->close();
     }

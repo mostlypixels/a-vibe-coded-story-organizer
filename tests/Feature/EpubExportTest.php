@@ -28,8 +28,8 @@ class EpubExportTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Give a project one act → chapter → scene so it survives the exporter's
-     * skip-empty filter and actually produces a package.
+     * Give a project one act → chapter → scene so it clears the exporter's
+     * "no scenes anywhere" guard and actually produces a package.
      */
     private function seedExportableContent(Project $project): void
     {
@@ -204,7 +204,7 @@ class EpubExportTest extends TestCase
     public function test_an_empty_project_redirects_back_with_an_error_instead_of_downloading(): void
     {
         $user = User::factory()->create();
-        // No acts/chapters/scenes: nothing survives the skip-empty filter.
+        // No acts/chapters/scenes at all.
         $project = Project::factory()->for($user)->create();
 
         $response = $this->actingAs($user)
@@ -216,8 +216,9 @@ class EpubExportTest extends TestCase
     }
 
     /**
-     * A chapter with no scenes is filtered out too — if that leaves the whole project
-     * empty, it is the same user-facing redirect, not a 500.
+     * An outline with no prose in it anywhere: the acts and chapters are exported when at
+     * least one scene exists, but with zero scenes the book would be blank pages, so it is
+     * the same user-facing redirect, not a 500.
      */
     public function test_a_project_whose_only_chapter_has_no_scenes_redirects_back(): void
     {
@@ -232,6 +233,83 @@ class EpubExportTest extends TestCase
 
         $response->assertRedirect(route('admin.data.export-ebook'));
         $response->assertSessionHasErrors('project_id');
+    }
+
+    /**
+     * The heart of "exports omit nothing": one written chapter among nine placeholders
+     * exports all ten chapter pages, so the exported book's chapter numbers can never
+     * disagree with the app's.
+     */
+    public function test_empty_chapters_export_as_heading_only_pages_alongside_the_written_ones(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create(['position' => 1]);
+
+        $written = Chapter::factory()->for($act)->create(['position' => 1, 'name' => 'The Written One']);
+        Scene::factory()->for($written)->create(['position' => 1, 'contents' => 'PROSE_MARKER']);
+
+        $placeholders = [];
+        for ($position = 2; $position <= 10; $position++) {
+            $placeholders[] = Chapter::factory()->for($act)->create([
+                'position' => $position,
+                'name' => "Placeholder {$position}",
+            ]);
+        }
+
+        $response = $this->actingAs($user)
+            ->post(route('admin.data.export.epub'), ['project_id' => $project->id]);
+
+        $response->assertOk();
+
+        $chapterPages = $this->packagedFiles($response, '#chapter-\d+\.xhtml$#');
+        $this->assertCount(10, $chapterPages, 'every chapter must export, written or not');
+
+        // Filenames stay id-keyed, never number-keyed.
+        $this->assertArrayHasKey("OEBPS/chapter-{$written->id}.xhtml", $chapterPages);
+
+        foreach ($placeholders as $placeholder) {
+            $page = $chapterPages["OEBPS/chapter-{$placeholder->id}.xhtml"] ?? null;
+            $this->assertNotNull($page, "chapter {$placeholder->id} must have its own page");
+            $this->assertStringContainsString("Chapter {$placeholder->position}: {$placeholder->name}", $page);
+            // A heading and nothing else — no app-written "not written yet" filler.
+            $this->assertStringNotContainsString('<p>', $page);
+            $this->assertStringNotContainsString('<hr/>', $page);
+        }
+    }
+
+    /**
+     * An act whose chapters are all empty still exports its divider page — the act numbers
+     * in the book stay in step with the app's for the same reason chapter numbers do.
+     */
+    public function test_an_act_with_only_empty_chapters_still_exports_its_divider(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $written = Act::factory()->for($project)->create(['position' => 1, 'name' => 'Written Act']);
+        $chapter = Chapter::factory()->for($written)->create(['position' => 1]);
+        Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
+
+        $outlined = Act::factory()->for($project)->create(['position' => 2, 'name' => 'Outlined Act']);
+        Chapter::factory()->for($outlined)->create(['position' => 1]);
+
+        $bare = Act::factory()->for($project)->create(['position' => 3, 'name' => 'Bare Act']);
+
+        $response = $this->actingAs($user)
+            ->post(route('admin.data.export.epub'), ['project_id' => $project->id]);
+
+        $response->assertOk();
+
+        $actPages = $this->packagedFiles($response, '#act-\d+\.xhtml$#');
+        $this->assertCount(3, $actPages);
+
+        foreach ([$written, $outlined, $bare] as $act) {
+            $page = $actPages["OEBPS/act-{$act->id}.xhtml"] ?? null;
+            $this->assertNotNull($page, "act {$act->id} must have its own divider page");
+            $this->assertStringContainsString("Act {$act->position}", $page);
+            $this->assertStringContainsString($act->name, $page);
+        }
     }
 
     // ---------------------------------------------------------------------

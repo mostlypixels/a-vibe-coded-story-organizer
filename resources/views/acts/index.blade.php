@@ -36,7 +36,7 @@
 
                 @forelse ($acts as $act)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $act->position }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $numbering->act($act) }}</td>
                         <td class="px-4 py-3">
                             <a href="{{ route('acts.edit', $act) }}" class="font-semibold text-content hover:text-link">{{ $act->name }}</a>
                             @if ($act->description)

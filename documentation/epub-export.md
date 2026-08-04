@@ -49,6 +49,34 @@ converter.
 > the produced `.epub` and assert on its contents — `EpubExportTest` has the `ZipArchive`
 > helper for it.
 
+## Continuous numbers and the full outline
+
+`export()` builds `$tree` from `bookTree()` and derives `$numbering =
+StoryNumbering::fromActs($tree)` once, threading it through every render/nav-label call —
+so every act and chapter number in the package comes from that one tree. See
+[`architecture.md` → Continuous numbering](architecture.md#continuous-numbering) for what
+`StoryNumbering` is; this section covers what changed in the exporter to make its numbers
+match the app's.
+
+- **`bookTree()` (formerly `filteredTree()`) drops nothing.** A chapter with no scenes exports
+  as a heading-only page (its number and title, no body); an act with no chapters keeps its
+  divider page. Before this, the skip-empty filter meant a chapter's exported number shifted
+  the moment an author filled in a placeholder that used to be skipped — export numbers now
+  always equal app numbers.
+- **The refusal guard moved.** `export()` no longer refuses because the tree came back empty
+  after filtering — it refuses only when `hasAnyScene($tree)` is false, i.e. the project has
+  no scene anywhere. A `EpubExportException` either way; the message is unchanged. Without
+  this, a brand-new outline (acts and chapters, no prose yet) would export as a book of blank
+  pages.
+- **The `position` view key is `number` throughout the export layer** — `actViewData()`,
+  `chapterViewData()`, `actNavTitle()`, `chapterNavTitle()`, and every partial that renders a
+  heading. `ChapterTitleFormat::format(int $number, ?string $name)` takes the same derived
+  number the website book layer uses (below), so a format choice reads identically in both
+  exports.
+- **`sceneNavTitle()` is the one nav label left alone** — still `"Scene {$scene->position}"`,
+  per-chapter. It is the only place a scene number reaches a reader, and a project-wide count
+  has no meaning under a chapter heading.
+
 ## `PublicationSetting` drives everything
 
 The whole export is parameterised by one lazily-resolved `PublicationSetting`

@@ -60,17 +60,53 @@ Each of `Act`, `Chapter`, `Scene` has a `position` integer, auto-assigned as
 `max(position) + 1` scoped to its parent (project for acts, act for chapters, chapter for
 scenes) via a `creating` hook in the model's `booted()` method.
 
-- Titles are freeform and must **not** encode the number (no "Act 1" in the name). The
-  position is the number, rendered separately in a `#` column.
+- Titles are freeform and must **not** encode a number (no "Act 1" in the name). The `#`
+  column renders the derived project-wide **number**, not `position` directly — see
+  *Continuous numbering* below.
 - Reordering swaps `position` with the adjacent sibling via `moveUp` / `moveDown` controller
   actions (`PATCH /acts/{act}/move-up`, etc.). There is no drag-and-drop.
 - Index views only show move buttons when the list is genuinely ordered by position for a
-  single parent (i.e. filtered to one act/chapter), because numbering restarts per parent.
+  single parent (i.e. filtered to one act/chapter), because `position` restarts per parent.
 
 > [!WARNING]
 > **Seeding caveat.** `DatabaseSeeder` uses `WithoutModelEvents`, which suppresses the
 > `creating` hook. `MelusineSeeder` therefore sets `position` explicitly (and creates the
 > main plotline manually) — if you add seeded acts/chapters/scenes, set `position` yourself.
+
+## Continuous numbering
+
+Every act, chapter and scene has two integers that deliberately disagree: `position` (above —
+per-parent, gappy, the only thing move-up/move-down writes) and **number** — project-wide,
+gap-free, what the `#` column, the edit-page hints, the Story overview and both exports
+actually display. `number` is never stored; it is derived at read time by
+`App\Support\StoryNumbering`, which ranks every act by `(position, id)`, then every chapter
+continuously across every act boundary, then every scene continuously across every chapter
+boundary. `StoryNumbering::forProject($project)` loads the tree itself;
+`StoryNumbering::fromActs($acts)` derives from a tree the caller already has (the Story
+overview and both exporters, which have already eager-loaded it) to avoid loading it twice.
+
+> [!IMPORTANT]
+> The map must always be built from the **whole** project tree, never a filtered or paginated
+> subset — filtering a list to one act must never change the numbers it shows. Looking up an
+> id the map wasn't built with is a bug, not a blank cell: `StoryNumbering` throws.
+
+Three sites deliberately keep using `position` (or their own numbering) and must **not** be
+fed a derived number:
+
+- **Static-site chapter hrefs** — `StaticSiteExporter::chapterHref()` builds
+  `%02d/%02d.html` from raw act position and per-act chapter position. That URL is file
+  identity; a continuous number would break every previously exported link.
+- **The archive `data/` layer** — the export/import round-trip still carries `position`
+  verbatim, so import stays unaffected.
+- **EPUB scene nav labels** — `sceneNavTitle()` keeps an untitled scene's per-chapter "Scene
+  3" label; a project-wide count means nothing to a reader under a chapter heading.
+
+> [!NOTE]
+> Before this feature the EPUB silently dropped chapters with no scenes (and acts left with no
+> surviving chapters), so an unwritten placeholder's number shifted the moment it got filled
+> in. Both exports now publish the full outline — a heading-only page for an empty chapter, a
+> divider for an empty act — so export numbers always equal app numbers. See
+> [`epub-export.md`](epub-export.md#continuous-numbers-and-the-full-outline).
 
 ## Routing (shallow nested resources)
 
@@ -339,6 +375,10 @@ is the architectural overview.
   export renders Markdown to HTML — through the shared `Scene::renderedContents` accessor (the same
   render path the in-app views use), via Blade templates under `resources/views/exports/book/`
   rendered to string (HTML is never string-built in the service). Never blur the two.
+- **The `book/` TOC and chapter headings carry numbers** — the project-wide, gap-free number
+  from [`StoryNumbering`](#continuous-numbering), formatted through the same
+  `ChapterTitleFormat` setting the EPUB obeys. `chapterHref()` (file identity, `%02d/%02d.html`)
+  is untouched — it keeps reading raw `position`, never the derived number.
 - **The README's plain-text description** comes from `App\Support\RichText::toPlainText()`, the
   rich-text module's home for stripping stored HTML to prose — the exporter calls it rather than
   owning HTML-shape knowledge that has nothing to do with building a zip. Its sibling

@@ -32,7 +32,7 @@
                         @foreach ($acts as $act)
                             <div>
                                 <a href="#act-{{ $act->id }}" class="font-semibold text-content hover:text-content-muted">
-                                    {{ __('Act :number', ['number' => $act->position]) }} &mdash; {{ $act->name }}
+                                    {{ __('Act :number', ['number' => $numbering->act($act)]) }} &mdash; {{ $act->name }}
                                 </a>
 
                                 @if ($act->chapters->isNotEmpty())
@@ -40,7 +40,7 @@
                                         @foreach ($act->chapters as $chapter)
                                             <li>
                                                 <a href="#chapter-{{ $chapter->id }}" class="text-sm text-content-muted hover:text-content">
-                                                    {{ __('Chapter :number', ['number' => $chapter->position]) }} &mdash; {{ $chapter->name }}
+                                                    {{ __('Chapter :number', ['number' => $numbering->chapter($chapter)]) }} &mdash; {{ $chapter->name }}
                                                 </a>
                                             </li>
                                         @endforeach
@@ -63,7 +63,7 @@
                              was renamed every time the writer added a sentence. --}}
                         <div class="flex items-center justify-between gap-4 text-nav-content bg-nav rounded-md px-4 py-2">
                             <h2 id="act-{{ $act->id }}" class="text-2xl font-bold scroll-mt-16">
-                                {{ __('Act :number', ['number' => $act->position]) }} &mdash; {{ $act->name }}
+                                {{ __('Act :number', ['number' => $numbering->act($act)]) }} &mdash; {{ $act->name }}
                             </h2>
                             {{-- Scenes are already eager-loaded (StoryController::index), so this
                                  ->sum() over the loaded chapters/scenes collections is free — no query. --}}
@@ -79,7 +79,7 @@
                                 {{-- Sibling, not child, for the same reason as the act bar above. --}}
                                 <div class="flex items-center justify-between gap-4">
                                     <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-content scroll-mt-16">
-                                        {{ __('Chapter :number', ['number' => $chapter->position]) }} &mdash; {{ $chapter->name }}
+                                        {{ __('Chapter :number', ['number' => $numbering->chapter($chapter)]) }} &mdash; {{ $chapter->name }}
                                     </h3>
                                     {{-- $chapter->scenes is already eager-loaded, so this ->sum() is free. --}}
                                     <x-word-count :count="$chapter->scenes->sum('word_count')" class="shrink-0" />
@@ -92,6 +92,7 @@
                                                 <svg class="h-4 w-4 fill-current text-content-muted transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                                 </svg>
+                                                <span data-scene-number class="text-content-subtle">{{ $numbering->scene($scene) }}.</span>
                                                 {{ $scene->name }}
                                             </button>
 

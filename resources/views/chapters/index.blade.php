@@ -45,7 +45,7 @@
 
                 @forelse ($chapters as $chapter)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $chapter->position }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $numbering->chapter($chapter) }}</td>
                         <td class="px-4 py-3">
                             <a href="{{ route('chapters.edit', $chapter) }}" class="font-semibold text-content hover:text-link">{{ $chapter->name }}</a>
                             @if ($chapter->description)

@@ -14,7 +14,10 @@
                 <div>
                     <x-input-label for="name" :value="__('Title')" />
                     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $act->name)" placeholder="{{ __('e.g. The Curse of Pressine') }}" required autofocus />
-                    <p class="mt-1 text-sm text-content-muted">{{ __('Currently act #:position. Use the move up/down buttons on the list to reorder.', ['position' => $act->position]) }}</p>
+                    <p class="mt-1 text-sm text-content-muted">{{ __('Act :number of :total. Use the move up/down buttons on the list to reorder.', [
+                        'number' => $numbering->act($act),
+                        'total' => $totalActs,
+                    ]) }}</p>
                     <x-input-error :messages="$errors->get('name')" class="mt-2" />
                 </div>
 

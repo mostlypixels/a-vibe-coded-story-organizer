@@ -10,7 +10,7 @@
      page-breaks between chapters within the combined page.
 
      Scene anchors are not emitted here: "Acts" depth never links to scenes. --}}
-@extends('exports.epub.layout', ['title' => 'Act '.$position])
+@extends('exports.epub.layout', ['title' => 'Act '.$number])
 
 @section('content')
     @include('exports.epub.partials.act-body')

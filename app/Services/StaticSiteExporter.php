@@ -10,11 +10,13 @@ use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\Event;
 use App\Models\Project;
+use App\Models\PublicationSetting;
 use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\Tag;
 use App\Support\AutosavableFields;
 use App\Support\RichText;
+use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -591,10 +593,21 @@ class StaticSiteExporter
      * boundaries; the first chapter's prev and the last chapter's next link back to
      * the TOC. HTML lives in the Blade templates under resources/views/exports/book
      * (guidelines: no string-built HTML in the service).
+     *
+     * Act and chapter numbers (task 08, continuous-numbering) are derived once from
+     * this same loaded tree via {@see StoryNumbering} and threaded through both the
+     * TOC and the chapter pages, so the two can never disagree. The chapter heading
+     * is formatted by the project's {@see PublicationSetting::$chapter_title_format}
+     * — the same setting that drives the EPUB — so both exports agree on how a
+     * chapter number is displayed. `chapterHref()` stays untouched: it is file
+     * identity (folder = act position, file = per-act chapter position), not a
+     * display number, and must never shift a previously exported URL.
      */
     private function addBook(ZipArchive $zip, Project $project): void
     {
         $acts = $this->loadBookTree($project);
+        $settings = $project->publicationSettingOrDefault();
+        $numbering = StoryNumbering::fromActs($acts);
 
         // A flat, ordered chapter sequence (all chapters across all acts, in reading
         // order) built once so both the TOC and prev/next navigation share it.
@@ -605,7 +618,7 @@ class StaticSiteExporter
             }
         }
 
-        $this->addBookIndex($zip, $project, $acts);
+        $this->addBookIndex($zip, $project, $acts, $settings, $numbering);
 
         $lastIndex = count($sequence) - 1;
         foreach ($sequence as $index => $item) {
@@ -623,7 +636,9 @@ class StaticSiteExporter
                 : '../index.html';
 
             $html = view('exports.book.chapter', [
-                'chapterTitle' => $chapter->name,
+                // Same formatted heading as the TOC entry, built from the
+                // project-wide chapter number, never $chapter->position.
+                'chapterTitle' => $settings->chapter_title_format->format($numbering->chapter($chapter), $chapter->name),
                 // Render Markdown → HTML through the same Scene::renderedContents
                 // accessor the app's views use, so the reading layer and the app can
                 // never drift apart on how scene contents are rendered.
@@ -645,18 +660,18 @@ class StaticSiteExporter
      *
      * @param  Collection<int, Act>  $acts
      */
-    private function addBookIndex(ZipArchive $zip, Project $project, Collection $acts): void
+    private function addBookIndex(ZipArchive $zip, Project $project, Collection $acts, PublicationSetting $settings, StoryNumbering $numbering): void
     {
         $toc = [];
         foreach ($acts as $act) {
             $chapters = [];
             foreach ($act->chapters as $chapter) {
                 $chapters[] = [
-                    'title' => $chapter->name,
+                    'title' => $this->chapterTocTitle($chapter, $settings, $numbering),
                     'href' => $this->chapterHref($act, $chapter),
                 ];
             }
-            $toc[] = ['title' => $act->name, 'chapters' => $chapters];
+            $toc[] = ['title' => $this->actTocTitle($act, $numbering), 'chapters' => $chapters];
         }
 
         $html = view('exports.book.index', [
@@ -665,6 +680,38 @@ class StaticSiteExporter
         ])->render();
 
         $this->addFromString($zip, 'book/index.html', $html);
+    }
+
+    /**
+     * The TOC label for an Act: "Act {number}: {name}", or just "Act {number}"
+     * when the Act has no name. `number` is the project-wide, gap-free rank from
+     * {@see StoryNumbering} — never `$act->position`, which is a per-project but
+     * gappy sort key. Mirrors {@see EpubExporter}'s own act nav label so both
+     * exports agree on how an act number reads.
+     */
+    private function actTocTitle(Act $act, StoryNumbering $numbering): string
+    {
+        $number = $numbering->act($act);
+
+        return filled($act->name)
+            ? "Act {$number}: {$act->name}"
+            : "Act {$number}";
+    }
+
+    /**
+     * The TOC label for a Chapter, formatted by the project's configured
+     * {@see ChapterTitleFormat} — the same setting/value used for the chapter
+     * page's own heading, so the two can never drift. Falls back to
+     * "Chapter {number}" when the format is "Title" and the chapter has no name
+     * (the "Title" format on its own would otherwise render a blank listing row;
+     * see {@see EpubExporter::chapterNavTitle()} for the same reasoning).
+     */
+    private function chapterTocTitle(Chapter $chapter, PublicationSetting $settings, StoryNumbering $numbering): string
+    {
+        $number = $numbering->chapter($chapter);
+        $label = $settings->chapter_title_format->format($number, $chapter->name);
+
+        return $label !== '' ? $label : "Chapter {$number}";
     }
 
     /**

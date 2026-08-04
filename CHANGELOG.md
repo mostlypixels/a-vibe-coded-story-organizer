@@ -17,6 +17,25 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-03 — Continuous chapter and act numbering
+
+### Added
+
+- The scenes list shows each scene's position within its chapter, next to the chapter column.
+- The website book export now shows chapter and act numbers, matching the ebook export.
+
+### Changed
+
+- Act, chapter and scene numbers now count continuously across the whole project and never
+  show a gap, instead of resetting at each act or chapter.
+- The ebook export no longer skips chapters or acts with no scenes — it now includes them as
+  placeholder pages.
+
+### Fixed
+
+- Sorting the chapters and scenes list by `#` now follows story order, even after an act has
+  been reordered.
+
 ## 2026-08-03 — Remember the active project (#73)
 
 ### Added

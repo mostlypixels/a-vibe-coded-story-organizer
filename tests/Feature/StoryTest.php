@@ -241,4 +241,114 @@ class StoryTest extends TestCase
         // acts x 3 chapters x 3 scenes into totals must not add any more.
         $this->assertCount(1, $sceneQueries);
     }
+
+    // ---------------------------------------------------------------------
+    // Continuous numbering (continuous-numbering, task 4) — the story
+    // overview's TOC, headings and per-scene labels take their numbers from
+    // StoryNumbering::fromActs() instead of the raw, per-parent `position`.
+    // ---------------------------------------------------------------------
+
+    public function test_toc_and_headings_show_continuous_chapter_numbers_across_the_act_boundary(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $actOne = Act::factory()->for($project)->create();
+        Chapter::factory()->for($actOne)->create();
+        Chapter::factory()->for($actOne)->create();
+
+        // Act two's first chapter is chapter 3 project-wide, even though its
+        // own `position` within act two is 1.
+        $actTwo = Act::factory()->for($project)->create();
+        Chapter::factory()->for($actTwo)->create();
+
+        $content = $this->actingAs($user)
+            ->get(route('projects.story.index', $project))
+            ->assertOk()
+            ->getContent();
+
+        // Both the TOC and the body heading render "Chapter 3" for the
+        // chapter that leads act two — twice, once in each location.
+        $this->assertSame(2, substr_count($content, 'Chapter 3'));
+        $this->assertStringNotContainsString('Chapter 4', $content);
+    }
+
+    public function test_act_numbers_close_the_gap_left_by_a_deleted_act(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $actOne = Act::factory()->for($project)->create(['name' => 'Act One']);
+        $actTwo = Act::factory()->for($project)->create(['name' => 'Act Two']);
+        $actThree = Act::factory()->for($project)->create(['name' => 'Act Three']);
+
+        $actTwo->delete();
+
+        // `position` is untouched by the deletion — act three keeps its
+        // original, now-gappy position — but the rendered number compacts.
+        $this->assertSame(3, $actThree->fresh()->position);
+
+        $content = $this->actingAs($user)
+            ->get(route('projects.story.index', $project))
+            ->assertOk()
+            ->getContent();
+
+        // Both the TOC and the body heading render "Act 2" for the act that
+        // is now second, even though its own `position` is still 3.
+        $this->assertSame(2, substr_count($content, 'Act 2'));
+        $this->assertStringContainsString('Act Three', $content);
+        $this->assertStringNotContainsString('Act 3 ', $content);
+    }
+
+    public function test_scene_numbers_render_and_run_unbroken_across_chapters(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+
+        $chapterOne = Chapter::factory()->for($act)->create();
+        Scene::factory()->for($chapterOne)->create(['name' => 'Scene A']);
+        Scene::factory()->for($chapterOne)->create(['name' => 'Scene B']);
+
+        $chapterTwo = Chapter::factory()->for($act)->create();
+        Scene::factory()->for($chapterTwo)->create(['name' => 'Scene C']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.story.index', $project))
+            ->assertOk();
+
+        $response->assertSeeInOrder([
+            'data-scene-number', '1.', 'Scene A',
+            'data-scene-number', '2.', 'Scene B',
+            'data-scene-number', '3.', 'Scene C',
+        ], escape: false);
+    }
+
+    /**
+     * `StoryNumbering::fromActs()` derives from the tree StoryController::index()
+     * already eager-loaded — it must fire zero further queries against the
+     * scenes table, on top of the one guarded by
+     * test_totals_add_no_queries_against_the_scenes_table() above.
+     */
+    public function test_deriving_scene_numbers_adds_no_extra_queries_against_the_scenes_table(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        Scene::factory()->count(3)->for($chapter)->create();
+
+        $sceneQueries = [];
+        DB::listen(function ($query) use (&$sceneQueries) {
+            if (str_contains($query->sql, '"scenes"')) {
+                $sceneQueries[] = $query->sql;
+            }
+        });
+
+        $this->actingAs($user)
+            ->get(route('projects.story.index', $project))
+            ->assertOk();
+
+        $this->assertCount(1, $sceneQueries);
+    }
 }

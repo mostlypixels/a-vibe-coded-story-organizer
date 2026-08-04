@@ -621,6 +621,186 @@ class ChapterTest extends TestCase
             );
     }
 
+    // --- Index ordering by story order (continuous-numbering, task 2) -------
+
+    /**
+     * Two acts, one chapter each, then act B is moved above act A. The `#` column
+     * must follow the story, so B's chapter comes first — the previous
+     * `orderBy('act_id')` grouping kept A first forever, because act_id only
+     * matches story order until someone reorders an act.
+     */
+    public function test_the_chapters_index_orders_by_story_order_after_an_act_is_reordered(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $actA = Act::factory()->for($project)->create(['name' => 'Act A', 'position' => 1]);
+        $actB = Act::factory()->for($project)->create(['name' => 'Act B', 'position' => 2]);
+        Chapter::factory()->for($actA)->create(['name' => 'Chapter from A', 'position' => 1]);
+        Chapter::factory()->for($actB)->create(['name' => 'Chapter from B', 'position' => 1]);
+
+        $this->actingAs($user)->patch(route('acts.move-up', $actB));
+
+        $this->actingAs($user)
+            ->get(route('projects.chapters.index', ['project' => $project, 'sort' => 'position']))
+            ->assertOk()
+            ->assertSeeInOrder(['Chapter from B', 'Chapter from A']);
+    }
+
+    /**
+     * Descending must reverse *every* ordering key, so the list reads as the story
+     * backwards — not acts ascending with their chapters reversed inside them.
+     */
+    public function test_the_chapters_index_reverses_the_whole_story_when_sorted_descending(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        Chapter::factory()->for($actOne)->create(['name' => 'Chapter One', 'position' => 1]);
+        Chapter::factory()->for($actOne)->create(['name' => 'Chapter Two', 'position' => 2]);
+        Chapter::factory()->for($actTwo)->create(['name' => 'Chapter Three', 'position' => 1]);
+
+        $this->actingAs($user)
+            ->get(route('projects.chapters.index', ['project' => $project, 'sort' => 'position', 'direction' => 'desc']))
+            ->assertOk()
+            ->assertSeeInOrder(['Chapter Three', 'Chapter Two', 'Chapter One']);
+    }
+
+    /**
+     * `acts` carries `name` and `position` columns of its own, so the join added for
+     * story order makes an unqualified `name` ambiguous. This covers both places it
+     * appears: the search filter and `?sort=name`.
+     */
+    public function test_the_chapters_index_still_sorts_and_searches_by_name(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create(['name' => 'The Act']);
+        Chapter::factory()->for($act)->create(['name' => 'Zebra', 'position' => 1]);
+        Chapter::factory()->for($act)->create(['name' => 'Antelope', 'position' => 2]);
+
+        $this->actingAs($user)
+            ->get(route('projects.chapters.index', ['project' => $project, 'sort' => 'name']))
+            ->assertOk()
+            ->assertSeeInOrder(['Antelope', 'Zebra']);
+
+        $this->actingAs($user)
+            ->get(route('projects.chapters.index', ['project' => $project, 'search' => 'Zeb']))
+            ->assertOk()
+            ->assertSee('Zebra')
+            ->assertDontSee('Antelope');
+    }
+
+    /**
+     * `withCount`/`withSum` add `chapters.*` themselves, and a `select()` after them
+     * would silently drop their subquery aliases. Asserting the aggregates survive
+     * the join guards that column-list order.
+     */
+    public function test_the_chapters_index_keeps_its_aggregates_with_the_act_join(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $this->sceneWithWordCount($chapter, 613);
+        $this->sceneWithWordCount($chapter, 402);
+
+        $chapters = $this->actingAs($user)
+            ->get(route('projects.chapters.index', $project))
+            ->assertOk()
+            ->viewData('chapters');
+
+        $this->assertSame(2, $chapters->first()->scenes_count);
+        $this->assertSame(1015, (int) $chapters->first()->word_count);
+    }
+
+    // --- Continuous numbering (continuous-numbering, task 3) -----------------
+
+    /**
+     * The trimmed, tag-stripped text of the `$index`-th `<td>` (0-based) in the row
+     * whose name is `$rowName` — scoped to a single `<tr>...</tr>` block so it
+     * can't be fooled by an id or word count elsewhere on the page matching.
+     */
+    private function columnCellFor(string $html, string $rowName, int $index): string
+    {
+        preg_match('/<tr[^>]*>((?:(?!<\/tr>).)*?'.preg_quote($rowName, '/').'(?:(?!<\/tr>).)*?)<\/tr>/s', $html, $rowMatch);
+        preg_match_all('/<td[^>]*>(.*?)<\/td>/s', $rowMatch[1] ?? '', $cellMatches);
+
+        return isset($cellMatches[1][$index]) ? trim(strip_tags($cellMatches[1][$index])) : '';
+    }
+
+    /** The '#' column (index 0) is the same across every chapters-index row. */
+    private function numberColumnFor(string $html, string $rowName): string
+    {
+        return $this->columnCellFor($html, $rowName, 0);
+    }
+
+    public function test_the_chapters_index_number_column_is_continuous_not_the_per_act_position(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        Chapter::factory()->for($actOne)->create(['name' => 'Opening', 'position' => 1]);
+        // Gappy per-act position (5): a regression back to `$chapter->position`
+        // would render this row's '#' cell as "5" instead of "2".
+        Chapter::factory()->for($actTwo)->create(['name' => 'Closing', 'position' => 5]);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.chapters.index', ['project' => $project, 'sort' => 'position']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame('2', $this->numberColumnFor($html, 'Closing'));
+    }
+
+    /**
+     * Filtering the list to one act must never renumber it: the map is built from
+     * the whole project, so the first (and only) row shown still reads its true,
+     * project-wide number.
+     */
+    public function test_the_chapters_index_numbers_stay_project_wide_when_filtered_to_one_act(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        Chapter::factory()->for($actOne)->create(['position' => 1]);
+        Chapter::factory()->for($actOne)->create(['position' => 2]);
+        Chapter::factory()->for($actTwo)->create(['name' => 'Fresh Start', 'position' => 1]);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.chapters.index', ['project' => $project, 'act' => $actTwo->id, 'sort' => 'position']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame('3', $this->numberColumnFor($html, 'Fresh Start'));
+    }
+
+    /**
+     * The edit page's position hint shows both the continuous, project-wide number
+     * and the chapter's rank among its act's siblings — the latter a gap-free rank,
+     * not the raw (possibly gappy) `position` column.
+     */
+    public function test_the_edit_page_shows_the_continuous_number_and_position_within_the_act(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        Chapter::factory()->for($actOne)->create(['position' => 1]);
+        Chapter::factory()->for($actTwo)->create(['position' => 1]);
+        $chapter = Chapter::factory()->for($actTwo)->create(['position' => 2]);
+        Chapter::factory()->for($actTwo)->create(['position' => 3]);
+
+        // Continuous number 3 (1 from act one, then 2nd of act two's three
+        // chapters); rank 2 of 3 within act two, which is itself act number 2.
+        $this->actingAs($user)
+            ->get(route('chapters.edit', $chapter))
+            ->assertOk()
+            ->assertSee('Chapter 3 — 2 of 3 in Act 2. Use the move up/down buttons on the list to reorder.');
+    }
+
     // --- Word count column (word-count spec, task 9) ------------------------
 
     public function test_the_chapters_index_shows_each_chapters_total_word_count(): void
@@ -687,6 +867,10 @@ class ChapterTest extends TestCase
             ->get(route('projects.chapters.index', $project))
             ->assertOk();
 
-        $this->assertCount(1, $sceneQueries);
+        // 1 for the withSum() word-count aggregate, 1 more for StoryNumbering::
+        // forProject()'s own eager load of the whole act -> chapter -> scene tree
+        // (continuous-numbering task 3) — both still O(1) per page load, not
+        // O(chapters), so the N+1 this test guards against is still absent.
+        $this->assertCount(2, $sceneQueries);
     }
 }

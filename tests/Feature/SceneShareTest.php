@@ -273,12 +273,40 @@ class SceneShareTest extends TestCase
         $response = $this->get(route('shared.scenes.show', $token));
 
         $response->assertOk();
-        // Title: "Chapter 1 — {chapter}: {scene}" (Arabic position, em-dash).
+        // Title: "Chapter 1 — {chapter}: {scene}" (continuous chapter number, em-dash).
         $response->assertSee($scene->chapter->name, escape: false);
         $response->assertSee('The Reckoning');
         $response->assertSee('Chapter 1', escape: false);
         // Markdown contents rendered as HTML (** ** → <strong>).
         $response->assertSee('<strong>decisive</strong>', escape: false);
+    }
+
+    /**
+     * Continuous numbering (continuous-numbering, task 4): the public page's
+     * heading takes the project-wide chapter number, not the chapter's own
+     * `position` within its act — here 3, though the chapter's `position`
+     * within act two is 1.
+     */
+    public function test_the_public_page_shows_the_continuous_chapter_number_for_a_chapter_in_act_two(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $actOne = Act::factory()->for($project)->create();
+        Chapter::factory()->for($actOne)->create();
+        Chapter::factory()->for($actOne)->create();
+
+        $actTwo = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($actTwo)->create();
+        $scene = Scene::factory()->for($chapter)->create();
+        $scene->forceFill([
+            'share_token' => 'act-two-token',
+            'share_expires_at' => now()->addDay(),
+        ])->save();
+
+        $this->get(route('shared.scenes.show', 'act-two-token'))
+            ->assertOk()
+            ->assertSee('Chapter 3', escape: false);
     }
 
     public function test_the_public_page_never_exposes_scene_notes(): void
