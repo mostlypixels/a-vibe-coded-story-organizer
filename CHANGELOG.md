@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-03 — Continuous chapter and act numbering
+## 2026-08-03 — Continuous chapter and act numbering (#77)
 
 ### Added
 
