@@ -111,7 +111,7 @@
                 {{ __('Delete Scene') }}
             </x-edit-actions>
 
-            <x-card :title="__('Share this scene')">
+            <x-collapsible-card :title="__('Share this scene')">
                 @if (! $scene->isShared())
                     <form method="POST" action="{{ route('scenes.share.store', $scene) }}" class="space-y-4">
                         @csrf
@@ -178,9 +178,21 @@
                         </div>
                     </div>
                 @endif
-            </x-card>
+            </x-collapsible-card>
+        </x-slot:sidebar>
+    </x-edit-layout>
 
-            <x-card :title="__('Codex references')">
+    <div class="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-9">
+            @include('codex.partials.as-of', [
+                'title' => __('Codex as of this scene'),
+                'moment' => $scene->event,
+                'groups' => $codexAsOfGroups,
+            ])
+        </div>
+
+        <div class="lg:col-span-3">
+            <x-collapsible-card :title="__('Codex references')">
                 <p class="text-sm text-content-muted">{{ __('Detected from the scene contents on last save.') }}</p>
 
                 @if ($referencedEntries->isEmpty())
@@ -197,13 +209,7 @@
                         @endforeach
                     </ul>
                 @endif
-            </x-card>
-
-            @include('codex.partials.as-of', [
-                'title' => __('Codex as of this scene'),
-                'moment' => $scene->event,
-                'groups' => $codexAsOfGroups,
-            ])
-        </x-slot:sidebar>
-    </x-edit-layout>
+            </x-collapsible-card>
+        </div>
+    </div>
 </x-app-layout>
