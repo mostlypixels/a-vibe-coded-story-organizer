@@ -84,9 +84,7 @@
                                         <section x-data="{ open: true }" @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="space-y-2 pb-4 border-b border-border last:border-b-0 last:pb-0 {{ $scene->event ? '' : 'border-l-4 border-l-danger pl-4' }}">
                                             <div class="flex items-center justify-between">
                                                 <button type="button" @click="open = ! open" class="flex items-center gap-2 text-sm font-light text-content-muted">
-                                                    <svg class="h-4 w-4 fill-current text-content-muted transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                                    </svg>
+                                                    <x-tabler-chevron-down class="h-4 w-4 text-content-muted transition-transform" x-bind:class="{ 'rotate-180': open }" />
                                                     <span data-scene-number class="text-content-subtle">{{ $numbering->scene($scene) }}.</span>
                                                     {{ $scene->name }}
                                                 </button>

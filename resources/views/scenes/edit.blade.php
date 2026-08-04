@@ -145,16 +145,21 @@
                                     x-ref="shareUrl"
                                     @focus="$el.select()"
                                 />
-                                <x-button
-                                    variant="secondary"
+                                {{-- `w-9` rather than `aspect-square`: height comes for free from the row's
+                                     default flex stretch matching the input, but `aspect-square` does not
+                                     reliably derive width from a stretched (not explicitly set) height on a
+                                     row-direction flex item — it left this button ~18px wide against a 38px
+                                     tall input. --}}
+                                <button
                                     type="button"
-                                    icon="tabler-copy"
-                                    aria-label="{{ __('Copy share link to clipboard') }}"
+                                    class="inline-flex w-9 shrink-0 items-center justify-center rounded-md border border-link bg-transparent text-link hover:bg-info-surface"
+                                    :title="copied ? '{{ __('Copied!') }}' : '{{ __('Copy share link to clipboard') }}'"
                                     x-on:click="navigator.clipboard.writeText($refs.shareUrl.value); copied = true; setTimeout(() => copied = false, 2000)"
                                 >
-                                    <span x-show="! copied">{{ __('Copy') }}</span>
-                                    <span x-show="copied" style="display: none;">{{ __('Copied!') }}</span>
-                                </x-button>
+                                    <span class="sr-only" x-text="copied ? '{{ __('Copied!') }}' : '{{ __('Copy share link to clipboard') }}'"></span>
+                                    <x-tabler-check class="h-4 w-4" x-show="copied" style="display: none;" />
+                                    <x-tabler-copy class="h-4 w-4" x-show="! copied" />
+                                </button>
                             </div>
                         </div>
 
@@ -165,16 +170,19 @@
                             ]) }}
                         </p>
 
-                        <div class="flex items-center gap-3">
-                            <form method="POST" action="{{ route('scenes.share.store', $scene) }}">
+                        <div class="flex gap-3">
+                            <form method="POST" action="{{ route('scenes.share.store', $scene) }}" class="flex-1">
                                 @csrf
                                 <input type="hidden" name="duration" value="{{ $shareDefaultDuration }}">
-                                <x-button variant="secondary" type="button" icon="tabler-refresh">{{ __('Regenerate') }}</x-button>
+                                <x-button variant="secondary" type="button" icon="tabler-refresh" class="w-full">{{ __('Regenerate') }}</x-button>
                             </form>
 
-                            <x-delete-button :action="route('scenes.share.destroy', $scene)" :confirm="__('Revoke this share link? The current URL will stop working.')">
-                                {{ __('Revoke') }}
-                            </x-delete-button>
+                            <x-icon-delete-button
+                                :action="route('scenes.share.destroy', $scene)"
+                                :confirm="__('Revoke this share link? The current URL will stop working.')"
+                                :label="__('Revoke')"
+                                class="w-9"
+                            />
                         </div>
                     </div>
                 @endif

@@ -475,7 +475,7 @@ class SceneShareTest extends TestCase
         $this->actingAs($user)
             ->get(route('scenes.edit', $scene->fresh()))
             ->assertOk()
-            ->assertSee('aria-label="Copy share link to clipboard"', escape: false);
+            ->assertSee('class="sr-only" x-text="copied ? \'Copied!\' : \'Copy share link to clipboard\'"', escape: false);
     }
 
     public function test_a_non_owner_cannot_view_the_scene_edit_page(): void

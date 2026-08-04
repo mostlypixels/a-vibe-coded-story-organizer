@@ -109,9 +109,7 @@
             class="mt-1 flex w-full items-center justify-between gap-2 rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-left text-sm shadow-xs focus:border-focus focus:outline-hidden focus:ring-1 focus:ring-focus"
         >
             <span class="truncate" x-text="selected ? selected.label : @js(__('Choose a save'))"></span>
-            <svg class="h-4 w-4 shrink-0 text-content-subtle" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
-            </svg>
+            <x-tabler-chevron-down class="h-4 w-4 shrink-0 text-content-subtle" aria-hidden="true" />
         </button>
 
         <div

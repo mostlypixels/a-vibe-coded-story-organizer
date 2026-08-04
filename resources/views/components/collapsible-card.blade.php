@@ -10,11 +10,9 @@
     {{-- list-none suppresses the native marker triangle: it sits in its own marker box, which
          pushes onto a line above whenever the summary content is a block element (e.g. the
          header slot's flex row), so the arrow renders detached above the title instead of
-         beside it. The SVG below replaces it as an ordinary inline-flex sibling instead. --}}
+         beside it. The icon below replaces it as an ordinary inline-flex sibling instead. --}}
     <summary class="flex items-center gap-2 list-none cursor-pointer select-none px-6 py-4 group-open:border-b group-open:border-border [&::-webkit-details-marker]:hidden">
-        <svg class="h-4 w-4 shrink-0 fill-current text-content-muted transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-        </svg>
+        <x-tabler-chevron-down class="h-4 w-4 shrink-0 text-content-muted transition-transform group-open:rotate-180" />
 
         <div class="min-w-0 flex-1">
             @isset($header)
