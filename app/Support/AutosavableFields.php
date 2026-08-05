@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Rules\SanitizeHtml;
 use App\Rules\ValidMarkdown;
+use App\Services\AttributeTimeline;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -41,6 +42,10 @@ class AutosavableFields
      * This is `handoff.md` §7 / `expanded/architecture.md`'s 14-field table,
      * reshaped by slug for URL resolution — copied verbatim, never add or drop a
      * field here without updating that table first.
+     *
+     * `CodexAttributeValue.value` is absent on purpose. {@see AttributeTimeline}
+     * already gives those values story-time history. Edit-time history on top is a design
+     * conflict — do not add it.
      *
      * @var array<string, array{0: class-string, 1: array<string, FieldKind>}>
      */

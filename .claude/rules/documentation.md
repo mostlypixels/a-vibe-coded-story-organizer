@@ -14,10 +14,8 @@ paths:
 The code must be understandable by junior developers — the code, the architecture, the pitfalls to
 avoid, and the best practices to follow.
 
-* Comment the *why*, never the *what*. A file or class docblock says why the thing exists and what
-  bites; inline comments stay ≤30 words and appear only where the reason isn't already in the code.
-  Self-explanatory code gets no comment. Long-form rationale belongs in `documentation/`, linked —
-  not inlined. Don't shorten existing long comments without asking.
+* Code comments have their own rules: `.claude/rules/code-comments.md` (loads when you edit a
+  PHP file).
 * Maintain a `documentation/` folder of **GitHub-flavored Markdown** files, at least:
     * `best-practices.md`
     * `code-style.md`
