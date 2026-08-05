@@ -1,0 +1,254 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Enums\CodexEntryType;
+use App\Models\Act;
+use App\Models\Chapter;
+use App\Models\CodexAttribute;
+use App\Models\CodexEntry;
+use App\Models\Event;
+use App\Models\Project;
+use App\Models\User;
+use App\Support\Breadcrumbs;
+use App\Support\Crumb;
+use App\Support\ProjectNavigation;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Tests\TestCase;
+
+/**
+ * Builds {@see Breadcrumbs} straight from a dispatched request — no view,
+ * no rendered HTML. Task 02 is what wires this into the layout and covers
+ * the rendered band in a feature test; this pins down the trail-building
+ * logic itself, in isolation, per the plan's task 01.
+ *
+ * "Dispatched" rather than hand-assembled: `$this->get(...)` runs the real
+ * route, auth and (implicit) model-binding pipeline, then this test reads
+ * the resulting Request straight out of the container. That is the same
+ * Request a real page's view composer would see, without depending on any
+ * page actually rendering breadcrumbs yet.
+ */
+class BreadcrumbsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $user;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+    }
+
+    /**
+     * Dispatches a real GET to $routeName as the owning user and returns the
+     * Breadcrumbs a view composer would have built for that exact request.
+     */
+    private function breadcrumbsFor(string $routeName, array $params = []): Breadcrumbs
+    {
+        $this->actingAs($this->user)
+            ->get(route($routeName, $params))
+            ->assertSuccessful();
+
+        /** @var Request $request */
+        $request = $this->app->make('request');
+
+        return new Breadcrumbs(new ProjectNavigation($request), $request);
+    }
+
+    /**
+     * @return list<array{string, ?string, bool}>
+     */
+    private function summarize(Breadcrumbs $breadcrumbs): array
+    {
+        return array_map(
+            fn (Crumb $crumb) => [$crumb->label, $crumb->url, $crumb->current],
+            iterator_to_array($breadcrumbs),
+        );
+    }
+
+    public function test_dashboard_root_is_a_single_current_crumb(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        $breadcrumbs = $this->breadcrumbsFor('projects.show', [$project]);
+
+        $this->assertSame([
+            [__('Dashboard'), null, true],
+        ], $this->summarize($breadcrumbs));
+    }
+
+    public function test_an_index_route_makes_the_sub_index_the_current_leaf(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        $breadcrumbs = $this->breadcrumbsFor('projects.acts.index', [$project]);
+        $rows = $this->summarize($breadcrumbs);
+
+        $this->assertSame(__('Dashboard'), $rows[0][0]);
+        $this->assertNotNull($rows[0][1]);
+        $this->assertFalse($rows[0][2]);
+
+        $this->assertSame(__('Story'), $rows[1][0]);
+        // The section crumb now links to its stub landing.
+        $this->assertSame(route('projects.story.home', $project), $rows[1][1]);
+        $this->assertFalse($rows[1][2]);
+
+        $this->assertSame([__('Acts'), null, true], $rows[2]);
+        $this->assertCount(3, $rows, 'the index crumb is the leaf — no duplicate current crumb');
+    }
+
+    public function test_a_section_stub_page_is_a_two_crumb_trail_with_the_section_as_current_leaf(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        foreach ([
+            'projects.story.home' => __('Story'),
+            'projects.timeline.home' => __('Timeline'),
+            'projects.codex.home' => __('Codex'),
+            'projects.tools.home' => __('Tools'),
+        ] as $route => $label) {
+            $rows = $this->summarize($this->breadcrumbsFor($route, [$project]));
+
+            $this->assertSame([__('Dashboard'), route('projects.show', $project), false], $rows[0], $route);
+            $this->assertSame([$label, null, true], $rows[1], $route);
+            $this->assertCount(2, $rows, $route);
+        }
+    }
+
+    public function test_the_story_overview_trail_links_story_and_names_overview(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        $rows = $this->summarize($this->breadcrumbsFor('projects.story.overview', [$project]));
+
+        $this->assertSame([__('Story'), route('projects.story.home', $project), false], $rows[1]);
+        $this->assertSame([__('Overview'), null, true], $rows[2]);
+        $this->assertCount(3, $rows);
+    }
+
+    public function test_a_create_route_leaf_names_the_action(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        $breadcrumbs = $this->breadcrumbsFor('projects.scenes.create', [$project]);
+        $rows = $this->summarize($breadcrumbs);
+
+        $this->assertSame([__('Scenes'), route('projects.scenes.index', $project), false], $rows[2]);
+        $this->assertSame([__('New :thing', ['thing' => __('scene')]), null, true], $rows[3]);
+    }
+
+    public function test_an_edit_route_leaf_is_action_precise_and_uses_the_bound_models_id(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $act = Act::factory()->for($project)->create(['name' => 'The Rising Storm']);
+
+        $breadcrumbs = $this->breadcrumbsFor('acts.edit', [$act]);
+        $rows = $this->summarize($breadcrumbs);
+
+        $this->assertSame([__('Acts'), route('projects.acts.index', $project), false], $rows[2]);
+        $this->assertSame(
+            [__('Edit :thing :id', ['thing' => __('act'), 'id' => $act->id]), null, true],
+            $rows[3],
+        );
+    }
+
+    public function test_the_edit_leaf_names_the_id_not_the_models_name(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create(['name' => 'A Chapter Name']);
+
+        $breadcrumbs = $this->breadcrumbsFor('chapters.edit', [$chapter]);
+        $rows = $this->summarize($breadcrumbs);
+
+        $this->assertSame(
+            [__('Edit :thing :id', ['thing' => __('chapter'), 'id' => $chapter->id]), null, true],
+            end($rows),
+        );
+        // The model's name must not leak into the leaf — id only, for now.
+        $this->assertStringNotContainsString('A Chapter Name', end($rows)[0]);
+    }
+
+    public function test_event_leaf_uses_the_id(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $event = Event::factory()->for($project)->create(['title' => 'The Siege Begins']);
+
+        $breadcrumbs = $this->breadcrumbsFor('events.edit', [$event]);
+        $rows = $this->summarize($breadcrumbs);
+
+        $this->assertSame(__('Timeline'), $rows[1][0]);
+        $this->assertSame(
+            [__('Edit :thing :id', ['thing' => __('event'), 'id' => $event->id]), null, true],
+            end($rows),
+        );
+    }
+
+    public function test_codex_index_leaf_uses_the_active_types_plural_label(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        $breadcrumbs = $this->breadcrumbsFor('projects.codex.index', [$project, CodexEntryType::Character->routeKey()]);
+        $rows = $this->summarize($breadcrumbs);
+
+        $this->assertSame(__('Codex'), $rows[1][0]);
+        $this->assertSame([CodexEntryType::Character->pluralLabel(), null, true], $rows[2]);
+    }
+
+    public function test_codex_edit_leaf_names_the_type_singular_and_the_id(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $entry = CodexEntry::factory()->for($project)->organization()->create(['name' => 'The Silver Table']);
+
+        $breadcrumbs = $this->breadcrumbsFor('codex.edit', [$entry]);
+        $rows = $this->summarize($breadcrumbs);
+
+        $this->assertSame(
+            [CodexEntryType::Organization->pluralLabel(), route('projects.codex.index', [$project, 'organizations']), false],
+            $rows[2],
+        );
+        $this->assertSame(
+            [__('Edit :thing :id', ['thing' => Str::lower(CodexEntryType::Organization->label()), 'id' => $entry->id]), null, true],
+            $rows[3],
+        );
+    }
+
+    public function test_codex_attribute_edit_leaf_uses_the_lowercase_thing_and_id(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $attribute = CodexAttribute::factory()->for($project)->create();
+
+        $breadcrumbs = $this->breadcrumbsFor('codex-attributes.edit', [$attribute]);
+        $rows = $this->summarize($breadcrumbs);
+
+        $this->assertSame(
+            [__('Edit :thing :id', ['thing' => __('attribute'), 'id' => $attribute->id]), null, true],
+            end($rows),
+        );
+    }
+
+    public function test_search_trail_has_no_section_crumb(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        $breadcrumbs = $this->breadcrumbsFor('projects.search.index', [$project]);
+
+        $this->assertSame([
+            [__('Dashboard'), route('projects.show', $project), false],
+            [__('Search'), null, true],
+        ], $this->summarize($breadcrumbs));
+    }
+
+    public function test_a_non_project_route_yields_an_empty_trail(): void
+    {
+        $breadcrumbs = $this->breadcrumbsFor('dashboard');
+
+        $this->assertTrue($breadcrumbs->isEmpty());
+        $this->assertCount(0, $breadcrumbs);
+        $this->assertSame([], $this->summarize($breadcrumbs));
+    }
+}

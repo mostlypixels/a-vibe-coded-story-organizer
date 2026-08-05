@@ -382,7 +382,7 @@ class SceneTest extends TestCase
         Scene::factory()->for($chapter)->create(['event_id' => null]);
 
         $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk()
             ->assertSee('The Coronation')
             ->assertSee('Unassigned');

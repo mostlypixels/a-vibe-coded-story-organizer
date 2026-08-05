@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\HtmlSanitizer;
 use App\Services\RevisionRecorder;
 use App\Support\AdminNavigation;
+use App\Support\Breadcrumbs;
 use App\Support\PageTitle;
 use App\Support\ProjectNavigation;
 use Illuminate\Support\Facades\Gate;
@@ -74,7 +75,11 @@ class AppServiceProvider extends ServiceProvider
             $navigation = new ProjectNavigation(request());
 
             $view->with('navigation', $navigation)
-                ->with('pageTitle', new PageTitle($navigation->routeProject));
+                ->with('pageTitle', new PageTitle($navigation->routeProject))
+                // Off `routeProject` too (Breadcrumbs enforces it): the trail is
+                // empty off-project, so the layout band falls back to the page's
+                // own `header` slot. See documentation/architecture.md → Breadcrumbs.
+                ->with('breadcrumbs', new Breadcrumbs($navigation, request()));
         });
 
         // Same deal for the Configuration area's two link lists.

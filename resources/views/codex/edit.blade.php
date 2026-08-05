@@ -1,14 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <x-heading level="2">
-                {{ __('Edit :label', ['label' => $type->label()]) }} &mdash; {{ $entry->name }}
-            </x-heading>
-            <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-content-muted hover:text-content">
-                {{ __('Back to :label', ['label' => $type->pluralLabel()]) }}
-            </a>
-        </div>
-    </x-slot>
+    <x-page-heading>
+        {{ __('Edit :label', ['label' => $type->label()]) }} &mdash; {{ $entry->name }}
+    </x-page-heading>
 
     <div class="space-y-10">
         <form id="codex-entry-edit-form" method="POST" action="{{ route('codex.update', $entry) }}" enctype="multipart/form-data" class="space-y-6">

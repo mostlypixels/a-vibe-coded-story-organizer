@@ -1,9 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <x-heading level="2">
-            {{ __('Edit Scene') }}
-        </x-heading>
-    </x-slot>
+    <x-page-heading>
+        {{ __('Edit Scene') }}
+    </x-page-heading>
 
     @php
         $shareDurations = config('sharing.scene_link_durations');

@@ -1,9 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <x-heading level="2">
-            {{ __('New Scene') }}
-        </x-heading>
-    </x-slot>
+    <x-page-heading>
+        {{ __('New Scene') }}
+    </x-page-heading>
 
     <x-edit-layout>
         <x-card>

@@ -8,6 +8,18 @@ use Illuminate\View\View;
 
 class StoryController extends Controller
 {
+    /**
+     * The Story section landing page. Placeholder stub — a real section
+     * dashboard lands here later; see the Timeline/Codex/Tools home actions,
+     * which are the same shape.
+     */
+    public function home(Project $project): View
+    {
+        $this->authorize('view', $project);
+
+        return view('story.home', ['project' => $project]);
+    }
+
     public function index(Project $project): View
     {
         $this->authorize('view', $project);

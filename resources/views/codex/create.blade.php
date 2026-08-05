@@ -1,9 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <x-heading level="2">
-            {{ __('New :label', ['label' => $type->label()]) }}
-        </x-heading>
-    </x-slot>
+    <x-page-heading>
+        {{ __('New :label', ['label' => $type->label()]) }}
+    </x-page-heading>
 
     <form method="POST" action="{{ route('projects.codex.store', [$project, $type->routeKey()]) }}" enctype="multipart/form-data" class="space-y-6">
         @csrf

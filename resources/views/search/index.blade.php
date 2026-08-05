@@ -1,9 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <x-heading level="2">
-            {{ $project->name }} &mdash; {{ __('Search') }}
-        </x-heading>
-    </x-slot>
+    <x-page-heading>
+        {{ $project->name }} &mdash; {{ __('Search') }}
+    </x-page-heading>
 
     <div class="space-y-6">
         {{-- Search form. Plain GET (no AJAX): q/mode round-trip via the query string

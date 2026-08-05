@@ -84,7 +84,7 @@ class BladeComponentCompilationTest extends TestCase
             route('dashboard'),
             route('projects.show', $project),
             route('projects.edit', $project),
-            route('projects.story.index', $project),
+            route('projects.story.overview', $project),
             route('projects.search.index', [$project, 'q' => 'a']),
             route('projects.revisions.index', $project),
             route('projects.acts.index', $project),

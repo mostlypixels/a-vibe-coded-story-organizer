@@ -36,7 +36,7 @@ class StoryTest extends TestCase
         Scene::factory()->for($chapter)->create(['name' => 'The First Scene']);
 
         $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk()
             ->assertSee('The First Act')
             ->assertSee('The First Chapter')
@@ -50,7 +50,7 @@ class StoryTest extends TestCase
         $project = Project::factory()->for($owner)->create();
 
         $this->actingAs($other)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertForbidden();
     }
 
@@ -63,7 +63,7 @@ class StoryTest extends TestCase
         Act::factory()->for($project)->create(['name' => 'Earlier Act', 'position' => 1]);
 
         $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk()
             ->assertSeeInOrder(['Earlier Act', 'Later Act']);
     }
@@ -79,7 +79,7 @@ class StoryTest extends TestCase
         Scene::factory()->for($chapter)->create(['name' => 'First Scene', 'position' => 1]);
 
         $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk()
             ->assertSeeInOrder(['First Scene', 'Second Scene']);
     }
@@ -122,7 +122,7 @@ class StoryTest extends TestCase
         // Project total: 1,343
 
         $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk()
             ->assertSee('1,343 words') // project
             ->assertSee('1,062 words') // Act One
@@ -147,7 +147,7 @@ class StoryTest extends TestCase
         Chapter::factory()->for($actTwo)->create();
 
         $response = $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk();
 
         // Four zero totals render: the empty act, the empty chapter, that
@@ -178,7 +178,7 @@ class StoryTest extends TestCase
         $this->sceneWithWordCount($chapter, 613);
 
         $content = $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk()
             ->assertSee('613 words') // It does render — just not in the headings.
             ->getContent();
@@ -234,7 +234,7 @@ class StoryTest extends TestCase
         });
 
         $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk();
 
         // One query loads every scene up front (the eager load); summing 3
@@ -263,7 +263,7 @@ class StoryTest extends TestCase
         Chapter::factory()->for($actTwo)->create();
 
         $content = $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk()
             ->getContent();
 
@@ -289,7 +289,7 @@ class StoryTest extends TestCase
         $this->assertSame(3, $actThree->fresh()->position);
 
         $content = $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk()
             ->getContent();
 
@@ -314,7 +314,7 @@ class StoryTest extends TestCase
         Scene::factory()->for($chapterTwo)->create(['name' => 'Scene C']);
 
         $response = $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk();
 
         $response->assertSeeInOrder([
@@ -346,7 +346,7 @@ class StoryTest extends TestCase
         });
 
         $this->actingAs($user)
-            ->get(route('projects.story.index', $project))
+            ->get(route('projects.story.overview', $project))
             ->assertOk();
 
         $this->assertCount(1, $sceneQueries);

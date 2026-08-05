@@ -56,6 +56,15 @@ class ProjectNavigation
 
     public readonly bool $homeActive;
 
+    /** Each true only on its section's stub landing (projects.<section>.home). */
+    public readonly bool $storyHomeActive;
+
+    public readonly bool $timelineHomeActive;
+
+    public readonly bool $codexHomeActive;
+
+    public readonly bool $toolsHomeActive;
+
     public readonly bool $storyOverviewActive;
 
     public readonly bool $actsActive;
@@ -79,7 +88,10 @@ class ProjectNavigation
 
     public readonly bool $searchActive;
 
-    /** Tools dropdown — the Revisions browser, for now. */
+    /** The Revisions browser + per-field history routes (a Tools submenu item). */
+    public readonly bool $revisionsActive;
+
+    /** Tools dropdown trigger — true on the section stub or any Revisions page. */
     public readonly bool $toolsActive;
 
     /** The codex type being viewed, if any. Read via codexTypeIsActive(). */
@@ -99,33 +111,48 @@ class ProjectNavigation
 
         $this->homeActive = $request->routeIs('projects.show');
 
+        $this->storyHomeActive = $request->routeIs('projects.story.home');
+        $this->timelineHomeActive = $request->routeIs('projects.timeline.home');
+        $this->codexHomeActive = $request->routeIs('projects.codex.home');
+        $this->toolsHomeActive = $request->routeIs('projects.tools.home');
+
         // Each section matches both its project-scoped index routes
         // (projects.acts.*) and its shallow child routes (acts.edit), so a page
         // reached by either keeps its section highlighted.
-        $this->storyOverviewActive = $request->routeIs('projects.story.*');
+        // Overview highlights only its own route now that the Story section has
+        // a separate stub landing (projects.story.home); a `projects.story.*`
+        // match would light Overview up on the stub too.
+        $this->storyOverviewActive = $request->routeIs('projects.story.overview');
         $this->actsActive = $request->routeIs('projects.acts.*', 'acts.*');
         $this->chaptersActive = $request->routeIs('projects.chapters.*', 'chapters.*');
         $this->scenesActive = $request->routeIs('projects.scenes.*', 'scenes.*');
-        $this->storyActive = $this->storyOverviewActive
+        // `projects.story.*` covers the stub (home) and Overview; the child
+        // routes carry Story-section highlighting on their shallow edit pages.
+        $this->storyActive = $request->routeIs('projects.story.*')
             || $this->actsActive
             || $this->chaptersActive
             || $this->scenesActive;
 
         $this->plotlinesActive = $request->routeIs('projects.plotlines.*', 'plotlines.*');
         $this->eventsActive = $request->routeIs('projects.events.*', 'events.*');
-        $this->timelineActive = $this->plotlinesActive || $this->eventsActive;
+        $this->timelineActive = $request->routeIs('projects.timeline.*')
+            || $this->plotlinesActive
+            || $this->eventsActive;
 
         // Attributes and the codex types are distinct namespaces: an attribute
         // page highlights Codex but no individual type.
         $this->attributesActive = $request->routeIs('projects.codex-attributes.*', 'codex-attributes.*');
         $this->activeCodexType = $this->resolveActiveCodexType($request);
+        // `projects.codex.*` covers the section stub (home) and the per-type
+        // index/create; the stub carries no {type}, so no individual type lights.
         $this->codexActive = $request->routeIs('projects.codex.*', 'codex.*') || $this->attributesActive;
 
         $this->searchActive = $request->routeIs('projects.search.*');
 
-        // The per-field history/compare routes aren't project-scoped, so match
-        // those too — the menu stays highlighted while browsing a field's history.
-        $this->toolsActive = $request->routeIs('projects.revisions.*', 'revisions.*');
+        // Revisions browser + the per-field history/compare routes (the latter
+        // aren't project-scoped). The section stub plus these keep Tools lit.
+        $this->revisionsActive = $request->routeIs('projects.revisions.*', 'revisions.*');
+        $this->toolsActive = $request->routeIs('projects.tools.*') || $this->revisionsActive;
     }
 
     /** Whether there is a project to build project-scoped links from. */

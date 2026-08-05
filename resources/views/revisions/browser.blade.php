@@ -1,14 +1,7 @@
 <x-revisions-layout :project="$project">
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <x-heading level="2">
-                {{ __('Revisions') }} &mdash; {{ $project->name }}
-            </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm">
-                {{ __('Back to project') }}
-            </a>
-        </div>
-    </x-slot>
+    <x-page-heading>
+        {{ __('Revisions') }} &mdash; {{ $project->name }}
+    </x-page-heading>
 
     {{-- Landing pane: the sidebar is the browser's real navigation, so this pane
          just orients the reader. When the project has no history yet the sidebar

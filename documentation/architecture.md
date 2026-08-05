@@ -644,6 +644,38 @@ way to tell two open projects apart.
 > becomes indistinguishable from the project's own in a row of tabs. The title answers *what is on
 > this page*; the nav answers *what am I working on*. `PageTitleTest` guards this.
 
+## Breadcrumbs
+
+`App\Support\Breadcrumbs` renders the header band as a `Dashboard › Section › …` trail
+instead of a page title + "Back to X" link, mirroring the primary nav's section structure.
+
+- Built off `$navigation->routeProject`, never `->project` — the same rule as `PageTitle`
+  and for the same reason: off-route pages must show no trail, not the account's stored
+  project. Supplied by the same view composer, as `$breadcrumbs`.
+- `IteratorAggregate`/`Countable` over `Crumb` (`app/Support/Crumb.php`): `label`, `?url`
+  (`null` = not a link — the current crumb), `current`.
+- `layouts/app.blade.php` renders `<x-breadcrumbs>` on the left of the header band and a
+  reserved-empty `$headerActions` slot on the right when the trail is non-empty; otherwise
+  it falls back to the page's own `header` slot. Never both. A page also needs its own
+  `<x-page-heading>` above its content, since the trail's `<nav>` is not a document heading.
+- Section crumbs (Story/Timeline/Codex/Tools) **link to their section stub** (`projects.<section>.home`);
+  on the stub page itself the section is the current (unlinked) leaf. A `*.index` route's
+  sub-index crumb *is* the current leaf; `*.edit`/`*.create` append an action-precise leaf
+  instead (`Edit chapter 1`, `New scene`). The edit leaf names the bound model's **id**
+  (matching the URL), not its name — a provisional choice ("id for now"); the label attribute
+  is deliberately not read.
+- **Section landing stubs.** Each top-level section has a placeholder `home` route/controller
+  (`StoryController@home` + `Timeline`/`Codex`/`Tools` controllers) rendering only a heading and
+  the word "stub" — real section dashboards land here later. They are the section crumb's link
+  target and the first item in each nav dropdown. Story Overview moved off the bare `/story`
+  path (now the Story stub) to `projects.story.overview` at `/story/overview`.
+- **The revisions exception.** The per-field history/compare pages bind `{entity}`+`{id}`,
+  not `{project}`, so `routeProject` is null and the central builder yields nothing for
+  them. `RevisionController` builds their trail tail directly and passes it to the view —
+  the one place breadcrumbs are not fully central.
+- Admin (`admin.*`) has no project binding either, so it keeps its `AdminNavigation`
+  sidebar and header slot unchanged — no special-casing needed.
+
 ## Theming
 
 The whole app can be switched between three colour presets — **Daylight** (the original

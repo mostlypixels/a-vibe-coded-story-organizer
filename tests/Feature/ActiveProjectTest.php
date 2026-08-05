@@ -172,7 +172,7 @@ class ActiveProjectTest extends TestCase
 
         // The point of the feature: the project menu renders on a page whose URL
         // names no project, so returning to the work is one click.
-        $this->assertStringContainsString('href="'.e(route('projects.story.index', $project)).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('projects.story.overview', $project)).'"', $html);
         $this->assertStringContainsString('Melusine', $html);
     }
 
@@ -198,7 +198,7 @@ class ActiveProjectTest extends TestCase
         $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
 
         $this->assertStringContainsString('Choose a project', $html);
-        $this->assertStringNotContainsString('href="'.e(route('projects.story.index', $project)).'"', $html);
+        $this->assertStringNotContainsString('href="'.e(route('projects.story.overview', $project)).'"', $html);
     }
 
     public function test_deleting_the_active_project_returns_the_dashboard_to_choose_a_project(): void
@@ -214,7 +214,7 @@ class ActiveProjectTest extends TestCase
         $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
 
         $this->assertStringContainsString('Choose a project', $html);
-        $this->assertStringNotContainsString('href="'.e(route('projects.story.index', $project)).'"', $html);
+        $this->assertStringNotContainsString('href="'.e(route('projects.story.overview', $project)).'"', $html);
     }
 
     public function test_the_route_project_wins_over_the_stored_one(): void
@@ -228,8 +228,8 @@ class ActiveProjectTest extends TestCase
         // project's page must build the menu from the URL's project.
         $html = $this->actingAs($user)->get(route('projects.show', $visited))->assertOk()->getContent();
 
-        $this->assertStringContainsString('href="'.e(route('projects.story.index', $visited)).'"', $html);
-        $this->assertStringNotContainsString('href="'.e(route('projects.story.index', $stored)).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('projects.story.overview', $visited)).'"', $html);
+        $this->assertStringNotContainsString('href="'.e(route('projects.story.overview', $stored)).'"', $html);
     }
 
     public function test_a_bare_login_redirects_to_the_active_project(): void

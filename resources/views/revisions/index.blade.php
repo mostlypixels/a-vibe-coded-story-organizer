@@ -1,18 +1,22 @@
-@php
-    use Illuminate\Support\Str;
-@endphp
-
 <x-revisions-layout :project="$project" :entity="$entity" :id="$id" :field="$field">
+    {{-- Breadcrumb-band exception (RevisionController class docblock): this
+         route binds {entity}+{id}, not {project}, so the central builder
+         yields an empty trail and the controller hands us a finished one. --}}
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <x-heading level="2">
-                {{ __('History') }} &mdash; {{ Str::headline($entity) }} "{{ $entityName }}"
-            </x-heading>
-            <a href="{{ $editUrl }}" class="text-sm text-content-muted hover:text-content">
-                {{ __('Back to editing') }}
-            </a>
+        <div class="min-w-0">
+            <x-breadcrumbs :items="$breadcrumbTrail" />
         </div>
     </x-slot>
+
+    {{-- x-page-heading has no actions affordance (see resolution-log.md), so
+         — same as projects/show.blade.php's dashboard heading row — this uses
+         x-heading directly in a flex row rather than double up on margin. --}}
+    <div class="mb-6 flex items-center justify-between gap-4">
+        <x-heading level="1">{{ $heading }}</x-heading>
+        <a href="{{ $editUrl }}" class="text-sm text-content-muted hover:text-content shrink-0">
+            {{ __('Back to editing') }}
+        </a>
+    </div>
 
     <div class="space-y-6">
         {{-- Every filter is a GET parameter, so the page stays bookmarkable and

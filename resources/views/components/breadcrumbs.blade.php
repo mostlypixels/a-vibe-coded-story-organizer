@@ -1,27 +1,33 @@
-@props(['items' => []])
+@props(['items'])
 
-@php
-    // Data-driven breadcrumb trail. Pass an array of ['label' => …, 'url' => …];
-    // items without a `url` (and the last item) render as plain text. Example:
-    //   <x-breadcrumbs :items="[
-    //       ['label' => __('Projects'), 'url' => route('dashboard')],
-    //       ['label' => $project->name, 'url' => route('projects.show', $project)],
-    //       ['label' => __('Acts')],
-    //   ]" />
-@endphp
+{{--
+    The project breadcrumb trail — W3C breadcrumb pattern: a labelled <nav>
+    landmark wrapping an <ol>, current page marked aria-current="page",
+    separators aria-hidden so a screen reader hears only the labels.
 
-<nav aria-label="{{ __('Breadcrumb') }}" {{ $attributes->merge(['class' => 'flex']) }}>
-    <ol class="flex flex-wrap items-center gap-1 text-sm text-content-muted">
-        @foreach ($items as $item)
-            <li class="flex items-center gap-1">
-                @if (! $loop->last && ! empty($item['url']))
-                    <a href="{{ $item['url'] }}" class="hover:text-content">{{ $item['label'] }}</a>
+    `items` is a Breadcrumbs (or any list of Crumb — see app/Support/Crumb.php).
+    Ancestor crumbs render as links (colour inherited from the header band's
+    own [&_a]:text-nav-content, see layouts/app.blade.php); the current crumb
+    is plain, muted text.
+
+    Horizontal scroll rather than wrap: on a narrow viewport a long trail
+    should stay one line under the nav, not push the page content down.
+--}}
+<nav aria-label="{{ __('Breadcrumb') }}" {{ $attributes->merge(['class' => 'min-w-0 overflow-x-auto']) }}>
+    <ol class="flex items-center gap-1 whitespace-nowrap text-sm">
+        @foreach ($items as $crumb)
+            <li class="flex items-center gap-1 min-w-0">
+                @if ($crumb->url)
+                    <a href="{{ $crumb->url }}" class="hover:underline truncate max-w-[16rem]">{{ $crumb->label }}</a>
                 @else
-                    <span @if ($loop->last) aria-current="page" @endif class="font-medium text-content">{{ $item['label'] }}</span>
+                    <span
+                        @if ($crumb->current) aria-current="page" @endif
+                        class="truncate max-w-[16rem] {{ $crumb->current ? 'font-medium' : 'opacity-70' }}"
+                    >{{ $crumb->label }}</span>
                 @endif
 
                 @unless ($loop->last)
-                    <x-tabler-chevron-right class="h-4 w-4 text-content-subtle" aria-hidden="true" />
+                    <x-tabler-chevron-right class="h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
                 @endunless
             </li>
         @endforeach

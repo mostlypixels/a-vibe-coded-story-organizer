@@ -22,8 +22,30 @@
         <div class="min-h-screen bg-surface">
             @include('layouts.navigation')
 
-            <!-- Page Heading -->
-            @isset($header)
+            <!-- Page Heading band -->
+            {{-- In-project routes get a breadcrumb trail (built centrally by the
+                 view composer off `routeProject`); everything else falls back to
+                 the page's own `header` slot. Never both — breadcrumbs replace both
+                 the old page title and its "Back to X" link. See
+                 documentation/architecture.md → Breadcrumbs. --}}
+            @if (! $breadcrumbs->isEmpty())
+                {{-- text-nav-content colours the plain <span> crumbs (section
+                     triggers + current leaf); the [&_a] rules override the global
+                     anchor colour so links match rather than paint default blue. --}}
+                <header class="bg-nav-raised shadow-sm text-nav-content [&_a]:text-nav-content [&_a:hover]:text-nav-content">
+                    {{-- Two-column band: breadcrumbs left, a reserved (currently
+                         empty) action slot right — see $headerActions below. --}}
+                    <div class="py-3 px-4 flex items-center justify-between gap-4">
+                        <div class="min-w-0">
+                            <x-breadcrumbs :items="$breadcrumbs" />
+                        </div>
+                        {{-- $headerActions is a named slot on <x-app-layout>,
+                             reserved for a future "page actions" spec. Intentionally
+                             empty today — declared so the column is already here. --}}
+                        <div class="shrink-0">{{ $headerActions ?? '' }}</div>
+                    </div>
+                </header>
+            @elseif (isset($header))
                 {{-- [&_h2]:leading-5 restores what Tailwind 3 did implicitly: there,
                      `text-sm` set font-size *and* line-height in one rule, and the
                      descendant selector out-specified the `leading-tight` the page
@@ -39,7 +61,7 @@
                         {{ $header }}
                     </div>
                 </header>
-            @endisset
+            @endif
 
             <!-- Page Content -->
             <main>

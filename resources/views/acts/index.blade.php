@@ -1,14 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <x-heading level="2">
-                {{ $project->name }} &mdash; {{ __('Acts') }}
-            </x-heading>
-            <a href="{{ route('projects.show', $project) }}" class="text-sm text-content-muted hover:text-content">
-                {{ __('Back to Project') }}
-            </a>
-        </div>
-    </x-slot>
+    <x-page-heading>
+        {{ $project->name }} &mdash; {{ __('Acts') }}
+    </x-page-heading>
 
     <div class="space-y-6">
             <div class="flex items-center justify-between gap-4">

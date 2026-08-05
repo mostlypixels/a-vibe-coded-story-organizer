@@ -1,17 +1,18 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <x-heading level="2">
-                {{ $project->name }}
-            </x-heading>
-            <div class="flex items-center gap-4">
-                <x-word-count :count="$wordCount" variant="band" />
-                <a href="{{ route('projects.edit', $project) }}" class="text-sm text-content-muted hover:text-content">
-                    {{ __('Edit Project') }}
-                </a>
-            </div>
+    {{-- Dashboard heading row. The word count and Edit Project link used to sit
+         in the header band; the band now carries the breadcrumb trail and its
+         right column is reserved (empty) for a future page-actions spec, so these
+         move beside the page heading here. `muted` (not `band`) — they sit on the
+         page surface now, not the dark band. --}}
+    <div class="mb-6 flex items-center justify-between gap-4">
+        <x-heading level="1">{{ $project->name }}</x-heading>
+        <div class="flex items-center gap-4">
+            <x-word-count :count="$wordCount" variant="muted" />
+            <a href="{{ route('projects.edit', $project) }}" class="text-sm text-content-muted hover:text-content">
+                {{ __('Edit Project') }}
+            </a>
         </div>
-    </x-slot>
+    </div>
 
     <div class="space-y-6">
             @if ($project->description)
