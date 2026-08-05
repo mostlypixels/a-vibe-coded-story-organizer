@@ -29,11 +29,6 @@ inlining a command sequence in a skill or agent.
 
 * Follow Laravel conventions unless there is a compelling architectural reason not to.
 * Favor domain-driven design with small aggregates
-* Use SOLID principles and DRY principles
-* KISS principle
-* Favor reusable components and templates
-* Configuration should be kept in a single place. Avoid hard-coded values.
-* Avoid magic numbers and magic strings. Use constants, enums or value objects.
 * Favor composition over inheritance. Traits are a good alternative to inheritance.
 * **Toolchain & shell rules live in `.claude/conventions/tooling.md`** — select the shell by tool availability (not OS), never mix one shell's syntax into the other's tool, and let the lockfile decide the package manager. Read it before running shell commands.
 
@@ -59,34 +54,18 @@ resolve the model → authorize → delegate → return a response. Concretely, 
 ## Planning and architecture
 
 * Reuse existing project conventions before creating new ones.
-* Do not introduce new patterns unless they provide clear value.
 * If technical debt is introduced, explain why and document it.
-*  Prefer maintainability and readability over clever or highly abstract solutions.
 
 ### Feature specs live under `.specs/`
 
-When asked to **write / draft / create a spec** for a feature, always file it as a stage-1
-draft: `.specs/draft/<name>/spec.md`, starting with `---`/`status: draft`/`---` frontmatter.
-Prefer the `mp-draft-spec` skill, which does this (and handles name collisions). Never leave a
-spec loose at the `.specs/` root or under the wrong status folder — the folder location and
-the `status:` frontmatter must agree, and `tests/Unit/SpecsStatusConsistencyTest` enforces it.
-The full lifecycle (`draft` → `expanded` → `planned` → `shipped`) and its skills are documented
-in `.specs/README.md`.
-
-### Code style
-
-* Use laravel code style conventions.
+Use the `mp-draft-spec` skill. Folder location and `status:` frontmatter must agree —
+`tests/Unit/SpecsStatusConsistencyTest` enforces it. Lifecycle: `.specs/README.md`.
 
 ## Security and validation of user input
 
-* Never trust user input.
-* Escape output unless intentionally rendering trusted HTML.
 * Validate input as early as possible, both on the front-end and the back-end.
-* Validate all user input against business rules.
 * Infer the proper validation rules from the database schema and/or field names.
 * Avoid duplicated validation rules. Centralize them.
-* Always use Laravel's Query Builder or Eloquent parameter binding. Avoid string concatenation in SQL queries.
-* Validate uploaded files.
 
 ### Authorization
 
@@ -134,78 +113,13 @@ reached; do not re-add it. The `x-robots-meta` component is the single source of
 
 ### Documentation
 
-The code must be understandable by junior developers — the code, the architecture, the pitfalls to
-avoid, and the best practices to follow.
-
-* Comment the code. Complex methods should explain the logic and intent, not just restate the code.
-* Maintain a `documentation/` folder of **GitHub-flavored Markdown** files, at least:
-    * `best-practices.md`
-    * `code-style.md`
-    * `architecture.md`
-    * `glossary.md` — higher-level concepts and design patterns
-    * add pages as needed.
-* In `documentation/`: explain *why*, not only *what*, and include examples for complex concepts.
-  Use GFM alert callouts for emphasis, e.g. `> [!WARNING]` for pitfalls and `> [!NOTE]` for tips
-  (these render in color on GitHub and in the IDE; inline HTML `style=` is stripped by GitHub, so
-  prefer callouts).
-* Update documentation whenever architecture or workflows change; keep it synchronized with the code.
-
-#### Verbosity
-
-Long documents fail twice over: nobody reads them, and they burn context when an agent loads
-them. Both readers want the same thing — the facts, findable, with nothing between them.
-
-* **Lists by default; prose only to explain *why*.** Facts, rules, options and steps are
-  bullets or table rows. A sentence or two of prose is right where the reasoning genuinely
-  needs it. Never a paragraph that restates the list next to it.
-* **Don't restate the code in English.** A doc earns its place with what the code can't say:
-  invariants, pitfalls, why-not-the-obvious-thing, cross-cutting rules. Name the class and
-  move on; the reader can open it.
-* **No padding.** No "Note that…", no recap paragraph under a heading, no summary that
-  repeats the section above it, no preamble announcing what the section will cover.
-* **Entry point short, deep dive linked.** A feature gets a compact section in
-  `architecture.md` — what it is, the load-bearing pieces, the rules that bite — linking to
-  `documentation/<feature>.md` for the full reference (see `revisions.md`). The deep dive
-  holds detail, not padding: the same rules apply to it.
-* **If a doc needs a "skim this" instruction, it is too long.** Cut it; don't annotate it.
-
-This applies to everything written here: `documentation/`, specs, `.claude/` skills and
-agents, commit bodies, PR descriptions.
+Doc, spec and `.claude/` prose rules: `.claude/rules/documentation.md` (loads when you edit
+those paths). It also governs commit bodies and PR descriptions — read it before writing them.
 
 #### Changelog
 
-* Every commit message body explains *why* the change was made and the intent behind it — this is the
-  per-commit record (git already links, blames, and diffs it; no separate per-commit files).
-* Maintain a single `CHANGELOG.md` at the repo root in [Keep a Changelog](https://keepachangelog.com)
-  format, adapted so the heading answers *when something shipped*: each PR adds its own dated
-  `## YYYY-MM-DD — <title> (#PR)` section at the top (below `[Unreleased]`), grouping its entries by
-  `Added` / `Changed` / `Fixed` / `Removed`. Update it per feature or pull request (not per commit);
-  `[Unreleased]` holds only work not yet merged to `master`. Richer rationale for a change set belongs
-  in the PR description, which links its commits automatically.
-
-##### Entry style
-
-`CHANGELOG.md` is append-only and never pruned, so it must stay readable at ten times its
-current length. Every entry is a line someone will scroll past for years — earn it.
-
-* **One line, one change.** One sentence, ~20 words. Needing a second sentence means the
-  detail belongs in the PR description.
-* **What changed, not how or why.** No class names, file paths, method or prop signatures —
-  unless the path *is* the change (`public/robots.txt` removed). No before/after narration,
-  no worked examples, no counts of internals.
-* **No bold lead-ins.** An entry is not a headline with a body.
-* **A normal PR is 1–5 entries.** More usually means implementation steps were listed
-  instead of user-visible changes.
-
-> [!WARNING]
-> Sections dated before `2026-08-02` predate this rule and read as PR descriptions. Do not
-> imitate them, and do not rewrite them — the history is fine where it is.
-
-
-### Naming conventions
-
-* Variable, methods and class names should be descriptive and meaningful
-* Avoid abbreviations
+Every commit body explains *why*. `CHANGELOG.md` gets one dated section per PR — format and
+entry style: `.claude/rules/changelog.md`.
 
 ### Database
 

@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-05 — Agent instructions trimmed and split into path-scoped rules (#81)
+
+### Changed
+
+- Documentation, verbosity and changelog writing rules moved from `CLAUDE.md` into `.claude/rules/`, so they load only when the paths they govern are touched.
+
+### Removed
+
+- Generic coding-principle, security, naming and code-style bullets that no longer earned their place in `CLAUDE.md`.
+
 ## 2026-08-05 — Breadcrumb trails and section landing pages (#80)
 
 ### Added

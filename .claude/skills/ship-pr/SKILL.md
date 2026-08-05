@@ -19,13 +19,13 @@ invoking this, not as part of it.
    ownership is unclear, ask rather than commit someone else's half-done work.
 
 2. **Update `CHANGELOG.md` as part of the change set** (skip only if the diff is
-   docs/tooling so trivial it needs no entry). Per the convention in `CLAUDE.md`: add a
+   docs/tooling so trivial it needs no entry). Per `.claude/rules/changelog.md`: add a
    dated `## YYYY-MM-DD — <title>` section at the top, below `[Unreleased]`, dated
    today (adjust if the merge slips to another day). **Leave the `(#PR)` suffix off** —
    the number does not exist yet, and `pr-land.sh` stamps it onto the newest dated
    heading automatically once `gh pr create` has assigned one.
 
-   Follow **Changelog → Entry style** in `CLAUDE.md` and *Writing style* below. Sections
+   Follow **Entry style** in `.claude/rules/changelog.md` and *Writing style* below. Sections
    dated before `2026-08-02` predate the rule — don't copy their shape.
 
 3. **Branch.** If still on `master`, create a short kebab-case feature branch named for
@@ -64,7 +64,8 @@ invoking this, not as part of it.
 ## Writing style
 
 Three artifacts, three altitudes — say each thing once, in the one place that owns it.
-Same rules as `CLAUDE.md` → Documentation → Verbosity. No length budgets.
+Same rules as `.claude/rules/documentation.md` → Verbosity — read it, since commit and PR
+prose are not files and won't pull that rule file in on their own. No length budgets.
 
 | Artifact | Owns | Never |
 |---|---|---|

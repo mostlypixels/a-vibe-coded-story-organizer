@@ -50,7 +50,7 @@ the pipeline — this skill exists so that never happens.
 
 ## Writing style
 
-Same rules as `CLAUDE.md` → Documentation → Verbosity. A draft captures intent, nothing more —
+Same rules as `.claude/rules/documentation.md` → Verbosity. A draft captures intent, nothing more —
 the expansion is where detail belongs. No length budgets; judge by padding, not word count.
 
 - **Bullets.** Prose only for the problem statement and any *why* that isn't obvious — a

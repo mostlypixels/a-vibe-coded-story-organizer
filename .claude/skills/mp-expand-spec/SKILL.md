@@ -51,7 +51,7 @@ Example: `/mp-expand-spec plotline-merge` → reads
 
 ## Writing style
 
-Same rules as `CLAUDE.md` → Documentation → Verbosity, applied to specs. These docs are read
+Same rules as `.claude/rules/documentation.md` → Verbosity, applied to specs. These docs are read
 by an agent under context pressure and by a user who won't read padding. No length budgets —
 judge by padding, not word count.
 

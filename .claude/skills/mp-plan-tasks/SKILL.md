@@ -123,7 +123,7 @@ suffix rule when this folder moves in step 8. Below, **`<dir>`** means the match
 
 ## Writing style
 
-Same rules as `CLAUDE.md` → Documentation → Verbosity. A task file is a brief for an
+Same rules as `.claude/rules/documentation.md` → Verbosity. A task file is a brief for an
 implementer agent that will also read the expanded docs — it points, it doesn't re-explain.
 No length budgets; judge by padding, not word count.
 
