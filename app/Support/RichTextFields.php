@@ -59,7 +59,7 @@ class RichTextFields
      * @var list<string>
      */
     public const ALLOWED_TAGS = [
-        'p', 'h1', 'h2', 'h3', 'h4', 'strong', 'em', 'u', 's',
+        'p', 'h1', 'h2', 'h3', 'h4', 'strong', 'em', 'u', 's', 'sub', 'sup',
         'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'br', 'hr',
         'table', 'thead', 'tbody', 'tr', 'th', 'td',
         'img',
