@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-05 — Theme quick fixes: collapsible cards, Tabler icons, toolbar dropdowns
+## 2026-08-05 — Theme quick fixes: collapsible cards, Tabler icons, toolbar dropdowns (#78)
 
 ### Added
 
