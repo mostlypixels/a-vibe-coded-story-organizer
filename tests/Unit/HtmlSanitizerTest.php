@@ -92,12 +92,15 @@ class HtmlSanitizerTest extends TestCase
 
     public function test_it_preserves_allowed_inline_markup(): void
     {
-        $output = $this->clean('<p><strong>bold</strong> and <em>italic</em> and <u>under</u> and <s>strike</s></p>');
+        $output = $this->clean('<p><strong>bold</strong> and <em>italic</em> and <u>under</u> and <s>strike</s>'
+            .' and <sub>sub</sub> and <sup>sup</sup></p>');
 
         $this->assertStringContainsString('<strong>bold</strong>', $output);
         $this->assertStringContainsString('<em>italic</em>', $output);
         $this->assertStringContainsString('<u>under</u>', $output);
         $this->assertStringContainsString('<s>strike</s>', $output);
+        $this->assertStringContainsString('<sub>sub</sub>', $output);
+        $this->assertStringContainsString('<sup>sup</sup>', $output);
     }
 
     public function test_it_preserves_allowed_block_markup(): void

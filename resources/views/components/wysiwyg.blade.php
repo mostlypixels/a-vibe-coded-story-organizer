@@ -36,7 +36,6 @@
         linkPrompt: @js(__('Enter a URL (http:// or https://)')),
         imagePrompt: @js(__('Enter an image URL (http:// or https://)')),
         imageAltPrompt: @js(__('Alt text (optional, for accessibility)')),
-        headingLevels: @js(\App\Support\WysiwygToolbar::HEADING_LEVELS),
     })"
     data-format="{{ $format }}"
     class="mt-1"
@@ -52,128 +51,116 @@
         {{ $attributes->merge(['class' => 'block w-full']) }}
     >{{ $value }}</x-textarea>
 
-    {{-- Editor UI: hidden until Alpine mounts (style="display:none", no x-cloak). --}}
+    {{-- Editor UI: hidden until Alpine mounts (style="display:none", no x-cloak). The
+         toolbar carries its own top rounding (rounded-t-md) rather than the old
+         overflow-hidden on this wrapper: overflow-hidden clipped any dropdown panel
+         that overflowed past the editor below it, cropping the panel instead of
+         layering over it (a z-index can't win against an ancestor's overflow clip).
+         The editor's own mount point paints no background (see resources/js/wysiwyg.js
+         editorProps — `.prose` sets only text/border colours), so it needs no
+         matching rounded-b-md to avoid the same problem from the other side. --}}
     <div x-show="ready" style="display: none;">
-        <div class="overflow-hidden rounded-md border border-border-strong shadow-xs focus-within:border-focus focus-within:ring-1 focus-within:ring-focus">
+        <div class="rounded-md border border-border-strong shadow-xs focus-within:border-focus focus-within:ring-1 focus-within:ring-focus">
             @unless ($disabled)
-                <div class="flex flex-wrap items-center gap-0.5 border-b border-border bg-surface-sunken px-2 py-1" role="toolbar" aria-label="{{ __('Formatting') }}">
-                    {{-- Cluster 1: Headings, collapsed into a dropdown. The trigger's
-                         label and highlight come from headingLabel()/headingLevel() in
-                         wysiwyg.js, driven by the same HEADING_LEVELS that fill the
-                         dropdown, so the two can't drift out of sync. --}}
-                    <x-dropdown align="left" width="auto" contentClasses="p-1 bg-surface-overlay flex items-center gap-0.5">
-                        <x-slot name="trigger">
-                            <x-wysiwyg.toolbar-button
-                                active-expression="headingLevel() !== null"
-                                :title="__('Heading')"
-                            ><span x-text="headingLabel()"></span></x-wysiwyg.toolbar-button>
-                        </x-slot>
-
-                        <x-slot name="content">
-                            @foreach ($toolbar->headings() as $heading)
-                                <x-wysiwyg.toolbar-button
-                                    :command="$heading['command']"
-                                    :args="$heading['args']"
-                                    :active="$heading['active']"
-                                    :label="$heading['label']"
-                                    :title="$heading['title']"
-                                />
-                            @endforeach
-                        </x-slot>
-                    </x-dropdown>
+                <div class="flex flex-wrap items-center gap-0.5 rounded-t-md border-b border-border bg-surface-sunken px-2 py-1" role="toolbar" aria-label="{{ __('Formatting') }}">
+                    {{-- Style — block-level "what is this" choice: Paragraph, Blockquote,
+                         H1..H4, collapsed into a dropdown. A static pilcrow (¶) glyph
+                         rather than a dynamic level label, since the dropdown no longer
+                         only offers headings — see WysiwygToolbar::styles(). --}}
+                    <x-wysiwyg.toolbar-dropdown
+                        :items="$toolbar->styles()"
+                        trigger-icon="pilcrow"
+                        :title="__('Style')"
+                        active-expression="isOn('heading') || isOn('blockquote')"
+                    />
 
                     <span class="mx-1 h-5 w-px bg-border"></span>
 
-                    {{-- Cluster 2: Text format — Bold/Italic/Underline/Strike. --}}
+                    {{-- Text format — Bold/Italic/Underline, the three permanent flat
+                         buttons; less-common decorations live in the typography
+                         dropdown below — see WysiwygToolbar::textFormat(). --}}
                     @foreach ($toolbar->textFormat() as $toggle)
                         <x-wysiwyg.toolbar-button
                             :command="$toggle['command']"
                             :active="$toggle['active']"
-                            :label="$toggle['label']"
                             :title="$toggle['title']"
-                        />
+                        ><x-dynamic-component :component="'tabler-'.$toggle['icon']" class="h-4 w-4" /></x-wysiwyg.toolbar-button>
                     @endforeach
+
+                    {{-- Typography — Strikethrough/Subscript/Superscript, collapsed
+                         into a dropdown — see WysiwygToolbar::typography(). --}}
+                    <x-wysiwyg.toolbar-dropdown
+                        :items="$toolbar->typography()"
+                        trigger-icon="typography"
+                        :title="__('Typography')"
+                        active-expression="isOn('strike') || isOn('subscript') || isOn('superscript')"
+                    />
 
                     <span class="mx-1 h-5 w-px bg-border"></span>
 
-                    {{-- Cluster 3: Lists & blocks. --}}
-                    @foreach ($toolbar->listsAndBlocks() as $toggle)
-                        <x-wysiwyg.toolbar-button
-                            :command="$toggle['command']"
-                            :active="$toggle['active']"
-                            :label="$toggle['label']"
-                            :title="$toggle['title']"
-                        />
-                    @endforeach
+                    {{-- Lists — Bulleted, Numbered, Task, collapsed into a dropdown
+                         instead of three flat buttons. --}}
+                    <x-wysiwyg.toolbar-dropdown
+                        :items="$toolbar->lists()"
+                        trigger-icon="list"
+                        :title="__('Lists')"
+                        active-expression="isOn('bulletList') || isOn('orderedList') || isOn('taskList')"
+                    />
+
+                    {{-- Callout (`> [!TYPE]`) as a dropdown of the five labeled types
+                         instead of a single glyph button that cycled through them.
+                         Clicking a type inserts a new callout, or changes the type of
+                         the one the cursor is already in — see setCalloutType() in
+                         wysiwyg.js. Available in both formats. --}}
+                    <x-wysiwyg.toolbar-dropdown
+                        :items="$toolbar->callouts()"
+                        trigger-icon="alert-square"
+                        :title="__('Callout')"
+                        active-expression="isOn('callout')"
+                    />
+
+                    {{-- Code — Inline code, Code block, collapsed into a dropdown
+                         instead of two flat buttons. --}}
+                    <x-wysiwyg.toolbar-dropdown
+                        :items="$toolbar->code()"
+                        trigger-icon="code"
+                        :title="__('Code')"
+                        active-expression="isOn('code') || isOn('codeBlock')"
+                    />
 
                     <span class="mx-1 h-5 w-px bg-border"></span>
 
-                    {{-- Cluster 4: Insert — Link, Horizontal rule, Table, Image, Callout.
-                         Every "insert something new" action sits together. Link, Image
-                         and Callout call bespoke no-arg helpers rather than cmd(), so
-                         they pass `action` (a raw JS expression) instead of `command`.
-                         Callout (`> [!TYPE]`) is available in both formats; clicking
-                         inserts a note callout, or cycles the type of the one the cursor
-                         is in. --}}
+                    {{-- Insert — Link, Horizontal rule, Image. Link and Image call
+                         bespoke no-arg helpers rather than cmd(), so they pass `action`
+                         (a raw JS expression) instead of `command`. --}}
                     <x-wysiwyg.toolbar-button
                         action="setLink()"
                         :active="['link']"
-                        label="&#128279;"
                         :title="__('Link')"
-                    />
+                    ><x-tabler-link class="h-4 w-4" /></x-wysiwyg.toolbar-button>
 
                     <x-wysiwyg.toolbar-button
                         command="setHorizontalRule"
-                        label="&mdash;"
                         :title="__('Horizontal rule')"
-                    />
-
-                    <x-wysiwyg.toolbar-button
-                        command="insertTable"
-                        :args="['rows' => 3, 'cols' => 3, 'withHeaderRow' => true]"
-                        label="&#9638;"
-                        :title="__('Table')"
-                    />
+                    ><x-tabler-minus class="h-4 w-4" /></x-wysiwyg.toolbar-button>
 
                     <x-wysiwyg.toolbar-button
                         action="setImage()"
-                        label="&#128247;"
                         :title="__('Image')"
-                    />
-
-                    <x-wysiwyg.toolbar-button
-                        action="toggleCallout()"
-                        :active="['callout']"
-                        label="&#9432;"
-                        :title="__('Callout')"
-                    />
+                    ><x-tabler-photo class="h-4 w-4" /></x-wysiwyg.toolbar-button>
 
                     <span class="mx-1 h-5 w-px bg-border"></span>
 
-                    {{-- Cluster 5: Table structure, collapsed into a dropdown. Its
-                         trigger glyph (square + pencil) is deliberately distinct from
-                         cluster 4's plain-square "insert table" glyph so the two aren't
-                         confused, and its title/aria-label reads "Table structure" vs.
-                         cluster 4's "Table". Merge/split only appear for HTML-mode
-                         fields — see WysiwygToolbar::tableStructure(). --}}
-                    <x-dropdown align="left" width="auto" contentClasses="p-1 bg-surface-overlay flex items-center gap-0.5">
-                        <x-slot name="trigger">
-                            <x-wysiwyg.toolbar-button
-                                label="&#9638;&#9998;"
-                                :title="__('Table structure')"
-                            />
-                        </x-slot>
-
-                        <x-slot name="content">
-                            @foreach ($toolbar->tableStructure() as $op)
-                                <x-wysiwyg.toolbar-button
-                                    :command="$op['command']"
-                                    :label="$op['label']"
-                                    :title="$op['title']"
-                                />
-                            @endforeach
-                        </x-slot>
-                    </x-dropdown>
+                    {{-- Table, one dropdown for the whole concern — insert, then
+                         row/column ops, then merge/split for HTML-mode fields only.
+                         Previously split into a plain "insert" button here plus a
+                         separate "structure" dropdown elsewhere in the toolbar; see
+                         WysiwygToolbar::table(). --}}
+                    <x-wysiwyg.toolbar-dropdown
+                        :items="$toolbar->table()"
+                        trigger-icon="table"
+                        :title="__('Table')"
+                    />
                 </div>
             @endunless
 

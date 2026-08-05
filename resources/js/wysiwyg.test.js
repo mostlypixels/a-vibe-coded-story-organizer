@@ -313,6 +313,35 @@ describe('underline & strikethrough round-trip in markdown format (task 05)', ()
         expect(titles).toContain('Underline');
         expect(titles).toContain('Strikethrough');
     });
+
+    it('the slash menu offers Subscript and Superscript, matching the toolbar typography dropdown', () => {
+        for (const format of ['html', 'markdown']) {
+            const titles = buildSlashItems(format, () => {}, () => {}).map((item) => item.title);
+
+            expect(titles).toContain('Subscript');
+            expect(titles).toContain('Superscript');
+        }
+    });
+});
+
+describe('subscript & superscript round-trip in markdown format', () => {
+    it('a document containing <sub>text</sub> round-trips through hydrate → getMarkdown() → re-hydrate unchanged', () => {
+        const source = '<p><sub>text</sub></p>';
+        const first = markdownEditor(source).getMarkdown();
+        const second = markdownEditor(first).getMarkdown();
+
+        expect(first).toContain('<sub>text</sub>');
+        expect(second).toBe(first);
+    });
+
+    it('a document containing <sup>text</sup> round-trips through hydrate → getMarkdown() → re-hydrate unchanged', () => {
+        const source = '<p><sup>text</sup></p>';
+        const first = markdownEditor(source).getMarkdown();
+        const second = markdownEditor(first).getMarkdown();
+
+        expect(first).toContain('<sup>text</sup>');
+        expect(second).toBe(first);
+    });
 });
 
 describe('callout / alert node (task 06)', () => {

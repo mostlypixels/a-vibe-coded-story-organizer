@@ -151,7 +151,7 @@ literal `<u>…</u>` passthrough that GFM's raw-inline-HTML tolerance carries th
 lossy in Markdown, hence the fallback warnings below.
 
 **Toolbar + slash menu.** Two ways to format, producing the same commands: an always-visible
-toolbar, and a Notion-style `/` menu (headings H1–H4, bold/italic/underline/strike,
+toolbar, and a Notion-style `/` menu (headings H1–H4, bold/italic/underline/strike/sub/super,
 bullet/ordered/task lists, blockquote, callout, inline code and code block, link, horizontal
 rule, table, image). The menu reuses `@tiptap/suggestion` and its bundled `@floating-ui/dom` —
 **no extra dependency** — and every item invokes the same command the toolbar calls, so it adds
@@ -161,7 +161,9 @@ The toolbar's buttons are **data**, in `App\Support\WysiwygToolbar` (one array p
 merge/split-cell gated on the field's format there, not in the template). Every button renders
 through `x-wysiwyg.toolbar-button`, which owns the one `<button>` shape and the base classes,
 and takes either a `command` (+`args`) or a raw JS `action` for the bespoke helpers
-(`setLink()`, `setImage()`, `toggleCallout()`).
+(`setLink()`, `setImage()`, `setCalloutType()`). The six collapsed clusters (Style,
+Typography, Lists, Callout, Code, Table) all render through one `x-wysiwyg.toolbar-dropdown`
+component, fed the matching `WysiwygToolbar` array.
 
 > [!WARNING]
 > Don't give that component a `class=""` of your own alongside its `$attributes->merge()` —
@@ -176,7 +178,8 @@ and takes either a `command` (+`args`) or a raw JS `action` for the bespoke help
   blockquote — GitHub's alert convention, recognized on a blockquote's first line in both
   formats. Implemented as a custom `Callout` node presenting over `<blockquote>` via
   `data-callout-type` in HTML mode, re-serializing as `> [!TYPE]` + `> `-prefixed body in
-  Markdown. The toolbar button inserts one or cycles an existing one through the five types.
+  Markdown. The toolbar's Callout dropdown lists the five types by name: picking one inserts a
+  callout, or changes the type of the one the cursor is already in (`setCalloutType()`).
 
 > [!IMPORTANT]
 > **Editor output must stay ⊆ the allow-list.** Whatever the toolbar *or slash menu* can

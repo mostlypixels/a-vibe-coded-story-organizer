@@ -9,7 +9,9 @@
         "php": "^8.5",
         "ext-intl": "*",
         "ext-zip": "*",
+        "blade-ui-kit/blade-icons": "^1.10",
         "ezyang/htmlpurifier": "^4.19",
+        "fakerphp/faker": "^1.23",
         "jfcherng/php-diff": "^7.0",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
@@ -19,7 +21,6 @@
     },
     "require-dev": {
         "brianium/paratest": "^7.23",
-        "fakerphp/faker": "^1.23",
         "laravel/breeze": "^2.4",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",

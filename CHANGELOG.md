@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-05 — Theme quick fixes: collapsible cards, Tabler icons, toolbar dropdowns (#78)
+
+### Added
+
+- Card sections on entity pages can now be collapsed and expanded.
+- The rich-text slash menu now offers subscript and superscript.
+
+### Changed
+
+- The rich-text toolbar groups less-common formatting into labeled dropdowns (Style, Typography, Lists, Callout, Code, Table).
+- The callout button is now a dropdown of the five types; picking one inserts a callout or changes the current one's type, instead of cycling on repeated clicks.
+- UI icons across the app now come from a single Tabler icon set for visual consistency.
+
 ## 2026-08-03 — Continuous chapter and act numbering (#77)
 
 ### Added

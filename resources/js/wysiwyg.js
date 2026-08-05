@@ -7,6 +7,8 @@ import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table
 import Image from '@tiptap/extension-image';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Underline } from '@tiptap/extension-underline';
+import { Subscript } from '@tiptap/extension-subscript';
+import { Superscript } from '@tiptap/extension-superscript';
 
 /**
  * Table's stock renderHTML() always emits a `style="width: …"/"min-width: …"`
@@ -29,23 +31,39 @@ const PlainTable = Table.extend({
 });
 
 /**
- * Underline has no clean CommonMark equivalent, so `@tiptap/extension-underline`'s
- * stock renderMarkdown() invents its own `++text++` dialect — a syntax nothing else
- * in this app's Markdown grammar recognizes. Rather than adopt that bespoke syntax,
- * this app makes `<u>text</u>` (raw inline HTML) the one sanctioned HTML-passthrough
- * exception in an otherwise fully-tokenized Markdown field (expand-tip-tap task 05 /
- * spec.md's "Underline" decision) — do not generalize this pattern to any other mark
- * without a fresh decision. Reading `<u>` needs no override here: the mark's inherited
- * `parseHTML()` (`{ tag: 'u' }`, unmodified) already fires whenever @tiptap/markdown's
- * parser hits raw inline HTML, via CommonMark's own raw-HTML passthrough — the same
- * mechanism that already renders `> [!TYPE]` callouts as plain blockquotes today.
- * `markdownTokenizer: null` disables the stock `++...++` tokenizer entirely, so `++`
- * is never a second, undecided-upon way to spell underline in this app's Markdown.
+ * Underline, Subscript and Superscript have no clean CommonMark equivalent, so this
+ * app renders each through raw inline HTML passthrough (`<u>`, `<sub>`, `<sup>`) — an
+ * otherwise fully-tokenized Markdown field's one sanctioned HTML exception, now
+ * extended past Underline alone (expand-tip-tap task 05's original "Underline"
+ * decision) to the same shape for sub/sup. Reading each tag back needs no override:
+ * every mark's inherited `parseHTML()` (`{ tag: 'u'|'sub'|'sup' }`, unmodified)
+ * already fires whenever @tiptap/markdown's parser hits raw inline HTML, via
+ * CommonMark's own raw-HTML passthrough — the same mechanism that already renders
+ * `> [!TYPE]` callouts as plain blockquotes today.
+ *
+ * Underline needs `markdownTokenizer: null` because `@tiptap/extension-underline`
+ * ships its own `++text++` dialect that would otherwise compete with `<u>` as a second,
+ * undecided-upon spelling. Subscript/Superscript ship no default Markdown handling at
+ * all (no tokenizer, no renderMarkdown) — without the renderMarkdown override below,
+ * `@tiptap/markdown` silently drops the mark on save instead of erroring, so the
+ * override isn't optional polish here, it's what makes the mark survive a save.
  */
 const MarkdownUnderline = Underline.extend({
     markdownTokenizer: null,
     renderMarkdown(node, helpers) {
         return `<u>${helpers.renderChildren(node)}</u>`;
+    },
+});
+
+const MarkdownSubscript = Subscript.extend({
+    renderMarkdown(node, helpers) {
+        return `<sub>${helpers.renderChildren(node)}</sub>`;
+    },
+});
+
+const MarkdownSuperscript = Superscript.extend({
+    renderMarkdown(node, helpers) {
+        return `<sup>${helpers.renderChildren(node)}</sup>`;
     },
 });
 
@@ -220,18 +238,19 @@ const Callout = Node.create({
  *
  * Two field formats share this one component:
  *   - `html` (default): the value is sanitized HTML. Output MUST stay within the
- *     task-01 allow-list in App\Support\RichTextFields (p, h1–h4, strong, em, u, s,
+ *     allow-list in App\Support\RichTextFields (p, h1–h4, strong, em, u, s, sub, sup,
  *     ul, ol, li, blockquote, code, pre, a, br, hr, plus table/img/task-list markup;
  *     http/https schemes). StarterKit v3 bundles the base nodes/marks; headings are
  *     capped 1–4 and links restricted to http/https to keep the two lists in sync.
  *     The server-side HtmlSanitizer is the real gate — this is belt-and-braces.
  *   - `markdown`: the value is clean CommonMark (Scene contents). Serialized via the
  *     official @tiptap/markdown extension (getMarkdown / contentType: 'markdown').
- *     Strikethrough is standard GFM (`~~text~~`), no custom handler needed. Underline
- *     has no CommonMark equivalent, so it round-trips via `<u>text</u>` raw-HTML
- *     passthrough — the one sanctioned HTML exception in this field (see
- *     MarkdownUnderline above). The server-side ValidMarkdown rule + Str::markdown()
- *     render stay the real gate.
+ *     Strikethrough is standard GFM (`~~text~~`), no custom handler needed. Underline,
+ *     Subscript and Superscript have no CommonMark equivalent, so each round-trips via
+ *     raw-HTML passthrough (`<u>`, `<sub>`, `<sup>`) — the sanctioned HTML exceptions
+ *     in this field (see MarkdownUnderline/MarkdownSubscript/MarkdownSuperscript
+ *     above). The server-side ValidMarkdown rule + Str::markdown() render stay the
+ *     real gate.
  *   - Table, Image, and TaskItem/TaskList (expand-tip-tap task 03) apply unconditionally
  *     to both formats — all three ship real parseMarkdown/renderMarkdown handlers
  *     (@tiptap/extension-table, @tiptap/extension-image, @tiptap/extension-list), so
@@ -269,6 +288,8 @@ export function buildSlashItems(format, onLink, onImage) {
         { title: 'Italic', keywords: ['emphasis', 'i'], run: ({ editor, range }) => at(editor, range).toggleItalic().run() },
         { title: 'Underline', keywords: ['u'], run: ({ editor, range }) => at(editor, range).toggleUnderline().run() },
         { title: 'Strikethrough', keywords: ['strike', 's'], run: ({ editor, range }) => at(editor, range).toggleStrike().run() },
+        { title: 'Subscript', keywords: ['sub'], run: ({ editor, range }) => at(editor, range).toggleSubscript().run() },
+        { title: 'Superscript', keywords: ['super', 'sup'], run: ({ editor, range }) => at(editor, range).toggleSuperscript().run() },
         { title: 'Bulleted list', keywords: ['ul', 'bullet', 'unordered'], run: ({ editor, range }) => at(editor, range).toggleBulletList().run() },
         { title: 'Numbered list', keywords: ['ol', 'ordered', 'number'], run: ({ editor, range }) => at(editor, range).toggleOrderedList().run() },
         { title: 'Blockquote', keywords: ['quote', 'citation'], run: ({ editor, range }) => at(editor, range).toggleBlockquote().run() },
@@ -286,7 +307,8 @@ export function buildSlashItems(format, onLink, onImage) {
         { title: 'Image', keywords: ['image', 'img', 'picture'], run: ({ editor, range }) => { at(editor, range).run(); onImage(); } },
         { title: 'Task list', keywords: ['todo', 'checklist', 'checkbox'], run: ({ editor, range }) => at(editor, range).toggleTaskList().run() },
         // Callout (`> [!TYPE]`) applies to both formats (task 06) — not format-gated.
-        // Inserts a `note` callout; the type is cycled afterwards from the toolbar.
+        // Inserts a `note` callout; the type is then set from the toolbar's Callout
+        // dropdown (setCalloutType), which updates the callout the cursor is in.
         { title: 'Callout', keywords: ['note', 'tip', 'warning', 'alert', 'callout'], run: ({ editor, range }) => at(editor, range).setCallout({ type: 'note' }).run() },
     ];
 
@@ -455,6 +477,8 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
         }),
         Placeholder.configure({ placeholder }),
         MarkdownUnderline,
+        MarkdownSubscript,
+        MarkdownSuperscript,
         // Table/Image/TaskItem/TaskList apply unconditionally to both formats —
         // round-trip support is symmetric (task 03 of expand-tip-tap). Resize
         // (image) and merge/split (table) are HTML-mode-only (task 04): both are
@@ -613,46 +637,25 @@ export function registerWysiwyg(Alpine) {
             },
 
             /**
-             * Callout button: insert a `[!NOTE]` callout when the cursor is not already
-             * in one, otherwise cycle the existing callout to the next of the five types
-             * (note → tip → important → warning → caution → note). Cycling in place is
-             * the simplest type-picker that fits the toolbar's glyph-button language — no
-             * dropdown or prompt — and every type stays reachable with repeated clicks.
+             * Callout dropdown item: set the given type. Inserts a new callout when
+             * the cursor is not already in one, otherwise changes the existing
+             * callout's type in place (without re-wrapping, so nested content and
+             * the cursor position survive).
              */
-            toggleCallout() {
+            setCalloutType(type) {
                 if (!editor) return;
 
                 if (editor.isActive('callout')) {
-                    const current = editor.getAttributes('callout').calloutType || 'note';
-                    const next = CALLOUT_TYPES[(CALLOUT_TYPES.indexOf(current) + 1) % CALLOUT_TYPES.length];
-                    editor.chain().focus().updateCalloutType({ type: next }).run();
+                    editor.chain().focus().updateCalloutType({ type }).run();
                     return;
                 }
 
-                editor.chain().focus().setCallout({ type: 'note' }).run();
+                editor.chain().focus().setCallout({ type }).run();
             },
 
             /** Whether a mark/node is active at the cursor (reactive via `tick`). */
             isOn(name, arg) {
                 return this.tick >= 0 && !!editor && editor.isActive(name, arg);
-            },
-
-            /**
-             * The Headings dropdown trigger: its label is the active level
-             * ("H1".."H4") or a plain "H" outside a heading, and it highlights
-             * whenever any level is active. The levels come from the same PHP
-             * array that renders the dropdown items (App\Support\WysiwygToolbar
-             * ::HEADING_LEVELS, passed in via config), so trigger and dropdown
-             * cannot disagree. Both read isOn(), so both are reactive.
-             */
-            headingLevel() {
-                return (config.headingLevels || []).find((level) => this.isOn('heading', { level })) ?? null;
-            },
-
-            headingLabel() {
-                const level = this.headingLevel();
-
-                return level === null ? 'H' : `H${level}`;
             },
         };
     });

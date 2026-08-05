@@ -67,11 +67,16 @@ class CodexAsOfResolver
             ->filter(fn (CodexEntry $entry) => $entry->type === $type)
             ->map(fn (CodexEntry $entry) => [
                 'entry' => $entry,
-                'attributes' => $applicable->map(fn (CodexAttribute $attribute) => [
-                    'name' => $attribute->name,
-                    'value' => $entry->attributeValueAt($attribute, $moment),
-                ])->values(),
+                'attributes' => $applicable
+                    ->map(fn (CodexAttribute $attribute) => [
+                        'name' => $attribute->name,
+                        'value' => $entry->attributeValueAt($attribute, $moment),
+                    ])
+                    ->filter(fn (array $attribute) => filled($attribute['value']))
+                    ->values(),
             ])
+            // An entry with nothing but blank values as of this moment has nothing to show.
+            ->filter(fn (array $row) => $row['attributes']->isNotEmpty())
             ->values();
     }
 }
