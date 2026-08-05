@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-05 — Agent instructions trimmed and split into path-scoped rules
+## 2026-08-05 — Agent instructions trimmed and split into path-scoped rules (#81)
 
 ### Changed
 
