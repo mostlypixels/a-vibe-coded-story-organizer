@@ -14,8 +14,12 @@
         </x-slot>
 
         <x-slot name="content">
-            <x-dropdown-link :href="route('projects.story.index', $navigation->project)" :active="$navigation->storyOverviewActive">
-                {{ __('Story Overview') }}
+            <x-dropdown-link :href="route('projects.story.home', $navigation->project)" :active="$navigation->storyHomeActive">
+                {{ __('Story') }}
+            </x-dropdown-link>
+
+            <x-dropdown-link :href="route('projects.story.overview', $navigation->project)" :active="$navigation->storyOverviewActive">
+                {{ __('Overview') }}
             </x-dropdown-link>
 
             <x-dropdown-link :href="route('projects.acts.index', $navigation->project)" :active="$navigation->actsActive">
@@ -40,6 +44,10 @@
         </x-slot>
 
         <x-slot name="content">
+            <x-dropdown-link :href="route('projects.timeline.home', $navigation->project)" :active="$navigation->timelineHomeActive">
+                {{ __('Timeline') }}
+            </x-dropdown-link>
+
             <x-dropdown-link :href="route('projects.plotlines.index', $navigation->project)" :active="$navigation->plotlinesActive">
                 {{ __('Plotlines') }}
             </x-dropdown-link>
@@ -58,6 +66,10 @@
         </x-slot>
 
         <x-slot name="content">
+            <x-dropdown-link :href="route('projects.codex.home', $navigation->project)" :active="$navigation->codexHomeActive">
+                {{ __('Codex') }}
+            </x-dropdown-link>
+
             @foreach (\App\Enums\CodexEntryType::cases() as $codexType)
                 <x-dropdown-link
                     :href="route('projects.codex.index', [$navigation->project, $codexType->routeKey()])"
@@ -80,7 +92,11 @@
         </x-slot>
 
         <x-slot name="content">
-            <x-dropdown-link :href="route('projects.revisions.index', $navigation->project)" :active="$navigation->toolsActive">
+            <x-dropdown-link :href="route('projects.tools.home', $navigation->project)" :active="$navigation->toolsHomeActive">
+                {{ __('Tools') }}
+            </x-dropdown-link>
+
+            <x-dropdown-link :href="route('projects.revisions.index', $navigation->project)" :active="$navigation->revisionsActive">
                 {{ __('Revisions') }}
             </x-dropdown-link>
         </x-slot>

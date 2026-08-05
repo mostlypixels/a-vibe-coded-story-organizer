@@ -1,9 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <x-heading level="2">
-            {{ __('Edit Attribute') }}
-        </x-heading>
-    </x-slot>
+    <x-page-heading>
+        {{ __('Edit Attribute') }}
+    </x-page-heading>
 
     <x-edit-layout>
         <x-card>

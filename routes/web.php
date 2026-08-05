@@ -6,6 +6,7 @@ use App\Http\Controllers\AppearanceController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\CodexAttributeController;
 use App\Http\Controllers\CodexAttributeValueController;
+use App\Http\Controllers\CodexController;
 use App\Http\Controllers\CodexEntryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseConfigurationController;
@@ -30,6 +31,8 @@ use App\Http\Controllers\SceneShareController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SharedSceneController;
 use App\Http\Controllers\StoryController;
+use App\Http\Controllers\TimelineController;
+use App\Http\Controllers\ToolsController;
 use App\Http\Middleware\TrackActiveProject;
 use App\Services\RevisionPurger;
 use App\Support\AutosavableFields;
@@ -165,7 +168,18 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
 
-    Route::get('/projects/{project}/story', [StoryController::class, 'index'])->name('projects.story.index');
+    // Section landing pages. Each top-level nav section (Story, Timeline, Codex,
+    // Tools) has a `home` route that its breadcrumb section crumb and its first
+    // dropdown item link to. Placeholder stubs today — real section dashboards
+    // land here later.
+    Route::get('/projects/{project}/story', [StoryController::class, 'home'])->name('projects.story.home');
+    Route::get('/projects/{project}/timeline', [TimelineController::class, 'home'])->name('projects.timeline.home');
+    Route::get('/projects/{project}/codex', [CodexController::class, 'home'])->name('projects.codex.home');
+    Route::get('/projects/{project}/tools', [ToolsController::class, 'home'])->name('projects.tools.home');
+
+    // Story Overview — the full act/chapter/scene tree. Moved off the bare
+    // /story path (now the Story section stub) to /story/overview.
+    Route::get('/projects/{project}/story/overview', [StoryController::class, 'index'])->name('projects.story.overview');
 
     // Full-text-ish search across one project's six searchable entities. Single
     // GET action (no AJAX): q/mode round-trip via the query string. Authorizes

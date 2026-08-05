@@ -9,8 +9,12 @@
 
 <x-navigation.section-heading>{{ __('Story') }}</x-navigation.section-heading>
 
-<x-responsive-nav-link :href="route('projects.story.index', $navigation->project)" :active="$navigation->storyOverviewActive">
-    {{ __('Story Overview') }}
+<x-responsive-nav-link :href="route('projects.story.home', $navigation->project)" :active="$navigation->storyHomeActive">
+    {{ __('Story') }}
+</x-responsive-nav-link>
+
+<x-responsive-nav-link :href="route('projects.story.overview', $navigation->project)" :active="$navigation->storyOverviewActive">
+    {{ __('Overview') }}
 </x-responsive-nav-link>
 
 <x-responsive-nav-link :href="route('projects.acts.index', $navigation->project)" :active="$navigation->actsActive">
@@ -27,6 +31,10 @@
 
 <x-navigation.section-heading>{{ __('Timeline') }}</x-navigation.section-heading>
 
+<x-responsive-nav-link :href="route('projects.timeline.home', $navigation->project)" :active="$navigation->timelineHomeActive">
+    {{ __('Timeline') }}
+</x-responsive-nav-link>
+
 <x-responsive-nav-link :href="route('projects.plotlines.index', $navigation->project)" :active="$navigation->plotlinesActive">
     {{ __('Plotlines') }}
 </x-responsive-nav-link>
@@ -36,6 +44,10 @@
 </x-responsive-nav-link>
 
 <x-navigation.section-heading>{{ __('Codex') }}</x-navigation.section-heading>
+
+<x-responsive-nav-link :href="route('projects.codex.home', $navigation->project)" :active="$navigation->codexHomeActive">
+    {{ __('Codex') }}
+</x-responsive-nav-link>
 
 @foreach (\App\Enums\CodexEntryType::cases() as $codexType)
     <x-responsive-nav-link
@@ -51,7 +63,11 @@
 
 <x-navigation.section-heading>{{ __('Tools') }}</x-navigation.section-heading>
 
-<x-responsive-nav-link :href="route('projects.revisions.index', $navigation->project)" :active="$navigation->toolsActive">
+<x-responsive-nav-link :href="route('projects.tools.home', $navigation->project)" :active="$navigation->toolsHomeActive">
+    {{ __('Tools') }}
+</x-responsive-nav-link>
+
+<x-responsive-nav-link :href="route('projects.revisions.index', $navigation->project)" :active="$navigation->revisionsActive">
     {{ __('Revisions') }}
 </x-responsive-nav-link>
 

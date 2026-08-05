@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-05 — Breadcrumb trails and section landing pages (#80)
+
+### Added
+
+- Story, Timeline, Codex, and Tools each have a landing page, reachable from its menu and breadcrumb.
+
+### Changed
+
+- Project pages now show a breadcrumb trail instead of a page title and "Back to X" link.
+- The "Story Overview" menu item is now "Overview", and the page moved to a new address.
+
 ## 2026-08-05 — Theme quick fixes: collapsible cards, Tabler icons, toolbar dropdowns (#78)
 
 ### Added

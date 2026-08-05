@@ -1,9 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <x-heading level="2">
-            {{ __('New Act') }}
-        </x-heading>
-    </x-slot>
+    <x-page-heading>
+        {{ __('New Act') }}
+    </x-page-heading>
 
     <x-edit-layout>
         <x-card>

@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Enums\RevisionOrigin;
 use App\Exceptions\RevisionConflictException;
+use App\Models\Project;
 use App\Models\Revision;
 use App\Services\RevisionComparison;
 use App\Services\RevisionHistory;
 use App\Services\RevisionReverter;
 use App\Support\AutosavableFields;
+use App\Support\Breadcrumbs;
+use App\Support\Crumb;
 use App\Support\FieldComparison;
 use App\Support\SavePoint;
 use App\View\Components\RevisionsLayout;
@@ -34,6 +37,14 @@ use Illuminate\View\View;
  * `revisionable_type` is always a real, already-registered model class.
  *
  * Any purge/retention UI (tasks 12-13) is deliberately out of scope here.
+ *
+ * `index`/`compare` also supply their own breadcrumb trail tail (`revisionsTrail()`
+ * below) — the one documented exception to the app's central, route-driven
+ * {@see Breadcrumbs}. These routes bind `{entity}` (a slug) + `{id}`,
+ * not a `{project}` model, so `RouteProject::resolve` can't find a project and
+ * the central builder yields an empty trail. This class already resolves the
+ * project (and a label) via `resolveEntity()`, so the view is handed a finished
+ * `Crumb[]` instead. See expanded/architecture.md → "The revisions exception".
  */
 class RevisionController extends Controller
 {
@@ -84,10 +95,13 @@ class RevisionController extends Controller
             // widens what the reader is looking at.
             ->withQueryString();
 
+        $project = $model->revisionProject();
+        $heading = $this->revisionsLeaf($entity, $model->revisionDisplayName(), $filters['field'], __('History'), __('history'));
+
         return view('revisions.index', [
             // The owning Project drives the shared <x-revisions-layout> sidebar;
             // already resolved (and authorized against) in resolveEntity().
-            'project' => $model->revisionProject(),
+            'project' => $project,
             'entity' => $entity,
             'id' => $id,
             'field' => $filters['field'],
@@ -104,6 +118,10 @@ class RevisionController extends Controller
             // can only ever return nothing is not a choice worth showing.
             'fieldOptions' => $this->fieldOptions($entity, $model),
             'editUrl' => route(self::EDIT_ROUTES[$entity], $model),
+            // The breadcrumb exception (see class docblock): heading and leaf
+            // share one computed string so they can never say different things.
+            'heading' => $heading,
+            'breadcrumbTrail' => $this->revisionsTrail($project, $heading),
         ]);
     }
 
@@ -183,10 +201,13 @@ class RevisionController extends Controller
             ? $comparison->between($model, $from, $to, $field)
             : collect();
 
+        $project = $model->revisionProject();
+        $heading = $this->revisionsLeaf($entity, $model->revisionDisplayName(), $field, __('Compare'), __('compare'));
+
         return view('revisions.compare', [
             // The owning Project drives the shared <x-revisions-layout> sidebar;
             // already resolved (and authorized against) in resolveEntity().
-            'project' => $model->revisionProject(),
+            'project' => $project,
             'entity' => $entity,
             'id' => $id,
             'field' => $field,
@@ -203,6 +224,10 @@ class RevisionController extends Controller
             'baseHashes' => $this->baseHashes($entity, $model),
             'savesApart' => $this->savesApart($points, $from, $to),
             'editUrl' => route(self::EDIT_ROUTES[$entity], $model),
+            // The breadcrumb exception (see class docblock): heading and leaf
+            // share one computed string so they can never say different things.
+            'heading' => $heading,
+            'breadcrumbTrail' => $this->revisionsTrail($project, $heading),
         ]);
     }
 
@@ -492,5 +517,40 @@ class RevisionController extends Controller
         AutosavableFields::resolveField($entity, $field);
 
         return $field;
+    }
+
+    /**
+     * The breadcrumb-band exception (class docblock): `Dashboard` › `Tools`
+     * (linked to its section stub) › `Revisions` (linked) › the current leaf.
+     * Mirrors `App\Support\Breadcrumbs::toolsTrail()`'s shape by hand, since
+     * that class can't reach these routes at all — they have no `{project}`
+     * param for it to resolve.
+     *
+     * @return list<Crumb>
+     */
+    private function revisionsTrail(Project $project, string $leaf): array
+    {
+        return [
+            new Crumb(__('Dashboard'), route('projects.show', $project)),
+            new Crumb(__('Tools'), route('projects.tools.home', $project)),
+            new Crumb(__('Revisions'), route('projects.revisions.index', $project)),
+            new Crumb($leaf, current: true),
+        ];
+    }
+
+    /**
+     * The current leaf for a history/compare page: the entity and its title,
+     * so a reader lands oriented deep in a record's history, then what the
+     * page is showing — everything, or one field's.
+     *
+     * `$whole`/`$scoped` are the only two words this exception translates —
+     * "History"/"history" or "Compare"/"compare" — matching the central
+     * builder's own rule of owning just the verb, never the entity portion.
+     */
+    private function revisionsLeaf(string $entity, string $entityName, ?string $field, string $whole, string $scoped): string
+    {
+        $subject = $field === null ? $whole : Str::headline($field).' '.$scoped;
+
+        return sprintf('%s "%s" — %s', Str::headline($entity), $entityName, $subject);
     }
 }

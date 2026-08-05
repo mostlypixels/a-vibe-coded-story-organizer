@@ -1,9 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <x-heading level="2">
-            {{ __('Edit Plotline') }}
-        </x-heading>
-    </x-slot>
+    <x-page-heading>
+        {{ __('Edit Plotline') }}
+    </x-page-heading>
 
     <x-edit-layout>
         <x-card>

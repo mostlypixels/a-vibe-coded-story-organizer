@@ -272,7 +272,7 @@ class NavigationTest extends TestCase
         $this->assertLinkIsNotCurrent($html, route('projects.show', $project));
         $this->assertLinkIsNotCurrent($html, route('projects.plotlines.index', $project));
         $this->assertLinkIsNotCurrent($html, route('projects.codex.index', [$project, 'characters']));
-        $this->assertLinkIsNotCurrent($html, route('projects.story.index', $project));
+        $this->assertLinkIsNotCurrent($html, route('projects.story.overview', $project));
     }
 
     public function test_the_search_link_is_present_but_not_marked_on_a_non_search_page(): void
