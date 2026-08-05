@@ -24,7 +24,7 @@ use Illuminate\View\View;
 
 /**
  * History and compare views for one revisionable (entity, field) pair
- * (expanded/ui.md "History page"/"Compare view", handoff.md §5.1/§5.3), plus
+ * (expanded/ui.md "History page"/"Compare view"), plus
  * the revert action (task 11).
  *
  * `index`/`compare` resolve the {entity} slug through App\Support\
@@ -32,7 +32,7 @@ use Illuminate\View\View;
  * unregistered slug never reaches this class at all, the router 404s it
  * first (routes/web.php's `->whereIn('entity', AutosavableFields::slugs())`).
  * `revert` instead resolves straight from the {revision} route-model binding
- * (handoff.md §9.3's routes table) and derives the slug itself via
+ * and derives the slug itself via
  * AutosavableFields::slugFor(), since a Revision's polymorphic
  * `revisionable_type` is always a real, already-registered model class.
  *
@@ -370,7 +370,7 @@ class RevisionController extends Controller
 
     /**
      * Revert one field to an older revision's value (expanded/architecture.md
-     * "Revert", handoff.md §5.2).
+     * "Revert").
      *
      * Resolve → authorize → delegate → redirect: the work itself lives in
      * {@see RevisionReverter} (task 16), shared with the whole-save undo so the

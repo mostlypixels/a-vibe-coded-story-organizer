@@ -11,7 +11,7 @@ use InvalidArgumentException;
 
 /**
  * The one place the application's *explicit, destructive* revision-deletion
- * rules live (handoff.md §4.3).
+ * rules live.
  *
  * This is the opposite number of Revision::prunable() (task 1): prune is the
  * unattended, safety-preserving daily sweep that never touches a labeled or

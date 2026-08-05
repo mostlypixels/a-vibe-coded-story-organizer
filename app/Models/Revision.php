@@ -85,9 +85,9 @@ class Revision extends Model
      * The query {@see MassPrunable} runs (via the scheduled `model:prune`
      * command) to delete eligible rows in bulk.
      *
-     * This is the single most safety-critical query in the whole feature
-     * (handoff.md §4.2): it must delete an "automatic", unlabeled row once it
-     * is older than the retention window, *unless* that row is the newest
+     * This is the single most safety-critical query in the whole feature. It
+     * must delete an "automatic", unlabeled row once it is older than the
+     * retention window, *unless* that row is the newest
      * revision recorded for its (revisionable_type, revisionable_id, field)
      * triple — losing the only remaining history for a field would be a real
      * data loss, not just tidying.

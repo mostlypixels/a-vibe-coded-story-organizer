@@ -20,7 +20,7 @@ use Tests\TestCase;
 /**
  * RevisionController::revert() and the App\Services\RevisionReverter behind it
  * (task 16): copies an older revision's value back onto the live column,
- * additively (expanded/architecture.md "Revert", handoff.md §5.2). Never
+ * additively (expanded/architecture.md "Revert"). Never
  * destructive: the reverted-away-from state and every other row stay exactly as
  * they were, and revert always creates a new `origin: revert` row rather than
  * editing anything.

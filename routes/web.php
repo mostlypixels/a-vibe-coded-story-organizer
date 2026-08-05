@@ -141,8 +141,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         // Task 13: the dedicated admin "Revisions" page — the RevisionSetting
         // retention form (confirm-gated when lowering the window) and the
         // "Revision storage" panel's bulk-delete actions. A new, standalone
-        // section rather than folded into General settings or Export & import
-        // (handoff.md §9.11/§4.3 — confirmed in this feature's grilling pass).
+        // section rather than folded into General settings or Export & import.
         Route::get('/revisions', [RevisionSettingController::class, 'edit'])->name('revisions.edit');
         Route::patch('/revisions', [RevisionSettingController::class, 'update'])->name('revisions.update');
         Route::delete('/revisions/purge/{category}', [RevisionSettingController::class, 'purgeCategory'])
@@ -246,9 +245,9 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     // Autosave-with-revisions (task 06): the one generic PATCH every registered
     // field autosaves through — see App\Support\AutosavableFields for the
     // slug => model+field registry this route gates on. An unregistered
-    // {entity} slug 404s here, before FieldAutosaveController ever runs
-    // (handoff.md §3.1/§3.2). throttle:120,1 comfortably covers a 2-second
-    // debounce across several fields at once (handoff.md §9.8).
+    // {entity} slug 404s here, before FieldAutosaveController ever runs.
+    // throttle:120,1 comfortably covers a 2-second debounce across several
+    // fields at once.
     Route::whereIn('entity', AutosavableFields::slugs())->middleware('throttle:120,1')->group(function () {
         Route::patch('/autosave/{entity}/{id}/{field}', [FieldAutosaveController::class, 'update'])
             ->name('autosave.update');

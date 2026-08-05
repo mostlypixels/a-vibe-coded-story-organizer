@@ -19,9 +19,8 @@ use Illuminate\Database\Migrations\Migration;
  *
  * Deliberately routes through App\Services\RevisionRecorder::ensureBaseline(),
  * the exact same method the live write path calls before its first write to a
- * field (handoff.md §9.2's "identical code path" requirement) — this migration
- * adds no baseline-seeding logic of its own, it only drives the existing
- * check-then-seed method over every existing row. That method is already
+ * field. This migration adds no baseline-seeding logic of its own. It only
+ * drives the existing check-then-seed method over every existing row. That method is already
  * idempotent (no-op if a revision for the (entity, field) pair exists) and
  * already skips null/empty values, so batching this migration and re-running
  * it after a partial failure is safe by construction.

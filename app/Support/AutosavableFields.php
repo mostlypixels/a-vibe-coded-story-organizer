@@ -18,12 +18,12 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Single source of truth for which model+field pairs the autosave-with-revisions
  * feature covers, keyed by the URL slug the feature's routes accept (mirrors the
- * app's own URL segments — `codex`, not `codex-entry`, per handoff.md §9.3).
+ * app's own URL segments — `codex`, not `codex-entry`).
  *
  * This is the only place `FieldAutosaveController` (task 6) resolves a slug to a
  * model class, and the only place its validation rules come from — the autosave
  * endpoint and the existing Form Requests must never validate the same field two
- * different ways (handoff.md §9.8). An unregistered slug never reaches the
+ * different ways. An unregistered slug never reaches the
  * controller at all: `routes/web.php` gates the `{entity}` segment with
  * `->whereIn('entity', AutosavableFields::slugs())`, so it 404s at the router.
  *
@@ -39,9 +39,15 @@ class AutosavableFields
     /**
      * type slug => [model class, [field => FieldKind, ...]].
      *
-     * This is `handoff.md` §7 / `expanded/architecture.md`'s 14-field table,
-     * reshaped by slug for URL resolution — copied verbatim, never add or drop a
-     * field here without updating that table first.
+     * This array is the authoritative list of autosavable fields. The design
+     * documents describe it; they do not govern it.
+     *
+     * > [!WARNING]
+     * > Nothing checks this array against the database or the config. A new
+     * > field silently takes the `default` character cap. No test compares this
+     * > list to the widened `longText` columns — LongTextColumnsMigrationTest
+     * > keeps its own copy. Add a field here, then widen its column and set its
+     * > cap in `config/revisions.php` by hand.
      *
      * `CodexAttributeValue.value` is absent on purpose. {@see AttributeTimeline}
      * already gives those values story-time history. Edit-time history on top is a design
@@ -183,7 +189,7 @@ class AutosavableFields
      * The validation rule array for this field, built from its FieldKind and
      * character cap. Delegates to the same rule objects the existing Form
      * Requests use (SanitizeHtml, ValidMarkdown) so the two paths can never
-     * validate the same field two different ways (handoff.md §9.8).
+     * validate the same field two different ways.
      *
      * @return array<int, mixed>
      */

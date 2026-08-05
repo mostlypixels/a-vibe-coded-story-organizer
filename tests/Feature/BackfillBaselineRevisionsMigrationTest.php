@@ -20,8 +20,8 @@ use Tests\TestCase;
  * Task 05 — the data migration that seeds a `baseline` revision for every
  * existing row of every App\Support\AutosavableFields-registered model, via
  * the identical App\Services\RevisionRecorder::ensureBaseline() code path the
- * live autosave write uses (handoff.md §9.2's "identical code path"
- * requirement).
+ * live autosave write uses. The migration must never seed a baseline any other
+ * way.
  *
  * RefreshDatabase already runs this migration once per test, before any
  * factory rows exist — so by the time a test seeds rows, the automatic run

@@ -820,7 +820,7 @@ class ProjectGraphImporter
      * off) is simply skipped — matches the exporter's own "omit rather than
      * write empty" convention, so there is nothing to treat as an error here.
      *
-     * Every imported row (handoff.md §8, binding):
+     * These rules are binding for every imported row:
      *   - keeps `created_at` verbatim from the archive — rewriting it to
      *     import time would make the entire pre-import era claim to have been
      *     written on restore day, breaking compare-by-date.

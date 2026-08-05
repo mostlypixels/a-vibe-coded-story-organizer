@@ -69,9 +69,9 @@ class StaticSiteExporter
      * autosave-with-revisions): when on, every registered field on every
      * exported entity gets a data/.../revisions/<field>.json sidecar holding
      * that field's WHOLE history as one array — never one file per revision
-     * (handoff.md §8's explicit rejection of "hundreds of zip entries" for a
-     * heavily-edited scene). EPUB/PDF exports never include revisions; this
-     * toggle only affects this zip exporter.
+     * (a heavily-edited scene must not add hundreds of entries to the zip).
+     * EPUB/PDF exports never include revisions; this toggle only affects this
+     * zip exporter.
      */
     public function export(Project $project, bool $includeMedia, bool $includeRevisions = false): string
     {
@@ -791,8 +791,8 @@ class StaticSiteExporter
      * `if ($includeRevisions)` guard.
      *
      * ONE FILE PER FIELD holding that field's WHOLE history as an array — never one
-     * file per revision (handoff.md §8: a heavily-edited scene must not add
-     * hundreds of zip entries to the archive). A field with zero revisions writes
+     * file per revision, because a heavily-edited scene must not add hundreds of
+     * entries to the archive. A field with zero revisions writes
      * nothing at all, matching addFieldFile()'s "omit rather than write empty"
      * convention.
      *

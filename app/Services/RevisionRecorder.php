@@ -17,8 +17,9 @@ use Throwable;
  * The one place the application writes to the `revisions` table.
  *
  * Called by App\Http\Controllers\FieldAutosaveController (task 6) and by the
- * baseline backfill migration (task 5) — the "identical code path" handoff.md
- * §9.2 requires, so the live write path and the backfill can never drift.
+ * baseline backfill migration (task 5). Both must use this one code path. Never
+ * copy this logic into a migration — the live path and the backfill would then
+ * drift.
  *
  * Deliberately does *not* decide whether to write at all: the byte-identical
  * no-op check (§2.2 — "typing something and undoing it leaves no trace") is
@@ -195,9 +196,9 @@ class RevisionRecorder
      *
      * `created_at` is stamped `$entity->updated_at`, not `now()`: that value
      * provably held from that timestamp onward, whereas stamping `now()`
-     * would misrepresent the entire pre-baseline era for compare-by-date
-     * (handoff.md §9.2). `user_id` is the project owner, not any particular
-     * editor, since no one "wrote" the baseline.
+     * would misrepresent the entire pre-baseline era for compare-by-date.
+     * `user_id` is the project owner, not any particular editor, since no one
+     * "wrote" the baseline.
      *
      * Skipped entirely when the field's current value is null/empty — an
      * empty field has nothing worth preserving.

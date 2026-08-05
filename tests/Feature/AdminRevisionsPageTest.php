@@ -222,9 +222,9 @@ class AdminRevisionsPageTest extends TestCase
 
     public function test_purge_old_automatic_can_remove_the_newest_revision_of_a_field_unlike_prune(): void
     {
-        // This is purge's whole point (handoff.md §4.3): unlike Revision::
-        // prunable(), an explicit purge is allowed to remove even the only/
-        // newest automatic revision left for a field.
+        // This is purge's whole point: unlike Revision::prunable(), an explicit
+        // purge is allowed to remove even the only/newest automatic revision
+        // left for a field.
         $user = User::factory()->create();
 
         $onlyRevision = $this->seedAutomaticRevision(daysOld: 400);

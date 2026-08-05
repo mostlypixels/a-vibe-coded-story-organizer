@@ -604,10 +604,9 @@ class ProjectGraphImporterTest extends TestCase
     {
         $this->writeManifest(includesRevisions: true);
 
-        // Deliberately ancient created_at, well past any retention window —
-        // origin: import must still exempt it (handoff.md §8's "why the
-        // exemption": restoring a backup must not watch its history evaporate
-        // on the next scheduled prune).
+        // Deliberately ancient created_at, well past any retention window.
+        // `origin: import` must still exempt it: a restored backup must not
+        // lose its history on the next scheduled prune.
         $this->writeFixtureFile(
             'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions/contents.json',
             json_encode([[

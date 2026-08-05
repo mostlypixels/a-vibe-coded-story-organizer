@@ -13,8 +13,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * The single HTTP surface every autosaved field goes through (handoff.md §3.1/
- * §9.3) — one action, not one controller per model, because
+ * The single HTTP surface every autosaved field goes through — one action, not
+ * one controller per model, because
  * {@see AutosavableFields::REGISTRY} is the only place a `{entity}` slug resolves
  * to a model+field. An unregistered slug never reaches this class at all: the
  * router's `->whereIn('entity', AutosavableFields::slugs())` 404s it first.
@@ -82,10 +82,9 @@ class FieldAutosaveController extends Controller
             ? $recorder->record($model, $field, $storedValue, $request->user(), RevisionOrigin::Automatic)
             : null;
 
-        // Coarse trigger (blur/Ctrl-S/submit) only, never a bare debounce tick, and
-        // only for Scene.contents specifically (handoff.md §2.5/§9.10) — this is
-        // the published seam .specs/draft/word-count listens to, not something
-        // this feature reacts to itself.
+        // Coarse trigger (blur/Ctrl-S/submit) only, never a bare debounce tick,
+        // and only for Scene.contents. SceneContentsChanged is a published seam
+        // for other features. Nothing listens to it today.
         if ($request->boolean('run_matcher') && $model instanceof Scene && $field === 'contents') {
             app(SceneReferenceMatcher::class)->syncScene($model);
 
