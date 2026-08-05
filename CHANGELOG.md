@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-05 — Breadcrumb trails and section landing pages
+## 2026-08-05 — Breadcrumb trails and section landing pages (#80)
 
 ### Added
 
