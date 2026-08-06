@@ -127,9 +127,9 @@ class Scene extends Model
     /**
      * The public URL for this scene's share link, or null when no token exists.
      *
-     * Builds the URL by route name (`shared.scenes.show`, registered in the
-     * public-display task); returns null for an unshared scene. Note this does
-     * not check expiry — use isShared() to gate visibility.
+     * Builds the URL by route name (`shared.scenes.show`); returns null for an
+     * unshared scene. Note this does not check expiry — use isShared() to gate
+     * visibility.
      */
     public function shareUrl(): ?string
     {

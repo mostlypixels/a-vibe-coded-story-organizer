@@ -1,9 +1,10 @@
 @props(['variant' => 'neutral', 'pill' => true])
 
 @php
-    // Small status/label pill. Full class strings per variant keep Tailwind's
-    // purge happy. See x-scene-status-badge for a domain-specific version that
-    // maps an enum to these same styles.
+    // Small status/label pill. Each variant writes its class string in full,
+    // because Tailwind only finds class names that appear complete in the source.
+    // See x-scene-status-badge for a domain-specific version that maps an enum to
+    // these same styles.
     //
     // Variants are named for the role they carry, never for a hue: the two that
     // used to be `gray` and `indigo` are now `neutral` and `accent`. `accent` has

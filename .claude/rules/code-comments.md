@@ -26,6 +26,27 @@ the moment the file moves.
   sense, the comment is incomplete.
 * `expanded/*.md` and `spec.md` are citable — they survive into `.specs/shipped/`.
 
+#### Never write a fact that goes stale in silence
+
+A count, a status or a history note is true when you write it and wrong two commits later. Nothing
+fails, so nothing tells you. Prefer the form that cannot rot.
+
+| Do not write | Write instead |
+|---|---|
+| `the seven icon-* wrappers` | `the icon-* wrappers` |
+| `37 call sites` | `every caller` — or name the one that bites |
+| `not wired in yet`, `nothing calls it yet` | nothing. Delete it when it becomes true |
+| `Image dividers are V2` | nothing. The roadmap is not a comment |
+| `formerly CrawlerSettingController` | nothing. Git holds the rename |
+| `decision #1`, `point 2`, `Q3`, `finding 3` | the rule itself, in one sentence |
+
+The last row is the same trap as a temporary file, in a shorter form: **a number is not an address.**
+Insert an item at the top of a list, and every comment that cites a position is now wrong, with
+nothing broken to notice. Name the rule — `the Start baseline` greps, `#1` does not.
+
+Two things a comment may still count: a value the code enforces (a validation limit, a retention
+window), and a number in the same file a reader can see. Both break loudly when they drift.
+
 #### Write in Simplified Technical English (ASD-STE100)
 
 This code is read by junior developers. STE is built for exactly that reader, and it gives a

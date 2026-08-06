@@ -13,7 +13,7 @@
      {!! !!} wrapping.
 
      Only styles.css is linked — one stylesheet holding nothing but the act/chapter
-     page-break rules (the grilled "semantic HTML + minimal page-break CSS only" decision).
+     page-break rules. The export stays semantic HTML with minimal page-break CSS.
      The href is the flat filename because styles.css is placed beside the content
      documents inside the epub package. --}}
 {!! '<' . '?xml version="1.0" encoding="UTF-8"?>' !!}

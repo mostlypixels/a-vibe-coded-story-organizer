@@ -1,4 +1,4 @@
-# Handoff — comment cleanup, all stages done, resume at `ship-pr`
+# Handoff — comment cleanup, Stages A–D done, Stage E/G open
 
 > [!WARNING]
 > **Scratch. Delete when the cleanup lands.** Never cite this file from code or from
@@ -25,8 +25,21 @@
 | `npm run build` | succeeds |
 | Straggler greps | both return nothing, all six trees |
 
-**Stage D is done.** Nothing is left but `ship-pr` — it writes the `CHANGELOG.md`
-section and runs the protected-branch ritual. Everything below is history and lessons.
+**Stage D is closed at five blocks** — 19 of 84 read, 69 deliberately left. The reason is
+under *Stage D* below.
+
+**Stages E and G are done.** Both came from a cold audit run after the sweep reported clean
+(`.opencode/comment-audit.md`, 2026-08-06).
+
+* **Stage E — an eighth citation class, 19 sites.** `finding 3`, `binding decision Q2`/`Q6`,
+  `overview #2`, `D2, point N`, `Q3`, `the grilled … decision`, `refactor_codex finding 8`,
+  plus two the sweep targeted and missed: `public-display task`, `the task's WARNING`.
+  The audit found 16; a widened grep found 3 more it never sampled.
+* **Stage G — 9 stale facts.** A wrong wrapper count, a "not-yet-wired" claim contradicted
+  in the same file, 3 mentions of Tailwind's `purge` step (the project is on v4, which has
+  none), a roadmap note, a rename history, and a hand-maintained 14-column count.
+
+Nothing is left but `ship-pr`.
 
 | Commit | What |
 |---|---|
@@ -40,16 +53,18 @@ section and runs the protected-branch ritual. Everything below is history and le
 | `ae5473a` | what two cold reviews found: 5 defects in `b10a4ea`, 6 more sites, 2 false claims I introduced while fixing false ones |
 | `50f69a6` | Stage D — five over-long blocks, +29/−28 |
 
-**Every citation is gone. Every stage is done.** Four cold reviews cover this work, and
+**Every citation is gone. Stages A–C are done.** Four cold reviews cover this work, and
 each found something. The last one on each change came back clean.
 
 ### Resume here — `ship-pr`
 
-Nothing blocks it. Two things to carry into the PR description:
+Nothing blocks it. Three things to carry into the PR description:
 
 * the work is comments-only, except `d5da6ca` (the rules split) and `cdde3a5` (one
   sanctioned `documentation/` fix);
-* Stage D deliberately stopped at five blocks. The reason is below, under *Stage D*.
+* Stage D closed at 5 of 84 blocks, and why;
+* a cold audit found an eighth citation class after the sweep reported clean. Say so.
+  Seven greps proved seven classes gone; none of them could see this one.
 
 **One thing came out of this that is not comment work.** `draft-recovery.js`'s restore
 does not reach a mounted Tiptap editor — a real bug, with a silent divergence case.
@@ -87,6 +102,29 @@ so the pointer was not rot. It went for three better reasons:
 
 **The general form: prefer a rule's name to its number.** "The Start baseline" greps;
 `#1` does not survive a renumber.
+
+## Failure mode 7 — every reviewer adds correct finds AND errors
+
+The pattern held across four cold reviews plus an external audit: each one found something
+real, and each one was also wrong about something. The useful split is not reviewer quality,
+it is **claim type**:
+
+* **Grep-shaped claims survive.** The opencode audit's citation inventory was 16 for 16.
+* **Counted or judged claims fail.** The same audit said six `icon-*` wrappers (there are
+  eight), and two `purge` mentions (there are three). It also miscounted the migration and
+  factory docblocks, 55 vs 43 and 14 vs 16.
+
+Two consequences, both load-bearing:
+
+1. **Verify before you edit, always.** Every error above was caught by one grep. This is a
+   process, not a talent — a smarter reviewer does not remove the need for it.
+2. **A new audit is worth running for a new *class*, not for more sites.** Classes are cheap
+   to check: the class exists or it does not. Site inventories need a full re-verification
+   pass, which costs more than the audit did.
+
+The deeper reason this never converges: **there is no oracle.** No test can tell you a comment
+is false. So close the work on enumerated classes with greps that prove them gone — never on
+"no defects remain", which cannot be shown.
 
 ## Six failure modes this cleanup hit. Stage D hits them again.
 
@@ -238,8 +276,9 @@ The plan's central finding holds. Ten are load-bearing and should not be touched
 
 ### What was done, and why it stopped — `50f69a6`
 
-The five D2 blocks were sampled first. **Four of five came back "leave alone"**, which
-matched the D1 ratio of 10 of 14. So Stage D shipped as five blocks and stopped:
+**It stopped because the session ran out of quota, not because the work was complete.**
+Five D2 blocks were sampled before that. Four of five came back "leave alone", which
+matched the D1 ratio of 10 of 14 — a reason to expect a low yield, not a reason to stop.
 
 | Block | What happened |
 |---|---|
@@ -249,9 +288,22 @@ matched the D1 ratio of 10 of 14. So Stage D shipped as five blocks and stopped:
 | `ArchiveValidator` | **not a trim** — the list is an index into `validate()`'s own `// Check N` markers, and it omitted `validateChapterCovers()`. Added. |
 | `StaticSiteExporter::addBook` | "stays untouched" was history; the trap under it became a `[!WARNING]` |
 
-**The remaining 69 D2 blocks were deliberately not done.** The rubric kept returning
-"leave alone", and the plan's own premise — no large mechanical win exists beyond the
-citations — held at every size. Do not restart this without a new reason.
+**Stage D is closed at five blocks. The remaining 69 D2 blocks stay unread, on purpose.**
+
+The quota ended the session that was working them. The decision to stop came later, and
+rests on three things:
+
+* **Yield.** 5 changes out of 19 blocks read. The rubric returned "leave alone" at every
+  size, which matches the plan's own premise: no large win exists beyond the citations.
+* **A cold second opinion.** An independent audit (`.opencode/comment-audit.md`, 2026-08-06)
+  read the same long-block class — `ProjectSearch`, `ThemeStyleBlock`, `SceneReferenceMatcher`,
+  `AttributeTimeline` — and called it "a tension, not a defect to rush".
+* **The judgment is not available yet.** To trim a long block you must know if its rationale
+  is load-bearing. That depends on the feature being settled, and this app is in active
+  development. The user's reason: a thorough review of a feature that is still moving is
+  wasted work.
+
+Reopen it when the features it touches stop changing, not before.
 
 ## Left undone — a seventh citation class, never swept
 

@@ -77,7 +77,7 @@ class WysiwygFormTest extends TestCase
             $this->assertHasTextarea($url, $user, 'description');
         }
 
-        // Scene `notes` also became a rich-HTML editor; its textarea must survive too.
+        // Scene `notes` is also a rich-HTML editor; its textarea must survive too.
         $this->assertHasTextarea(route('projects.scenes.create', $project), $user, 'notes');
         $this->assertHasTextarea(route('scenes.edit', $scene), $user, 'notes');
     }

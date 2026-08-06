@@ -19,8 +19,8 @@ class PublicationSettingController extends Controller
 {
     /**
      * Save every toggle/enum/appendix-type field from the config form.
-     * `firstOrNew`s the singleton row per project (lazy, per overview #2) so
-     * the first save creates it and every later save updates the same row.
+     * `firstOrNew`s the singleton row per project, lazily, so the first save
+     * creates it and every later save updates the same row.
      */
     public function update(UpdatePublicationSettingRequest $request, Project $project): RedirectResponse
     {

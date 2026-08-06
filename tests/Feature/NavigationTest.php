@@ -251,9 +251,9 @@ class NavigationTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // Proves the new `active` default is false and untouched dropdowns
-        // (Settings, not-yet-wired Codex/Timeline) stay unaffected. Scoped to
-        // anchors so the breadcrumb's own <span aria-current> is not counted.
+        // Proves the `active` default is false, so a dropdown the page does not
+        // match stays unaffected. Scoped to anchors so the breadcrumb's own
+        // <span aria-current> is not counted.
         $this->assertDoesNotMatchRegularExpression('/<a[^>]*aria-current="page"/', $html);
     }
 

@@ -90,8 +90,8 @@ class CodexMediaService
      * Two sources of removals collapse here: the explicit remove_media[] ids, and the
      * old cover row when a replacement cover is being uploaded (`$replacingCover`) — the
      * single-cover rule is thus row-level and settles inside the transaction. No disk
-     * I/O happens here on purpose (finding 3): if the transaction rolls back the rows
-     * are restored and the files were never touched, so no url() can 404 a surviving row.
+     * I/O happens here on purpose: if the transaction rolls back the rows are restored
+     * and the files were never touched, so no url() can 404 a surviving row.
      *
      * @param  array<int, int>  $removeIds  ids already validated to belong to $entry
      * @return array<int, string> paths to delete on disk once the transaction commits
@@ -184,7 +184,7 @@ class CodexMediaService
      * Runs post-commit (see storeCover/storeMany callers), so the disk write is no
      * longer protected by a transaction rollback. If the row insert fails after the
      * file lands, unlink it before rethrowing so the failure never leaves an orphan
-     * file behind (finding 3).
+     * file behind.
      */
     private function store(CodexEntry $entry, CodexMediaCollection $collection, UploadedFile $file): CodexMedia
     {

@@ -5,7 +5,6 @@ namespace App\Enums;
 /**
  * The style of dividers between scenes within a chapter.
  * Drives the rendering in the EPUB's chapter pages.
- * Image dividers are V2 — not included here yet.
  */
 enum DividerType: string
 {

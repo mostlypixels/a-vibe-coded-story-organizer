@@ -158,7 +158,7 @@ class ProjectGraphImporter
      * input, returning a clean attributes array to persist, or null when there is
      * no config to apply (absent file, unreadable/non-array JSON, or a config that
      * fails validation). A null NEVER fails the import — the project simply keeps
-     * the lazy default (overview.md #7; CLAUDE.md untrusted-input posture).
+     * the lazy default (CLAUDE.md untrusted-input posture).
      *
      * @return array<string, mixed>|null
      */

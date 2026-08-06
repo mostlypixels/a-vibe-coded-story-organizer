@@ -11,8 +11,7 @@ use Illuminate\View\View;
  * General settings section of the Admin Configuration area.
  *
  * Thin: resolve the CrawlerSetting singleton -> (authorize in the Form Request)
- * -> update -> redirect. This is the relocated search-engine (crawler) form,
- * formerly CrawlerSettingController; only the redirect route name changed.
+ * -> update -> redirect. This is the search-engine (crawler) visibility form.
  */
 class GeneralSettingsController extends Controller
 {

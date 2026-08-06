@@ -33,7 +33,7 @@ class ImportController extends Controller
      * Validate and import an uploaded archive as a NEW project for the current
      * user.
      *
-     * Two distinct failure surfaces (per the task's decided feedback contract):
+     * Two distinct failure surfaces:
      *  - start() rejecting the archive (ImportValidationException) is a form
      *    problem: redirect back with the message on the `archive` field.
      *  - run() failing mid-import has no `archive` field to attach to once past

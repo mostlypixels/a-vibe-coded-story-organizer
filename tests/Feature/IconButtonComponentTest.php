@@ -7,10 +7,10 @@ use Tests\TestCase;
 
 /**
  * `<x-icon-button>` — the one place the app's icon-only control styling lives —
- * and the seven wrappers that compose it.
+ * and the `icon-*` wrappers that compose it.
  *
  * Rendered standalone via `Blade::render()`, following {@see DiffComponentTest}'s
- * precedent. These assertions exist because the eight wrappers previously each
+ * precedent. These assertions exist because the wrappers previously each
  * re-typed the same Tailwind string: a feature test that only checks a page
  * returns 200 cannot tell a correctly-styled button from a differently-red one,
  * and nothing else in the suite renders these components at all.

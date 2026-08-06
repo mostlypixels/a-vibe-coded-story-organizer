@@ -21,7 +21,7 @@ return new class extends Migration
             $table->timestamps();
 
             // Backstop only: the store endpoint upserts on this key rather than
-            // rejecting duplicates (see attribute-timeline.md).
+            // rejecting duplicates.
             $table->unique(['codex_entry_id', 'codex_attribute_id', 'start_event_id']);
             // Every timeline query loads one attribute's periods for one entry.
             $table->index(['codex_entry_id', 'codex_attribute_id']);

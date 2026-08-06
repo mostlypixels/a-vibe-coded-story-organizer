@@ -309,9 +309,9 @@
                 </div>
 
                 {{--
-                    Download exports using the SAVED settings above — a
-                    separate form/button (the grilled v1 decision), not part
-                    of the config form's own submit.
+                    Download exports using the SAVED settings above, so it is a
+                    separate form/button and not part of the config form's own
+                    submit.
                 --}}
                 <form method="POST" action="{{ route('admin.data.export.epub') }}" class="mt-8 max-w-lg">
                     @csrf

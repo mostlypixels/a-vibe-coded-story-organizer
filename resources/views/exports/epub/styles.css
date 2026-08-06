@@ -1,10 +1,9 @@
 /*
- * The one and only epub stylesheet. Beyond the page-break rules from the grilled
- * "semantic HTML + minimal page-break CSS only" decision, it holds one explicit
- * exception: the story title page and every Act heading are centered and set larger,
- * per a direct follow-up request. Nothing else (chapter headings, body text, colors)
- * is styled. `break-before` is the modern property; `page-break-before` is kept for
- * older reader engines.
+ * The one and only epub stylesheet. The export stays semantic HTML with minimal
+ * page-break CSS. Beyond those page-break rules it holds one exception: the story
+ * title page and every Act heading are centered and set larger. Nothing else
+ * (chapter headings, body text, colors) is styled. `break-before` is the modern
+ * property; `page-break-before` is kept for older reader engines.
  */
 section.title-page,
 section.toc,

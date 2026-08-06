@@ -45,7 +45,7 @@ return new class extends Migration
                 // Direct DB::table() update, never $scene->save(): a model
                 // save fires HasRevisions and would write a revision row per
                 // scene — a migration inventing thousands of "edits" nobody
-                // made — and would bump updated_at. See the task's WARNING.
+                // made — and would bump updated_at.
                 DB::table('scenes')->where('id', $scene->id)->update([
                     'word_count' => WordCounter::count($scene->contents, FieldKind::Markdown),
                 ]);
