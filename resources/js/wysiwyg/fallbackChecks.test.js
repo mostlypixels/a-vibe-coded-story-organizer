@@ -9,9 +9,9 @@ import {
 } from './fallbackChecks.js';
 
 /**
- * Tests for the fallback-warning structural-check list the autosave fallback
- * path consumes. See `.specs/shipped/2026-07/expand-tip-tap/spec.md`'s
- * "Fallback policy" section for the full three-check enumeration.
+ * Tests for the three structural fallback-warning checks. See
+ * `.specs/shipped/2026-07/expand-tip-tap/spec.md`'s "Fallback policy" section
+ * for the full enumeration.
  */
 
 /** An html-format editor (the 8 RichTextFields fields), matching wysiwyg.js's default branch. */

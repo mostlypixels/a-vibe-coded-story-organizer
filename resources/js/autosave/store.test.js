@@ -4,8 +4,9 @@ import { DRAFT_TTL_MS, STATES, isDraftExpired, mapResponse, retryDelayMs, schedu
 /**
  * Tests for `resources/js/autosave/store.js` — the pure decision logic behind
  * the autosave indicator. No DOM, no network: every case here is a plain
- * function call against the status-code mapping table and precedence order
- * documented in `expanded/architecture.md`.
+ * function call against the status-code mapping table in
+ * `expanded/architecture.md` and the worst-state-wins precedence in
+ * `expanded/ui.md`.
  */
 
 describe('mapResponse — status-code mapping table', () => {

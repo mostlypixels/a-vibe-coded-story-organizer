@@ -110,7 +110,7 @@ describe('registerWordCount', () => {
 
     /**
      * The debounce itself, not just the eventual number: the final number is
-     * identical with or without the debounce, so asserting on it proves nothing.
+     * identical with or without the debounce, so it proves nothing on its own.
      * Proven here by spying on the named `recount()` method (see its
      * docblock) and asserting it fires exactly once, only after the last of
      * five rapid keystrokes. Breaking the debounce (e.g. calling `recount()`

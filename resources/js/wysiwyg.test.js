@@ -197,8 +197,8 @@ describe('image resize — HTML-mode only', () => {
 
 describe('table merge/split — HTML-mode only', () => {
     it('mergeCells/splitCell commands exist in both formats (the Table extension itself is unconditional)', () => {
-        // The gate is the toolbar (wysiwyg.blade.php only renders the buttons when
-        // `! $markdown`), not the extension — Table ships mergeCells/splitCell
+        // The gate is the toolbar (WysiwygToolbar::table() adds the two entries only
+        // when `! $markdown`), not the extension — Table ships mergeCells/splitCell
         // unconditionally in both formats, same as the rest of its command set.
         const html = htmlEditor('<p></p>');
         const markdown = markdownEditor('text');

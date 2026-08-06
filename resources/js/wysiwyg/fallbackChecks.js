@@ -1,7 +1,7 @@
 /**
- * Fallback-warning structural checks — the deliverable `autosave-with-revisions`
- * depends on (see expand-tip-tap's `spec.md`, "Fallback policy": prevent where
- * cheap, warn from an explicit list for the rest).
+ * Fallback-warning structural checks, built for autosave to raise at save time
+ * (see expand-tip-tap's `spec.md`, "Fallback policy": prevent where cheap, warn
+ * from an explicit list for the rest).
  *
  * Three residual, attribute/structure-level losses remain even with tables,
  * images, task lists, underline, strikethrough, and callouts all supported: a
@@ -177,11 +177,11 @@ export function hasUnmatchedHtmlWrapperTag(source, editor) {
 }
 
 /**
- * The combined aggregate `autosave-with-revisions` depends on: which (if any)
- * of the three structural cases apply to a given document. Returns an array of
- * warning keys (empty when none apply) — a document tripping more than one
- * check at once reports all of them, not just the first found, since that
- * consumer will likely want both the aggregate and the detail for its copy/UI.
+ * The combined aggregate: which (if any) of the three structural cases apply to
+ * a given document. Returns an array of warning keys (empty when none apply) —
+ * a document tripping more than one check at once reports all of them, not just
+ * the first found, since a caller will likely want both the aggregate and the
+ * detail for its copy/UI.
  *
  * @param {object} params
  * @param {import('@tiptap/core').Editor} params.editor A hydrated editor
