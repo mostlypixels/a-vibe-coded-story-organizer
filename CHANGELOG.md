@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-06 — Code comments no longer point at files that get deleted
+## 2026-08-06 — Code comments no longer point at files that get deleted (#82)
 
 ### Added
 
