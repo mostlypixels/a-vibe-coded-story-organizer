@@ -13,8 +13,7 @@ return new class extends Migration
      * toggle was off) creates codex_media rows that faithfully record every
      * media file's metadata while no bytes were ever shipped — such a row has
      * no stored file, so `path` becomes nullable. A null path means "file not
-     * included in this import" (see .specs → import → open-questions.md,
-     * question 2); every other creation path still always stores a file.
+     * included in this import"; every other creation path still always stores a file.
      */
     public function up(): void
     {

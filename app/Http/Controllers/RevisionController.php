@@ -35,7 +35,8 @@ use Illuminate\View\View;
  * AutosavableFields::slugFor(), since a Revision's polymorphic
  * `revisionable_type` is always a real, already-registered model class.
  *
- * Any purge/retention UI (tasks 12-13) is deliberately out of scope here.
+ * Retention is not this class's concern: RevisionSettingController owns the setting
+ * and its confirm step, and the PurgeRevisions console command does the deletion.
  *
  * `index`/`compare` also supply their own breadcrumb trail tail (`revisionsTrail()`
  * below) — the one documented exception to the app's central, route-driven

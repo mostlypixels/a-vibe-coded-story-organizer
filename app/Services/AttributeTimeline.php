@@ -141,8 +141,8 @@ class AttributeTimeline
 
     /**
      * Whether the period anchored at the given event may be removed. Removing the Start
-     * baseline while other values exist would open a hole at the beginning of the timeline
-     * (invariant #1); it is allowed only when it is the sole value. Exposed so the controller
+     * baseline while other values exist would open a hole at the beginning of the
+     * timeline; it is allowed only when it is the sole value. Exposed so the controller
      * can turn a disallowed request into a 403 (matching the is_main / is_fixed guard style)
      * before calling removeAt.
      */
@@ -155,8 +155,8 @@ class AttributeTimeline
 
     /**
      * Delete the period anchored at the given event. Refuses to remove the Start baseline
-     * while other values exist — that would open a hole at the beginning of the timeline
-     * (invariant #1) — allowing it only when it is the sole value.
+     * while other values exist — that would open a hole at the beginning of the timeline.
+     * It is allowed only when it is the sole value.
      */
     public function removeAt(Event $startEvent): void
     {

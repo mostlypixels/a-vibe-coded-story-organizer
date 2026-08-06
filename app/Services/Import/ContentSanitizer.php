@@ -21,7 +21,7 @@ use Throwable;
  *     allow-list and persists the cleaned result.
  *   * Import instead REJECTS the whole archive on any violation. A bulk
  *     untrusted upload deserves a hard failure with a clear error, never a
- *     quietly-altered import (.specs → import → open-questions.md, question 4).
+ *     quietly-altered import.
  *
  * The allow-list itself is never duplicated here — only the reject-vs-strip
  * policy is new. The check works by cleaning the content through the shared

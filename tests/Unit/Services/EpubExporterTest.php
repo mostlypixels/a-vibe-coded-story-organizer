@@ -1426,8 +1426,8 @@ class EpubExporterTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        // Customise the order: move `postface` before `body` (still after `toc`), matching
-        // the task's own example. `title` stays pinned first.
+        // Customise the order: move `postface` before `body`, still after `toc`.
+        // `title` stays pinned first.
         $order = ['title', 'dedication', 'acknowledgements', 'preface', 'toc', 'postface', 'body', 'appendix'];
 
         PublicationSetting::factory()->for($project)->create([

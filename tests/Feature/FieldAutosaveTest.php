@@ -407,8 +407,8 @@ class FieldAutosaveTest extends TestCase
 
     /**
      * The reconciliation contract this feature exists for: the JS counter is
-     * indicative and does not strip fenced code blocks (open-questions.md Q2),
-     * so the response is what tells it "6, not 11" once the fence is excluded.
+     * indicative and does not strip fenced code blocks, so the response is what
+     * tells it "6, not 11" once the fence is excluded.
      *
      * The expected count (6) is hand-counted from the prose alone, deliberately
      * chosen to differ from what a naive whitespace split of the raw, unrendered
