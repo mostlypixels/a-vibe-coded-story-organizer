@@ -738,14 +738,11 @@ class EpubExporter
      * one level beneath it — the same "section owns its children" nesting an Act uses for its
      * Chapters, and the right depth for the Act/Chapter/Scene nav structure.
      *
-     * A true no-op — nothing added, no nav levels disturbed — unless ALL of:
-     *   - `include_codex_appendix` is on (the default is off), AND
-     *   - at least one `appendix_entry_types` is selected, AND
-     *   - the project actually has codex entries of those types.
-     * The last guard applies the general rule — a section renders only when it is enabled AND
-     * has non-empty content — to the appendix. With the toggle on and types chosen but no
-     * matching entries, a lone heading page would be pointless, so the whole section is
-     * skipped.
+     * When a guard below rejects the appendix this is a true no-op — nothing added, no nav
+     * levels disturbed. The guards apply the general rule: a section renders only when it is
+     * enabled AND has non-empty content. `include_codex_appendix` is off by default. With the
+     * toggle on and types chosen but no matching entries, a lone heading page would be
+     * pointless, so the whole section is skipped.
      *
      * Entries are loaded filtered to the selected types and ordered by (`type`, `name`) — the
      * spec's ordering. When `appendix_include_images` is on, each entry's `media`

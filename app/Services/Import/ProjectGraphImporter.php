@@ -810,14 +810,12 @@ class ProjectGraphImporter
 
     /**
      * Import one entity's revision history from its `revisions/<field>.json`
-     * sidecars, written by App\Services\StaticSiteExporter — a no-op unless
-     * $includeRevisions is true, so every call site above can call this
-     * unconditionally, exactly like StaticSiteExporter's own addRevisions()
-     * guards internally rather than at each of its call sites.
+     * sidecars, written by App\Services\StaticSiteExporter. It is a no-op unless
+     * $includeRevisions is true, so every call site above calls it unconditionally.
      *
-     * A field with no sidecar file (never autosaved, or the export toggle was
-     * off) is simply skipped — matches the exporter's own "omit rather than
-     * write empty" convention, so there is nothing to treat as an error here.
+     * A field with no sidecar file is skipped, and that is not an error. The field
+     * was never autosaved, or the export toggle was off. The exporter omits the
+     * file. It never writes an empty one.
      *
      * These rules are binding for every imported row:
      *   - keeps `created_at` verbatim from the archive — rewriting it to

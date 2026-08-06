@@ -593,14 +593,16 @@ class StaticSiteExporter
      * the TOC. HTML lives in the Blade templates under resources/views/exports/book
      * (guidelines: no string-built HTML in the service).
      *
-     * Act and chapter numbers are derived once from
-     * this same loaded tree via {@see StoryNumbering} and threaded through both the
-     * TOC and the chapter pages, so the two can never disagree. The chapter heading
-     * is formatted by the project's {@see PublicationSetting::$chapter_title_format}
-     * — the same setting that drives the EPUB — so both exports agree on how a
-     * chapter number is displayed. `chapterHref()` stays untouched: it is file
-     * identity (folder = act position, file = per-act chapter position), not a
-     * display number, and must never shift a previously exported URL.
+     * Act and chapter numbers are derived once from this same loaded tree via
+     * {@see StoryNumbering}, then threaded through both the TOC and the chapter
+     * pages, so the two can never disagree. The chapter heading is formatted by the
+     * project's {@see PublicationSetting::$chapter_title_format} — the same setting
+     * that drives the EPUB — so both exports agree on how a chapter number reads.
+     *
+     * > [!WARNING]
+     * > `chapterHref()` must not use those display numbers. It is file identity
+     * > (folder = act position, file = per-act chapter position), and it must never
+     * > shift the URL of an already exported book.
      */
     private function addBook(ZipArchive $zip, Project $project): void
     {
