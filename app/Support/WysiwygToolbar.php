@@ -166,7 +166,7 @@ class WysiwygToolbar
      * Row/column ops keep the grid rectangular, so they are safe in both
      * formats. A merged cell (colspan) is lossless in HTML but loses its
      * structure in Markdown, so for a Markdown field the affordance is not
-     * rendered at all — prevent, don't warn (architecture.md §2).
+     * rendered at all — prevent, don't warn.
      *
      * @return array<int, array<string, mixed>>
      */

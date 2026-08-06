@@ -42,9 +42,9 @@ class UpdateProjectRequest extends FormRequest
             'isbn' => ['nullable', 'string', new ValidIsbn],
             'cover_image' => CodexMediaRules::coverRules(),
 
-            // Book front/back-matter Markdown (task 02, epub-configuration). These
-            // stay raw Markdown like Scene.contents — ValidMarkdown reuses the same
-            // well-formedness gate, never a rich-HTML sanitizer.
+            // Book front/back-matter Markdown. These stay raw Markdown like
+            // Scene.contents — ValidMarkdown reuses the same well-formedness
+            // gate, never a rich-HTML sanitizer.
             'dedication' => AutosavableFields::validationRule('project', 'dedication'),
             'acknowledgements' => AutosavableFields::validationRule('project', 'acknowledgements'),
             'preface' => AutosavableFields::validationRule('project', 'preface'),

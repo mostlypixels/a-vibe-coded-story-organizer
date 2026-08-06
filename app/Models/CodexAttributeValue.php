@@ -29,7 +29,7 @@ class CodexAttributeValue extends Model
 
     /**
      * The event this value takes effect from. Canonical ordering by
-     * (event_datetime, events.id) lives in the AttributeTimeline service (task 02).
+     * (event_datetime, events.id) lives in the AttributeTimeline service.
      */
     public function startEvent(): BelongsTo
     {

@@ -27,7 +27,7 @@
             </div>
 
             <div>
-                {{-- Autosave only applies once the entry exists (task 9's scope note): the
+                {{-- Autosave only applies once the entry exists: the
                      autosave endpoint PATCHes an existing row, so the create form (no id
                      yet) keeps the plain x-wysiwyg it always had, submitted with the rest
                      of the form on "Create". --}}
@@ -128,8 +128,8 @@
     One shared multipart form saves reference uploads and any per-item removals
     (checkboxes feeding remove_media[]) alongside everything else in a single Save.
 
-    Tabs are inline Alpine (matching resources/views/admin/data/index.blade.php:
-    no reusable x-tabs component until a second screen needs one) and follow the
+    Tabs are inline Alpine (no reusable x-tabs component until a second screen
+    needs one) and follow the
     WAI-ARIA tabs pattern: role="tablist"/tab/tabpanel, aria-selected on the active
     tab, aria-controls wiring tab -> panel, a roving tabindex (only the active tab
     is in the tab order), and Left/Right arrow keys move between tabs. `activeTab`

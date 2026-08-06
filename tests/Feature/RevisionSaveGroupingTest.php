@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Task 2 — the *save point*: every revision row written for one entity by one
+ * The *save point*: every revision row written for one entity by one
  * request shares a `save_id`, which is the unit the history, compare and revert
  * screens address.
  *

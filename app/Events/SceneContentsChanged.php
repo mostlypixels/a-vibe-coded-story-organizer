@@ -14,11 +14,10 @@ use Illuminate\Queue\SerializesModels;
  * `Scene.contents`, alongside the same condition that runs
  * {@see SceneReferenceMatcher::syncScene()}.
  *
- * This is a published seam, not a feature: nothing in this codebase listens for it
- * yet. `.specs/draft/word-count`'s planned rollup listener is the intended
- * subscriber — autosave itself has no knowledge of word counts (handoff.md §9.10).
- * Do not add a listener here on this feature's behalf; that belongs to whichever
- * spec actually needs the count.
+ * This is a published seam, not a feature. Nothing in this codebase listens for
+ * it. Autosave knows nothing about word counts, and must not learn. Do not add
+ * a listener here on this feature's behalf. That belongs to whichever feature
+ * needs the count.
  */
 class SceneContentsChanged
 {

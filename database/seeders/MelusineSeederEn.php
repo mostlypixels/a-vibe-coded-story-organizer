@@ -799,7 +799,7 @@ class MelusineSeederEn extends Seeder
      * Seed the temporal periods for one (entry, attribute) pair via AttributeTimeline.
      *
      * Each period is `[$eventTitle, $value]`. A null title is the Start-anchored baseline
-     * (invariant #1: every valued pair has exactly one Start value) created with
+     * (every valued pair has exactly one Start value) created with
      * `ensureBaseline`; a title anchors the value at that named event via `upsertAt`. Both
      * service methods run fine WithoutModelEvents and are idempotent on re-seed.
      *

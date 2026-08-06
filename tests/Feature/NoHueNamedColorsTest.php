@@ -60,14 +60,13 @@ class NoHueNamedColorsTest extends TestCase
      * built-in Tailwind hue (`bg-red-600`, `border-emerald-300`) or one of the two
      * literals that have role tokens.
      *
-     * Widened in task 10 to cover every built-in Tailwind hue, not just the five
-     * hand-authored ramps and the two neutral ones — status colors (`red`, `green`,
-     * `blue`, `yellow`, `amber`, …) previously passed straight through, ungated,
-     * exactly where the sweep is subtlest. The shade-digit suffix stays mandatory:
-     * `neutral` is both a Tailwind ramp and one of our own token names (`bg-neutral`),
-     * and requiring `-50`/`-600`/etc. is what tells them apart — `bg-neutral` (no
-     * digit) is our token and passes; `bg-neutral-600` (Tailwind's own ramp) is a hue
-     * reference and fails.
+     * The pattern covers every built-in Tailwind hue, not only the five
+     * hand-authored ramps and the two neutral ones. Status colors (`red`,
+     * `green`, `blue`, `yellow`, `amber`, …) are where the sweep is subtlest.
+     *
+     * The shade-digit suffix is mandatory: `neutral` is both a Tailwind ramp and
+     * one of our own token names. `bg-neutral` is our token and passes;
+     * `bg-neutral-600` is a hue reference and fails.
      */
     private const PATTERN = '/\b(?:ocean|aqua|navy|sun|flame|gray|slate|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|zinc|neutral|stone)-(?:50|[1-9]00|950)\b|\b(?:text|bg)-white\b/';
 

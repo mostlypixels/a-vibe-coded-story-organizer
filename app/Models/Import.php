@@ -58,7 +58,7 @@ class Import extends Model
     }
 
     /**
-     * A human-friendly name for the in-progress-imports list (task 08). Falls
+     * A human-friendly name for the in-progress-imports list. Falls
      * back to a generic label if the original upload filename was somehow not
      * recorded, so the list never renders a blank line.
      */

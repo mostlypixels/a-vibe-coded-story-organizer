@@ -2,7 +2,7 @@
 
 {{--
     Revert-with-confirm, behind the existing x-dialog confirm component
-    (expanded/ui.md "Revert", handoff.md §5.2/§9.3) — same UX pattern as any
+    (expanded/ui.md "Revert") — same UX pattern as any
     other destructive-feeling action in this app, even though revert itself
     is non-destructive server-side (it only ever adds a new revision).
 

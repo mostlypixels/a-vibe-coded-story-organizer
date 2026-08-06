@@ -1,7 +1,6 @@
 /**
  * The save-point picker — a W3C APG *select-only combobox* that progressively
- * enhances the plain `<select>` on the compare page
- * (`.specs/planned/2026-07/revision-history-rework/expanded/ui.md` §3).
+ * enhances the plain `<select>` on the compare page.
  *
  * A native `<select>` is the right control for a short list, and it stays the
  * no-JS baseline. It stops being enough here for one reason: the panel carries

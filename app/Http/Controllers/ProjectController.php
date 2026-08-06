@@ -39,7 +39,7 @@ class ProjectController extends Controller
 
         $project->loadCount(['plotlines', 'events']);
 
-        // One grouped query for the project total (word-count spec, task 9). sceneQuery()
+        // One grouped query for the project total. sceneQuery()
         // already walks chapter -> act -> project (see its own docblock); sum() returns 0
         // rather than NULL when the project has no scenes, but the ?? 0 is kept explicit
         // so this line reads the same "never blank" rule as the withSum sites above.

@@ -34,7 +34,7 @@ const PlainTable = Table.extend({
  * Underline, Subscript and Superscript have no clean CommonMark equivalent, so this
  * app renders each through raw inline HTML passthrough (`<u>`, `<sub>`, `<sup>`) — an
  * otherwise fully-tokenized Markdown field's one sanctioned HTML exception, now
- * extended past Underline alone (expand-tip-tap task 05's original "Underline"
+ * extended past Underline alone (the original "Underline"
  * decision) to the same shape for sub/sup. Reading each tag back needs no override:
  * every mark's inherited `parseHTML()` (`{ tag: 'u'|'sub'|'sup' }`, unmodified)
  * already fires whenever @tiptap/markdown's parser hits raw inline HTML, via
@@ -98,7 +98,7 @@ const CALLOUT_MARKER = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\n|$)
  * into an ordinary blockquote, exactly as it does today with zero code changes.
  *
  * HTML side (the 8 RichTextFields fields): presentational only — a `data-callout-type`
- * attribute on the existing <blockquote> element (allow-listed by task 01, no new tag),
+ * attribute on the existing <blockquote> element (allow-listed, no new tag),
  * styled into a coloured box by resources/css/app.css. The parseHTML rule carries an
  * explicit priority so an attributed <blockquote data-callout-type> resolves to this
  * node rather than the plain Blockquote (whose rule matches any <blockquote>).
@@ -251,11 +251,11 @@ const Callout = Node.create({
  *     in this field (see MarkdownUnderline/MarkdownSubscript/MarkdownSuperscript
  *     above). The server-side ValidMarkdown rule + Str::markdown() render stay the
  *     real gate.
- *   - Table, Image, and TaskItem/TaskList (expand-tip-tap task 03) apply unconditionally
+ *   - Table, Image, and TaskItem/TaskList apply unconditionally
  *     to both formats — all three ship real parseMarkdown/renderMarkdown handlers
  *     (@tiptap/extension-table, @tiptap/extension-image, @tiptap/extension-list), so
  *     no hand-written serializer is needed. Image resize and table merge/split
- *     (expand-tip-tap task 04) are HTML-mode-only: both are lossless there but lossy in
+ *     are HTML-mode-only: both are lossless there but lossy in
  *     Markdown, so `Image.configure({ resize: … })` and the merge/split toolbar entries
  *     only turn on when `! isMarkdown`.
  *
@@ -266,7 +266,7 @@ const Callout = Node.create({
 /**
  * Command descriptors for the `/` slash menu. Each one reuses the exact StarterKit
  * command the toolbar already calls, so the slash menu adds no new node/mark surface.
- * Underline and Strikethrough round-trip in both formats (expand-tip-tap task 05), so
+ * Underline and Strikethrough round-trip in both formats, so
  * neither carries an `mdHide` flag any more.
  */
 /**
@@ -298,23 +298,23 @@ export function buildSlashItems(format, onLink, onImage) {
         // Link reuses the component's setLink() prompt so the http/https guard is shared.
         { title: 'Link', keywords: ['url', 'href', 'a'], run: ({ editor, range }) => { at(editor, range).run(); onLink(); } },
         { title: 'Horizontal rule', keywords: ['hr', 'divider', 'rule'], run: ({ editor, range }) => at(editor, range).setHorizontalRule().run() },
-        // Table/Image/Task list apply unconditionally to both formats (expand-tip-tap
-        // task 03) — no mdHide here. Resize and merge/split are HTML-mode-only, but
+        // Table/Image/Task list apply unconditionally to both formats — no mdHide
+        // here. Resize and merge/split are HTML-mode-only, but
         // that's a toolbar-only concern (see wysiwyg.blade.php): merging is a
         // post-insertion operation on an existing table, not something a slash command
         // inserts fresh, so there is no merge/split slash entry in either format.
         { title: 'Table', keywords: ['table', 'grid'], run: ({ editor, range }) => at(editor, range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
         { title: 'Image', keywords: ['image', 'img', 'picture'], run: ({ editor, range }) => { at(editor, range).run(); onImage(); } },
         { title: 'Task list', keywords: ['todo', 'checklist', 'checkbox'], run: ({ editor, range }) => at(editor, range).toggleTaskList().run() },
-        // Callout (`> [!TYPE]`) applies to both formats (task 06) — not format-gated.
+        // Callout (`> [!TYPE]`) applies to both formats — not format-gated.
         // Inserts a `note` callout; the type is then set from the toolbar's Callout
         // dropdown (setCalloutType), which updates the callout the cursor is in.
         { title: 'Callout', keywords: ['note', 'tip', 'warning', 'alert', 'callout'], run: ({ editor, range }) => at(editor, range).setCallout({ type: 'note' }).run() },
     ];
 
     // No item is format-gated any more: every command here round-trips in both
-    // formats (Underline/Strike as of expand-tip-tap task 05). Table/Image/Task
-    // list already didn't need a gate (task 03) — only merge/split (an existing
+    // formats (Underline and Strike). Table, Image and Task list need no gate —
+    // only merge/split (an existing
     // table's post-insertion operation, not something a slash command inserts
     // fresh) has no slash entry in either format.
     return items;
@@ -480,8 +480,8 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
         MarkdownSubscript,
         MarkdownSuperscript,
         // Table/Image/TaskItem/TaskList apply unconditionally to both formats —
-        // round-trip support is symmetric (task 03 of expand-tip-tap). Resize
-        // (image) and merge/split (table) are HTML-mode-only (task 04): both are
+        // round-trip support is symmetric. Resize (image) and merge/split
+        // (table) are HTML-mode-only: both are
         // lossy for Markdown-mode fields, so they stay off there.
         PlainTable,
         TableRow,
@@ -490,9 +490,9 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
         Image.configure({ inline: false, resize: isMarkdown ? false : { enabled: true } }),
         TaskItem,
         TaskList,
-        // Callout (`> [!TYPE]`) applies to both formats (expand-tip-tap task 06): in
+        // Callout (`> [!TYPE]`) applies to both formats: in
         // Markdown it serializes back to the exact `> [!TYPE]` convention; in HTML it
-        // presents over <blockquote> via the data-callout-type attribute (task 01).
+        // presents over <blockquote> via the data-callout-type attribute.
         Callout,
         slashExtension(format, onLink, onImage),
     ];
@@ -537,8 +537,8 @@ export function registerWysiwyg(Alpine) {
                 // The live word counter (resources/js/word-count.js) needs this
                 // editor's text but cannot reach `editor` directly — it is a
                 // closure variable for the same ProseMirror-proxy reason described
-                // above, and lives in its own, separately-mounted Alpine scope
-                // (word-count spec, task 7). A bubbling CustomEvent is the arm's
+                // above, and lives in its own, separately-mounted Alpine scope.
+                // A bubbling CustomEvent is the arm's
                 // -length channel between the two, mirroring how field.js already
                 // talks to navigation-guard.js via `autosave:explicit-leave`.
                 // `getText()` is already *rendered* text in both formats (see this

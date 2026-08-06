@@ -20,9 +20,9 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * Task 05 (epub-configuration): the project's PublicationSetting travels in the
- * export .zip and is restored on import — validated as UNTRUSTED input, so a
- * malformed config falls back to defaults and the content still imports.
+ * The project's PublicationSetting travels in the export .zip and is restored
+ * on import — validated as UNTRUSTED input, so a malformed config falls back
+ * to defaults and the content still imports.
  *
  * Exercises the real stack end-to-end: the config is serialized by the real
  * {@see StaticSiteExporter} and restored through the real HTTP import route

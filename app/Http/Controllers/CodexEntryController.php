@@ -95,8 +95,8 @@ class CodexEntryController extends Controller
         $validated = $request->validated();
 
         // The transaction does DB-only work and returns the paths of any media rows it
-        // dropped; the disk operations happen after commit (see storeMediaUploads /
-        // finding 3), so no file is written or deleted while the write could still roll back.
+        // dropped; the disk operations happen after commit (see storeMediaUploads), so
+        // no file is written or deleted while the write could still roll back.
         [$entry, $pathsToDelete] = DB::transaction(function () use ($request, $project, $entryType, $validated, $media, $matcher) {
             $entry = $project->codexEntries()->create([
                 'type' => $entryType,
@@ -186,7 +186,7 @@ class CodexEntryController extends Controller
         $data = ['name' => $validated['name'], 'description' => $validated['description'] ?? null];
 
         // DB-only inside the transaction; disk deletes/writes happen after commit
-        // (see store() / storeMediaUploads / finding 3).
+        // (see store() / storeMediaUploads).
         $pathsToDelete = DB::transaction(function () use ($request, $project, $codexEntry, $validated, $data, $media, $matcher) {
             // Snapshot the name and alias set BEFORE the save so we can tell whether the
             // matching terms actually changed. A project-wide rescan is O(scenes) work, so
@@ -315,7 +315,8 @@ class CodexEntryController extends Controller
     /**
      * In-transaction phase of the media changes: drop the rows the form asked to remove
      * (remove_media[] plus the old cover row when a new cover is uploaded) and return
-     * their disk paths for post-commit deletion. No disk I/O here — see finding 3.
+     * their disk paths for post-commit deletion. No disk I/O here: a rollback must not
+     * leave the disk changed.
      *
      * @return array<int, string>
      */
@@ -333,7 +334,7 @@ class CodexEntryController extends Controller
      * reference images/files). Runs after DB::transaction() returns so a failed disk
      * write cannot corrupt an already-committed entry.
      *
-     * Accepted trade-off (finding 3): a late upload failure leaves the entry saved with
+     * Accepted trade-off: a late upload failure leaves the entry saved with
      * fewer media than requested plus a visible 500, rather than rolling back the whole
      * edit and corrupting the disk. The service unlinks a file whose row insert fails, so
      * a partial failure never orphans a file either.

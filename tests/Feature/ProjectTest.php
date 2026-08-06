@@ -229,7 +229,7 @@ class ProjectTest extends TestCase
         $response->assertSessionHasErrors('isbn');
     }
 
-    // --- Front/back-matter Markdown (epub-configuration, task 02) ----------
+    // --- Front/back-matter Markdown --------------------------------------
 
     public function test_owner_can_update_a_project_with_all_four_frontmatter_fields(): void
     {
@@ -489,10 +489,10 @@ class ProjectTest extends TestCase
 
     public function test_the_page_level_draft_recovery_modal_is_mounted_once_on_a_page_with_autosave_fields(): void
     {
-        // Task 03 (autosave-storage-improvements): the old inline per-field banner is
-        // gone; recovery now happens once, globally, via <x-autosave-draft-recovery-modal>
-        // mounted in layouts/app.blade.php — assert it actually renders alongside the
-        // autosave field(s) on a real edit page.
+        // The old inline per-field banner is gone. Recovery happens once,
+        // globally, via <x-autosave-draft-recovery-modal> in
+        // layouts/app.blade.php. This asserts the modal renders on a real edit
+        // page, beside the autosave fields.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
 
@@ -524,9 +524,9 @@ class ProjectTest extends TestCase
 
     public function test_the_edit_page_links_to_the_projects_revision_history(): void
     {
-        // Task 18: the Actions card carries the entity-level History link — the
-        // primary way into the revisions browser. The closing quote keeps this
-        // from being satisfied by a per-field `?field=` icon link.
+        // The Actions card carries the entity-level History link — the primary
+        // way into the revisions browser. The closing quote prevents a match on
+        // a per-field `?field=` icon link.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
 
@@ -539,7 +539,7 @@ class ProjectTest extends TestCase
             );
     }
 
-    // --- Total word count on the project header (word-count spec, task 9) ---
+    // --- Total word count on the project header --------------------------
 
     public function test_the_project_page_shows_the_total_word_count(): void
     {

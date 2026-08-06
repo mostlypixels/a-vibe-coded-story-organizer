@@ -28,7 +28,7 @@
     @endif
 
     {{--
-        Import settings (task 08): the global ImportSetting singleton — archive
+        Import settings: the global ImportSetting singleton — archive
         size cap (edited in human-friendly MB, persisted as KB by the Form Request)
         and the background-processing toggle. Any authenticated user may edit it
         (like CrawlerSetting).
@@ -105,7 +105,7 @@
         </form>
 
         {{--
-            In-progress / stalled imports (task 08). A crash in any phase after
+            In-progress / stalled imports. A crash in any phase after
             `project` leaves an actionable Import row; list them so a stalled
             import is never silently invisible. Resume re-runs from the last
             checkpoint (idempotent); Discard deletes the partial project and the

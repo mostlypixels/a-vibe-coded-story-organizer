@@ -20,8 +20,8 @@ use Tests\TestCase;
  * Proves the core security invariant of the rich-text feature: every rich-HTML field
  * is sanitized server-side on write (via the per-field set-mutators), so the DB can
  * never hold unsafe HTML — regardless of whether the row arrives over HTTP or through
- * a direct Eloquent write (seeder/tinker). Also fills the authorization gaps for the
- * controllers this task touches (Act, Chapter, Plotline, Event).
+ * a direct Eloquent write (seeder/tinker). It also covers the authorization gaps for
+ * the Act, Chapter, Plotline and Event controllers.
  */
 class HtmlSanitizationTest extends TestCase
 {
@@ -138,7 +138,7 @@ Some **markdown** with a [link](https://example.com).';
         $this->assertNull($act->fresh()->description);
     }
 
-    // --- Authorization gaps for the controllers this task touches ---
+    // --- Authorization gaps for the Act, Chapter, Plotline and Event controllers ---
 
     public function test_owner_can_store_an_act_and_non_owner_cannot(): void
     {

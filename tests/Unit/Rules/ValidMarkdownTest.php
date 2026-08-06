@@ -7,13 +7,13 @@ use Tests\TestCase;
 
 /**
  * Unit tests for the Markdown validation rule used by Scene::contents (and other
- * Markdown-mode rich-text fields). Task 02 of the expand-tip-tap plan switched this
- * rule's converter from a bare CommonMarkConverter to GithubFlavoredMarkdownConverter
- * so validation recognizes the same grammar Scene::renderedContents() already renders
- * via Str::markdown() (GFM by default). Note: strikethrough/task-list markup was never
- * *rejected* by the old converter — tildes and `[ ]` were just inert text to bare
- * CommonMark, so this fix is about validation meaning what the writer expects
- * downstream, not about newly-passing syntax.
+ * Markdown-mode rich-text fields). The rule uses GithubFlavoredMarkdownConverter,
+ * not a bare CommonMarkConverter, so validation recognizes the same grammar
+ * Scene::renderedContents() renders through Str::markdown() (GFM by default).
+ *
+ * Bare CommonMark never *rejects* strikethrough or task-list markup — tildes and
+ * `[ ]` are inert text to it. The point is that validation means what the writer
+ * expects downstream.
  */
 class ValidMarkdownTest extends TestCase
 {

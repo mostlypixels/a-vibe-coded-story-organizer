@@ -21,9 +21,9 @@ use RuntimeException;
  * timeline with no holes or overlaps by construction. See
  * .specs/shipped/2026-07/codex/expanded/attribute-timeline.md for the full rationale.
  *
- * This is the project's first app/Services class: the resolution logic is non-trivial,
- * reusable (model helpers, controllers in later tasks, the seeder) and must stay outside
- * booted() hooks because the seeder runs WithoutModelEvents.
+ * CodexEntry's value helper and the codex controllers read through this class; the
+ * controllers and the seeders also write through it. It must stay outside the model's
+ * booted() hooks: the seeders run WithoutModelEvents, so a hook never fires for them.
  */
 class AttributeTimeline
 {
@@ -141,8 +141,8 @@ class AttributeTimeline
 
     /**
      * Whether the period anchored at the given event may be removed. Removing the Start
-     * baseline while other values exist would open a hole at the beginning of the timeline
-     * (invariant #1); it is allowed only when it is the sole value. Exposed so the controller
+     * baseline while other values exist would open a hole at the beginning of the
+     * timeline; it is allowed only when it is the sole value. Exposed so the controller
      * can turn a disallowed request into a 403 (matching the is_main / is_fixed guard style)
      * before calling removeAt.
      */
@@ -155,8 +155,8 @@ class AttributeTimeline
 
     /**
      * Delete the period anchored at the given event. Refuses to remove the Start baseline
-     * while other values exist — that would open a hole at the beginning of the timeline
-     * (invariant #1) — allowing it only when it is the sole value.
+     * while other values exist — that would open a hole at the beginning of the timeline.
+     * It is allowed only when it is the sole value.
      */
     public function removeAt(Event $startEvent): void
     {

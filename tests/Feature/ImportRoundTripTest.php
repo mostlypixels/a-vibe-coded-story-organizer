@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * The import feature's acceptance test (task 09): a full export -> import
+ * The import feature's acceptance test: a full export -> import
  * round-trip exercising the WHOLE stack with nothing mocked. A non-trivial
  * project is seeded with factories, exported through the real
  * {@see StaticSiteExporter}, and the resulting zip is imported through the real
@@ -264,7 +264,7 @@ class ImportRoundTripTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Codex reference regeneration (task 07)
+    // Codex reference regeneration
     // ------------------------------------------------------------------
 
     /**
@@ -445,7 +445,7 @@ class ImportRoundTripTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Chapter cover round-trip (task 07)
+    // Chapter cover round-trip
     // ------------------------------------------------------------------
 
     public function test_a_chapter_cover_survives_an_export_import_round_trip(): void
@@ -622,9 +622,8 @@ class ImportRoundTripTest extends TestCase
 
     /**
      * Build a real export archive via the service and return its path on disk
-     * (registered for cleanup). Calling the service directly is the round-trip's
-     * intended entry point (task 09 scope) — the export HTTP route is covered by
-     * ExportTest.
+     * (registered for cleanup). A direct service call is the round-trip's
+     * intended entry point — ExportTest covers the export HTTP route.
      */
     private function exportZip(Project $project, bool $includeMedia): string
     {

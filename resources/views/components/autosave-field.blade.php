@@ -25,7 +25,7 @@
     // (AutosavableFields::kindOf()'s array access), the same as it 404s server-side.
     $kind = AutosavableFields::kindOf($entity, $field);
     $currentValue = (string) ($model->{$field} ?? '');
-    // The server is the sole hash authority (00-overview.md/handoff.md §9.13) even
+    // The server is the sole hash authority even
     // for the very first render: this is the same hash() call the PATCH endpoint
     // uses, so base_hash starts correct without an extra round trip.
     $hash = hash('sha256', $currentValue);
@@ -36,7 +36,7 @@
     $historyUrl = route('revisions.index', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
     $compareUrl = route('revisions.compare', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
 
-    // The live counter's starting number (word-count spec, task 7). Computed the
+    // The live counter's starting number. Computed the
     // same way as the stored `scenes.word_count` — Scene.contents just happens to
     // already have that number cached on the model (Scene::booted()'s saving
     // hook), everything else is counted fresh from what's actually on screen —
@@ -76,7 +76,7 @@
     </div>
 
     {{-- Wraps the editor and the row below it in the live word counter's own
-         Alpine scope (word-count spec, task 7). It has to enclose the
+         Alpine scope. It has to enclose the
          editor/textarea, not just the counter `<span>`: `wysiwyg.js` dispatches
          its `wysiwyg:text-changed` CustomEvent from inside `<x-wysiwyg>`, and a
          plain `<textarea>`'s native `input` event only reaches a listener on an
@@ -130,8 +130,7 @@
                  Bottom-left, distinct in weight and colour from the counter
                  opposite it — this reports whether work is *safe*, the counter
                  reports how much there *is*; the two must never read as one
-                 thing (open-questions.md Q5 / architecture.md's "not a save
-                 indicator"). --}}
+                 thing (ui.md's "not a save indicator"). --}}
             <span
                 class="text-xs font-medium text-link"
                 data-autosave-indicator

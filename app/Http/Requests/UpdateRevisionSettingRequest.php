@@ -15,7 +15,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * any-authenticated-user exception: the `auth` + `access-admin` middleware blocks
  * guests; this confirms a user is present. See documentation/architecture.md.
  *
- * The confirm-gated "lowering destroys history" step (handoff.md §9.11) lives in
+ * The confirm-gated "lowering destroys history" step lives in
  * RevisionSettingController, not here — this request only validates the raw bounds
  * (min:7, max:3650) that apply regardless of whether the value is being raised or
  * lowered, or whether this is the first or the confirming submission.

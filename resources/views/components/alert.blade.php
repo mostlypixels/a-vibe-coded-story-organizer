@@ -6,8 +6,8 @@
 
 @php
     // Contextual feedback banner. Each variant carries its container colours,
-    // icon tint, and a Tabler icon name. Full class strings keep Tailwind's
-    // purge happy.
+    // icon tint, and a Tabler icon name. Class strings are written in full,
+    // because Tailwind only finds class names that appear complete in the source.
     //
     // Four tokens per status, and each does one job: `<status>-surface` is the
     // tinted panel, `<status>-surface-content` the text *and the icon* on it, and

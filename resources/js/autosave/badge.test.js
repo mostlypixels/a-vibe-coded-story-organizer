@@ -4,10 +4,10 @@ import { classesFor, isNavigable, labelFor } from './badge.js';
 
 /**
  * Tests for `resources/js/autosave/badge.js` — the global lower-right autosave
- * badge's pure lookups (task 9). The Alpine.data() wrapper itself (reading
+ * badge's pure lookups. The Alpine.data() wrapper itself (reading
  * `Alpine.store('autosave')`, scrolling/focusing a real DOM element) is left to
  * the manual checklist, matching this feature's existing convention of unit-testing
- * only the DOM-free logic (`handoff.md` §9.12; see field.js/field.test.js for the
+ * only the DOM-free logic (see field.js/field.test.js for the
  * same split).
  */
 
@@ -20,11 +20,11 @@ describe('labelFor', () => {
         expect(labelFor(STATES.ERROR)).toBe("Couldn't save — check your connection.");
     });
 
-    it('session-expired reassures the writer their work is safe (handoff.md §9.6)', () => {
+    it('session-expired reassures the writer their work is safe', () => {
         expect(labelFor(STATES.SESSION_EXPIRED)).toBe('Session expired — your work is safe.');
     });
 
-    it('forbidden-after-replay uses open-questions.md #5\'s dedicated copy', () => {
+    it('forbidden-after-replay names the account switch and tells the writer to copy their text', () => {
         expect(labelFor(STATES.FORBIDDEN_AFTER_REPLAY)).toBe(
             "You're signed in as a different account — copy your text before switching back.",
         );

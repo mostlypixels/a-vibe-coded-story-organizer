@@ -12,10 +12,10 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Feature tests for the active-project persistence feature
- * (.specs/planned/2026-08/active-project). This file starts with the
- * `users.active_project_id` column and its FK behaviour; later tasks (the
- * tracking middleware, the nav fallback, the login redirect) extend it.
+ * Feature tests for the active-project persistence feature: the
+ * `users.active_project_id` column and its FK behaviour, the TrackActiveProject
+ * middleware, the project menu (a route project wins over the stored one), and
+ * the login redirect.
  */
 class ActiveProjectTest extends TestCase
 {

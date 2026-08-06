@@ -15,7 +15,7 @@ namespace App\Support;
  *
  * It is intentionally mode-agnostic: it accepts the term(s) to highlight as a
  * string or an array of strings and does not care how AllTerms / AnyTerm /
- * ExactPhrase produced them (see task 02's ProjectSearch service).
+ * ExactPhrase produced them (see the ProjectSearch service).
  *
  * @see PlotlineColors sibling stateless helper in this namespace
  */

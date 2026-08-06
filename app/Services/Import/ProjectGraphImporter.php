@@ -38,9 +38,10 @@ use Throwable;
  * story → codex), each independently callable and each wrapped in its OWN
  * DB::transaction() — never one transaction for the whole import. A crash
  * mid-phase rolls back only that phase while prior committed phases survive;
- * that is what makes an import resumable (task 05 persists the checkpoint).
+ * that is what makes an import resumable — ProjectImporter persists the
+ * checkpoint.
  *
- * Contract with the caller (ProjectImporter, task 05):
+ * Contract with the caller, App\Services\ProjectImporter:
  *   - `$dataPath` is the extraction root — the directory that CONTAINS `data/`
  *     (and possibly the ignored `book/` + `README.md`).
  *   - The archive has already passed {@see ArchiveValidator}; this class still
@@ -58,7 +59,7 @@ use Throwable;
  *   - Media bytes are copied to a freshly generated storage path; a declared
  *     media row whose bytes are absent (metadata-only export) still creates a
  *     row with a null path.
- *   - Revision history (task 15, autosave-with-revisions): when the manifest
+ *   - Revision history: when the manifest
  *     declares `includes_revisions: true`, every registered field's
  *     `revisions/<field>.json` sidecar is replayed onto the NEWLY created
  *     entity, one Revision row per array entry — see importRevisions().
@@ -67,7 +68,7 @@ class ProjectGraphImporter
 {
     /**
      * The `$idMaps` keys, one per remapped entity type. Public so the
-     * orchestrator (task 05) and tests never spell them as magic strings.
+     * orchestrator and the tests never spell them as magic strings.
      */
     public const MAP_PLOTLINES = 'plotlines';
 
@@ -101,19 +102,18 @@ class ProjectGraphImporter
      * user's existing project names) the new name gets a timestamp suffix —
      * import never merges into or blocks on an existing project.
      *
-     * The four front-/back-matter fields (task 02, epub-configuration) are
-     * Markdown, read through the same sanitizer gate as a scene's contents.md.
+     * The four front-/back-matter fields are Markdown, read through the same
+     * sanitizer gate as a scene's contents.md.
      * An archive that pre-dates them (manifest version 1) simply omits their
      * `*_file` link keys, so readMarkdownField() returns null for each — no crash.
      *
-     * The serialized PublicationSetting (task 05) is read + validated here too,
+     * The serialized PublicationSetting is read and validated here too,
      * as UNTRUSTED input: a valid config creates the project's row, an absent or
      * malformed one is skipped so the project falls back to the lazy default —
      * config is a presentation preference and must never fail the whole import.
      *
-     * data/project/revisions/<field>.json sidecars (task 15,
-     * autosave-with-revisions) are imported too, when the manifest declared
-     * `includes_revisions: true` — see importRevisions().
+     * data/project/revisions/<field>.json sidecars are imported too, when the
+     * manifest declared `includes_revisions: true` — see importRevisions().
      */
     public function importProject(string $dataPath, User $user): Project
     {
@@ -158,7 +158,7 @@ class ProjectGraphImporter
      * input, returning a clean attributes array to persist, or null when there is
      * no config to apply (absent file, unreadable/non-array JSON, or a config that
      * fails validation). A null NEVER fails the import — the project simply keeps
-     * the lazy default (overview.md #7; CLAUDE.md untrusted-input posture).
+     * the lazy default (CLAUDE.md untrusted-input posture).
      *
      * @return array<string, mixed>|null
      */
@@ -231,8 +231,8 @@ class ProjectGraphImporter
      * everything else is inserted normally. Events resolve `plotline_ids`
      * through the plotline map built moments earlier.
      *
-     * Each plotline/event's revisions/<field>.json sidecars (task 15,
-     * autosave-with-revisions) are imported alongside it — see
+     * Each plotline/event's revisions/<field>.json sidecars are imported
+     * alongside it — see
      * importRevisions(). The importing user is $project->user_id (the project
      * was created FOR that user in phase 1); this phase has no User parameter
      * of its own.
@@ -352,13 +352,13 @@ class ProjectGraphImporter
      * the JSON, and each scene's event references resolve through the event
      * map phase 2 fully populated.
      *
-     * A chapter's cover file is copied to a fresh public-disk path (task 07);
+     * A chapter's cover file is copied to a fresh public-disk path;
      * as with codex media, disk copies live outside the DB transaction, so on
      * ANY failure the covers copied so far are unlinked before rethrowing — a
      * rolled-back phase never leaks orphan cover files.
      *
-     * Each act/chapter/scene's revisions/<field>.json sidecars (task 15) are
-     * imported alongside it — see importRevisions().
+     * Each act/chapter/scene's revisions/<field>.json sidecars are imported
+     * alongside it — see importRevisions().
      */
     public function importStory(string $dataPath, Project $project, array &$idMaps): void
     {
@@ -402,7 +402,7 @@ class ProjectGraphImporter
      * the DB transaction, so on ANY failure the files copied so far are
      * removed before rethrowing — a rolled-back phase never leaks orphans.
      *
-     * Each entry's revisions/<field>.json sidecars (task 15) are imported
+     * Each entry's revisions/<field>.json sidecars are imported
      * alongside it — see importRevisions(). Tags/attributes are not
      * registered in AutosavableFields, so they never carry any.
      */
@@ -795,12 +795,11 @@ class ProjectGraphImporter
     }
 
     /**
-     * Whether this archive's manifest declared `includes_revisions: true`
-     * (task 15, autosave-with-revisions). Read tolerantly, the same way
-     * `readJsonIfPresent()` treats every other optional descriptor: a
-     * manifest without the key at all — every archive exported before this
-     * feature shipped — reads as false, not an error (backward compatibility,
-     * per the task's own required test).
+     * Whether this archive's manifest declared `includes_revisions: true`.
+     * Read tolerantly, the same way `readJsonIfPresent()` treats every other
+     * optional descriptor: a manifest without the key at all — every archive
+     * exported before this feature shipped — reads as false, not an error.
+     * Backward compatibility depends on it.
      */
     private function includesRevisions(string $dataPath): bool
     {
@@ -811,16 +810,14 @@ class ProjectGraphImporter
 
     /**
      * Import one entity's revision history from its `revisions/<field>.json`
-     * sidecars (StaticSiteExporter::addRevisions(), task 14) — a no-op unless
-     * $includeRevisions is true, so every call site above can call this
-     * unconditionally, exactly like StaticSiteExporter's own addRevisions()
-     * guards internally rather than at each of its call sites.
+     * sidecars, written by App\Services\StaticSiteExporter. It is a no-op unless
+     * $includeRevisions is true, so every call site above calls it unconditionally.
      *
-     * A field with no sidecar file (never autosaved, or the export toggle was
-     * off) is simply skipped — matches the exporter's own "omit rather than
-     * write empty" convention, so there is nothing to treat as an error here.
+     * A field with no sidecar file is skipped, and that is not an error. The field
+     * was never autosaved, or the export toggle was off. The exporter omits the
+     * file. It never writes an empty one.
      *
-     * Every imported row (handoff.md §8, binding):
+     * These rules are binding for every imported row:
      *   - keeps `created_at` verbatim from the archive — rewriting it to
      *     import time would make the entire pre-import era claim to have been
      *     written on restore day, breaking compare-by-date.
@@ -851,7 +848,7 @@ class ProjectGraphImporter
      * the entity's own current field value (readHtmlField()/
      * readMarkdownField()) — a revision's stored value is just as much
      * untrusted archive content as the live column, and it is later rendered
-     * on the history/compare pages (task 10).
+     * on the history and compare pages.
      *
      * > [!IMPORTANT]
      * > `summary_html` / `change_count` are **recomputed**, never read from the

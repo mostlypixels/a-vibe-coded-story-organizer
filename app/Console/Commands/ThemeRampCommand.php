@@ -22,10 +22,9 @@ use InvalidArgumentException;
  *
  * Hue and chroma come from the anchor and stay put; only lightness moves, in equal steps
  * from LIGHTEST to DARKEST. Equal steps of OKLCH lightness are equal steps of *perceived*
- * lightness — that is the whole reason for working in this space, and it is the property
- * the app's five hand-eyeballed sRGB ramps never had (their 700→800 jump is visibly
- * smaller than 400→500). The anchor's own lightness is discarded; it contributes the hue
- * and the chroma, and the curve decides where each shade sits.
+ * lightness. That is the whole reason to work in this space: a hex ramp spaced by eye
+ * gives jumps of uneven size. The anchor's own lightness is discarded; it contributes
+ * the hue and the chroma, and the curve decides where each shade sits.
  *
  * `--max-chroma` exists for dark presets. Saturated colour at high lightness is what
  * makes a dark theme painful to look at, and ~0.12 is a comfortable cap; expressing that

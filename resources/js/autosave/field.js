@@ -1,11 +1,11 @@
 /**
- * The Alpine adapter for a single `<x-autosave-field>` instance (task 08). Thin by
+ * The Alpine adapter for a single `<x-autosave-field>` instance. Thin by
  * design: every *decision* (state transitions, retry timing, draft triage) lives in
  * `./store.js`; this file only wires DOM events, talks to `localStorage`, and calls
  * `window.axios` — the same `window.axios` global `bootstrap.js` configures (no
  * separate axios import, so this shares the one instance's interceptors/defaults).
  *
- * Dirty-only (handoff.md §11.5.1 / 00-overview.md's binding decision): nothing here
+ * Dirty-only, a binding rule: nothing here
  * fires a PATCH, not even a debounce tick, until a real `input` event has been seen.
  * Opening a record to read it writes nothing.
  *
@@ -35,7 +35,7 @@ export const DEBOUNCE_MS = 2000;
 export const SAVED_FADE_MS = 2000;
 
 /**
- * Set (and never reset — 00-overview.md decision 5) once `data-loss-warnings`'
+ * Set once, and never reset, when `data-loss-warnings`'
  * navigation guard dispatches `autosave:explicit-leave`, synchronously and
  * immediately before it reassigns `window.location.href`. Registered once at module
  * load (an ES module body only runs once, no matter how many times
@@ -59,7 +59,7 @@ function explicitLeaveRequested() {
 }
 
 /**
- * The `localStorage` key for a field's draft mirror (handoff.md §3.4/§9.1). An
+ * The `localStorage` key for a field's draft mirror. An
  * existing entity keys `entity:id:field`; a create form (no `id` yet) keys
  * `new:entity:parentId:field` instead, so two "new scene" tabs open for different
  * chapters never collide.
@@ -71,12 +71,11 @@ export function storageKeyFor({ entity, id, field, parentId }) {
 }
 
 /**
- * The dirty-only gate (00-overview.md's binding decision), applied identically to
- * the debounce tick, blur, and Ctrl-S: a save is only ever attempted once the
- * writer has produced a real edit event in this field (`dirty`) — and only against
- * an existing entity (`id` set). Create forms have no id to PATCH against yet
- * (handoff.md §9.1); the `localStorage` mirror is all that runs for them, elsewhere
- * in this file.
+ * The dirty-only gate, applied identically to the debounce tick, blur, and Ctrl-S:
+ * a save is only ever attempted once the writer has produced a real edit event in
+ * this field (`dirty`) — and only against an existing entity (`id` set). Create
+ * forms have no id to PATCH against yet; the `localStorage` mirror is all that runs
+ * for them, elsewhere in this file.
  */
 export function shouldAutosave(dirty, id) {
     return dirty === true && id !== null && id !== undefined;
@@ -96,9 +95,9 @@ export function readDraft(key) {
 }
 
 /**
- * Persist a draft. `handoff.md` §9.7: no age-based eviction, storage is bounded
- * instead — on `QuotaExceededError`, drop this app's single oldest draft and retry
- * once before giving up silently.
+ * Persist a draft. There is no age-based eviction; storage is bounded instead — on
+ * `QuotaExceededError`, drop this app's single oldest draft and retry once before
+ * it gives up silently.
  */
 export function writeDraft(key, draft) {
     try {
@@ -156,7 +155,7 @@ function evictOldestDraft() {
 }
 
 export function registerAutosaveField(Alpine) {
-    // The shared cross-field store the global lower-right badge (task 9) reads.
+    // The shared cross-field store the global lower-right badge reads.
     // Guarded so re-registering (e.g. in tests) doesn't clobber live field state.
     if (!Alpine.store('autosave')) {
         Alpine.store('autosave', {
@@ -164,16 +163,15 @@ export function registerAutosaveField(Alpine) {
             elements: {},
             // key => the pre-computed `revisions.compare` URL (or null when the
             // route doesn't exist yet), set once per field in init() alongside
-            // `elements`. The recovery modal (task 02/03) reads this instead of
-            // ever recomputing a compare route in JS — Blade already computes it
-            // once, same as today's per-field banner.
+            // `elements`. The recovery modal reads this instead of ever
+            // recomputing a compare route in JS — Blade already computes it once.
             compareUrls: {},
             // key => boolean, mirrors each field's own `dirty` flag. Distinct from
             // `fields` (the STATES machine value): a field is dirty from the first
             // keystroke until a successful save/flush, including the ~2s debounce
             // window where `state` is still `idle` — exactly the window the
-            // data-loss-warnings navigation guard and beforeunload fallback exist to
-            // protect (`.specs/planned/2026-07/data-loss-warnings/expanded/architecture.md` §1).
+            // data-loss-warnings navigation guard and beforeunload fallback exist
+            // to protect.
             dirty: {},
 
             /** Worst-state-wins across every field currently on the page (ui.md). */
@@ -246,8 +244,8 @@ export function registerAutosaveField(Alpine) {
         },
 
         /**
-         * Snap the live in-field counter (resources/js/word-count.js, word-count
-         * spec task 7) to the authoritative number the server just persisted.
+         * Snap the live in-field counter (resources/js/word-count.js) to the
+         * authoritative number the server just persisted.
          * That component lives in its own nested Alpine scope on a
          * `[data-word-count]` element inside this field, reached the same
          * DOM-querying way `fieldValue()` reaches the textarea rather than via
@@ -269,7 +267,7 @@ export function registerAutosaveField(Alpine) {
         /**
          * The dirty-only gate: the very first real edit event flips `dirty` and mirrors
          * a draft immediately; every edit after that (re)starts the debounce timer.
-         * Create forms (no `config.id` yet, handoff.md §9.1) never PATCH — the
+         * Create forms (no `config.id` yet) never PATCH — the
          * `localStorage` mirror is the only thing that runs for them.
          */
         onInput() {
@@ -285,7 +283,7 @@ export function registerAutosaveField(Alpine) {
         },
 
         /**
-         * Ctrl-S is a flush, not a permanent checkpoint (00-overview.md): it sends
+         * Ctrl-S is a flush, not a permanent checkpoint: it sends
          * `run_matcher: true` (a coarse trigger) so the autosave lands immediately and
          * closes the coalescing window. It never creates a manual revision — the
          * permanent, labeled manual checkpoint is the full-form Save button's job, and
@@ -314,12 +312,12 @@ export function registerAutosaveField(Alpine) {
         },
 
         /**
-         * The `beforeunload` write (00-overview.md decision 2): a dirty field mirrors
-         * its draft once, at departure, instead of on every keystroke. Skipped entirely
-         * when the field is clean (nothing to lose) or the departure was an explicit,
-         * informed "leave anyway" via `data-loss-warnings`' nav guard (§3 of
-         * architecture.md) — a real tab-close/browser-quit can never set that flag, so
-         * it always falls through and writes defensively.
+         * The `beforeunload` write: a dirty field mirrors its draft once, at
+         * departure, instead of on every keystroke. Skipped entirely when the field
+         * is clean (nothing to lose) or the departure was an explicit, informed
+         * "leave anyway" through `data-loss-warnings`' nav guard — a real
+         * tab-close or browser-quit can never set that flag, so it always falls
+         * through and writes defensively.
          */
         snapshotDraftIfDirty() {
             if (!this.dirty || explicitLeaveRequested()) {
@@ -389,7 +387,7 @@ export function registerAutosaveField(Alpine) {
                 }
 
                 this.attempt = 0;
-                // §9.13: adopt the server's hash, never write `data.value` back into
+                // Adopt the server's hash, never write `data.value` back into
                 // the editor DOM (would yank the caret mid-sentence). Adopted even
                 // when the field has moved on: the server stored what this request
                 // sent, so the pending save must build on that hash or it 409s.
@@ -413,7 +411,7 @@ export function registerAutosaveField(Alpine) {
             }
         },
 
-        /** Auto-replay a stuck session-expired save on tab focus/visibility (handoff.md §9.6). */
+        /** Auto-replay a stuck session-expired save on tab focus or visibility. */
         replayIfQueued() {
             if (this.state === STATES.SESSION_EXPIRED && this.dirty && document.visibilityState !== 'hidden') {
                 this.save({});

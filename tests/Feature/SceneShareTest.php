@@ -67,8 +67,6 @@ class SceneShareTest extends TestCase
 
     public function test_share_url_is_the_public_route_when_a_token_is_set(): void
     {
-        // Deferred from task 01: the non-null branch needs the
-        // `shared.scenes.show` route, which task 03 registers.
         $scene = Scene::factory()->create();
         $scene->forceFill(['share_token' => 'route-token'])->save();
 
@@ -122,7 +120,7 @@ class SceneShareTest extends TestCase
         $this->assertNull($scene->share_expires_at);
     }
 
-    // --- Task 02: owner share management (store / destroy) ------------------
+    // --- Owner share management (store / destroy) ------------------------
 
     public function test_owner_can_generate_a_share_link_with_a_valid_duration(): void
     {
@@ -243,7 +241,7 @@ class SceneShareTest extends TestCase
         $this->assertSame('live-token', $scene->fresh()->share_token);
     }
 
-    // --- Task 03: public display page (show / expired) ----------------------
+    // --- Public display page (show / expired) ----------------------------
 
     /**
      * Build a scene owned by a fresh user with a live share token and the
@@ -282,10 +280,9 @@ class SceneShareTest extends TestCase
     }
 
     /**
-     * Continuous numbering (continuous-numbering, task 4): the public page's
-     * heading takes the project-wide chapter number, not the chapter's own
-     * `position` within its act — here 3, though the chapter's `position`
-     * within act two is 1.
+     * The public page's heading takes the project-wide chapter number, not the
+     * chapter's own `position` within its act — here 3, though the chapter's
+     * `position` within act two is 1.
      */
     public function test_the_public_page_shows_the_continuous_chapter_number_for_a_chapter_in_act_two(): void
     {
@@ -404,7 +401,7 @@ class SceneShareTest extends TestCase
             ->assertSee('<meta name="robots" content="noindex, nofollow">', escape: false);
     }
 
-    // --- Task 04: owner share UI on the scene edit page ---------------------
+    // --- Owner share UI on the scene edit page ---------------------------
 
     public function test_the_edit_page_shows_the_generate_control_and_duration_options_when_unshared(): void
     {

@@ -37,9 +37,9 @@ class CodexAttributeValueController extends Controller
 
     /**
      * Remove a period. Dropping the Start baseline while other values exist would open a hole
-     * at the beginning of the timeline (invariant #1); the Blade already hides Remove on the
-     * baseline, so a disallowed request is hand-crafted — a 403 (matching the is_main /
-     * is_fixed guards) is the honest response, not a soft validation error.
+     * at the beginning of the timeline. The Blade already hides Remove on the baseline, so a
+     * disallowed request is hand-crafted — a 403 (matching the is_main / is_fixed guards) is
+     * the honest response, not a soft validation error.
      */
     public function destroy(CodexAttributeValue $codexAttributeValue): RedirectResponse
     {

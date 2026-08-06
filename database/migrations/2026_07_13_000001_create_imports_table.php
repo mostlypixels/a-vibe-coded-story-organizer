@@ -35,9 +35,8 @@ return new class extends Migration
             // crash can resume from it.
             $table->string('archive_path');
 
-            // The original uploaded filename, for the in-progress-imports list's
-            // display (task 08). archive_path is a generated uuid, meaningless to
-            // show a user.
+            // The original uploaded filename, for the in-progress-imports list.
+            // archive_path is a generated uuid, meaningless to show a user.
             $table->string('archive_original_name');
 
             // The last successfully completed ImportPhase (cast to the enum on the

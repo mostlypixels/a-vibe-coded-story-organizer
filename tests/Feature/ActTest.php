@@ -441,9 +441,9 @@ class ActTest extends TestCase
 
     public function test_the_edit_page_links_to_the_acts_revision_history(): void
     {
-        // Task 18: the Actions card carries the entity-level History link. The
-        // closing quote keeps this from being satisfied by the per-field
-        // `?field=` icon link that sits beside the description editor.
+        // The Actions card carries the entity-level History link. The closing
+        // quote prevents a match on the per-field `?field=` icon link beside
+        // the description editor.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $act = Act::factory()->for($project)->create();
@@ -457,7 +457,7 @@ class ActTest extends TestCase
             );
     }
 
-    // --- Continuous numbering (continuous-numbering, task 3) -----------------
+    // --- Continuous numbering --------------------------------------------
 
     /**
      * The trimmed, tag-stripped text of the `$index`-th `<td>` (0-based) in the row
@@ -512,7 +512,7 @@ class ActTest extends TestCase
             ->assertSee('Act 2 of 3. Use the move up/down buttons on the list to reorder.');
     }
 
-    // --- Word count column (word-count spec, task 9) ------------------------
+    // --- Word count column -----------------------------------------------
 
     public function test_the_acts_index_shows_each_acts_total_word_count(): void
     {
@@ -559,7 +559,7 @@ class ActTest extends TestCase
      * Act's own scenes() HasManyThrough (through chapters) must fold every act's
      * total into the same query as the row list itself. A naive per-row sum()
      * would issue one query per act — 10 here instead of 1 — the same isolation
-     * ChapterTest's equivalent test (this task) and StoryTest's (task 8) use.
+     * ChapterTest's equivalent test and StoryTest's use.
      */
     public function test_the_acts_index_issues_one_grouped_query_for_word_counts(): void
     {
@@ -584,9 +584,9 @@ class ActTest extends TestCase
             ->assertOk();
 
         // 1 for the withSum() word-count aggregate, 1 more for StoryNumbering::
-        // forProject()'s own eager load of the whole act -> chapter -> scene tree
-        // (continuous-numbering task 3) — both still O(1) per page load, not
-        // O(acts), so the N+1 this test guards against is still absent.
+        // forProject()'s own eager load of the whole act -> chapter -> scene tree.
+        // Both stay O(1) per page load, not O(acts), so the N+1 this test guards
+        // against is still absent.
         $this->assertCount(2, $sceneQueries);
     }
 }

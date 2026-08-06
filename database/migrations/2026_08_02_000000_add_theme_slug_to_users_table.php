@@ -5,8 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * `users.theme_slug` — the per-user theme preference (theme-switcher spec,
- * `.specs/planned/2026-08/theme-switcher`).
+ * `users.theme_slug` — the per-user theme preference.
  *
  * Nullable, no default. `null` means "follow config('themes.default')", so
  * changing the site-wide default still reaches every user who never picked a

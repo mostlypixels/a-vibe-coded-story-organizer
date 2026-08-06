@@ -7,8 +7,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Per-user theme preference (theme-switcher spec, task 04): the picker at
- * /admin/appearance and the write that lands on `users.theme_slug` only.
+ * Per-user theme preference: the picker at /admin/appearance and the write
+ * that lands on `users.theme_slug` only.
  */
 class AppearanceSettingsTest extends TestCase
 {

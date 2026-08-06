@@ -16,9 +16,8 @@ use App\Models\Scene;
  * views/requests/models). Mirrors PlotlineColors / CodexMediaRules.
  *
  * It answers two questions in one place:
- *   1. Which model+field pairs are rich HTML (drives the set-mutators wired in
- *      task 02, the SanitizeHtml Form Request rules, and the x-wysiwyg/x-rich-text
- *      views in tasks 03/04).
+ *   1. Which model+field pairs are rich HTML. This drives the set-mutators, the
+ *      SanitizeHtml Form Request rules, and the x-wysiwyg/x-rich-text views.
  *   2. What the HtmlSanitizer allow-list is (tags, attributes, URL schemes). This
  *      MUST stay a superset of what the editor's slash menu can produce.
  *
@@ -48,7 +47,7 @@ class RichTextFields
     /**
      * Tags the sanitizer permits. Everything else is stripped. Deliberately no
      * <script>/<iframe>/<object> and no presentational attributes (style/class) on
-     * any tag. Kept in sync with the editor slash menu (task 04 of expand-tip-tap).
+     * any tag. Keep it in sync with the editor slash menu.
      *
      * `table`/`thead`/`tbody`/`tr`/`th`/`td` (tables), `img` (image references —
      * uploading new images is still out of scope, only referencing an existing URL),
@@ -95,17 +94,17 @@ class RichTextFields
         // <input disabled type="checkbox">, distinct from TipTap's own editable
         // checkbox markup (which never sets it). Not a security concern either way.
         'input' => ['type', 'checked', 'disabled'],
-        // colspan/rowspan (expand-tip-tap task 04, table merge/split — HTML-mode
-        // fields only) are structural, not presentational: without them a merged
-        // cell's HTML would render with the wrong grid shape entirely. Note the
+        // colspan/rowspan (table merge/split — HTML-mode fields only) are
+        // structural, not presentational: without them a merged cell's HTML
+        // renders with the wrong grid shape entirely. Note the
         // editor's own Table override (resources/js/wysiwyg.js's PlainTable) strips
         // the extension's default `style`/<colgroup>/<col> output before it ever
         // reaches the sanitizer, so no exception for `style` is needed here — this
         // app deliberately never emits it for tables.
         'td' => ['colspan', 'rowspan'],
         'th' => ['colspan', 'rowspan'],
-        // The callout node (`> [!NOTE]` etc., expand-tip-tap task 06) presents over
-        // the existing <blockquote> element via this attribute — no new tag needed.
+        // The callout node (`> [!NOTE]` etc.) presents over the existing
+        // <blockquote> element via this attribute — no new tag needed.
         'blockquote' => ['data-callout-type'],
     ];
 

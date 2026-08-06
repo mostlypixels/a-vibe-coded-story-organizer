@@ -6,7 +6,7 @@
     </x-slot>
 
     {{--
-        Task 13: the dedicated admin "Revisions" page — the RevisionSetting
+        The dedicated admin "Revisions" page — the RevisionSetting
         retention form (confirm-gated on lowering, RevisionSettingController::
         update()) and the "Revision storage" panel (bulk-delete actions calling
         RevisionPurger, the second of its two call sites alongside the
@@ -69,7 +69,7 @@
 
     {{--
         "Revision storage" panel: counts + SUM(size_bytes) per category, never
-        hydrating `value` (00-overview.md's read rule) — RevisionSettingController
+        hydrating `value` — RevisionSettingController
         computes this via RevisionPurger's own dry-run query, so the figures can
         never drift from what a bulk-delete button actually removes.
     --}}
@@ -136,7 +136,7 @@
         </x-table>
 
         {{--
-            Age-based bulk-delete example named in handoff.md §4.3: automatic
+            Age-based bulk-delete example: automatic
             revisions older than a year, even the newest one for a field (purge
             is explicitly allowed to do what prune never does).
         --}}

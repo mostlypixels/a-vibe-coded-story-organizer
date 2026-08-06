@@ -16,15 +16,16 @@ use Throwable;
 /**
  * The one place the application writes to the `revisions` table.
  *
- * Called by App\Http\Controllers\FieldAutosaveController (task 6) and by the
- * baseline backfill migration (task 5) — the "identical code path" handoff.md
- * §9.2 requires, so the live write path and the backfill can never drift.
+ * Called by App\Http\Controllers\FieldAutosaveController and by the baseline
+ * backfill migration. Both must use this one code path. Never
+ * copy this logic into a migration — the live path and the backfill would then
+ * drift.
  *
- * Deliberately does *not* decide whether to write at all: the byte-identical
- * no-op check (§2.2 — "typing something and undoing it leaves no trace") is
- * the caller's job, comparing the incoming value against the entity's current
- * column value before ever calling record(). This class only knows how to
- * coalesce and how to seed a baseline.
+ * Deliberately does *not* decide whether to write at all. The byte-identical
+ * no-op check ("typing something and undoing it leaves no trace") is the
+ * caller's job: it compares the incoming value against the entity's current
+ * column value before it calls record(). This class only knows how to coalesce
+ * and how to seed a baseline.
  *
  * It is also the only place `save_id` — the *save point* grouping key the
  * history/compare/revert screens address — is minted. That requires the
@@ -195,9 +196,9 @@ class RevisionRecorder
      *
      * `created_at` is stamped `$entity->updated_at`, not `now()`: that value
      * provably held from that timestamp onward, whereas stamping `now()`
-     * would misrepresent the entire pre-baseline era for compare-by-date
-     * (handoff.md §9.2). `user_id` is the project owner, not any particular
-     * editor, since no one "wrote" the baseline.
+     * would misrepresent the entire pre-baseline era for compare-by-date.
+     * `user_id` is the project owner, not any particular editor, since no one
+     * "wrote" the baseline.
      *
      * Skipped entirely when the field's current value is null/empty — an
      * empty field has nothing worth preserving.

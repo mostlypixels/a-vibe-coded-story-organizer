@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Building HTMLPurifier is non-trivial; share one instance across the
-        // per-field sanitization calls (wired in task 02) and the SanitizeHtml rule.
+        // per-field sanitization calls and the SanitizeHtml rule.
         $this->app->singleton(HtmlSanitizer::class);
 
         // One recorder per request, so its save-point memo (RevisionRecorder::

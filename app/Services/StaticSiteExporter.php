@@ -27,13 +27,13 @@ use ZipArchive;
 /**
  * Builds a downloadable .zip export of one project.
  *
- * HTTP-agnostic and async-ready (invariant 5): it takes a Project plus options
+ * HTTP-agnostic and async-ready: it takes a Project plus options
  * and returns a finished zip path on disk — no Request/Response dependency — so a
  * future queued Job can reuse it unchanged. Media bytes are read off the `public`
  * disk via Storage, never the /storage URL, so it never depends on
  * `php artisan storage:link` or any CLI step.
  *
- * The archive has two top-level folders (see plan/00-overview.md):
+ * The archive has two top-level folders:
  *   - data/  — a lossless machine layer (source of truth for a future reimport)
  *   - book/  — a human reading version
  *
@@ -41,7 +41,7 @@ use ZipArchive;
  * scenes), the data/ Timeline branch (plotlines + events), the data/ Codex branch
  * (entries + attribute definitions + tags + media), and the book/ human reading
  * layer (TOC + compiled chapter pages). The book/ layer is the ONLY place Markdown
- * is rendered to HTML; data/ stays raw and lossless (invariant 3).
+ * is rendered to HTML; data/ stays raw and lossless.
  */
 class StaticSiteExporter
 {
@@ -51,11 +51,11 @@ class StaticSiteExporter
      * breaking change to the data/ layout. Documented in
      * documentation/export-format.md.
      *
-     * Bumped to 2 by the epub-configuration feature (task 02): this single bump
-     * covers every new field the whole feature adds across its tasks (the four
-     * project front-/back-matter Markdown columns here, plus chapter covers and
-     * the serialized PublicationSetting in later tasks) rather than bumping once
-     * per task. `ImportRules::SUPPORTED_MANIFEST_VERSIONS` still accepts the
+     * The epub-configuration feature bumped it to 2. One bump covers a whole
+     * feature, never one per change: that single bump takes in the four project
+     * front-/back-matter Markdown columns, chapter covers, and the serialized
+     * PublicationSetting.
+     * `ImportRules::SUPPORTED_MANIFEST_VERSIONS` still accepts the
      * pre-bump version 1 — those archives simply import with the new fields null.
      */
     private const DATA_VERSION = 2;
@@ -65,13 +65,13 @@ class StaticSiteExporter
      * controller) streams it and deletes it after send. The temp file is removed
      * here too if the build throws, so no orphaned zips are left behind.
      *
-     * $includeRevisions is the "Include revision history" toggle (task 14,
-     * autosave-with-revisions): when on, every registered field on every
+     * $includeRevisions is the "Include revision history" toggle: when on,
+     * every registered field on every
      * exported entity gets a data/.../revisions/<field>.json sidecar holding
      * that field's WHOLE history as one array — never one file per revision
-     * (handoff.md §8's explicit rejection of "hundreds of zip entries" for a
-     * heavily-edited scene). EPUB/PDF exports never include revisions; this
-     * toggle only affects this zip exporter.
+     * (a heavily-edited scene must not add hundreds of entries to the zip).
+     * EPUB/PDF exports never include revisions; this toggle only affects this
+     * zip exporter.
      */
     public function export(Project $project, bool $includeMedia, bool $includeRevisions = false): string
     {
@@ -109,9 +109,8 @@ class StaticSiteExporter
     /**
      * data/manifest.json — the archive's root descriptor. `includes_media`
      * reflects the "Include images & files" toggle; media BYTES are governed by
-     * it (task 04), but the manifest records the choice regardless.
-     * `includes_revisions` is the same pattern for the "Include revision
-     * history" toggle (task 14, autosave-with-revisions).
+     * it, but the manifest records the choice regardless. `includes_revisions`
+     * is the same pattern for the "Include revision history" toggle.
      */
     private function addManifest(ZipArchive $zip, Project $project, bool $includeMedia, bool $includeRevisions): void
     {
@@ -128,8 +127,8 @@ class StaticSiteExporter
 
     /**
      * data/publication-setting.json — the project's EPUB publication config, so a
-     * customised setting survives an export → import round-trip (overview.md #7,
-     * task 05). RAW persisted values only, never rendered: booleans as booleans,
+     * customised setting survives an export → import round-trip.
+     * RAW persisted values only, never rendered: booleans as booleans,
      * enum columns as their backing string, the two ordered lists as arrays.
      *
      * The file is OMITTED entirely when the project has no saved row — the lazy
@@ -211,8 +210,8 @@ class StaticSiteExporter
      * The Story branch of data/: the project entity plus the act → chapter → scene
      * tree. Every entity is a `<db-id>-slug` directory holding a per-entity JSON
      * (scalars + stable ids + relationship id lists + links to its field files) and
-     * raw field files (exact stored column values — never re-rendered/re-sanitized,
-     * invariant 3). Nesting mirrors ownership (invariant, 00-overview.md).
+     * raw field files (exact stored column values — never re-rendered or
+     * re-sanitized). Nesting mirrors ownership.
      */
     private function addStory(ZipArchive $zip, Project $project, bool $includeMedia, bool $includeRevisions): void
     {
@@ -267,7 +266,7 @@ class StaticSiteExporter
      * front-/back-matter Markdown field-file links) + description.html and any of
      * dedication.md / acknowledgements.md / preface.md / postface.md that are
      * non-empty. The four Markdown fields stay RAW — never rendered — like a
-     * scene's contents.md (task 02, epub-configuration).
+     * scene's contents.md.
      */
     private function addProject(ZipArchive $zip, Project $project, bool $includeRevisions): void
     {
@@ -291,8 +290,8 @@ class StaticSiteExporter
      * A single scene directory: scene.json (scalars + mentioned-event ids + field-file
      * links) plus contents.md / description.html / notes.html. `status` is written as
      * the SceneStatus enum VALUE (machine form, e.g. "draft"). The share-link columns
-     * (share_token, share_expires_at) are deliberately excluded (deployment secrets,
-     * invariant / 00-overview.md).
+     * (share_token, share_expires_at) are deliberately excluded: they are
+     * deployment secrets.
      */
     private function addScene(ZipArchive $zip, string $chapterDir, Scene $scene, bool $includeRevisions): void
     {
@@ -316,12 +315,12 @@ class StaticSiteExporter
     }
 
     /**
-     * A chapter's cover image (task 07, epub-configuration). Returns the `cover_file`
+     * A chapter's cover image. Returns the `cover_file`
      * link key to merge into chapter.json (a path relative to the chapter directory,
      * `cover/<name>`) when the chapter has a cover, and — when $includeMedia is true —
      * co-locates the file's BYTES at that path, exactly like codex media.
      *
-     * The bytes are read straight off the `public` disk (invariant 5), never via the
+     * The bytes are read straight off the `public` disk, never via the
      * /storage URL, so the export never depends on `php artisan storage:link`. Like
      * codex media, the link is written regardless of the toggle; only the bytes are
      * conditional, and a metadata-only export imports back a null cover.
@@ -357,7 +356,7 @@ class StaticSiteExporter
      *
      * The auto-created anchors are exported like any other row: the is_main main
      * plotline and the is_fixed Start/End bookend events. They are part of the graph
-     * (Codex attribute values often anchor to the Start bookend, task 04). Matching —
+     * (Codex attribute values often anchor to the Start bookend). Matching —
      * not duplicating — them on a future import is an import-time concern, not handled
      * here (see documentation/export-format.md → Timeline).
      */
@@ -424,7 +423,7 @@ class StaticSiteExporter
      * attribute-definition and tag lists, then one directory per Codex entry grouped
      * by type (data/codex/<type>/<id>-slug/). The "Include images & files" toggle
      * ($includeMedia) governs whether media BYTES are copied; the media[] metadata in
-     * each entry.json is written REGARDLESS (00-overview.md media-toggle default).
+     * each entry.json is written REGARDLESS.
      */
     private function addCodex(ZipArchive $zip, Project $project, bool $includeMedia, bool $includeRevisions): void
     {
@@ -526,7 +525,7 @@ class StaticSiteExporter
      * Build the entry's media[] manifest and, when $includeMedia is true, copy each
      * file's BYTES into the entry directory at its `file` path (grouped by collection:
      * cover/, reference-images/, reference-files/). Bytes are read straight off the
-     * `public` disk (invariant 5) — never via the /storage URL — so the export never
+     * `public` disk — never via the /storage URL — so the export never
      * depends on `php artisan storage:link`. The returned manifest is written regardless
      * of the toggle; only the bytes are conditional.
      *
@@ -594,14 +593,16 @@ class StaticSiteExporter
      * the TOC. HTML lives in the Blade templates under resources/views/exports/book
      * (guidelines: no string-built HTML in the service).
      *
-     * Act and chapter numbers (task 08, continuous-numbering) are derived once from
-     * this same loaded tree via {@see StoryNumbering} and threaded through both the
-     * TOC and the chapter pages, so the two can never disagree. The chapter heading
-     * is formatted by the project's {@see PublicationSetting::$chapter_title_format}
-     * — the same setting that drives the EPUB — so both exports agree on how a
-     * chapter number is displayed. `chapterHref()` stays untouched: it is file
-     * identity (folder = act position, file = per-act chapter position), not a
-     * display number, and must never shift a previously exported URL.
+     * Act and chapter numbers are derived once from this same loaded tree via
+     * {@see StoryNumbering}, then threaded through both the TOC and the chapter
+     * pages, so the two can never disagree. The chapter heading is formatted by the
+     * project's {@see PublicationSetting::$chapter_title_format} — the same setting
+     * that drives the EPUB — so both exports agree on how a chapter number reads.
+     *
+     * > [!WARNING]
+     * > `chapterHref()` must not use those display numbers. It is file identity
+     * > (folder = act position, file = per-act chapter position), and it must never
+     * > shift the URL of an already exported book.
      */
     private function addBook(ZipArchive $zip, Project $project): void
     {
@@ -745,8 +746,8 @@ class StaticSiteExporter
     }
 
     /**
-     * The `<db-id>-slug` directory name for an entity. The id is the stable identity
-     * (invariant 4); the slug is cosmetic. Reused by every data/ branch.
+     * The `<db-id>-slug` directory name for an entity. The id is the stable
+     * identity; the slug is cosmetic. Reused by every data/ branch.
      */
     private function entityDir(Model $model): string
     {
@@ -765,7 +766,7 @@ class StaticSiteExporter
 
     /**
      * Write a raw field file (the EXACT stored column value — never re-rendered or
-     * re-sanitized, invariant 3) and return the `*_file` link key to merge into the
+     * re-sanitized) and return the `*_file` link key to merge into the
      * entity JSON. A null/empty value writes nothing and returns no key, keeping the
      * "omit both the file and its link" null-handling rule consistent across every
      * entity.
@@ -785,14 +786,14 @@ class StaticSiteExporter
 
     /**
      * data/.../revisions/<field>.json — an entity's revision history for the
-     * "Include revision history" export toggle (task 14, autosave-with-revisions).
+     * "Include revision history" export toggle.
      * Only called when $includeRevisions is true; a no-op call site otherwise, so
      * every entity method above can call this unconditionally without its own
      * `if ($includeRevisions)` guard.
      *
      * ONE FILE PER FIELD holding that field's WHOLE history as an array — never one
-     * file per revision (handoff.md §8: a heavily-edited scene must not add
-     * hundreds of zip entries to the archive). A field with zero revisions writes
+     * file per revision, because a heavily-edited scene must not add hundreds of
+     * entries to the archive. A field with zero revisions writes
      * nothing at all, matching addFieldFile()'s "omit rather than write empty"
      * convention.
      *
@@ -881,7 +882,8 @@ class StaticSiteExporter
     /**
      * Slug a name for a cosmetic directory/file segment, falling back to
      * 'untitled' when the name slugs to empty (e.g. a name of only punctuation).
-     * Reused by later tasks for entity directory names.
+     * {@see self::slugDir()} is the only caller: it builds every entity directory
+     * name from this.
      */
     private function slug(string $name): string
     {

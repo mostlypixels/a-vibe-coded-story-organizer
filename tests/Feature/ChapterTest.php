@@ -406,7 +406,7 @@ class ChapterTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Cover image (task 07) — upload / replace / remove / validation / cleanup
+    // Cover image — upload / replace / remove / validation / cleanup
     // ---------------------------------------------------------------------
 
     public function test_uploading_a_cover_sets_the_chapter_cover_image(): void
@@ -605,9 +605,9 @@ class ChapterTest extends TestCase
 
     public function test_the_edit_page_links_to_the_chapters_revision_history(): void
     {
-        // Task 18: the Actions card carries the entity-level History link. The
-        // closing quote keeps this from being satisfied by the per-field
-        // `?field=` icon link that sits beside the description editor.
+        // The Actions card carries the entity-level History link. The closing
+        // quote prevents a match on the per-field `?field=` icon link beside
+        // the description editor.
         $user = User::factory()->create();
         $act = Act::factory()->for(Project::factory()->for($user))->create();
         $chapter = Chapter::factory()->for($act)->create();
@@ -621,7 +621,7 @@ class ChapterTest extends TestCase
             );
     }
 
-    // --- Index ordering by story order (continuous-numbering, task 2) -------
+    // --- Index ordering by story order -----------------------------------
 
     /**
      * Two acts, one chapter each, then act B is moved above act A. The `#` column
@@ -714,7 +714,7 @@ class ChapterTest extends TestCase
         $this->assertSame(1015, (int) $chapters->first()->word_count);
     }
 
-    // --- Continuous numbering (continuous-numbering, task 3) -----------------
+    // --- Continuous numbering --------------------------------------------
 
     /**
      * The trimmed, tag-stripped text of the `$index`-th `<td>` (0-based) in the row
@@ -801,7 +801,7 @@ class ChapterTest extends TestCase
             ->assertSee('Chapter 3 — 2 of 3 in Act 2. Use the move up/down buttons on the list to reorder.');
     }
 
-    // --- Word count column (word-count spec, task 9) ------------------------
+    // --- Word count column -----------------------------------------------
 
     public function test_the_chapters_index_shows_each_chapters_total_word_count(): void
     {
@@ -843,7 +843,7 @@ class ChapterTest extends TestCase
      * list itself. A naive per-row sum() (in the controller loop or the view)
      * would issue one query per chapter — 10 here instead of 1 — so this counts
      * queries against the scenes table specifically, the same isolation
-     * StoryTest's own N+1 test (task 8) uses.
+     * StoryTest's own N+1 test uses.
      */
     public function test_the_chapters_index_issues_one_grouped_query_for_word_counts(): void
     {
@@ -868,9 +868,9 @@ class ChapterTest extends TestCase
             ->assertOk();
 
         // 1 for the withSum() word-count aggregate, 1 more for StoryNumbering::
-        // forProject()'s own eager load of the whole act -> chapter -> scene tree
-        // (continuous-numbering task 3) — both still O(1) per page load, not
-        // O(chapters), so the N+1 this test guards against is still absent.
+        // forProject()'s own eager load of the whole act -> chapter -> scene tree.
+        // Both stay O(1) per page load, not O(chapters), so the N+1 this test
+        // guards against is still absent.
         $this->assertCount(2, $sceneQueries);
     }
 }

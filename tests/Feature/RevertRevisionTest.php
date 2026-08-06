@@ -19,16 +19,15 @@ use Tests\TestCase;
 
 /**
  * RevisionController::revert() and the App\Services\RevisionReverter behind it
- * (task 16): copies an older revision's value back onto the live column,
- * additively (expanded/architecture.md "Revert", handoff.md §5.2). Never
- * destructive: the reverted-away-from state and every other row stay exactly as
- * they were, and revert always creates a new `origin: revert` row rather than
- * editing anything.
+ * copy an older revision's value back onto the live column, additively
+ * (expanded/architecture.md "Revert"). Revert is never destructive: the
+ * reverted-away-from state and every other row stay as they were, and revert
+ * always creates a new `origin: revert` row.
  *
- * The service is covered through the HTTP endpoint rather than in isolation —
- * the base-hash check, the re-validation and the recorded row are all things a
- * request has to end up with, and testing them here keeps the conflict *response*
- * (task 16's changed behaviour) in the same file as the behaviour it changed.
+ * These tests drive the service through the HTTP endpoint, not in isolation.
+ * The base-hash check, the re-validation and the recorded row are all things a
+ * request must end up with. The conflict *response* belongs here too, beside
+ * the revert behaviour it guards.
  */
 class RevertRevisionTest extends TestCase
 {
@@ -132,9 +131,9 @@ class RevertRevisionTest extends TestCase
     }
 
     /**
-     * Task 16 changed this deliberately: a conflict used to abort(409) into a
-     * bare error page shown to a writer who did nothing wrong. It now redirects
-     * back with an error alert they can act on. See resolution-log.md.
+     * A conflict redirects back with an error alert the writer can act on. It
+     * must never abort(409) into a bare error page: the writer did nothing
+     * wrong.
      */
     public function test_a_stale_base_hash_redirects_back_with_an_error_and_makes_no_changes(): void
     {
@@ -202,11 +201,10 @@ class RevertRevisionTest extends TestCase
     }
 
     /**
-     * standing-issues.md #4: every conflict test above asserts the app *decided*
-     * to flash a message. None asserted any page renders it — so the alert could
-     * have been wired into the wrong shell, or given the wrong props, and the
-     * whole suite would still have passed with the feature exactly as broken as
-     * it was before task 16.
+     * Every conflict test above asserts the app *decided* to flash a message.
+     * None asserts that a page renders it. Without this test the alert could sit
+     * in the wrong shell, or carry the wrong props, and the whole suite would
+     * still pass with the alert never reaching the writer.
      */
     public function test_the_conflict_alert_is_actually_rendered_on_the_page_it_returns_to(): void
     {
@@ -227,7 +225,7 @@ class RevertRevisionTest extends TestCase
             ->post(route('revisions.revert', $old), ['base_hash' => 'not-the-real-hash']);
 
         $response->assertOk();
-        // standing-issues.md #6: the message names the field that moved — a
+        // The message names the field that moved — a
         // compare page shows several at once, each with its own revert button —
         // and no longer tells the writer to reload, which is a step the redirect
         // has already taken for them.
@@ -236,11 +234,11 @@ class RevertRevisionTest extends TestCase
     }
 
     /**
-     * standing-issues.md #5: the base hash was checked against the model already
-     * hydrated in memory, and the value was written afterwards — two steps with
-     * nothing holding the row still in between. Two reverts arriving together
-     * could both pass the check, and the second would silently overwrite the
-     * first: exactly the outcome the base hash exists to prevent.
+     * The base hash must not be checked against a model already hydrated in
+     * memory, with the value written afterwards — two steps, and nothing holds
+     * the row still in between. Two reverts that arrive together both pass that
+     * check, and the second silently overwrites the first: exactly the outcome
+     * the base hash exists to prevent.
      *
      * A real race cannot be scheduled in a test, so this reproduces its *shape*.
      * The row moves after the reverter has been handed an entity whose in-memory
@@ -285,12 +283,13 @@ class RevertRevisionTest extends TestCase
     }
 
     /**
-     * standing-issues.md #1: reverting re-validates the old value against
-     * *today's* rules, which is correct — rules can have tightened since it was
-     * recorded, and an old value must not reach the column through a door a
-     * normal save would have closed. But the resulting message went into
-     * $errors, which no revisions view rendered: the page came back looking
-     * identical, with no message, no change, and no explanation.
+     * A revert re-validates the old value against *today's* rules. Rules can
+     * tighten after a value is recorded, and an old value must not reach the
+     * column through a door a normal save closes.
+     *
+     * The failure message must reach the writer. In `$errors` alone it is
+     * invisible: no revisions view renders that bag, so the page comes back
+     * identical — no message, no change, no explanation.
      */
     public function test_a_revert_that_fails_todays_validation_explains_itself_and_writes_nothing(): void
     {
@@ -330,10 +329,10 @@ class RevertRevisionTest extends TestCase
     }
 
     /**
-     * standing-issues.md #2: `restore()` changed the column and recorded the
-     * change as two separate statements outside any transaction. If the second
-     * failed, the value moved with nothing in the history saying so — the one
-     * outcome this whole feature exists to prevent.
+     * `restore()` must change the column and record the change in one
+     * transaction. As two separate statements, a failure in the second moves
+     * the value with nothing in the history to say so — the one outcome this
+     * whole feature exists to prevent.
      */
     public function test_a_failure_recording_the_revert_leaves_the_column_untouched(): void
     {

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Guard for the Tailwind 4 migration (tailwind-4 task 02).
+ * Guard for the Tailwind 4 migration.
  *
  * Tailwind 4 still resolves old `theme()` dot-path calls that were never rewritten to
  * `var(--…)`, and it still emits any custom property that hand-written CSS references via
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
  * `theme()` call rewritten to a variable that exists but is the WRONG one (e.g.
  * `theme('spacing.2')` becoming `var(--text-sm)` instead of `var(--spacing-2)`) — that
  * resolves fine and passes this test silently. That class of error is caught only by the
- * manual `theme()` rewrite audit (task 04) and the browser pass (task 09). Treat this test as
+ * manual `theme()` rewrite audit and the browser pass. Treat this test as
  * a floor, not a ceiling.
  */
 

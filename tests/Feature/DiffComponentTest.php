@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 /**
- * Task 12 — the `<x-diff>` component, the one place diff output is styled.
+ * The `<x-diff>` component, the one place diff output is styled.
  *
  * Rendered standalone via `Blade::render()`, following
  * {@see AutosaveFieldComponentTest}'s precedent. The component is fed real

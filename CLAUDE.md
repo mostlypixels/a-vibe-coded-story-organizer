@@ -116,6 +116,9 @@ reached; do not re-add it. The `x-robots-meta` component is the single source of
 Doc, spec and `.claude/` prose rules: `.claude/rules/documentation.md` (loads when you edit
 those paths). It also governs commit bodies and PR descriptions — read it before writing them.
 
+Code comments follow their own rules — ASD-STE100 Simplified Technical English, and never a
+citation to a temporary file: `.claude/rules/code-comments.md` (loads when you edit a PHP file).
+
 #### Changelog
 
 Every commit body explains *why*. `CHANGELOG.md` gets one dated section per PR — format and

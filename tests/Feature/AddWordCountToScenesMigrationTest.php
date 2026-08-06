@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Task 03 — the schema migration that adds `scenes.word_count` and backfills
- * it for every scene that exists when the migration runs.
+ * The schema migration adds `scenes.word_count` and backfills it for every
+ * scene that exists when the migration runs.
  *
  * RefreshDatabase already runs this migration once per test, before any
  * scenes exist — so the column is present with every test starting fresh,
@@ -22,15 +22,14 @@ use Tests\TestCase;
  * has just created, exactly as the migration would run against an existing
  * install's data.
  *
- * Scenes below are inserted with a raw `DB::table('scenes')->insertGetId()`,
- * never `Scene::factory()->create()`: task 4 added a `Scene::booted()` hook
- * that writes `word_count` on every save, and that hook assumes the column
- * it writes to already exists — exactly what `$migration->down()` has just
- * removed. Going through Eloquent here would fail with "no column named
- * word_count" for the same reason it never would in a real install (the
- * migration has always run by the time any model code executes); the raw
- * insert is what actually reproduces "a row written before this feature
- * shipped".
+ * Scenes below use a raw `DB::table('scenes')->insertGetId()`, never
+ * `Scene::factory()->create()`. A `Scene::booted()` hook writes `word_count`
+ * on every save, and that hook needs the column that `$migration->down()`
+ * removes.
+ *
+ * Eloquent here fails with "no column named word_count". A real install never
+ * hits that, because the migration runs before any model code. Only the raw
+ * insert reproduces "a row written before this feature shipped".
  */
 class AddWordCountToScenesMigrationTest extends TestCase
 {

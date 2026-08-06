@@ -9,8 +9,8 @@ namespace App\Support;
  *
  * `sizeBytes` is summed from the `size_bytes` column, never from the `value`
  * column itself — RevisionPurger's queries select/aggregate scalar columns
- * only and never hydrate `value` (00-overview.md's "list queries never
- * hydrate value" invariant).
+ * only and never hydrate `value`. That is a binding invariant: list queries
+ * never hydrate `value`.
  */
 final class RevisionPurgeResult
 {

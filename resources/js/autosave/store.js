@@ -1,23 +1,21 @@
 /**
  * Autosave client decision logic — a plain, side-effect-free module (no DOM,
- * no Alpine, no axios) implementing the state machine `handoff.md` §3.4/§9.12
- * calls for. Task 8's Alpine adapter (`resources/js/autosave/field.js`) is the
- * thin layer that actually fires requests, touches `localStorage`, and
- * updates `Alpine.store('autosave')`; every *decision* — which state to be
- * in, how long to wait before retrying, what to do with a stray `localStorage`
- * draft — lives here so it can be exercised by vitest with no browser
- * (`.specs/planned/2026-07/autosave-with-revisions/handoff.md` §9.12).
+ * no Alpine, no axios) that holds the autosave state machine.
  *
- * `scheduleRetry()` is the one function that isn't a pure transform (it calls
- * `setTimeout`), kept deliberately thin — a one-line wrapper task 8's adapter
- * can call without duplicating `setTimeout` all over the codebase, and small
- * enough that vitest's fake timers exercise it directly.
+ * The Alpine adapter (`resources/js/autosave/field.js`) is the thin layer that
+ * fires the requests, touches `localStorage`, and updates
+ * `Alpine.store('autosave')`. Every *decision* — which state to be in, how long
+ * to wait before a retry, what to do with a stray `localStorage` draft — lives
+ * here, so vitest can exercise it with no browser.
+ *
+ * `scheduleRetry()` is the one function that is not a pure transform: it calls
+ * `setTimeout`. It stays thin, so the adapter has one place to schedule a retry
+ * and vitest's fake timers can drive it directly.
  */
 
 /**
- * The full autosave indicator state enum (task 07's scope; `handoff.md` §3.4,
- * §9.5, §9.6). `forbidden-after-replay` is this task's own addition to the
- * set `architecture.md`/`ui.md` already describe — see `FORBIDDEN_AFTER_REPLAY`
+ * The full autosave indicator state enum. `architecture.md` and `ui.md` describe
+ * every state except `forbidden-after-replay` — see `FORBIDDEN_AFTER_REPLAY`
  * below.
  */
 export const STATES = Object.freeze({
@@ -32,10 +30,10 @@ export const STATES = Object.freeze({
 });
 
 /**
- * Worst-first precedence for the global lower-right badge (`handoff.md` §9.5,
- * refined by this task's own file to insert `forbidden-after-replay` directly
- * after `conflict`): a save that "definitely did not land and needs a human
- * decision" always outranks the softer `error`/`retrying`/`saving` states.
+ * Worst-first precedence for the global lower-right badge. A save that
+ * "definitely did not land and needs a human decision" always outranks the
+ * softer `error`/`retrying`/`saving` states, so `forbidden-after-replay` sits
+ * directly after `conflict`.
  */
 const PRECEDENCE = [
     STATES.SESSION_EXPIRED,
@@ -50,7 +48,7 @@ const PRECEDENCE = [
 
 /**
  * Given every per-field state currently in play on the page, return the one
- * global badge state (`handoff.md` §9.5 — "worst-state-wins"). An empty list
+ * global badge state — worst-state-wins. An empty list
  * (nothing autosaving yet) is `idle`; an unrecognized string is ignored
  * rather than crashing the badge, since a caller passing garbage should not
  * take down the one thing meant to report trouble.
@@ -97,10 +95,10 @@ function retryAfterMsFromHeaders(headers) {
 }
 
 /**
- * The HTTP status → indicator state mapping `architecture.md`'s table and
- * `handoff.md` §9.6/§9.8 define. Takes an explicit `wasReplay` flag (per this
- * task's scope) rather than inferring it, so task 8's adapter never has to
- * guess whether a 403 followed a session-expired recovery.
+ * The HTTP status → indicator state mapping that `architecture.md`'s table
+ * defines. Takes an explicit `wasReplay` flag rather than an inferred one, so
+ * the adapter never has to guess whether a 403 followed a session-expired
+ * recovery.
  *
  * A missing/`null`/`0` status (axios's shape for a network failure — no
  * response ever arrived) maps to `retrying`, same as 429, just without a
@@ -117,15 +115,15 @@ export function mapResponse(status, { headers = {}, wasReplay = false } = {}) {
 
         case 401:
         case 419:
-            // Indistinguishable from the writer's chair (handoff.md §9.6) —
-            // collapsed into one state deliberately, never `error`.
+            // Indistinguishable from the writer's chair, so both collapse into
+            // one state deliberately. Never `error`.
             return { state: STATES.SESSION_EXPIRED };
 
         case 403:
             // A first-attempt 403 "should not exist in practice" (the UI
             // never lets an unauthorized user open the field), but the
-            // mapping stays explicit about the distinction anyway so task 8
-            // never has to guess. Only a 403 on a *replayed* save (after a
+            // mapping stays explicit about the distinction anyway, so the
+            // adapter never has to guess. Only a 403 on a *replayed* save (after a
             // session-expired sign-in-as-someone-else) becomes the dedicated
             // `forbidden-after-replay` state.
             return { state: wasReplay ? STATES.FORBIDDEN_AFTER_REPLAY : STATES.ERROR };
@@ -137,8 +135,8 @@ export function mapResponse(status, { headers = {}, wasReplay = false } = {}) {
             return { state: STATES.ERROR };
 
         case 429: {
-            // 429 never becomes `error` (handoff.md §9.8) — always `retrying`,
-            // honoring `Retry-After` when present.
+            // 429 never becomes `error` — always `retrying`, and it honors
+            // `Retry-After` when present.
             return { state: STATES.RETRYING, retryAfterMs: retryAfterMsFromHeaders(headers) };
         }
 
@@ -171,8 +169,8 @@ export function retryDelayMs(attempt, retryAfterMs) {
 }
 
 /**
- * Thin `setTimeout` wrapper so task 8's adapter has one place to schedule a
- * retry rather than reaching for the global directly. The only function in
+ * Thin `setTimeout` wrapper so the adapter has one place to schedule a retry
+ * rather than reaching for the global directly. The only function in
  * this module with a side effect — kept to a single line so it stays
  * trivially testable with vitest's fake timers (no real waits in the suite).
  */
@@ -181,34 +179,32 @@ export function scheduleRetry(callback, delayMs) {
 }
 
 /**
- * The three-way `localStorage` draft-triage decision, `handoff.md` §9.7's
- * table. `draft` is what was mirrored while typing (`{ value, baseHash,
- * savedAt }`); `server` is the value/hash the page just loaded
- * (`{ value, hash }`, per §9.13 — the hash the server rendered for the
- * current stored value, never client-computed).
- *
- * Deliberately never returns a bare "restore" when the base hash doesn't
- * match the current server value (§9.7's closing rule) — a stale draft from
- * a different session must never silently offer to clobber newer server
- * text, only `offer-compare-only`.
- */
-/**
  * How long a `localStorage` draft stays eligible for recovery, in milliseconds — a
  * flat 4-hour duration from `savedAt`, not a calendar-day boundary (a draft written
- * at 11:58pm keeps its full ~4 hours, it does not reset at midnight). See
- * `.specs/planned/2026-07/autosave-storage-improvements/00-overview.md` decision 1.
+ * at 11:58pm keeps its full ~4 hours, it does not reset at midnight).
  */
 export const DRAFT_TTL_MS = 4 * 60 * 60 * 1000;
 
 /**
- * Read-time pre-filter in front of `triageDraft()` (00-overview.md decision 6): an
- * expired draft is treated identically to "no draft" and never reaches the three-way
- * triage below. `now` is injectable so tests don't depend on the real clock.
+ * Read-time pre-filter in front of `triageDraft()`: an expired draft is treated
+ * identically to "no draft" and never reaches the three-way triage below. `now`
+ * is injectable so tests do not depend on the real clock.
  */
 export function isDraftExpired(draft, now = Date.now()) {
     return now - draft.savedAt > DRAFT_TTL_MS;
 }
 
+/**
+ * The three-way `localStorage` draft-triage decision. `draft` is what was
+ * mirrored while typing (`{ value, baseHash, savedAt }`); `server` is the
+ * value/hash the page just loaded (`{ value, hash }` — the hash the server
+ * rendered for the current stored value, never client-computed).
+ *
+ * > [!WARNING]
+ * > Never return a bare "restore" when the base hash does not match the current
+ * > server value. A stale draft from a different session must never silently
+ * > offer to clobber newer server text; it gets `offer-compare-only`.
+ */
 export function triageDraft(draft, server) {
     if (draft.value === server.value) {
         // It landed (or was undone) — nothing to recover.

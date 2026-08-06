@@ -74,7 +74,7 @@ return [
          *
          * Ten values are **not** the original: every pair that failed its WCAG floor,
          * re-authored once the rename was complete and the whole matrix could be
-         * measured (accessibility outranks pixel-stability — see resolution-log.md).
+         * measured. Accessibility outranks pixel-stability.
          * Each carries a `was` comment. Nothing else moved.
          *
          * The 18.0 ceiling is Daylight's own: white on navy-950 (the pressed primary
@@ -315,8 +315,8 @@ return [
 
                 // Near-black, not a mid-grey: a scrim has to dim whatever it sits over,
                 // and `content-muted` (this preset's body-text grey) would instead wash
-                // the already-dark page out pale, which is the bug this token exists to
-                // fix — see resolution-log.md's "modal scrim" entry.
+                // the already-dark page out pale, which is the bug this token exists
+                // to fix.
                 'scrim' => 'oklch(0.05 0 0)',
 
                 // Body text stops well short of white — white on this page measures

@@ -4,8 +4,8 @@ import { storageKeyFor, writeDraft } from './field';
 
 /**
  * Tests for `resources/js/autosave/draft-recovery.js`'s DOM-free half
- * (`collectDraftEntries()`) — task 02 of `autosave-storage-improvements`. The
- * `Alpine.data('draftRecoveryModal', ...)` wrapper itself is left to task 03's
+ * (`collectDraftEntries()`). The
+ * `Alpine.data('draftRecoveryModal', ...)` wrapper itself is left to the
  * manual browser-verification step, matching this feature's existing convention of
  * unit-testing only the DOM-free logic (see badge.js/badge.test.js and
  * field.js/field.test.js for the same split).

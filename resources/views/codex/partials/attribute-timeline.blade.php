@@ -19,7 +19,7 @@
 
         {{-- Store failures land under these keys; the destroy guard is now a 403, so the old
              'attribute_value' bag no longer feeds this card. Errors share the default bag
-             across the card's small forms (accepted at this scale — Q3). --}}
+             across the card's small forms, accepted at this scale. --}}
         <x-input-error :messages="$errors->get('value')" class="mt-2" />
         <x-input-error :messages="$errors->get('start_event_id')" class="mt-2" />
 

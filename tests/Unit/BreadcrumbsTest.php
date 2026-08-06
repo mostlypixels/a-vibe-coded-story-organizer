@@ -20,15 +20,14 @@ use Tests\TestCase;
 
 /**
  * Builds {@see Breadcrumbs} straight from a dispatched request — no view,
- * no rendered HTML. Task 02 is what wires this into the layout and covers
- * the rendered band in a feature test; this pins down the trail-building
- * logic itself, in isolation, per the plan's task 01.
+ * no rendered HTML. This pins down the trail-building logic in isolation;
+ * {@see \Tests\Feature\BreadcrumbsTest} covers the rendered band.
  *
  * "Dispatched" rather than hand-assembled: `$this->get(...)` runs the real
  * route, auth and (implicit) model-binding pipeline, then this test reads
  * the resulting Request straight out of the container. That is the same
- * Request a real page's view composer would see, without depending on any
- * page actually rendering breadcrumbs yet.
+ * Request a real page's view composer sees, and no page must render
+ * breadcrumbs for this test to run.
  */
 class BreadcrumbsTest extends TestCase
 {

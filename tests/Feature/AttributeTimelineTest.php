@@ -292,7 +292,7 @@ class AttributeTimelineTest extends TestCase
         $attribute = CodexAttribute::factory()->for($project)->create();
         $start = $project->events()->where('title', 'Start')->firstOrFail();
 
-        // '' is a first-class "recorded as blank" value (Q2): the Start baseline persists it
+        // '' is a first-class "recorded as blank" value: the Start baseline persists it
         // and the submit reports no errors (would fail under the old 'required' rule).
         $this->actingAs($user)
             ->post(route('codex.attribute-values.store', [$entry, $attribute]), [

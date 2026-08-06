@@ -111,9 +111,8 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         // export redirects back with an error (EpubExportException), never a 500.
         Route::post('/data/export/epub', [EpubExportController::class, 'store'])->name('data.export.epub');
 
-        // Task 04: persists PublicationSetting (the Export-ebook config form) and
-        // reorders its section_order list. Write path only — the exporter does not
-        // consume these settings yet. Ownership walks the {project} route binding,
+        // Persists PublicationSetting (the Export-ebook config form) and reorders
+        // its section_order list. Ownership walks the {project} route binding,
         // mirrored in UpdatePublicationSettingRequest::authorize().
         Route::patch('/data/export/ebook/{project}/settings', [PublicationSettingController::class, 'update'])
             ->name('data.publication-settings.update');
@@ -138,11 +137,10 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
         Route::get('/database', [DatabaseConfigurationController::class, 'edit'])->name('database.edit');
 
-        // Task 13: the dedicated admin "Revisions" page — the RevisionSetting
+        // The dedicated admin "Revisions" page — the RevisionSetting
         // retention form (confirm-gated when lowering the window) and the
         // "Revision storage" panel's bulk-delete actions. A new, standalone
-        // section rather than folded into General settings or Export & import
-        // (handoff.md §9.11/§4.3 — confirmed in this feature's grilling pass).
+        // section rather than folded into General settings or Export & import.
         Route::get('/revisions', [RevisionSettingController::class, 'edit'])->name('revisions.edit');
         Route::patch('/revisions', [RevisionSettingController::class, 'update'])->name('revisions.update');
         Route::delete('/revisions/purge/{category}', [RevisionSettingController::class, 'purgeCategory'])
@@ -206,8 +204,8 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
     // Owner-facing scene share link management. Flat on {scene} (implicit binding),
     // matching the shallow scene routes. store generates/rotates the link; destroy
-    // revokes it. The public view route (shared.scenes.show) lives outside this auth
-    // group — see task 03.
+    // revokes it. The public view route (shared.scenes.show) lives outside this
+    // auth group.
     Route::post('/scenes/{scene}/share', [SceneShareController::class, 'store'])->name('scenes.share.store');
     Route::delete('/scenes/{scene}/share', [SceneShareController::class, 'destroy'])->name('scenes.share.destroy');
 
@@ -243,12 +241,12 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::delete('/codex-attribute-values/{codexAttributeValue}', [CodexAttributeValueController::class, 'destroy'])
         ->name('codex.attribute-values.destroy');
 
-    // Autosave-with-revisions (task 06): the one generic PATCH every registered
+    // Autosave-with-revisions: the one generic PATCH every registered
     // field autosaves through — see App\Support\AutosavableFields for the
     // slug => model+field registry this route gates on. An unregistered
-    // {entity} slug 404s here, before FieldAutosaveController ever runs
-    // (handoff.md §3.1/§3.2). throttle:120,1 comfortably covers a 2-second
-    // debounce across several fields at once (handoff.md §9.8).
+    // {entity} slug 404s here, before FieldAutosaveController ever runs.
+    // throttle:120,1 comfortably covers a 2-second debounce across several
+    // fields at once.
     Route::whereIn('entity', AutosavableFields::slugs())->middleware('throttle:120,1')->group(function () {
         Route::patch('/autosave/{entity}/{id}/{field}', [FieldAutosaveController::class, 'update'])
             ->name('autosave.update');
@@ -261,7 +259,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::get('/projects/{project}/revisions', [RevisionBrowserController::class, 'index'])
         ->name('projects.revisions.index');
 
-    // History + compare (task 10). Same slug-gated {entity} pattern as
+    // History + compare. Same slug-gated {entity} pattern as
     // autosave.update above, but without the tight autosave throttle — these
     // are ordinary page loads, not a debounce endpoint.
     Route::whereIn('entity', AutosavableFields::slugs())->group(function () {
@@ -285,14 +283,14 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
             ->name('revisions.field');
     });
 
-    // Revert (task 11): resolves straight from the {revision} route-model
+    // Revert: resolves straight from the {revision} route-model
     // binding, not the {entity} slug — a Revision's own revisionable_type is
     // always a real, already-registered model, so no separate slug gate is
     // needed here.
     Route::post('/revisions/{revision}/revert', [RevisionController::class, 'revert'])
         ->name('revisions.revert');
 
-    // Undo a whole save point (task 17). {save} is a save_id ULID, constrained
+    // Undo a whole save point. {save} is a save_id ULID, constrained
     // to the ULID alphabet (Crockford base32, no I/L/O/U) so a malformed id
     // 404s at the router rather than reaching a query.
     Route::post('/revisions/saves/{save}/revert', [RevisionController::class, 'revertSave'])

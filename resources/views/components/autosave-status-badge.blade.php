@@ -1,10 +1,9 @@
 {{--
-    Global lower-right autosave badge (task 9, `expanded/ui.md` "Global indicator"):
+    Global lower-right autosave badge (`expanded/ui.md` "Global indicator"):
     one page-wide indicator reflecting the worst state across every mounted
     `x-autosave-field` instance, via `Alpine.store('autosave')`
     (`resources/js/autosave/field.js`'s `registerAutosaveField()`). Additive to the
-    per-field inline indicator, never a replacement (00-overview.md/handoff.md
-    §9.5 — "both indicators, always").
+    per-field inline indicator, never a replacement — both indicators, always.
 
     Rendered once, in the authenticated layout (see resources/views/layouts/app.
     blade.php). z-40 — one below x-modal's z-50 (resources/views/components/modal.

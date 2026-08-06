@@ -602,7 +602,7 @@ class SceneTest extends TestCase
         ]);
     }
 
-    // --- Task 06: "Codex references" sidebar on the scene edit page ----------
+    // --- "Codex references" sidebar on the scene edit page ---------------
 
     public function test_the_edit_page_lists_referenced_codex_entries_linking_to_their_edit_pages(): void
     {
@@ -701,9 +701,9 @@ class SceneTest extends TestCase
 
     public function test_the_edit_page_links_to_the_scenes_revision_history(): void
     {
-        // Task 18: the Actions card carries the entity-level History link. The
-        // closing quote keeps this from being satisfied by one of the per-field
-        // `?field=` icon links beside the scene's three autosaved fields.
+        // The Actions card carries the entity-level History link. The closing
+        // quote prevents a match on the per-field `?field=` icon links beside
+        // the scene's three autosaved fields.
         $user = User::factory()->create();
         $scene = Scene::factory()->for($this->chapterFor($user))->create();
 
@@ -716,7 +716,7 @@ class SceneTest extends TestCase
             );
     }
 
-    // --- Index ordering by story order (continuous-numbering, task 2) -------
+    // --- Index ordering by story order -----------------------------------
 
     /**
      * Two acts with a chapter and a scene each, then act B is moved above act A.
@@ -809,7 +809,7 @@ class SceneTest extends TestCase
         $this->assertSame('The scene name', $scenes->first()->name);
     }
 
-    // --- Continuous numbering (continuous-numbering, task 3) -----------------
+    // --- Continuous numbering --------------------------------------------
 
     /**
      * The trimmed, tag-stripped text of the `$index`-th `<td>` (0-based) in the row
@@ -916,7 +916,7 @@ class SceneTest extends TestCase
             ->assertSee('Scene 2 — 2 of 3 in Chapter 1. Use the move up/down buttons on the list to reorder.');
     }
 
-    // --- Word count column (word-count spec, task 9) ------------------------
+    // --- Word count column -----------------------------------------------
 
     public function test_the_scenes_index_shows_each_scenes_word_count(): void
     {

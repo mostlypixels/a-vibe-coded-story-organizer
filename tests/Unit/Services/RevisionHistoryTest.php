@@ -14,12 +14,12 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Task 10 — App\Services\RevisionHistory, which folds an entity's per-field
- * revision rows back into the *save points* every screen above storage
- * addresses.
+ * App\Services\RevisionHistory folds an entity's per-field revision rows back
+ * into the *save points* every screen above storage addresses.
  *
- * Hits the database on purpose (the queries and their portability are the
- * subject) but takes no HTTP route: there is none yet, task 13 adds it.
+ * These tests hit the database on purpose — the queries and their portability
+ * are the subject. They take no HTTP route, so
+ * {@see \Tests\Feature\RevisionHistoryTest} covers the page.
  */
 class RevisionHistoryTest extends TestCase
 {

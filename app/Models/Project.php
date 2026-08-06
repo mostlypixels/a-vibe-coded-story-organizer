@@ -167,7 +167,7 @@ class Project extends Model
      *
      * Ordered by (event_datetime, id): the id tie-break is part of the contract —
      * two fixed events could share a datetime, and "never datetime alone" keeps the
-     * bookend resolution deterministic (see CLAUDE.md, refactor_codex finding 8).
+     * bookend resolution deterministic.
      */
     public function startEvent(): Event
     {

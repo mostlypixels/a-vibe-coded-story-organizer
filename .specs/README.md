@@ -75,7 +75,15 @@ still appears twice anywhere in the tree — the backstop for a collision create
     implemented/       #   completed task files are moved here
   resolution-log.md    # running record of deviations, issues→resolutions, feedback
   standing-issues.md   # unfixed defects + accepted costs, still true of master (optional)
+  handoff.md           # scratch — working notes for resuming a task; delete when done (optional)
 ```
+
+> [!WARNING]
+> **`handoff.md` and `plan/NN-*.md` are scratch. Never cite them from code or from
+> `documentation/`.** A handoff is deleted once its feature is done, and a task file moves to
+> `plan/implemented/` as it lands — so a comment pointing at either one rots on the way past.
+> State the rule where it applies instead. `spec.md` and `expanded/*.md` survive into `shipped/`
+> and are safe to cite. See `.claude/rules/code-comments.md`.
 
 `resolution-log.md` and `standing-issues.md` divide the same subject on a simple line: **is
 this still true of the code?** The log is the record of the *work* — decisions, deviations,

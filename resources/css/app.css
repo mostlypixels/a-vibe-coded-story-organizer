@@ -374,7 +374,7 @@
 }
 
 /*
- * Table, task-list, and image-resize affordances (expand-tip-tap task 04). `prose`
+ * Table, task-list, and image-resize affordances. `prose`
  * (@tailwindcss/typography) already styles rendered tables/task lists reasonably
  * outside the editor, but the *editing* surface needs its own minimal rules: cell
  * borders/padding so an empty table is visible at all, ProseMirror's own resize/
@@ -430,7 +430,7 @@
 }
 
 /*
- * Callout / alert blocks (`> [!TYPE]`, expand-tip-tap task 06) — the GitHub-flavoured
+ * Callout / alert blocks (`> [!TYPE]`) — the GitHub-flavoured
  * alert look already used in this repo's own documentation/*.md, rendered over the
  * <blockquote> element via the data-callout-type attribute. A left border + a per-type
  * accent colour and icon (::before) distinguishes the five types from a plain quote.

@@ -25,9 +25,9 @@ class SearchController extends Controller
 
         $query = $request->validated('q');
 
-        // Default to AND (match all words) when no mode is submitted — the binding
-        // "default mode = AllTerms" decision. Validation guarantees any present
-        // value is a valid SearchMode by the time we get here.
+        // Default to AllTerms (match all words) when no mode is submitted.
+        // Validation guarantees any present value is a valid SearchMode by the
+        // time we get here.
         $mode = $request->enum('mode', SearchMode::class) ?? SearchMode::AllTerms;
 
         // blank() trims, so null, '' and whitespace-only queries all count as "no

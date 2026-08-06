@@ -220,10 +220,10 @@ None are prevented; they're **detected**, so a caller can warn the user before t
 `resources/js/wysiwyg/fallbackChecks.js` is standalone (it doesn't import `wysiwyg.js`, so
 depending on it doesn't pull in toolbar/Alpine code), exporting `hasMergedTableCell(doc)`,
 `hasResizedImage(doc)`, `hasUnmatchedHtmlWrapperTag(source, editor)` and the combined
-`findFallbackWarnings({ editor, source })`. Autosave is its first real consumer, surfacing them
-as a save-time warning. `fallbackChecks.test.js` holds the exhaustive cases, including
-regression guards so a plain table/image/task-list, an underline mark, or a callout never
-false-positives.
+`findFallbackWarnings({ editor, source })`. Nothing imports it yet — autosave is the intended
+first consumer, as a save-time warning. `fallbackChecks.test.js` holds the exhaustive cases,
+including regression guards so a plain table/image/task-list, an underline mark, or a callout
+never false-positives.
 
 ## Plain text from rich HTML
 

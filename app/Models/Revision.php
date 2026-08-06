@@ -15,11 +15,11 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * time.
  *
  * Rows are never updated by the application after their coalescing window
- * closes (§2.2 of the autosave-with-revisions spec) — a still-open row is
- * overwritten via a plain UPDATE in App\Services\RevisionRecorder (task 4),
- * not Eloquent's dirty-tracking `save()`. `$timestamps` is disabled because
- * there is no `updated_at` column at all; `created_at` is always set
- * explicitly by the writer, never left to the database default.
+ * closes — a still-open row is overwritten via a plain UPDATE in
+ * App\Services\RevisionRecorder, not Eloquent's dirty-tracking `save()`.
+ * `$timestamps` is disabled because there is no `updated_at` column at all;
+ * `created_at` is always set explicitly by the writer, never left to the
+ * database default.
  *
  * `save_id` groups the per-field rows written by one Save (or one autosave
  * burst) into a single *save point* — the unit the history, compare and revert
@@ -32,7 +32,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * `revisionable_type`/`revisionable_id` pair) because deleting a Project
  * cascades to its acts/chapters/scenes at the DB level without firing
  * Eloquent events — a `deleting` hook here would silently never run. See
- * documentation/architecture.md → "Revisions" once task 16 writes it.
+ * documentation/architecture.md → "Revisions".
  */
 class Revision extends Model
 {
@@ -73,8 +73,8 @@ class Revision extends Model
     /**
      * The user who wrote this revision (the project owner, for a `baseline` row —
      * see App\Services\RevisionRecorder::ensureBaseline()). The history page
-     * (task 10) eager-loads this selecting only `id`/`name`, never pulling in
-     * anything from `revisions.value`.
+     * eager-loads this and selects only `id`/`name`. It never pulls in anything
+     * from `revisions.value`.
      */
     public function user(): BelongsTo
     {
@@ -85,9 +85,9 @@ class Revision extends Model
      * The query {@see MassPrunable} runs (via the scheduled `model:prune`
      * command) to delete eligible rows in bulk.
      *
-     * This is the single most safety-critical query in the whole feature
-     * (handoff.md §4.2): it must delete an "automatic", unlabeled row once it
-     * is older than the retention window, *unless* that row is the newest
+     * This is the single most safety-critical query in the whole feature. It
+     * must delete an "automatic", unlabeled row once it is older than the
+     * retention window, *unless* that row is the newest
      * revision recorded for its (revisionable_type, revisionable_id, field)
      * triple — losing the only remaining history for a field would be a real
      * data loss, not just tidying.
@@ -107,19 +107,18 @@ class Revision extends Model
      *
      * Expressed as "a strictly newer sibling exists" rather than as a grouped
      * subquery: it is the same portable SQL shape (no ROW_NUMBER() / PARTITION
-     * BY — not portable across sqlite/mysql/mariadb/pgsql/sqlsrv, see
-     * .specs/draft/multiple-database-engines), it states the rule the way the
-     * docblock above states it, and the existing
+     * BY — not portable across sqlite/mysql/mariadb/pgsql/sqlsrv), it states the
+     * rule the way the docblock above states it, and the existing
      * `(revisionable_type, revisionable_id, field, created_at)` index serves it.
      *
      * The sibling lookup is deliberately unfiltered by origin or label: a manual
      * or labeled revision newer than an automatic one still means that automatic
      * row is not the field's current version, so it may be pruned.
      *
-     * Reads RevisionSetting::current()->retention_days (task 12's admin-
-     * configurable singleton) rather than a raw config value, so lowering the
-     * retention window in the admin panel (task 13) takes effect on the very
-     * next scheduled prune without a deploy.
+     * Reads RevisionSetting::current()->retention_days, the admin-configurable
+     * singleton, rather than a raw config value. A lower retention window set
+     * in the admin panel takes effect on the next scheduled prune, with no
+     * deploy.
      */
     public function prunable(): Builder
     {

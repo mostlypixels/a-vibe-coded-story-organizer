@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Covers task 04 — the WYSIWYG editor UI. The editor is progressive enhancement:
+ * The WYSIWYG editor UI. The editor is progressive enhancement:
  * x-wysiwyg renders a real, submittable <textarea> that Alpine mounts Tiptap over.
  * These HTTP-level tests prove every swapped create/edit form still renders that
  * underlying textarea (name="description"/"notes"), so a JS-off submit — and old()
@@ -77,7 +77,7 @@ class WysiwygFormTest extends TestCase
             $this->assertHasTextarea($url, $user, 'description');
         }
 
-        // Scene `notes` also became a rich-HTML editor; its textarea must survive too.
+        // Scene `notes` is also a rich-HTML editor; its textarea must survive too.
         $this->assertHasTextarea(route('projects.scenes.create', $project), $user, 'notes');
         $this->assertHasTextarea(route('scenes.edit', $scene), $user, 'notes');
     }
@@ -128,9 +128,9 @@ class WysiwygFormTest extends TestCase
     }
 
     /**
-     * Regression guard for tiptap-toolbar-format task 02: the toolbar's buttons were
-     * regrouped into clusters and Style/Callout/Table collapsed into dropdowns,
-     * but every command must still be reachable with the same aria-labels.
+     * The toolbar groups its buttons into clusters and collapses Style, Callout
+     * and Table into dropdowns. Every command must stay reachable under the
+     * same aria-labels.
      */
     public function test_toolbar_still_exposes_key_formatting_commands_after_regrouping(): void
     {

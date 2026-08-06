@@ -21,7 +21,9 @@ use ZipArchive;
  *   2. No zip-slip: every entry name is inspected for "..", absolute, or drive-letter
  *      paths before anything is read. Nothing is EVER extracted to disk here —
  *      entries are only ever read into memory — so a hostile name can never place
- *      a file anywhere.
+ *      a file anywhere. The relative paths an entry.json or a chapter.json declares
+ *      get the same test before they are joined: that JSON is attacker-controlled
+ *      too.
  *   3. Every entry sits inside the allow-listed arborescence ({@see ImportRules});
  *      book/ and README.md are allowed (real exports have them) but never read.
  *   4. data/manifest.json exists, parses, and its version is supported.
@@ -31,6 +33,9 @@ use ZipArchive;
  *      bytes are included), matches its declared size, and — crucially — its
  *      ACTUAL content (finfo/getimagesize on the bytes) matches its declared
  *      mime/collection. This is the check that stops a renamed executable.
+ *      A chapter.json `cover_file` is sniffed the same way, but it declares no
+ *      size and no mime, so the bytes are only measured against the allowed
+ *      image types.
  */
 class ArchiveValidator
 {
@@ -337,9 +342,9 @@ class ArchiveValidator
 
     /**
      * Check 6 (chapter covers): every chapter.json that links a `cover_file`
-     * (task 07, epub-configuration) points at a genuine image inside its own
-     * directory. The cover is a plain path field — unlike codex media it carries
-     * no declared mime — so it is validated on CONTENT alone: the bytes must sniff
+     * points at a genuine image inside its own directory. The cover is a plain
+     * path field — unlike codex media it carries no declared mime — so it is
+     * validated on CONTENT alone: the bytes must sniff
      * (finfo AND getimagesize, agreeing) as one of the allowed image types. A
      * forged image (e.g. a renamed .php) is rejected.
      *

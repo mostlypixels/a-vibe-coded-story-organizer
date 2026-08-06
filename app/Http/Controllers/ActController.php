@@ -34,10 +34,10 @@ class ActController extends Controller
 
         $acts = $project->acts()
             ->withCount('chapters')
-            // One grouped query for the whole page (word-count spec, task 9), via the
-            // act's own scenes() HasManyThrough — a dot-nested relation path like
-            // 'chapters.scenes' is not a real relation name and throws
-            // BadMethodCallException, so it must go through that relation directly.
+            // One grouped query for the whole page, via the act's own scenes()
+            // HasManyThrough — a dot-nested relation path like 'chapters.scenes'
+            // is not a real relation name and throws BadMethodCallException, so
+            // it must go through that relation directly.
             ->withSum('scenes as word_count', 'word_count')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
             ->orderBy($sort, $direction)

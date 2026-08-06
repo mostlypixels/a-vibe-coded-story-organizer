@@ -8,11 +8,11 @@ use App\Support\InlineToken;
 use Tests\TestCase;
 
 /**
- * Task 4 — App\Services\Diff\HtmlTokenizer, the first stage of the in-house
- * visual differ: purified rich HTML in, a flat list of HtmlBlocks out.
+ * App\Services\Diff\HtmlTokenizer, the first stage of the in-house visual
+ * differ: purified rich HTML in, a flat list of HtmlBlocks out.
  *
- * Nothing calls it yet; it is proven here in isolation before any page depends
- * on it, because the diff engine is the riskiest part of the feature.
+ * Proven here in isolation, because the diff engine is the riskiest part of the
+ * feature.
  */
 class HtmlTokenizerTest extends TestCase
 {

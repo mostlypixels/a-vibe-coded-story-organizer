@@ -81,7 +81,7 @@ class User extends Authenticatable
         // each and purges its codex media files. Breeze's account deletion deletes the
         // user directly; the users → projects FK cascade is DB-level and would skip the
         // Project hook, leaking files. Deleting through Eloquent keeps purgeProject the
-        // single purge trigger (media-lifecycle.md, binding decision Q6).
+        // single purge trigger.
         static::deleting(function (User $user) {
             $user->projects->each->delete();
         });

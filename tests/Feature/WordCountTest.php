@@ -18,10 +18,9 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Task 4 (word-count spec) — the feature's one invariant:
- * `scenes.word_count` always equals `WordCounter::count($scene->contents,
- * FieldKind::Markdown)` for the stored value, on **every** write path
- * (expanded/architecture.md "The write path", plan/04-scene-saving-hook.md).
+ * The feature's one invariant: `scenes.word_count` always equals
+ * `WordCounter::count($scene->contents, FieldKind::Markdown)` for the stored
+ * value, on **every** write path (expanded/architecture.md "The write path").
  *
  * Held by a `saving` hook in `Scene::booted()`, not by any controller — the
  * whole reason it lives there is that `RevisionReverter` writes through

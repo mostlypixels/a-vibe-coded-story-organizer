@@ -21,7 +21,7 @@ use ZipArchive;
  * the graph importer ({@see ProjectGraphImporter}), and the {@see Import}
  * checkpoint record together behind three HTTP-agnostic entry points —
  * `start()`, `run()`, `discard()` — callable identically from the controller
- * (inline, task 06) or the queued ProjectImportJob (task 07).
+ * (inline) or the queued ProjectImportJob.
  *
  * The checkpoint contract (see .specs → import → data-model.md):
  *   - `start()` validates the WHOLE archive synchronously (always — even when

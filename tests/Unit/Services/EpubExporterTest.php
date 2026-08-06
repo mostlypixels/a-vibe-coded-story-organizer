@@ -23,10 +23,10 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * Service-level tests for EpubExporter's content-generation stage (task 03): the full
- * (unfiltered) outline, position ordering, Act/Chapter page content, the epub-only
- * SmartPunct typography, and the `lang` attribute. Packaging (04) and structural
- * validation (05) are not exercised here.
+ * Service-level tests for EpubExporter: the full (unfiltered) outline, position
+ * ordering, Act/Chapter page content, the epub-only SmartPunct typography, the
+ * `lang` attribute, and the packaged .epub that {@see EpubExporter::export()}
+ * writes (its OPF metadata, spine and nav).
  *
  * Uses RefreshDatabase + factories because the service reads the persisted
  * act → chapter → scene tree, but asserts directly on the service output rather than
@@ -219,7 +219,7 @@ class EpubExporterTest extends TestCase
         ]);
         // A gap: the only act in the project, but its `position` is not 1. The rendered
         // page must show the project-wide RANK (1), never the raw `position` column
-        // (task 07 — continuous numbering, StoryNumbering).
+        // (continuous numbering, StoryNumbering).
         $act->update(['position' => 2]);
 
         $html = $this->exporter()->renderAct($act, $project);
@@ -252,7 +252,7 @@ class EpubExporterTest extends TestCase
             'description' => 'SECRET_DESCRIPTION',
         ]);
         // A gap: sole chapter in the project, so its derived number is 1 regardless of
-        // `position` (StoryNumbering, task 07).
+        // `position` (StoryNumbering).
         $chapter->update(['position' => 3]);
 
         Scene::factory()->for($chapter)->create(['name' => 'SCENE_ONE_TITLE', 'contents' => 'First scene prose.']);
@@ -272,7 +272,7 @@ class EpubExporterTest extends TestCase
         $this->assertStringNotContainsString('SCENE_TWO_TITLE', $html);
     }
 
-    // --- Task 07 (continuous-numbering): act/chapter numbers are project-wide ranks ---
+    // --- Continuous numbering: act/chapter numbers are project-wide ranks ---
 
     public function test_chapter_numbers_run_continuous_across_an_act_boundary(): void
     {
@@ -334,7 +334,7 @@ class EpubExporterTest extends TestCase
 
         $toDelete = Chapter::factory()->for($act)->create(['name' => 'Deleted']);
 
-        // A placeholder with no scenes at all — still exported (task 06) and still counted.
+        // A placeholder with no scenes at all — still exported and still counted.
         $placeholder = Chapter::factory()->for($act)->create(['name' => 'Placeholder']);
 
         $toDelete->delete();
@@ -415,8 +415,8 @@ class EpubExporterTest extends TestCase
 
     public function test_strikethrough_and_task_list_render_as_real_markup_in_the_epub(): void
     {
-        // Task 02 (expand-tip-tap): the isolated EPUB converter gets Strikethrough/
-        // TaskList extensions added alongside SmartPunct, so this markup renders as
+        // The isolated EPUB converter carries the Strikethrough and TaskList
+        // extensions alongside SmartPunct, so this markup renders as
         // real HTML instead of literal tildes/brackets — matching what the editor and
         // Scene::renderedContents() already produce via GFM.
         $project = Project::factory()->create();
@@ -519,24 +519,23 @@ class EpubExporterTest extends TestCase
     }
 
     /**
-     * The defaults===v1 regression guard (task 08, overview decision #3): every later
-     * exporter task (09-13) threads a new PublicationSetting toggle through the exporter,
-     * and every one of those toggles must default to "today's behaviour". This test is the
-     * single automated proof of that contract for THIS task's slice (metadata + project
-     * cover): it exports the same richly-populated project twice —
+     * The defaults regression guard, covering the metadata + project-cover slice.
+     *
+     * Every PublicationSetting toggle must default to "no change to the output". This
+     * test exports the same richly-populated project twice —
      *   (a) with NO PublicationSetting row at all (the lazy default returned by
      *       Project::publicationSettingOrDefault()), and
      *   (b) with an EXPLICIT row whose every column is the literal default value (the
      *       PublicationSettingFactory's default state, which mirrors
      *       publicationSettingOrDefault() field-for-field) —
      * and asserts the two generated .epub files are byte-for-byte identical. Because
-     * applyMetadata()/applyCover() are the ONLY methods task 08 touches, and both are now
-     * gated behind toggles that default true, a byte-for-byte match here proves the gating
-     * is a true no-op for a default project — i.e. defaults reproduce the pre-toggle (v1)
-     * output. (A literal diff against a pre-feature commit's output is not something an
-     * automated test can pin without a stored binary fixture — this equivalence check is
-     * the practical, self-contained proxy: it fails immediately if any future task makes a
-     * "default" toggle do something a truly-untouched export would not have done.)
+     * applyMetadata() and applyCover() are gated behind toggles that default true, that
+     * match proves the gating is a true no-op for a default project.
+     *
+     * > [!NOTE]
+     * > A literal diff against a pre-feature commit's output needs a stored binary
+     * > fixture. This equivalence check is the self-contained proxy: it fails as soon as
+     * > a "default" toggle does something an untouched export would not have done.
      */
     public function test_defaults_v1_regression_lazy_default_and_explicit_default_row_produce_byte_identical_epubs(): void
     {
@@ -574,7 +573,7 @@ class EpubExporterTest extends TestCase
         // two back-to-back exports straddle a wall-clock boundary (common under the
         // parallel test runner). Normalising just those two timestamp lines keeps the
         // byte-for-byte content comparison exact while immunising the guard against that
-        // pre-existing race (flagged in task 08's own resolution log).
+        // pre-existing race.
         $this->assertContentIdenticalIgnoringOpfTimestamp(
             $lazyPath,
             $explicitPath,
@@ -583,7 +582,7 @@ class EpubExporterTest extends TestCase
 
         // Content-level sanity check on top of the byte match: today's chapter-heading
         // format, <hr/>-joined scenes with no titles, and metadata present because the
-        // columns are set — the exact shape task 09+ must not disturb for a default project.
+        // columns are set — the exact shape a default project must keep.
         $opf = $this->opfOf($explicitPath);
         $this->assertStringContainsString('<dc:creator', $opf);
         $this->assertStringContainsString('<dc:publisher>Imago Press</dc:publisher>', $opf);
@@ -864,8 +863,8 @@ class EpubExporterTest extends TestCase
 
     /**
      * Invoke one of EpubExporter's private validation methods directly. These ARE the
-     * safety net, so the task wants them tested in isolation with deliberately bad fixtures
-     * rather than only through the happy-path export.
+     * safety net, so they get their own fixtures — bad ones and good ones — rather
+     * than only the happy-path export.
      */
     private function invokePrivate(string $method, mixed ...$args): mixed
     {
@@ -992,7 +991,7 @@ class EpubExporterTest extends TestCase
         $opf = $this->opfOf($path);
 
         // The library derives dc:source from the request environment; under CLI that is the
-        // malformed "http://:/". Task 05 normalizes it to a deterministic app-config value.
+        // malformed "http://:/". The exporter normalizes it to a deterministic app-config value.
         $this->assertStringContainsString('<dc:source>https://imagoldfish.test</dc:source>', $opf);
         $this->assertStringNotContainsString('http://:/', $opf);
 
@@ -1017,7 +1016,7 @@ class EpubExporterTest extends TestCase
         }
     }
 
-    // --- Task 09: content options (title formats, descriptions, dividers) ---
+    // --- Content options (title formats, descriptions, dividers) ---
 
     public function test_each_chapter_title_format_drives_both_the_heading_and_the_nav_label(): void
     {
@@ -1026,7 +1025,7 @@ class EpubExporterTest extends TestCase
         $act->update(['position' => 1]);
         // The chapter's `position` (12) is deliberately not its display number: it is the
         // only chapter in the project, so its derived project-wide number is 1
-        // (StoryNumbering, task 07) — proving the heading/label follow the rank, not the
+        // (StoryNumbering) — proving the heading/label follow the rank, not the
         // raw `position` column.
         $chapter = Chapter::factory()->for($act)->create(['name' => 'The Storm']);
         $chapter->update(['position' => 12]);
@@ -1061,7 +1060,7 @@ class EpubExporterTest extends TestCase
         $project = Project::factory()->create();
         $act = Act::factory()->for($project)->create();
         // A gap: sole chapter in the project, `position` 5 but a derived number of 1
-        // (StoryNumbering, task 07).
+        // (StoryNumbering).
         $chapter = Chapter::factory()->for($act)->create(['name' => '']);
         $chapter->update(['position' => 5]);
         Scene::factory()->for($chapter)->create();
@@ -1244,7 +1243,7 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
-    // --- Task 10: table-of-contents depth ---
+    // --- Table-of-contents depth ---
 
     public function test_acts_depth_lists_only_acts_and_folds_chapter_prose_into_one_page(): void
     {
@@ -1391,7 +1390,7 @@ class EpubExporterTest extends TestCase
     /**
      * Resolve the OPF's spine, in reading order, to the manifest hrefs it points at — the
      * same pattern {@see test_front_matter_spine_order_is_title_then_toc_then_story()} uses,
-     * extracted here so the new task-11 tests can reuse it.
+     * extracted here so the other spine-order tests can reuse it.
      *
      * @return array<int, string|null>
      */
@@ -1427,8 +1426,8 @@ class EpubExporterTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        // Customise the order: move `postface` before `body` (still after `toc`), matching
-        // the task's own example. `title` stays pinned first.
+        // Customise the order: move `postface` before `body`, still after `toc`.
+        // `title` stays pinned first.
         $order = ['title', 'dedication', 'acknowledgements', 'preface', 'toc', 'postface', 'body', 'appendix'];
 
         PublicationSetting::factory()->for($project)->create([
@@ -1549,7 +1548,7 @@ class EpubExporterTest extends TestCase
         // No PublicationSetting row at all (the lazy default): every include_* toggle for
         // front/back matter defaults false, so the export must contain no matter pages even
         // though the Project happens to carry Markdown in those columns — this is the
-        // "toggle gates independently of content" half of overview decision #4, exercised
+        // "toggle gates independently of content" half of the section rule, exercised
         // through the full export() pipeline via the lazy default.
         $project = Project::factory()->create([
             'dedication' => 'For everyone.',
@@ -1571,7 +1570,7 @@ class EpubExporterTest extends TestCase
     }
 
     /**
-     * Task 12: a chapter with a cover, `include_chapter_covers` on. The image bytes and a
+     * A chapter with a cover, `include_chapter_covers` on. The image bytes and a
      * dedicated cover page must both be packaged, and the cover page must sit in the spine
      * immediately before that chapter's own content page.
      */
@@ -1612,7 +1611,7 @@ class EpubExporterTest extends TestCase
     }
 
     /**
-     * Task 12, overview decision #3: `include_chapter_covers` defaults off, so a chapter
+     * `include_chapter_covers` defaults off, so a chapter
      * with a real cover set must still produce no cover page/image when the toggle is off.
      */
     public function test_chapter_cover_page_is_absent_when_the_toggle_is_off(): void
@@ -1638,7 +1637,7 @@ class EpubExporterTest extends TestCase
     }
 
     /**
-     * Task 12: a `cover_image` column pointing at a file that no longer exists on the
+     * A `cover_image` column pointing at a file that no longer exists on the
      * `public` disk must be skipped silently — mirroring how {@see EpubExporter::applyCover()}
      * already treats a missing project cover — never aborting the export.
      */
@@ -1662,7 +1661,7 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
-    // --- Task 13 (step 1): codex appendix skeleton (text only, no images) ---
+    // --- Codex appendix skeleton (text only, no images) ---
 
     /**
      * Give a project a minimal surviving act/chapter/scene tree so export() has something to
@@ -1817,7 +1816,7 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
-    // --- Task 13 (step 2): codex appendix images ---
+    // --- Codex appendix images ---
 
     /**
      * A 1x1 PNG on the fake public disk, standing in for a codex media image file.
@@ -1830,7 +1829,7 @@ class EpubExporterTest extends TestCase
     }
 
     /**
-     * Task 13 step 2: with `appendix_include_images` on, the entry's FIRST media image is
+     * With `appendix_include_images` on, the entry's FIRST media image is
      * embedded on its page — bytes packaged and referenced by the page's <img>. A SECOND image
      * on the same entry is deliberately NOT embedded (V1 first-image-only scope limit).
      */
@@ -1885,7 +1884,7 @@ class EpubExporterTest extends TestCase
     }
 
     /**
-     * Task 13 step 2: a media row pointing at a file that is no longer on the `public` disk is
+     * A media row pointing at a file that is no longer on the `public` disk is
      * skipped SILENTLY — the entry page still renders (text only) and the export still succeeds
      * and validates. Mirrors the missing chapter-cover / project-cover behaviour.
      */
@@ -1929,7 +1928,7 @@ class EpubExporterTest extends TestCase
     }
 
     /**
-     * Task 13 step 2 / overview decision #3: `appendix_include_images` defaults off, so an entry
+     * `appendix_include_images` defaults off, so an entry
      * with a real image on disk must still package NO image bytes when the toggle is off.
      */
     public function test_appendix_packages_no_image_bytes_when_include_images_is_off(): void

@@ -17,6 +17,24 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-06 — Code comments no longer point at files that get deleted (#82)
+
+### Added
+
+- A code-comment rule that loads when a PHP file is edited, so it reaches the author of the comment.
+
+### Changed
+
+- Comments now state a rule instead of citing where it was decided, and avoid facts that go stale in silence.
+
+### Removed
+
+- Every comment reference to a handoff or plan file, both of which are deleted or moved once a feature ships.
+
+### Fixed
+
+- Comments that had drifted out of date, including a wrong count and a mention of a build step that no longer exists.
+
 ## 2026-08-05 — Agent instructions trimmed and split into path-scoped rules (#81)
 
 ### Changed

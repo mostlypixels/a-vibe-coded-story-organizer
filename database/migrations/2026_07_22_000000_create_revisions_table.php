@@ -23,11 +23,11 @@ return new class extends Migration
             $table->string('field');
 
             // longText from the start: this is a brand-new column with no
-            // legacy MySQL text() data to widen (unlike the 14 live columns
-            // task 2 migrates).
+            // legacy MySQL text() data to widen, unlike the 14 live columns
+            // AutosavableFields registers.
             $table->longText('value');
 
-            // Populated from strlen($value) on every write (task 4). Lets the
+            // Populated from strlen($value) on every write. Lets the
             // storage panel and purge preview do a plain SUM(size_bytes)
             // group-by-origin query, portable across all five supported
             // database engines without LENGTH()/octet_length()/DATALENGTH()
@@ -51,7 +51,7 @@ return new class extends Migration
 
             // No updated_at: a revision is immutable once its coalescing
             // window closes. The coalescing overwrite happens via a plain
-            // UPDATE against the still-open row (RevisionRecorder, task 4),
+            // UPDATE against the still-open row (RevisionRecorder),
             // not an Eloquent touch(). useCurrent() here is only a backstop
             // for direct inserts — every application write sets created_at
             // explicitly.

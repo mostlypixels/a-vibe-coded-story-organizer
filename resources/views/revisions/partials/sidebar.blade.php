@@ -11,7 +11,7 @@
     Expects: $tree, $project, and the active $activeEntity / $activeId /
     $activeField (any may be null on the landing page).
 
-    Sizing (handoff D2): a heavily-revised project can list hundreds of
+    Sizing: a heavily-revised project can list hundreds of
     entities, so the sidebar is bounded three ways —
       1. each group heading carries a count badge of the revised entities it
          holds, so its size reads at a glance while collapsed;
@@ -53,7 +53,7 @@
             // filter so typing narrows the list without a round-trip.
             $entityNames = $group->entities->map(fn ($entity) => \Illuminate\Support\Str::lower($entity->name))->values()->all();
             // Only the group holding the entity currently being viewed starts
-            // open; every other group starts collapsed (D2, point 2).
+            // open; every other group starts collapsed.
             $startOpen = $activeEntity === $group->type;
         @endphp
         <div
@@ -69,7 +69,6 @@
             >
                 <span class="flex items-center gap-2">
                     <span>{{ __($group->label) }}</span>
-                    {{-- D2, point 1: how many revised entities this group holds. --}}
                     <x-badge>{{ $group->entities->count() }}</x-badge>
                 </span>
                 <x-tabler-chevron-down class="h-4 w-4 transition-transform" x-bind:class="{ '-rotate-90': ! (filter.trim() !== '' || open) }" />

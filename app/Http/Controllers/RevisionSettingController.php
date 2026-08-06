@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
- * The admin "Revisions" page (task 13): the RevisionSetting retention form
+ * The admin "Revisions" page: the RevisionSetting retention form
  * (confirm-gated when lowering the window) and the "Revision storage" panel's
  * per-category counts + bulk-delete actions.
  *
@@ -25,9 +25,8 @@ class RevisionSettingController extends Controller
 {
     /**
      * How far back "auto older than 1 year" reaches for the storage panel's
-     * age-based bulk-delete action (handoff.md §4.3's worked example). A
-     * named constant rather than a magic 365 sprinkled through the
-     * controller/view, per CLAUDE.md's "avoid magic numbers" rule.
+     * age-based bulk-delete action. This is a named constant, never a magic 365
+     * sprinkled through the controller and the view.
      */
     private const OLD_AUTOMATIC_THRESHOLD_DAYS = 365;
 
@@ -47,7 +46,7 @@ class RevisionSettingController extends Controller
      * returns a confirmation screen showing exactly how many revisions the
      * next nightly prune would remove under the new value — computed from
      * the REAL Revision::prunable() query object (see countPrunableAt()
-     * below), never a hand-rolled estimate (handoff.md §9.11). Nothing is
+     * below), never a hand-rolled estimate. Nothing is
      * persisted until the confirming submission (`confirmed=1`) arrives.
      */
     public function update(UpdateRevisionSettingRequest $request): View|RedirectResponse
@@ -90,7 +89,7 @@ class RevisionSettingController extends Controller
 
     /**
      * Delete automatic revisions older than one year — the "per age"
-     * bulk-delete example from handoff.md §4.3 ("auto older than 1 year").
+     * bulk-delete action.
      * Unlike prune, this is explicitly allowed to remove the last remaining
      * automatic revision for a field, since the user asked for it directly.
      */
@@ -111,8 +110,8 @@ class RevisionSettingController extends Controller
      * Per-category counts + SUM(size_bytes), for the storage panel. Reuses
      * RevisionPurger's own dry-run query (rather than a second, hand-rolled
      * query) so the panel's figures can never drift from what a bulk-delete
-     * button actually removes — and, per 00-overview.md's read rule, never
-     * hydrates `value`.
+     * button actually removes. It never hydrates `value`: list queries read
+     * scalar columns only.
      *
      * @return array<string, RevisionPurgeResult>
      */

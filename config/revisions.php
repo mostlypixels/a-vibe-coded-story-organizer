@@ -45,7 +45,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Enforced identically by the autosave endpoint and the existing Form
-    | Requests, so the two can never drift (handoff.md §9.8). Keyed
+    | Requests, so the two can never drift. Keyed
     | "entity.field" — the URL slug, as in 'windows' above — with a "default"
     | fallback.
     |

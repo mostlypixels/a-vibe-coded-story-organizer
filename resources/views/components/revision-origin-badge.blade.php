@@ -1,7 +1,7 @@
 @props(['origin'])
 
 {{--
-    Small pill for a Revision's origin (task 10, expanded/ui.md "History page"'s
+    Small pill for a Revision's origin (expanded/ui.md "History page"'s
     "origin badge" column). Reuses x-badge's variant palette rather than
     inventing new colors per CLAUDE.md's Tailwind guidance.
 --}}

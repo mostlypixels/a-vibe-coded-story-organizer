@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Chapter cover image (epub-configuration, task 07): a plain nullable path column
+ * Chapter cover image: a plain nullable path column
  * on `chapters`, mirroring `projects.cover_image`. The file lives on the `public`
  * disk (managed by CoverImageService); this column only holds its path. No FK — a
  * cover is a single file, not a tracked media row.

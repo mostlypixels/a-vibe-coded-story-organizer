@@ -44,7 +44,7 @@ class UpdateCodexEntryRequest extends FormRequest
                 Rule::exists('codex_media', 'id')->where('codex_entry_id', $this->route('codexEntry')->id),
             ],
 
-            // Attribute timeline edits post to their own endpoint (task 06), not this form.
+            // Attribute timeline edits post to their own endpoint, not this form.
         ];
     }
 }

@@ -11,12 +11,12 @@ use Illuminate\Support\Facades\DB;
  * `DatabaseSeeder` uses `WithoutModelEvents`, which wraps the whole `db:seed`
  * run — every seeder it `$this->call()`s, including MelusineSeeder{En,Fr,It}
  * — in `Model::withoutEvents()`. That means `Scene::booted()`'s
- * word_count-on-save hook (word-count spec, task 4) never fires for a single
- * scene created while seeding, even though it writes through the model
- * (`$chapter->scenes()->create()`). The feature's own invariant names
- * seeding as a write path that must still hold (`00-overview.md`), so each
- * Melusine seeder backfills it once its story tree exists, the same way the
- * `scenes.word_count` migration backfills pre-existing rows.
+ * word_count-on-save hook never fires for a scene created while seeding, even
+ * though it writes through the model (`$chapter->scenes()->create()`).
+ *
+ * Seeding is a write path, and the word-count invariant must hold on it. So
+ * each Melusine seeder backfills the counts once its story tree exists, the
+ * same way the `scenes.word_count` migration backfills pre-existing rows.
  *
  * A raw `DB::table()` update, never `$scene->save()`: with model events off
  * during seeding a save would not invent a revision row the way it would

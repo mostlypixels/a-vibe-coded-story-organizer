@@ -8,13 +8,13 @@ use App\Models\PublicationSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Unit\Services\EpubExporterTest;
 
 /**
- * Feature tests for the Export-ebook config form's write path (task 04):
- * PublicationSettingController@update persisting App\Models\PublicationSetting,
- * and the section_order move-up/move-down actions. The EPUB exporter does not
- * consume these settings yet (tasks 08+), so these tests assert persistence
- * and validation, not epub output.
+ * The Export-ebook config form's write path: PublicationSettingController@update
+ * and the section_order move-up/move-down actions. These tests assert
+ * persistence and validation only. EpubExportTest covers the export endpoint,
+ * and {@see EpubExporterTest} the `section_order` output.
  */
 class PublicationSettingTest extends TestCase
 {

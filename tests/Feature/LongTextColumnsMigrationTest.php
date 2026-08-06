@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Task 02 — widening the 14 columns AutosavableFields will register from
- * `text()` to `longText()` (2026_07_22_000001_widen_long_text_columns_to_long_text.php).
+ * The migration widens every column AutosavableFields registers from `text()`
+ * to `longText()` (2026_07_22_000001_widen_long_text_columns_to_long_text.php).
  *
  * The MySQL/MariaDB `text()` cap is 65,535 bytes; on sqlite (the test DB) both
  * types are already unbounded, so the meaningful assertion here is (a) the
@@ -27,8 +27,11 @@ class LongTextColumnsMigrationTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * All 14 columns `AutosavableFields` will register, exactly as listed in
-     * the plan's task 2 (`Table => [columns]`).
+     * Every column `AutosavableFields` registers, as `Table => [columns]`.
+     *
+     * > [!WARNING]
+     * > This list is hand-maintained. A column added to `AutosavableFields::REGISTRY`
+     * > is not widened by this test's coverage until you add it here too.
      *
      * @return array<string, list<string>>
      */
@@ -50,7 +53,7 @@ class LongTextColumnsMigrationTest extends TestCase
         // sqlite reports both `text()` and `longText()` columns as "text" at
         // the PRAGMA level, so this alone can't prove the widen happened —
         // the round-trip tests below are the real regression guard. This
-        // loop documents the full 14-column set and will fail loudly on a
+        // loop documents the registered set and will fail loudly on a
         // typo'd table/column name (Schema::getColumnType() throws on an
         // unknown column).
         foreach ($this->registeredColumns() as $table => $columns) {

@@ -16,7 +16,7 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * Unit-level tests for ContentSanitizer (import task 03): the reject-on-violation
+ * Unit-level tests for ContentSanitizer: the reject-on-violation
  * policy over the app's existing HtmlSanitizer/RichTextFields allow-list, for both
  * raw HTML fragments (description.html / notes.html) and Markdown (contents.md,
  * checked on its RENDERED output to close CommonMark's raw-HTML passthrough hole).
@@ -136,13 +136,11 @@ class ContentSanitizerTest extends TestCase
     }
 
     /**
-     * Regression test for `expand-tip-tap` task 01/08: before that feature widened
-     * `RichTextFields::ALLOWED_TAGS` to include `table`/`thead`/`tbody`/`tr`/`th`/`td`,
-     * `img`, and the task-list markup, a Markdown document rendering to any of those
-     * tags would have been rejected here as "disallowed HTML content" — even though
-     * the source Markdown itself was perfectly valid GFM. This is a real import-time
-     * behavior change (acceptance, not just editor capability), so it gets its own
-     * named test rather than being an implicit side effect of the allow-list edit.
+     * `RichTextFields::ALLOWED_TAGS` includes `table`/`thead`/`tbody`/`tr`/`th`/
+     * `td`, `img` and the task-list markup. Without them, valid GFM Markdown
+     * that renders to any of those tags is rejected here as "disallowed HTML
+     * content". That is an import-time acceptance rule, not only an editor
+     * capability, so it gets its own named test.
      */
     public function test_gfm_table_image_and_task_list_markdown_passes(): void
     {

@@ -11,15 +11,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Task 12 — RevisionSetting singleton, the daily model:prune scheduling,
+ * The RevisionSetting singleton, the daily model:prune scheduling,
  * RevisionPurger, and the `revisions:purge` command.
  *
- * Covers the swap of Revision::prunable() from a raw config read to
- * RevisionSetting::current()->retention_days, and the prune-vs-purge
- * distinction that is this task's central safety claim: prune (model:prune)
- * never touches a labeled or non-automatic row, while purge (RevisionPurger /
- * revisions:purge) is explicitly allowed to when the caller targets that
- * category directly.
+ * Revision::prunable() reads RevisionSetting::current()->retention_days, not
+ * the raw config. The prune-vs-purge distinction is the central safety claim:
+ * prune (model:prune) never touches a labeled or non-automatic row, while purge
+ * (RevisionPurger / revisions:purge) may, when the caller targets that category
+ * directly.
  */
 class RevisionRetentionAndPurgeTest extends TestCase
 {

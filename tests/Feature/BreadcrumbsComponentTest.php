@@ -7,14 +7,14 @@ use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 /**
- * `<x-breadcrumbs>` rendered standalone over a fixture Crumb[], following
- * {@see WordCountComponentTest}'s precedent: nothing renders this component
- * on a real page yet (task 02 wires it into the layout), so this is the only
- * place its markup is pinned down before then.
+ * `<x-breadcrumbs>` rendered standalone over a fixture Crumb[], in the manner
+ * of {@see WordCountComponentTest}. A fixture reaches trail shapes a real route
+ * cannot produce — {@see BreadcrumbsTest} drives the band through a dispatched
+ * request instead.
  *
- * Guards the W3C breadcrumb pattern this component exists to implement: one
- * labelled landmark, one current crumb, separators a screen reader never
- * hears, and links only where a crumb actually has somewhere to go.
+ * Guards the W3C breadcrumb pattern this component implements: one labelled
+ * landmark, one current crumb, separators a screen reader never hears, and links
+ * only where a crumb has somewhere to go.
  */
 class BreadcrumbsComponentTest extends TestCase
 {

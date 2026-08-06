@@ -9,8 +9,8 @@
 @php
     // Single flexible button. Renders an <a> when `href` is given (so links and
     // buttons share one look), otherwise a <button>. Colours are written out in
-    // full so Tailwind's purge step keeps them — do not build class names by
-    // interpolating the variant.
+    // full because Tailwind only finds class names that appear complete in the
+    // source — do not build class names by interpolating the variant.
     //
     // Every variant's focus ring is `focus`, never its own fill: `focus` is a
     // token in its own right so a theme can move the focus affordance

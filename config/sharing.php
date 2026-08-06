@@ -10,7 +10,7 @@ return [
     | The whitelist of lifetimes an owner may pick from when generating a
     | public share link for a scene. Keys are the human-readable labels shown
     | in the duration <select>; values are `CarbonInterval`-parseable strings
-    | passed to `now()->add(...)` when computing `share_expires_at` (task 02).
+    | passed to `now()->add(...)` when computing `share_expires_at`.
     |
     | Both label and value are kept identical here for clarity, but the value
     | is what matters — it must always be a string Carbon can parse. The store

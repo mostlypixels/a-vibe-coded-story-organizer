@@ -1,10 +1,9 @@
 /*
- * The one and only epub stylesheet. Beyond the page-break rules from the grilled
- * "semantic HTML + minimal page-break CSS only" decision, it holds one explicit
- * exception: the story title page and every Act heading are centered and set larger,
- * per a direct follow-up request. Nothing else (chapter headings, body text, colors)
- * is styled. `break-before` is the modern property; `page-break-before` is kept for
- * older reader engines.
+ * The one and only epub stylesheet. The export stays semantic HTML with minimal
+ * page-break CSS. Beyond those page-break rules it holds one exception: the story
+ * title page and every Act heading are centered and set larger. Nothing else
+ * (chapter headings, body text, colors) is styled. `break-before` is the modern
+ * property; `page-break-before` is kept for older reader engines.
  */
 section.title-page,
 section.toc,
@@ -25,7 +24,7 @@ section.appendix {
 }
 
 /*
- * A full-page chapter cover image (task 12): fills the page, no cropping distortion.
+ * A full-page chapter cover image: fills the page, no cropping distortion.
  * `object-fit` is ignored by reader engines that only understand the fallback
  * `max-width`/`max-height`, which still keeps the image within the page bounds.
  */
@@ -42,7 +41,7 @@ section.chapter-cover img {
 }
 
 /*
- * A codex appendix entry's first image (task 13): a bounded, centred illustration sitting
+ * A codex appendix entry's first image: a bounded, centred illustration sitting
  * ABOVE the entry's description within the entry page — not a full-bleed cover page like
  * section.chapter-cover. `max-width`/`max-height` keep it inside the page bounds without
  * distortion on reader engines that ignore `object-fit`.

@@ -109,8 +109,8 @@ describe('registerWordCount', () => {
     });
 
     /**
-     * The debounce itself, not just the eventual number — the task's own
-     * warning: "the final number is identical with or without debouncing."
+     * The debounce itself, not just the eventual number: the final number is
+     * identical with or without the debounce, so it proves nothing on its own.
      * Proven here by spying on the named `recount()` method (see its
      * docblock) and asserting it fires exactly once, only after the last of
      * five rapid keystrokes. Breaking the debounce (e.g. calling `recount()`
@@ -152,11 +152,10 @@ describe('registerWordCount', () => {
     });
 
     /**
-     * Reconciliation — the test that makes "indicative" safe (task file). The
-     * server number must win even when it disagrees with what the typed text
-     * would estimate; if it only matched, this test would prove nothing (the
-     * task's own warning). "one two three" estimates to 3; the reconciled
-     * count is a deliberately different 999.
+     * Reconciliation — the test that makes "indicative" safe. The server number
+     * must win even when it disagrees with what the typed text would estimate;
+     * if it only matched, this test would prove nothing. "one two three"
+     * estimates to 3; the reconciled count is a deliberately different 999.
      */
     it('reconciliation replaces the displayed number, including when it disagrees with the typed estimate', () => {
         vi.useFakeTimers();

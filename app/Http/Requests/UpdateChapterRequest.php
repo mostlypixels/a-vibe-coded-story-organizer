@@ -28,7 +28,7 @@ class UpdateChapterRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('chapter', 'description'),
 
-            // The chapter cover image (task 07). Reuses the same mime/size list as the
+            // The chapter cover image. Reuses the same mime/size list as the
             // project cover and Codex covers rather than duplicating the constraints.
             'cover_image' => CodexMediaRules::coverRules(),
         ];

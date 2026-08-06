@@ -16,9 +16,9 @@ use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 /**
- * Covers task 08 — the `<x-autosave-field>` component itself. Not yet wired into
- * any real edit view (task 09's job); rendered standalone via Blade::render(),
- * matching CrawlerSettingTest's precedent for isolated component assertions.
+ * The `<x-autosave-field>` component itself, rendered standalone via
+ * Blade::render() and not through an edit view. This matches
+ * CrawlerSettingTest's precedent for isolated component assertions.
  */
 class AutosaveFieldComponentTest extends TestCase
 {
@@ -109,9 +109,9 @@ class AutosaveFieldComponentTest extends TestCase
 
     public function test_history_link_renders_now_that_the_revisions_route_exists(): void
     {
-        // Task 10 registered revisions.index/revisions.compare — the Route::has()
-        // guard in autosave-field.blade.php (task 8) now resolves true, so the
-        // per-field History link renders instead of being omitted.
+        // The revisions.index and revisions.compare routes exist, so the
+        // Route::has() guard in autosave-field.blade.php resolves true and the
+        // per-field History link renders.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $act = Act::factory()->for($project)->create();
@@ -149,9 +149,9 @@ class AutosaveFieldComponentTest extends TestCase
 
     public function test_the_inline_draft_banner_no_longer_renders(): void
     {
-        // Task 03 (autosave-storage-improvements) removed the old inline per-field
-        // banner entirely — draft recovery now lives in the page-level
-        // <x-autosave-draft-recovery-modal> mounted once in layouts/app.blade.php.
+        // The old inline per-field banner is gone. Draft recovery lives in the
+        // page-level <x-autosave-draft-recovery-modal>, mounted once in
+        // layouts/app.blade.php.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $act = Act::factory()->for($project)->create(['description' => 'Hello world']);
@@ -183,10 +183,10 @@ class AutosaveFieldComponentTest extends TestCase
     }
 
     /**
-     * Word-count spec, task 7: the live in-field counter renders on every
-     * `x-autosave-field`, starting from the server-computed count so the
-     * first paint is exact rather than an estimate the writer has to wait
-     * out (ui.md / architecture.md's "The live counter (JS)").
+     * The live in-field counter renders on every `x-autosave-field`. It starts
+     * from the server-computed count, so the first paint is exact and the
+     * writer does not wait out an estimate (ui.md / architecture.md's "The
+     * live counter (JS)").
      */
     public function test_the_live_word_count_renders_with_the_servers_initial_count(): void
     {
@@ -224,7 +224,7 @@ class AutosaveFieldComponentTest extends TestCase
 
     /**
      * `WordCounter::count()` for `Scene.contents` should not be re-derived
-     * here: `Scene::booted()`'s saving hook (task 4) already keeps
+     * here: `Scene::booted()`'s saving hook already keeps
      * `word_count` current, and this component reuses that stored number
      * rather than re-rendering the Markdown a second time.
      *

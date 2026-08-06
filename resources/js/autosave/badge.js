@@ -1,23 +1,23 @@
 /**
- * The global lower-right autosave badge (task 9, `expanded/ui.md` "Global indicator").
+ * The global lower-right autosave badge (`expanded/ui.md` "Global indicator").
  * A single, page-wide indicator reflecting the worst-state-wins outcome across every
  * `x-autosave-field` instance currently mounted on the page, via the shared
  * `Alpine.store('autosave')` that `registerAutosaveField()` (./field.js) populates.
  *
- * Deliberately additive, not a replacement: the per-field inline indicator built in
- * task 8 keeps showing each field's own precise state (`handoff.md` §9.5 "both
- * indicators, always" — `resources/views/projects/edit.blade.php` alone has 6
- * autosaving fields, so a global-only badge could never say which one needed
- * attention). This badge only answers "is anything on this page not idle right now".
+ * Deliberately additive, not a replacement. The per-field inline indicator keeps
+ * showing each field's own precise state — both indicators, always.
+ * `resources/views/projects/edit.blade.php` alone has 6 autosaving fields, so a
+ * global-only badge could never say which one needs attention. This badge only
+ * answers "is anything on this page not idle right now".
  *
- * No new state/precedence logic lives here — `worstState()` and the `STATES` enum both
- * come from ./store.js, the one place per-state precedence is decided (task 7).
+ * No new state or precedence logic lives here. `worstState()` and the `STATES` enum
+ * both come from ./store.js, the one place that decides per-state precedence.
  */
 import { STATES } from './store';
 
 /**
  * User-facing copy per state. `session-expired` and `forbidden-after-replay` carry
- * this task's own dedicated copy (`handoff.md` §9.6, `open-questions.md` #5) — neither
+ * their own dedicated copy. Neither
  * ever clears the writer's typed text (see field.js's `save()`, which never touches
  * the editor DOM on a failed save), so "your work is safe" is literally true: the text
  * is still sitting right there in the field, selectable/copyable at any time.

@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The Export & import area (task 03): three server-rendered pages reached by
+ * The Export & import area: three server-rendered pages reached by
  * ordinary sub-nav links — NOT JavaScript tabs — replacing the old single
  * Alpine-tabbed admin/data/index.blade.php. Covers the page split itself
  * (routes, redirect, sub-nav active state, sidebar stays active); each page's

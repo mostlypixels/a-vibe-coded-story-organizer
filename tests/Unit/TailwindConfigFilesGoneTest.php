@@ -5,12 +5,13 @@ namespace Tests\Unit;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Guards the Tailwind 4 migration (tailwind-4 task 07). Tailwind 4 reads its theme from
- * `@theme` in `resources/css/app.css`; `tailwind.config.js` and `postcss.config.js` were
- * deleted (task 01) precisely so there is one source of truth for the theme, one the
- * theme-switcher spec builds runtime overrides on top of. Either file reappearing — a
- * future `npx tailwindcss init`, a merge that resurrects an old branch — would silently
- * bring back a second, unread source of truth for the theme.
+ * Tailwind 4 reads its theme from `@theme` in `resources/css/app.css`.
+ * `tailwind.config.js` and `postcss.config.js` are deleted, so the theme has one
+ * source of truth — the one the theme-switcher builds runtime overrides on.
+ *
+ * > [!WARNING]
+ * > If either file comes back (a future `npx tailwindcss init`, a merge that
+ * > resurrects an old branch), the theme silently gets a second, unread source.
  *
  * Plain filesystem assertions, no database — a Unit test that runs under `composer test`
  * with no extra wiring, in the spirit of `tests/Unit/SpecsStatusConsistencyTest`.

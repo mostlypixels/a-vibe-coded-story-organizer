@@ -24,19 +24,21 @@ use Illuminate\View\View;
 
 /**
  * History and compare views for one revisionable (entity, field) pair
- * (expanded/ui.md "History page"/"Compare view", handoff.md §5.1/§5.3), plus
- * the revert action (task 11).
+ * (expanded/ui.md "History page"/"Compare view"), plus the revert action.
  *
  * `index`/`compare` resolve the {entity} slug through App\Support\
- * AutosavableFields exactly like FieldAutosaveController (task 6) — an
+ * AutosavableFields exactly like FieldAutosaveController — an
  * unregistered slug never reaches this class at all, the router 404s it
  * first (routes/web.php's `->whereIn('entity', AutosavableFields::slugs())`).
  * `revert` instead resolves straight from the {revision} route-model binding
- * (handoff.md §9.3's routes table) and derives the slug itself via
+ * and derives the slug itself via
  * AutosavableFields::slugFor(), since a Revision's polymorphic
  * `revisionable_type` is always a real, already-registered model class.
  *
- * Any purge/retention UI (tasks 12-13) is deliberately out of scope here.
+ * Retention is not this class's concern. RevisionSettingController owns the
+ * setting and its confirm step. The daily `model:prune` sweep deletes what
+ * Revision::prunable() matches. The `revisions:purge` command and the storage
+ * panel do the explicit bulk deletes, both through RevisionPurger.
  *
  * `index`/`compare` also supply their own breadcrumb trail tail (`revisionsTrail()`
  * below) — the one documented exception to the app's central, route-driven
@@ -370,14 +372,14 @@ class RevisionController extends Controller
 
     /**
      * Revert one field to an older revision's value (expanded/architecture.md
-     * "Revert", handoff.md §5.2).
+     * "Revert").
      *
      * Resolve → authorize → delegate → redirect: the work itself lives in
-     * {@see RevisionReverter} (task 16), shared with the whole-save undo so the
-     * two paths cannot drift.
+     * {@see RevisionReverter}, shared with the whole-save undo so the two paths
+     * cannot drift.
      *
      * A base-hash conflict **redirects back with an error alert** rather than
-     * `abort(409)`-ing into a bare error page (grill decision 10). The writer
+     * `abort(409)`-ing into a bare error page. The writer
      * did nothing wrong — a second tab or an in-flight autosave moved the value
      * — and they need a page they can reload and retry from. The 409 *status*
      * survives only on the JSON autosave endpoint, where a client reads it.
@@ -403,20 +405,20 @@ class RevisionController extends Controller
 
     /**
      * Undo a whole save point: every field it touched goes back to the value it
-     * held before it (task 17, expanded/architecture.md "@revertSave").
+     * held before it (expanded/architecture.md "@revertSave").
      *
      * `{save}` is a save id, and the route constrains it to the ULID alphabet so
      * a malformed one 404s at the router. It is a **lookup key, never a
      * capability**: authorization still walks from the group's entity up to its
      * owning Project, exactly as every other action here does.
      *
-     * **The current save point can be undone like any other.** The plan said to
-     * refuse it, inherited from the per-field revert where the rule is right —
-     * "Revert to this" on the newest revision restores the value already in the
-     * column, a real no-op. Undo runs the other way: it restores what came
-     * *before* the save, so undoing the newest one is the most useful case there
-     * is ("undo what I just saved"), and it is what lets an undo be undone in
-     * turn — a promise the plan makes two lines later. See resolution-log.md.
+     * **The current save point can be undone like any other.** The per-field revert
+     * does not *offer* "Revert to this" on the current version, and that is right
+     * for it: the value is already in the column, so the action is a no-op.
+     *
+     * Undo runs the other way. It restores what came *before* the save, so the
+     * newest save point is the most useful case there is ("undo what I just
+     * saved"). It is also what lets an undo be undone in turn.
      */
     public function revertSave(Request $request, string $save, RevisionReverter $reverter): RedirectResponse
     {

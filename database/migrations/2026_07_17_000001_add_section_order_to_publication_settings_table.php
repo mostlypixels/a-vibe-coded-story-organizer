@@ -5,11 +5,10 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Adds the sortable front/back-matter section order (overview decision #4),
- * missed by the original create_publication_settings_table migration (task 01)
- * even though that task's own spec called for it. Filled in here rather than
- * editing the already-implemented migration, since task 04 (the config form)
- * is the first consumer of this column.
+ * Adds the sortable front/back-matter section order. The original
+ * create_publication_settings_table migration missed it, and a separate
+ * migration keeps that one untouched. The Export-ebook config form is the
+ * first consumer of this column.
  *
  * `title` is always first and pinned in the UI; `toc` and `body` are the
  * built-in slots that are now reorderable alongside the Markdown matter pages.

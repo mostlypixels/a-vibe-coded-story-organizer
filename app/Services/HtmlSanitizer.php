@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\File;
  * allow-list from RichTextFields.
  *
  * Client-side editor output is untrusted input: everything persisted to a
- * rich-HTML field passes through clean() first (task 02 wires the mutators), so
+ * rich-HTML field passes through clean() first (the model mutators call it), so
  * the DB never holds unsafe HTML regardless of entry path. Rendering with
  * {!! !!} downstream is then "intentionally rendering trusted HTML".
  */
