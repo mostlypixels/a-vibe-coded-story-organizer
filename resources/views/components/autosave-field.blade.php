@@ -130,8 +130,7 @@
                  Bottom-left, distinct in weight and colour from the counter
                  opposite it — this reports whether work is *safe*, the counter
                  reports how much there *is*; the two must never read as one
-                 thing (open-questions.md Q5 / architecture.md's "not a save
-                 indicator"). --}}
+                 thing (ui.md's "not a save indicator"). --}}
             <span
                 class="text-xs font-medium text-link"
                 data-autosave-indicator

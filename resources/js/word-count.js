@@ -63,8 +63,8 @@ export const DEBOUNCE_MS = 150;
  *     `onUpdate` instead dispatches a bubbling `wysiwyg:text-changed`
  *     CustomEvent carrying `editor.getText()`. `getText()` already returns
  *     *rendered* text even in markdown mode, because the editor holds a real
- *     ProseMirror document and only serialises to Markdown on save
- *     (`open-questions.md` Q7) — so this never sees raw `**bold**` markup.
+ *     ProseMirror document and only serialises to Markdown on save — so this
+ *     never sees raw `**bold**` markup.
  *
  *   - Reconciliation: `resources/js/autosave/field.js`'s `save()` looks up
  *     this same `[data-word-count]` element and dispatches

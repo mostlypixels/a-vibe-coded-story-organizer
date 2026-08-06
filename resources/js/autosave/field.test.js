@@ -351,9 +351,9 @@ describe('registerAutosaveField store dirty tracking', () => {
 });
 
 /**
- * The draft mirror does not fire on
- * every keystroke to firing once, at `beforeunload`, and is suppressed entirely when
- * the departure was an explicit "leave anyway" via data-loss-warnings' nav guard.
+ * The draft mirror moves from firing on every keystroke to firing once, at
+ * `beforeunload`, and is suppressed entirely when the departure was an explicit
+ * "leave anyway" via data-loss-warnings' nav guard.
  * Asserts on the actual `localStorage` contents (via `readDraft`), the same
  * observable surface `writeDraft`/`readDraft` already expose to other tests in this
  * file, rather than spying on `writeDraft` — it's called directly within field.js's

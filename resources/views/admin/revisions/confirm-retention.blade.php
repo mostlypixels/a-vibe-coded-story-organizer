@@ -6,9 +6,9 @@
     </x-slot>
 
     {{--
-        The confirm step for lowering RevisionSetting::retention_days
-        a plain two-step POST/confirm form, works without
-        JavaScript. $prunableCount is computed by RevisionSettingController from
+        The confirm step for lowering RevisionSetting::retention_days: a plain
+        two-step POST/confirm form, works without JavaScript.
+        $prunableCount is computed by RevisionSettingController from
         the REAL Revision::prunable() query object evaluated as if
         $newRetentionDays were already saved — never a hand-rolled estimate.
         Nothing is persisted unless "Confirm" is submitted; "Cancel" simply

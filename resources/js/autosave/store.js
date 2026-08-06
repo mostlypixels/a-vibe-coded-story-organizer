@@ -179,17 +179,6 @@ export function scheduleRetry(callback, delayMs) {
 }
 
 /**
- * The three-way `localStorage` draft-triage decision. `draft` is what was
- * mirrored while typing (`{ value, baseHash, savedAt }`); `server` is the
- * value/hash the page just loaded (`{ value, hash }` — the hash the server
- * rendered for the current stored value, never client-computed).
- *
- * > [!WARNING]
- * > Never return a bare "restore" when the base hash does not match the current
- * > server value. A stale draft from a different session must never silently
- * > offer to clobber newer server text; it gets `offer-compare-only`.
- */
-/**
  * How long a `localStorage` draft stays eligible for recovery, in milliseconds — a
  * flat 4-hour duration from `savedAt`, not a calendar-day boundary (a draft written
  * at 11:58pm keeps its full ~4 hours, it does not reset at midnight).
@@ -205,6 +194,17 @@ export function isDraftExpired(draft, now = Date.now()) {
     return now - draft.savedAt > DRAFT_TTL_MS;
 }
 
+/**
+ * The three-way `localStorage` draft-triage decision. `draft` is what was
+ * mirrored while typing (`{ value, baseHash, savedAt }`); `server` is the
+ * value/hash the page just loaded (`{ value, hash }` — the hash the server
+ * rendered for the current stored value, never client-computed).
+ *
+ * > [!WARNING]
+ * > Never return a bare "restore" when the base hash does not match the current
+ * > server value. A stale draft from a different session must never silently
+ * > offer to clobber newer server text; it gets `offer-compare-only`.
+ */
 export function triageDraft(draft, server) {
     if (draft.value === server.value) {
         // It landed (or was undone) — nothing to recover.

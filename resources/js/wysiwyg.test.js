@@ -6,7 +6,7 @@ import { buildExtensions, buildSlashItems, registerWysiwyg } from './wysiwyg.js'
  * Round-trip tests for the Tiptap extension configuration `wysiwyg.js` builds
  * (`buildExtensions()`), covering the constructs added by the expand-tip-tap
  * feature (tables, images, task lists) plus regression guards for constructs that
- * were already safe. See `.specs/planned/2026-07/expand-tip-tap/expanded/spec.md`
+ * were already safe. See `.specs/shipped/2026-07/expand-tip-tap/spec.md`
  * ("The pivotal unknown — verified") for why these round-trip without a
  * hand-written serializer, and its "Two round-trip gaps" bullets for the two
  * accepted losses this file pins deliberately (not accidentally).
@@ -62,9 +62,9 @@ describe('table round-trip', () => {
     });
 
     it('a merged table cell survives in html format but loses the merge in markdown format', () => {
-        // Hand-written: the editor's own UI can't produce a merged cell yet
-        // (the toolbar owns the merge/split commands), so this pins the documented gap
-        // for content arriving via paste/import.
+        // Hand-written: the toolbar offers merge/split for HTML fields only
+        // (WysiwygToolbar::table()), so a merged cell reaches a Markdown field
+        // through paste or import. This pins the documented gap for that content.
         const merged = '<table><tbody><tr><td colspan="2">merged</td></tr><tr><td>a</td><td>b</td></tr></tbody></table>';
 
         const htmlOut = htmlEditor(merged).getHTML();
@@ -97,9 +97,9 @@ describe('image round-trip', () => {
     });
 
     it('a resized image survives in html format but loses width/height in markdown format', () => {
-        // Hand-written: resize is a toolbar concern, not a slash-menu one, so
-        // this reproduces the case by constructing a doc with width/height already
-        // set (e.g. from an external paste), per the task file's own note.
+        // Hand-written: resize is a drag handle on the image itself
+        // (`Image.configure({ resize: … })`), and it is off for Markdown fields. The
+        // doc is built with width/height already set, as an external paste delivers it.
         const resized = '<img src="http://example.com/img.png" alt="a" width="100" height="50">';
 
         const htmlOut = htmlEditor(resized).getHTML();

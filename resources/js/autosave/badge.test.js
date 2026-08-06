@@ -24,7 +24,7 @@ describe('labelFor', () => {
         expect(labelFor(STATES.SESSION_EXPIRED)).toBe('Session expired — your work is safe.');
     });
 
-    it('forbidden-after-replay uses open-questions.md #5\'s dedicated copy', () => {
+    it('forbidden-after-replay names the account switch and tells the writer to copy their text', () => {
         expect(labelFor(STATES.FORBIDDEN_AFTER_REPLAY)).toBe(
             "You're signed in as a different account — copy your text before switching back.",
         );

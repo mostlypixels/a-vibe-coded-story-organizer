@@ -10,9 +10,7 @@ import {
 
 /**
  * Tests for the fallback-warning structural-check list the autosave fallback
- * path consumes.
- * See `.specs/planned/2026-07/expand-tip-tap/plan/07-fallback-warning-list.md`
- * and `../../.specs/planned/2026-07/expand-tip-tap/expanded/spec.md`'s
+ * path consumes. See `.specs/shipped/2026-07/expand-tip-tap/spec.md`'s
  * "Fallback policy" section for the full three-check enumeration.
  */
 

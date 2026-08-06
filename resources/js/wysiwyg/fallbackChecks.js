@@ -1,15 +1,14 @@
 /**
- * Fallback-warning structural checks — the deliverable
- * the autosave fallback checks depend on (see
- * expand-tip-tap's `spec.md`, "Fallback policy": prevent where cheap, warn from
- * an explicit list for the rest).
+ * Fallback-warning structural checks — the deliverable `autosave-with-revisions`
+ * depends on (see expand-tip-tap's `spec.md`, "Fallback policy": prevent where
+ * cheap, warn from an explicit list for the rest).
  *
  * Three residual, attribute/structure-level losses remain even with tables,
- * images, task lists, underline, strikethrough, and callouts all supported
- * (expand-tip-tap tasks 01-06): a merged table cell, a resized image, and an
- * HTML wrapper tag the schema doesn't claim. Each check below is STRUCTURAL —
- * it inspects the parsed document (or, for the third check, the raw source
- * string) directly — never a text diff. That is what makes the "no false
+ * images, task lists, underline, strikethrough, and callouts all supported: a
+ * merged table cell, a resized image, and an HTML wrapper tag the schema
+ * doesn't claim. Each check below is STRUCTURAL — it inspects the parsed
+ * document (or, for the third check, the raw source string) directly — never a
+ * text diff. That is what makes the "no false
  * positives" guarantee possible: TipTap's own cosmetic Markdown
  * re-serialisation (`_em_` → `*em*`, reference-link → inline, bullet-marker
  * changes) never touches a node's attrs and never introduces an unrecognized
@@ -62,11 +61,10 @@ export function hasMergedTableCell(doc) {
 }
 
 /**
- * Check 2 — an image with `width`/`height` attributes set. Only reachable via
- * paste/import for Markdown-mode fields today — resize ships as an
- * HTML-mode-only toolbar affordance, so an HTML-mode field's own UI never
- * produces this, but the check itself stays format-agnostic (per the task
- * file: "the caller, not this module, decides when to invoke it").
+ * Check 2 — an image with `width`/`height` attributes set. The resize handle is
+ * on for HTML-mode fields and off for Markdown-mode ones, so a Markdown field
+ * gets these attributes only through paste or import. The check itself stays
+ * format-agnostic: the caller, not this module, decides when to invoke it.
  *
  * @param {object} doc Parsed ProseMirror document (`editor.getJSON()`).
  */
@@ -89,9 +87,9 @@ export function hasResizedImage(doc) {
  * claim via their `parseHTML()` rules — e.g. `blockquote[data-callout-type]`,
  * `img[src]:not([src^="data:"])`, `li[data-type="taskItem"]`, plain `table`.
  * Derived from the live schema rather than a hand-maintained copy, so it can
- * never drift from what `buildExtensions()` registers. This reads the installed
- * source rather than an assumption about it. Style-based rules (`tag: null`,
- * matched via inline `style=` instead of a tag) contribute nothing here.
+ * never drift from what `buildExtensions()` registers. Style-based rules
+ * (`tag: null`, matched via inline `style=` instead of a tag) contribute
+ * nothing here.
  */
 function registeredSelectors(schema) {
     const selectors = [];
@@ -179,12 +177,11 @@ export function hasUnmatchedHtmlWrapperTag(source, editor) {
 }
 
 /**
- * The combined aggregate the autosave fallback path depends on:
- * which (if any) of the three structural cases apply to a given document.
- * Returns an array of warning keys (empty when none apply) — a document
- * tripping more than one check at once reports all of them, not just the
- * first found, since `autosave-with-revisions` will likely want both the
- * aggregate and the detail for its copy/UI.
+ * The combined aggregate `autosave-with-revisions` depends on: which (if any)
+ * of the three structural cases apply to a given document. Returns an array of
+ * warning keys (empty when none apply) — a document tripping more than one
+ * check at once reports all of them, not just the first found, since that
+ * consumer will likely want both the aggregate and the detail for its copy/UI.
  *
  * @param {object} params
  * @param {import('@tiptap/core').Editor} params.editor A hydrated editor
