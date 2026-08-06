@@ -29,11 +29,11 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * Project export (task 01): the POST /admin/data/export endpoint, the exporter
+ * Project export: the POST /admin/data/export endpoint, the exporter
  * skeleton (data/manifest.json), the Export form, and the ownership guard.
  *
- * Tests capture the streamed download's temp file and open it with ZipArchive to
- * assert on entry names + contents (the shared posture in plan/00-overview.md).
+ * Tests capture the streamed download's temp file and open it with ZipArchive,
+ * then assert on entry names and contents.
  */
 class ExportTest extends TestCase
 {
@@ -100,7 +100,7 @@ class ExportTest extends TestCase
 
         $manifest = json_decode($raw, true);
         $this->assertIsArray($manifest, 'data/manifest.json is not valid JSON.');
-        // Bumped to 2 by the epub-configuration feature (task 02) — see
+        // The epub-configuration feature bumped this to 2 — see
         // StaticSiteExporter::DATA_VERSION.
         $this->assertSame(2, $manifest['version']);
         $this->assertSame($project->id, $manifest['project_id']);
@@ -130,7 +130,7 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Authorization (invariant 1: ownership, not just the admin gate)
+    // Authorization — ownership, not just the admin gate
     // ---------------------------------------------------------------------
 
     public function test_a_user_cannot_export_another_users_project(): void
@@ -160,8 +160,8 @@ class ExportTest extends TestCase
     /**
      * A missing project_id is a 403, not a validation error: ExportRequest's
      * authorize() runs before validation and resolves Project::find(null) to
-     * null, so it fails the ownership check first (invariant 1: "foreign OR
-     * missing project_id → 403").
+     * null, so it fails the ownership check first: a foreign OR missing
+     * project_id is a 403.
      */
     public function test_a_missing_project_id_is_forbidden(): void
     {
@@ -229,7 +229,7 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // data/ Story branch (task 02): project + act → chapter → scene tree
+    // data/ Story branch: project + act → chapter → scene tree
     // ---------------------------------------------------------------------
 
     /**
@@ -557,7 +557,7 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // data/ Timeline branch (task 03): plotlines + events (incl. anchors)
+    // data/ Timeline branch: plotlines + events (incl. anchors)
     // ---------------------------------------------------------------------
 
     public function test_plotlines_are_written_as_entity_directories_with_color_and_is_main(): void
@@ -710,7 +710,7 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // data/ Codex branch (task 04): entries, attributes, tags, media + toggle
+    // data/ Codex branch: entries, attributes, tags, media + toggle
     // ---------------------------------------------------------------------
 
     public function test_entry_json_carries_aliases_tags_type_and_raw_description(): void
@@ -947,7 +947,7 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // book/ reading layer (task 05): TOC + compiled chapter pages + prev/next
+    // book/ reading layer: TOC + compiled chapter pages + prev/next
     // ---------------------------------------------------------------------
 
     public function test_book_index_lists_acts_and_links_every_chapter_file(): void
@@ -1021,7 +1021,7 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Continuous numbering in the book/ layer (task 08, continuous-numbering)
+    // Continuous numbering in the book/ layer
     // ---------------------------------------------------------------------
 
     public function test_book_index_shows_continuous_chapter_numbers_across_the_act_boundary(): void
@@ -1242,7 +1242,7 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Revision history export (task 14, autosave-with-revisions)
+    // Revision history export
     // ---------------------------------------------------------------------
 
     public function test_manifest_records_revisions_toggle_off_by_default_and_writes_no_revisions_directories(): void

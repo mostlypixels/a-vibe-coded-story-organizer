@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
- * Task 06 — the first real HTTP surface of the autosave-with-revisions feature:
+ * The HTTP surface of the autosave-with-revisions feature:
  * FieldAutosaveController::update(), its routes, the base_hash conflict check,
  * and the coarse-trigger SceneReferenceMatcher/SceneContentsChanged wiring.
  */
@@ -51,7 +51,7 @@ class FieldAutosaveTest extends TestCase
     // ---------------------------------------------------------------------
 
     /**
-     * The server is the sole hash authority (§9.13): what it reports must be what
+     * The server is the sole hash authority: what it reports must be what
      * it stored, *after* the sanitizer rewrote it. If it ever reported the value
      * the client sent, the next autosave would arrive with a base hash that can
      * never match the stored value and 409 forever.
@@ -381,15 +381,14 @@ class FieldAutosaveTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Word count (word-count spec, task 5)
+    // Word count
     // ---------------------------------------------------------------------
 
     /**
      * Scene.contents is the one field with a stored `word_count` column, kept
-     * true to the saved value by Scene::booted()'s `saving` hook (task 4). This
-     * asserts the response reads that column *after* save rather than deriving
-     * its own number, and pins the exact count so a regression that reads stale
-     * state (e.g. the pre-save value) would be caught.
+     * true to the saved value by Scene::booted()'s `saving` hook. This asserts
+     * the response reads that column *after* save, and pins the exact count so
+     * a read of stale state (the pre-save value) fails the test.
      */
     public function test_the_response_reports_the_stored_word_count_for_scene_contents(): void
     {

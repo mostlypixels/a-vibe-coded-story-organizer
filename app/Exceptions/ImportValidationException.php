@@ -14,7 +14,7 @@ use RuntimeException;
  * the archive the user uploaded is not a valid export. The message is therefore
  * user-safe by construction — it names the offending archive entry / rule (both
  * of which came from the user's own upload), never an internal server path or a
- * stack trace. Task 06's controller turns it into a redirect-back-with-error.
+ * stack trace. ImportController turns it into a redirect-back-with-error.
  *
  * Each named constructor is one failure mode, so tests and callers can assert on
  * a specific, actionable message rather than a generic "invalid archive".

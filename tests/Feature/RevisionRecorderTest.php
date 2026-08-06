@@ -14,9 +14,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Task 04 — App\Services\RevisionRecorder: coalescing writes and baseline
- * seeding. Called directly here (not yet by a controller — that's task 6), and
- * later reused verbatim by the backfill migration (task 5).
+ * App\Services\RevisionRecorder: coalescing writes and baseline seeding. These
+ * tests call it directly. FieldAutosaveTest covers the controller path, and the
+ * backfill migration reuses the same ensureBaseline() code.
  */
 class RevisionRecorderTest extends TestCase
 {

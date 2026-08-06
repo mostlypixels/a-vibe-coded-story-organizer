@@ -17,8 +17,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Task 05 — the data migration that seeds a `baseline` revision for every
- * existing row of every App\Support\AutosavableFields-registered model, via
+ * The data migration seeds a `baseline` revision for every existing row of
+ * every App\Support\AutosavableFields-registered model, via
  * the identical App\Services\RevisionRecorder::ensureBaseline() code path the
  * live autosave write uses. The migration must never seed a baseline any other
  * way.

@@ -39,7 +39,7 @@ class CodexMedia extends Model
      * False only for rows created by importing a metadata-only export archive
      * (bytes were never shipped, so `path` is null). Views must check this
      * before rendering an <img>/download link and show a "file not included in
-     * this import" placeholder instead (task 08).
+     * this import" placeholder instead.
      */
     public function hasFile(): bool
     {

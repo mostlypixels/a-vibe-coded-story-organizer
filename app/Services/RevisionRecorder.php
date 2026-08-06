@@ -16,16 +16,16 @@ use Throwable;
 /**
  * The one place the application writes to the `revisions` table.
  *
- * Called by App\Http\Controllers\FieldAutosaveController (task 6) and by the
- * baseline backfill migration (task 5). Both must use this one code path. Never
+ * Called by App\Http\Controllers\FieldAutosaveController and by the baseline
+ * backfill migration. Both must use this one code path. Never
  * copy this logic into a migration — the live path and the backfill would then
  * drift.
  *
- * Deliberately does *not* decide whether to write at all: the byte-identical
- * no-op check (§2.2 — "typing something and undoing it leaves no trace") is
- * the caller's job, comparing the incoming value against the entity's current
- * column value before ever calling record(). This class only knows how to
- * coalesce and how to seed a baseline.
+ * Deliberately does *not* decide whether to write at all. The byte-identical
+ * no-op check ("typing something and undoing it leaves no trace") is the
+ * caller's job: it compares the incoming value against the entity's current
+ * column value before it calls record(). This class only knows how to coalesce
+ * and how to seed a baseline.
  *
  * It is also the only place `save_id` — the *save point* grouping key the
  * history/compare/revert screens address — is minted. That requires the

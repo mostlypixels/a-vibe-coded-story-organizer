@@ -11,8 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Task 13 — the admin "Revisions" page: the confirm-gated retention form and
- * the "Revision storage" panel's bulk-delete actions.
+ * The admin "Revisions" page: the confirm-gated retention form and the
+ * "Revision storage" panel's bulk-delete actions.
  *
  * RevisionSettingController is the SECOND call site of RevisionPurger (the
  * first is the `revisions:purge` command, covered by
@@ -205,7 +205,7 @@ class AdminRevisionsPageTest extends TestCase
         $old = $this->seedAutomaticRevision(daysOld: 400);
         $recent = $this->seedAutomaticRevision(daysOld: 5);
         // The "automatic" category matches on origin alone (RevisionPurger's own
-        // rule, task 12) — a label does not exempt a row from an explicit,
+        // rule) — a label does not exempt a row from an explicit,
         // deliberate purge the way it exempts one from the daily prune sweep.
         $labeledOld = $this->seedAutomaticRevision(daysOld: 400, label: 'Keep me');
         // Different origin entirely: never touched by the "automatic" category.

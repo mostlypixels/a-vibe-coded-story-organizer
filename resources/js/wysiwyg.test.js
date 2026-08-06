@@ -63,7 +63,7 @@ describe('table round-trip', () => {
 
     it('a merged table cell survives in html format but loses the merge in markdown format', () => {
         // Hand-written: the editor's own UI can't produce a merged cell yet
-        // (merge/split commands ship in task 04), so this pins the documented gap
+        // (the toolbar owns the merge/split commands), so this pins the documented gap
         // for content arriving via paste/import.
         const merged = '<table><tbody><tr><td colspan="2">merged</td></tr><tr><td>a</td><td>b</td></tr></tbody></table>';
 
@@ -97,7 +97,7 @@ describe('image round-trip', () => {
     });
 
     it('a resized image survives in html format but loses width/height in markdown format', () => {
-        // Hand-written: resize itself isn't wired to the toolbar until task 04, so
+        // Hand-written: resize is a toolbar concern, not a slash-menu one, so
         // this reproduces the case by constructing a doc with width/height already
         // set (e.g. from an external paste), per the task file's own note.
         const resized = '<img src="http://example.com/img.png" alt="a" width="100" height="50">';
@@ -176,11 +176,11 @@ describe('already-safe constructs — regression guards', () => {
 });
 
 /**
- * Task 04 — table/image UI. Resize and table merge/split are HTML-mode-only
+ * Table/image UI. Resize and table merge/split are HTML-mode-only
  * (lossy in Markdown, see the two hand-written round-trip-gap tests above), so the
  * extension configuration itself — not just the toolbar — must differ by format.
  */
-describe('image resize — HTML-mode only (task 04)', () => {
+describe('image resize — HTML-mode only', () => {
     const imageOptions = (format) =>
         new Editor({ extensions: buildExtensions(format), content: '<p></p>' }).extensionManager.extensions.find(
             (extension) => extension.name === 'image'
@@ -195,7 +195,7 @@ describe('image resize — HTML-mode only (task 04)', () => {
     });
 });
 
-describe('table merge/split — HTML-mode only (task 04)', () => {
+describe('table merge/split — HTML-mode only', () => {
     it('mergeCells/splitCell commands exist in both formats (the Table extension itself is unconditional)', () => {
         // The gate is the toolbar (wysiwyg.blade.php only renders the buttons when
         // `! $markdown`), not the extension — Table ships mergeCells/splitCell
@@ -288,7 +288,7 @@ describe('table row/column add and remove — both formats', () => {
     });
 });
 
-describe('underline & strikethrough round-trip in markdown format (task 05)', () => {
+describe('underline & strikethrough round-trip in markdown format', () => {
     it('a document containing <u>text</u> round-trips through hydrate → getMarkdown() → re-hydrate unchanged', () => {
         const source = '<p><u>text</u></p>';
         const first = markdownEditor(source).getMarkdown();
@@ -344,7 +344,7 @@ describe('subscript & superscript round-trip in markdown format', () => {
     });
 });
 
-describe('callout / alert node (task 06)', () => {
+describe('callout / alert node', () => {
     it('a `> [!NOTE]` blockquote hydrates into a callout node, not a plain blockquote', () => {
         const doc = markdownEditor('> [!NOTE]\ncontent').getJSON();
         const top = doc.content[0];
@@ -418,7 +418,7 @@ describe('callout / alert node (task 06)', () => {
     });
 });
 
-describe('slash menu — no merge/split entry in either format (task 04)', () => {
+describe('slash menu — no merge/split entry in either format', () => {
     it('the table/image/task-list entries exist in both formats', () => {
         for (const format of ['html', 'markdown']) {
             const titles = buildSlashItems(format, () => {}, () => {}).map((item) => item.title);
@@ -439,7 +439,7 @@ describe('slash menu — no merge/split entry in either format (task 04)', () =>
 });
 
 /**
- * Word-count spec, task 7: `resources/js/word-count.js` cannot reach `editor`
+ * `resources/js/word-count.js` cannot reach `editor`
  * directly (it's a closure variable — see this file's own docblock on why),
  * so it relies on this dispatch to learn the rendered text as the writer
  * types. This is a probe, not a read of the source: it mounts the *real*
@@ -449,7 +449,7 @@ describe('slash menu — no merge/split entry in either format (task 04)', () =>
  * the code — proving the event genuinely fires from a live edit, for both
  * formats the editor supports.
  */
-describe('wysiwyg:text-changed CustomEvent (word-count spec, task 7)', () => {
+describe('wysiwyg:text-changed CustomEvent', () => {
     afterEach(() => {
         document.body.innerHTML = '';
     });

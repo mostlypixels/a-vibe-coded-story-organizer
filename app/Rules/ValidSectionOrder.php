@@ -10,7 +10,7 @@ use Illuminate\Translation\PotentiallyTranslatedString;
 /**
  * Validates a `PublicationSetting::section_order` array: it must contain each
  * of `PublicationSetting::SECTION_KEYS` exactly once (no duplicates, no
- * unknown keys) with `title` pinned first (overview decision #4).
+ * unknown keys) with `title` pinned first.
  */
 class ValidSectionOrder implements ValidationRule
 {

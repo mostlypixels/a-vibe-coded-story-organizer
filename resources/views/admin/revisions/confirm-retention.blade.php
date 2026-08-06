@@ -7,7 +7,7 @@
 
     {{--
         The confirm step for lowering RevisionSetting::retention_days
-        (handoff.md §9.11): a plain two-step POST/confirm form, works without
+        a plain two-step POST/confirm form, works without
         JavaScript. $prunableCount is computed by RevisionSettingController from
         the REAL Revision::prunable() query object evaluated as if
         $newRetentionDays were already saved — never a hand-rolled estimate.

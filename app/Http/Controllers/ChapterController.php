@@ -45,10 +45,11 @@ class ChapterController extends Controller
             ->join('acts', 'acts.id', '=', 'chapters.act_id')
             ->with('act')
             ->withCount('scenes')
-            // One grouped query for the whole page (word-count spec, task 9) — never a
-            // per-row sum() in the view, which would be an N+1 over the chapter list.
-            // Both aggregates add `chapters.*` themselves, so this query must never gain
-            // a select() *after* them: that resets the column list and drops their aliases.
+            // One grouped query for the whole page — never a per-row sum() in the
+            // view, which would be an N+1 over the chapter list. Both aggregates
+            // add `chapters.*` themselves, so this query must never gain a
+            // select() *after* them: that resets the column list and drops their
+            // aliases.
             ->withSum('scenes as word_count', 'word_count')
             ->when($request->filled('search'), fn ($query) => $query->where('chapters.name', 'like', '%'.$request->query('search').'%'))
             ->when($request->filled('act'), fn ($query) => $query->where('chapters.act_id', $request->query('act')))

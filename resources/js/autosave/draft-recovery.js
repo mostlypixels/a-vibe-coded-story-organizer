@@ -1,9 +1,8 @@
 /**
- * The page-level draft recovery module (`autosave-storage-improvements` task 02).
- * Replaces `autosave-field.blade.php`'s inline per-field banner (removed in task 03)
- * with one shared surface: a pure `collectDraftEntries()` that runs the existing
- * per-field triage logic once per registered field, and an
- * `Alpine.data('draftRecoveryModal', ...)` wrapper the page-level modal (task 03)
+ * The page-level draft recovery module. There is no inline per-field banner: this
+ * is the one shared surface. A pure `collectDraftEntries()` runs the per-field
+ * triage logic once per registered field, and an
+ * `Alpine.data('draftRecoveryModal', ...)` wrapper is what the page-level modal
  * mounts once, globally.
  *
  * Mirrors `./badge.js`'s shape — pure lookups/logic exported separately from the
@@ -12,10 +11,8 @@
  *
  * No new source of truth: `collectDraftEntries()` takes `Alpine.store('autosave')`'s
  * existing `fields`/`elements`/`compareUrls` maps as plain arguments and reuses
- * `readDraft()`/`isDraftExpired()`/`triageDraft()` unchanged — it never duplicates
- * the per-field draft-reading logic `field.js`'s old `checkForDraft()` used to have,
- * before task 03 removed it (that per-field triage now only happens here, once
- * globally, instead of once per field's own `init()`).
+ * `readDraft()`/`isDraftExpired()`/`triageDraft()` unchanged. The per-field triage
+ * happens here, once globally — never once per field's own `init()`.
  */
 import { clearDraft, readDraft } from './field';
 import { isDraftExpired, triageDraft } from './store';
@@ -25,7 +22,7 @@ import { isDraftExpired, triageDraft } from './store';
  * mounted `autosaveField` component's `init()`), returns one entry per key with a
  * live (non-expired, non-`drop-silently`) draft.
  *
- * Expiry is checked *before* `triageDraft()` runs (00-overview.md decision 6): an
+ * Expiry is checked *before* `triageDraft()` runs: an
  * expired draft is skipped outright, exactly like "no draft", and never reaches the
  * three-way triage — regardless of what that triage would otherwise have decided.
  *
@@ -33,8 +30,8 @@ import { isDraftExpired, triageDraft } from './store';
  * field's own textarea — at the point this runs (page load, before any restore),
  * that DOM node still holds the server-rendered initial value and its
  * `data-hash` attribute (set by `autosave-field.blade.php`), the exact same hash
- * the PATCH endpoint itself is the sole authority for (00-overview.md/handoff.md
- * §9.13) — no client-computed hash, no new Blade prop.
+ * the PATCH endpoint is the sole authority for — no client-computed hash, no new
+ * Blade prop.
  */
 export function collectDraftEntries(fields, elements, compareUrls) {
     const entries = [];
@@ -117,9 +114,9 @@ export function registerDraftRecoveryModal(Alpine) {
         },
 
         /**
-         * Closing the modal (Esc/backdrop) never implicitly discards
-         * (00-overview.md decision 8) — only this explicit action, called from a
-         * Discard/Restore click, ever clears a draft from `localStorage`.
+         * Closing the modal (Esc/backdrop) never implicitly discards. Only this
+         * explicit action, called from a Discard/Restore click, clears a draft
+         * from `localStorage`.
          */
         discard(key) {
             clearDraft(key);

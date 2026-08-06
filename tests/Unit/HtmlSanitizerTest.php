@@ -138,13 +138,12 @@ class HtmlSanitizerTest extends TestCase
 
     public function test_it_preserves_a_merged_table_cell(): void
     {
-        // expand-tip-tap task 04: colspan/rowspan joined ALLOWED_ATTRIBUTES so a
-        // merged cell (produced by the toolbar's mergeCells/splitCell buttons, or
-        // hand-authored HTML) round-trips through the server. The editor itself
-        // never emits `style`/<colgroup>/<col> for tables (see wysiwyg.js's
-        // PlainTable override), so this only needs to prove colspan/rowspan survive
-        // — a stray style/colgroup arriving via some other path should still be
-        // stripped, same as any other presentational attribute.
+        // colspan/rowspan are in ALLOWED_ATTRIBUTES, so a merged cell (from the
+        // toolbar's mergeCells/splitCell buttons, or hand-authored HTML)
+        // round-trips through the server. The editor never emits
+        // `style`/<colgroup>/<col> for tables (see wysiwyg.js's PlainTable
+        // override), so this proves only that colspan/rowspan survive. A stray
+        // style or colgroup from another path is still stripped.
         $table = '<table><tbody>'
             .'<tr><td colspan="2" rowspan="1">merged</td></tr>'
             .'<tr><td colspan="1" rowspan="1">a</td><td colspan="1" rowspan="1">b</td></tr>'

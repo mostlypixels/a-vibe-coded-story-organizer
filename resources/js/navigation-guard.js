@@ -1,13 +1,12 @@
 /**
- * Global in-app navigation guard + native `beforeunload` fallback (data-loss-warnings
- * task 02, `.specs/planned/2026-07/data-loss-warnings/expanded/architecture.md` §2-3).
+ * Global in-app navigation guard + native `beforeunload` fallback.
  *
  * Mirrors `resources/js/autosave/badge.js`'s shape: a pure/testable predicate
  * (`shouldIntercept`) plus an `Alpine.data()` wrapper for the impure DOM half. Both the
  * in-app guard and the `beforeunload` fallback read the single `Alpine.store('autosave')
- * .isDirty()` signal task 01 added — no separate "is this page dirty" tracking here.
+ * .isDirty()` signal — no separate "is this page dirty" tracking here.
  *
- * V1 scope (00-overview.md's binding decision #5): only pages with `x-autosave-field`
+ * V1 scope, a binding decision: only pages with `x-autosave-field`
  * instances are covered. A page with zero autosave fields never has `isDirty() ===
  * true`, so this guard is a correctly-behaving no-op there — no per-page opt-in needed.
  */
@@ -66,7 +65,7 @@ export function registerNavigationGuard(Alpine) {
 
         init() {
             // Capturing phase so this runs before any per-component @click handler
-            // that might itself navigate (architecture.md §2).
+            // that might itself navigate.
             this._onClick = (event) => this.handleClick(event);
             document.addEventListener('click', this._onClick, true);
         },
@@ -119,7 +118,7 @@ export function registerNavigationGuard(Alpine) {
     });
 
     // Native fallback for tab-close/hard navigation, where there is no in-app click to
-    // intercept. Deliberately dumb (architecture.md §3): no custom text (browsers
+    // intercept. Deliberately dumb: no custom text (browsers
     // ignore it), and no attempt to distinguish which button the user eventually picks
     // in the native prompt — `autosave:explicit-leave` can never fire from here. Stays
     // silent once a Save / Save and stay submit is in flight.

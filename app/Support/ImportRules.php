@@ -20,10 +20,10 @@ class ImportRules
     /**
      * The data/manifest.json `version` values this importer knows how to read.
      *
-     * Version 2 (epub-configuration, task 02) adds the four project
-     * front-/back-matter Markdown fields, chapter covers, and the serialized
-     * PublicationSetting — all additive, so version 1 archives (missing these
-     * keys) still import cleanly, just with the new fields defaulted/null.
+     * Version 2 adds the four project front-/back-matter Markdown fields,
+     * chapter covers, and the serialized PublicationSetting — all additive, so
+     * version 1 archives (missing these keys) still import cleanly, just with
+     * the new fields defaulted/null.
      * Extending this list is the one-line opt-in for a future breaking change
      * (see documentation/export-format.md → "The version contract").
      *
@@ -52,10 +52,10 @@ class ImportRules
     public const ALLOWED_FILES = [
         'data/manifest.json',
         'data/tags.json',
-        // The serialized PublicationSetting (epub-configuration, task 05). A
-        // flat project-level descriptor like data/tags.json; its CONTENT is not
-        // schema-checked by ArchiveValidator — the importer validates it as
-        // untrusted input and falls back to defaults on anything malformed.
+        // The serialized PublicationSetting. A flat project-level descriptor
+        // like data/tags.json; its CONTENT is not schema-checked by
+        // ArchiveValidator — the importer validates it as untrusted input and
+        // falls back to defaults on anything malformed.
         'data/publication-setting.json',
         'README.md',
     ];

@@ -1,5 +1,5 @@
 {{--
-    The page-level draft recovery modal (autosave-storage-improvements task 03).
+    The page-level draft recovery modal.
     Replaces the old inline per-field banner: once per page load, lists every
     localStorage draft still worth offering (non-expired, non-drop-silently) across
     every mounted <x-autosave-field>, with per-entry Restore/Compare/Discard plus a
@@ -18,9 +18,8 @@
                 <p class="text-sm text-content-muted" x-text="entry.key"></p>
                 <p class="text-xs text-content-muted" x-text="new Date(entry.savedAt).toLocaleString()"></p>
 
-                {{-- Mirrors the old per-field banner's own rule (still binding,
-                     00-overview.md decision 6/handoff.md §9.7): a base-hash
-                     mismatch never offers a bare Restore. --}}
+                {{-- A binding rule: a base-hash mismatch never offers a bare
+                     Restore. --}}
                 <div class="mt-1 flex gap-3">
                     <button
                         type="button"

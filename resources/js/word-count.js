@@ -1,5 +1,5 @@
 /**
- * The indicative in-field word counter (word-count spec, task 7). Lives beside
+ * The indicative in-field word counter. Lives beside
  * `resources/js/autosave/field.js` conceptually but knows nothing about it
  * directly — the two talk only through a DOM CustomEvent (see
  * `registerWordCount()`'s docblock below), the same arm's-length pattern

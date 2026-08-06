@@ -32,7 +32,7 @@
       - destinationField — the form field the destination id is submitted as
         (defaults to the `move_children_to` field both destroy actions read).
 
-    This component is shared by task 05 (Chapter delete) unchanged — only the props differ.
+    Chapter delete shares this component unchanged — only the props differ.
 --}}
 @php
     // "3 chapters" / "1 chapter" via this app's inline trans_choice convention.

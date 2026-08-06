@@ -32,11 +32,11 @@ function createAlpineStub() {
 }
 
 /**
- * Covers task 08's DOM-free logic: the localStorage key-building for both the
+ * The DOM-free logic: the localStorage key-building for both the
  * existing-entity and `new:` create-form shapes, the dirty-only gating function,
  * and the localStorage draft mirror itself. Everything requiring a real Alpine
  * mount (debounce timers wired to DOM events, the axios round-trip) is left to
- * the manual checklist per handoff.md §9.12 / task 08's own scope, matching
+ * the manual checklist, matching
  * wysiwyg.test.js's precedent of only unit-testing the DOM-free logic.
  */
 describe('storageKeyFor', () => {
@@ -101,7 +101,7 @@ describe('draft mirror (readDraft/writeDraft/clearDraft)', () => {
         expect(readDraft('scene:1:contents')).toBeNull();
     });
 
-    // The quota-exceeded eviction path (handoff.md §9.7: "evict oldest-first on
+    // The quota-exceeded eviction path ("evict oldest-first on
     // QuotaExceededError") is exercised by the manual checklist (testing.md), not
     // here: jsdom's Storage implementation doesn't allow reliably stubbing
     // setItem() to simulate QuotaExceededError from a unit test, so faking it
@@ -109,7 +109,7 @@ describe('draft mirror (readDraft/writeDraft/clearDraft)', () => {
 });
 
 /**
- * Covers task 01 of the data-loss-warnings plan: the store-wide `dirty` map and
+ * The store-wide `dirty` map and
  * `isDirty()` alongside the existing per-field `state` machine. Mounts
  * `registerAutosaveField()`'s `autosaveField` component directly against a real
  * (jsdom) DOM node and a stub Alpine, bypassing the real Alpine runtime entirely —
@@ -236,7 +236,7 @@ describe('registerAutosaveField store dirty tracking', () => {
     });
 
     /**
-     * Word-count spec, task 7: `notifyWordCount()` is the field's half of the
+     * `notifyWordCount()` is the field's half of the
      * counter-reconciliation channel — resources/js/word-count.js only ever
      * trusts this dispatch for the authoritative number. Covered here in
      * isolation (a hand-added `[data-word-count]` element, not the real
@@ -351,7 +351,7 @@ describe('registerAutosaveField store dirty tracking', () => {
 });
 
 /**
- * Task 01 of autosave-storage-improvements: the draft mirror moves from firing on
+ * The draft mirror does not fire on
  * every keystroke to firing once, at `beforeunload`, and is suppressed entirely when
  * the departure was an explicit "leave anyway" via data-loss-warnings' nav guard.
  * Asserts on the actual `localStorage` contents (via `readDraft`), the same
@@ -359,7 +359,7 @@ describe('registerAutosaveField store dirty tracking', () => {
  * file, rather than spying on `writeDraft` — it's called directly within field.js's
  * own module scope, not through the test file's imported binding.
  */
-describe('write-once-at-beforeunload (autosave-storage-improvements task 01)', () => {
+describe('write-once-at-beforeunload', () => {
     let Alpine;
 
     beforeEach(() => {

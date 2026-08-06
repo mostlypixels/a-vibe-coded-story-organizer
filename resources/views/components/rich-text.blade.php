@@ -3,7 +3,7 @@
 {{--
     Renders sanitized rich HTML. This is the ONLY place rich user HTML is echoed
     with {!! !!}: the value has already passed through App\Services\HtmlSanitizer
-    on write (per-field set-mutators, task 02), so this is "intentionally rendering
+    on write (per-field set-mutators), so this is "intentionally rendering
     trusted HTML" per the guidelines. Never point {!! !!} at a rich field anywhere
     else — index/list cells use x-rich-text-excerpt (escaped text) instead.
 

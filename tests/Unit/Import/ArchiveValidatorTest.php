@@ -24,9 +24,9 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * Unit-level tests for ArchiveValidator (import task 02): one test per failure
- * mode from the import spec's "Validation failures" list, each against a small
- * fixture zip built inline, plus the first export → import touchpoint — a real
+ * Unit-level tests for ArchiveValidator: one test per failure mode from the
+ * import spec's "Validation failures" list, each against a small fixture zip
+ * built inline, plus the first export → import touchpoint — a real
  * StaticSiteExporter archive must validate cleanly.
  *
  * RefreshDatabase is only needed by the real-export happy paths; the fixture
@@ -350,7 +350,7 @@ class ArchiveValidatorTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Check 6 (chapter covers, task 07) — content-sniffed like codex media
+    // Check 6 (chapter covers) — content-sniffed like codex media
     // ------------------------------------------------------------------
 
     public function test_rejects_a_chapter_cover_whose_content_is_not_an_image(): void
@@ -489,7 +489,7 @@ class ArchiveValidatorTest extends TestCase
     /**
      * Add a shape-valid chapter.json (at data/acts/1-act/chapters/1-chapter/)
      * whose `cover_file` links the given relative path. The cover BYTES are the
-     * caller's business (task 07).
+     * caller's business.
      */
     private function addChapterWithCover(ZipArchive $zip, string $coverFile): void
     {

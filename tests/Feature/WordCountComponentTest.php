@@ -7,12 +7,12 @@ use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 /**
- * `<x-word-count>` — the one place a word count is formatted (word-count spec, task 6).
+ * `<x-word-count>` — the one place a word count is formatted.
  *
- * Rendered standalone via `Blade::render()`, following {@see IconButtonComponentTest}'s
- * precedent: nothing else in the suite renders this component yet (it is wired into real
- * pages by later tasks), so these assertions are the only place its formatting is pinned
- * down at all.
+ * Rendered standalone via `Blade::render()`, in the manner of
+ * {@see IconButtonComponentTest}. The index and story tests assert the rendered
+ * string on a real page; these cover zero, the singular, and the two variants,
+ * which those pages never reach.
  *
  * The component takes a plain int, never a model — {@see WordCounter} on the
  * write side and this component on the read side agree only on that integer.

@@ -1,7 +1,7 @@
 @props(['count', 'variant' => 'muted'])
 
 {{--
-    The one place a word count gets formatted (task 6, word-count spec). A scene's own
+    The one place a word count gets formatted. A scene's own
     `word_count` and a controller's `withSum`/`sum()` total both render through here, so a
     list and a header can never disagree about "1,234" vs "1234" or singular/plural.
 
@@ -28,7 +28,7 @@
     };
 
     // Thousands-separated + pluralised via App\Support\WordCountFormat, the one
-    // place this translation key lives — task 7's live counter (resources/js/
+    // place this translation key lives — the live counter (resources/js/
     // word-count.js) renders the same three branches client-side and must never
     // drift from this string, so both read it from there rather than each
     // carrying their own copy.

@@ -10,7 +10,7 @@ use Illuminate\View\View;
 /**
  * Export & import section of the Admin Configuration area.
  *
- * Split (task 03) into three thin GET actions — one per server-rendered page,
+ * Three thin GET actions — one per server-rendered page,
  * reached via ordinary links (resources/views/admin/data/partials/subnav.blade.php)
  * rather than JavaScript tabs. Each POST that mutates something still lives on its
  * own controller (ExportController, EpubExportController, ImportController,
@@ -32,7 +32,7 @@ class DataTransferController extends Controller
     }
 
     /**
-     * The EPUB export page: the config form (task 04) for one selected project
+     * The EPUB export page: the config form for one selected project
      * plus the existing download form. The project picker reloads this page via
      * a plain GET (?project=) rather than JavaScript — selecting a project loads
      * ITS saved PublicationSetting (or an unsaved default when it never visited

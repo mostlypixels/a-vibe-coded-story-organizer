@@ -16,10 +16,10 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Task 17 — "Undo this save": every field one save point touched goes back to
- * the value it held *before* that save, in one action.
+ * "Undo this save": every field one save point touched goes back to the value
+ * it held *before* that save, in one action.
  *
- * The promise is narrow on purpose (grill decision 9): **only** the fields that
+ * The promise is narrow on purpose: **only** the fields that
  * save touched. It is never a whole-entity rollback to that moment, which would
  * silently discard unrelated later edits to other fields — the third test below
  * is what pins that.
@@ -230,9 +230,8 @@ class RevertSaveTest extends TestCase
     }
 
     /**
-     * The plan said to refuse this; the decision was overturned — see the
-     * controller and resolution-log.md. Undo restores what came *before* a save,
-     * so undoing the newest one is "undo what I just saved", not a no-op.
+     * Undo restores what came *before* a save, so undoing the newest one is
+     * "undo what I just saved", not a no-op.
      */
     public function test_the_current_save_point_can_be_undone_like_any_other(): void
     {

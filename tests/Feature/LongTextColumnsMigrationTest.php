@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Task 02 — widening the 14 columns AutosavableFields will register from
- * `text()` to `longText()` (2026_07_22_000001_widen_long_text_columns_to_long_text.php).
+ * The migration widens the 14 columns AutosavableFields registers from `text()`
+ * to `longText()` (2026_07_22_000001_widen_long_text_columns_to_long_text.php).
  *
  * The MySQL/MariaDB `text()` cap is 65,535 bytes; on sqlite (the test DB) both
  * types are already unbounded, so the meaningful assertion here is (a) the
@@ -27,8 +27,7 @@ class LongTextColumnsMigrationTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * All 14 columns `AutosavableFields` will register, exactly as listed in
-     * the plan's task 2 (`Table => [columns]`).
+     * All 14 columns `AutosavableFields` registers, as `Table => [columns]`.
      *
      * @return array<string, list<string>>
      */

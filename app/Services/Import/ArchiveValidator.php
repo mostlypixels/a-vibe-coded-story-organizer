@@ -337,9 +337,9 @@ class ArchiveValidator
 
     /**
      * Check 6 (chapter covers): every chapter.json that links a `cover_file`
-     * (task 07, epub-configuration) points at a genuine image inside its own
-     * directory. The cover is a plain path field — unlike codex media it carries
-     * no declared mime — so it is validated on CONTENT alone: the bytes must sniff
+     * points at a genuine image inside its own directory. The cover is a plain
+     * path field — unlike codex media it carries no declared mime — so it is
+     * validated on CONTENT alone: the bytes must sniff
      * (finfo AND getimagesize, agreeing) as one of the allowed image types. A
      * forged image (e.g. a renamed .php) is rejected.
      *

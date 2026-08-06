@@ -27,9 +27,9 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * Service-level tests for the ProjectImporter orchestrator (import task 05):
- * start()/run()/discard() are called directly with an UploadedFile / Import
- * model — no HTTP route involved (that is task 06).
+ * Service-level tests for the ProjectImporter orchestrator: start()/run()/
+ * discard() are called directly with an UploadedFile / Import model. No HTTP
+ * route is involved — ImportTest covers that.
  *
  * The scenarios pin the checkpoint contract from data-model.md: a validation
  * failure creates no row at all, a completed run cleans up its working files,
@@ -145,8 +145,8 @@ class ProjectImporterTest extends TestCase
         $this->assertSame(1, $project->codexEntries()->count());
         $this->assertSame(1, $project->tags()->count());
 
-        // The scene's revision sidecar (task 15) was imported too, as
-        // origin: import, owned by the importing user.
+        // The scene's revision sidecar imports too, as origin: import, owned by
+        // the importing user.
         $scene = $project->acts()->firstOrFail()->chapters()->firstOrFail()->scenes()->where('name', 'Scene B')->firstOrFail();
         $revision = $scene->revisions()->where('field', 'contents')->firstOrFail();
         $this->assertSame(RevisionOrigin::Import, $revision->origin);
@@ -227,8 +227,7 @@ class ProjectImporterTest extends TestCase
         $this->assertSame(1, $project->codexEntries()->count());
 
         // The Story phase's revision import committed BEFORE the stall — a
-        // resume must not re-run it and duplicate the row (task 15's own
-        // required test: a resumed import never duplicates revisions).
+        // resume must not re-run it and duplicate the row.
         $this->assertSame(1, Revision::query()->where('origin', RevisionOrigin::Import)->count());
 
         // Completion cleaned the working files up.

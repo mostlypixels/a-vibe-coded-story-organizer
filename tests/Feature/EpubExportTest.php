@@ -15,7 +15,7 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * Epub export (task 06): the POST /admin/data/export/epub endpoint that wires the
+ * Epub export: the POST /admin/data/export/epub endpoint that wires the
  * HTTP layer to EpubExporter.
  *
  * Mirrors ExportTest's posture (owner-succeeds / non-owner-403 / guest-login /
@@ -313,7 +313,7 @@ class EpubExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Export page — the "Epub export" section (task 07)
+    // Export page — the "Epub export" section
     // ---------------------------------------------------------------------
 
     /**

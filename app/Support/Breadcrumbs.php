@@ -212,7 +212,7 @@ class Breadcrumbs implements Countable, IteratorAggregate
     {
         // toolsActive also matches the per-field revisions.* routes, but
         // those have no {project} param, so routeProject is null and build()
-        // never reaches here for them (task 03 handles them separately).
+        // never reaches here for them.
         if ($request->routeIs('projects.tools.home')) {
             return [new Crumb(__('Tools'), current: true)];
         }
@@ -227,9 +227,9 @@ class Breadcrumbs implements Countable, IteratorAggregate
      * The Section → sub-index(linked) → leaf pattern shared by every project
      * entity that follows the index/create/edit convention. The *.index
      * route IS the current leaf — no duplicate crumb — while create/edit
-     * append an action-precise leaf naming the operation (binding decision,
-     * 00-overview.md): "New <thing>" / "Edit <thing> <id>". The id is the
-     * bound model's primary key, matching the URL — not the model's name.
+     * append an action-precise leaf that names the operation: "New <thing>" /
+     * "Edit <thing> <id>". The id is the bound model's primary key, which
+     * matches the URL — not the model's name.
      *
      * @param  string  $thing  Lowercase singular, mid-sentence after the verb
      *                         (e.g. "chapter" in "Edit chapter 1").

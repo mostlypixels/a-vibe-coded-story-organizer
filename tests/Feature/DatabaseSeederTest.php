@@ -38,15 +38,13 @@ class DatabaseSeederTest extends TestCase
     }
 
     /**
-     * word-count spec, data-model.md "Seeding": MelusineSeeder{En,Fr,It} write
-     * scenes through `$chapter->scenes()->create()`, but `DatabaseSeeder` uses
-     * `WithoutModelEvents`, which wraps the whole seeded run in
-     * `Model::withoutEvents()` — so `Scene::booted()`'s word_count hook (task
-     * 4) never actually fires here. Each Melusine seeder backfills it
-     * explicitly instead (`Database\Seeders\Concerns\BackfillsSceneWordCounts`,
-     * same shape as the `scenes.word_count` migration's own backfill). This
-     * pins that the seeded data still satisfies the invariant, not that the
-     * hook alone provides it.
+     * MelusineSeeder{En,Fr,It} write scenes through `$chapter->scenes()->create()`,
+     * but `DatabaseSeeder` uses `WithoutModelEvents`, which wraps the whole seeded
+     * run in `Model::withoutEvents()`. So `Scene::booted()`'s word_count hook never
+     * fires here. Each Melusine seeder backfills the counts explicitly instead
+     * (`Database\Seeders\Concerns\BackfillsSceneWordCounts`, the same shape as the
+     * `scenes.word_count` migration's own backfill). This test pins that the seeded
+     * data satisfies the invariant, not that the hook alone provides it.
      */
     public function test_a_seeded_scene_has_a_non_zero_word_count(): void
     {

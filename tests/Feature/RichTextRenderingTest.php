@@ -10,11 +10,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Covers task 03 — safe rendering. Content is sanitized on write (task 02), so the
- * read views render it with {!! !!} exclusively through x-rich-text, while index
- * tables show an escaped, tag-stripped text excerpt via x-rich-text-excerpt. These
- * HTTP-level tests prove allowed formatting survives to the page, nothing executable
- * leaks even if a script was posted, and the read routes stay behind ProjectPolicy.
+ * Safe rendering. Content is sanitized on write, so the read views render it with
+ * {!! !!} exclusively through x-rich-text, while index tables show an escaped,
+ * tag-stripped text excerpt via x-rich-text-excerpt.
+ *
+ * These HTTP-level tests prove that allowed formatting reaches the page, that
+ * nothing executable leaks when someone posts a script, and that the read routes
+ * stay behind ProjectPolicy.
  */
 class RichTextRenderingTest extends TestCase
 {

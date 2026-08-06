@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
  * to a model+field. An unregistered slug never reaches this class at all: the
  * router's `->whereIn('entity', AutosavableFields::slugs())` 404s it first.
  *
- * The server is the sole hash authority (§9.13): the `hash` this returns is
+ * The server is the sole hash authority: the `hash` this returns is
  * always computed from the value actually persisted (post-mutator — e.g. a rich
  * field's `SanitizesRichHtml` set-mutator), never an echo of what the client
  * sent. Concretely, this is what stops a rich-HTML field's *second* autosave
@@ -58,13 +58,13 @@ class FieldAutosaveController extends Controller
         // the row would return the same string at the cost of reading every column,
         // Scene.contents included. It is also the safer of the two: fresh() would
         // hand back a concurrent writer's value, and this endpoint must hash what
-        // *it* stored (§9.13 — the server is the sole hash authority).
+        // *it* stored — the server is the sole hash authority.
         $storedValue = (string) ($model->getAttribute($field) ?? '');
 
-        // The authoritative word count, read after save (word-count spec, task 5) —
-        // never computed from what the client sent, the same rule the hash above
-        // follows. Scene.contents is the one field with a stored column: Scene's
-        // `saving` hook (task 4) has already recounted it as part of this save, so
+        // The authoritative word count, read after save — never computed from
+        // what the client sent, the same rule the hash above follows.
+        // Scene.contents is the one field with a stored column: Scene's
+        // `saving` hook has already recounted it as part of this save, so
         // reading $model->word_count reuses that number instead of recounting it a
         // second time. Every other field (including Scene.description/notes, which
         // share the model but not that column) has nothing stored to read, so it is

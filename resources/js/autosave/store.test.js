@@ -3,10 +3,9 @@ import { DRAFT_TTL_MS, STATES, isDraftExpired, mapResponse, retryDelayMs, schedu
 
 /**
  * Tests for `resources/js/autosave/store.js` — the pure decision logic behind
- * the autosave indicator (`.specs/planned/2026-07/autosave-with-revisions`
- * plan task 07). No DOM, no network: every case here is a plain function
- * call against the status-code mapping table and precedence order documented
- * in `expanded/architecture.md` and `handoff.md` §9.6/§9.7/§9.8.
+ * the autosave indicator. No DOM, no network: every case here is a plain
+ * function call against the status-code mapping table and precedence order
+ * documented in `expanded/architecture.md`.
  */
 
 describe('mapResponse — status-code mapping table', () => {
@@ -149,7 +148,7 @@ describe('scheduleRetry — fake-timer-driven, no real waits', () => {
     });
 });
 
-describe('triageDraft — localStorage discard rule (handoff.md §9.7)', () => {
+describe('triageDraft — localStorage discard rule', () => {
     it('drops silently when the draft matches the current server value', () => {
         const draft = { value: 'same text', baseHash: 'irrelevant', savedAt: '2026-07-21T14:02:00Z' };
         const server = { value: 'same text', hash: 'anything' };
@@ -172,7 +171,7 @@ describe('triageDraft — localStorage discard rule (handoff.md §9.7)', () => {
     });
 });
 
-describe('isDraftExpired — 4-hour flat TTL (00-overview.md decision 1)', () => {
+describe('isDraftExpired — 4-hour flat TTL', () => {
     it('is false for a draft well within the TTL', () => {
         const now = 1_000_000;
         const draft = { savedAt: now - DRAFT_TTL_MS / 2 };

@@ -8,7 +8,7 @@ use App\Services\Diff\VisualHtmlDiffer;
 use Tests\TestCase;
 
 /**
- * Task 6 — App\Services\Diff\DiffHtmlRenderer: structure in, safe HTML out.
+ * App\Services\Diff\DiffHtmlRenderer: structure in, safe HTML out.
  *
  * Half of these are security tests, and they are the point of the class: the
  * renderer is the *only* producer of `<ins>`/`<del>`, and its output is

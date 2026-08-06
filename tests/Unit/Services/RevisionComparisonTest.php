@@ -17,7 +17,7 @@ use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
- * Task 11 — App\Services\RevisionComparison: everything that differs about an
+ * App\Services\RevisionComparison: everything that differs about an
  * entity between two save points.
  *
  * Two properties carry the design. Unchanged fields are never diffed, which is

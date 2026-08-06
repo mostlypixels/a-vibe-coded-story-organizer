@@ -17,7 +17,7 @@ use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
- * Task 13 — the entity history page: one row per *save point*, which is the
+ * The entity history page: one row per *save point*, which is the
  * event the writer remembers making, rather than one row per field revision.
  *
  * `?field=`, `?label=`, `?manual=` and `?page=` are the whole state, so the

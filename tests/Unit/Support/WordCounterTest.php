@@ -34,13 +34,13 @@ class WordCounterTest extends TestCase
     }
 
     /**
-     * word-count spec, task 4 (`Scene::booted()`'s saving hook) made this
-     * reachable on every save: `Scene.contents` has no sanitizing mutator, so a
-     * writer's paste or an old import can leave a malformed byte sequence in the
-     * column. `Str::markdown()` throws on anything that is not valid
-     * UTF-8/ASCII (`SceneReferenceMatcherTest::test_malformed_utf8_contents_do_not_throw_and_log_a_warning`
-     * is what surfaced this — its fixture scene failed to even save). Degrading
-     * to zero matches how `SceneReferenceMatcher` already treats the same input.
+     * `Scene::booted()`'s saving hook makes this reachable on every save.
+     * `Scene.contents` has no sanitizing mutator, so a writer's paste or an old
+     * import can leave a malformed byte sequence in the column, and
+     * `Str::markdown()` throws on anything that is not valid UTF-8/ASCII
+     * (`SceneReferenceMatcherTest::test_malformed_utf8_contents_do_not_throw_and_log_a_warning`
+     * surfaced this — its fixture scene failed to even save). A count of zero
+     * matches how `SceneReferenceMatcher` treats the same input.
      */
     public function test_malformed_utf8_is_zero_words(): void
     {
@@ -167,8 +167,8 @@ class WordCounterTest extends TestCase
 
     public function test_rich_heading_must_not_glue_into_the_next_paragraph(): void
     {
-        // Q9: proves task 1's RichText::toPlainText() fix landed — without it this
-        // undercounts by one.
+        // RichText::toPlainText() must separate two block elements. Without
+        // that, this undercounts by one.
         $this->assertSame(
             4,
             WordCounter::count('<h1>Chapter One</h1><p>She waited.</p>', FieldKind::Rich)

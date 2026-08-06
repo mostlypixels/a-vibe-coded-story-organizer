@@ -1,7 +1,7 @@
 # Vendored EPUB 3 schemas
 
 These RelaxNG schema files back the PHP-native structural validation in
-`App\Services\EpubExporter` (feature: epub export v1, task 05). They let us catch a
+`App\Services\EpubExporter`. They let us catch a
 generator regression that produces a non-conformant OPF **without** shipping the JVM-based
 `epubcheck` tool. The export page separately links authors to the real
 [epubcheck](https://www.w3.org/publishing/epubcheck/) for full conformance checking.

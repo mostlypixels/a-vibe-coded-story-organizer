@@ -11,10 +11,10 @@ use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
- * Task 01 — data model foundation: the revisions table, the Revision model
- * (and its MassPrunable prunable() query), the RevisionOrigin enum, and
- * config/revisions.php. Pure model/config tests against factory-seeded rows —
- * no write path, controller, or HasRevisions trait yet (later tasks).
+ * The revisions data model: the revisions table, the Revision model (and its
+ * MassPrunable prunable() query), the RevisionOrigin enum, and
+ * config/revisions.php. Model and config tests against factory-seeded rows only
+ * — RevisionRecorderTest covers the write path.
  */
 class RevisionDataModelTest extends TestCase
 {

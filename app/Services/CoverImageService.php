@@ -11,7 +11,7 @@ use RuntimeException;
  * Manages project and chapter cover image files on the public disk.
  *
  * Provides a single source for storing, deleting, and reading cover files
- * — used by the project editor, chapter editor (task 07), and the epub exporter.
+ * — used by the project editor, the chapter editor, and the epub exporter.
  */
 class CoverImageService
 {
@@ -28,7 +28,7 @@ class CoverImageService
     public const PROJECT_COVER_DIRECTORY = 'project-covers';
 
     /**
-     * The directory under the public disk where chapter covers are stored (task 07).
+     * The directory under the public disk where chapter covers are stored.
      */
     public const CHAPTER_COVER_DIRECTORY = 'chapter-covers';
 

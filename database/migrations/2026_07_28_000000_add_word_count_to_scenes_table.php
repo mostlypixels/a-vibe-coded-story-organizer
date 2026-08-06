@@ -37,9 +37,9 @@ return new class extends Migration
         });
 
         // Backfill every scene that existed before this migration ran. Every
-        // new scene from here on gets its word_count from the model hook
-        // (task 4), so this is a one-time catch-up, not a path anything else
-        // depends on at runtime.
+        // new scene from here on gets its word_count from the model hook, so
+        // this is a one-time catch-up, not a path anything else depends on at
+        // runtime.
         Scene::query()->select('id', 'contents')->chunkById(500, function ($scenes) {
             foreach ($scenes as $scene) {
                 // Direct DB::table() update, never $scene->save(): a model

@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * The one place the "N words" translation key lives (word-count spec, task 6/7).
+ * The one place the "N words" translation key lives.
  * `x-word-count` (resources/views/components/word-count.blade.php) renders the
  * final formatted string from {@see self::text()}; the live in-field counter
  * (resources/js/word-count.js) needs the same three pluralised forms *without*
@@ -13,9 +13,9 @@ namespace App\Support;
  *
  * Both call `trans_choice()` with the same translation key, so a future wording
  * change is made once and both the static count and the live counter pick it up.
- * See resolution-log.md: this app has no lang/ files, so — matching every other
- * `trans_choice` call in the codebase — the inline pluralisation string below
- * doubles as the translation key.
+ * This app has no lang/ files, so the inline pluralisation string below doubles
+ * as the translation key. Every other `trans_choice` call in the codebase does
+ * the same.
  */
 class WordCountFormat
 {

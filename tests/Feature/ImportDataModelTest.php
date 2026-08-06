@@ -12,9 +12,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Task 01 — data model foundation: the imports/import_settings tables, their
- * models, the ImportPhase enum, and ImportPolicy. Pure model/policy tests, no
- * end-to-end import (that's later tasks).
+ * The import data model: the imports/import_settings tables, their models, the
+ * ImportPhase enum, and ImportPolicy. Model and policy tests only —
+ * ImportRoundTripTest covers the end-to-end import.
  */
 class ImportDataModelTest extends TestCase
 {

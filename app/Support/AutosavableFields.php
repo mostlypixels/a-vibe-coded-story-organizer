@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  * feature covers, keyed by the URL slug the feature's routes accept (mirrors the
  * app's own URL segments — `codex`, not `codex-entry`).
  *
- * This is the only place `FieldAutosaveController` (task 6) resolves a slug to a
+ * This is the only place `FieldAutosaveController` resolves a slug to a
  * model class, and the only place its validation rules come from — the autosave
  * endpoint and the existing Form Requests must never validate the same field two
  * different ways. An unregistered slug never reaches the

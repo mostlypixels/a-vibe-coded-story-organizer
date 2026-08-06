@@ -9,8 +9,8 @@ import {
 } from './fallbackChecks.js';
 
 /**
- * Tests for expand-tip-tap task 07 — the fallback-warning structural-check
- * list `.specs/planned/2026-07/autosave-with-revisions` §11.5.2 will consume.
+ * Tests for the fallback-warning structural-check list the autosave fallback
+ * path consumes.
  * See `.specs/planned/2026-07/expand-tip-tap/plan/07-fallback-warning-list.md`
  * and `../../.specs/planned/2026-07/expand-tip-tap/expanded/spec.md`'s
  * "Fallback policy" section for the full three-check enumeration.
@@ -114,7 +114,7 @@ describe('check 3 — unmatched HTML wrapper tag', () => {
         expect(hasUnmatchedHtmlWrapperTag(markdownSource, markdownEditor(markdownSource))).toBe(false);
     });
 
-    it('does not flag any of the task 03 cosmetic-normalisation cases (no literal HTML tags in any of them)', () => {
+    it('does not flag any of the cosmetic-normalisation cases (no literal HTML tags in any of them)', () => {
         expect(hasUnmatchedHtmlWrapperTag('_em_ text', markdownEditor('_em_ text'))).toBe(false);
 
         const referenceLink = '[text][1]\n\n[1]: http://example.com "title"\n';

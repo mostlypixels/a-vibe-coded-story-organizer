@@ -30,54 +30,62 @@ use ZipArchive;
  * Builds the in-memory content of a project's EPUB export.
  *
  * HTTP-agnostic and analogous to {@see StaticSiteExporter}: it takes a Project and
- * produces the ordered act/chapter tree, the rendered XHTML content documents, and — via
- * {@see export()} — packages them into an actual .epub file on disk.
+ * produces the ordered act/chapter tree and the rendered XHTML content documents.
+ * {@see export()} packages them into an .epub file on disk.
  *
- * Task 03 built content generation (loading + rendering). Task 04 added the
- * packaging step ({@see export()}): the rampmaster/phpepub library owns the mimetype,
- * container.xml, OPF (metadata/manifest/spine) and the EPUB 3 nav document; this service
- * owns the XHTML content (Blade), the metadata values fed to the library, the CSS, and the
- * Act → Chapter (→ Scene) navigation, whose depth follows the `table_of_contents_depth`
- * setting (task 10): "Acts" folds each act's chapters into one combined spine page so only
- * acts appear in the nav; "Chapters" (default) is the two-level Act → Chapter tree; "Scenes"
- * adds a third nav level of per-scene in-page anchor links. A later follow-up added a story
- * title page and an in-book table-of-contents page (a real spine page, distinct from the
- * reader-chrome nav document the library builds). Task 11 replaced that hard-coded
- * title → toc → body sequence with {@see addSections()}: an ordered walk over
- * `PublicationSetting::section_order` that also renders the front/back-matter Markdown
- * pages (dedication/acknowledgements/preface/postface) at whatever position the author
- * placed them. Task 12 added per-chapter full-page cover images ({@see addChapterCoverPage()}),
- * gated by `include_chapter_covers` and inserted immediately before each chapter's own
- * content — a nav sibling of the chapter, not a child, so it never disturbs the "Scenes"
- * depth's own nested scene anchors. Task 13 fills the reserved `appendix` slot of that walk
- * ({@see addAppendixSection()}): an optional back-matter codex appendix — a heading page plus one
- * page per selected codex entry (name + rich-HTML description normalised to XHTML), gated by
- * `include_codex_appendix` and the chosen `appendix_entry_types`. Task 05 adds the guards that
- * make a valid package a hard gate:
- *   - A project with no scenes anywhere throws {@see EpubExportException} (a USER problem —
- *     nothing to export), surfaced by the controller as a validation-style error.
- *   - Every shipped XHTML document is checked for XML well-formedness and the OPF is schema-
- *     validated against the vendored EPUB 3 RelaxNG grammar ({@see validatePackage()}). A
- *     failure there is a generator BUG, not user error, so it throws a plain RuntimeException
- *     (let it 500 and be logged) rather than EpubExportException.
+ * The rampmaster/phpepub library owns the mimetype, container.xml, the OPF
+ * (metadata/manifest/spine) and the EPUB 3 nav document. This service owns the XHTML
+ * content (Blade), the metadata values it gives the library, the CSS, and the
+ * Act → Chapter (→ Scene) navigation.
  *
- * Two deliberate isolation rules, both grilled decisions:
- *   - Scene contents are rendered through this service's OWN CommonMark converter,
- *     configured with SmartPunctExtension (smart dashes, ellipses, and quotes). It is
- *     never Scene::renderedContents — that accessor is the shared render path for the
- *     Story overview, share page, and book/ export, and must stay byte-for-byte the same.
- *   - HTML is rendered through Blade views under resources/views/exports/epub/, never
- *     string-built here (matching the book/ layer's own rule).
+ * ## Page order and navigation depth
+ *
+ * {@see addSections()} follows `PublicationSetting::section_order`. The author sets the
+ * position of the title page, the table of contents, the body, and the Markdown pages
+ * (dedication, acknowledgements, preface, postface). That in-book table of contents is a
+ * real spine page, not the reader-chrome nav document the library builds.
+ *
+ * `table_of_contents_depth` sets the navigation depth:
+ *   - "Acts" folds each act's chapters into one combined spine page, so only acts appear
+ *     in the nav.
+ *   - "Chapters" (the default) is the two-level Act → Chapter tree.
+ *   - "Scenes" adds a third level of per-scene in-page anchor links.
+ *
+ * {@see addChapterCoverPage()} puts a full-page cover before a chapter's content, gated by
+ * `include_chapter_covers`. The cover page is a nav SIBLING of the chapter, never a child,
+ * so it does not disturb the nested scene anchors at "Scenes" depth.
+ *
+ * {@see addAppendixSection()} fills the reserved `appendix` slot: a heading page plus one
+ * page per selected codex entry (name + rich-HTML description normalised to XHTML). Its
+ * gates are `include_codex_appendix` and `appendix_entry_types`.
+ *
+ * ## The two kinds of failure
+ *
+ * A project with no scenes throws {@see EpubExportException}. That is a USER problem, and
+ * the controller surfaces it as a validation-style error.
+ *
+ * {@see validatePackage()} checks every shipped XHTML document for XML well-formedness and
+ * validates the OPF against the vendored EPUB 3 RelaxNG grammar. A failure there is a
+ * generator BUG, so it throws a plain RuntimeException — let it 500 and be logged.
+ *
+ * > [!WARNING]
+ * > Two isolation rules. Break either one and the damage is silent.
+ * > - Scene contents render through this service's OWN CommonMark converter, configured
+ * >   with SmartPunctExtension (smart dashes, ellipses and quotes). Never through
+ * >   `Scene::renderedContents` — that accessor is the shared render path for the Story
+ * >   overview, the share page and the book/ export, and must stay byte-for-byte equal.
+ * > - HTML renders through the Blade views under resources/views/exports/epub/, never from
+ * >   strings built here. The book/ layer follows the same rule.
  */
 class EpubExporter
 {
     public function __construct(private CoverImageService $coverImageService) {}
 
     /**
-     * The stylesheet's flat filename inside the epub package. Task 04 writes the CSS
-     * beside the content documents under this name, and the Blade layout links to it by
-     * exactly this name — single source of truth so the link and the packaged file can
-     * never drift apart.
+     * The stylesheet's flat filename inside the epub package. The CSS is written beside
+     * the content documents under this name, and the Blade layout links to it by exactly
+     * this name — single source of truth, so the link and the packaged file can never
+     * drift apart.
      */
     public const STYLESHEET_FILENAME = 'styles.css';
 
@@ -116,7 +124,8 @@ class EpubExporter
 
     /**
      * The vendored EPUB 3 OPF RelaxNG schema (RelaxNG XML syntax), relative to
-     * `resource_path()`. Task 05 validates the generated OPF against this. Its two
+     * `resource_path()`. {@see validatePackage()} validates the generated OPF against
+     * this. Its two
      * `<include>`d modules (`datatypes.rng`, `epub-prefix-attr.rng`) live beside it and are
      * resolved relative to this file — see resources/epub-schemas/README.md for provenance.
      */
@@ -135,7 +144,7 @@ class EpubExporter
 
     /**
      * Filename and heading for the codex appendix section heading/cover page, added by
-     * {@see addAppendixSection()} at the `appendix` slot of the `section_order` walk (task 13).
+     * {@see addAppendixSection()} at the `appendix` slot of the `section_order` walk.
      * The individual entry pages ({@see appendixEntryFileName()}) nest one nav level beneath it.
      */
     private const APPENDIX_FILE = 'appendix.xhtml';
@@ -146,9 +155,9 @@ class EpubExporter
      * Front/back-matter section keys {@see addSections()} renders as a Markdown page: each
      * maps its `section_order` key to the Project Markdown column it reads, the
      * `PublicationSetting` toggle that gates it, the page heading, and its in-package
-     * filename. Single source of truth for {@see addMatterSection()} so the four sections
-     * (task 11) share one code path instead of four near-identical private methods — the
-     * "no magic strings" invariant, applied to the matter-section wiring itself.
+     * filename. Single source of truth for {@see addMatterSection()}, so the four sections
+     * share one code path instead of four near-identical private methods — the "no magic
+     * strings" invariant, applied to the matter-section wiring itself.
      *
      * `title`, `toc`, `body`, and `appendix` are NOT matter sections: they render through
      * their own dedicated methods ({@see addTitleSection()}, {@see addTocSection()},
@@ -185,7 +194,7 @@ class EpubExporter
 
     /**
      * Package a Project's rendered tree into an actual .epub file and return the path to it
-     * on disk. The caller (the controller, task 06) streams the file and deletes it after
+     * on disk. The calling controller streams the file and deletes it after
      * send; the temp file is also removed here if packaging throws, so a failed export never
      * leaks a partial file — mirroring {@see StaticSiteExporter::export()}.
      *
@@ -199,16 +208,16 @@ class EpubExporter
 
         // The one user-input failure of the whole pipeline: the project has not a single
         // scene anywhere, so the book would be nothing but blank outline pages. Thrown
-        // BEFORE any temp file exists; task 06's controller turns it into a
+        // BEFORE any temp file exists; the controller turns it into a
         // redirect-back-with-error. Every other failure below is a generator bug and throws
         // loudly (see validatePackage()).
         if (! $this->hasAnyScene($tree)) {
             throw EpubExportException::nothingToExport();
         }
 
-        // Read once and thread through every private method that needs it — task 08's
-        // starting point for consuming PublicationSetting. Lazy: a project with no saved
-        // row gets an unsaved default instance whose toggles reproduce today's output
+        // Read once and thread through every private method that needs it. Lazy: a
+        // project with no saved row gets an unsaved default instance whose toggles
+        // reproduce today's output
         // byte-for-byte (see PublicationSettingTest / the defaults-regression guard in
         // EpubExporterTest).
         $settings = $project->publicationSettingOrDefault();
@@ -361,8 +370,8 @@ class EpubExporter
      * two rendering paths can never drift.
      *
      * `number` is the project-wide, gap-free rank from {@see StoryNumbering} — NOT
-     * `$act->position`, which is the per-parent, gappy sort key. Task 07 made this switch;
-     * see StoryNumbering's own docblock for why the export must never display `position`.
+     * `$act->position`, which is the per-parent, gappy sort key. See StoryNumbering's own
+     * docblock for why the export must never display `position`.
      *
      * @return array<string, mixed>
      */
@@ -500,8 +509,8 @@ class EpubExporter
     }
 
     /**
-     * The epub stylesheet's contents, read from the single source file. Task 04 writes
-     * this into the package under {@see STYLESHEET_FILENAME}.
+     * The epub stylesheet's contents, read from the single source file. It is written
+     * into the package under {@see STYLESHEET_FILENAME}.
      */
     public function stylesheet(): string
     {
@@ -518,11 +527,10 @@ class EpubExporter
      * SECOND dc:identifier is added (expressed as `urn:isbn:{isbn}`) — it never replaces the
      * generated URN.
      *
-     * Each optional block is additionally gated by its `PublicationSetting` toggle
-     * (task 08): `include_author`, `include_publisher`, `include_rights`, `include_isbn`.
-     * All four default `true`, so a default/absent setting reproduces exactly what this
-     * method emitted before the toggles existed — title, language, the primary URN, and
-     * accessibility metadata are never gated, by design.
+     * Each optional block is additionally gated by its `PublicationSetting` toggle:
+     * `include_author`, `include_publisher`, `include_rights`, `include_isbn`. All four
+     * default `true`, so a default or absent setting emits the full metadata. Title,
+     * language, the primary URN and the accessibility metadata are never gated, by design.
      */
     private function applyMetadata(EPub $book, Project $project, PublicationSetting $settings): void
     {
@@ -567,8 +575,8 @@ class EpubExporter
      * cover manifest item, the OPF `<meta name="cover">`, and the cover page. A cover row
      * that points at a missing file is silently skipped rather than aborting the export.
      *
-     * Gated by `$settings->include_project_cover` (task 08), default `true` — a default/
-     * absent setting embeds the cover exactly as before the toggle existed.
+     * Gated by `$settings->include_project_cover`, default `true` — a default or absent
+     * setting embeds the cover.
      */
     private function applyCover(EPub $book, Project $project, PublicationSetting $settings): void
     {
@@ -592,8 +600,7 @@ class EpubExporter
     }
 
     /**
-     * Drive the whole book's page order off `section_order` (task 11), replacing what used
-     * to be a hard-coded title → toc → body sequence. Falls back to
+     * Drive the whole book's page order off `section_order`. Falls back to
      * {@see PublicationSetting::SECTION_KEYS} (the standard reading order) when the setting
      * carries no order — the lazy-default row from `publicationSettingOrDefault()` already
      * fills this in, so that fallback is a belt-and-braces guard, not the common path.
@@ -605,8 +612,8 @@ class EpubExporter
      *
      * Each front/back-matter Markdown section (`dedication`/`acknowledgements`/`preface`/
      * `postface`) renders only when its `include_*` toggle is on AND the Project's field is
-     * non-empty (overview decision #4) — see {@see addMatterSection()}. The `appendix` slot
-     * renders the codex appendix (task 13) via {@see addAppendixSection()}.
+     * non-empty — see {@see addMatterSection()}. The `appendix` slot renders the codex
+     * appendix via {@see addAppendixSection()}.
      *
      * @param  Collection<int, Act>  $tree
      */
@@ -654,9 +661,8 @@ class EpubExporter
     /**
      * Add one front/back-matter Markdown page (dedication/acknowledgements/preface/postface)
      * as its own root-level nav entry, gated by BOTH its `include_*` toggle AND non-empty
-     * content — a disabled toggle or an empty field renders nothing at all, per overview
-     * decision #4. Unknown keys (defensive only — {@see MATTER_SECTIONS} is the closed set)
-     * also render nothing.
+     * content — a disabled toggle or an empty field renders nothing at all. Unknown keys
+     * (defensive only — {@see MATTER_SECTIONS} is the closed set) also render nothing.
      */
     private function addMatterSection(EPub $book, Project $project, PublicationSetting $settings, string $key): void
     {
@@ -712,7 +718,7 @@ class EpubExporter
      * rich-HTML `description` normalised to well-formed XHTML via {@see RichText::toXhtmlFragment()}
      * (the codex description is sanitized rich HTML, NOT Markdown — embedding it raw would break
      * {@see validatePackage()}). When `appendix_include_images` is on, the entry's FIRST media
-     * image (task 13 step 2) is embedded above the description; `$imagePath` is its in-book path
+     * image is embedded above the description; `$imagePath` is its in-book path
      * (already packaged by {@see addAppendixEntryImage()}), or null when there is no image or the
      * backing file was missing off disk — in which case the page renders text only.
      */
@@ -727,22 +733,22 @@ class EpubExporter
     }
 
     /**
-     * Add the codex appendix at the `appendix` slot of the `section_order` walk (task 13): a
+     * Add the codex appendix at the `appendix` slot of the `section_order` walk: a
      * heading/cover page as its own root-level nav entry, then one page per codex entry nested
      * one level beneath it — the same "section owns its children" nesting an Act uses for its
-     * Chapters, and the appropriate depth given task 10's Act/Chapter/Scene nav structure.
+     * Chapters, and the right depth for the Act/Chapter/Scene nav structure.
      *
      * A true no-op — nothing added, no nav levels disturbed — unless ALL of:
-     *   - `include_codex_appendix` is on (the default is off, overview decision #3), AND
+     *   - `include_codex_appendix` is on (the default is off), AND
      *   - at least one `appendix_entry_types` is selected, AND
      *   - the project actually has codex entries of those types.
-     * The last guard extends overview decision #4 ("a section renders only when enabled AND has
-     * non-empty content") to the appendix: with the toggle on and types chosen but no matching
-     * entries, a lone heading page with no entries would be pointless, so the whole section is
+     * The last guard applies the general rule — a section renders only when it is enabled AND
+     * has non-empty content — to the appendix. With the toggle on and types chosen but no
+     * matching entries, a lone heading page would be pointless, so the whole section is
      * skipped.
      *
      * Entries are loaded filtered to the selected types and ordered by (`type`, `name`) — the
-     * spec's ordering. When `appendix_include_images` is on (task 13 step 2) each entry's `media`
+     * spec's ordering. When `appendix_include_images` is on, each entry's `media`
      * is eager-loaded and its FIRST image is embedded on the entry page via
      * {@see addAppendixEntryImage()}; the toggle stays off by default so no media is loaded.
      */
@@ -765,7 +771,7 @@ class EpubExporter
             ->orderBy('type')
             ->orderBy('name');
 
-        // Only pay for the entries' media when images are actually wanted (task 13 step 2). The
+        // Only pay for the entries' media when images are actually wanted. The
         // relation is ordered (collection, position) so `first image` resolution below is
         // deterministic and matches how the archive exporter orders the same rows. When
         // `appendix_include_images` is off, `media` is never loaded — no wasted query.
@@ -805,7 +811,7 @@ class EpubExporter
     }
 
     /**
-     * Embed a codex entry's FIRST media image (task 13 step 2) into the package and return its
+     * Embed a codex entry's FIRST media image into the package and return its
      * in-book path for the entry page's `<img>`, or null when there is nothing to embed.
      *
      * "First image" is the first media row (in the eager-loaded (collection, position) order) that
@@ -815,7 +821,7 @@ class EpubExporter
      *
      * A row whose file is missing off the `public` disk is skipped SILENTLY — the entry page still
      * renders (text only) and the export never fails, mirroring {@see applyCover()} /
-     * {@see addChapterCoverPage()}'s missing-file behaviour (overview decision #5). Bytes are read
+     * {@see addChapterCoverPage()}'s missing-file behaviour. Bytes are read
      * through {@see CoverImageService::bytes()} (same `public` disk the codex media lives on), whose
      * null return is the missing-file signal.
      *
@@ -871,7 +877,7 @@ class EpubExporter
             // NCX but NOT the EPUB 3 nav — confirmed by spike), so a page-per-act is the only
             // way to keep chapters readable without giving each one its own nav entry. There
             // is no standalone "chapter's content page" at this depth, so each chapter's
-            // cover page (task 12) is added as a root-level nav entry immediately before the
+            // cover page is added as a root-level nav entry immediately before the
             // combined act page holding that chapter's content — the closest this depth can
             // get to "immediately before that chapter's content".
             if (! $depth->includesChapters()) {
@@ -897,7 +903,7 @@ class EpubExporter
             $book->subLevel();
 
             foreach ($act->chapters as $chapter) {
-                // The chapter's cover page (task 12), if any, is a nav SIBLING of the
+                // The chapter's cover page, if any, is a nav SIBLING of the
                 // chapter — nested at the same level under the Act, immediately before the
                 // chapter's own entry — rather than a child of it, so it never disturbs the
                 // "Scenes" depth's own subLevel() of per-scene anchors below.
@@ -934,15 +940,15 @@ class EpubExporter
     }
 
     /**
-     * Add one Chapter's full-page cover image (task 12) as its own spine page + nav entry,
+     * Add one Chapter's full-page cover image as its own spine page + nav entry,
      * immediately preceding wherever the caller is about to add that chapter's own content
      * (see the two call sites in {@see addBody()} for how "preceding" plays out at each
      * {@see TableOfContentsDepth}). A true no-op — added or not, this never disturbs the
      * caller's own subLevel()/backLevel() bracketing — when:
-     *   - `include_chapter_covers` is off (the default, overview decision #3), or
+     *   - `include_chapter_covers` is off (the default), or
      *   - the Chapter has no `cover_image`, or
      *   - the cover file no longer exists on the `public` disk (mirrors {@see applyCover()}'s
-     *     silent skip of a missing project cover — never fatal, per overview decision #5).
+     *     silent skip of a missing project cover — never fatal).
      *
      * The image bytes are embedded via the library's generic addFile() (manifest-only, no
      * spine/nav entry of its own) rather than setCoverImage(), which is reserved for the ONE
@@ -1220,7 +1226,7 @@ class EpubExporter
     }
 
     /**
-     * The in-package filename for a Chapter's cover page (task 12). Distinct from
+     * The in-package filename for a Chapter's cover page. Distinct from
      * {@see chapterFileName()} — the cover is a separate spine document, added only when
      * {@see addChapterCoverPage()} decides the chapter actually has one.
      */
@@ -1230,7 +1236,7 @@ class EpubExporter
     }
 
     /**
-     * The in-package filename for one codex appendix entry page (task 13). Keyed off the
+     * The in-package filename for one codex appendix entry page. Keyed off the
      * entry's stable database id so two entries can never collide. See {@see actFileName()}.
      */
     private function appendixEntryFileName(CodexEntry $entry): string
@@ -1280,9 +1286,9 @@ class EpubExporter
     {
         if ($this->converter === null) {
             $converter = new CommonMarkConverter;
-            // SmartPunctExtension does dashes, ellipses, and smart quotes together (the
-            // grilled decision). It lives ONLY on this instance — never on Str::markdown
-            // or Scene::renderedContents.
+            // SmartPunctExtension does dashes, ellipses and smart quotes together. It
+            // lives ONLY on this instance — never on Str::markdown or
+            // Scene::renderedContents.
             $converter->getEnvironment()->addExtension(new SmartPunctExtension);
             // Strikethrough/TaskList keep this isolated converter in agreement with the
             // GFM grammar Scene::renderedContents() and ValidMarkdown already use — added

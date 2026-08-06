@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Admin Configuration shell (task 01): the /admin route group, its access
+ * The Admin Configuration shell: the /admin route group, its access
  * posture, the sidebar, and the placeholder section pages.
  */
 class AdminConfigurationTest extends TestCase
@@ -113,10 +113,10 @@ class AdminConfigurationTest extends TestCase
             );
 
             // Exactly one aria-current="page" WITHIN THE SIDEBAR for this page.
-            // Scoped to the sidebar's own <nav> — task 03 added a second,
-            // independent aria-current on the page's own sub-nav
-            // (admin/data/partials/subnav.blade.php), which is expected and
-            // covered separately by DataTransferTest.
+            // Scoped to the sidebar's own <nav>: the page's own sub-nav
+            // (admin/data/partials/subnav.blade.php) carries a second,
+            // independent aria-current. That is expected, and DataTransferTest
+            // covers it separately.
             $this->assertMatchesRegularExpression('/<nav aria-label="Configuration">(.*?)<\/nav>/s', $html);
             preg_match('/<nav aria-label="Configuration">(.*?)<\/nav>/s', $html, $matches);
             $sidebarHtml = $matches[1];
@@ -153,15 +153,15 @@ class AdminConfigurationTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Export & import (task 03) — split into three server-rendered pages
+    // Export & import — split into three server-rendered pages
     // (export-project / export-ebook / import) reached by ordinary links, not
     // JS tabs. Full coverage of the split (sub-nav active state, each page's
     // own controls, the data.index redirect) lives in DataTransferTest.
     // ---------------------------------------------------------------------
 
     // ---------------------------------------------------------------------
-    // Database configuration (task 04) — a read-only display of the ACTIVE
-    // connection. Never renders the password (invariant 5).
+    // Database configuration — a read-only display of the ACTIVE
+    // connection. Never renders the password.
     // ---------------------------------------------------------------------
 
     public function test_database_page_shows_the_current_driver(): void
@@ -178,7 +178,7 @@ class AdminConfigurationTest extends TestCase
     }
 
     /**
-     * The key guard for invariant 5: the DB password must NEVER reach the HTML.
+     * The key guard: the DB password must NEVER reach the HTML.
      *
      * Inject a known password (and username) into the ACTIVE connection's config
      * and assert the rendered page omits them. We do NOT switch the default
@@ -224,7 +224,7 @@ class AdminConfigurationTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // General settings (task 02) — the search-engine (crawler) form, relocated
+    // General settings — the search-engine (crawler) form, relocated
     // here from the retired crawler-settings.* screen. Behavioural coverage
     // migrated from CrawlerSettingTest's former "settings screen" section.
     // ---------------------------------------------------------------------

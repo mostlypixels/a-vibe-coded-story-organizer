@@ -17,7 +17,7 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * HTTP-layer tests for the import feature (task 06): the four admin routes
+ * HTTP-layer tests for the import feature: the four admin routes
  * (store / resume / destroy / import-settings), their Form Requests, and the
  * two intentional authorization postures (any-authenticated-user for the initial
  * upload, real ImportPolicy ownership for resume/discard).
@@ -80,7 +80,7 @@ class ImportTest extends TestCase
         $this->assertSame($user->id, $project->user_id);
 
         // The fixture archive is a manifest-version-1 export, pre-dating the four
-        // front-/back-matter fields (task 02, epub-configuration): their `*_file`
+        // epub-configuration front-/back-matter fields: their `*_file`
         // links are absent from project.json, so they must import as null rather
         // than crash the graph importer.
         $this->assertNull($project->dedication);
@@ -129,7 +129,7 @@ class ImportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // The Import tab renders its real form + in-progress list (task 08)
+    // The Import tab renders its real form + in-progress list
     // ---------------------------------------------------------------------
 
     public function test_the_import_tab_renders_the_upload_form(): void
@@ -364,7 +364,7 @@ class ImportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Queued mode — ImportSetting.run_in_background (task 07)
+    // Queued mode — ImportSetting.run_in_background
     // ---------------------------------------------------------------------
 
     public function test_synchronous_mode_never_pushes_a_job_and_imports_inline(): void

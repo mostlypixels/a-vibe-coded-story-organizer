@@ -13,7 +13,7 @@ use InvalidArgumentException;
  * The one place the application's *explicit, destructive* revision-deletion
  * rules live.
  *
- * This is the opposite number of Revision::prunable() (task 1): prune is the
+ * This is the opposite number of Revision::prunable(): prune is the
  * unattended, safety-preserving daily sweep that never touches a labeled or
  * non-`automatic` row; purge is a deliberate action the user asked for, and
  * is explicitly *allowed* to remove those rows — without it, imported
@@ -23,7 +23,7 @@ use InvalidArgumentException;
  * Both entry points call this single service, so the rules can never drift
  * between them:
  *   - App\Console\Commands\PurgeRevisions (`revisions:purge`)
- *   - The "Revision storage" admin panel's controller (task 13)
+ *   - The "Revision storage" admin panel's controller
  */
 class RevisionPurger
 {

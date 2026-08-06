@@ -19,10 +19,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 /**
- * Task 03 — the declarative wiring layer: the AutosavableFields registry and the
- * HasRevisions trait each of the 7 registered models now implements. No write
- * path yet (RevisionRecorder is task 04) — these tests only cover lookups and
- * the revisionProject() authorization boundary.
+ * The declarative wiring layer: the AutosavableFields registry and the
+ * HasRevisions trait each of the 7 registered models implements. These tests
+ * cover the lookups and the revisionProject() authorization boundary only.
+ * RevisionRecorderTest covers the write path.
  */
 class AutosavableFieldsAndHasRevisionsTest extends TestCase
 {

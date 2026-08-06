@@ -21,8 +21,8 @@ enum RevisionOrigin: string
     case Baseline = 'baseline';
 
     /**
-     * The origin badge label shown on the history page (task 10,
-     * expanded/ui.md "History page"). `Baseline` itself is never rendered
+     * The origin badge label shown on the history page
+     * (expanded/ui.md "History page"). `Baseline` itself is never rendered
      * through this — that row gets its own dedicated "Baseline — value before
      * revision history" row instead — but the label is kept
      * here alongside the others rather than leaving one case undocumented.

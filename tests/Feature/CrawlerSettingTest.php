@@ -12,7 +12,7 @@ class CrawlerSettingTest extends TestCase
     use RefreshDatabase;
 
     // ---------------------------------------------------------------------
-    // Task 01 — model & singleton
+    // Model & singleton
     // ---------------------------------------------------------------------
 
     public function test_current_returns_a_row_reflecting_the_config_default_and_creates_exactly_one(): void
@@ -54,7 +54,7 @@ class CrawlerSettingTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Task 02 — robots.txt route
+    // robots.txt route
     // ---------------------------------------------------------------------
 
     public function test_robots_txt_on_fresh_db_blocks_all_and_lazily_creates_the_row(): void
@@ -104,7 +104,7 @@ class CrawlerSettingTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Task 03 — meta component
+    // Meta component
     // ---------------------------------------------------------------------
 
     public function test_pages_carry_the_noindex_tag_when_hidden(): void

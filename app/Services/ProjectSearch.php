@@ -29,7 +29,7 @@ use Illuminate\Support\Collection;
  * (a Scene that matches in both `contents` and `notes` yields one row whose
  * matched fields are "Contents, Notes").
  *
- * Design decisions (all binding, see .specs/.../advanced_search/plan/00-overview.md):
+ * Design decisions, all binding:
  *   - Matching runs in PHP, not SQL. Each entity's project-scoped rows are fetched
  *     with one query, then matched against the folded terms here. Accent folding
  *     (see {@see AccentFolder}) must be byte-for-byte identical to the label /

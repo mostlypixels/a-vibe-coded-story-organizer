@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Task 14 — the entity compare page: two save points, every field that differs.
+ * The entity compare page: two save points, every field that differs.
  *
  * The property most of these tests exist to pin is that comparison is about two
  * *moments*, not two edits. A save that touched only the dedication still

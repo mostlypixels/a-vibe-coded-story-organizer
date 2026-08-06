@@ -9,7 +9,7 @@ use Illuminate\View\View;
 
 /**
  * Appearance & accessibility section of the Admin Configuration area: the
- * per-user theme preset picker (theme-switcher spec, task 04).
+ * per-user theme preset picker.
  *
  * Thin: resolve the preset list + the active one -> (authorize in the Form
  * Request) -> write to $request->user() -> redirect. Mirrors

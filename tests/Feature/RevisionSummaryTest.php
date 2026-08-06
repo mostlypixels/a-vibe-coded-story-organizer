@@ -15,8 +15,8 @@ use RuntimeException;
 use Tests\TestCase;
 
 /**
- * Task 9 — every revision row carries its own summary, written at the moment
- * the row is (expanded/data-model.md, *Who writes `summary_html` /
+ * Every revision row carries its own summary, written when the row itself is
+ * written (expanded/data-model.md, *Who writes `summary_html` /
  * `change_count`*).
  *
  * The point of storing them is that a page of history renders without diffing
@@ -122,8 +122,8 @@ class RevisionSummaryTest extends TestCase
             RevisionOrigin::Manual,
         );
 
-        // The row reports every hunk — that is what "and 39 more changes" is
-        // built from (rendered in task 13) — while showing only the first.
+        // The row reports every hunk — the source of "and 39 more changes" on
+        // the history page — while it shows only the first.
         $this->assertSame(40, $revision->change_count);
         $this->assertLessThanOrEqual(
             (int) config('revisions.summary.max_length'),

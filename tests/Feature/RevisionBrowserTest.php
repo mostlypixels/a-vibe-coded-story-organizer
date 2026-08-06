@@ -124,7 +124,7 @@ class RevisionBrowserTest extends TestCase
 
     public function test_the_sidebar_offers_a_client_side_filter_box(): void
     {
-        // handoff D2: a client-side filter narrows a large sidebar by name.
+        // A client-side filter narrows a large sidebar by name.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $act = Act::factory()->for($project)->create();
@@ -139,8 +139,8 @@ class RevisionBrowserTest extends TestCase
 
     public function test_only_the_active_entitys_group_starts_open(): void
     {
-        // handoff D2: groups default-collapse to bound a big sidebar; only the
-        // group holding the entity currently being viewed starts open.
+        // Groups default-collapse to bound a big sidebar. Only the group that
+        // holds the entity in view starts open.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $act = Act::factory()->for($project)->create();
@@ -162,8 +162,8 @@ class RevisionBrowserTest extends TestCase
 
     public function test_the_entity_name_links_to_its_unfiltered_history(): void
     {
-        // Task 18: the sidebar's entity name is the way into the whole entity's
-        // history; its field leaves are the same page with `?field=` set.
+        // The sidebar's entity name is the way into the whole entity's history;
+        // its field leaves are the same page with `?field=` set.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $act = Act::factory()->for($project)->create(['name' => 'Act Alpha']);

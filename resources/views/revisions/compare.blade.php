@@ -12,7 +12,7 @@
         </div>
     </x-slot>
 
-    {{-- x-page-heading has no actions affordance (see resolution-log.md), so
+    {{-- x-page-heading has no actions affordance, so
          — same as projects/show.blade.php's dashboard heading row — this uses
          x-heading directly in a flex row rather than double up on margin. --}}
     <div class="mb-6 flex items-center justify-between gap-4">

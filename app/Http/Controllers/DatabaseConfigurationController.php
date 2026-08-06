@@ -7,14 +7,14 @@ use Illuminate\View\View;
 /**
  * Database configuration section of the Admin Configuration area.
  *
- * Read-only display of the app's ACTIVE database connection (task 04). Switching
+ * Read-only display of the app's ACTIVE database connection. Switching
  * backends or converting SQLite<->MySQL is an offline CLI/ops operation and a
  * separate future spec — there is no write route here.
  *
  * SECURITY: the connection config array holds secrets (password, and often the
  * username). This controller whitelists a safe subset — driver, database
  * name/path, and host only — so the view can never accidentally dump the whole
- * array or leak the password (invariant 5).
+ * array or leak the password.
  */
 class DatabaseConfigurationController extends Controller
 {

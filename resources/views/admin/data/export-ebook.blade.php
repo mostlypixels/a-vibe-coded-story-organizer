@@ -8,7 +8,7 @@
     @include('admin.data.partials.subnav')
 
     {{--
-        Flash feedback for the config save (task 04) and the section-order
+        Flash feedback for the config save and the section-order
         move buttons, which all redirect back here.
     --}}
     @if (session('status'))
@@ -68,8 +68,7 @@
                     <legend class="px-2 text-sm font-semibold text-content">{{ $selectedProject->name }}</legend>
 
                 {{--
-                    The config form (task 04): persists PublicationSetting.
-                    Exporter behaviour is unchanged until task 08+ — this only
+                    The config form: persists PublicationSetting. This only
                     writes the settings. section_order round-trips via hidden
                     inputs; it is reordered separately below via its own
                     move-up/move-down actions (mirrors ActController::moveUp),
@@ -277,7 +276,7 @@
                 </form>
 
                 {{--
-                    Section order (overview decision #4): the fixed reading
+                    Section order: the fixed reading
                     order the enabled sections render in. `title` is pinned
                     first; every other entry moves independently of its
                     include-toggle above. Each move is its own PATCH, exactly

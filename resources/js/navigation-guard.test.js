@@ -3,7 +3,7 @@ import { isGuardedSaveSubmit, shouldIntercept } from './navigation-guard';
 
 /**
  * Tests for `resources/js/navigation-guard.js`'s pure predicate, `shouldIntercept()`
- * (data-loss-warnings task 02). The `Alpine.data()` wrapper itself (the real
+ * The `Alpine.data()` wrapper itself (the real
  * document-level click listener, `beforeunload`, `window.location` navigation) is left
  * to the manual checklist documented in `testing.md`, matching this codebase's existing
  * pure-logic-vs-manual-checklist split (see badge.js/badge.test.js).

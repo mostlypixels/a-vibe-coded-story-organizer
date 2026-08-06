@@ -12,7 +12,6 @@ use App\Models\User;
  * has an owner (the importing user), so resume/discard walk to that owner —
  * unlike the initial POST that starts an import, which uses the
  * any-authenticated-user exception (there is no project yet to walk up to).
- * See .specs/.../00-overview.md's binding defaults.
  */
 class ImportPolicy
 {

@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { moveScene, updateSceneMoveButtons } from './scene-reorder';
 
 /**
- * Tests for `resources/js/scene-reorder.js` (continuous-numbering spec, task
- * 05). Builds the same shape story/index.blade.php renders for a chapter's
+ * Tests for `resources/js/scene-reorder.js`. Builds the same shape
+ * story/index.blade.php renders for a chapter's
  * scenes — an `<article>` of sibling `<section>`s, each carrying its own
  * `data-scene-number` span and up/down move buttons — directly in jsdom,
  * bypassing Alpine and axios entirely (matching this codebase's existing

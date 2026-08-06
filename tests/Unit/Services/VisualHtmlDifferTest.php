@@ -11,8 +11,8 @@ use App\Support\VisualDiff;
 use Tests\TestCase;
 
 /**
- * Task 5 — App\Services\Diff\VisualHtmlDiffer: block diff first, word diff
- * inside the blocks that changed. Structure only; rendering is task 6.
+ * App\Services\Diff\VisualHtmlDiffer: block diff first, word diff inside the
+ * blocks that changed. Structure only — DiffHtmlRenderer does the rendering.
  */
 class VisualHtmlDifferTest extends TestCase
 {

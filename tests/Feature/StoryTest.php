@@ -85,9 +85,9 @@ class StoryTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Task 8 (word-count spec) — chapter/act/project totals, at zero extra
-    // queries. Scenes are already eager-loaded by StoryController::index(),
-    // so every total below is a PHP sum() over that loaded data.
+    // Chapter/act/project totals, at zero extra queries. StoryController::
+    // index() already eager-loads the scenes, so every total below is a PHP
+    // sum() over that loaded data.
     // ---------------------------------------------------------------------
 
     /**
@@ -200,14 +200,14 @@ class StoryTest extends TestCase
     }
 
     /**
-     * The whole point of task 8: the story overview already eager-loads
-     * every scene (`StoryController::index()`'s `with('chapters.scenes.event')`),
-     * so summing chapter/act/project totals must not add a single query no
-     * matter how many acts, chapters, or scenes exist. Counting queries
-     * against the "scenes" table specifically (rather than the whole
-     * request's query count, which also includes session/auth queries and
-     * would be a flaky number to pin) isolates exactly the query this task
-     * must not add.
+     * The story overview already eager-loads every scene
+     * (`StoryController::index()`'s `with('chapters.scenes.event')`), so the
+     * chapter/act/project totals must not add a single query, whatever the
+     * number of acts, chapters or scenes.
+     *
+     * This counts queries against the "scenes" table alone. The whole request's
+     * query count also includes session and auth queries, which makes it a
+     * flaky number to pin.
      */
     public function test_totals_add_no_queries_against_the_scenes_table(): void
     {
@@ -243,9 +243,9 @@ class StoryTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Continuous numbering (continuous-numbering, task 4) — the story
-    // overview's TOC, headings and per-scene labels take their numbers from
-    // StoryNumbering::fromActs() instead of the raw, per-parent `position`.
+    // Continuous numbering — the story overview's TOC, headings and per-scene
+    // labels take their numbers from StoryNumbering::fromActs(), not from the
+    // raw, per-parent `position`.
     // ---------------------------------------------------------------------
 
     public function test_toc_and_headings_show_continuous_chapter_numbers_across_the_act_boundary(): void

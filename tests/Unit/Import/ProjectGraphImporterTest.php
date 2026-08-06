@@ -15,9 +15,10 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Unit-level tests for ProjectGraphImporter (import task 04): the phase
- * methods are called directly against a hand-built, already-extracted archive
- * directory — no zip, no HTTP, no Import row (those belong to tasks 02/05/06).
+ * Unit-level tests for ProjectGraphImporter: the phase methods are called
+ * directly against a hand-built, already-extracted archive directory — no zip,
+ * no HTTP, no Import row. ArchiveValidatorTest, ProjectImporterTest and
+ * ImportTest cover those.
  *
  * The fixture covers every remapping/reconciliation rule from data-model.md:
  * a story tree whose position order deliberately disagrees with insertion
@@ -360,7 +361,7 @@ class ProjectGraphImporterTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Revision history import (task 15, autosave-with-revisions)
+    // Revision history import
     // ------------------------------------------------------------------
 
     public function test_revisions_are_imported_with_origin_import_and_the_importing_users_id(): void
@@ -645,7 +646,7 @@ class ProjectGraphImporterTest extends TestCase
     }
 
     /**
-     * Run all four phases in order, exactly as the orchestrator (task 05) will.
+     * Run all four phases in order, exactly as ProjectImporter does.
      *
      * @return array{0: Project, 1: array<string, array<int, int>>}
      */

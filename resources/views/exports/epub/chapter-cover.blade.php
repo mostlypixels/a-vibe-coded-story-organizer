@@ -1,4 +1,4 @@
-{{-- A full-page chapter cover image, added by EpubExporter::addChapterCoverPage() (task 12)
+{{-- A full-page chapter cover image, added by EpubExporter::addChapterCoverPage()
      immediately before its chapter's own content page — gated by
      `include_chapter_covers` and only when the chapter has a cover with real bytes on disk.
      Mirrors the shape of the rampmaster/phpepub library's OWN cover page (a single

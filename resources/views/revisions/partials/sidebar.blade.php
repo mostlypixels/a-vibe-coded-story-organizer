@@ -11,7 +11,7 @@
     Expects: $tree, $project, and the active $activeEntity / $activeId /
     $activeField (any may be null on the landing page).
 
-    Sizing (handoff D2): a heavily-revised project can list hundreds of
+    Sizing: a heavily-revised project can list hundreds of
     entities, so the sidebar is bounded three ways —
       1. each group heading carries a count badge of the revised entities it
          holds, so its size reads at a glance while collapsed;

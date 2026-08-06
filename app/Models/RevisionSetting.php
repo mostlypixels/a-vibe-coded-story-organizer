@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * Exactly one row ever exists: the whole application shares one retention
  * window for `automatic`, unlabeled revisions (Revision::prunable() reads
  * this row's retention_days instead of a raw config value, so the window is
- * admin-configurable — task 13 adds the confirm-gated settings form). Like
+ * admin-configurable through the confirm-gated settings form). Like
  * {@see ImportSetting} this model is global (no owning Project or User), so
  * it is deliberately outside ProjectPolicy's authorization walk — any
  * authenticated user may edit it, behind the `access-admin` gate. See

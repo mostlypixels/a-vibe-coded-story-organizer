@@ -21,7 +21,7 @@ use Throwable;
  *
  * Whether an import runs inline within the request or is dispatched to the
  * queue depends on ImportSetting::current()->run_in_background, read live at
- * submit time (task 07). Validation (ProjectImporter::start()) is always
+ * submit time. Validation (ProjectImporter::start()) is always
  * synchronous regardless of that toggle — only the graph-import phases (run())
  * are ever queued.
  */

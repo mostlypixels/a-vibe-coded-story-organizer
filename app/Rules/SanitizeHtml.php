@@ -9,8 +9,8 @@ use Illuminate\Translation\PotentiallyTranslatedString;
 use Throwable;
 
 /**
- * Reusable rule attached to every rich-HTML field in the Form Requests (task 02),
- * mirroring how `new ValidMarkdown` guards the Markdown fields. It validates that
+ * Reusable rule attached to every rich-HTML field in the Form Requests, the way
+ * `new ValidMarkdown` guards the Markdown fields. It validates that
  * the value is processable HTML; the actual cleaning/stripping is HtmlSanitizer's
  * job, run on the model write path so the stored value is always safe.
  */

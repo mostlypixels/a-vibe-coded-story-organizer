@@ -1,5 +1,5 @@
 /**
- * Story overview scene reordering (continuous-numbering spec, task 05).
+ * Story overview scene reordering.
  * Extracted out of `app.js` — the Vite entry, which also pulls in Alpine and
  * axios — purely so this logic can be unit tested per-module like every other
  * file in this directory.
@@ -32,7 +32,7 @@ export function updateSceneMoveButtons(article) {
  *
  * Only the two numbers change: two scenes adjacent inside one chapter are
  * also adjacent in the project-wide continuous sequence
- * (`00-overview.md` — "numbers are project-wide"), so a move swaps exactly
+ * (numbers are project-wide), so a move swaps exactly
  * their two numbers and never touches any other row.
  *
  * The swap is on the two spans' *text*, not the DOM nodes carrying it. The

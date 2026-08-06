@@ -27,7 +27,7 @@ enum ImportPhase: string
     case Failed = 'failed';
 
     /**
-     * Human-readable label for the Import tab's status text (task 08).
+     * Human-readable label for the Import tab's status text.
      */
     public function label(): string
     {

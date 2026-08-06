@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Guard for the Tailwind 4 migration (tailwind-4 task 07).
+ * Guard for the Tailwind 4 migration.
  *
  * Tailwind 4 only emits a utility for a class if its content scanner actually reaches the
  * source file using it. A misconfigured `@source`/`@plugin` line drops those utilities

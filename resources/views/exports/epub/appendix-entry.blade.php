@@ -1,4 +1,4 @@
-{{-- One codex appendix entry page, added by EpubExporter::addAppendixSection() (task 13): the
+{{-- One codex appendix entry page, added by EpubExporter::addAppendixSection(): the
      entry's name as a heading plus its rich-HTML `description`. Unlike the front/back-matter
      Markdown pages, a codex `description` is sanitized RICH HTML (not Markdown), so the service
      runs it through RichText::toXhtmlFragment() BEFORE it reaches this view — that helper repairs
@@ -7,7 +7,7 @@
      {!! !!}, exactly like a rendered scene body. Rendered only when the description is non-empty,
      so a description-less entry never emits an empty element.
 
-     $imagePath (task 13 — step 2) is the entry's FIRST media image, already packaged by
+     $imagePath is the entry's FIRST media image, already packaged by
      EpubExporter::addAppendixEntryImage() (gated by `appendix_include_images`, embedded via
      CoverImageService + the library file API, missing file skipped in the service). It is null
      when images are off, the entry has no image, or the backing file was missing — in which case

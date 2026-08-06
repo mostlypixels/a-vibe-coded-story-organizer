@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
- * The admin "Revisions" page (task 13): the RevisionSetting retention form
+ * The admin "Revisions" page: the RevisionSetting retention form
  * (confirm-gated when lowering the window) and the "Revision storage" panel's
  * per-category counts + bulk-delete actions.
  *
@@ -110,8 +110,8 @@ class RevisionSettingController extends Controller
      * Per-category counts + SUM(size_bytes), for the storage panel. Reuses
      * RevisionPurger's own dry-run query (rather than a second, hand-rolled
      * query) so the panel's figures can never drift from what a bulk-delete
-     * button actually removes — and, per 00-overview.md's read rule, never
-     * hydrates `value`.
+     * button actually removes. It never hydrates `value`: list queries read
+     * scalar columns only.
      *
      * @return array<string, RevisionPurgeResult>
      */

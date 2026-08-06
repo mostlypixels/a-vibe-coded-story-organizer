@@ -27,7 +27,7 @@
             </div>
 
             <div>
-                {{-- Autosave only applies once the entry exists (task 9's scope note): the
+                {{-- Autosave only applies once the entry exists: the
                      autosave endpoint PATCHes an existing row, so the create form (no id
                      yet) keeps the plain x-wysiwyg it always had, submitted with the rest
                      of the form on "Create". --}}

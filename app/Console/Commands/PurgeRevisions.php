@@ -12,7 +12,7 @@ use InvalidArgumentException;
  * destructive counterpart to the daily `model:prune` sweep (routes/console.php).
  *
  * Owns no purge rules itself: it only parses CLI options and reports what the
- * service did. The "Revision storage" admin panel (task 13) is the other
+ * service did. The "Revision storage" admin panel is the other
  * caller of the same service, so the rules can never drift between the two
  * entry points.
  */

@@ -15,12 +15,11 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 /**
- * The one implementation of "put an older value back" (task 16,
- * expanded/architecture.md "App\Services\RevisionReverter").
+ * The one implementation of "put an older value back"
+ * (expanded/architecture.md "App\Services\RevisionReverter").
  *
- * Extracted from RevisionController::revert() so the single-field revert and the
- * whole-save undo (task 17) cannot drift: both run the same four steps, in the
- * same order, and any rule added here applies to both by construction.
+ * The single-field revert and the whole-save undo cannot drift. Both run the
+ * same four steps, in the same order, so any rule added here applies to both.
  *
  * Every revert is **additive**. Nothing in the history is edited or deleted —
  * the value being reverted away from stays exactly where it is, and the restored
@@ -58,11 +57,11 @@ class RevisionReverter
 
     /**
      * Undo a whole save: put every field it touched back to the value it held
-     * *before* it, and return the restored field names (task 17).
+     * *before* it, and return the restored field names.
      *
      * **Only the fields that save touched.** Never a whole-entity rollback to
      * that moment — that would silently discard unrelated later edits to other
-     * fields, which is a different and much larger promise (grill decision 9).
+     * fields, which is a different and much larger promise.
      *
      * **All-or-nothing.** One transaction, and every base hash is verified
      * before anything at all is written: a half-applied undo — some fields back,

@@ -12,10 +12,8 @@ use Illuminate\Http\RedirectResponse;
  * form (toggles, enums, appendix types) — and reorders its front/back-matter
  * `section_order` list.
  *
- * The EPUB exporter does not consume PublicationSetting yet (that lands in
- * task 08+); this controller only owns the write path, mirroring
- * ImportSettingController's thin resolve -> authorize -> persist -> redirect
- * shape.
+ * This controller owns the write path only. It mirrors ImportSettingController's
+ * thin resolve -> authorize -> persist -> redirect shape.
  */
 class PublicationSettingController extends Controller
 {

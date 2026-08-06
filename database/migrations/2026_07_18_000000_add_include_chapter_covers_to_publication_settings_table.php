@@ -5,12 +5,13 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Adds the `include_chapter_covers` toggle (task 12: full-page chapter cover images in the
- * epub), missed by the original create_publication_settings_table migration (task 01) the
- * same way `section_order` was — filled in here rather than editing the already-implemented
- * migration, since this task is the first real consumer. Defaults false: chapter covers are
- * a brand-new rendering, and overview decision #3 requires every new rendering toggle to
- * default off so a default project's export is unchanged.
+ * Adds the `include_chapter_covers` toggle — full-page chapter cover images in the
+ * epub. The original create_publication_settings_table migration missed it, the same
+ * way it missed `section_order`. A separate migration keeps that one untouched.
+ *
+ * It defaults to false. A full-page chapter cover is a new rendering, and every
+ * new rendering toggle defaults off, so a default project's export does not
+ * change.
  */
 return new class extends Migration
 {

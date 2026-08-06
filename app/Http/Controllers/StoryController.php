@@ -37,9 +37,9 @@ class StoryController extends Controller
         // Scenes are already eager-loaded above, so this sums an in-memory
         // collection — no query fires. Per-act/chapter totals are the same
         // ->sum() over the same loaded relations, computed where they're
-        // used in the view (word-count spec, task 8: "no wordCount()
-        // accessor" — summing explicitly keeps it visible that this is free
-        // only because the data is already in memory).
+        // used in the view. There is no `wordCount()` accessor: an explicit sum
+        // keeps it visible that this is free only because the data is already
+        // in memory.
         $wordCount = $acts->sum(
             fn ($act) => $act->chapters->sum(
                 fn ($chapter) => $chapter->scenes->sum('word_count'),
