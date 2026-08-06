@@ -863,8 +863,8 @@ class EpubExporterTest extends TestCase
 
     /**
      * Invoke one of EpubExporter's private validation methods directly. These ARE the
-     * safety net, so the task wants them tested in isolation with deliberately bad fixtures
-     * rather than only through the happy-path export.
+     * safety net, so they get their own fixtures — bad ones and good ones — rather
+     * than only the happy-path export.
      */
     private function invokePrivate(string $method, mixed ...$args): mixed
     {
@@ -1390,7 +1390,7 @@ class EpubExporterTest extends TestCase
     /**
      * Resolve the OPF's spine, in reading order, to the manifest hrefs it points at — the
      * same pattern {@see test_front_matter_spine_order_is_title_then_toc_then_story()} uses,
-     * extracted here so the new task-11 tests can reuse it.
+     * extracted here so the other spine-order tests can reuse it.
      *
      * @return array<int, string|null>
      */

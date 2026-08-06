@@ -406,16 +406,18 @@ class FieldAutosaveTest extends TestCase
     }
 
     /**
-     * The reconciliation contract this feature exists for: the JS counter is
-     * indicative and does not strip fenced code blocks, so the response is what
-     * tells it "6, not 11" once the fence is excluded.
+     * The reconciliation contract this feature exists for. The JS counter is
+     * indicative and keeps the words inside a fenced code block. The response is
+     * what tells it "6, not 11".
      *
-     * The expected count (6) is hand-counted from the prose alone, deliberately
-     * chosen to differ from what a naive whitespace split of the raw, unrendered
-     * markdown would produce (13 tokens, or 11 once bare `` ``` `` markers are
-     * dropped as non-words) — a controller that stopped reading the
-     * fence-stripped, rendered count would fail this assertion, not merely
-     * satisfy a looser one.
+     * 11 is what the live counter reports for this fixture. `contents` is a
+     * Markdown field, so it renders as `<x-wysiwyg>` and the counter reads
+     * Tiptap's `getText()` — the `` ``` `` markers are gone, the five code words
+     * are not.
+     *
+     * The expected 6 is hand-counted from the prose alone. A controller that
+     * stopped reading the fence-stripped, rendered count would fail this
+     * assertion, not merely satisfy a looser one.
      */
     public function test_a_fenced_code_block_is_excluded_from_the_response_word_count(): void
     {
@@ -455,7 +457,8 @@ class FieldAutosaveTest extends TestCase
     }
 
     /**
-     * This task adds a key; it must not reshape the existing payload.
+     * `word_count` is an addition to the response; it must not reshape the rest
+     * of the payload.
      */
     public function test_word_count_is_added_alongside_the_existing_response_keys(): void
     {

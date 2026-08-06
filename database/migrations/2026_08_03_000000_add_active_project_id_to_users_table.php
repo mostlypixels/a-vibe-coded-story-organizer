@@ -5,9 +5,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * `users.active_project_id` — the last project page the user successfully loaded
- * (active-project spec, `.specs/planned/2026-08/active-project`). Drives the nav
- * fallback everywhere, including pages with no project in the URL.
+ * `users.active_project_id` — the last project page the user successfully loaded.
+ * It drives the nav fallback everywhere, including pages with no project in the URL.
  *
  * Nullable + `nullOnDelete()`: deleting the active project unassigns it rather than
  * cascading, same shape as `scenes.event_id`

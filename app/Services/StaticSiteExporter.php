@@ -880,7 +880,8 @@ class StaticSiteExporter
     /**
      * Slug a name for a cosmetic directory/file segment, falling back to
      * 'untitled' when the name slugs to empty (e.g. a name of only punctuation).
-     * Reused by later tasks for entity directory names.
+     * {@see self::slugDir()} is the only caller: it builds every entity directory
+     * name from this.
      */
     private function slug(string $name): string
     {

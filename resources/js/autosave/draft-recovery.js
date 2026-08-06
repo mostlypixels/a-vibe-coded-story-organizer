@@ -93,12 +93,18 @@ export function registerDraftRecoveryModal(Alpine) {
         },
 
         /**
-         * Mirrors `field.js`'s current (pre-task-03) `restoreDraft()` mechanic
-         * exactly, just invoked from outside the field's own component instance:
-         * write the draft value into the field's real `<textarea>` and dispatch a
-         * bubbling `input` event so the mounted `autosaveField` (and, once inside
-         * `<x-wysiwyg>`, Tiptap's own hydration) picks it up the same way a
-         * keystroke would.
+         * Restores a draft from outside the field's own component instance. It
+         * writes the draft value into the field's real `<textarea>`, then
+         * dispatches a bubbling `input` event. The mounted `autosaveField` listens
+         * for `input` on its root (`field.js`), so it reacts as it does to a
+         * keystroke.
+         *
+         * > [!WARNING]
+         * > This updates the visible field only for a plain `<textarea>`. Inside
+         * > `<x-wysiwyg>`, Tiptap takes its content once, at `init()`, from
+         * > `textarea.value`; it listens to no `input` event. A restore into a
+         * > rich or Markdown field therefore moves the autosave state and the word
+         * > counter, and leaves the editor showing the old text.
          */
         restore(key) {
             const entry = this.entries.find((candidate) => candidate.key === key);

@@ -107,9 +107,8 @@ class Revision extends Model
      *
      * Expressed as "a strictly newer sibling exists" rather than as a grouped
      * subquery: it is the same portable SQL shape (no ROW_NUMBER() / PARTITION
-     * BY — not portable across sqlite/mysql/mariadb/pgsql/sqlsrv, see
-     * .specs/draft/multiple-database-engines), it states the rule the way the
-     * docblock above states it, and the existing
+     * BY — not portable across sqlite/mysql/mariadb/pgsql/sqlsrv), it states the
+     * rule the way the docblock above states it, and the existing
      * `(revisionable_type, revisionable_id, field, created_at)` index serves it.
      *
      * The sibling lookup is deliberately unfiltered by origin or label: a manual

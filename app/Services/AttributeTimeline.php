@@ -21,9 +21,9 @@ use RuntimeException;
  * timeline with no holes or overlaps by construction. See
  * .specs/shipped/2026-07/codex/expanded/attribute-timeline.md for the full rationale.
  *
- * This is the project's first app/Services class: the resolution logic is non-trivial,
- * reusable (model helpers, controllers in later tasks, the seeder) and must stay outside
- * booted() hooks because the seeder runs WithoutModelEvents.
+ * CodexEntry's value helper and the codex controllers read through this class; the
+ * controllers and the seeders also write through it. It must stay outside the model's
+ * booted() hooks: the seeders run WithoutModelEvents, so a hook never fires for them.
  */
 class AttributeTimeline
 {

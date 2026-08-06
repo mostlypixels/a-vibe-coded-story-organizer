@@ -35,8 +35,10 @@ use Illuminate\View\View;
  * AutosavableFields::slugFor(), since a Revision's polymorphic
  * `revisionable_type` is always a real, already-registered model class.
  *
- * Retention is not this class's concern: RevisionSettingController owns the setting
- * and its confirm step, and the PurgeRevisions console command does the deletion.
+ * Retention is not this class's concern. RevisionSettingController owns the
+ * setting and its confirm step. The daily `model:prune` sweep deletes what
+ * Revision::prunable() matches. The `revisions:purge` command and the storage
+ * panel do the explicit bulk deletes, both through RevisionPurger.
  *
  * `index`/`compare` also supply their own breadcrumb trail tail (`revisionsTrail()`
  * below) — the one documented exception to the app's central, route-driven
@@ -410,13 +412,13 @@ class RevisionController extends Controller
      * capability**: authorization still walks from the group's entity up to its
      * owning Project, exactly as every other action here does.
      *
-     * **The current save point can be undone like any other.** The plan said to
-     * refuse it, inherited from the per-field revert where the rule is right —
-     * "Revert to this" on the newest revision restores the value already in the
-     * column, a real no-op. Undo runs the other way: it restores what came
-     * *before* the save, so undoing the newest one is the most useful case there
-     * is ("undo what I just saved"), and it is what lets an undo be undone in
-     * turn.
+     * **The current save point can be undone like any other.** The per-field revert
+     * does not *offer* "Revert to this" on the current version, and that is right
+     * for it: the value is already in the column, so the action is a no-op.
+     *
+     * Undo runs the other way. It restores what came *before* the save, so the
+     * newest save point is the most useful case there is ("undo what I just
+     * saved"). It is also what lets an undo be undone in turn.
      */
     public function revertSave(Request $request, string $save, RevisionReverter $reverter): RedirectResponse
     {

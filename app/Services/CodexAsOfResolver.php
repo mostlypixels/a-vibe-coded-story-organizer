@@ -14,9 +14,8 @@ use Illuminate\Support\Collection;
  * codex entry in the project, with each of its applicable attributes resolved to the value
  * in effect at a given moment, grouped by entry type for display.
  *
- * This is the second app/Services class (after AttributeTimeline): the same resolution +
- * grouping is needed by both SceneController and EventController, so the presentation
- * workflow lives here rather than being duplicated in each controller (guidelines: extract
+ * SceneController and EventController both need the same resolution and grouping, so the
+ * presentation workflow lives here rather than in each controller (guidelines: extract
  * once there is a real second caller). The timeline rule itself stays in AttributeTimeline.
  */
 class CodexAsOfResolver
