@@ -15,6 +15,7 @@ use App\Support\Crumb;
 use App\Support\ProjectNavigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -249,5 +250,42 @@ class BreadcrumbsTest extends TestCase
         $this->assertTrue($breadcrumbs->isEmpty());
         $this->assertCount(0, $breadcrumbs);
         $this->assertSame([], $this->summarize($breadcrumbs));
+    }
+
+    /**
+     * Tools is the one section whose sub-pages are not a single entity family,
+     * so the trail names each one explicitly. A Tools route with no branch of
+     * its own gets no trail — the layout then shows the page's own header. The
+     * catch-all this replaces labelled every such page "Revisions".
+     *
+     * The route is registered here because the bug only appears for a Tools
+     * route that does not exist yet.
+     */
+    public function test_an_unmapped_tools_route_yields_no_trail(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        Route::middleware(['web', 'auth'])
+            ->get('/projects/{project}/tools/unmapped', fn (Project $project) => '')
+            ->name('projects.tools.unmapped');
+
+        // The name lookup is built once at boot, so a route added here is
+        // invisible to route() until it is rebuilt.
+        Route::getRoutes()->refreshNameLookups();
+
+        $breadcrumbs = $this->breadcrumbsFor('projects.tools.unmapped', [$project]);
+
+        $this->assertTrue($breadcrumbs->isEmpty(), 'An unmapped Tools route must not inherit the Revisions label.');
+    }
+
+    public function test_the_revisions_browser_keeps_its_tools_trail(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        $this->assertSame([
+            [__('Dashboard'), route('projects.show', $project), false],
+            [__('Tools'), route('projects.tools.home', $project), false],
+            [__('Revisions'), null, true],
+        ], $this->summarize($this->breadcrumbsFor('projects.revisions.index', [$project])));
     }
 }

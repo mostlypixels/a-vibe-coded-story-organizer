@@ -73,16 +73,24 @@ class Breadcrumbs implements Countable, IteratorAggregate
             return [new Crumb(__('Dashboard'), current: true)];
         }
 
-        $dashboard = new Crumb(__('Dashboard'), route('projects.show', $project));
-
-        return match (true) {
-            $navigation->searchActive => [$dashboard, new Crumb(__('Search'), current: true)],
-            $navigation->storyActive => [$dashboard, ...$this->storyTrail($project, $request)],
-            $navigation->timelineActive => [$dashboard, ...$this->timelineTrail($project, $request)],
-            $navigation->codexActive => [$dashboard, ...$this->codexTrail($navigation, $project, $request)],
-            $navigation->toolsActive => [$dashboard, ...$this->toolsTrail($project, $request)],
+        $section = match (true) {
+            $navigation->searchActive => [new Crumb(__('Search'), current: true)],
+            $navigation->storyActive => $this->storyTrail($project, $request),
+            $navigation->timelineActive => $this->timelineTrail($project, $request),
+            $navigation->codexActive => $this->codexTrail($navigation, $project, $request),
+            $navigation->toolsActive => $this->toolsTrail($project, $request),
             default => [],
         };
+
+        // A section that cannot name the page produces no trail at all, not a
+        // lone Dashboard crumb. A trail is either empty or it ends in the
+        // current page, and the layout falls back to the page's own `header`
+        // slot for the empty case.
+        if ($section === []) {
+            return [];
+        }
+
+        return [new Crumb(__('Dashboard'), route('projects.show', $project)), ...$section];
     }
 
     /**
@@ -217,10 +225,21 @@ class Breadcrumbs implements Countable, IteratorAggregate
             return [new Crumb(__('Tools'), current: true)];
         }
 
-        return [
-            new Crumb(__('Tools'), route('projects.tools.home', $project)),
-            new Crumb(__('Revisions'), current: true),
-        ];
+        if ($request->routeIs('projects.revisions.*')) {
+            return [
+                new Crumb(__('Tools'), route('projects.tools.home', $project)),
+                new Crumb(__('Revisions'), current: true),
+            ];
+        }
+
+        // > [!WARNING]
+        // > A new tool needs its own branch above. Each sibling trail names the
+        // > page it labels; this one must too. An unmatched Tools route gets an
+        // > empty trail, so the layout falls back to the page's own `header`
+        // > slot — the same result as build()'s `default`. A missing trail is
+        // > visible. A trail that says "Revisions" on a page about something
+        // > else is not.
+        return [];
     }
 
     /**

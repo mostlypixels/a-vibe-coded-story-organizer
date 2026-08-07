@@ -57,33 +57,35 @@ export default defineConfig({
             // Vite already ignores .git, node_modules and the build output. These
             // are the rest of the tree that no entry point, Tailwind source or HMR
             // input reaches, so watching them only buys walk cost and false
-            // reloads. Cost is not file count — it is which filesystem the files
-            // sit on. `vendor` holds 17k files but is an anonymous volume on the
-            // container's own disk and walks in 0.06s; everything below is on the
-            // Windows/macOS bind mount, where one pass measured:
+            // reloads.
             //
-            //   storage 14.01s   .claude 2.54s   .specs 0.68s
+            // Cost is not file count — it is which filesystem the files sit on.
+            // `vendor` holds more files than everything below put together, but it
+            // is an anonymous volume on the container's own disk, and a pass over
+            // it is too cheap to measure. The paths below are on the Windows/macOS
+            // bind mount, where a pass costs seconds.
             //
-            // against 0.20s for `app` and 0.24s for `resources`. `storage` alone
-            // is ~79% of the walk — mostly storage/app/exports, the generated
-            // zip/epub downloads that pile up from test and dev runs.
+            // `storage` dominates, and it grows back: storage/app/exports keeps one
+            // zip or epub per export, and the test suite writes there too. Measured
+            // on 2026-08-07, a bind-mount pass over a storage tree of ~19k files
+            // took 14s on its own. Treat that as an order of magnitude, not a
+            // constant — the number tracks how much junk has piled up since the
+            // last clear-out.
             //
-            // The polling watcher below re-walks all of it every interval, and a
-            // cold start walks it before the first stylesheet is served, which is
-            // the "page hangs on load" symptom: the browser blocks on app.css
-            // while Vite is still walking. Measured on the dev container, two
-            // runs each, same procedure: 74.2s/74.6s before, 49.7s/49.7s after.
-            //
-            // The remaining ~50s is Tailwind's own scan over the bind mount, not
-            // the watcher. Clearing storage/app/exports is the other half.
+            // > [!WARNING]
+            // > This is the "page hangs on load" symptom. A cold start walks the
+            // > tree before it serves the first stylesheet, so the browser blocks
+            // > on app.css with no error anywhere. The polling watcher then
+            // > re-walks the same tree every interval. If dev feels slow again,
+            // > measure the walk before you suspect the dependencies.
             //
             // .idea and bootstrap/cache earn their place for churn, not size —
             // PhpStorm and artisan rewrite them constantly, and each write was a
             // spurious full page reload.
             //
             // `vendor` is deliberately absent: app.css has an @source glob into
-            // laravel/framework's pagination views, and at 0.06s a pass there is
-            // nothing to win by risking it.
+            // laravel/framework's pagination views, and a pass there is too cheap
+            // to be worth the risk.
             ignored: [
                 '**/storage/**',
                 '**/.claude/**',

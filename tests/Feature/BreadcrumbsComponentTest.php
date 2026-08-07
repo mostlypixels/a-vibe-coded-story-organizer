@@ -104,4 +104,26 @@ class BreadcrumbsComponentTest extends TestCase
         $this->assertStringContainsString('<nav aria-label="Breadcrumb"', $rendered);
         $this->assertStringNotContainsString('<li', $rendered);
     }
+
+    /**
+     * Crumb permits `url` and `current` together, so the marker must not
+     * depend on which branch renders it. A fixture is the only way here: the
+     * central builder never links a current crumb.
+     */
+    public function test_a_current_crumb_that_also_links_keeps_its_marker(): void
+    {
+        $rendered = $this->render('<x-breadcrumbs :items="$items" />', [
+            'items' => [
+                new Crumb('Dashboard', '/projects/1'),
+                new Crumb('Revisions', '/projects/1/revisions', current: true),
+            ],
+        ]);
+
+        $this->assertMatchesRegularExpression(
+            '/<a[^>]*aria-current="page"[^>]*>\s*Revisions/',
+            $rendered,
+            'A crumb that is both a link and the current page must still carry aria-current.',
+        );
+        $this->assertSame(1, substr_count($rendered, 'aria-current'));
+    }
 }
