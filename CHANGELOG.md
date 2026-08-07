@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-07 — Markdown parser security update
+
+### Changed
+
+- Updated the Markdown parser, closing a flaw where crafted Markdown could hang the server.
+
 ## 2026-08-07 — Autosave no longer mirrors drafts to localStorage (#83)
 
 ### Removed
