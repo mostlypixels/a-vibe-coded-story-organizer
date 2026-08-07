@@ -14,8 +14,8 @@
 /** Disables the up button on the first scene and the down button on the
  *  last, matching `:disabled="$loop->first"` / `:disabled="$loop->last"` at
  *  render time — re-run after every successful move since the ends change. */
-export function updateSceneMoveButtons(article) {
-    const sections = article.querySelectorAll(':scope > section');
+export function updateSceneMoveButtons(container) {
+    const sections = container.querySelectorAll(':scope > section');
 
     sections.forEach((section, index) => {
         const up = section.querySelector('[data-move="up"]');
@@ -41,12 +41,18 @@ export function updateSceneMoveButtons(article) {
  * swapping the nodes too would cancel that move right back out and leave the
  * numbers exactly where they started. Swapping only the text is what makes
  * the visually-reordered sections show the right numbers.
+ *
+ * > [!WARNING]
+ * > The container is the section's own parent, never a tag looked up by name.
+ * > The scenes sit in a plain wrapper inside `x-collapsible-card`, and that
+ * > card is free to change shape. `previousElementSibling` is already
+ * > parent-relative, so the parent is the only element the swap can use.
  */
 export async function moveScene(button, url, direction) {
     if (button.disabled) return;
 
     const section = button.closest('section');
-    const article = section.closest('article');
+    const container = section.parentElement;
     const sibling = direction === 'up' ? section.previousElementSibling : section.nextElementSibling;
 
     if (!sibling || sibling.tagName !== 'SECTION') return;
@@ -67,10 +73,10 @@ export async function moveScene(button, url, direction) {
     }
 
     if (direction === 'up') {
-        article.insertBefore(section, sibling);
+        container.insertBefore(section, sibling);
     } else {
-        article.insertBefore(sibling, section);
+        container.insertBefore(sibling, section);
     }
 
-    updateSceneMoveButtons(article);
+    updateSceneMoveButtons(container);
 }

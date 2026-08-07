@@ -8,16 +8,21 @@
 /*
   v4 scans the whole project for class names instead of reading v3's `content`
   array, and it does not care whether a file can render HTML: a utility merely
-  *named* in Markdown prose becomes a real rule in the stylesheet. Our specs and
-  docs discuss class names constantly, so without these exclusions the build
-  ships utilities no template uses (`.caret-transparent` and `.indent-8` from a
-  throwaway probe described in a log, for instance).
+  *named* in Markdown prose becomes a real rule in the stylesheet. Our specs,
+  docs and agent prompts discuss class names constantly, so without these
+  exclusions the build ships utilities no template uses (`.caret-transparent`
+  and `.indent-8` from a throwaway probe described in a log, for instance).
 
   Excluded rather than narrowed to `resources/`: auto-detection is what keeps a
   new Blade file working with no config, and that is worth keeping.
+
+  `.claude` is the same case as the other two and was simply missed — it is
+  tracked, so nothing in .gitignore prunes it, and at ~950 files of prompts and
+  skills it is the largest body of prose in the repo.
 */
 @source not '../../.specs';
 @source not '../../documentation';
+@source not '../../.claude';
 
 @theme {
   --font-sans:
