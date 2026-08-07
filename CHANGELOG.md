@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-07 — Dependency updates, closing the remaining security advisories
+## 2026-08-07 — Dependency updates, closing the remaining security advisories (#85)
 
 ### Changed
 
