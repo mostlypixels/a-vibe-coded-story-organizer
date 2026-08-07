@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fieldKeyFor, registerAutosaveField, shouldAutosave } from './field';
+import { DEBOUNCE_MS, fieldKeyFor, registerAutosaveField, shouldAutosave } from './field';
 
 /**
  * Minimal Alpine stand-in for `registerAutosaveField()`'s `store()`/`data()` calls —
@@ -121,6 +121,70 @@ describe('registerAutosaveField store dirty tracking', () => {
         // synchronously by onInput(), well before any PATCH fires.
         expect(Alpine.store('autosave').dirty[field.key]).toBe(true);
         expect(Alpine.store('autosave').isDirty()).toBe(true);
+    });
+
+    /**
+     * The editor half of the dirty gate. A wysiwyg field fires no `input` event of its
+     * own: `syncTextarea()` assigns `textarea.value`, and ProseMirror applies Delete,
+     * the toolbar and undo as transactions. `wysiwyg:text-changed` is the only signal
+     * that reaches this component, so an edit made that way must autosave too.
+     */
+    function mountEditorField(config) {
+        const { field, textarea } = mountField(config);
+        const editor = document.createElement('div');
+        textarea.parentNode.appendChild(editor);
+
+        /** What wysiwyg.js's `onUpdate` does: assign the value, then announce it. */
+        const edit = (value) => {
+            textarea.value = value;
+            editor.dispatchEvent(new CustomEvent('wysiwyg:text-changed', { detail: { text: value }, bubbles: true }));
+        };
+
+        return { field, textarea, edit };
+    }
+
+    it('an edit made in the editor marks the field dirty, though it fires no input event', () => {
+        vi.useFakeTimers();
+
+        const { field, edit } = mountEditorField({ entity: 'scene', id: 42, field: 'notes', url: '/scenes/42', baseHash: 'abc' });
+
+        edit('<p>written in the editor</p>');
+
+        expect(Alpine.store('autosave').dirty[field.key]).toBe(true);
+        expect(Alpine.store('autosave').isDirty()).toBe(true);
+    });
+
+    it('clearing the editor autosaves the empty value, rather than leaving the old text stored', async () => {
+        vi.useFakeTimers();
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
+        };
+
+        const { edit } = mountEditorField({ entity: 'scene', id: 42, field: 'notes', url: '/scenes/42', baseHash: 'abc' });
+
+        edit('<p>to be deleted</p>');
+        await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+        // Select-all then Delete. `syncTextarea()` maps an empty document to '', so
+        // this is what the writer expects the server to store.
+        edit('');
+        await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+        expect(window.axios.patch).toHaveBeenCalledTimes(2);
+        expect(window.axios.patch.mock.calls[1][1]).toMatchObject({ value: '' });
+    });
+
+    it('destroy() stops the editor event autosaving into a torn-down field', () => {
+        vi.useFakeTimers();
+        window.axios = { patch: vi.fn() };
+
+        const { field, edit } = mountEditorField({ entity: 'scene', id: 42, field: 'notes', url: '/scenes/42', baseHash: 'abc' });
+
+        field.destroy();
+        edit('<p>after teardown</p>');
+        vi.advanceTimersByTime(DEBOUNCE_MS);
+
+        expect(window.axios.patch).not.toHaveBeenCalled();
     });
 
     it('a successful save clears store.dirty[key] back to false', async () => {
