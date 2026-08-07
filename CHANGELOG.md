@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-07 — Dependency updates, closing the remaining security advisories (#85)
+
+### Changed
+
+- Updated the PHP and JavaScript dependencies, closing every open security advisory.
+- Held the test runner at its current minor version: the newest one does not work with the parallel test tool.
+
 ## 2026-08-07 — Markdown parser security update (#84)
 
 ### Changed
