@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-07 — Editor edits that are not typing now autosave
+## 2026-08-07 — Editor edits that are not typing now autosave (#86)
 
 ### Fixed
 
