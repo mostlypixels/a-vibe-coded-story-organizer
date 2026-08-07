@@ -10,7 +10,8 @@
  * (`resources/js/navigation-guard.js`) is what stops the writer leaving with it.
  *
  * Dirty-only, a binding rule: nothing here
- * fires a PATCH, not even a debounce tick, until a real `input` event has been seen.
+ * fires a PATCH, not even a debounce tick, until a real edit event has been seen —
+ * `input` from a plain field, `wysiwyg:text-changed` from an editor (see `init()`).
  * Opening a record to read it writes nothing.
  *
  * The underlying value is always read via `this.$root.querySelector('textarea')`,
@@ -104,7 +105,15 @@ export function registerAutosaveField(Alpine) {
             this._onKeydown = (event) => this.onKeydown(event);
             this._onWindowFocus = () => this.replayIfQueued();
 
+            // Two edit signals, because a wysiwyg field gives no `input` event of its
+            // own. `syncTextarea()` assigns `textarea.value` directly, and an assignment
+            // fires nothing. ProseMirror also applies Delete, Backspace, the toolbar and
+            // undo as transactions, which the browser does not report as input either.
+            // Typed characters are the one case that does bubble a native `input` here.
+            // `wysiwyg:text-changed` covers all of the others — word-count.js reads the
+            // same event for the same reason.
             this.$root.addEventListener('input', this._onInput);
+            this.$root.addEventListener('wysiwyg:text-changed', this._onInput);
             this.$root.addEventListener('focusout', this._onFocusOut);
             this.$root.addEventListener('keydown', this._onKeydown);
             window.addEventListener('focus', this._onWindowFocus);
@@ -113,6 +122,7 @@ export function registerAutosaveField(Alpine) {
 
         destroy() {
             this.$root.removeEventListener('input', this._onInput);
+            this.$root.removeEventListener('wysiwyg:text-changed', this._onInput);
             this.$root.removeEventListener('focusout', this._onFocusOut);
             this.$root.removeEventListener('keydown', this._onKeydown);
             window.removeEventListener('focus', this._onWindowFocus);

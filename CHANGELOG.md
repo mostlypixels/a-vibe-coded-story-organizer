@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-07 — Editor edits that are not typing now autosave
+
+### Fixed
+
+- Deleting all the text in a rich-text field is saved automatically; the old text no longer stays stored.
+- Toolbar formatting, Delete, Backspace and undo in an editor now autosave, as typing already did.
+
 ## 2026-08-07 — Dependency updates, closing the remaining security advisories (#85)
 
 ### Changed
