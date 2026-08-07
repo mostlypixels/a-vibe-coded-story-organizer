@@ -18,7 +18,10 @@
         @foreach ($items as $crumb)
             <li class="flex items-center gap-1 min-w-0">
                 @if ($crumb->url)
-                    <a href="{{ $crumb->url }}" class="hover:underline truncate max-w-[16rem]">{{ $crumb->label }}</a>
+                    {{-- aria-current sits on both branches, not only the plain
+                         one. Crumb permits `url` and `current` together, so the
+                         marker must not depend on which branch renders. --}}
+                    <a href="{{ $crumb->url }}" @if ($crumb->current) aria-current="page" @endif class="hover:underline truncate max-w-[16rem]">{{ $crumb->label }}</a>
                 @else
                     <span
                         @if ($crumb->current) aria-current="page" @endif
