@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-07 — Scene reordering, development-server fonts, and a faster watcher
+## 2026-08-07 — Scene reordering, development-server fonts, and a faster watcher (#87)
 
 ### Fixed
 
