@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DRAFT_TTL_MS, STATES, isDraftExpired, mapResponse, retryDelayMs, scheduleRetry, triageDraft, worstState } from './store.js';
+import { STATES, mapResponse, retryDelayMs, scheduleRetry, worstState } from './store.js';
 
 /**
  * Tests for `resources/js/autosave/store.js` — the pure decision logic behind
@@ -146,58 +146,5 @@ describe('scheduleRetry — fake-timer-driven, no real waits', () => {
         vi.advanceTimersByTime(4_000);
 
         expect(callback).toHaveBeenCalledTimes(1);
-    });
-});
-
-describe('triageDraft — localStorage discard rule', () => {
-    it('drops silently when the draft matches the current server value', () => {
-        const draft = { value: 'same text', baseHash: 'irrelevant', savedAt: '2026-07-21T14:02:00Z' };
-        const server = { value: 'same text', hash: 'anything' };
-
-        expect(triageDraft(draft, server)).toBe('drop-silently');
-    });
-
-    it('offers a restore when the base hash still matches the server value', () => {
-        const draft = { value: 'unsaved edit', baseHash: 'hash-of-server-value', savedAt: '2026-07-21T14:02:00Z' };
-        const server = { value: 'server value at load time', hash: 'hash-of-server-value' };
-
-        expect(triageDraft(draft, server)).toBe('offer-restore');
-    });
-
-    it('offers compare-only, never a bare restore, when the server moved on', () => {
-        const draft = { value: 'unsaved edit from laptop', baseHash: 'hash-of-old-value', savedAt: '3 weeks ago' };
-        const server = { value: 'newer text written on desktop since', hash: 'hash-of-newer-value' };
-
-        expect(triageDraft(draft, server)).toBe('offer-compare-only');
-    });
-});
-
-describe('isDraftExpired — 4-hour flat TTL', () => {
-    it('is false for a draft well within the TTL', () => {
-        const now = 1_000_000;
-        const draft = { savedAt: now - DRAFT_TTL_MS / 2 };
-
-        expect(isDraftExpired(draft, now)).toBe(false);
-    });
-
-    it('is false exactly at the TTL boundary (strictly greater-than, not equal, expires)', () => {
-        const now = 1_000_000;
-        const draft = { savedAt: now - DRAFT_TTL_MS };
-
-        expect(isDraftExpired(draft, now)).toBe(false);
-    });
-
-    it('is true one millisecond past the TTL boundary', () => {
-        const now = 1_000_000;
-        const draft = { savedAt: now - DRAFT_TTL_MS - 1 };
-
-        expect(isDraftExpired(draft, now)).toBe(true);
-    });
-
-    it('is true for a draft written long ago', () => {
-        const now = 1_000_000;
-        const draft = { savedAt: now - DRAFT_TTL_MS * 10 };
-
-        expect(isDraftExpired(draft, now)).toBe(true);
     });
 });

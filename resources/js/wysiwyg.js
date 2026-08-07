@@ -539,8 +539,8 @@ export function registerWysiwyg(Alpine) {
                 // closure variable for the same ProseMirror-proxy reason described
                 // above, and lives in its own, separately-mounted Alpine scope.
                 // A bubbling CustomEvent is the arm's
-                // -length channel between the two, mirroring how field.js already
-                // talks to navigation-guard.js via `autosave:explicit-leave`.
+                // -length channel between the two, the same pattern word-count.js
+                // uses to talk back via `word-count:reconcile`.
                 // `getText()` is already *rendered* text in both formats (see this
                 // file's own docblock on Markdown mode), so the counter never has
                 // to know it's reading a ProseMirror document.

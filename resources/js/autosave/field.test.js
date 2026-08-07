@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearDraft, readDraft, registerAutosaveField, shouldAutosave, storageKeyFor, writeDraft } from './field';
+import { fieldKeyFor, registerAutosaveField, shouldAutosave } from './field';
 
 /**
  * Minimal Alpine stand-in for `registerAutosaveField()`'s `store()`/`data()` calls —
@@ -32,29 +32,21 @@ function createAlpineStub() {
 }
 
 /**
- * The DOM-free logic: the localStorage key-building for both the
- * existing-entity and `new:` create-form shapes, the dirty-only gating function,
- * and the localStorage draft mirror itself. Everything requiring a real Alpine
- * mount (debounce timers wired to DOM events, the axios round-trip) is left to
- * the manual checklist, matching
+ * The DOM-free logic: the store-map key builder and the dirty-only gating
+ * function. Everything requiring a real Alpine mount (debounce timers wired to
+ * DOM events, the axios round-trip) is left to the manual checklist, matching
  * wysiwyg.test.js's precedent of only unit-testing the DOM-free logic.
  */
-describe('storageKeyFor', () => {
-    it('keys an existing entity as entity:id:field', () => {
-        expect(storageKeyFor({ entity: 'scene', id: 42, field: 'contents' })).toBe('scene:42:contents');
+describe('fieldKeyFor', () => {
+    it('keys a field as entity:id:field', () => {
+        expect(fieldKeyFor({ entity: 'scene', id: 42, field: 'contents' })).toBe('scene:42:contents');
     });
 
-    it('keys a create form as new:entity:parentId:field, with no id required', () => {
-        expect(storageKeyFor({ entity: 'scene', id: null, parentId: 7, field: 'contents' })).toBe(
-            'new:scene:7:contents',
-        );
-    });
+    it('never collides two fields of the same entity', () => {
+        const contents = fieldKeyFor({ entity: 'scene', id: 42, field: 'contents' });
+        const summary = fieldKeyFor({ entity: 'scene', id: 42, field: 'summary' });
 
-    it('never collides two create forms for different parents', () => {
-        const first = storageKeyFor({ entity: 'scene', id: undefined, parentId: 1, field: 'contents' });
-        const second = storageKeyFor({ entity: 'scene', id: undefined, parentId: 2, field: 'contents' });
-
-        expect(first).not.toBe(second);
+        expect(contents).not.toBe(summary);
     });
 });
 
@@ -71,41 +63,6 @@ describe('shouldAutosave', () => {
     it('is true only once the field is dirty and belongs to an existing entity', () => {
         expect(shouldAutosave(true, 42)).toBe(true);
     });
-});
-
-describe('draft mirror (readDraft/writeDraft/clearDraft)', () => {
-    afterEach(() => {
-        window.localStorage.clear();
-    });
-
-    it('round-trips a draft written to localStorage', () => {
-        writeDraft('scene:1:contents', { value: 'Hello', baseHash: 'abc', savedAt: 123 });
-
-        expect(readDraft('scene:1:contents')).toEqual({ value: 'Hello', baseHash: 'abc', savedAt: 123 });
-    });
-
-    it('returns null for a key that was never written', () => {
-        expect(readDraft('scene:404:contents')).toBeNull();
-    });
-
-    it('returns null instead of throwing on corrupt JSON', () => {
-        window.localStorage.setItem('scene:1:contents', '{not json');
-
-        expect(readDraft('scene:1:contents')).toBeNull();
-    });
-
-    it('clears a draft', () => {
-        writeDraft('scene:1:contents', { value: 'Hello', baseHash: 'abc', savedAt: 123 });
-        clearDraft('scene:1:contents');
-
-        expect(readDraft('scene:1:contents')).toBeNull();
-    });
-
-    // The quota-exceeded eviction path ("evict oldest-first on
-    // QuotaExceededError") is exercised by the manual checklist (testing.md), not
-    // here: jsdom's Storage implementation doesn't allow reliably stubbing
-    // setItem() to simulate QuotaExceededError from a unit test, so faking it
-    // would test the mock, not the browser behavior it's standing in for.
 });
 
 /**
@@ -289,39 +246,6 @@ describe('registerAutosaveField store dirty tracking', () => {
         expect(Alpine.store('autosave').dirty).not.toHaveProperty(field.key);
         expect(Alpine.store('autosave').fields).not.toHaveProperty(field.key);
         expect(Alpine.store('autosave').elements).not.toHaveProperty(field.key);
-        expect(Alpine.store('autosave').compareUrls).not.toHaveProperty(field.key);
-    });
-
-    it('init() sets store.compareUrls[key] from config.compareUrl, and destroy() removes it alongside store.elements[key]', () => {
-        const { field } = mountField({
-            entity: 'scene',
-            id: 43,
-            field: 'contents',
-            url: '/scenes/43',
-            baseHash: 'abc',
-            compareUrl: '/revisions/compare/43',
-        });
-
-        expect(Alpine.store('autosave').compareUrls[field.key]).toBe('/revisions/compare/43');
-
-        field.destroy();
-
-        expect(Alpine.store('autosave').compareUrls).not.toHaveProperty(field.key);
-    });
-
-    it('init() defaults store.compareUrls[key] to null when no compareUrl is configured (the revisions.compare route may not exist yet)', () => {
-        const { field } = mountField({ entity: 'scene', id: 44, field: 'contents', url: '/scenes/44', baseHash: 'abc' });
-
-        expect(Alpine.store('autosave').compareUrls[field.key]).toBeNull();
-    });
-
-    it('destroy() removes the beforeunload listener too', () => {
-        const removeSpy = vi.spyOn(window, 'removeEventListener');
-        const { field } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
-
-        field.destroy();
-
-        expect(removeSpy).toHaveBeenCalledWith('beforeunload', field._onBeforeUnload);
     });
 
     it('isDirty() is true when any registered field is dirty and false once none are', async () => {
@@ -351,15 +275,13 @@ describe('registerAutosaveField store dirty tracking', () => {
 });
 
 /**
- * The draft mirror moves from firing on every keystroke to firing once, at
- * `beforeunload`, and is suppressed entirely when the departure was an explicit
- * "leave anyway" via data-loss-warnings' nav guard.
- * Asserts on the actual `localStorage` contents (via `readDraft`), the same
- * observable surface `writeDraft`/`readDraft` already expose to other tests in this
- * file, rather than spying on `writeDraft` — it's called directly within field.js's
- * own module scope, not through the test file's imported binding.
+ * Regression guards for the removed draft mirror. They assert on
+ * `window.localStorage` itself rather than on a spy: there is no `writeDraft` left
+ * to spy on, and a spy that attaches to nothing passes for the wrong reason. The
+ * two moments that used to write a draft — departure and a settled save — are the
+ * two covered here.
  */
-describe('write-once-at-beforeunload', () => {
+describe('no localStorage writes', () => {
     let Alpine;
 
     beforeEach(() => {
@@ -388,51 +310,30 @@ describe('write-once-at-beforeunload', () => {
         return { field, textarea };
     }
 
-    // Each test below mounts its own field with a distinct `id` (and therefore a
-    // distinct storage key). This matters because `beforeunload` listeners are never
-    // torn down here (no `field.destroy()` call, matching this describe block's focus
-    // on the listener itself) — reusing an `id` across tests would let a still-live
-    // listener from an earlier test's field re-write its own draft when a later
-    // test's `beforeunload` dispatch fires, since `window.dispatchEvent` reaches every
-    // listener still registered on `window`, not just the field under test.
-
-    it('typing no longer writes a draft to localStorage', () => {
+    it('leaves localStorage empty when a dirty field receives beforeunload', () => {
         const { textarea } = mountField({ entity: 'scene', id: 1, field: 'contents', url: '/scenes/1', baseHash: 'abc' });
+
+        textarea.value = 'unsaved edit';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        window.dispatchEvent(new Event('beforeunload'));
+
+        expect(window.localStorage.length).toBe(0);
+    });
+
+    it('leaves localStorage empty when a dirty field saves successfully', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 2, field: 'contents', url: '/scenes/2', baseHash: 'abc' });
 
         textarea.value = 'hello';
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
 
-        expect(readDraft('scene:1:contents')).toBeNull();
-    });
+        await field.save({});
 
-    it('beforeunload on a dirty field writes the draft once, with the current value', () => {
-        const { field, textarea } = mountField({ entity: 'scene', id: 2, field: 'contents', url: '/scenes/2', baseHash: 'abc' });
-
-        textarea.value = 'unsaved edit';
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-
-        window.dispatchEvent(new Event('beforeunload'));
-
-        expect(readDraft(field.key)).toMatchObject({ value: 'unsaved edit', baseHash: 'abc' });
-    });
-
-    it('beforeunload on a clean field writes nothing', () => {
-        const { field } = mountField({ entity: 'scene', id: 3, field: 'contents', url: '/scenes/3', baseHash: 'abc' });
-
-        window.dispatchEvent(new Event('beforeunload'));
-
-        expect(readDraft(field.key)).toBeNull();
-    });
-
-    it('an explicit-leave suppresses the beforeunload write for every field', () => {
-        const { field, textarea } = mountField({ entity: 'scene', id: 4, field: 'contents', url: '/scenes/4', baseHash: 'abc' });
-
-        textarea.value = 'unsaved edit';
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-
-        window.dispatchEvent(new CustomEvent('autosave:explicit-leave'));
-        window.dispatchEvent(new Event('beforeunload'));
-
-        expect(readDraft(field.key)).toBeNull();
+        expect(field.dirty).toBe(false);
+        expect(window.localStorage.length).toBe(0);
     });
 });

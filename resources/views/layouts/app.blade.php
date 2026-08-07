@@ -109,7 +109,5 @@
                 </x-slot>
             </x-dialog>
         </div>
-
-        <x-autosave-draft-recovery-modal />
     </body>
 </html>
