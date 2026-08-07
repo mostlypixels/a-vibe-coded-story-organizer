@@ -77,36 +77,6 @@ class AutosaveFieldComponentTest extends TestCase
         $this->assertStringContainsString('data-format="markdown"', $html);
     }
 
-    public function test_data_hash_matches_the_currently_stored_value(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['description' => 'A specific value']);
-
-        $html = Blade::render(
-            '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
-            ['act' => $act],
-        );
-
-        $expectedHash = hash('sha256', 'A specific value');
-
-        $this->assertStringContainsString('data-hash="'.$expectedHash.'"', $html);
-    }
-
-    public function test_data_hash_of_an_empty_field_matches_the_empty_string_hash(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['description' => null]);
-
-        $html = Blade::render(
-            '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
-            ['act' => $act],
-        );
-
-        $this->assertStringContainsString('data-hash="'.hash('sha256', '').'"', $html);
-    }
-
     public function test_history_link_renders_now_that_the_revisions_route_exists(): void
     {
         // The revisions.index and revisions.compare routes exist, so the
@@ -147,11 +117,11 @@ class AutosaveFieldComponentTest extends TestCase
         $this->assertStringContainsString(str_replace('/', '\/', $expectedUrl), $html);
     }
 
-    public function test_the_inline_draft_banner_no_longer_renders(): void
+    public function test_no_draft_recovery_or_compare_config_renders(): void
     {
-        // The old inline per-field banner is gone. Draft recovery lives in the
-        // page-level <x-autosave-draft-recovery-modal>, mounted once in
-        // layouts/app.blade.php.
+        // The old inline per-field banner and the recovery modal it fed are
+        // both gone, and so is the compare-URL config and data-hash attribute
+        // that had no reader left once the modal was deleted.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $act = Act::factory()->for($project)->create(['description' => 'Hello world']);
@@ -163,23 +133,8 @@ class AutosaveFieldComponentTest extends TestCase
 
         $this->assertStringNotContainsString('data-autosave-draft-banner', $html);
         $this->assertStringNotContainsString('draftAction', $html);
-    }
-
-    public function test_compare_url_is_passed_into_the_alpine_config(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
-
-        $html = Blade::render(
-            '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
-            ['act' => $act],
-        );
-
-        $expectedUrl = route('revisions.compare', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']);
-
-        $this->assertStringContainsString('compareUrl:', $html);
-        $this->assertStringContainsString(str_replace('/', '\/', $expectedUrl), $html);
+        $this->assertStringNotContainsString('compareUrl:', $html);
+        $this->assertStringNotContainsString('data-hash=', $html);
     }
 
     /**

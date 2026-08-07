@@ -3,10 +3,9 @@
  * no Alpine, no axios) that holds the autosave state machine.
  *
  * The Alpine adapter (`resources/js/autosave/field.js`) is the thin layer that
- * fires the requests, touches `localStorage`, and updates
- * `Alpine.store('autosave')`. Every *decision* — which state to be in, how long
- * to wait before a retry, what to do with a stray `localStorage` draft — lives
- * here, so vitest can exercise it with no browser.
+ * fires the requests and updates `Alpine.store('autosave')`. Every *decision* —
+ * which state to be in, how long to wait before a retry — lives here, so vitest
+ * can exercise it with no browser.
  *
  * `scheduleRetry()` is the one function that is not a pure transform: it calls
  * `setTimeout`. It stays thin, so the adapter has one place to schedule a retry
@@ -176,48 +175,4 @@ export function retryDelayMs(attempt, retryAfterMs) {
  */
 export function scheduleRetry(callback, delayMs) {
     return setTimeout(callback, delayMs);
-}
-
-/**
- * How long a `localStorage` draft stays eligible for recovery, in milliseconds — a
- * flat 4-hour duration from `savedAt`, not a calendar-day boundary (a draft written
- * at 11:58pm keeps its full ~4 hours, it does not reset at midnight).
- */
-export const DRAFT_TTL_MS = 4 * 60 * 60 * 1000;
-
-/**
- * Read-time pre-filter in front of `triageDraft()`: an expired draft is treated
- * identically to "no draft" and never reaches the three-way triage below. `now`
- * is injectable so tests do not depend on the real clock.
- */
-export function isDraftExpired(draft, now = Date.now()) {
-    return now - draft.savedAt > DRAFT_TTL_MS;
-}
-
-/**
- * The three-way `localStorage` draft-triage decision. `draft` is what was
- * mirrored while typing (`{ value, baseHash, savedAt }`); `server` is the
- * value/hash the page just loaded (`{ value, hash }` — the hash the server
- * rendered for the current stored value, never client-computed).
- *
- * > [!WARNING]
- * > Never return a bare "restore" when the base hash does not match the current
- * > server value. A stale draft from a different session must never silently
- * > offer to clobber newer server text; it gets `offer-compare-only`.
- */
-export function triageDraft(draft, server) {
-    if (draft.value === server.value) {
-        // It landed (or was undone) — nothing to recover.
-        return 'drop-silently';
-    }
-
-    if (draft.baseHash === server.hash) {
-        // Genuinely unsaved work sitting on top of the value it was typed
-        // against — safe to offer a straight restore.
-        return 'offer-restore';
-    }
-
-    // The server has moved on since this draft was written; never offer to
-    // silently overwrite newer data.
-    return 'offer-compare-only';
 }

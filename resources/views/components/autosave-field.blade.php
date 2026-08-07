@@ -31,10 +31,8 @@
     $hash = hash('sha256', $currentValue);
     $autosaveUrl = route('autosave.update', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
 
-    // Links to this field's revision history and compare views (the History icon
-    // below, and the compare URL handed to the Alpine component for its own use).
+    // Link to this field's revision history (the History icon below).
     $historyUrl = route('revisions.index', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
-    $compareUrl = route('revisions.compare', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
 
     // The live counter's starting number. Computed the
     // same way as the stored `scenes.word_count` — Scene.contents just happens to
@@ -58,7 +56,6 @@
         url: @js($autosaveUrl),
         baseHash: @js($hash),
         initialValue: @js($currentValue),
-        compareUrl: @js($compareUrl),
     })"
     data-autosave-field="{{ $entity }}:{{ $model->id }}:{{ $field }}"
 >
@@ -105,7 +102,6 @@
                 id="{{ $field }}"
                 name="{{ $field }}"
                 rows="{{ $rows }}"
-                data-hash="{{ $hash }}"
                 form="{{ $form }}"
                 class="mt-1 block w-full"
             >{{ $currentValue }}</x-textarea>
@@ -116,7 +112,6 @@
                 :value="$currentValue"
                 :rows="$rows"
                 :markdown="$kind === FieldKind::Markdown"
-                data-hash="{{ $hash }}"
                 :form="$form"
             />
         @endif

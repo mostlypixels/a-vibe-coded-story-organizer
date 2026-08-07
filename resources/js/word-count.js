@@ -3,7 +3,7 @@
  * `resources/js/autosave/field.js` conceptually but knows nothing about it
  * directly — the two talk only through a DOM CustomEvent (see
  * `registerWordCount()`'s docblock below), the same arm's-length pattern
- * `navigation-guard.js` already uses for `autosave:explicit-leave`.
+ * `wysiwyg.js` uses to send its own text over via `wysiwyg:text-changed`.
  *
  * `countWords()` is deliberately the cheapest possible count: split on
  * whitespace, nothing else. No fence-stripping, no non-word filtering

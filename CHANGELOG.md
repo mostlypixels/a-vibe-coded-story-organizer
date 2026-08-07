@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-07 — Autosave no longer mirrors drafts to localStorage
+
+### Removed
+
+- The crash-recovery prompt offering to restore an unsaved draft after a reload.
+- Unsaved text is no longer kept in the browser's local storage; the warning before leaving a page with unsaved changes is unchanged.
+
 ## 2026-08-06 — Code comments no longer point at files that get deleted (#82)
 
 ### Added
