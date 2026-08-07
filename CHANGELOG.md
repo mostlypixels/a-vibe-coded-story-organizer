@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-07 — Scene reordering, development-server fonts, and a faster watcher
+
+### Fixed
+
+- Moving a scene up or down on the Story overview reorders the page again, instead of only saving.
+- Web fonts load in the development server, so pages no longer render there in a fallback family.
+
+### Changed
+
+- The development server starts faster and stops reloading the page on unrelated file changes.
+- The stylesheet no longer ships utility classes that only the agent prompts mention.
+
 ## 2026-08-07 — Editor edits that are not typing now autosave (#86)
 
 ### Fixed

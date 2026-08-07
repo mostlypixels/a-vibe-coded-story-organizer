@@ -13,6 +13,21 @@ export default defineConfig({
         // point the Laravel plugin declares.
         tailwindcss(),
     ],
+    // laravel-vite-plugin sets `publicDir: false`, so the dev server serves
+    // nothing from `public/`. app.css asks for `/fonts/*.woff2`, and in dev the
+    // browser loads that stylesheet from the Vite origin (:5173), so the font
+    // URLs resolve against :5173 too and 404 — the page silently renders in the
+    // fallback family because `font-display: swap` hides the failure. A build
+    // does not have the problem: the app origin serves both the CSS and
+    // `public/fonts`.
+    publicDir: 'public',
+    build: {
+        // `publicDir` above makes `vite build` copy `public/` into the output
+        // directory, which is `public/build` — the whole tree into a folder
+        // inside itself. The dev server is the only thing that needs the public
+        // directory, so turn the copy off.
+        copyPublicDir: false,
+    },
     server: {
         // Bind-mounted source does not deliver filesystem events into a Linux
         // container from a Windows or macOS host, so Vite never learns a Blade
@@ -38,9 +53,49 @@ export default defineConfig({
         // this size. 60s means an edit can take up to a minute to reach the
         // browser — refresh again if it hasn't landed yet, rather than assuming
         // it is broken.
-        watch: process.env.VITE_USE_POLLING === 'true'
-            ? { usePolling: true, interval: 60_000 }
-            : undefined,
+        watch: {
+            // Vite already ignores .git, node_modules and the build output. These
+            // are the rest of the tree that no entry point, Tailwind source or HMR
+            // input reaches, so watching them only buys walk cost and false
+            // reloads. Cost is not file count — it is which filesystem the files
+            // sit on. `vendor` holds 17k files but is an anonymous volume on the
+            // container's own disk and walks in 0.06s; everything below is on the
+            // Windows/macOS bind mount, where one pass measured:
+            //
+            //   storage 14.01s   .claude 2.54s   .specs 0.68s
+            //
+            // against 0.20s for `app` and 0.24s for `resources`. `storage` alone
+            // is ~79% of the walk — mostly storage/app/exports, the generated
+            // zip/epub downloads that pile up from test and dev runs.
+            //
+            // The polling watcher below re-walks all of it every interval, and a
+            // cold start walks it before the first stylesheet is served, which is
+            // the "page hangs on load" symptom: the browser blocks on app.css
+            // while Vite is still walking. Measured on the dev container, two
+            // runs each, same procedure: 74.2s/74.6s before, 49.7s/49.7s after.
+            //
+            // The remaining ~50s is Tailwind's own scan over the bind mount, not
+            // the watcher. Clearing storage/app/exports is the other half.
+            //
+            // .idea and bootstrap/cache earn their place for churn, not size —
+            // PhpStorm and artisan rewrite them constantly, and each write was a
+            // spurious full page reload.
+            //
+            // `vendor` is deliberately absent: app.css has an @source glob into
+            // laravel/framework's pagination views, and at 0.06s a pass there is
+            // nothing to win by risking it.
+            ignored: [
+                '**/storage/**',
+                '**/.claude/**',
+                '**/.specs/**',
+                '**/.idea/**',
+                '**/bootstrap/cache/**',
+                '**/.phpunit.result.cache',
+            ],
+            ...(process.env.VITE_USE_POLLING === 'true'
+                ? { usePolling: true, interval: 60_000 }
+                : {}),
+        },
         // Vite binds 0.0.0.0 in Docker (see docker/supervisord.dev.conf) so the
         // container's port mapping can reach it, but the browser can't fetch
         // assets from 0.0.0.0 as an origin — advertise localhost instead so the
