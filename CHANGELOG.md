@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-08 — Pick up where you left off
+
+### Added
+
+- The Story, Timeline and Codex landing pages list what you edited most recently, with a link to the full index.
+- The project dashboard shows the latest act, chapter, scene, plotline, event and codex entry of each type.
+
+### Removed
+
+- The dashboard's plotline and event count tiles, replaced by the latest-edited tiles above.
+
 ## 2026-08-07 — Breadcrumb trails name the page they label (#88)
 
 ### Fixed

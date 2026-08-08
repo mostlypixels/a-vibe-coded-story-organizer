@@ -9,10 +9,13 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * The four top-level section landing pages (Story/Timeline/Codex/Tools).
- * Placeholder stubs for now: each renders its section heading and the word
- * "stub", authorizes via ProjectPolicy, and lights up its own top-level menu
- * item. Their breadcrumb trails are pinned in Tests\Unit\BreadcrumbsTest.
+ * The four top-level section landing pages (Story/Timeline/Codex/Tools): every
+ * one authorizes via ProjectPolicy and lights up its own top-level menu item.
+ * Their breadcrumb trails are pinned in Tests\Unit\BreadcrumbsTest.
+ *
+ * Story/Timeline/Codex now render real "recently edited" content, covered by
+ * Tests\Feature\RecentlyEditedTest. Tools is still a placeholder stub — it owns no
+ * user-authored entity of its own, so there is nothing recent to list there.
  */
 class SectionStubTest extends TestCase
 {
@@ -22,17 +25,19 @@ class SectionStubTest extends TestCase
     public static function stubRoutes(): array
     {
         return [
-            'story' => ['projects.story.home', 'Story'],
-            'timeline' => ['projects.timeline.home', 'Timeline'],
-            'codex' => ['projects.codex.home', 'Codex'],
             'tools' => ['projects.tools.home', 'Tools'],
         ];
     }
 
-    /** Route names only, for the auth cases that don't need the heading. */
+    /** Every section route, for the auth cases that don't need the heading. */
     public static function stubRouteNames(): array
     {
-        return array_map(fn (array $row) => [$row[0]], self::stubRoutes());
+        return [
+            'story' => ['projects.story.home'],
+            'timeline' => ['projects.timeline.home'],
+            'codex' => ['projects.codex.home'],
+            'tools' => ['projects.tools.home'],
+        ];
     }
 
     #[DataProvider('stubRoutes')]

@@ -33,6 +33,25 @@ enum CodexEntryType: string
     }
 
     /**
+     * The singular label as a lowercase noun, for copy that reads it
+     * mid-sentence ("Latest character").
+     */
+    public function singularNoun(): string
+    {
+        return strtolower($this->label());
+    }
+
+    /**
+     * The plural label as a lowercase noun, for copy that reads it mid-sentence
+     * ("View all characters"). Deliberately not routeKey(): a URL segment and a
+     * display noun happen to match today, but they are not the same thing.
+     */
+    public function pluralNoun(): string
+    {
+        return strtolower($this->pluralLabel());
+    }
+
+    /**
      * The plural, URL-friendly key used in the {type} route segment.
      */
     public function routeKey(): string

@@ -3,21 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Services\RecentlyEdited;
 use App\Support\StoryNumbering;
 use Illuminate\View\View;
 
 class StoryController extends Controller
 {
     /**
-     * The Story section landing page. Placeholder stub — a real section
-     * dashboard lands here later; see the Timeline/Codex/Tools home actions,
-     * which are the same shape.
+     * The Story section landing page: the acts, chapters and scenes touched
+     * most recently, each with a link to its full index. Same shape as the
+     * Timeline and Codex home actions.
      */
-    public function home(Project $project): View
+    public function home(Project $project, RecentlyEdited $recentlyEdited): View
     {
         $this->authorize('view', $project);
 
-        return view('story.home', ['project' => $project]);
+        return view('story.home', [
+            'project' => $project,
+            'recentActs' => $recentlyEdited->acts($project),
+            'recentChapters' => $recentlyEdited->chapters($project),
+            'recentScenes' => $recentlyEdited->scenes($project),
+        ]);
     }
 
     public function index(Project $project): View

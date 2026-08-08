@@ -21,16 +21,47 @@
                 </x-card>
             @endif
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <a href="{{ route('projects.plotlines.index', $project) }}" class="bg-surface-raised overflow-hidden shadow-xs sm:rounded-lg p-6 hover:bg-surface-sunken">
-                    <x-heading level="3">{{ __('Plotlines') }}</x-heading>
-                    <p class="text-sm text-content-muted mt-1">{{ trans_choice('{0} No plotlines|{1} :count plotline|[2,*] :count plotlines', $project->plotlines_count, ['count' => $project->plotlines_count]) }}</p>
-                </a>
+            {{-- Where the author left off, one tile per entity kind. Ordered
+                 the way the top-level menu is: Story, then Timeline, then
+                 Codex. --}}
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <x-latest-tile
+                    :label="__('Latest act')"
+                    :item="$latest['act']"
+                    :fallback-url="route('projects.acts.index', $project)"
+                />
 
-                <a href="{{ route('projects.events.index', $project) }}" class="bg-surface-raised overflow-hidden shadow-xs sm:rounded-lg p-6 hover:bg-surface-sunken">
-                    <x-heading level="3">{{ __('Events') }}</x-heading>
-                    <p class="text-sm text-content-muted mt-1">{{ trans_choice('{0} No events|{1} :count event|[2,*] :count events', $project->events_count, ['count' => $project->events_count]) }}</p>
-                </a>
+                <x-latest-tile
+                    :label="__('Latest chapter')"
+                    :item="$latest['chapter']"
+                    :fallback-url="route('projects.chapters.index', $project)"
+                />
+
+                <x-latest-tile
+                    :label="__('Latest scene')"
+                    :item="$latest['scene']"
+                    :fallback-url="route('projects.scenes.index', $project)"
+                />
+
+                <x-latest-tile
+                    :label="__('Latest plotline')"
+                    :item="$latest['plotline']"
+                    :fallback-url="route('projects.plotlines.index', $project)"
+                />
+
+                <x-latest-tile
+                    :label="__('Latest event')"
+                    :item="$latest['event']"
+                    :fallback-url="route('projects.events.index', $project)"
+                />
+
+                @foreach (\App\Enums\CodexEntryType::cases() as $codexType)
+                    <x-latest-tile
+                        :label="__('Latest :type', ['type' => __($codexType->singularNoun())])"
+                        :item="$latestCodexEntries[$codexType->value]"
+                        :fallback-url="route('projects.codex.index', [$project, $codexType->routeKey()])"
+                    />
+                @endforeach
             </div>
     </div>
 </x-app-layout>
