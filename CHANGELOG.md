@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-08 — Pick up where you left off
+## 2026-08-08 — Pick up where you left off (#89)
 
 ### Added
 
