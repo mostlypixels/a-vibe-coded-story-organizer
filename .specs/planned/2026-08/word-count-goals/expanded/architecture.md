@@ -49,23 +49,27 @@ stop recording:
 `saved`, not `saving` — the recorder sums the table and needs the row already written.
 This is the opposite of the `word_count` hook's choice, and for the opposite reason.
 
+`ActController::destroy` and `ChapterController::destroy` both call `$model->delete()`
+inside a `DB::transaction`, so the hooks fire and the upsert joins that transaction. An act
+deleted *with* its children reassigned loses no words; the recorder does not need to know,
+because it re-sums rather than adjusting.
+
 **`Project::deleted` is not in the list.** The rows cascade away with the project; there is
 nothing to record about a project that no longer exists.
 
 ### Cost
 
-One `SUM` and one `upsert` per content save. The `SUM` is the query the dashboard header
-already runs on every page load, so it is a known quantity at this app's scale; the guard
-keeps it off saves that changed no words. Do not "optimise" it into a denormalised
-`projects.word_count` — `documentation/word-count.md` benchmarked that decision and
-rejected it.
+One `SUM` and one `upsert` per content save, and autosave debounces at 2 s
+(`resources/js/autosave/field.js`), so steady typing means one pair every couple of
+seconds. `documentation/word-count.md` benchmarked this exact query at 150 / 960 / 4,320
+scenes and measured the widest gap against a denormalised column at 0.6 ms. Do not
+"optimise" it into a `projects.word_count` — that decision was taken and rejected there.
 
 ### What deliberately does not record
 
 Anything that writes with `DB::table()`: the seeders' `BackfillsSceneWordCounts`, the
-`scenes.word_count` migration backfill, and any future bulk path. That is the mechanism
-behind "no history before you turn it on", not an oversight — but it is why the Melusine
-demo projects open on an empty chart.
+`scenes.word_count` migration backfill, and any future bulk path. Imports do not need it
+either — they restore the source project's own rows.
 
 ## The read path
 
@@ -84,59 +88,70 @@ Three rules, all binding:
 
 - **A day with no row inherits the previous day's total, and wrote 0.** No row means no
   save, which means no change — not missing data. This is what lets the chart draw a
-  continuous line without the reader guessing.
+  continuous series without the reader guessing.
 - **The delta needs the row *before* the range.** Fetching only the range makes the first
   day of every month appear to have written everything since the 1st. The service fetches
   one extra row: `where('recorded_on', '<', $from)->latest('recorded_on')->first()`.
-- **When no earlier row exists, the first day's `written` is 0.** Those words predate
-  tracking and belong to nobody's day. Recorded in [open-questions](open-questions.md).
+- **With no earlier row, the previous total is 0** — not "the first day wrote nothing".
+  A project genuinely had no words before its first row, so its first writing day is counted
+  in full. This is arithmetic, not a special case, and it is why no baseline row exists.
 
 `WordCountSeries` also carries the aggregates the readouts need — `writtenInRange()`,
-`currentTotal()` — so Blade never loops to add anything up.
+`writtenOn(CarbonImmutable)`, `currentTotal()` — so Blade never loops to add anything up.
 
 ## Routes and controllers
 
-No new routes. `ProjectController::show()` gains the chart.
+One new page. `projects/show` gains a card, not a chart.
 
-```php
-public function show(Project $project, ShowProjectRequest $request, RecentlyEdited $recentlyEdited, WordCountHistory $history): View
+```
+GET /projects/{project}/progress   →  ProgressController@index   name: projects.progress
 ```
 
-- Range comes in as `?from=&to=` query parameters, validated by a new
-  `App\Http\Requests\ShowProjectRequest` — a GET Form Request, precedent
-  `SearchRequest`. `authorize()` mirrors `$this->user()->can('view', $this->route('project'))`.
-- Rules: `from`/`to` both `nullable|date`, `to` `after_or_equal:from`, and a `max:366`-day
-  span so a hand-edited URL cannot ask for a decade of points.
+- Sits in the `auth` group beside `projects.revisions.index`, and appears in the nav under
+  **Tools ▾**, after Revisions.
+- Range comes in as `?from=&to=` query parameters, validated by
+  `App\Http\Requests\ShowProgressRequest` — a GET Form Request, precedent `SearchRequest`.
+  `authorize()` mirrors `$this->user()->can('view', $this->route('project'))`.
+- Rules: `from`/`to` both `nullable|date`, `to` `after_or_equal:from`, and a **366-day** span
+  cap so a hand-edited URL cannot ask for a decade of points — the series materialises one
+  entry per day in PHP.
 - Default range when absent: the current month **in the owner's timezone** —
   `WriterDay::for($project->user)->startOfMonth()` to `->endOfMonth()`. Not
   `now()->startOfMonth()`.
 - Range resolution stays in the controller, per CLAUDE.md ("index-page filtering… in the
   controller"), and is handed to the service as two dates.
 
-**Rejected: a JSON endpoint the chart fetches.** It buys in-place range switching at the
-cost of a second authorized surface and a second serialization of the same data. Revisit if
-the full-page reload feels wrong — [open-questions](open-questions.md).
+The range picker is a plain GET form: full page reload, range in the URL, shareable and
+back-button-correct. **Rejected: a JSON endpoint the chart fetches** — a second authorized
+surface and a second serialization of the same data, for in-place switching on a page whose
+whole job is the chart.
+
+`ProjectController::show()` gains the dashboard card's data: a 14-day series and the two
+goals. Two extra queries on a page that already runs about ten.
+
+`ToolsController::home()` gains nothing — the landing page is a static card per tool.
 
 ## Where the rest lives
 
 | Concern | Location |
-|---|---|
+| --- | --- |
 | Local-date resolution | `app/Support/WriterDay.php` |
 | Writing a snapshot | `app/Services/WordCountSnapshotRecorder.php` |
 | Model-event wiring | `booted()` in `Scene`, `Chapter`, `Act` |
 | Series + delta arithmetic | `app/Services/WordCountHistory.php` |
 | Series value objects | `app/Support/WordCountSeries.php`, `app/Support/DailyWordCount.php` |
-| Goal validation | `app/Http/Requests/UpdateProjectRequest.php` (three new rules) |
+| The Progress page | `app/Http/Controllers/ProgressController.php` |
+| Range validation | `app/Http/Requests/ShowProgressRequest.php` |
+| Goal validation | `app/Http/Requests/UpdateProjectRequest.php` (two new rules) |
 | Timezone validation | `app/Http/Requests/ProfileUpdateRequest.php` (`['nullable', 'timezone']`) |
-| Range validation | `app/Http/Requests/ShowProjectRequest.php` |
 
-Authorization is `ProjectPolicy` throughout — `view` for the dashboard, `update` for the
-goals on the project form. Nothing here is a singleton setting, so the `CrawlerSetting`
-exception does not apply.
+Authorization is `ProjectPolicy` throughout — `view` for the Progress page and the
+dashboard, `update` for the goals on the project form. Nothing here is a singleton setting,
+so the `CrawlerSetting` exception does not apply.
 
 ## Documentation to update
 
 - `documentation/word-count.md` — a *History and goals* section pointing at the new deep dive.
-- `documentation/word-count-goals.md` — the deep dive: the writer's day, the cumulative-vs-delta
-  rule, what does not record.
+- `documentation/word-count-goals.md` — the deep dive: the writer's day, cumulative-vs-derived,
+  the "previous total was 0" rule, what does not record.
 - `documentation/architecture.md` — a compact entry linking both.
