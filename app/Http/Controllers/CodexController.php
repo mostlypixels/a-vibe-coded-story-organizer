@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CodexEntryType;
 use App\Models\Project;
+use App\Services\RecentlyEdited;
 use Illuminate\View\View;
 
 /**
@@ -12,13 +14,24 @@ use Illuminate\View\View;
 class CodexController extends Controller
 {
     /**
-     * Placeholder stub — a real section dashboard lands here later (same shape
-     * as StoryController::home).
+     * The most recently touched entries per type (same shape as
+     * StoryController::home). Attribute definitions get no list: authors set
+     * them up once and rarely touch them again, so they never answer "where
+     * was I last working?".
      */
-    public function home(Project $project): View
+    public function home(Project $project, RecentlyEdited $recentlyEdited): View
     {
         $this->authorize('view', $project);
 
-        return view('codex.home', ['project' => $project]);
+        $recentEntries = [];
+
+        foreach (CodexEntryType::cases() as $type) {
+            $recentEntries[$type->value] = $recentlyEdited->codexEntries($project, $type);
+        }
+
+        return view('codex.home', [
+            'project' => $project,
+            'recentEntries' => $recentEntries,
+        ]);
     }
 }

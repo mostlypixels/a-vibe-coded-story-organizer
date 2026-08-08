@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CodexEntryType;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
 use App\Services\CoverImageService;
+use App\Services\RecentlyEdited;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
@@ -33,11 +35,9 @@ class ProjectController extends Controller
         return redirect()->route('projects.show', $project);
     }
 
-    public function show(Project $project): View
+    public function show(Project $project, RecentlyEdited $recentlyEdited): View
     {
         $this->authorize('view', $project);
-
-        $project->loadCount(['plotlines', 'events']);
 
         // One grouped query for the project total. sceneQuery()
         // already walks chapter -> act -> project (see its own docblock); sum() returns 0
@@ -45,7 +45,30 @@ class ProjectController extends Controller
         // so this line reads the same "never blank" rule as the withSum sites above.
         $wordCount = $project->sceneQuery()->sum('word_count') ?? 0;
 
-        return view('projects.show', ['project' => $project, 'wordCount' => $wordCount]);
+        // The dashboard tiles: the single latest write per entity kind. Each
+        // entry is a RecentItem, or null when the project has none of that kind.
+        // Codex entries split by type — a character and a location are separate
+        // kinds of work, so they get a tile each.
+        $latest = [
+            'act' => $recentlyEdited->acts($project, 1)->first(),
+            'chapter' => $recentlyEdited->chapters($project, 1)->first(),
+            'scene' => $recentlyEdited->scenes($project, 1)->first(),
+            'plotline' => $recentlyEdited->plotlines($project, 1)->first(),
+            'event' => $recentlyEdited->events($project, 1)->first(),
+        ];
+
+        $latestCodexEntries = [];
+
+        foreach (CodexEntryType::cases() as $type) {
+            $latestCodexEntries[$type->value] = $recentlyEdited->codexEntries($project, $type, 1)->first();
+        }
+
+        return view('projects.show', [
+            'project' => $project,
+            'wordCount' => $wordCount,
+            'latest' => $latest,
+            'latestCodexEntries' => $latestCodexEntries,
+        ]);
     }
 
     public function edit(Project $project): View
