@@ -17,6 +17,24 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-09 — Word count goals and progress
+
+### Added
+
+- A project takes a daily and a total word goal, shown as progress bars on its dashboard.
+- A Progress page charts the words written per day over a range you choose.
+- The dashboard counts the consecutive days you met your daily goal.
+- Your profile takes a timezone, which decides when a writing day starts and ends.
+- Exports and imports carry the word count history with the project.
+
+### Changed
+
+- The dashboard opens with your recent scenes and codex entries, instead of one tile per entity kind.
+
+### Removed
+
+- The project description no longer repeats on the dashboard.
+
 ## 2026-08-08 — Pick up where you left off (#89)
 
 ### Added

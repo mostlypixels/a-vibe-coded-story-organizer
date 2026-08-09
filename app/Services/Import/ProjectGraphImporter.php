@@ -130,8 +130,9 @@ class ProjectGraphImporter
         // keeps a rejected config from ever influencing the project insert.
         $publicationSetting = $this->readPublicationSetting($dataPath);
         $includeRevisions = $this->includesRevisions($dataPath);
+        $snapshots = $this->readWordCountSnapshots($dataPath);
 
-        return DB::transaction(function () use ($dataPath, $user, $descriptor, $description, $dedication, $acknowledgements, $preface, $postface, $publicationSetting, $includeRevisions): Project {
+        return DB::transaction(function () use ($dataPath, $user, $descriptor, $description, $dedication, $acknowledgements, $preface, $postface, $publicationSetting, $includeRevisions, $snapshots): Project {
             $project = $user->projects()->create([
                 'name' => $this->collisionFreeName((string) $descriptor['name'], $user),
                 'description' => $description,
@@ -139,6 +140,8 @@ class ProjectGraphImporter
                 'acknowledgements' => $acknowledgements,
                 'preface' => $preface,
                 'postface' => $postface,
+                'daily_word_goal' => isset($descriptor['daily_word_goal']) ? (int) $descriptor['daily_word_goal'] : null,
+                'total_word_goal' => isset($descriptor['total_word_goal']) ? (int) $descriptor['total_word_goal'] : null,
             ]);
 
             // Only a fully-valid config becomes a row; otherwise the project is
@@ -147,10 +150,54 @@ class ProjectGraphImporter
                 $project->publicationSetting()->create($publicationSetting);
             }
 
+            $this->importWordCountSnapshots($project, $snapshots);
+
             $this->importRevisions($dataPath, 'data/project', 'project', $project, $user->id, $includeRevisions);
 
             return $project;
         });
+    }
+
+    /**
+     * Read data/word-count-snapshots.json, an optional flat list already
+     * structurally validated by {@see ArchiveValidator} when present. An
+     * archive with no such file — every export written before this feature —
+     * reads as no history, not an error.
+     *
+     * @return array<int, array{recorded_on: string, word_count: int}>
+     */
+    private function readWordCountSnapshots(string $dataPath): array
+    {
+        /** @var array<int, array{recorded_on: string, word_count: int}> */
+        return $this->readJsonIfPresent($dataPath, 'data/word-count-snapshots.json');
+    }
+
+    /**
+     * Restore the project's writing history as a bulk insert — never through
+     * the model, so no `WordCountSnapshotRecorder`/model event fires. The
+     * restored rows ARE the history; recording on top of them would add a
+     * same-day row and defeats the point of carrying them across.
+     *
+     * @param  array<int, array{recorded_on: string, word_count: int}>  $snapshots
+     */
+    private function importWordCountSnapshots(Project $project, array $snapshots): void
+    {
+        if ($snapshots === []) {
+            return;
+        }
+
+        $now = now();
+
+        DB::table('word_count_snapshots')->insert(array_map(
+            fn (array $snapshot): array => [
+                'project_id' => $project->id,
+                'recorded_on' => Carbon::parse((string) $snapshot['recorded_on'])->toDateString(),
+                'word_count' => (int) $snapshot['word_count'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            $snapshots,
+        ));
     }
 
     /**

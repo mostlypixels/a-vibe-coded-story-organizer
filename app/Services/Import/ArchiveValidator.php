@@ -79,6 +79,7 @@ class ArchiveValidator
     private const LIST_ITEM_REQUIRED_KEYS = [
         'data/codex/attributes.json' => ['id', 'name', 'applies_to', 'position'],
         'data/tags.json' => ['id', 'name'],
+        'data/word-count-snapshots.json' => ['recorded_on', 'word_count'],
     ];
 
     /**

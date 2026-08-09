@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +19,27 @@ class ProfileController extends Controller
     {
         return view('profile.edit', [
             'user' => $request->user(),
+            'timezoneGroups' => $this->timezoneGroups(),
         ]);
+    }
+
+    /**
+     * All PHP timezone identifiers, grouped by their region prefix, for the
+     * profile form's timezone select.
+     *
+     * @return array<string, array<int, string>>
+     */
+    private function timezoneGroups(): array
+    {
+        $groups = [];
+
+        foreach (DateTimeZone::listIdentifiers() as $identifier) {
+            $region = explode('/', $identifier, 2)[0];
+
+            $groups[$region][] = $identifier;
+        }
+
+        return $groups;
     }
 
     /**

@@ -91,7 +91,10 @@ class ProjectNavigation
     /** The Revisions browser + per-field history routes (a Tools submenu item). */
     public readonly bool $revisionsActive;
 
-    /** Tools dropdown trigger — true on the section stub or any Revisions page. */
+    /** The Progress page (a Tools submenu item). */
+    public readonly bool $progressActive;
+
+    /** Tools dropdown trigger — true on the section stub or any Revisions/Progress page. */
     public readonly bool $toolsActive;
 
     /** The codex type being viewed, if any. Read via codexTypeIsActive(). */
@@ -152,7 +155,8 @@ class ProjectNavigation
         // Revisions browser + the per-field history/compare routes (the latter
         // aren't project-scoped). The section stub plus these keep Tools lit.
         $this->revisionsActive = $request->routeIs('projects.revisions.*', 'revisions.*');
-        $this->toolsActive = $request->routeIs('projects.tools.*') || $this->revisionsActive;
+        $this->progressActive = $request->routeIs('projects.progress');
+        $this->toolsActive = $request->routeIs('projects.tools.*') || $this->revisionsActive || $this->progressActive;
     }
 
     /** Whether there is a project to build project-scoped links from. */

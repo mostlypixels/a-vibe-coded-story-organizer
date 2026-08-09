@@ -132,9 +132,9 @@ class RecentlyEditedTest extends TestCase
             ->assertDontSee('Someone elses project');
     }
 
-    // --- Dashboard tiles --------------------------------------------------
+    // --- Dashboard lists --------------------------------------------------
 
-    public function test_the_dashboard_tiles_name_the_latest_entity_of_each_kind(): void
+    public function test_the_dashboard_lists_the_last_edited_scenes_with_their_breadcrumb(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user, 'Act of departure');
@@ -144,24 +144,65 @@ class RecentlyEditedTest extends TestCase
             ->forceFill(['updated_at' => now()->subDay()])->save();
         Scene::factory()->for($chapter)->create(['name' => 'Newest scene'])
             ->forceFill(['updated_at' => now()])->save();
-        CodexEntry::factory()->for($project)->create(['name' => 'Melusine']);
 
         $response = $this->actingAs($user)->get(route('projects.show', $project));
 
         $response->assertOk();
-        $response->assertSee(__('Latest scene'));
-        $response->assertSee('Newest scene');
-        $response->assertDontSee('Older scene');
+        $response->assertSee(__('Recent scenes'));
+        $response->assertSeeInOrder(['Newest scene', 'Older scene']);
         $response->assertSee('Act of departure');
         $response->assertSee('First chapter');
-
-        // Codex entries get a tile per type, not one shared "codex entry" tile.
-        $response->assertSee(__('Latest :type', ['type' => CodexEntryType::Character->singularNoun()]));
-        $response->assertSee(__('Latest :type', ['type' => CodexEntryType::Location->singularNoun()]));
-        $response->assertSee('Melusine');
     }
 
-    public function test_a_dashboard_tile_with_nothing_to_show_links_to_the_index(): void
+    public function test_the_dashboard_codex_list_mixes_the_types_and_names_each_one(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        CodexEntry::factory()->for($project)->create([
+            'name' => 'Melusine',
+            'type' => CodexEntryType::Character,
+        ]);
+        CodexEntry::factory()->for($project)->create([
+            'name' => 'The weir',
+            'type' => CodexEntryType::Location,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('projects.show', $project));
+
+        $response->assertOk();
+        $response->assertSee(__('Recent codex entries'));
+        $response->assertSee('Melusine');
+        $response->assertSee('The weir');
+
+        // The type is the only thing that tells a character from a location.
+        $response->assertSee(__(CodexEntryType::Character->label()));
+        $response->assertSee(__(CodexEntryType::Location->label()));
+    }
+
+    public function test_the_dashboard_lists_stop_at_three_rows(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->project;
+
+        foreach (range(1, 4) as $index) {
+            Scene::factory()->for($chapter)->create(['name' => "Scene {$index}"])
+                ->forceFill(['updated_at' => now()->subMinutes(5 - $index)])->save();
+            CodexEntry::factory()->for($project)->create(['name' => "Entry {$index}"])
+                ->forceFill(['updated_at' => now()->subMinutes(5 - $index)])->save();
+        }
+
+        $response = $this->actingAs($user)->get(route('projects.show', $project));
+
+        $response->assertOk();
+        $response->assertSee('Scene 4');
+        $response->assertDontSee('Scene 1');
+        $response->assertSee('Entry 4');
+        $response->assertDontSee('Entry 1');
+    }
+
+    public function test_the_dashboard_lists_say_so_when_a_project_is_empty(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -169,8 +210,9 @@ class RecentlyEditedTest extends TestCase
         $this->actingAs($user)
             ->get(route('projects.show', $project))
             ->assertOk()
-            ->assertSee(__('Nothing yet'))
-            ->assertSee(route('projects.scenes.index', $project));
+            ->assertSee(__('No :items yet.', ['items' => __('scenes')]))
+            ->assertSee(route('projects.story.home', $project))
+            ->assertSee(route('projects.codex.home', $project));
     }
 
     // --- Timeline ---------------------------------------------------------

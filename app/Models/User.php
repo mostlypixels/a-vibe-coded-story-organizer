@@ -25,6 +25,7 @@ class User extends Authenticatable
         'email',
         'password',
         'theme_slug',
+        'timezone',
     ];
 
     /**

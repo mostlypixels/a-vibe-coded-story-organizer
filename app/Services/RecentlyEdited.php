@@ -129,4 +129,30 @@ class RecentlyEdited
                 imageUrl: $entry->cover?->url(),
             ));
     }
+
+    /**
+     * Codex entries of every type in one list, newest write first.
+     *
+     * The dashboard asks this way: a writer wants the last things they touched,
+     * not one row per type. The type goes in `context` because the row has no
+     * other way to say what it is — a codex name does not tell you if it is a
+     * character or a location.
+     *
+     * @return Collection<int, RecentItem>
+     */
+    public function allCodexEntries(Project $project, int $limit = RecentItem::LIMIT): Collection
+    {
+        return $project->codexEntries()
+            ->with('cover')
+            ->latest('updated_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (CodexEntry $entry) => new RecentItem(
+                label: $entry->name,
+                url: route('codex.edit', $entry),
+                updatedAt: $entry->updated_at,
+                context: __($entry->type->label()),
+                imageUrl: $entry->cover?->url(),
+            ));
+    }
 }

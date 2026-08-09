@@ -7,6 +7,7 @@ use App\Enums\SceneStatus;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
+use App\Services\WordCountSnapshotRecorder;
 use App\Support\WordCounter;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -159,6 +160,29 @@ class Scene extends Model
             if ($scene->isDirty('contents')) {
                 $scene->word_count = WordCounter::count($scene->contents, FieldKind::Markdown);
             }
+        });
+
+        // Records the project's new total on the writer's day. `saved`, not
+        // `saving` — the opposite of the hook above, for the opposite reason:
+        // the recorder sums the scenes table, so this row must already be
+        // written.
+        //
+        // Eloquent syncs `changes` on an update only, so wasChanged() is always
+        // false for a new row. A new scene therefore tests its own word_count:
+        // a scene created with text moves the total, an empty one does not.
+        static::saved(function (Scene $scene): void {
+            $movedTheTotal = $scene->wasRecentlyCreated
+                ? $scene->word_count > 0
+                : $scene->wasChanged('word_count');
+
+            if ($movedTheTotal) {
+                app(WordCountSnapshotRecorder::class)->record($scene->chapter->act->project);
+            }
+        });
+
+        // Deleting is writing: the total drops.
+        static::deleted(function (Scene $scene): void {
+            app(WordCountSnapshotRecorder::class)->record($scene->chapter->act->project);
         });
     }
 }

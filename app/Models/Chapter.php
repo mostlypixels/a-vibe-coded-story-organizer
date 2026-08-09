@@ -6,6 +6,7 @@ use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CoverImageService;
+use App\Services\WordCountSnapshotRecorder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -67,6 +68,13 @@ class Chapter extends Model
         // surviving chapters' covers themselves (media-lifecycle.md pitfall).
         static::deleting(function (Chapter $chapter) {
             app(CoverImageService::class)->delete($chapter->cover_image);
+        });
+
+        // The chapter's scenes cascade at the database level, which fires no
+        // Scene::deleted — so record the project's new total here. The
+        // controller deletes inside a transaction, so this upsert joins it.
+        static::deleted(function (Chapter $chapter): void {
+            app(WordCountSnapshotRecorder::class)->record($chapter->act->project);
         });
     }
 }

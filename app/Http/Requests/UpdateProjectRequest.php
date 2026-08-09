@@ -22,6 +22,20 @@ class UpdateProjectRequest extends FormRequest
     }
 
     /**
+     * The goal fields are plain number inputs left empty for "no goal" — an
+     * empty string would otherwise fail the `integer` rule instead of clearing
+     * the column, the same nudge UpdatePublicationSettingRequest applies to
+     * its checkboxes.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'daily_word_goal' => $this->input('daily_word_goal') === '' ? null : $this->input('daily_word_goal'),
+            'total_word_goal' => $this->input('total_word_goal') === '' ? null : $this->input('total_word_goal'),
+        ]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array
@@ -49,6 +63,12 @@ class UpdateProjectRequest extends FormRequest
             'acknowledgements' => AutosavableFields::validationRule('project', 'acknowledgements'),
             'preface' => AutosavableFields::validationRule('project', 'preface'),
             'postface' => AutosavableFields::validationRule('project', 'postface'),
+
+            // Open-ended writing targets. No cross-validation against each
+            // other — a daily goal that does not multiply out to the total
+            // goal is a reasonable intent, not a mistake to reject.
+            'daily_word_goal' => ['nullable', 'integer', 'min:0'],
+            'total_word_goal' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

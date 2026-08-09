@@ -42,4 +42,14 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * A user in a non-UTC timezone, for tests that exercise `WriterDay`.
+     */
+    public function inTimezone(string $timezone = 'Pacific/Auckland'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'timezone' => $timezone,
+        ]);
+    }
 }

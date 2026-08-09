@@ -57,6 +57,10 @@ class ImportRules
         // ArchiveValidator — the importer validates it as untrusted input and
         // falls back to defaults on anything malformed.
         'data/publication-setting.json',
+        // The project's writing history — a flat list like data/tags.json.
+        // Absent in every archive exported before this feature; the importer
+        // treats a missing file as "no history".
+        'data/word-count-snapshots.json',
         'README.md',
     ];
 

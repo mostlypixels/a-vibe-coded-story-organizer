@@ -14,6 +14,7 @@ use App\Models\PublicationSetting;
 use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\Tag;
+use App\Models\WordCountSnapshot;
 use App\Support\AutosavableFields;
 use App\Support\RichText;
 use App\Support\StoryNumbering;
@@ -86,6 +87,7 @@ class StaticSiteExporter
             $this->addReadme($zip, $project);
             $this->addManifest($zip, $project, $includeMedia, $includeRevisions);
             $this->addPublicationSetting($zip, $project);
+            $this->addWordCountSnapshots($zip, $project);
             $this->addStory($zip, $project, $includeMedia, $includeRevisions);
             $this->addTimeline($zip, $project, $includeRevisions);
             $this->addCodex($zip, $project, $includeMedia, $includeRevisions);
@@ -168,6 +170,28 @@ class StaticSiteExporter
             'appendix_entry_types' => $setting->appendix_entry_types,
             'appendix_include_images' => $setting->appendix_include_images,
         ]);
+    }
+
+    /**
+     * data/word-count-snapshots.json — the project's writing history, as a flat
+     * list of `{ recorded_on, word_count }` (oldest first), so a restore carries
+     * the record forward instead of leaving a gap. Written like `data/tags.json`
+     * — always present, even as an empty array, never omitted for "no rows yet".
+     * An archive exported before this feature has no such file; the importer
+     * reads that as "no history", not an error.
+     */
+    private function addWordCountSnapshots(ZipArchive $zip, Project $project): void
+    {
+        $snapshots = $project->wordCountSnapshots()
+            ->orderBy('recorded_on')
+            ->get(['recorded_on', 'word_count'])
+            ->map(fn (WordCountSnapshot $snapshot): array => [
+                'recorded_on' => $snapshot->recorded_on->toDateString(),
+                'word_count' => $snapshot->word_count,
+            ])
+            ->all();
+
+        $this->addJson($zip, 'data/word-count-snapshots.json', $snapshots);
     }
 
     /**
@@ -275,6 +299,8 @@ class StaticSiteExporter
         $json = [
             'id' => $project->id,
             'name' => $project->name,
+            'daily_word_goal' => $project->daily_word_goal,
+            'total_word_goal' => $project->total_word_goal,
         ];
         $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $project->description);
         $json += $this->addFieldFile($zip, $dir, 'dedication_file', 'dedication.md', $project->dedication);

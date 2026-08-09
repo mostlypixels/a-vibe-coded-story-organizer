@@ -43,6 +43,55 @@ class ProfileTest extends TestCase
         $this->assertNull($user->email_verified_at);
     }
 
+    public function test_a_valid_timezone_identifier_persists(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'timezone' => 'Pacific/Auckland',
+            ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $this->assertSame('Pacific/Auckland', $user->refresh()->timezone);
+    }
+
+    public function test_an_empty_timezone_stores_null(): void
+    {
+        $user = User::factory()->inTimezone()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'timezone' => '',
+            ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $this->assertNull($user->refresh()->timezone);
+    }
+
+    public function test_an_invalid_timezone_identifier_is_rejected(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'timezone' => 'Europe/NotAPlace',
+            ]);
+
+        $response->assertSessionHasErrors('timezone');
+    }
+
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
     {
         $user = User::factory()->create();

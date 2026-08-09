@@ -29,7 +29,8 @@
         "@tiptap/extension-underline": "^3.27.1",
         "@tiptap/markdown": "^3.27.1",
         "@tiptap/starter-kit": "^3.27.1",
-        "@tiptap/suggestion": "^3.27.1"
+        "@tiptap/suggestion": "^3.27.1",
+        "chart.js": "^4.5.1"
     },
     "overrides": {
         "shell-quote": "^1.9.0"

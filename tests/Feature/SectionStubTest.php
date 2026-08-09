@@ -13,21 +13,14 @@ use Tests\TestCase;
  * one authorizes via ProjectPolicy and lights up its own top-level menu item.
  * Their breadcrumb trails are pinned in Tests\Unit\BreadcrumbsTest.
  *
- * Story/Timeline/Codex now render real "recently edited" content, covered by
- * Tests\Feature\RecentlyEditedTest. Tools is still a placeholder stub — it owns no
- * user-authored entity of its own, so there is nothing recent to list there.
+ * Story/Timeline/Codex render "recently edited" content, covered by
+ * Tests\Feature\RecentlyEditedTest. Tools links to the other tools instead —
+ * it owns no user-authored entity of its own, so there is nothing recent to
+ * list there. Its cards are covered below.
  */
 class SectionStubTest extends TestCase
 {
     use RefreshDatabase;
-
-    /** @return array<string, array{string, string}> route name => section heading */
-    public static function stubRoutes(): array
-    {
-        return [
-            'tools' => ['projects.tools.home', 'Tools'],
-        ];
-    }
 
     /** Every section route, for the auth cases that don't need the heading. */
     public static function stubRouteNames(): array
@@ -40,17 +33,17 @@ class SectionStubTest extends TestCase
         ];
     }
 
-    #[DataProvider('stubRoutes')]
-    public function test_the_owner_sees_the_stub_page_with_its_heading(string $route, string $heading): void
+    public function test_the_tools_page_links_to_revisions_and_progress(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
 
         $this->actingAs($user)
-            ->get(route($route, $project))
+            ->get(route('projects.tools.home', $project))
             ->assertOk()
-            ->assertSee($heading)
-            ->assertSee('stub');
+            ->assertSee('Tools')
+            ->assertSee(route('projects.revisions.index', $project), false)
+            ->assertSee(route('projects.progress', $project), false);
     }
 
     #[DataProvider('stubRouteNames')]

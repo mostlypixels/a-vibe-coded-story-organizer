@@ -35,6 +35,8 @@ class Project extends Model
         'acknowledgements',
         'preface',
         'postface',
+        'daily_word_goal',
+        'total_word_goal',
     ];
 
     protected $casts = [
@@ -82,6 +84,14 @@ class Project extends Model
     public function tags(): HasMany
     {
         return $this->hasMany(Tag::class);
+    }
+
+    /**
+     * Ordered by nothing — callers order by recorded_on themselves.
+     */
+    public function wordCountSnapshots(): HasMany
+    {
+        return $this->hasMany(WordCountSnapshot::class);
     }
 
     public function publicationSetting(): HasOne

@@ -20,6 +20,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportSettingController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PublicationSettingController;
 use App\Http\Controllers\RevisionBrowserController;
@@ -258,6 +259,12 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     // to the per-field history routes that follow.
     Route::get('/projects/{project}/revisions', [RevisionBrowserController::class, 'index'])
         ->name('projects.revisions.index');
+
+    // Tools ▸ Progress: today's words and the running total against the
+    // project's two goals. The chart and its range picker join this same
+    // page in a later task.
+    Route::get('/projects/{project}/progress', [ProgressController::class, 'index'])
+        ->name('projects.progress');
 
     // History + compare. Same slug-gated {entity} pattern as
     // autosave.update above, but without the tight autosave throttle — these
