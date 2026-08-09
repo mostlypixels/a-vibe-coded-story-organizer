@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-09 — Word count goals and progress
+## 2026-08-09 — Word count goals and progress (#91)
 
 ### Added
 
