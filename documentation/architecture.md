@@ -290,6 +290,35 @@ the project header.
 > costs**: known consequences of decisions, not bugs. Do not "fix" one without re-opening the
 > decision it came from.
 
+## Word count goals (history + progress)
+
+`word_count_snapshots` holds one row per project per **writer-day** (the
+project owner's local date, from `App\Support\WriterDay` — never
+`auth()->user()` or the server's zone): the project's cumulative word count at
+that moment, never a delta. `Scene`'s model events call
+`App\Services\WordCountSnapshotRecorder`, so the row stays true across
+autosave, manual save, and revert/undo the same way `scenes.word_count` does.
+
+- **Before a project's first row, its total was 0.** No baseline row exists
+  anywhere — `App\Services\WordCountHistory::totalBefore()` returns 0 for a
+  range that starts before the project's first snapshot. A dated baseline row
+  collides with same-day writing, which is why one was rejected.
+- **Two goals only, both nullable, both open-ended**: `daily_word_goal`,
+  `total_word_goal` on `projects`. A goal with a window (a monthly target) is
+  a different feature (`.specs/draft/word-count-challenges/`).
+- The chart (`x-word-count-chart`, Tools ▸ Progress and the dashboard card)
+  draws **bars** for the day's words and a flat line for the daily goal — never
+  a cumulative view. The status strip on the Progress page always shows *now*
+  and ignores the range picker below it.
+- Bulk writes and imports never go through the recorder — see
+  `documentation/word-count.md`'s pitfall — and an import restores snapshot
+  rows as a bulk insert instead.
+
+> [!IMPORTANT]
+> Before touching any of this, read **[`word-count-goals.md`](word-count-goals.md)**
+> — the writer's-day rule, the cumulative-not-delta invariant, and why nothing
+> records on a bulk write or import.
+
 ## Enum convention
 
 Enums live in `app/Enums`. The pattern (see `SceneStatus`):
@@ -760,6 +789,7 @@ This file is the map. Each feature with more to say than fits here has its own p
 | [`rich-text.md`](rich-text.md) | The WYSIWYG field list, the sanitizer allow-list, the rendering rule |
 | [`theming.md`](theming.md) | The paired-token rule, the contrast floors/ceiling, `theme:ramp`, why no `dark:` |
 | [`word-count.md`](word-count.md) | What counts as a word, the one stored column, totals without an N+1 |
+| [`word-count-goals.md`](word-count-goals.md) | Writer-day snapshots, cumulative-not-delta, goals, the Progress chart |
 | [`ui-components.md`](ui-components.md) | The Blade component catalogue — reuse one before writing a new one |
 | [`best-practices.md`](best-practices.md) | How to write code here, including testing UI state |
 | [`code-style.md`](code-style.md) | Formatting and naming conventions |

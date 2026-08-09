@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\BookLanguage;
 use App\Models\Act;
+use App\Models\Chapter;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -27,13 +29,19 @@ class RichTextRenderingTest extends TestCase
         .'<a href="javascript:alert(1)">bad link</a>'
         .'<strong>bold text</strong><ul><li>a list item</li></ul>';
 
-    public function test_project_show_renders_allowed_formatting_but_no_script(): void
+    public function test_a_shared_scene_renders_allowed_formatting_but_no_script(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create(['description' => self::MALICIOUS_HTML]);
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create(['description' => self::MALICIOUS_HTML]);
+        $scene->forceFill([
+            'share_token' => 'rich-text-token',
+            'share_expires_at' => now()->addDay(),
+        ])->save();
 
-        $this->actingAs($user)
-            ->get(route('projects.show', $project))
+        $this->get(route('shared.scenes.show', 'rich-text-token'))
             ->assertOk()
             // Allowed markup rendered as real HTML through x-rich-text.
             ->assertSee('<strong>bold text</strong>', false)
@@ -83,12 +91,6 @@ class RichTextRenderingTest extends TestCase
         $this->assertStringContainsString('<table>', $project->fresh()->description);
         $this->assertStringContainsString('<th>Col</th>', $project->fresh()->description);
         $this->assertStringContainsString('src="https://example.com/cover.png"', $project->fresh()->description);
-
-        $this->actingAs($user)
-            ->get(route('projects.show', $project))
-            ->assertOk()
-            ->assertSee('<table>', false)
-            ->assertSee('src="https://example.com/cover.png"', false);
     }
 
     public function test_non_owner_cannot_view_a_project(): void
@@ -99,8 +101,7 @@ class RichTextRenderingTest extends TestCase
 
         $this->actingAs($owner)
             ->get(route('projects.show', $project))
-            ->assertOk()
-            ->assertSee('<strong>secret</strong>', false);
+            ->assertOk();
 
         $this->actingAs($other)
             ->get(route('projects.show', $project))

@@ -99,6 +99,10 @@
             <x-dropdown-link :href="route('projects.revisions.index', $navigation->project)" :active="$navigation->revisionsActive">
                 {{ __('Revisions') }}
             </x-dropdown-link>
+
+            <x-dropdown-link :href="route('projects.progress', $navigation->project)" :active="$navigation->progressActive">
+                {{ __('Progress') }}
+            </x-dropdown-link>
         </x-slot>
     </x-dropdown>
 </div>

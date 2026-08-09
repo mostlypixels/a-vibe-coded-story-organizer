@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\CodexEntryType;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Requests\StoreProjectRequest;
@@ -11,6 +10,8 @@ use App\Models\Project;
 use App\Services\CoverImageService;
 use App\Services\RecentlyEdited;
 use App\Services\SceneReferenceMatcher;
+use App\Services\WordCountHistory;
+use App\Support\WriterDay;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
 use Illuminate\View\View;
@@ -21,7 +22,15 @@ class ProjectController extends Controller
     use RecordsManualRevisions;
     use RedirectsAfterSave;
 
-    public function __construct(private CoverImageService $coverImageService) {}
+    /**
+     * Rows in each "Recent" list on the dashboard.
+     */
+    private const DASHBOARD_LIST_LIMIT = 3;
+
+    public function __construct(
+        private CoverImageService $coverImageService,
+        private WordCountHistory $history,
+    ) {}
 
     public function create(): View
     {
@@ -45,29 +54,39 @@ class ProjectController extends Controller
         // so this line reads the same "never blank" rule as the withSum sites above.
         $wordCount = $project->sceneQuery()->sum('word_count') ?? 0;
 
-        // The dashboard tiles: the single latest write per entity kind. Each
-        // entry is a RecentItem, or null when the project has none of that kind.
-        // Codex entries split by type — a character and a location are separate
-        // kinds of work, so they get a tile each.
-        $latest = [
-            'act' => $recentlyEdited->acts($project, 1)->first(),
-            'chapter' => $recentlyEdited->chapters($project, 1)->first(),
-            'scene' => $recentlyEdited->scenes($project, 1)->first(),
-            'plotline' => $recentlyEdited->plotlines($project, 1)->first(),
-            'event' => $recentlyEdited->events($project, 1)->first(),
-        ];
+        // Where the writer left off, in two lists. Scenes carry the story: an
+        // act or a chapter changes rarely, and a scene row names its act and
+        // chapter anyway. The codex list mixes the types, newest first. The top
+        // menu reaches everything these two lists leave out. Three rows each,
+        // shorter than the section landing pages: the dashboard is a way back
+        // into the work, not a list to read.
+        $recentScenes = $recentlyEdited->scenes($project, self::DASHBOARD_LIST_LIMIT);
+        $recentCodexEntries = $recentlyEdited->allCodexEntries($project, self::DASHBOARD_LIST_LIMIT);
 
-        $latestCodexEntries = [];
+        // The Progress card's chart window: rolling days, not the current month
+        // — see expanded/ui.md, "Last 14 rolling days, not the current month"
+        // (the window later grew to 31 days; the rolling rule is unchanged).
+        // Two queries whatever the range length (see WordCountHistory).
+        // auth()->user(), not $project->user: the view policy above already
+        // proved they are the same row, and $project->user would cost a third
+        // query to fetch a User this request already resolved.
+        $today = WriterDay::for(auth()->user());
+        $progressSeries = $this->history->series($project, $today->subDays(30), $today);
+        $writtenToday = $progressSeries->writtenOn($today);
 
-        foreach (CodexEntryType::cases() as $type) {
-            $latestCodexEntries[$type->value] = $recentlyEdited->codexEntries($project, $type, 1)->first();
-        }
+        // One more query, and only when there is a goal to be consecutive about.
+        $writingStreak = $project->daily_word_goal === null
+            ? 0
+            : $this->history->currentStreak($project, $project->daily_word_goal, $today);
 
         return view('projects.show', [
             'project' => $project,
             'wordCount' => $wordCount,
-            'latest' => $latest,
-            'latestCodexEntries' => $latestCodexEntries,
+            'recentScenes' => $recentScenes,
+            'recentCodexEntries' => $recentCodexEntries,
+            'progressSeries' => $progressSeries,
+            'writtenToday' => $writtenToday,
+            'writingStreak' => $writingStreak,
         ]);
     }
 

@@ -13,12 +13,14 @@ use App\Models\User;
 use App\Services\AttributeTimeline;
 use App\Support\PlotlineColors;
 use Database\Seeders\Concerns\BackfillsSceneWordCounts;
+use Database\Seeders\Concerns\SeedsWordCountHistory;
 use Database\Seeders\Concerns\SyncsCodexReferences;
 use Illuminate\Database\Seeder;
 
 class MelusineSeederIt extends Seeder
 {
     use BackfillsSceneWordCounts;
+    use SeedsWordCountHistory;
     use SyncsCodexReferences;
 
     /**
@@ -415,6 +417,13 @@ class MelusineSeederIt extends Seeder
         // See BackfillsSceneWordCounts: model events (and so Scene::booted()'s
         // word_count hook) are off for the whole seeded run.
         $this->backfillSceneWordCounts($project);
+
+        // A daily rhythm and a total destination for the Progress page to draw,
+        // and a past to draw them against (SeedsWordCountHistory). The daily
+        // goal stays under the generator's typical day so the demo shows a
+        // streak instead of an empty one.
+        $project->update(['daily_word_goal' => 100, 'total_word_goal' => 20000]);
+        $this->seedWordCountHistory($project);
 
         $this->seedCodex($project, $eventsByTitle);
 

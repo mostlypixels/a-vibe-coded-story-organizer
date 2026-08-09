@@ -71,6 +71,10 @@
     {{ __('Revisions') }}
 </x-responsive-nav-link>
 
+<x-responsive-nav-link :href="route('projects.progress', $navigation->project)" :active="$navigation->progressActive">
+    {{ __('Progress') }}
+</x-responsive-nav-link>
+
 <x-responsive-nav-link
     :href="route('projects.search.index', $navigation->project)"
     :active="$navigation->searchActive"

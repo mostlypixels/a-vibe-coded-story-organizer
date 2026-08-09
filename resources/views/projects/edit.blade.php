@@ -127,6 +127,24 @@
                 <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::imageHint() }}</p>
                 <x-input-error :messages="$errors->get('cover_image')" class="mt-2" />
             </x-card>
+
+            <x-card :title="__('Writing goals')">
+                <p class="text-sm text-content-muted">{{ __('Shown on the Progress page and the project dashboard. Leave a field empty for no goal.') }}</p>
+
+                <div class="mt-4 space-y-6">
+                    <div>
+                        <x-input-label for="daily_word_goal" :value="__('Daily word goal')" />
+                        <x-text-input id="daily_word_goal" name="daily_word_goal" form="project-edit-form" type="number" min="0" placeholder="{{ __('Leave empty for no goal') }}" class="mt-1 block w-full" :value="old('daily_word_goal', $project->daily_word_goal)" />
+                        <x-input-error :messages="$errors->get('daily_word_goal')" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <x-input-label for="total_word_goal" :value="__('Total word goal')" />
+                        <x-text-input id="total_word_goal" name="total_word_goal" form="project-edit-form" type="number" min="0" placeholder="{{ __('Leave empty for no goal') }}" class="mt-1 block w-full" :value="old('total_word_goal', $project->total_word_goal)" />
+                        <x-input-error :messages="$errors->get('total_word_goal')" class="mt-2" />
+                    </div>
+                </div>
+            </x-card>
         </x-slot:sidebar>
     </x-edit-layout>
 

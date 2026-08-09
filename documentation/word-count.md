@@ -141,6 +141,15 @@ state, the same pattern `navigation-guard.js` uses:
 Counting is debounced ~150 ms — short, because nothing goes over the network; it exists only
 to stop recounting on every keystroke.
 
+## History and goals
+
+`scenes.word_count` is also the only input to a project's writing history:
+`Scene`'s `saved`/`deleted` hooks call `App\Services\WordCountSnapshotRecorder`,
+which records the project's `SUM` onto a `word_count_snapshots` row for the
+writer's local day. That history, plus two open-ended goals
+(`daily_word_goal`, `total_word_goal`), power the Tools ▸ Progress chart and
+the dashboard card. Full reference: [`word-count-goals.md`](word-count-goals.md).
+
 ## Where things live
 
 | Concern | Location |

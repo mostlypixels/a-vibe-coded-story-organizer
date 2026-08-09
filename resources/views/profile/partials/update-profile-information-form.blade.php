@@ -44,6 +44,26 @@
             @endif
         </div>
 
+        <div>
+            <x-input-label for="timezone" :value="__('Timezone')" />
+            <x-select id="timezone" name="timezone" class="mt-1 block w-full">
+                <option value="" @selected(old('timezone', $user->timezone) === null)>
+                    {{ __('Use the site default') }}
+                </option>
+
+                @foreach ($timezoneGroups as $region => $identifiers)
+                    <optgroup label="{{ $region }}">
+                        @foreach ($identifiers as $identifier)
+                            <option value="{{ $identifier }}" @selected(old('timezone', $user->timezone) === $identifier)>
+                                {{ $identifier }}
+                            </option>
+                        @endforeach
+                    </optgroup>
+                @endforeach
+            </x-select>
+            <x-input-error class="mt-2" :messages="$errors->get('timezone')" />
+        </div>
+
         <div class="flex items-center gap-4">
             <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
 

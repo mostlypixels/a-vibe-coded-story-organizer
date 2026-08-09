@@ -6,6 +6,7 @@ use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CoverImageService;
+use App\Services\WordCountSnapshotRecorder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -85,6 +86,14 @@ class Act extends Model
             foreach ($act->chapters()->whereNotNull('cover_image')->pluck('cover_image') as $coverPath) {
                 $coverImageService->delete($coverPath);
             }
+        });
+
+        // The act's chapters and their scenes cascade at the database level, two
+        // levels down, which fires neither Chapter::deleted nor Scene::deleted.
+        // The recorder re-sums, so an act deleted with its chapters reassigned
+        // correctly leaves the total unchanged.
+        static::deleted(function (Act $act): void {
+            app(WordCountSnapshotRecorder::class)->record($act->project);
         });
     }
 }

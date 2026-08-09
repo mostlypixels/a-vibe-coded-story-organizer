@@ -11,8 +11,11 @@ use App\Models\Event;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
+use App\Models\WordCountSnapshot;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -177,6 +180,86 @@ class ProjectTest extends TestCase
             'name' => 'Hijacked',
             'language' => 'en',
         ])->assertForbidden();
+    }
+
+    public function test_owner_can_set_both_word_goals_and_they_persist(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => $project->name,
+            'language' => 'en',
+            'daily_word_goal' => '500',
+            'total_word_goal' => '80000',
+        ]);
+
+        $project = $project->fresh();
+        $this->assertSame(500, $project->daily_word_goal);
+        $this->assertSame(80000, $project->total_word_goal);
+    }
+
+    public function test_a_non_owner_cannot_set_word_goals(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+
+        $this->actingAs($other)->put(route('projects.update', $project), [
+            'name' => 'Hijacked',
+            'language' => 'en',
+            'daily_word_goal' => '500',
+        ])->assertForbidden();
+
+        $this->assertNull($project->fresh()->daily_word_goal);
+    }
+
+    public function test_empty_word_goal_input_clears_the_goal_to_null(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create([
+            'daily_word_goal' => 500,
+            'total_word_goal' => 80000,
+        ]);
+
+        $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => $project->name,
+            'language' => 'en',
+            'daily_word_goal' => '',
+            'total_word_goal' => '',
+        ]);
+
+        $project = $project->fresh();
+        $this->assertNull($project->daily_word_goal);
+        $this->assertNull($project->total_word_goal);
+    }
+
+    public function test_a_negative_word_goal_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => $project->name,
+            'language' => 'en',
+            'daily_word_goal' => '-5',
+        ]);
+
+        $response->assertSessionHasErrors('daily_word_goal');
+    }
+
+    public function test_a_non_integer_word_goal_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => $project->name,
+            'language' => 'en',
+            'total_word_goal' => 'lots',
+        ]);
+
+        $response->assertSessionHasErrors('total_word_goal');
     }
 
     public function test_the_edit_page_footer_form_resyncs_codex_references_for_the_project(): void
@@ -567,5 +650,128 @@ class ProjectTest extends TestCase
             ->get(route('projects.show', $project))
             ->assertOk()
             ->assertSee('0 words');
+    }
+
+    // --- The dashboard Progress card ---------------------------------------
+
+    public function test_the_dashboard_progress_card_renders_the_full_chart(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee(__('Progress'))
+            ->assertSee('data-variant="full"', false)
+            ->assertSee(route('projects.progress', $project), false);
+    }
+
+    public function test_the_dashboard_opens_with_the_last_edited_scenes_and_codex(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSeeInOrder([__('Recent scenes'), __('Recent codex entries')]);
+    }
+
+    public function test_a_project_with_no_goals_renders_the_card_without_goal_bars(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create([
+            'daily_word_goal' => null,
+            'total_word_goal' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertDontSee(__('Today'))
+            // No bar and no "of ∞", but the plain total stays: the dashboard
+            // states the project's length nowhere else.
+            ->assertDontSee('words of')
+            ->assertSee(__('Total'))
+            ->assertSee('0 words');
+    }
+
+    public function test_a_project_with_both_goals_renders_both_progress_rows(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create([
+            'daily_word_goal' => 500,
+            'total_word_goal' => 10000,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee(__('Today'))
+            ->assertSee(__('Total'));
+    }
+
+    public function test_the_progress_card_costs_exactly_two_extra_queries(): void
+    {
+        // The chart's series comes from WordCountHistory, which costs two
+        // queries whatever the range length (see WordCountHistoryTest).
+        // This asserts the dashboard card does not regress to one query per
+        // day — projects/show is already the heaviest page in the app.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['daily_word_goal' => null]);
+
+        DB::enableQueryLog();
+        $this->actingAs($user)->get(route('projects.show', $project));
+        $snapshotQueries = collect(DB::getQueryLog())
+            ->filter(fn (array $query) => str_contains($query['query'], 'word_count_snapshots'));
+        DB::disableQueryLog();
+
+        $this->assertCount(2, $snapshotQueries);
+    }
+
+    public function test_the_streak_adds_one_query_and_only_with_a_daily_goal(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['daily_word_goal' => 500]);
+
+        DB::enableQueryLog();
+        $this->actingAs($user)->get(route('projects.show', $project));
+        $snapshotQueries = collect(DB::getQueryLog())
+            ->filter(fn (array $query) => str_contains($query['query'], 'word_count_snapshots'));
+        DB::disableQueryLog();
+
+        $this->assertCount(3, $snapshotQueries);
+    }
+
+    public function test_the_dashboard_shows_the_daily_goal_streak(): void
+    {
+        $user = User::factory()->create(['timezone' => 'UTC']);
+        $project = Project::factory()->for($user)->create(['daily_word_goal' => 500]);
+
+        $today = CarbonImmutable::now('UTC')->startOfDay();
+
+        foreach ([3, 2, 1] as $daysAgo) {
+            WordCountSnapshot::factory()->for($project)->create([
+                'recorded_on' => $today->subDays($daysAgo)->toDateString(),
+                'word_count' => (4 - $daysAgo) * 500,
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee('3 days in a row');
+    }
+
+    public function test_a_project_with_no_daily_goal_shows_no_streak(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['daily_word_goal' => null]);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertDontSee(__('No streak yet'));
     }
 }

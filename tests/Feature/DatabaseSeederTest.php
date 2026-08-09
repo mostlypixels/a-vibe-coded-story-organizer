@@ -6,6 +6,9 @@ use App\Models\CodexEntry;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
+use App\Models\WordCountSnapshot;
+use App\Support\WordCountHistoryGenerator;
+use App\Support\WriterDay;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -88,5 +91,57 @@ class DatabaseSeederTest extends TestCase
             $referencesAfterFirstRun,
             $castle->referencingScenes()->pluck('scenes.id')->sort()->values()->all(),
         );
+    }
+
+    /**
+     * Pins the seeded history against `WordCountHistoryGenerator::plan()` itself
+     * rather than against the day count: rest days are absent by design, so a
+     * plain "60 rows" assertion would be wrong on purpose.
+     */
+    public function test_a_seeded_project_has_the_generators_exact_history(): void
+    {
+        $this->seed();
+
+        $project = Project::where('name', 'The Roman of Melusine')->firstOrFail();
+        $total = (int) $project->sceneQuery()->sum('word_count');
+
+        $days = 60;
+        $plan = WordCountHistoryGenerator::plan($total, $days, crc32($project->name));
+        $today = WriterDay::for($project->user);
+
+        $expectedDates = collect($plan)
+            ->map(fn (array $entry): string => $today->subDays($days - 1 - $entry['offset'])->toDateString())
+            ->all();
+
+        $actualDates = WordCountSnapshot::where('project_id', $project->id)
+            ->orderBy('recorded_on')
+            ->get()
+            ->map(fn (WordCountSnapshot $snapshot): string => $snapshot->recorded_on->toDateString())
+            ->all();
+
+        $this->assertSame($expectedDates, $actualDates);
+    }
+
+    /**
+     * The chart's last point must equal the header's word count, or the demo
+     * discredits the whole feature (see demo-history.md).
+     */
+    public function test_a_seeded_projects_last_snapshot_equals_its_live_word_count(): void
+    {
+        $this->seed();
+
+        foreach (['The Roman of Melusine', 'Le Roman de Mélusine', 'Il Romanzo di Melusina'] as $name) {
+            $project = Project::where('name', $name)->firstOrFail();
+
+            $lastSnapshot = WordCountSnapshot::where('project_id', $project->id)
+                ->orderByDesc('recorded_on')
+                ->firstOrFail();
+
+            $this->assertSame(
+                (int) $project->sceneQuery()->sum('word_count'),
+                $lastSnapshot->word_count,
+                "Last snapshot mismatch for {$name}.",
+            );
+        }
     }
 }

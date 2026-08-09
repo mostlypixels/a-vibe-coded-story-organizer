@@ -127,6 +127,24 @@ import remaps the setting onto the freshly-created project.
 > restored Codex, selecting the same entry types and embedding each entry's first image
 > exactly as the source did.
 
+## `data/word-count-snapshots.json`
+
+The project's writing history — one row per writer-day, cumulative total. A flat array like
+`data/tags.json`, ordered oldest first:
+
+```json
+[
+  { "recorded_on": "2026-08-01", "word_count": 1200 },
+  { "recorded_on": "2026-08-02", "word_count": 1900 }
+]
+```
+
+Always written, even as `[]` — unlike `publication-setting.json`, "no history" is a real,
+representable state, not a lazy default. An archive exported **before this feature** has no
+such file at all; the importer reads that as "no history", not an error. Restored in bulk
+(`DB::table('word_count_snapshots')->insert(...)`, never through the model) so no
+`WordCountSnapshotRecorder` event fires on top of the restored rows.
+
 ## The Story branch
 
 The manuscript tree — the project plus its `act → chapter → scene` hierarchy. **Nesting
@@ -156,8 +174,8 @@ A content field is never inlined into JSON — it is written as a **sibling file
 
 ```
 data/project/
-  project.json            { id, name, description_file?, dedication_file?,
-                             acknowledgements_file?, preface_file?, postface_file? }
+  project.json            { id, name, daily_word_goal, total_word_goal, description_file?,
+                             dedication_file?, acknowledgements_file?, preface_file?, postface_file? }
   description.html
   dedication.md
   acknowledgements.md
