@@ -10,7 +10,7 @@
 {{--
     A "Recently edited" card for the section landing pages: the last few
     App\Support\RecentItem rows, newest first, then a link to the full index.
-    Rows carry the striping and edge-to-edge dividers of the index tables.
+    Rows carry the edge-to-edge dividers of the index tables.
 
     `show-covers` is a property of the ENTITY, not of the data: turn it on for a
     list whose entity has a cover field (codex entries, chapters) and every row
@@ -28,7 +28,7 @@
     @else
         <ul class="divide-y divide-border">
             @foreach ($items as $item)
-                <li class="flex items-center gap-3 px-6 py-3 {{ $loop->even ? 'bg-surface' : 'bg-surface-raised' }}">
+                <li class="flex items-center gap-3 px-6 py-3">
                     @if ($showCovers)
                         <a href="{{ $item->url }}" class="shrink-0" tabindex="-1" aria-hidden="true">
                             @if ($item->imageUrl)
