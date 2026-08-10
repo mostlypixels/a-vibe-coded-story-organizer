@@ -17,9 +17,7 @@ export default defineConfig({
     // nothing from `public/`. app.css asks for `/fonts/*.woff2`, and in dev the
     // browser loads that stylesheet from the Vite origin (:5173), so the font
     // URLs resolve against :5173 too and 404 — the page silently renders in the
-    // fallback family because `font-display: swap` hides the failure. A build
-    // does not have the problem: the app origin serves both the CSS and
-    // `public/fonts`.
+    // fallback family because `font-display: swap` hides the failure.
     publicDir: 'public',
     build: {
         // `publicDir` above makes `vite build` copy `public/` into the output
@@ -27,6 +25,23 @@ export default defineConfig({
         // inside itself. The dev server is the only thing that needs the public
         // directory, so turn the copy off.
         copyPublicDir: false,
+    },
+    experimental: {
+        // `publicDir` also makes a build treat `url('/fonts/x.woff2')` in app.css
+        // as a public asset and prefix `base`, which gives
+        // `/build/fonts/x.woff2`. `copyPublicDir: false` puts no file there, so
+        // every font 404s and `font-display: swap` hides it — the same silent
+        // fallback-family failure, in the build this time.
+        //
+        // Public assets are served from the app origin at the path app.css
+        // already writes, so return it unchanged. Returning undefined for every
+        // other type keeps the default `base` handling for the fingerprinted
+        // build assets, which DO live under `/build`.
+        renderBuiltUrl(filename, { type }) {
+            if (type === 'public') {
+                return '/'.concat(filename);
+            }
+        },
     },
     server: {
         // Bind-mounted source does not deliver filesystem events into a Linux

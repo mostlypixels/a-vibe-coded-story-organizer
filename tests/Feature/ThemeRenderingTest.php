@@ -71,8 +71,11 @@ class ThemeRenderingTest extends TestCase
     {
         $content = $this->actingAs(User::factory()->create())->get(route('dashboard'))->getContent();
 
+        // Read through themes.default: this user picked no preset, so the block
+        // carries whatever the default resolves to. Naming a preset here would
+        // fail the day the default changes, for no reason the test is about.
         $this->assertStringContainsString(
-            '--color-primary:'.config('themes.presets.daylight.tokens.primary').';',
+            '--color-primary:'.config('themes.presets.'.config('themes.default').'.tokens.primary').';',
             $content,
         );
 
