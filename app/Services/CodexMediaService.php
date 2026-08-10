@@ -9,6 +9,7 @@ use App\Models\Project;
 use Illuminate\Http\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -81,6 +82,26 @@ class CodexMediaService
         }
 
         return $path;
+    }
+
+    /**
+     * Copy a stored media file to a fresh path on the same disk, and return that path.
+     *
+     * Duplication gives the copy its own file: one file must have one owning row.
+     * A shared path makes the deletion of one entry blank the other entry's images.
+     * The new name is random, like every other stored file; only the extension
+     * carries over, because the browser reads it to select a content type.
+     */
+    public function copyFile(string $path): string
+    {
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+        $copy = self::DIRECTORY.'/'.Str::random(40).($extension === '' ? '' : '.'.$extension);
+
+        if (! Storage::disk(self::DISK)->copy($path, $copy)) {
+            throw new \RuntimeException("Unable to copy the media file \"{$path}\".");
+        }
+
+        return $copy;
     }
 
     /**

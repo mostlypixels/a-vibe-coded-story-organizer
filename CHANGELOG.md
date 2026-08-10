@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-10 — Duplicate scenes and codex entries
+
+### Added
+
+- A scene can be duplicated from its list row or its edit page. The copy lands right after the original.
+- A codex entry can be duplicated the same way, carrying its aliases, images, attachments, timeline values and tags.
+- Duplicating asks for a name first, prefilled with the original plus a number that steps up until it is free.
+
+### Fixed
+
+- Dialogs no longer open underneath their own grey backdrop.
+- The confirm button of a dialog now works. Deleting an act or a chapter that holds children was unreachable this way.
+
 ## 2026-08-10 — Temporary export cleanup (#94)
 
 ### Fixed

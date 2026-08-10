@@ -7,6 +7,7 @@ use App\Enums\CodexMediaCollection;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
+use App\Http\Requests\DuplicateEntityRequest;
 use App\Http\Requests\StoreCodexEntryRequest;
 use App\Http\Requests\UpdateCodexEntryRequest;
 use App\Models\CodexAttribute;
@@ -16,8 +17,10 @@ use App\Models\Event;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\AttributeTimeline;
+use App\Services\CodexEntryDuplicator;
 use App\Services\CodexMediaService;
 use App\Services\SceneReferenceMatcher;
+use App\Support\DuplicateName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,6 +64,14 @@ class CodexEntryController extends Controller
             ->orderBy($sort, $direction)
             ->get();
 
+        // One name list per type backs every row's suggestion, so this stays a single
+        // query instead of one per row. Scoped to the type: a Character and a Location
+        // may both be named "Luna" without colliding (see DuplicateName).
+        $names = $project->codexEntries()->where('type', $entryType->value)->pluck('name');
+        $duplicateNames = $entries->mapWithKeys(
+            fn (CodexEntry $entry) => [$entry->id => DuplicateName::suggest($entry->name, $names)]
+        );
+
         return view('codex.index', [
             'project' => $project,
             'type' => $entryType,
@@ -70,6 +81,7 @@ class CodexEntryController extends Controller
             'tags' => $project->tags()->whereHas('entries')->orderBy('name')->get(),
             'sort' => $sort,
             'direction' => $direction,
+            'duplicateNames' => $duplicateNames,
         ]);
     }
 
@@ -146,6 +158,10 @@ class CodexEntryController extends Controller
             // read side of the derived scene_codex_entry cache — see the sidebar card in
             // codex/partials/fields.blade.php.
             'referencingScenes' => $this->referencingScenesInTimelineOrder($codexEntry),
+            'duplicateSuggestion' => DuplicateName::suggest(
+                $codexEntry->name,
+                $project->codexEntries()->where('type', $codexEntry->type->value)->pluck('name')
+            ),
         ]);
     }
 
@@ -237,6 +253,17 @@ class CodexEntryController extends Controller
         $codexEntry->delete();
 
         return redirect()->route('projects.codex.index', [$project, $type->routeKey()]);
+    }
+
+    /**
+     * The copy's edit page is the destination: the writer just named the copy and
+     * means to work on it, whichever page started the duplication.
+     */
+    public function duplicate(DuplicateEntityRequest $request, CodexEntry $codexEntry, CodexEntryDuplicator $duplicator): RedirectResponse
+    {
+        $copy = $duplicator->duplicate($codexEntry, $request->validated('name'));
+
+        return redirect()->route('codex.edit', $copy)->with('status', 'duplicated');
     }
 
     /**

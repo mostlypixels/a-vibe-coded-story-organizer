@@ -367,6 +367,43 @@ Rules that bite if you don't know them:
 > containment window that keeps Start earliest, the matching rules, and the reasoning behind
 > each trade-off.
 
+## Duplicating entities
+
+Only **Scene** and **CodexEntry** have a Duplicate action — the entity plus the rows it
+**owns** (aliases, media, attribute values), never the manuscript tree. An act or chapter has
+no subtree copy, so duplicating one would produce an empty shell; that's why only these two
+ship the action. `App\Support\DuplicateName::suggest()` proposes a free `"<name> (n)"`, but the
+submitted name is only ever `required|string|max:255` — a collision is accepted, the same as
+Create.
+
+- **`App\Services\SceneDuplicator`** inserts the copy right after the original
+  (`HasSiblingPosition::makeRoomAfter()`), re-attaches the `event_scene` "mentions" pivot, and
+  rebuilds `scene_codex_entry` via `SceneReferenceMatcher::syncScene()`. `share_token` /
+  `share_expires_at` are never copied — the unique index on `share_token` would fail the
+  second duplicate of a shared scene, and a copy should start unshared regardless.
+- **`App\Services\CodexEntryDuplicator`** copies aliases, media, and attribute values, and
+  re-attaches tags (`sync`, never `firstOrCreate` — `Tag::count()` is unchanged by a
+  duplicate). It rebuilds `scene_codex_entry` **project-wide** via
+  `SceneReferenceMatcher::syncProject()`, since the copy's own name/aliases can newly match
+  existing scene prose.
+- **`scene_codex_entry` is always derived**, on both paths — neither service inserts into it
+  directly.
+- Both routes (`scenes.duplicate`, `codex.duplicate`) share one `DuplicateEntityRequest`;
+  authorization walks to the project via `App\Support\RouteProject`, same as every other
+  action.
+- Both redirect to the **copy's edit page** with `session('status') === 'duplicated'`.
+
+> [!WARNING]
+> **Codex media inverts the disk/transaction order.** Everywhere else in the Codex, disk I/O
+> stays outside the entry-save transaction (see *The Codex* above). Duplication does the
+> opposite: `CodexMediaService::copyFile()` copies each file to a fresh path **before** the DB
+> transaction opens, because the new `codex_media` rows must be created with paths that
+> already exist. A failed transaction deletes the just-copied files again in a `catch`. This is
+> a deliberate trade-off, not an oversight: a crash between copy and commit can leak an orphan
+> file (invisible to any user), whereas the normal order would leave a row pointing at a
+> missing file (visible to every user). A metadata-only imported row (`path === null`)
+> duplicates as another metadata-only row — nothing to copy, nothing thrown.
+
 ## Rich text (WYSIWYG)
 
 Most free-text fields — every `description`, plus `Scene.notes` — are **rich HTML**, authored in

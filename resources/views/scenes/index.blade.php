@@ -66,6 +66,7 @@
                                     <x-icon-move-button direction="up" :action="route('scenes.move-up', $scene)" :disabled="$loop->first" />
                                     <x-icon-move-button direction="down" :action="route('scenes.move-down', $scene)" :disabled="$loop->last" />
                                 @endif
+                                <x-icon-dialog-button icon="copy" variant="outline-solid" :modal="'duplicate-scene-'.$scene->id" :label="__('Duplicate')" />
                                 <x-icon-edit-link :href="route('scenes.edit', $scene)" />
                                 <x-icon-delete-button :action="route('scenes.destroy', $scene)" :confirm="__('Are you sure you want to delete this scene?')" />
                             </div>
@@ -81,5 +82,16 @@
                     />
                 @endforelse
             </x-table>
+
+            {{-- Duplicate-name dialogs live outside the table (a modal <div> is not
+                 valid inside a <tbody>); each is opened by its row's copy button. --}}
+            @foreach ($scenes as $scene)
+                <x-duplicate-dialog
+                    name="duplicate-scene-{{ $scene->id }}"
+                    :action="route('scenes.duplicate', $scene)"
+                    :title="__('Duplicate Scene?')"
+                    :suggestion="$duplicateNames[$scene->id]"
+                />
+            @endforeach
     </div>
 </x-app-layout>

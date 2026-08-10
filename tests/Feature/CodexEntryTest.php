@@ -10,6 +10,7 @@ use App\Models\CodexAlias;
 use App\Models\CodexAttribute;
 use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
+use App\Models\CodexMedia;
 use App\Models\Event;
 use App\Models\Project;
 use App\Models\Scene;
@@ -17,6 +18,7 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CodexEntryTest extends TestCase
@@ -517,5 +519,242 @@ class CodexEntryTest extends TestCase
                 'href="'.route('revisions.index', ['entity' => 'codex', 'id' => $entry->id]).'"',
                 false,
             );
+    }
+
+    // ---------------------------------------------------------------------
+    // Duplication
+    // ---------------------------------------------------------------------
+
+    public function test_owner_can_duplicate_an_entry(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create([
+            'name' => 'Melusine',
+            'description' => 'A serpent from the waist down.',
+        ]);
+
+        $response = $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Melusine (2)']);
+
+        $copy = CodexEntry::where('name', 'Melusine (2)')->firstOrFail();
+        $response->assertRedirect(route('codex.edit', $copy));
+        $this->assertSame('duplicated', session('status'));
+        $this->assertSame($project->id, $copy->project_id);
+        $this->assertSame(CodexEntryType::Character, $copy->type);
+        $this->assertSame('A serpent from the waist down.', $copy->description);
+        $this->assertSame(2, CodexEntry::count());
+    }
+
+    public function test_a_non_owner_cannot_duplicate_an_entry(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $entry = CodexEntry::factory()->for(Project::factory()->for($owner))->character()->create();
+
+        $this->actingAs($other)
+            ->post(route('codex.duplicate', $entry), ['name' => 'Copy'])
+            ->assertForbidden();
+
+        $this->assertSame(1, CodexEntry::count());
+    }
+
+    public function test_duplicating_an_entry_without_a_name_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $entry = CodexEntry::factory()->for(Project::factory()->for($user))->character()->create();
+
+        $this->actingAs($user)
+            ->post(route('codex.duplicate', $entry), ['name' => ''])
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame(1, CodexEntry::count());
+    }
+
+    public function test_duplicating_an_entry_with_a_name_over_255_characters_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $entry = CodexEntry::factory()->for(Project::factory()->for($user))->character()->create();
+
+        $this->actingAs($user)
+            ->post(route('codex.duplicate', $entry), ['name' => str_repeat('a', 256)])
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame(1, CodexEntry::count());
+    }
+
+    public function test_duplicating_an_entry_with_a_colliding_name_is_accepted(): void
+    {
+        $user = User::factory()->create();
+        $entry = CodexEntry::factory()->for(Project::factory()->for($user))->character()->create(['name' => 'Melusine']);
+
+        $this->actingAs($user)
+            ->post(route('codex.duplicate', $entry), ['name' => 'Melusine'])
+            ->assertRedirect();
+
+        $this->assertSame(2, CodexEntry::where('name', 'Melusine')->count());
+    }
+
+    public function test_duplicating_an_entry_copies_aliases_media_and_attribute_values_as_new_rows(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+        $entry->aliases()->create(['alias' => 'The Serpent Lady']);
+        $attribute = CodexAttribute::factory()->for($project)->create();
+        CodexAttributeValue::factory()->for($entry, 'entry')->create([
+            'codex_attribute_id' => $attribute->id,
+            'value' => 'Winged',
+        ]);
+        $media = CodexMedia::factory()->for($entry, 'entry')->create(['position' => 3]);
+        Storage::disk('public')->put($media->path, 'bytes');
+
+        $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Melusine (2)']);
+        $copy = CodexEntry::where('name', 'Melusine (2)')->firstOrFail();
+
+        $this->assertSame(['The Serpent Lady'], $copy->aliases()->pluck('alias')->all());
+        $this->assertSame('Winged', $copy->attributeValues()->first()->value);
+        $this->assertSame($attribute->id, $copy->attributeValues()->first()->codex_attribute_id);
+
+        $copiedMedia = $copy->media()->first();
+        $this->assertSame(3, $copiedMedia->position);
+        $this->assertSame($media->original_name, $copiedMedia->original_name);
+        $this->assertNotSame($media->path, $copiedMedia->path);
+        Storage::disk('public')->assertExists($copiedMedia->path);
+
+        // The original keeps exactly one of each: nothing was moved onto the copy.
+        $this->assertSame(1, $entry->aliases()->count());
+        $this->assertSame(1, $entry->media()->count());
+        $this->assertSame(1, $entry->attributeValues()->count());
+    }
+
+    public function test_duplicating_an_entry_reattaches_the_existing_tags(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $tag = Tag::factory()->for($project)->create();
+        $entry->tags()->attach($tag);
+
+        $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Copy']);
+        $copy = CodexEntry::where('name', 'Copy')->firstOrFail();
+
+        $this->assertSame([$tag->id], $copy->tags()->pluck('tags.id')->all());
+        $this->assertSame(1, Tag::count());
+    }
+
+    public function test_deleting_the_original_leaves_the_copys_media_file_on_disk(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $media = CodexMedia::factory()->for($entry, 'entry')->create();
+        Storage::disk('public')->put($media->path, 'bytes');
+
+        $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Copy']);
+        $copiedPath = CodexEntry::where('name', 'Copy')->firstOrFail()->media()->first()->path;
+
+        $this->actingAs($user)->delete(route('codex.destroy', $entry));
+
+        Storage::disk('public')->assertMissing($media->path);
+        Storage::disk('public')->assertExists($copiedPath);
+    }
+
+    public function test_duplicating_an_entry_keeps_a_metadata_only_media_row_pathless(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        CodexMedia::factory()->for($entry, 'entry')->create(['path' => null]);
+
+        $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Copy'])->assertRedirect();
+
+        $this->assertNull(CodexEntry::where('name', 'Copy')->firstOrFail()->media()->first()->path);
+    }
+
+    public function test_an_entry_with_no_owned_rows_duplicates_cleanly(): void
+    {
+        $user = User::factory()->create();
+        $entry = CodexEntry::factory()->for(Project::factory()->for($user))->character()->create();
+
+        $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Copy'])->assertRedirect();
+
+        $copy = CodexEntry::where('name', 'Copy')->firstOrFail();
+        $this->assertSame(0, $copy->aliases()->count());
+        $this->assertSame(0, $copy->media()->count());
+    }
+
+    public function test_a_failed_duplication_leaves_no_copied_media_file_behind(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $media = CodexMedia::factory()->for($entry, 'entry')->create();
+        Storage::disk('public')->put($media->path, 'bytes');
+
+        // Fail the insert of the copied media row: the file copies already happened,
+        // so this exercises the cleanup in the duplicator's catch.
+        CodexMedia::creating(function (CodexMedia $row) use ($media) {
+            if ($row->path !== $media->path) {
+                throw new \RuntimeException('Insert failed on purpose.');
+            }
+        });
+
+        $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Copy']);
+
+        $this->assertNull(CodexEntry::where('name', 'Copy')->first());
+        $this->assertSame([$media->path], Storage::disk('public')->allFiles());
+    }
+
+    // ---------------------------------------------------------------------
+    // Duplicate dialog UI
+    // ---------------------------------------------------------------------
+
+    public function test_the_codex_index_shows_a_duplicate_trigger_with_the_suggested_name(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $this->actingAs($user)
+            ->get(route('projects.codex.index', [$project, 'characters']))
+            ->assertOk()
+            ->assertSee('duplicate-codex-entry-'.$entry->id, false)
+            ->assertSee('value="Melusine (2)"', false);
+    }
+
+    public function test_the_codex_edit_page_shows_a_duplicate_trigger_with_the_suggested_name(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $this->actingAs($user)
+            ->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('duplicate-codex-entry-'.$entry->id, false)
+            ->assertSee('value="Melusine (2)"', false);
+    }
+
+    public function test_the_duplicate_suggestion_ignores_same_named_entries_of_a_different_type(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $character = CodexEntry::factory()->for($project)->character()->create(['name' => 'Luna']);
+        // A location already occupies "Luna (2)": if the candidate set were not scoped
+        // to type, this would push the character's suggestion to "Luna (3)".
+        CodexEntry::factory()->for($project)->location()->create(['name' => 'Luna (2)']);
+
+        $this->actingAs($user)
+            ->get(route('codex.edit', $character))
+            ->assertOk()
+            ->assertSee('value="Luna (2)"', false);
     }
 }

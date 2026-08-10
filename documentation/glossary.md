@@ -49,6 +49,12 @@ act/chapter/scene tree with a table of contents and Markdown-rendered scene cont
 (`CodexEntryType`); an entry has aliases, tags, media, and temporal attribute values. The
 kind is a route segment (`/projects/{project}/codex/characters`, `.../locations`, `...`).
 
+**Duplicate** — copy one Scene or CodexEntry, plus the rows it *owns* (aliases, media,
+attribute values), into a new sibling row with a suggested name. Distinct from **import**
+(rebuilds a whole project from an exported archive, remapping every id) and **revision**
+(an immutable snapshot of a field's past value, not a new row). See
+[architecture](architecture.md#duplicating-entities).
+
 **Attribute definition** — a named, reusable attribute (`codex_attributes`, e.g. "Hair
 color", "Architecture style") the project owner defines once. Its `applies_to` array decides which
 entry types show it on their sheet. Distinct from its *values*, which are temporal (below).

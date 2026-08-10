@@ -946,4 +946,244 @@ class SceneTest extends TestCase
             ->assertOk()
             ->assertSee('0 words');
     }
+
+    // ---------------------------------------------------------------------
+    // Duplication (SceneDuplicator)
+    // ---------------------------------------------------------------------
+
+    public function test_duplicating_a_scene_creates_a_copy_and_redirects_to_its_edit_page(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['name' => 'Arrival']);
+
+        $response = $this->actingAs($user)->post(route('scenes.duplicate', $scene), ['name' => 'Arrival (2)']);
+
+        $copy = Scene::where('name', 'Arrival (2)')->firstOrFail();
+        $response->assertRedirect(route('scenes.edit', $copy));
+        $this->assertSame('duplicated', session('status'));
+        $this->assertSame($chapter->id, $copy->chapter_id);
+        $this->assertSame(2, Scene::count());
+    }
+
+    public function test_a_non_owner_cannot_duplicate_a_scene(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $chapter = $this->chapterFor($owner);
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($other)
+            ->post(route('scenes.duplicate', $scene), ['name' => 'Copy'])
+            ->assertForbidden();
+
+        $this->assertSame(1, Scene::count());
+    }
+
+    public function test_duplicating_a_scene_without_a_name_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($user)
+            ->post(route('scenes.duplicate', $scene), ['name' => ''])
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame(1, Scene::count());
+    }
+
+    public function test_duplicating_a_scene_with_a_name_over_255_characters_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($user)
+            ->post(route('scenes.duplicate', $scene), ['name' => str_repeat('a', 256)])
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame(1, Scene::count());
+    }
+
+    public function test_duplicating_a_scene_with_a_colliding_name_is_accepted(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['name' => 'Arrival']);
+
+        $this->actingAs($user)
+            ->post(route('scenes.duplicate', $scene), ['name' => 'Arrival'])
+            ->assertRedirect();
+
+        $this->assertSame(2, Scene::where('name', 'Arrival')->count());
+    }
+
+    public function test_duplicating_the_middle_scene_inserts_the_copy_right_after_it(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $first = Scene::factory()->for($chapter)->create(['position' => 1]);
+        $middle = Scene::factory()->for($chapter)->create(['position' => 2]);
+        $last = Scene::factory()->for($chapter)->create(['position' => 3]);
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $middle), ['name' => 'Copy']);
+        $copy = Scene::where('name', 'Copy')->firstOrFail();
+
+        $this->assertSame(1, $first->fresh()->position);
+        $this->assertSame(2, $middle->fresh()->position);
+        $this->assertSame(3, $copy->position);
+        $this->assertSame(4, $last->fresh()->position);
+
+        $ordered = $chapter->scenes()->orderBy('position')->orderBy('id')->pluck('name');
+        $this->assertSame([$first->name, $middle->name, 'Copy', $last->name], $ordered->all());
+    }
+
+    public function test_duplicating_the_last_scene_appends_the_copy(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $first = Scene::factory()->for($chapter)->create(['position' => 1]);
+        $last = Scene::factory()->for($chapter)->create(['position' => 2]);
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $last), ['name' => 'Copy']);
+        $copy = Scene::where('name', 'Copy')->firstOrFail();
+
+        $this->assertSame(1, $first->fresh()->position);
+        $this->assertSame(2, $last->fresh()->position);
+        $this->assertSame(3, $copy->position);
+    }
+
+    public function test_duplicating_a_scene_never_renumbers_another_chapters_scenes(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapterOne = Chapter::factory()->for($act)->create();
+        $chapterTwo = Chapter::factory()->for($act)->create();
+
+        $sceneOne = Scene::factory()->for($chapterOne)->create(['position' => 1]);
+        $sceneTwo = Scene::factory()->for($chapterTwo)->create(['position' => 1]);
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $sceneOne), ['name' => 'Copy']);
+
+        $this->assertSame(1, $sceneTwo->fresh()->position);
+    }
+
+    public function test_duplicating_a_shared_scene_leaves_the_copy_unshared(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create([
+            'share_token' => 'a-token',
+            'share_expires_at' => now()->addDay(),
+        ]);
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $scene), ['name' => 'Copy']);
+        $copy = Scene::where('name', 'Copy')->firstOrFail();
+
+        $this->assertNull($copy->share_token);
+        $this->assertNull($copy->share_expires_at);
+    }
+
+    public function test_duplicating_a_scene_copies_status_contents_and_notes_verbatim(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create([
+            'status' => SceneStatus::Final,
+            'contents' => 'Some **markdown** contents.',
+            'notes' => 'Private notes.',
+        ]);
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $scene), ['name' => 'Copy']);
+        $copy = Scene::where('name', 'Copy')->firstOrFail();
+
+        $this->assertSame(SceneStatus::Final, $copy->status);
+        $this->assertSame($scene->contents, $copy->contents);
+        $this->assertSame('Private notes.', $copy->notes);
+    }
+
+    public function test_duplicating_a_scene_recomputes_rather_than_copies_word_count(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['contents' => trim(str_repeat('word ', 10))]);
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $scene), ['name' => 'Copy']);
+        $copy = Scene::where('name', 'Copy')->firstOrFail();
+
+        $this->assertSame(10, $copy->word_count);
+        $this->assertSame($scene->word_count, $copy->word_count);
+    }
+
+    public function test_duplicating_a_scene_replicates_its_event_links_without_creating_events(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->project;
+        $happensDuring = Event::factory()->for($project)->create();
+        $mentioned = Event::factory()->for($project)->create();
+        $scene = Scene::factory()->for($chapter)->create(['event_id' => $happensDuring->id]);
+        $scene->mentionedEvents()->attach($mentioned->id);
+        // A project auto-creates two fixed start/end events (Project::booted()); the
+        // baseline is 4, not 0.
+        $eventCountBeforeDuplicate = Event::count();
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $scene), ['name' => 'Copy']);
+        $copy = Scene::where('name', 'Copy')->firstOrFail();
+
+        $this->assertSame($happensDuring->id, $copy->event_id);
+        $this->assertSame([$mentioned->id], $copy->mentionedEvents()->pluck('events.id')->all());
+        $this->assertSame($eventCountBeforeDuplicate, Event::count());
+    }
+
+    public function test_duplicating_a_scene_rebuilds_rather_than_copies_codex_references(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->project;
+        $entry = $this->codexEntryIn($project, 'Melchior', 'Mel');
+        // Factory-created, so no scene_codex_entry row exists yet — only a save that
+        // goes through the controller (store/update/duplicate) triggers the sync.
+        $scene = Scene::factory()->for($chapter)->create(['contents' => 'Mel walked into the room.']);
+        $this->assertDatabaseMissing('scene_codex_entry', ['scene_id' => $scene->id]);
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $scene), ['name' => 'Copy']);
+        $copy = Scene::where('name', 'Copy')->firstOrFail();
+
+        // Rebuilt from the copy's own contents, which happen to match the same entry —
+        // not copied from (the still-empty) original pivot set.
+        $this->assertDatabaseHas('scene_codex_entry', ['scene_id' => $copy->id, 'codex_entry_id' => $entry->id]);
+    }
+
+    // ---------------------------------------------------------------------
+    // Duplicate dialog UI
+    // ---------------------------------------------------------------------
+
+    public function test_the_scenes_index_shows_a_duplicate_trigger_with_the_suggested_name(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['name' => 'Arrival']);
+
+        $this->actingAs($user)
+            ->get(route('projects.scenes.index', $chapter->act->project))
+            ->assertOk()
+            ->assertSee('duplicate-scene-'.$scene->id, false)
+            ->assertSee('value="Arrival (2)"', false);
+    }
+
+    public function test_the_scene_edit_page_shows_a_duplicate_trigger_with_the_suggested_name(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['name' => 'Arrival']);
+
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertSee('duplicate-scene-'.$scene->id, false)
+            ->assertSee('value="Arrival (2)"', false);
+    }
 }

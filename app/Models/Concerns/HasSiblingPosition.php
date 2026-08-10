@@ -42,6 +42,24 @@ trait HasSiblingPosition
     }
 
     /**
+     * Shift every sibling positioned after this model down by one, opening a gap
+     * for a new row right after it. Returns the freed position (`$this->position
+     * + 1`) for the caller to insert at. Runs inside the caller's transaction —
+     * unlike {@see swapWithAdjacentSibling()}, which owns its own.
+     */
+    public function makeRoomAfter(): int
+    {
+        $scopeColumn = $this->siblingScopeColumn();
+
+        static::query()
+            ->where($scopeColumn, $this->{$scopeColumn})
+            ->where('position', '>', $this->position)
+            ->increment('position');
+
+        return $this->position + 1;
+    }
+
+    /**
      * Swap positions with the nearest sibling on one side. `$operator` selects the
      * side (`<` = the one just before, `>` = the one just after) and `$direction`
      * orders the candidates so `first()` returns the *adjacent* one. A no-op when

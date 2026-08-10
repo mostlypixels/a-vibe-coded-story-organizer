@@ -62,7 +62,13 @@
 @endphp
 
 <x-dialog :name="$name" :title="$title">
-    <form method="POST" action="{{ $action }}" x-data="{ mode: 'move' }" class="space-y-4">
+    {{--
+        The footer slot is rendered by <x-dialog> OUTSIDE this <form> element, so a
+        plain submit button in it belongs to no form and does nothing when clicked.
+        The `form` attribute below re-associates it by id — the same fix
+        <x-edit-actions> uses for its sidebar Save buttons.
+    --}}
+    <form id="{{ $name }}-form" method="POST" action="{{ $action }}" x-data="{ mode: 'move' }" class="space-y-4">
         @csrf
         @method('DELETE')
 
@@ -97,7 +103,7 @@
 
         <x-slot name="footer">
             <x-button variant="secondary" type="button" x-on:click="$dispatch('close')">{{ __('Cancel') }}</x-button>
-            <x-button variant="danger" type="submit">{{ __('Confirm') }}</x-button>
+            <x-button variant="danger" type="submit" form="{{ $name }}-form">{{ __('Confirm') }}</x-button>
         </x-slot>
     </form>
 </x-dialog>
