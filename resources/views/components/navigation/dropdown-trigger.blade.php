@@ -1,14 +1,16 @@
 @props(['active' => false])
 
 {{-- The button that opens a primary-nav dropdown: label + chevron, underlined
-     in the accent colour when its section is active. Mirrors nav-link's
-     active look so a dropdown section and a plain link read the same in the
-     bar. `focus:ring-2` was missing here — a pre-existing gap, added to match
-     nav-link's focus affordance. --}}
+     in the accent colour when its section is active.
+
+     `h-12` is the bar's height, and it is what makes the trigger match a plain
+     nav-link: a link stretches to the full bar and drops its accent strip on
+     the bar's bottom edge, while a button in a centred wrapper would hug its
+     own text and float the strip in the middle of the bar. --}}
 <button {{ $attributes->class([
-    'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 hover:text-nav-content focus:outline-hidden focus:ring-2 focus:ring-focus transition duration-150 ease-in-out',
+    'inline-flex h-12 items-center px-1 border-b-2 text-sm font-medium leading-5 focus:outline-hidden focus:ring-2 focus:ring-focus transition duration-150 ease-in-out',
     'text-nav-content border-accent' => $active,
-    'text-nav-content border-transparent' => ! $active,
+    'text-nav-content border-transparent hover:border-nav-content-muted' => ! $active,
 ]) }}>
     {{ $slot }}
 
