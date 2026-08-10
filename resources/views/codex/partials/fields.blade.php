@@ -92,9 +92,17 @@
                 :history-model="$entry"
                 :delete-action="route('codex.destroy', $entry)"
                 :delete-confirm="__('Are you sure you want to delete this entry?')"
+                duplicate-modal="duplicate-codex-entry-{{ $entry->id }}"
             >
                 {{ __('Delete :label', ['label' => $type->label()]) }}
             </x-edit-actions>
+
+            <x-duplicate-dialog
+                name="duplicate-codex-entry-{{ $entry->id }}"
+                :action="route('codex.duplicate', $entry)"
+                :title="__('Duplicate :label', ['label' => $type->label()])"
+                :suggestion="$duplicateSuggestion"
+            />
         @endif
 
         <x-card :title="__('Cover')">

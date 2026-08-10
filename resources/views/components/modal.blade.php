@@ -66,9 +66,17 @@ $maxWidth = [
         <div class="absolute inset-0 bg-scrim opacity-75"></div>
     </div>
 
+    {{--
+        `relative` is load-bearing, not cosmetic. The scrim above is `fixed`, so it
+        paints in the positioned layer; a static panel paints below it whatever the
+        DOM order, and the dialog renders *under* the grey. The `transform` class
+        used to make the panel its own stacking context, but Tailwind 4 resolves it
+        to `transform: none` unless a translate/scale/rotate utility is also set —
+        so the panel must position itself. Do not remove it.
+    --}}
     <div
         x-show="show"
-        class="mb-6 bg-surface-overlay rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"
+        class="relative mb-6 bg-surface-overlay rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"
         x-transition:enter="ease-out duration-300"
         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"

@@ -189,6 +189,12 @@ scene's `contents` mention, persisted in the derived `scene_codex_entry` pivot.
 > whole, case-sensitive word in this prose. Their semantics differ on purpose; keep them
 > separate.
 
+> [!NOTE]
+> **Duplicating an entry copies its aliases verbatim** (see
+> [architecture](architecture.md#duplicating-entities)), so the copy matches exactly the same
+> scenes as the original until the writer edits its name/aliases apart. Two entries mentioning
+> the same scene is expected, not a matcher bug.
+
 **Manual resync** is never needed in normal editing (scene and entry saves call the syncs
 themselves). Two escape hatches exist for backfilling scenes that predate the feature or
 recovering from suspected drift, both calling `syncProject()`:

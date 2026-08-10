@@ -3,6 +3,7 @@
     'deleteAction' => null,
     'deleteConfirm' => null,
     'historyModel' => null,
+    'duplicateModal' => null,
 ])
 
 {{--
@@ -22,10 +23,16 @@
     Pass `historyModel` (the entity being edited) on a revisionable screen to add the
     entity-level History link — the primary entry point into the revisions browser. Omit
     it on screens whose model has no revision history (e.g. a codex attribute).
+
+    Pass `duplicateModal` (the name of an <x-duplicate-dialog>) to add a "Duplicate"
+    button below Save / Save and stay / History. The dialog itself is placed by the
+    edit view, not here — same split as the delete dialog above.
 --}}
 <x-card :title="__('Actions')">
     @if (session('status') === 'saved')
         <x-auth-session-status :status="__('Saved.')" class="mb-3" />
+    @elseif (session('status') === 'duplicated')
+        <x-auth-session-status :status="__('Duplicated.')" class="mb-3" />
     @endif
 
     {{--
@@ -41,6 +48,19 @@
 
         @if ($historyModel)
             <x-entity-history-link :model="$historyModel" class="w-full" />
+        @endif
+
+        @if ($duplicateModal)
+            <x-button
+                variant="secondary"
+                type="button"
+                icon="tabler-copy"
+                class="w-full"
+                x-data=""
+                x-on:click="$dispatch('open-modal', '{{ $duplicateModal }}')"
+            >
+                {{ __('Duplicate') }}
+            </x-button>
         @endif
     </div>
 

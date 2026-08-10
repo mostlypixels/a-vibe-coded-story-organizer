@@ -105,9 +105,17 @@
                 :history-model="$scene"
                 :delete-action="route('scenes.destroy', $scene)"
                 :delete-confirm="__('Are you sure you want to delete this scene?')"
+                duplicate-modal="duplicate-scene-{{ $scene->id }}"
             >
                 {{ __('Delete Scene') }}
             </x-edit-actions>
+
+            <x-duplicate-dialog
+                name="duplicate-scene-{{ $scene->id }}"
+                :action="route('scenes.duplicate', $scene)"
+                :title="__('Duplicate Scene?')"
+                :suggestion="$duplicateSuggestion"
+            />
 
             <x-collapsible-card :title="__('Share this scene')">
                 @if (! $scene->isShared())

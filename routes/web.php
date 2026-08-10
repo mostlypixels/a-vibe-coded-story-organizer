@@ -202,6 +202,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->shallow();
     Route::patch('/scenes/{scene}/move-up', [SceneController::class, 'moveUp'])->name('scenes.move-up');
     Route::patch('/scenes/{scene}/move-down', [SceneController::class, 'moveDown'])->name('scenes.move-down');
+    Route::post('/scenes/{scene}/duplicate', [SceneController::class, 'duplicate'])->name('scenes.duplicate');
 
     // Owner-facing scene share link management. Flat on {scene} (implicit binding),
     // matching the shallow scene routes. store generates/rotates the link; destroy
@@ -225,6 +226,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::get('/codex/{codexEntry}/edit', [CodexEntryController::class, 'edit'])->name('codex.edit');
     Route::put('/codex/{codexEntry}', [CodexEntryController::class, 'update'])->name('codex.update');
     Route::delete('/codex/{codexEntry}', [CodexEntryController::class, 'destroy'])->name('codex.destroy');
+    Route::post('/codex/{codexEntry}/duplicate', [CodexEntryController::class, 'duplicate'])->name('codex.duplicate');
 
     // Attribute definitions — project-scoped resource, shallow (edit/update/destroy
     // only need the attribute). The camelCase parameter matches the {codexEntry}

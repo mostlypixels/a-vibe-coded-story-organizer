@@ -6,12 +6,15 @@ use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
+use App\Http\Requests\DuplicateEntityRequest;
 use App\Http\Requests\StoreSceneRequest;
 use App\Http\Requests\UpdateSceneRequest;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CodexAsOfResolver;
+use App\Services\SceneDuplicator;
 use App\Services\SceneReferenceMatcher;
+use App\Support\DuplicateName;
 use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -67,12 +70,22 @@ class SceneController extends Controller
             )
             ->get();
 
+        // One project-wide name list backs every row's suggestion, so this stays a
+        // single query instead of one per row. Two rows can propose the same name —
+        // harmless, since a collision is accepted and the page reloads after each
+        // duplicate (see DuplicateName).
+        $names = $project->sceneQuery()->pluck('name');
+        $duplicateNames = $scenes->mapWithKeys(
+            fn (Scene $scene) => [$scene->id => DuplicateName::suggest($scene->name, $names)]
+        );
+
         return view('scenes.index', [
             'project' => $project,
             'chapters' => $this->chaptersFor($project),
             'scenes' => $scenes,
             'sort' => $sort,
             'direction' => $direction,
+            'duplicateNames' => $duplicateNames,
             // Built from the whole project, never the filtered/paginated $scenes
             // above — a scenes list filtered to one chapter must still start
             // counting from that chapter's true project-wide number.
@@ -146,6 +159,7 @@ class SceneController extends Controller
             // the last save. A read-only view of the scene_codex_entry pivot maintained by
             // SceneReferenceMatcher — the sidebar renders this flat list ordered by (type, name).
             'referencedEntries' => $scene->codexReferences()->with('cover')->orderBy('type')->orderBy('name')->get(),
+            'duplicateSuggestion' => DuplicateName::suggest($scene->name, $project->sceneQuery()->pluck('name')),
         ]);
     }
 
@@ -171,6 +185,13 @@ class SceneController extends Controller
         $this->recordManualSave($scene, $beforeAutosavedFields);
 
         return $this->redirectAfterSave($request, ['scenes.edit', $scene], ['projects.scenes.index', $project]);
+    }
+
+    public function duplicate(DuplicateEntityRequest $request, Scene $scene, SceneDuplicator $duplicator): RedirectResponse
+    {
+        $copy = $duplicator->duplicate($scene, $request->validated('name'));
+
+        return redirect()->route('scenes.edit', $copy)->with('status', 'duplicated');
     }
 
     public function destroy(Scene $scene): RedirectResponse

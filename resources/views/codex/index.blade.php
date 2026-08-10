@@ -62,6 +62,7 @@
                         </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1">
+                                <x-icon-dialog-button icon="copy" variant="outline-solid" :modal="'duplicate-codex-entry-'.$entry->id" :label="__('Duplicate')" />
                                 <x-icon-edit-link :href="route('codex.edit', $entry)" />
                                 <x-icon-delete-button :action="route('codex.destroy', $entry)" :confirm="__('Are you sure you want to delete this entry?')" />
                             </div>
@@ -77,5 +78,16 @@
                     />
                 @endforelse
             </x-table>
+
+            {{-- Duplicate-name dialogs live outside the table (a modal <div> is not
+                 valid inside a <tbody>); each is opened by its row's copy button. --}}
+            @foreach ($entries as $entry)
+                <x-duplicate-dialog
+                    name="duplicate-codex-entry-{{ $entry->id }}"
+                    :action="route('codex.duplicate', $entry)"
+                    :title="__('Duplicate :label', ['label' => $type->label()])"
+                    :suggestion="$duplicateNames[$entry->id]"
+                />
+            @endforeach
     </div>
 </x-app-layout>
