@@ -54,11 +54,11 @@ folder, and its `plan/` subfolder is what this skill runs.
    Track progress from `plan/implemented/` + `resolution-log.md`; don't hand-maintain a
    progress table.
 
-5. **Final sanity pass.** Full test suite + linter once more across everything the loop
-   built. **With a UI/JS surface, green is not enough** — apply the same runtime verification
-   `plan-implementer` uses: build the frontend, confirm the app serves the build (not a stale
-   `public/hot` pointer), and drive the key flow via **`run-imagoldfish`** (or hand the user
-   the exact click-path). Frontend regressions routinely pass PHPUnit.
+5. **Final sanity pass.** `bash scripts/verify.sh` once more across everything the loop built.
+   **With a UI/JS surface, green is not enough** — apply the same runtime verification
+   `plan-implementer` uses: build the frontend, run `bash scripts/assets-state.sh`, and drive
+   the key flow via **`run-imagoldfish`** (or hand the user the exact click-path). Frontend
+   regressions routinely pass PHPUnit.
 
 6. **Consolidate the resolution log.** Fold into `<dir>/resolution-log.md` anything the loop
    produced that the agents couldn't log: feedback the *user* gave you, and issues found in

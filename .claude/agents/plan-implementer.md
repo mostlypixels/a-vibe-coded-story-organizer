@@ -28,8 +28,8 @@ Never rely on the caller's prompt for what's already built.
 5. Check the working tree against what those implemented tasks claim (`git status`, targeted
    `Read`/`Grep`). On a mismatch, stop and report it rather than guessing which is
    authoritative.
-6. Read `CLAUDE.md` and follow it exactly — including its **Commands** section for the real
-   test/lint commands. Never hardcode a command here.
+6. Read `CLAUDE.md` and follow it exactly — including its **Commands** section. Verify through
+   `scripts/verify.sh` (below); never hardcode a test or lint command here.
 
 ## Selecting the task
 
@@ -52,14 +52,15 @@ Never rely on the caller's prompt for what's already built.
 
 ## Verifying (required before a task counts as done)
 
-1. Full test suite green, including the new tests.
-2. Linter/formatter clean.
-3. **A green suite is not "done" for a task with a runtime surface.** If the task touches
+1. `bash scripts/verify.sh` green — PHP suite (including the new tests), JS suite, formatter,
+   in one call. Report its counts, not just "passed". A single test iterates faster with
+   `bash scripts/verify.sh --filter <pattern>`, but the task is not done until a full run
+   is green.
+2. **A green suite is not "done" for a task with a runtime surface.** If the task touches
    frontend/JS or rendered output (Blade, Alpine, a build asset):
    - Build the frontend and confirm it succeeds.
-   - Confirm the app serves the **build**: a `public/hot` file with no dev server running
-     makes `@vite` point at a dead origin and the built assets never load. The served HTML's
-     asset URLs tell you which (`/build/assets/…` vs `:5173`).
+   - Run `bash scripts/assets-state.sh`: it catches the `public/hot` file that points `@vite`
+     at a dead origin, a missing build, and a dev database behind migrations.
    - Render the component/route and inspect real output (`Blade::render` via tinker, or an
      HTTP fetch); for interactive JS, drive it in a browser via the **`run-imagoldfish`**
      skill. If that's genuinely impossible, say so and hand back the exact click-path — never
@@ -67,6 +68,10 @@ Never rely on the caller's prompt for what's already built.
 
    These are the failures tests miss: a missing CSS plugin, a stale `public/hot`, a
    reactive-proxy'd editor instance.
+
+3. Answer a scratch question ("does this query throw?", "is that sum 0 or null?") with
+   `bash scripts/probe-test.sh '<php>'` — a throwaway feature test, run and deleted. Never
+   `php artisan tinker`: it writes to the real dev database.
 
 ## Completing a task
 

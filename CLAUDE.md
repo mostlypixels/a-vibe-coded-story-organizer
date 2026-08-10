@@ -13,6 +13,8 @@ The canonical commands for this project (referenced by the skills and agents in 
 * Lint/format: `composer lint` (check only: `composer lint -- --test`)
 * Build frontend: `npm run build`
 * Dev server: `php artisan serve`
+* All three checks at once: `bash scripts/verify.sh` (add `--filter <pattern>` for a single
+  PHP test). Prefer it over running the first three by hand — one call, one summary.
 
 These are the same commands whether run against a local PHP/Node install or inside
 Docker (`make test`, `make lint`, `make shell` then `npm run build`, `make up`) — see
@@ -103,10 +105,11 @@ reached; do not re-add it. The `x-robots-meta` component is the single source of
 * **Never verify anything against the dev database.** `php artisan tinker` uses the default
   connection — `database/database.sqlite`, real data — so a throwaway script that creates
   models leaves them there. Scratch verification ("does this query throw?", "does `sum()`
-  return 0 or `null`?") goes in a temporary feature test run with `php artisan test --filter`,
-  then deleted: `phpunit.xml` forces `:memory:` with `force="true"`, so a test cannot reach
-  dev data whatever `.env` says, and factories and `RefreshDatabase` come for free. When a
-  probe genuinely needs the seeded data, wrap it in a transaction and roll back.
+  return 0 or `null`?") goes through `bash scripts/probe-test.sh '<php>'`, which writes a
+  temporary feature test, runs it, and deletes it whatever the outcome: `phpunit.xml` forces
+  `:memory:` with `force="true"`, so a probe cannot reach dev data whatever `.env` says, and
+  factories and `RefreshDatabase` come for free. When a probe genuinely needs the seeded
+  data, wrap it in a transaction and roll back.
 * Scenes, Acts, Chapters, and the Story overview each now have a dedicated feature test
   (`SceneTest` / `ActTest` / `ChapterTest` / `StoryTest`) covering CRUD, authorization, validation,
   the `position` invariant, and reordering. Keep them in step as you touch those controllers.

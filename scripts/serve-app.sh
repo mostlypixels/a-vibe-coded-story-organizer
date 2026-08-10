@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # serve-app.sh — start the imagoldfish dev server (php artisan serve) in the
-# background with the pre-flight checks that the run-imagoldfish skill used to
-# spell out inline: refuse on a stale public/hot file (@vite would point at a
-# dead Vite dev server), refuse if public/build is missing, refuse if the dev
-# SQLite database has pending migrations (green tests do NOT prove the dev DB
-# is current). Records the server PID in scripts/.serve-app.pid and polls the
-# URL until it answers. Idempotent: exits 0 if the recorded PID is already a
-# live server. Stop the server with scripts/stop-app.sh.
+# background, refusing to start unless scripts/assets-state.sh passes (stale
+# public/hot, missing build, dev database behind migrations). Records the
+# server PID in scripts/.serve-app.pid and polls the URL until it answers.
+# Idempotent: exits 0 if the recorded PID is already a live server. Stop the
+# server with scripts/stop-app.sh.
 #
 # Usage: scripts/serve-app.sh [--port N]   (default port: 8000)
 #
@@ -52,29 +50,13 @@ if [ -f "$PID_FILE" ]; then
     rm -f "$PID_FILE"
 fi
 
-# Gotcha 1: a leftover public/hot file makes @vite target a (dead) Vite dev
-# server instead of the built assets — every page would load without CSS/JS.
-if [ -e public/hot ]; then
-    echo "ERROR: public/hot exists — @vite will try to reach a Vite dev server instead of serving the build, and every page will fail to load its assets." >&2
-    echo "Fix: remove it (rm public/hot), or run 'npm run build' (which clears it)." >&2
+# Stale public/hot, a missing build, a dev database behind migrations: three
+# states that serve broken pages while the test suite stays green.
+if ! bash scripts/assets-state.sh; then
+    echo "ERROR: refusing to start — the checks above must pass first." >&2
     exit 1
 fi
 
-# Gotcha 2: no built assets at all.
-if [ ! -d public/build ] || [ ! -f public/build/manifest.json ]; then
-    echo "ERROR: public/build is missing (or has no manifest.json) — run 'npm run build' first." >&2
-    exit 1
-fi
-
-# Gotcha 3: the dev SQLite DB can be behind migrations even when the test
-# suite is green (tests use a fresh in-memory DB). A stale dev DB 500s with
-# "no such table". We only check — running migrations is the caller's call.
-if ! php artisan migrate:status --pending 2>/dev/null | grep -q 'No pending migrations'; then
-    echo "ERROR: the dev database has pending migrations (or migrate:status failed) — run 'php artisan migrate'." >&2
-    exit 1
-fi
-
-mkdir -p storage/logs
 php artisan serve --port="$PORT" > "$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$PID_FILE"
