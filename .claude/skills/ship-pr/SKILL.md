@@ -8,8 +8,8 @@ description: Ship the working tree's changes to master via the protected-branch 
 `master` is protected: direct pushes are rejected, so every change set ships as
 branch → PR → green `tests` CI check → squash-merge (0 approvals; self-merge is fine).
 This skill is that ritual, end to end. It assumes the work is already done and verified —
-run the project's test suite and lint (per `CLAUDE.md`'s **Commands** section) *before*
-invoking this, not as part of it.
+run `bash scripts/verify.sh` (PHP suite, JS suite, Pint) *before* invoking this, not as
+part of it.
 
 ## Steps
 
@@ -74,7 +74,7 @@ prose are not files and won't pull that rule file in on their own. No length bud
 | PR body | the change set's rationale + verification | re-listing the changelog entries |
 
 - **Bullets.** Prose only for a *why* that a bullet can't carry.
-- **Verification is a line, not a report:** "`composer test` green (412), `composer lint` clean."
+- **Verification is a line, not a report:** "`scripts/verify.sh` green (412 PHP, 203 JS, Pint clean)."
   No pasted output, no per-test narration.
 - **No scaffolding** — no "## Summary" heading over three bullets, no closing recap, no
   "this PR aims to…".

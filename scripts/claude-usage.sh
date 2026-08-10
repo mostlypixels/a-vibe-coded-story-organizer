@@ -5,7 +5,8 @@
 #   claude-usage.sh --raw    -> full /usage panel
 #
 # JSON is the default because the callers are scripts and agents, not eyes.
-# `--json` is still accepted so older invocations keep working.
+# `--json` names that default explicitly. Any other argument is an error — a
+# mistyped flag used to fall through to JSON and look like it had worked.
 #
 # Failures print one word and exit 1, so a caller can branch on the output without
 # parsing an error message: "unavailable" (no claude, or the call failed) or
@@ -14,12 +15,18 @@ set -euo pipefail
 
 fail() { printf '%s\n' "$1"; exit 1; }
 
+mode="${1:---json}"
+case "$mode" in
+  --json|--text|--raw) ;;
+  *) echo "usage: claude-usage.sh [--json | --text | --raw]" >&2; exit 2 ;;
+esac
+
 command -v claude >/dev/null 2>&1 || fail unavailable
 
 # MSYS_NO_PATHCONV stops Git Bash rewriting "/usage" into a Windows path.
 raw=$(MSYS_NO_PATHCONV=1 claude -p "/usage" 2>&1) || fail unavailable
 
-if [[ "${1:-}" == "--raw" ]]; then
+if [[ "$mode" == "--raw" ]]; then
   printf '%s\n' "$raw"
   exit 0
 fi
@@ -35,7 +42,7 @@ week=$(parse "Current week (all models)")
 s_pct=${session%%|*}; s_reset=${session#*|}
 w_pct=${week%%|*};    w_reset=${week#*|}
 
-if [[ "${1:-}" == "--text" ]]; then
+if [[ "$mode" == "--text" ]]; then
   printf 'session %s%% resets %s | week %s%% resets %s\n' "$s_pct" "$s_reset" "$w_pct" "$w_reset"
 else
   printf '{"session_pct":%s,"session_reset":"%s","week_pct":%s,"week_reset":"%s"}\n' \

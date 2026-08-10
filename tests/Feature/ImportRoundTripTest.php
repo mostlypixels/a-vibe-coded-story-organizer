@@ -55,14 +55,6 @@ class ImportRoundTripTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Temp export zips created during a test (the exporter writes real files
-     * under storage/app/exports, unaffected by Storage::fake), removed here.
-     *
-     * @var array<int, string>
-     */
-    private array $tempFiles = [];
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -72,15 +64,6 @@ class ImportRoundTripTest extends TestCase
         // codex import phase writes.
         Storage::fake('local');
         Storage::fake('public');
-    }
-
-    protected function tearDown(): void
-    {
-        foreach ($this->tempFiles as $file) {
-            @unlink($file);
-        }
-
-        parent::tearDown();
     }
 
     // ------------------------------------------------------------------
@@ -621,16 +604,13 @@ class ImportRoundTripTest extends TestCase
     }
 
     /**
-     * Build a real export archive via the service and return its path on disk
-     * (registered for cleanup). A direct service call is the round-trip's
-     * intended entry point — ExportTest covers the export HTTP route.
+     * Build a real export archive via the service and return its path on disk.
+     * A direct service call is the round-trip's intended entry point —
+     * ExportTest covers the export HTTP route. Tests\TestCase removes the file.
      */
     private function exportZip(Project $project, bool $includeMedia): string
     {
-        $path = app(StaticSiteExporter::class)->export($project, $includeMedia);
-        $this->tempFiles[] = $path;
-
-        return $path;
+        return app(StaticSiteExporter::class)->export($project, $includeMedia);
     }
 
     /**

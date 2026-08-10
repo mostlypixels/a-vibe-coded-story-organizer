@@ -393,9 +393,15 @@ is the architectural overview.
   bool $includeMedia)` builds the whole archive and returns a finished temp-zip path — it takes no
   `Request` and returns no `Response`, so a future queued Job can reuse it unchanged. It reads media
   bytes with `Storage::disk('public')->get()` (never the `/storage` URL), so it needs no
-  `php artisan storage:link` or any CLI step. The zip is built to `storage/app/exports`, streamed with
-  `->deleteFileAfterSend(true)`, and the temp file is deleted on exception too, so a failed export
-  leaks no partial zip.
+  `php artisan storage:link` or any CLI step. The zip is built in the `exports.temp_path` directory
+  (`storage/app/exports` by default), streamed with `->deleteFileAfterSend(true)`, and the temp file
+  is deleted on exception too, so a failed export leaks no partial zip.
+- **A download that never streams leaves its file behind.** `deleteFileAfterSend` only fires once the
+  response has streamed, so an aborted download strands a temp file and nothing reports it.
+  `php artisan exports:purge` (scheduled daily in `routes/console.php`, `--hours` window,
+  `--dry-run`) is the sweep. The same trap bit the test suite, which asserts on the response instead
+  of sending it: `Tests\TestCase` now gives every test its own `exports.temp_path` and removes it in
+  `tearDown`. Per test, not per suite — the suite runs in parallel.
 - **The controller stays thin.** `ExportController@store` resolves the project, authorizes, delegates
   to the service, and streams the download. `ExportRequest` validates the form (`project_id`,
   `include_images`).

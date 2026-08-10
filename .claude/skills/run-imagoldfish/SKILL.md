@@ -61,21 +61,18 @@ cd ../../..
 npm run build
 ```
 
-Confirm `public/hot` does **not** exist afterward — if it does, `@vite` will
-try to reach a dev server instead of serving the build, and every page will
-fail to load its assets:
+Then confirm the build is what the app would serve — a leftover `public/hot`
+makes `@vite` reach for a dev server instead, and every page loads without
+CSS or JS:
 
 ```bash
-ls public/hot 2>/dev/null && echo "STALE — @vite will 404" || echo "ok"
+bash scripts/assets-state.sh
 ```
-
-(`scripts/serve-app.sh` enforces this too — it refuses to start if
-`public/hot` exists or `public/build` is missing.)
 
 ## Run (agent path)
 
-Start the server with the helper script (Git Bash) — it runs the pre-flight
-checks (stale `public/hot`, missing `public/build`, pending migrations),
+Start the server with the helper script (Git Bash) — it runs `assets-state.sh`
+first and refuses to start unless it passes,
 starts `php artisan serve` in the background, records the PID in
 `scripts/.serve-app.pid`, logs to `storage/logs/artisan-serve.log`, and polls
 until the URL answers. Idempotent — re-running while the server is up is a
@@ -216,14 +213,12 @@ Visit `http://localhost:8000` in a real browser. Ctrl-C to stop.
 ## Test
 
 ```bash
-composer test
+bash scripts/verify.sh
 ```
-The full suite must be green. This uses an in-memory SQLite DB — it does **not** prove the dev-server-served app works;
+PHP suite, JS suite and Pint check in one call. All must be green. The suites use
+an in-memory SQLite DB — they do **not** prove the dev-server-served app works;
 see the migration gotcha above.
 
-```bash
-composer lint -- --test
-```
 Pint-clean except pre-existing `database/seeders/MelusineSeederFr.php` /
 `MelusineSeederIt.php` (French/Italian seeder variants — leave those alone
 per project convention, they're not part of your diff).

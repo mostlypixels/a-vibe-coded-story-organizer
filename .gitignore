@@ -20,6 +20,8 @@
 /scripts/.serve-app.pid
 /storage/*.key
 /storage/pail
+# Written by scripts/probe-test.sh; only survives a --keep run, never committed.
+/tests/Feature/ScratchProbeTest.php
 /vendor
 Homestead.json
 Homestead.yaml

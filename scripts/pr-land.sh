@@ -187,11 +187,13 @@ main() {
         if backfill_changelog_heading "$pr_number" "CHANGELOG.md"; then
             echo "pr-land.sh: stamping (#$pr_number) onto the changelog heading..."
             git add CHANGELOG.md
+            # No model name in the trailer: this commit is written by whichever
+            # model runs the script, and a hardcoded one silently goes stale.
             git commit --message "Backfill the PR number on the changelog heading
 
 The number only exists once the PR is open, so pr-land.sh stamps it here.
 
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+Co-Authored-By: Claude <noreply@anthropic.com>"
             git push
         else
             echo "pr-land.sh: changelog heading already numbered (or no dated heading) — nothing to stamp."

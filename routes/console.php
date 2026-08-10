@@ -15,3 +15,7 @@ Artisan::command('inspire', function () {
 // (App\Console\Commands\PurgeRevisions), which is allowed to remove rows this
 // prune never will.
 Schedule::command('model:prune', ['--model' => [Revision::class]])->daily();
+
+// Temporary export files are deleted after the download streams. The ones whose
+// download never streamed (an aborted request) have nothing else to remove them.
+Schedule::command('exports:purge')->daily();

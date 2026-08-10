@@ -1250,13 +1250,14 @@ class EpubExporter
     }
 
     /**
-     * A fresh, collision-free temp path for the generated epub under storage/app/exports
-     * (created on demand) — the same lifecycle as {@see StaticSiteExporter}'s temp zips, so
-     * concurrent exports never clobber one another and the controller can delete-after-send.
+     * A fresh, collision-free temp path for the generated epub in the `exports.temp_path`
+     * directory (created on demand) — the same lifecycle as {@see StaticSiteExporter}'s temp
+     * zips, so concurrent exports never clobber one another and the controller can
+     * delete-after-send.
      */
     private function freshTempEpubPath(): string
     {
-        $directory = storage_path('app/exports');
+        $directory = config('exports.temp_path');
         if (! is_dir($directory)) {
             mkdir($directory, 0755, true);
         }

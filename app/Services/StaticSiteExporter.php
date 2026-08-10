@@ -891,13 +891,13 @@ class StaticSiteExporter
     }
 
     /**
-     * A fresh, collision-free temp path under storage/app/exports (created on
-     * demand). Each export gets its own uuid-named file so concurrent exports
-     * never clobber one another.
+     * A fresh, collision-free temp path in the `exports.temp_path` directory
+     * (created on demand). Each export gets its own uuid-named file so
+     * concurrent exports never clobber one another.
      */
     private function freshTempZipPath(): string
     {
-        $directory = storage_path('app/exports');
+        $directory = config('exports.temp_path');
         if (! is_dir($directory)) {
             mkdir($directory, 0755, true);
         }
