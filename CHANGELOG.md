@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-10 — Dark theme by default, and web fonts that load
+## 2026-08-10 — Dark theme by default, and web fonts that load (#98)
 
 ### Changed
 
