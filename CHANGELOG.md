@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-10 — Dark theme by default, and web fonts that load
+
+### Changed
+
+- The app opens in Low-glare dark. Pick another theme under Configuration → Appearance to override it.
+
+### Fixed
+
+- Web fonts now load. Every page quietly fell back to a system font instead.
+
 ## 2026-08-10 — Duplicate scenes and codex entries (#97)
 
 ### Added
