@@ -11,7 +11,7 @@
     reads consistently across the app.
 --}}
 @if (filled($html))
-    <div {{ $attributes->merge(['class' => 'prose prose-sm max-w-none text-content-muted']) }}>
+    <div {{ $attributes->merge(['class' => 'prose prose-sm font-manuscript max-w-none text-content-muted']) }}>
         {!! $html !!}
     </div>
 @endif

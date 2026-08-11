@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-11 — Per-user fonts and text sizing (#99)
+
+### Added
+
+- Configuration → Appearance now has a font picker: pick a typeface for the interface and another for your manuscript, from ten families shown in their own face. Families designed for impaired reading are marked with an eye icon.
+- Text size and line spacing are set separately for the interface and the manuscript, on five-step sliders. Line spacing is a multiplier of the normal spacing, so 2× is double-spaced.
+- Everything previews live as you pick, before you save.
+
+### Changed
+
+- The default interface font is now Inter instead of Atkinson Hyperlegible. Everyone who never picked a font sees the change; pick Atkinson under Configuration → Appearance to keep it.
+
 ## 2026-08-10 — Dark theme by default, and web fonts that load (#98)
 
 ### Changed

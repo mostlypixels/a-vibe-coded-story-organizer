@@ -26,6 +26,12 @@ class User extends Authenticatable
         'password',
         'theme_slug',
         'timezone',
+        'ui_font',
+        'manuscript_font',
+        'ui_scale',
+        'manuscript_scale',
+        'manuscript_leading',
+        'ui_leading',
     ];
 
     /**
