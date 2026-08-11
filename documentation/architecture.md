@@ -788,11 +788,11 @@ says nothing about where it may go, which becomes a lie the moment a preset flip
 
 ## Font choice
 
-Alongside the theme preset, a user can pick a **UI font**, a **manuscript font**, a UI
-scale, a manuscript scale, and a line height — five independent `users` columns, all
-nullable with no default, sharing the "Configuration → Appearance" page with theming.
+Alongside the theme preset, a user can pick a **UI font**, a **manuscript font**, a size
+and a line spacing for each surface — six independent `users` columns, all nullable with
+no default, sharing the "Configuration → Appearance" page with theming.
 
-- **`config/fonts.php`** holds the family list (`stack`, `bundled`, `note`), the scale
+- **`config/fonts.php`** holds the family list (`stack`, `bundled`, `accessible`, `note`), the scale
   and leading options, and every `default_*` fallback — same reasoning as
   `config/themes.php`: self-hosted, so adding a font is a file edit, not a migration or
   an enum. Validation is `Rule::in(array_keys(config('fonts.families')))` against the
@@ -810,7 +810,17 @@ nullable with no default, sharing the "Configuration → Appearance" page with t
   with the same "unknown key → no-op" rule as the PHP side — never `input.value`
   written straight into `setProperty()`.
 - **The manuscript scale is relative, not absolute**: a percentage on `.prose` that
-  composes with `ui_scale`'s `:root { font-size }`, not one overriding the other.
+  composes with `ui_scale`'s `:root { font-size }`, not one overriding the other. Line
+  spacing is the opposite — the two surfaces are independent, because a unitless line
+  height already scales with whatever font size applies.
+- **Line spacing stores a multiplier of each surface's default**, not a line height: CSS
+  cannot read the value it overrides, so `leading_bases` holds what `1` means and PHP
+  multiplies before rendering. The interface value is written to `--tw-leading`, the slot
+  every Tailwind `text-*` utility reads — a plain `line-height` on `:root` would reach
+  almost nothing.
+- **The picker's cards and tick tracks are native radios**, styled: arrow keys work, the
+  form submits with JS off, and a config slug posts rather than a numeric index. Dragging
+  a track (`resources/js/setting-track.js`) only moves the checked radio.
 - **Fonts stay checked in** under `public/fonts/`, fetched by `scripts/fetch-fonts.sh`
   from pinned fontsource URLs — no `@fontsource` npm dependency, not Vite-bundled.
 - **Exports never follow the choice.** EPUB and static-site output style themselves

@@ -7,14 +7,18 @@ can't state on its own.
 ## Why config, not an enum
 
 `spec.md` originally specified `App\Enums\FontFamily` + `Rule::enum`. `config/fonts.php`
-replaced it: a family needs `stack` (the CSS value), `bundled` and `note` alongside its
-slug, which an enum can only carry via three parallel `match` expressions. Same reasoning
-as `config/themes.php` — self-hosted, so adding a font is a file edit, not a migration.
+replaced it: a family needs `stack` (the CSS value), `bundled`, `accessible` and `note`
+alongside its slug, which an enum can only carry via parallel `match` expressions. Same
+reasoning as `config/themes.php` — self-hosted, so adding a font is a file edit, not a
+migration.
 
-Five slug lists live there: `families` (shared by both the UI and manuscript pickers —
-one list, two choices into it), `ui_scales`, `manuscript_scales`, `leading`, and the five
-`default_*` keys every one of those falls back to. `FontConfigTest` asserts every default
-is itself a key of its own list.
+The lists there: `families` (shared by both pickers — one list, two choices into it),
+`ui_scales`, `manuscript_scales`, `leading`, `leading_bases`, and a `default_*` key per
+choosable list. `FontConfigTest` asserts every default is itself a key of its own list.
+
+`accessible` marks a family drawn for impaired reading (Atkinson, Lexend). The picker
+gives those an eye icon and uses `note` as its label, which is why an accessible family
+may not ship a blank note.
 
 ## The only thing validated is the slug
 
@@ -46,6 +50,40 @@ already writes (`x-theme-style`, every layout's `<head>`).
 > risk that does not exist and hide the real guarantee (resolve-through-config) behind
 > a pattern check that isn't doing the work.
 
+## Line spacing is a multiplier, and CSS cannot apply it
+
+`leading` holds **multipliers of each surface's default line height**, not line heights:
+`1` leaves the text alone, `2` doubles it. A CSS rule cannot read the line height it
+overrides, so the multiplication happens in PHP — `leading_bases` says what `1` means per
+surface and `FontChoice::manuscriptLineHeight()` / `uiLineHeight()` return the product.
+
+`leading_bases` mirrors Tailwind's own numbers: `manuscript` is Typography's `.prose`
+line height, `ui` is `text-base`'s. They are not taste settings — change them only when
+the framework's defaults change.
+
+The floor is `1`. Below the default, one line's descenders collide with the next line's
+ascenders, which is a defect rather than a tighter setting.
+
+> [!NOTE]
+> `1` is exact for the manuscript and approximate for the interface. One value replaces
+> every `text-*` line height at once, so `text-sm` moves from ~1.43 to 1.5 — imperceptible,
+> but not literally "unchanged".
+
+## Why the interface leading is `--tw-leading`
+
+Tailwind compiles every `text-*` utility as
+`line-height: var(--tw-leading, var(--text-<size>--line-height))`. A plain `line-height`
+on `:root` therefore reaches almost nothing — each utility overrides it. `FontStyleBlock`
+writes `--tw-leading`, filling that same slot, so the interface leading applies
+everywhere while a local `leading-*` utility still wins by setting the variable on the
+element.
+
+> [!WARNING]
+> `--tw-leading` is Tailwind's internal variable, not a public API. If a major Tailwind
+> upgrade renames it, the interface line spacing silently stops working — nothing errors.
+> `FontStyleBlockTest` asserts the variable is emitted, which turns that into a failing
+> test rather than a silent regression.
+
 ## The JS preview needs its own copy of the rule
 
 `resources/js/font-preview.js` repaints `document.documentElement.style` the instant a
@@ -61,11 +99,21 @@ writes for it (`ui_font` → `--font-sans`, `manuscript_scale` → `--manuscript
 Two copies of that mapping — PHP's property list and JS's — would drift silently; keep
 them in the same shape when either changes.
 
+The line-spacing entries in that map hold **already-multiplied** values, one list per
+surface (`FontChoice::lineHeightsFor()`), because the browser must not do that arithmetic
+on a value it read out of the form.
+
+> [!WARNING]
+> The form carries `autocomplete="off"`. Without it, a browser restores the radios on
+> reload *without firing a `change` event*, so the preview never runs while the style
+> block still paints the saved values — the controls and the page then disagree on every
+> field. `AppearanceSettingsTest` asserts the attribute is present.
+
 ## `null` means "follow config", always
 
 No migration, no controller, and no form default ever writes a slug into
 `users.ui_font` / `manuscript_font` / `ui_scale` / `manuscript_scale` /
-`manuscript_leading`. All five stay `nullable` with no `default()`. A user who has never
+`manuscript_leading` / `ui_leading`. All six stay `nullable` with no `default()`. A user who has never
 opened the picker reads `config('fonts.default_*')` forever, including through a config
 change — that's the whole point of leaving the column empty instead of seeding "today's
 default" into it.
@@ -76,12 +124,40 @@ default" into it.
 everything sized in `rem` follows the root. `manuscript_scale` is a **separate**
 percentage applied to `.prose`, so the two **compose**: a reader on `ui_scale: larger`
 and `manuscript_scale: larger` gets a manuscript larger than either setting alone would
-produce. That composition is why the manuscript steps are labelled *same / larger /
-largest* rather than a point size — "normal" would be ambiguous once `ui_scale` has
-already moved the root, and a fixed size would silently un-compose the two settings.
+produce. That composition is why the picker prints the manuscript steps as multipliers
+(`1×` … `1.6×`) and the interface steps in px (`12px` … `20px`): a px label on the
+manuscript would go stale the moment the interface size moved.
+
+Line spacing is the opposite: the two surfaces are **independent**, because a unitless
+line height is already proportional to whatever font size applies. Binding them would
+force one surface to inherit a ratio chosen for the other's reading task — chrome is
+scanned, a manuscript is read for hours.
 
 `expanded/architecture.md` and `expanded/data-model.md` describe a single `text_scale`
 column; the shipped feature has two, resolved via the grill in `resolution-log.md`.
+
+## The picker's controls are radios wearing costumes
+
+Both controls in `admin/appearance/edit.blade.php` are native radio groups, so arrow
+keys work, the form submits with JS off, and what posts is always a config slug — never a
+numeric index that would make the order of `config/fonts.php` part of the wire format.
+
+- **`x-font-card`** — the family name rendered in its own face on a sunken panel, with
+  the eye icon for `accessible` families. The radio is `sr-only`; selection paints a flush
+  ring and focus an offset outline, because a theme may give `link` and `focus` the same
+  colour and the two states must then differ in shape.
+- **`x-setting-track`** — the five steps of a size or spacing list drawn as a tick track,
+  labels derived from the authored value (no second list of numbers to drift).
+  `resources/js/setting-track.js` adds pointer dragging on top: it only moves the checked
+  radio and dispatches its `change`, so the preview and the submit path are unchanged and
+  dragging can fail without taking the control with it. It snaps between steps — five
+  positions, no in-between.
+
+> [!WARNING]
+> An Alpine component's properties must be declared on the object the `Alpine.data()`
+> factory returns. `setting-track.js` originally assigned `this.radios` in `init()` only;
+> all four tracks then shared one list and every track drove the last one — with a green
+> test suite throughout, because the pure functions were all correct.
 
 ## Exports and the public share page do not follow the choice
 
@@ -100,7 +176,7 @@ added.
 ## Adding a family
 
 1. Add an entry to `config/fonts.php` → `families`: slug, `name`, `stack`, `bundled`,
-   `note`.
+   `accessible`, `note`.
 2. If `bundled: true`, add its download entries to `scripts/fetch-fonts.sh` and run it to
    populate `public/fonts/`.
 3. Add the matching `@font-face` block(s) in `resources/css/app.css`, using the exact
@@ -123,7 +199,7 @@ added.
 > Lexend has no italic design upstream (Google Fonts ships no italic Lexend at all), so
 > it's fetched and declared roman-only, same as Atkinson already had no italic. Picking
 > either for italic text gets a browser-synthesised oblique — a known, accepted cost, not
-> a bug.
+> a bug. Every other bundled family ships roman and italic, latin and latin-ext.
 
 ## Where things live
 
@@ -132,10 +208,12 @@ added.
 | Family/scale/leading vocabulary, defaults | `config/fonts.php` |
 | Slug → CSS value resolution | `App\Support\FontChoice::resolve()` |
 | `:root` rule rendering | `App\Services\FontStyleBlock` |
-| Stored preference columns | `users.ui_font`, `manuscript_font`, `ui_scale`, `manuscript_scale`, `manuscript_leading` |
+| Stored preference columns | `users.ui_font`, `manuscript_font`, `ui_scale`, `manuscript_scale`, `manuscript_leading`, `ui_leading` |
 | Validation | `App\Http\Requests\UpdateAppearanceRequest` |
 | Picker + controller | `App\Http\Controllers\AppearanceController`, `resources/views/admin/appearance/edit.blade.php` |
 | Live preview | `resources/js/font-preview.js` |
+| Track dragging | `resources/js/setting-track.js` |
+| Picker controls | `x-font-card`, `x-setting-track` |
 | Bundled font files | `public/fonts/`, fetched by `scripts/fetch-fonts.sh` |
 | `@font-face` rules, `--font-manuscript` fallback | `resources/css/app.css` |
 | Manuscript prose surfaces | `.prose` (`resources/css/app.css`), `x-rich-text`, the WYSIWYG editable area (`resources/js/wysiwyg.js`) |
