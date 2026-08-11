@@ -148,3 +148,12 @@ entry style: `.claude/rules/changelog.md`.
 * Keep presentation logic out of Blade templates.
 * Prefer semantic HTML.
 * Ensure keyboard accessibility.
+
+#### Font choice
+
+Never add a second path from a stored value into rendered CSS. Theme and font
+preferences resolve through `ThemePreset::resolve()` / `FontChoice::resolve()` only —
+both server-side (`x-theme-style`) and in `resources/js/font-preview.js`'s lookup map —
+so a slug that isn't in `config/themes.php` / `config/fonts.php` is a no-op everywhere,
+never a value read from `input.value` or interpolated raw. See
+`documentation/architecture.md` → *Font choice* and `documentation/fonts.md`.

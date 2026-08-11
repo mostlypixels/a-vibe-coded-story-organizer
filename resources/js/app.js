@@ -8,6 +8,7 @@ import { registerNavigationGuard } from './navigation-guard';
 import { registerRevisionPicker } from './revision-picker';
 import { registerWordCount } from './word-count';
 import { registerWordCountChart } from './word-count-chart';
+import { registerFontPreview } from './font-preview';
 import { moveScene } from './scene-reorder';
 
 window.Alpine = Alpine;
@@ -19,6 +20,7 @@ registerNavigationGuard(Alpine);
 registerRevisionPicker(Alpine);
 registerWordCount(Alpine);
 registerWordCountChart(Alpine);
+registerFontPreview(Alpine);
 
 Alpine.start();
 

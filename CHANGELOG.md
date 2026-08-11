@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+### Added
+
+- Configuration → Appearance now has a font picker: UI font, manuscript font, text size and line spacing, with a live preview.
+
+### Changed
+
+- The default UI font is now Inter instead of Atkinson Hyperlegible. Pick Atkinson under Configuration → Appearance to keep it.
+
 ## 2026-08-10 — Dark theme by default, and web fonts that load (#98)
 
 ### Changed

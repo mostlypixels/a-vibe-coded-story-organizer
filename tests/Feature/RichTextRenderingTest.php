@@ -51,6 +51,23 @@ class RichTextRenderingTest extends TestCase
             ->assertDontSee('href="javascript:', false);
     }
 
+    public function test_a_shared_scene_renders_the_manuscript_face_on_its_prose(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create(['description' => '<p>text</p>']);
+        $scene->forceFill([
+            'share_token' => 'font-manuscript-token',
+            'share_expires_at' => now()->addDay(),
+        ])->save();
+
+        $this->get(route('shared.scenes.show', 'font-manuscript-token'))
+            ->assertOk()
+            ->assertSee('class="prose prose-sm font-manuscript max-w-none text-content-muted"', false);
+    }
+
     public function test_acts_index_renders_an_escaped_text_excerpt_not_raw_html(): void
     {
         $user = User::factory()->create();

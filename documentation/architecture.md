@@ -786,6 +786,42 @@ says nothing about where it may go, which becomes a lie the moment a preset flip
 > variant, how `theme:ramp` fits values into sRGB, and where the sweep's file-by-file
 > judgement calls are recorded.
 
+## Font choice
+
+Alongside the theme preset, a user can pick a **UI font**, a **manuscript font**, a UI
+scale, a manuscript scale, and a line height — five independent `users` columns, all
+nullable with no default, sharing the "Configuration → Appearance" page with theming.
+
+- **`config/fonts.php`** holds the family list (`stack`, `bundled`, `note`), the scale
+  and leading options, and every `default_*` fallback — same reasoning as
+  `config/themes.php`: self-hosted, so adding a font is a file edit, not a migration or
+  an enum. Validation is `Rule::in(array_keys(config('fonts.families')))` against the
+  *slug*; the CSS `stack` string is authored, never assembled from input.
+- **`App\Support\FontChoice::resolve()`** is the one place a stored slug becomes CSS —
+  `null`, or a slug no longer configured, both fall back to `config('fonts.default_*')`
+  rather than throwing.
+- **`App\Services\FontStyleBlock`** renders the resolved choice into the *same*
+  `<style>` block `x-theme-style` already writes for the theme preset — one block, one
+  component, per the rule at the top of that file. Unlike `ThemeStyleBlock`, it does
+  **not** whitelist-validate its output: nothing it prints is ever request-derived,
+  because `FontChoice::resolve()` only returns config-authored values.
+- **`resources/js/font-preview.js`** repaints `document.documentElement.style` live as
+  the picker's radios change, resolving each slug through a server-rendered lookup map
+  with the same "unknown key → no-op" rule as the PHP side — never `input.value`
+  written straight into `setProperty()`.
+- **The manuscript scale is relative, not absolute**: a percentage on `.prose` that
+  composes with `ui_scale`'s `:root { font-size }`, not one overriding the other.
+- **Fonts stay checked in** under `public/fonts/`, fetched by `scripts/fetch-fonts.sh`
+  from pinned fontsource URLs — no `@fontsource` npm dependency, not Vite-bundled.
+- **Exports never follow the choice.** EPUB and static-site output style themselves
+  independently of `x-theme-style`.
+
+> [!IMPORTANT]
+> Before adding a family or touching either style block, read
+> **[`fonts.md`](fonts.md)** — why only the slug is validated, why the two `{!! !!}`
+> blocks are safe for different reasons, and the config → `fetch-fonts.sh` →
+> `@font-face` sequence the drift test checks.
+
 ## CSS build pipeline (Tailwind 4)
 
 `@tailwindcss/vite` compiles the stylesheet directly inside Vite — there is no PostCSS config
@@ -831,6 +867,7 @@ This file is the map. Each feature with more to say than fits here has its own p
 | [`export-format.md`](export-format.md) | The static-archive file format — layouts, shapes, the `version` contract |
 | [`rich-text.md`](rich-text.md) | The WYSIWYG field list, the sanitizer allow-list, the rendering rule |
 | [`theming.md`](theming.md) | The paired-token rule, the contrast floors/ceiling, `theme:ramp`, why no `dark:` |
+| [`fonts.md`](fonts.md) | The font config, slug-only validation, the relative manuscript scale, adding a family |
 | [`word-count.md`](word-count.md) | What counts as a word, the one stored column, totals without an N+1 |
 | [`word-count-goals.md`](word-count-goals.md) | Writer-day snapshots, cumulative-not-delta, goals, the Progress chart |
 | [`ui-components.md`](ui-components.md) | The Blade component catalogue — reuse one before writing a new one |

@@ -84,10 +84,83 @@ class ThemeRenderingTest extends TestCase
         }
     }
 
+    public function test_the_authenticated_layout_emits_the_font_variables(): void
+    {
+        $response = $this->actingAs(User::factory()->create())->get(route('dashboard'));
+
+        $response->assertOk();
+        $this->assertEmitsFontVariables($response->getContent());
+    }
+
+    public function test_the_guest_layout_emits_the_font_variables(): void
+    {
+        $response = $this->get(route('login'));
+
+        $response->assertOk();
+        $this->assertEmitsFontVariables($response->getContent());
+    }
+
+    public function test_the_public_share_layout_emits_the_font_variables(): void
+    {
+        $user = User::factory()->create();
+        $scene = Scene::factory()->create();
+        $scene->chapter->act->project->update(['user_id' => $user->id]);
+        $scene->forceFill([
+            'share_token' => 'font-token',
+            'share_expires_at' => now()->addDay(),
+        ])->save();
+
+        $response = $this->get(route('shared.scenes.show', 'font-token'));
+
+        $response->assertOk();
+        $this->assertEmitsFontVariables($response->getContent());
+    }
+
+    public function test_a_user_with_a_stored_ui_font_gets_that_familys_stack(): void
+    {
+        $user = User::factory()->create(['ui_font' => 'atkinson']);
+
+        $content = $this->actingAs($user)->get(route('dashboard'))->getContent();
+
+        $this->assertStringContainsString(
+            '--font-sans:'.config('fonts.families.atkinson.stack').';',
+            $content,
+        );
+    }
+
+    /**
+     * The regression this feature is most likely to introduce: a guest or public-share
+     * visitor must never see another user's stored choice, only the config default.
+     */
+    public function test_guest_and_public_share_pages_emit_the_config_default_even_when_a_user_chose_differently(): void
+    {
+        $owner = User::factory()->create(['ui_font' => 'atkinson']);
+        $scene = Scene::factory()->create();
+        $scene->chapter->act->project->update(['user_id' => $owner->id]);
+        $scene->forceFill([
+            'share_token' => 'font-default-token',
+            'share_expires_at' => now()->addDay(),
+        ])->save();
+
+        $defaultStack = config('fonts.families.'.config('fonts.default_ui').'.stack');
+
+        $guestContent = $this->get(route('login'))->getContent();
+        $this->assertStringContainsString("--font-sans:{$defaultStack};", $guestContent);
+
+        $shareContent = $this->get(route('shared.scenes.show', 'font-default-token'))->getContent();
+        $this->assertStringContainsString("--font-sans:{$defaultStack};", $shareContent);
+    }
+
     private function assertEmitsEveryToken(string $content): void
     {
         foreach (ThemeTokens::ALL as $token) {
             $this->assertStringContainsString("--color-{$token}:", $content);
         }
+    }
+
+    private function assertEmitsFontVariables(string $content): void
+    {
+        $this->assertStringContainsString('--font-sans:', $content);
+        $this->assertStringContainsString('--font-manuscript:', $content);
     }
 }

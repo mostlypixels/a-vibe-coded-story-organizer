@@ -137,6 +137,27 @@
   --color-info-content: #ffffff;
   --color-info-surface: oklch(97% 0.014 254.604);
   --color-info-surface-content: oklch(42.4% 0.199 265.638);
+
+  /*
+   * The manuscript face. `--font-sans` (above) is what every existing
+   * `font-sans` utility already follows; this is the same idea for prose
+   * surfaces, giving a `font-manuscript` utility. `static` for the same
+   * reason as the block above — the prose surfaces this feeds (task 05)
+   * don't exist yet, so a plain `@theme` would tree-shake it. Fallback
+   * value: the Inter stack, config's `default_manuscript`. The active
+   * user's choice overrides it at runtime via `<x-theme-style />`.
+   */
+  --font-manuscript: Inter, ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * Fallbacks for the same reason as --font-manuscript above: the `.prose`
+   * rule below references both via var() before FontStyleBlock's <style>
+   * block (task 04) ever renders, and a build with no @theme static
+   * declaration for them would ship a dangling reference. Values match
+   * config('fonts.default_manuscript_scale') / config('fonts.default_leading').
+   */
+  --manuscript-scale: 100%;
+  --manuscript-leading: 1.6;
 }
 
 /*
@@ -150,6 +171,12 @@
  * So the plugin's scale is re-pointed at the role tokens. Unlayered and after the
  * `@plugin` line, which is what lets it win: same specificity as the plugin's own
  * `.prose` rule, later in source order.
+ *
+ * The same trick carries `line-height` and `font-size` from the author's manuscript
+ * choice (`--manuscript-leading`/`--manuscript-scale`, set by FontStyleBlock) onto the
+ * block. Typography sets its own per-element `line-height`, so this must also come
+ * after the `@plugin` line to win. It applies to the whole block, so headings inside
+ * prose inherit it too — a manuscript with a loose body and tight headings reads wrong.
  *
  * > [!WARNING]
  * > Adding a `prose` usage needs nothing here, but adding a `prose-invert` one does
@@ -179,6 +206,8 @@
     --tw-prose-pre-bg: var(--color-nav);
     --tw-prose-th-borders: var(--color-border-strong);
     --tw-prose-td-borders: var(--color-border);
+    line-height: var(--manuscript-leading);
+    font-size: var(--manuscript-scale);
 }
 
 /*
@@ -315,6 +344,145 @@
     font-weight: 700;
     font-display: swap;
     src: url('/fonts/atkinson-hyperlegible-next-latin-ext-700-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/*
+ * The four bundled font-choice families (config/fonts.php's `bundled => true`
+ * entries besides Atkinson, fetched by scripts/fetch-fonts.sh). Each ships one
+ * variable woff2 per style/subset — `font-weight: 200 700` covers the whole
+ * range in one @font-face rather than one rule per weight, unlike Atkinson
+ * above. `bundled => false` families (Arial, Verdana, Georgia, system stack)
+ * get no rule here: that is the entire reason they are on that side of the
+ * config list.
+ *
+ * Lexend has no italic design upstream, so it has no italic rule below —
+ * choosing it for the manuscript face means italic text renders as a
+ * browser-synthesised oblique, the same known cost Atkinson already carries.
+ */
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/inter-latin-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/inter-latin-ext-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: italic;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/inter-latin-italic.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: italic;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/inter-latin-ext-italic.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'Lexend';
+    font-style: normal;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/lexend-latin-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Lexend';
+    font-style: normal;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/lexend-latin-ext-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'Literata';
+    font-style: normal;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/literata-latin-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Literata';
+    font-style: normal;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/literata-latin-ext-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'Literata';
+    font-style: italic;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/literata-latin-italic.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Literata';
+    font-style: italic;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/literata-latin-ext-italic.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'Source Serif 4';
+    font-style: normal;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/source-serif-4-latin-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Source Serif 4';
+    font-style: normal;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/source-serif-4-latin-ext-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+    font-family: 'Source Serif 4';
+    font-style: italic;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/source-serif-4-latin-italic.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Source Serif 4';
+    font-style: italic;
+    font-weight: 200 700;
+    font-display: swap;
+    src: url('/fonts/source-serif-4-latin-ext-italic.woff2') format('woff2');
     unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
