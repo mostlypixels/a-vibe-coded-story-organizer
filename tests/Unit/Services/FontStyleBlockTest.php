@@ -38,6 +38,10 @@ class FontStyleBlockTest extends TestCase
             '--manuscript-leading:'.config('fonts.leading.'.config('fonts.default_leading')).';',
             $css,
         );
+        $this->assertStringContainsString(
+            '--tw-leading:'.config('fonts.leading.'.config('fonts.default_ui_leading')).';',
+            $css,
+        );
     }
 
     public function test_a_slug_removed_from_config_renders_the_default_instead_of_throwing(): void
@@ -87,5 +91,29 @@ class FontStyleBlockTest extends TestCase
         $this->assertStringContainsString('font-size:'.config('fonts.ui_scales.large').';', $css);
         $this->assertStringContainsString('--manuscript-scale:'.config('fonts.manuscript_scales.larger').';', $css);
         $this->assertStringContainsString('--manuscript-leading:'.config('fonts.leading.loose').';', $css);
+    }
+
+    /**
+     * `--tw-leading` is the slot every Tailwind `text-*` utility reads its
+     * line-height from, so it is how the interface leading reaches the chrome.
+     */
+    public function test_the_interface_leading_renders_as_the_tailwind_leading_variable(): void
+    {
+        $css = (new FontStyleBlock)->render(
+            FontChoice::resolve(null, null, null, null, 'loose', 'tight')
+        );
+
+        $this->assertStringContainsString('--tw-leading:'.config('fonts.leading.tight').';', $css);
+        $this->assertStringContainsString('--manuscript-leading:'.config('fonts.leading.loose').';', $css);
+    }
+
+    public function test_an_unconfigured_interface_leading_falls_back_to_the_default(): void
+    {
+        $css = (new FontStyleBlock)->render(
+            FontChoice::resolve(null, null, null, null, null, 'gone-from-config')
+        );
+
+        $this->assertStringContainsString('--tw-leading:'.config('fonts.leading.'.config('fonts.default_ui_leading')).';', $css);
+        $this->assertStringNotContainsString('gone-from-config', $css);
     }
 }

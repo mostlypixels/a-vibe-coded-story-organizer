@@ -42,6 +42,7 @@ class UpdateAppearanceRequest extends FormRequest
             'ui_scale' => ['nullable', Rule::in(array_keys(config('fonts.ui_scales')))],
             'manuscript_scale' => ['nullable', Rule::in(array_keys(config('fonts.manuscript_scales')))],
             'manuscript_leading' => ['nullable', Rule::in(array_keys(config('fonts.leading')))],
+            'ui_leading' => ['nullable', Rule::in(array_keys(config('fonts.leading')))],
         ];
     }
 }

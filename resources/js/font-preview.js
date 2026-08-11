@@ -27,6 +27,7 @@ export const PREVIEW_PROPERTIES = {
     ui_scale: 'font-size',
     manuscript_scale: '--manuscript-scale',
     manuscript_leading: '--manuscript-leading',
+    ui_leading: '--tw-leading',
 };
 
 /**

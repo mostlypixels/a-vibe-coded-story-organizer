@@ -37,6 +37,7 @@ class AppearanceController extends Controller
                 $user?->ui_scale,
                 $user?->manuscript_scale,
                 $user?->manuscript_leading,
+                $user?->ui_leading,
             ),
         ]);
     }

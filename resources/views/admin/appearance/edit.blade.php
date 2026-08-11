@@ -12,6 +12,7 @@
         $selectedUiScale = old('ui_scale', $fonts->uiScaleSlug);
         $selectedManuscriptScale = old('manuscript_scale', $fonts->manuscriptScaleSlug);
         $selectedLeading = old('manuscript_leading', $fonts->leadingSlug);
+        $selectedUiLeading = old('ui_leading', $fonts->uiLeadingSlug);
 
         // The live preview resolves a picked slug through this map and writes
         // nothing when the slug is absent. Authored config values only: the
@@ -24,6 +25,7 @@
             'ui_scale' => $uiScales,
             'manuscript_scale' => $manuscriptScales,
             'manuscript_leading' => $leadings,
+            'ui_leading' => $leadings,
         ];
     @endphp
 
@@ -94,7 +96,7 @@
             </fieldset>
         </x-card>
 
-        <x-card class="max-w-xl mt-6">
+        <x-card class="max-w-5xl mt-6">
             <x-slot name="header">
                 <x-heading level="3">{{ __('Interface font') }}</x-heading>
                 <p class="mt-1 text-sm text-content-muted">
@@ -102,41 +104,51 @@
                 </p>
             </x-slot>
 
-            {{-- Each label renders in its own family, from authored config
-                 (never input), so the list previews itself. --}}
-            <fieldset class="space-y-3">
-                <legend class="sr-only">{{ __('Interface font') }}</legend>
+            <div class="flex flex-col gap-6 sm:flex-row">
+                <div class="w-full space-y-6 sm:w-48 sm:shrink-0">
+                    <x-setting-radios
+                        name="ui_scale"
+                        :legend="__('Text size')"
+                        :options="$uiScales"
+                        :selected="$selectedUiScale"
+                    />
 
-                @foreach ($families as $slug => $family)
-                    <label
-                        for="ui-font-{{ $slug }}"
-                        class="flex items-start gap-3 rounded-md border border-border p-4 cursor-pointer"
-                    >
-                        <input
-                            type="radio"
-                            id="ui-font-{{ $slug }}"
-                            name="ui_font"
-                            value="{{ $slug }}"
-                            class="mt-1 border-border-strong text-link focus:ring-focus"
-                            @checked($selectedUiFont === $slug)
-                        >
+                    <x-setting-radios
+                        name="ui_leading"
+                        :legend="__('Line spacing')"
+                        :options="$leadings"
+                        :selected="$selectedUiLeading"
+                    />
+                </div>
 
-                        <span class="flex-1">
-                            <span class="block text-sm font-medium text-content" style="font-family: {{ $family['stack'] }};">
-                                {{ $family['name'] }}
-                            </span>
-                            <span class="block text-sm text-content-muted">
-                                {{ $family['note'] }}
-                            </span>
-                        </span>
-                    </label>
-                @endforeach
+                <div class="min-w-0 flex-1">
+                    <fieldset>
+                        <legend class="sr-only">{{ __('Interface font') }}</legend>
 
-                <x-input-error class="mt-2" :messages="$errors->get('ui_font')" />
-            </fieldset>
+                        <div class="grid grid-cols-3 gap-3">
+                            @foreach ($families as $slug => $family)
+                                <x-font-card
+                                    name="ui_font"
+                                    :slug="$slug"
+                                    :family="$family"
+                                    :checked="$selectedUiFont === $slug"
+                                />
+                            @endforeach
+                        </div>
+
+                        <x-input-error class="mt-2" :messages="$errors->get('ui_font')" />
+                    </fieldset>
+
+                    {{-- The chrome around this page is already the real preview;
+                         this block only puts a sentence of it beside the cards. --}}
+                    <p class="mt-4 rounded-md border border-border p-4 text-sm text-content">
+                        {{ __('Menus, buttons and labels use this typeface at this size and spacing.') }}
+                    </p>
+                </div>
+            </div>
         </x-card>
 
-        <x-card class="max-w-xl mt-6">
+        <x-card class="max-w-5xl mt-6">
             <x-slot name="header">
                 <x-heading level="3">{{ __('Manuscript font') }}</x-heading>
                 <p class="mt-1 text-sm text-content-muted">
@@ -144,144 +156,59 @@
                 </p>
             </x-slot>
 
-            <fieldset class="space-y-3">
-                <legend class="sr-only">{{ __('Manuscript font') }}</legend>
+            <div class="flex flex-col gap-6 sm:flex-row">
+                <div class="w-full space-y-6 sm:w-48 sm:shrink-0">
+                    <x-setting-radios
+                        name="manuscript_scale"
+                        :legend="__('Text size')"
+                        :hint="__('Relative to the interface size above.')"
+                        :options="$manuscriptScales"
+                        :selected="$selectedManuscriptScale"
+                    />
 
-                @foreach ($families as $slug => $family)
-                    <label
-                        for="manuscript-font-{{ $slug }}"
-                        class="flex items-start gap-3 rounded-md border border-border p-4 cursor-pointer"
+                    <x-setting-radios
+                        name="manuscript_leading"
+                        :legend="__('Line spacing')"
+                        :hint="__('Set on its own, not relative to the interface.')"
+                        :options="$leadings"
+                        :selected="$selectedLeading"
+                    />
+                </div>
+
+                <div class="min-w-0 flex-1">
+                    <fieldset>
+                        <legend class="sr-only">{{ __('Manuscript font') }}</legend>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            @foreach ($families as $slug => $family)
+                                <x-font-card
+                                    name="manuscript_font"
+                                    :slug="$slug"
+                                    :family="$family"
+                                    :checked="$selectedManuscriptFont === $slug"
+                                />
+                            @endforeach
+                        </div>
+
+                        <x-input-error class="mt-2" :messages="$errors->get('manuscript_font')" />
+                    </fieldset>
+
+                    {{-- Real text, not aria-hidden: a screen-reader user changing
+                         line spacing for a sighted partner still needs to read the
+                         sample.
+
+                         The three manuscript variables, not the resolved values:
+                         the page-wide <style> block gives them the saved values on
+                         load, and the live preview repaints the sample with the
+                         rest of the page. --}}
+                    <div
+                        class="mt-4 rounded-md border border-border p-4"
+                        style="font-family: var(--font-manuscript); font-size: var(--manuscript-scale); line-height: var(--manuscript-leading);"
                     >
-                        <input
-                            type="radio"
-                            id="manuscript-font-{{ $slug }}"
-                            name="manuscript_font"
-                            value="{{ $slug }}"
-                            class="mt-1 border-border-strong text-link focus:ring-focus"
-                            @checked($selectedManuscriptFont === $slug)
-                        >
-
-                        <span class="flex-1">
-                            <span class="block text-sm font-medium text-content" style="font-family: {{ $family['stack'] }};">
-                                {{ $family['name'] }}
-                            </span>
-                            <span class="block text-sm text-content-muted">
-                                {{ $family['note'] }}
-                            </span>
-                        </span>
-                    </label>
-                @endforeach
-
-                <x-input-error class="mt-2" :messages="$errors->get('manuscript_font')" />
-            </fieldset>
-
-            {{-- Real text, not aria-hidden: a screen-reader user changing line
-                 spacing for a sighted partner still needs to read the sample.
-
-                 The three manuscript variables, not the resolved values: the
-                 page-wide <style> block gives them the saved values on load,
-                 and the live preview repaints the sample with the rest of the
-                 page. --}}
-            <div
-                class="mt-4 rounded-md border border-border p-4"
-                style="font-family: var(--font-manuscript); font-size: var(--manuscript-scale); line-height: var(--manuscript-leading);"
-            >
-                {{ __('The lighthouse keeper climbed the spiral stair by lamplight, counting each worn stone step the way she had every night for eleven years, and still the sea below sounded like something new.') }}
+                        {{ __('The lighthouse keeper climbed the spiral stair by lamplight, counting each worn stone step the way she had every night for eleven years, and still the sea below sounded like something new.') }}
+                    </div>
+                </div>
             </div>
-        </x-card>
-
-        <x-card class="max-w-xl mt-6">
-            <x-slot name="header">
-                <x-heading level="3">{{ __('Text size') }}</x-heading>
-                <p class="mt-1 text-sm text-content-muted">
-                    {{ __('Manuscript size is relative to the interface size, and the two compose.') }}
-                </p>
-            </x-slot>
-
-            <div class="space-y-6">
-                <fieldset class="space-y-3">
-                    <legend class="text-sm font-medium text-content">{{ __('Interface size') }}</legend>
-
-                    @foreach ($uiScales as $slug => $value)
-                        <label
-                            for="ui-scale-{{ $slug }}"
-                            class="flex items-center gap-3 rounded-md border border-border p-4 cursor-pointer"
-                        >
-                            <input
-                                type="radio"
-                                id="ui-scale-{{ $slug }}"
-                                name="ui_scale"
-                                value="{{ $slug }}"
-                                class="border-border-strong text-link focus:ring-focus"
-                                @checked($selectedUiScale === $slug)
-                            >
-                            <span class="text-sm text-content">{{ __(ucfirst($slug)) }}</span>
-                        </label>
-                    @endforeach
-
-                    <x-input-error class="mt-2" :messages="$errors->get('ui_scale')" />
-                </fieldset>
-
-                <fieldset class="space-y-3">
-                    <legend class="text-sm font-medium text-content">
-                        {{ __('Manuscript size') }}
-                        <span class="block text-sm font-normal text-content-muted">
-                            {{ __('Relative to the interface size above.') }}
-                        </span>
-                    </legend>
-
-                    @foreach ($manuscriptScales as $slug => $value)
-                        <label
-                            for="manuscript-scale-{{ $slug }}"
-                            class="flex items-center gap-3 rounded-md border border-border p-4 cursor-pointer"
-                        >
-                            <input
-                                type="radio"
-                                id="manuscript-scale-{{ $slug }}"
-                                name="manuscript_scale"
-                                value="{{ $slug }}"
-                                class="border-border-strong text-link focus:ring-focus"
-                                @checked($selectedManuscriptScale === $slug)
-                            >
-                            <span class="text-sm text-content">{{ __(ucfirst($slug)) }}</span>
-                        </label>
-                    @endforeach
-
-                    <x-input-error class="mt-2" :messages="$errors->get('manuscript_scale')" />
-                </fieldset>
-            </div>
-        </x-card>
-
-        <x-card class="max-w-xl mt-6">
-            <x-slot name="header">
-                <x-heading level="3">{{ __('Line spacing') }}</x-heading>
-                <p class="mt-1 text-sm text-content-muted">
-                    {{ __('Space between lines of manuscript text.') }}
-                </p>
-            </x-slot>
-
-            <fieldset class="space-y-3">
-                <legend class="sr-only">{{ __('Line spacing') }}</legend>
-
-                @foreach ($leadings as $slug => $value)
-                    <label
-                        for="leading-{{ $slug }}"
-                        class="flex items-center gap-3 rounded-md border border-border p-4 cursor-pointer"
-                    >
-                        <input
-                            type="radio"
-                            id="leading-{{ $slug }}"
-                            name="manuscript_leading"
-                            value="{{ $slug }}"
-                            class="border-border-strong text-link focus:ring-focus"
-                            @checked($selectedLeading === $slug)
-                        >
-                        <span class="text-sm text-content">{{ __(ucfirst($slug)) }}</span>
-                    </label>
-                @endforeach
-
-                <x-input-error class="mt-2" :messages="$errors->get('manuscript_leading')" />
-            </fieldset>
         </x-card>
 
         <div class="flex items-center gap-4">

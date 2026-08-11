@@ -228,6 +228,34 @@ class AppearanceSettingsTest extends TestCase
         $this->assertSame('large', $user->fresh()->ui_scale);
     }
 
+    public function test_the_interface_line_spacing_persists_and_is_validated(): void
+    {
+        $user = User::factory()->create(['ui_leading' => 'loose']);
+
+        $this->actingAs($user)->patch(route('admin.appearance.update'), [
+            'theme_slug' => null,
+            'ui_leading' => 'tight',
+        ])->assertRedirect(route('admin.appearance.edit'));
+
+        $this->assertSame('tight', $user->fresh()->ui_leading);
+
+        $this->actingAs($user)->patch(route('admin.appearance.update'), [
+            'theme_slug' => null,
+            'ui_leading' => 'airy',
+        ])->assertSessionHasErrors('ui_leading');
+
+        $this->assertSame('tight', $user->fresh()->ui_leading);
+    }
+
+    public function test_the_interface_line_spacing_reaches_the_rendered_style_block(): void
+    {
+        $user = User::factory()->create(['ui_leading' => 'tight']);
+
+        $this->actingAs($user)
+            ->get(route('admin.appearance.edit'))
+            ->assertSee('--tw-leading:'.config('fonts.leading.tight'), false);
+    }
+
     public function test_a_rejected_font_value_never_appears_in_a_subsequent_page_render(): void
     {
         $user = User::factory()->create(['ui_font' => 'atkinson']);
@@ -267,7 +295,7 @@ class AppearanceSettingsTest extends TestCase
         $this->assertMatchesRegularExpression('/id="manuscript-font-literata"[^>]*checked/', $html);
         $this->assertMatchesRegularExpression('/id="ui-scale-large"[^>]*checked/', $html);
         $this->assertMatchesRegularExpression('/id="manuscript-scale-larger"[^>]*checked/', $html);
-        $this->assertMatchesRegularExpression('/id="leading-loose"[^>]*checked/', $html);
+        $this->assertMatchesRegularExpression('/id="manuscript-leading-loose"[^>]*checked/', $html);
     }
 
     /**
@@ -328,7 +356,7 @@ class AppearanceSettingsTest extends TestCase
             $html,
         );
         $this->assertMatchesRegularExpression(
-            '/id="leading-'.config('fonts.default_leading').'"[^>]*checked/',
+            '/id="manuscript-leading-'.config('fonts.default_leading').'"[^>]*checked/',
             $html,
         );
     }

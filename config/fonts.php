@@ -20,6 +20,7 @@ return [
     'default_manuscript' => 'inter',
     'default_ui_scale' => 'normal',
     'default_manuscript_scale' => 'same',
+    'default_ui_leading' => 'normal',
     'default_leading' => 'normal',
 
     /*
@@ -37,7 +38,12 @@ return [
     | `bundled` marks whether the family ships as a checked-in woff2 with an
     | `@font-face` rule (fetched by `scripts/fetch-fonts.sh`) or resolves to a
     | font the reader's system already has. `note` is the reason the family is
-    | on the list at all; the picker shows it next to the family name.
+    | on the list at all. The picker does not print it — the cards stay short —
+    | except as the label of the eye icon described below.
+    |
+    | `accessible` marks a family drawn for impaired reading. The picker gives it
+    | an eye icon, and `note` becomes that icon's label — so an accessible family
+    | must say in its note what it is designed for.
     |
     */
 
@@ -47,6 +53,7 @@ return [
             'name' => 'Inter',
             'stack' => 'Inter, ui-sans-serif, system-ui, sans-serif',
             'bundled' => true,
+            'accessible' => false,
             'note' => 'Familiar sans; assumes no visual impairment.',
         ],
 
@@ -57,6 +64,7 @@ return [
             // the display name above drops the suffix.
             'stack' => "'Atkinson Hyperlegible Next', ui-sans-serif, system-ui, sans-serif",
             'bundled' => true,
+            'accessible' => true,
             'note' => 'Designed for readers with low vision.',
         ],
 
@@ -64,6 +72,7 @@ return [
             'name' => 'Lexend',
             'stack' => 'Lexend, ui-sans-serif, system-ui, sans-serif',
             'bundled' => true,
+            'accessible' => true,
             'note' => 'Tuned to reduce reading effort, including for dyslexia.',
         ],
 
@@ -71,6 +80,7 @@ return [
             'name' => 'Literata',
             'stack' => 'Literata, ui-serif, Georgia, serif',
             'bundled' => true,
+            'accessible' => false,
             'note' => 'A book-style serif for long-form manuscript reading.',
         ],
 
@@ -78,6 +88,7 @@ return [
             'name' => 'Source Serif 4',
             'stack' => "'Source Serif 4', ui-serif, Georgia, serif",
             'bundled' => true,
+            'accessible' => false,
             'note' => 'A second serif with a plainer, more traditional shape.',
         ],
 
@@ -85,6 +96,7 @@ return [
             'name' => 'Arial',
             'stack' => 'Arial, Helvetica, sans-serif',
             'bundled' => false,
+            'accessible' => false,
             'note' => 'Whatever Arial the reader already has installed.',
         ],
 
@@ -92,6 +104,7 @@ return [
             'name' => 'Verdana',
             'stack' => 'Verdana, Geneva, sans-serif',
             'bundled' => false,
+            'accessible' => false,
             'note' => 'Wide letterforms some readers find easier to scan.',
         ],
 
@@ -99,6 +112,7 @@ return [
             'name' => 'Georgia',
             'stack' => 'Georgia, Times, serif',
             'bundled' => false,
+            'accessible' => false,
             'note' => 'A widely installed serif, no download required.',
         ],
 
@@ -106,6 +120,7 @@ return [
             'name' => 'System font',
             'stack' => 'system-ui, sans-serif',
             'bundled' => false,
+            'accessible' => false,
             'note' => "Whatever the reader's device already uses everywhere else.",
         ],
 
@@ -150,7 +165,8 @@ return [
     | Line height
     |--------------------------------------------------------------------------
     |
-    | Unitless `line-height` values on `.prose`.
+    | Unitless `line-height` values. One list serves both surfaces: `.prose` for
+    | the manuscript, and every `text-*` utility for the interface.
     |
     */
 

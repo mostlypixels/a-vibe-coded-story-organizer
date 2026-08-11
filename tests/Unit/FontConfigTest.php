@@ -17,7 +17,15 @@ class FontConfigTest extends TestCase
             $this->assertArrayHasKey('stack', $family, "Family [{$slug}] is missing stack.");
             $this->assertArrayHasKey('bundled', $family, "Family [{$slug}] is missing bundled.");
             $this->assertArrayHasKey('note', $family, "Family [{$slug}] is missing note.");
+            $this->assertArrayHasKey('accessible', $family, "Family [{$slug}] is missing accessible.");
             $this->assertIsBool($family['bundled'], "Family [{$slug}]'s bundled flag must be boolean.");
+            $this->assertIsBool($family['accessible'], "Family [{$slug}]'s accessible flag must be boolean.");
+
+            // The note is the eye icon's label, so an accessible family cannot
+            // ship a blank one.
+            if ($family['accessible']) {
+                $this->assertNotEmpty($family['note'], "Accessible family [{$slug}] needs a note — it labels the eye icon.");
+            }
         }
     }
 

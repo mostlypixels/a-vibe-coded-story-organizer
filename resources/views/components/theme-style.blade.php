@@ -24,5 +24,6 @@
         auth()->user()?->ui_scale,
         auth()->user()?->manuscript_scale,
         auth()->user()?->manuscript_leading,
+        auth()->user()?->ui_leading,
     )
 ) !!}</style>

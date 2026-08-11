@@ -19,17 +19,27 @@ use App\Support\FontChoice;
  * > [!WARNING]
  * > Keep the rule unlayered and starting `:root{`. Wrapping it in `@layer` loses to
  * > Tailwind's compiled `@layer theme` silently — nothing errors, it just stops working.
+ *
+ * ## Why the interface leading is `--tw-leading`
+ *
+ * Tailwind compiles every `text-*` utility as
+ * `line-height: var(--tw-leading, var(--text-<size>--line-height))`. A plain
+ * `line-height` on `:root` therefore reaches almost nothing — each utility overrides
+ * it. Setting `--tw-leading` fills that same slot instead, so the interface leading
+ * applies everywhere, and a local `leading-*` utility still wins because it sets
+ * `--tw-leading` on the element.
  */
 final class FontStyleBlock
 {
     public function render(FontChoice $choice): string
     {
         $declarations = sprintf(
-            '--font-sans:%s;--font-manuscript:%s;--manuscript-leading:%s;--manuscript-scale:%s;font-size:%s;',
+            '--font-sans:%s;--font-manuscript:%s;--manuscript-leading:%s;--manuscript-scale:%s;--tw-leading:%s;font-size:%s;',
             $choice->uiStack,
             $choice->manuscriptStack,
             $choice->leading,
             $choice->manuscriptScale,
+            $choice->uiLeading,
             $choice->uiScale,
         );
 

@@ -25,6 +25,8 @@ final readonly class FontChoice
         public string $manuscriptScale,
         public string $leadingSlug,
         public string $leading,
+        public string $uiLeadingSlug,
+        public string $uiLeading,
     ) {}
 
     public static function resolve(
@@ -33,6 +35,7 @@ final readonly class FontChoice
         ?string $uiScale,
         ?string $manuscriptScale,
         ?string $leading,
+        ?string $uiLeading = null,
     ): self {
         $families = config('fonts.families', []);
         $uiScales = config('fonts.ui_scales', []);
@@ -44,6 +47,7 @@ final readonly class FontChoice
         $uiScaleSlug = self::withinOrDefault($uiScale, $uiScales, config('fonts.default_ui_scale'));
         $manuscriptScaleSlug = self::withinOrDefault($manuscriptScale, $manuscriptScales, config('fonts.default_manuscript_scale'));
         $leadingSlug = self::withinOrDefault($leading, $leadings, config('fonts.default_leading'));
+        $uiLeadingSlug = self::withinOrDefault($uiLeading, $leadings, config('fonts.default_ui_leading'));
 
         return new self(
             uiSlug: $uiSlug,
@@ -56,6 +60,8 @@ final readonly class FontChoice
             manuscriptScale: $manuscriptScales[$manuscriptScaleSlug],
             leadingSlug: $leadingSlug,
             leading: $leadings[$leadingSlug],
+            uiLeadingSlug: $uiLeadingSlug,
+            uiLeading: $leadings[$uiLeadingSlug],
         );
     }
 
