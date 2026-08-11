@@ -29,6 +29,43 @@ final readonly class FontChoice
         public string $uiLeading,
     ) {}
 
+    /**
+     * `leading` holds a multiplier of the surface's default line height, which
+     * CSS cannot apply on its own — a rule cannot read the line height it
+     * overrides. These turn the multiplier into the value to render.
+     */
+    public function manuscriptLineHeight(): string
+    {
+        return self::lineHeight($this->leading, 'manuscript');
+    }
+
+    public function uiLineHeight(): string
+    {
+        return self::lineHeight($this->uiLeading, 'ui');
+    }
+
+    /**
+     * The list the live preview needs: the same slugs, already multiplied for
+     * one surface, because the browser must never do this arithmetic on a value
+     * it read out of the form.
+     *
+     * @return array<string, string>
+     */
+    public static function lineHeightsFor(string $surface): array
+    {
+        return array_map(
+            static fn (string $multiplier): string => self::lineHeight($multiplier, $surface),
+            config('fonts.leading', []),
+        );
+    }
+
+    private static function lineHeight(string $multiplier, string $surface): string
+    {
+        $base = (float) config("fonts.leading_bases.{$surface}", 1.5);
+
+        return (string) round($base * (float) $multiplier, 4);
+    }
+
     public static function resolve(
         ?string $ui,
         ?string $manuscript,

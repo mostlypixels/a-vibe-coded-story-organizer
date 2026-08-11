@@ -37,9 +37,9 @@ final class FontStyleBlock
             '--font-sans:%s;--font-manuscript:%s;--manuscript-leading:%s;--manuscript-scale:%s;--tw-leading:%s;font-size:%s;',
             $choice->uiStack,
             $choice->manuscriptStack,
-            $choice->leading,
+            $choice->manuscriptLineHeight(),
             $choice->manuscriptScale,
-            $choice->uiLeading,
+            $choice->uiLineHeight(),
             $choice->uiScale,
         );
 

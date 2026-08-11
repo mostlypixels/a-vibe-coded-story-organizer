@@ -9,6 +9,7 @@ import { registerRevisionPicker } from './revision-picker';
 import { registerWordCount } from './word-count';
 import { registerWordCountChart } from './word-count-chart';
 import { registerFontPreview } from './font-preview';
+import { registerSettingTrack } from './setting-track';
 import { moveScene } from './scene-reorder';
 
 window.Alpine = Alpine;
@@ -21,6 +22,7 @@ registerRevisionPicker(Alpine);
 registerWordCount(Alpine);
 registerWordCountChart(Alpine);
 registerFontPreview(Alpine);
+registerSettingTrack(Alpine);
 
 Alpine.start();
 

@@ -30,7 +30,11 @@ class AppearanceController extends Controller
             'families' => config('fonts.families'),
             'uiScales' => config('fonts.ui_scales'),
             'manuscriptScales' => config('fonts.manuscript_scales'),
+            // The picker labels the multipliers; the preview needs them already
+            // multiplied, per surface, so the browser never does that maths.
             'leadings' => config('fonts.leading'),
+            'uiLineHeights' => FontChoice::lineHeightsFor('ui'),
+            'manuscriptLineHeights' => FontChoice::lineHeightsFor('manuscript'),
             'fonts' => FontChoice::resolve(
                 $user?->ui_font,
                 $user?->manuscript_font,

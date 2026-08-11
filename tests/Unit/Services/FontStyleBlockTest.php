@@ -35,11 +35,11 @@ class FontStyleBlockTest extends TestCase
             $css,
         );
         $this->assertStringContainsString(
-            '--manuscript-leading:'.config('fonts.leading.'.config('fonts.default_leading')).';',
+            '--manuscript-leading:'.FontChoice::lineHeightsFor('manuscript')[config('fonts.default_leading')].';',
             $css,
         );
         $this->assertStringContainsString(
-            '--tw-leading:'.config('fonts.leading.'.config('fonts.default_ui_leading')).';',
+            '--tw-leading:'.FontChoice::lineHeightsFor('ui')[config('fonts.default_ui_leading')].';',
             $css,
         );
     }
@@ -82,7 +82,7 @@ class FontStyleBlockTest extends TestCase
 
     public function test_it_renders_a_chosen_family_stack(): void
     {
-        $choice = FontChoice::resolve('atkinson', 'literata', 'large', 'larger', 'loose');
+        $choice = FontChoice::resolve('atkinson', 'literata', 'large', 'larger', 'airy');
 
         $css = (new FontStyleBlock)->render($choice);
 
@@ -90,7 +90,7 @@ class FontStyleBlockTest extends TestCase
         $this->assertStringContainsString('--font-manuscript:'.config('fonts.families.literata.stack').';', $css);
         $this->assertStringContainsString('font-size:'.config('fonts.ui_scales.large').';', $css);
         $this->assertStringContainsString('--manuscript-scale:'.config('fonts.manuscript_scales.larger').';', $css);
-        $this->assertStringContainsString('--manuscript-leading:'.config('fonts.leading.loose').';', $css);
+        $this->assertStringContainsString('--manuscript-leading:'.FontChoice::lineHeightsFor('manuscript')['airy'].';', $css);
     }
 
     /**
@@ -100,11 +100,11 @@ class FontStyleBlockTest extends TestCase
     public function test_the_interface_leading_renders_as_the_tailwind_leading_variable(): void
     {
         $css = (new FontStyleBlock)->render(
-            FontChoice::resolve(null, null, null, null, 'loose', 'tight')
+            FontChoice::resolve(null, null, null, null, 'airy', 'roomier')
         );
 
-        $this->assertStringContainsString('--tw-leading:'.config('fonts.leading.tight').';', $css);
-        $this->assertStringContainsString('--manuscript-leading:'.config('fonts.leading.loose').';', $css);
+        $this->assertStringContainsString('--tw-leading:'.FontChoice::lineHeightsFor('ui')['roomier'].';', $css);
+        $this->assertStringContainsString('--manuscript-leading:'.FontChoice::lineHeightsFor('manuscript')['airy'].';', $css);
     }
 
     public function test_an_unconfigured_interface_leading_falls_back_to_the_default(): void
@@ -113,7 +113,7 @@ class FontStyleBlockTest extends TestCase
             FontChoice::resolve(null, null, null, null, null, 'gone-from-config')
         );
 
-        $this->assertStringContainsString('--tw-leading:'.config('fonts.leading.'.config('fonts.default_ui_leading')).';', $css);
+        $this->assertStringContainsString('--tw-leading:'.FontChoice::lineHeightsFor('ui')[config('fonts.default_ui_leading')].';', $css);
         $this->assertStringNotContainsString('gone-from-config', $css);
     }
 }

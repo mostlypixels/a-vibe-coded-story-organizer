@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\FontChoice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -160,7 +161,7 @@ class AppearanceSettingsTest extends TestCase
             'manuscript_font' => 'literata',
             'ui_scale' => 'large',
             'manuscript_scale' => 'larger',
-            'manuscript_leading' => 'loose',
+            'manuscript_leading' => 'airy',
         ]);
 
         $response->assertRedirect(route('admin.appearance.edit'));
@@ -170,7 +171,7 @@ class AppearanceSettingsTest extends TestCase
         $this->assertSame('literata', $fresh->manuscript_font);
         $this->assertSame('large', $fresh->ui_scale);
         $this->assertSame('larger', $fresh->manuscript_scale);
-        $this->assertSame('loose', $fresh->manuscript_leading);
+        $this->assertSame('airy', $fresh->manuscript_leading);
     }
 
     public function test_patch_with_null_font_fields_clears_them_back_to_the_default(): void
@@ -180,7 +181,7 @@ class AppearanceSettingsTest extends TestCase
             'manuscript_font' => 'literata',
             'ui_scale' => 'large',
             'manuscript_scale' => 'larger',
-            'manuscript_leading' => 'loose',
+            'manuscript_leading' => 'airy',
         ]);
 
         $response = $this->actingAs($user)->patch(route('admin.appearance.update'), [
@@ -230,21 +231,21 @@ class AppearanceSettingsTest extends TestCase
 
     public function test_the_interface_line_spacing_persists_and_is_validated(): void
     {
-        $user = User::factory()->create(['ui_leading' => 'loose']);
+        $user = User::factory()->create(['ui_leading' => 'airy']);
 
         $this->actingAs($user)->patch(route('admin.appearance.update'), [
             'theme_slug' => null,
-            'ui_leading' => 'tight',
+            'ui_leading' => 'roomier',
         ])->assertRedirect(route('admin.appearance.edit'));
 
-        $this->assertSame('tight', $user->fresh()->ui_leading);
+        $this->assertSame('roomier', $user->fresh()->ui_leading);
 
         $this->actingAs($user)->patch(route('admin.appearance.update'), [
             'theme_slug' => null,
-            'ui_leading' => 'airy',
+            'ui_leading' => 'cavernous',
         ])->assertSessionHasErrors('ui_leading');
 
-        $this->assertSame('tight', $user->fresh()->ui_leading);
+        $this->assertSame('roomier', $user->fresh()->ui_leading);
     }
 
     /**
@@ -263,11 +264,11 @@ class AppearanceSettingsTest extends TestCase
 
     public function test_the_interface_line_spacing_reaches_the_rendered_style_block(): void
     {
-        $user = User::factory()->create(['ui_leading' => 'tight']);
+        $user = User::factory()->create(['ui_leading' => 'roomier']);
 
         $this->actingAs($user)
             ->get(route('admin.appearance.edit'))
-            ->assertSee('--tw-leading:'.config('fonts.leading.tight'), false);
+            ->assertSee('--tw-leading:'.FontChoice::lineHeightsFor('ui')['roomier'], false);
     }
 
     public function test_a_rejected_font_value_never_appears_in_a_subsequent_page_render(): void
@@ -296,7 +297,7 @@ class AppearanceSettingsTest extends TestCase
             'manuscript_font' => 'literata',
             'ui_scale' => 'large',
             'manuscript_scale' => 'larger',
-            'manuscript_leading' => 'loose',
+            'manuscript_leading' => 'airy',
         ]);
 
         $html = $this->actingAs($user)->get(route('admin.appearance.edit'))->getContent();
@@ -309,7 +310,7 @@ class AppearanceSettingsTest extends TestCase
         $this->assertMatchesRegularExpression('/id="manuscript-font-literata"[^>]*checked/', $html);
         $this->assertMatchesRegularExpression('/id="ui-scale-large"[^>]*checked/', $html);
         $this->assertMatchesRegularExpression('/id="manuscript-scale-larger"[^>]*checked/', $html);
-        $this->assertMatchesRegularExpression('/id="manuscript-leading-loose"[^>]*checked/', $html);
+        $this->assertMatchesRegularExpression('/id="manuscript-leading-airy"[^>]*checked/', $html);
     }
 
     /**
@@ -338,7 +339,7 @@ class AppearanceSettingsTest extends TestCase
         $this->assertSame($stacks, $map['manuscript_font']);
         $this->assertSame(config('fonts.ui_scales'), $map['ui_scale']);
         $this->assertSame(config('fonts.manuscript_scales'), $map['manuscript_scale']);
-        $this->assertSame(config('fonts.leading'), $map['manuscript_leading']);
+        $this->assertSame(FontChoice::lineHeightsFor('manuscript'), $map['manuscript_leading']);
     }
 
     public function test_a_user_who_never_picked_a_font_sees_the_configured_defaults_marked_active(): void

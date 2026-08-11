@@ -38,7 +38,7 @@ class FontConfigTest extends TestCase
         $this->assertArrayHasKey(config('fonts.default_leading'), config('fonts.leading'));
     }
 
-    public function test_exactly_the_five_expected_families_are_bundled(): void
+    public function test_exactly_the_expected_families_are_bundled(): void
     {
         $bundled = array_keys(array_filter(
             config('fonts.families'),
@@ -46,7 +46,7 @@ class FontConfigTest extends TestCase
         ));
 
         $this->assertSame(
-            ['inter', 'atkinson', 'lexend', 'literata', 'source-serif-4'],
+            ['inter', 'atkinson', 'lexend', 'literata', 'source-serif-4', 'jetbrains-mono'],
             $bundled,
         );
     }

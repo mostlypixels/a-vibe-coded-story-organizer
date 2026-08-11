@@ -20,8 +20,8 @@ return [
     'default_manuscript' => 'inter',
     'default_ui_scale' => 'normal',
     'default_manuscript_scale' => 'same',
-    'default_ui_leading' => 'normal',
-    'default_leading' => 'normal',
+    'default_ui_leading' => 'default',
+    'default_leading' => 'default',
 
     /*
     |--------------------------------------------------------------------------
@@ -92,6 +92,14 @@ return [
             'note' => 'A second serif with a plainer, more traditional shape.',
         ],
 
+        'jetbrains-mono' => [
+            'name' => 'JetBrains Mono',
+            'stack' => "'JetBrains Mono', ui-monospace, monospace",
+            'bundled' => true,
+            'accessible' => false,
+            'note' => 'Fixed width; every character occupies the same space.',
+        ],
+
         'arial' => [
             'name' => 'Arial',
             'stack' => 'Arial, Helvetica, sans-serif',
@@ -134,12 +142,22 @@ return [
     | Percentages set on `:root { font-size }`. Everything sized in `rem`
     | scales with it — the whole chrome, not only text.
     |
+    | Five steps of 2px against the browser's 16px root, which the picker prints
+    | as px. `normal` is the middle step on purpose: the track then reads as
+    | smaller-to-larger around the default.
+    |
+    | 75% is 12px, below the comfortable floor for body text. It stays reachable
+    | for readers who want density on a high-DPI screen, but the range is not
+    | centred there.
+    |
     */
 
     'ui_scales' => [
+        'smallest' => '75%',
+        'small' => '87.5%',
         'normal' => '100%',
         'large' => '112.5%',
-        'larger' => '125%',
+        'largest' => '125%',
     ],
 
     /*
@@ -148,16 +166,21 @@ return [
     |--------------------------------------------------------------------------
     |
     | Percentages applied on `.prose`, relative to the UI scale above — the two
-    | compose rather than one overriding the other. Labelled *same / larger /
-    | largest* rather than absolute sizes, because "normal" would be ambiguous
-    | once `ui_scale` has already changed the root.
+    | compose rather than one overriding the other. The picker prints these as
+    | multipliers, never px: the resulting size depends on `ui_scales`, so a px
+    | label here would go stale the moment the interface size changes.
+    |
+    | The list starts at parity and only grows. A manuscript smaller than the
+    | chrome around it has no reader.
     |
     */
 
     'manuscript_scales' => [
         'same' => '100%',
-        'larger' => '112.5%',
-        'largest' => '125%',
+        'bigger' => '115%',
+        'large' => '130%',
+        'larger' => '145%',
+        'largest' => '160%',
     ],
 
     /*
@@ -165,15 +188,49 @@ return [
     | Line height
     |--------------------------------------------------------------------------
     |
-    | Unitless `line-height` values. One list serves both surfaces: `.prose` for
-    | the manuscript, and every `text-*` utility for the interface.
+    | **Multipliers of each surface's default line height**, not line heights
+    | themselves: `1` leaves the spacing alone and `2` doubles it. The picker
+    | prints them as `1×` … `2×`.
+    |
+    | The multiplier cannot be applied in CSS, because a rule cannot read the
+    | line height it is overriding. So the base sits in `leading_bases` below and
+    | FontStyleBlock multiplies the two before rendering.
+    |
+    | The floor is 1 — the default. Tighter than default is not offered: below a
+    | multiplier of 1 the descenders of one line start to collide with the
+    | ascenders of the next, which is not a setting but a defect.
     |
     */
 
     'leading' => [
-        'tight' => '1.4',
-        'normal' => '1.6',
-        'loose' => '1.9',
+        'default' => '1',
+        'roomier' => '1.25',
+        'roomy' => '1.5',
+        'airy' => '1.75',
+        'double' => '2',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Line height bases
+    |--------------------------------------------------------------------------
+    |
+    | What a `leading` multiplier of 1 means per surface, so that step really is
+    | "unchanged":
+    |
+    | - `manuscript` is Tailwind Typography's own `.prose` line height.
+    | - `ui` is Tailwind's `text-base` line height, the middle of the `text-*`
+    |   scale the chrome uses. One value replaces all of them, so the smallest
+    |   and largest utilities shift slightly at a multiplier of 1.
+    |
+    | Change these only against the framework's own numbers — they are a mirror
+    | of Tailwind's defaults, not a taste setting.
+    |
+    */
+
+    'leading_bases' => [
+        'ui' => 1.5,
+        'manuscript' => 1.75,
     ],
 
 ];

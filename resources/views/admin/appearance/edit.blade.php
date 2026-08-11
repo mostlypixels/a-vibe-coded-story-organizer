@@ -24,8 +24,8 @@
             'manuscript_font' => $stacks,
             'ui_scale' => $uiScales,
             'manuscript_scale' => $manuscriptScales,
-            'manuscript_leading' => $leadings,
-            'ui_leading' => $leadings,
+            'manuscript_leading' => $manuscriptLineHeights,
+            'ui_leading' => $uiLineHeights,
         ];
     @endphp
 
@@ -110,47 +110,47 @@
                 </p>
             </x-slot>
 
-            <div class="flex flex-col gap-6 sm:flex-row">
-                <div class="w-full space-y-6 sm:w-48 sm:shrink-0">
-                    <x-setting-radios
+            <div class="space-y-6">
+                <fieldset>
+                    <legend class="sr-only">{{ __('Interface font') }}</legend>
+
+                    <div class="grid grid-cols-5 gap-3">
+                        @foreach ($families as $slug => $family)
+                            <x-font-card
+                                name="ui_font"
+                                :slug="$slug"
+                                :family="$family"
+                                :checked="$selectedUiFont === $slug"
+                            />
+                        @endforeach
+                    </div>
+
+                    <x-input-error class="mt-2" :messages="$errors->get('ui_font')" />
+                </fieldset>
+
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <x-setting-track
                         name="ui_scale"
+                        format="px"
                         :legend="__('Text size')"
                         :options="$uiScales"
                         :selected="$selectedUiScale"
                     />
 
-                    <x-setting-radios
+                    <x-setting-track
                         name="ui_leading"
+                        format="times"
                         :legend="__('Line spacing')"
                         :options="$leadings"
                         :selected="$selectedUiLeading"
                     />
                 </div>
 
-                <div class="min-w-0 flex-1">
-                    <fieldset>
-                        <legend class="sr-only">{{ __('Interface font') }}</legend>
-
-                        <div class="grid grid-cols-3 gap-3">
-                            @foreach ($families as $slug => $family)
-                                <x-font-card
-                                    name="ui_font"
-                                    :slug="$slug"
-                                    :family="$family"
-                                    :checked="$selectedUiFont === $slug"
-                                />
-                            @endforeach
-                        </div>
-
-                        <x-input-error class="mt-2" :messages="$errors->get('ui_font')" />
-                    </fieldset>
-
-                    {{-- The chrome around this page is already the real preview;
-                         this block only puts a sentence of it beside the cards. --}}
-                    <p class="mt-4 rounded-md border border-border p-4 text-sm text-content">
-                        {{ __('Menus, buttons and labels use this typeface at this size and spacing.') }}
-                    </p>
-                </div>
+                {{-- The chrome around this page is already the real preview; this
+                     block only keeps a sentence of it in view while picking. --}}
+                <p class="rounded-md border border-border p-4 text-sm text-content">
+                    {{ __('Menus, buttons and labels use this typeface at this size and spacing.') }}
+                </p>
             </div>
         </x-card>
 
@@ -162,57 +162,56 @@
                 </p>
             </x-slot>
 
-            <div class="flex flex-col gap-6 sm:flex-row">
-                <div class="w-full space-y-6 sm:w-48 sm:shrink-0">
-                    <x-setting-radios
+            <div class="space-y-6">
+                <fieldset>
+                    <legend class="sr-only">{{ __('Manuscript font') }}</legend>
+
+                    <div class="grid grid-cols-5 gap-3">
+                        @foreach ($families as $slug => $family)
+                            <x-font-card
+                                name="manuscript_font"
+                                :slug="$slug"
+                                :family="$family"
+                                :checked="$selectedManuscriptFont === $slug"
+                            />
+                        @endforeach
+                    </div>
+
+                    <x-input-error class="mt-2" :messages="$errors->get('manuscript_font')" />
+                </fieldset>
+
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <x-setting-track
                         name="manuscript_scale"
+                        format="times"
                         :legend="__('Text size')"
                         :hint="__('Relative to the interface size above.')"
                         :options="$manuscriptScales"
                         :selected="$selectedManuscriptScale"
                     />
 
-                    <x-setting-radios
+                    <x-setting-track
                         name="manuscript_leading"
+                        format="times"
                         :legend="__('Line spacing')"
-                        :hint="__('Set on its own, not relative to the interface.')"
+                        :hint="__('Multiplies the default manuscript spacing.')"
                         :options="$leadings"
                         :selected="$selectedLeading"
                     />
                 </div>
 
-                <div class="min-w-0 flex-1">
-                    <fieldset>
-                        <legend class="sr-only">{{ __('Manuscript font') }}</legend>
+                {{-- Real text, not aria-hidden: a screen-reader user changing line
+                     spacing for a sighted partner still needs to read the sample.
 
-                        <div class="grid grid-cols-3 gap-3">
-                            @foreach ($families as $slug => $family)
-                                <x-font-card
-                                    name="manuscript_font"
-                                    :slug="$slug"
-                                    :family="$family"
-                                    :checked="$selectedManuscriptFont === $slug"
-                                />
-                            @endforeach
-                        </div>
-
-                        <x-input-error class="mt-2" :messages="$errors->get('manuscript_font')" />
-                    </fieldset>
-
-                    {{-- Real text, not aria-hidden: a screen-reader user changing
-                         line spacing for a sighted partner still needs to read the
-                         sample.
-
-                         The three manuscript variables, not the resolved values:
-                         the page-wide <style> block gives them the saved values on
-                         load, and the live preview repaints the sample with the
-                         rest of the page. --}}
-                    <div
-                        class="mt-4 rounded-md border border-border p-4"
-                        style="font-family: var(--font-manuscript); font-size: var(--manuscript-scale); line-height: var(--manuscript-leading);"
-                    >
-                        {{ __('The lighthouse keeper climbed the spiral stair by lamplight, counting each worn stone step the way she had every night for eleven years, and still the sea below sounded like something new.') }}
-                    </div>
+                     The three manuscript variables, not the resolved values: the
+                     page-wide <style> block gives them the saved values on load,
+                     and the live preview repaints the sample with the rest of the
+                     page. --}}
+                <div
+                    class="rounded-md border border-border p-4"
+                    style="font-family: var(--font-manuscript); font-size: var(--manuscript-scale); line-height: var(--manuscript-leading);"
+                >
+                    {{ __('Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.') }}
                 </div>
             </div>
         </x-card>

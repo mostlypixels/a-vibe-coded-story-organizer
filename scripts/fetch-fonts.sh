@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fetch-fonts.sh — download the four bundled-font woff2 files into public/fonts/.
+# fetch-fonts.sh — download the bundled-font woff2 files into public/fonts/.
 #
 # The font files themselves are checked into the repo, not fetched at build
 # time — self-hosting means the app works air-gapped, and a CDN outage must
@@ -55,6 +55,11 @@ FONTS=(
     "source-serif-4|source-serif-4|normal|latin-ext|source-serif-4-latin-ext-normal.woff2"
     "source-serif-4|source-serif-4|italic|latin|source-serif-4-latin-italic.woff2"
     "source-serif-4|source-serif-4|italic|latin-ext|source-serif-4-latin-ext-italic.woff2"
+
+    "jetbrains-mono|jetbrains-mono|normal|latin|jetbrains-mono-latin-normal.woff2"
+    "jetbrains-mono|jetbrains-mono|normal|latin-ext|jetbrains-mono-latin-ext-normal.woff2"
+    "jetbrains-mono|jetbrains-mono|italic|latin|jetbrains-mono-latin-italic.woff2"
+    "jetbrains-mono|jetbrains-mono|italic|latin-ext|jetbrains-mono-latin-ext-italic.woff2"
 )
 
 for entry in "${FONTS[@]}"; do
