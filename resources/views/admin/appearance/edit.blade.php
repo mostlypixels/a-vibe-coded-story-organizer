@@ -29,10 +29,16 @@
         ];
     @endphp
 
+    {{-- `autocomplete="off"` stops the browser restoring the radios on a reload.
+         Restoration fires no `change` event, so the live preview never runs and
+         a restored radio disagrees with the `<style>` block, which always paints
+         the saved values. A reload now returns the whole page to what is
+         stored. --}}
     <form
         method="post"
         action="{{ route('admin.appearance.update') }}"
         class="space-y-6"
+        autocomplete="off"
         x-data="fontPreview({{ Js::from($previewMap) }})"
     >
         @csrf

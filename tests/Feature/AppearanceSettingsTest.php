@@ -247,6 +247,20 @@ class AppearanceSettingsTest extends TestCase
         $this->assertSame('tight', $user->fresh()->ui_leading);
     }
 
+    /**
+     * A restored radio fires no `change` event, so the live preview never runs
+     * and the control disagrees with the style block, which always paints the
+     * saved values. `autocomplete="off"` is what stops the restore.
+     */
+    public function test_the_form_opts_out_of_browser_form_restoration(): void
+    {
+        $user = User::factory()->create();
+
+        $html = $this->actingAs($user)->get(route('admin.appearance.edit'))->getContent();
+
+        $this->assertMatchesRegularExpression('/<form[^>]*autocomplete="off"/', $html);
+    }
+
     public function test_the_interface_line_spacing_reaches_the_rendered_style_block(): void
     {
         $user = User::factory()->create(['ui_leading' => 'tight']);
