@@ -42,6 +42,27 @@ final class ThemeStyleBlock
     {
         $declarations = '';
 
+        foreach ($this->declarations($preset) as $property => $value) {
+            $declarations .= sprintf('%s:%s;', $property, $value);
+        }
+
+        return ":root{{$declarations}}";
+    }
+
+    /**
+     * The same custom properties {@see render()} prints, as an array — the form the
+     * Appearance picker sends to the live preview.
+     *
+     * The picker gets them from here and not from a second walk of the config, so a
+     * previewed theme and a saved theme cannot paint different pixels, and the
+     * whitelist above guards both.
+     *
+     * @return array<string, string> `--color-<token>` => CSS color value
+     */
+    public function declarations(ThemePreset $preset): array
+    {
+        $declarations = [];
+
         // Iterate ALL, not the preset's array: token order stays stable in devtools and
         // an unknown key in config cannot reach the page.
         foreach (ThemeTokens::ALL as $token) {
@@ -51,9 +72,9 @@ final class ThemeStyleBlock
                 continue;
             }
 
-            $declarations .= sprintf('--color-%s:%s;', $token, $value);
+            $declarations["--color-{$token}"] = $value;
         }
 
-        return ":root{{$declarations}}";
+        return $declarations;
     }
 }

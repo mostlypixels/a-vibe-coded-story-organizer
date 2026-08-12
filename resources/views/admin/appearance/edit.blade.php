@@ -20,6 +20,9 @@
         $stacks = array_map(fn (array $family) => $family['stack'], $families);
 
         $previewMap = [
+            // A theme entry is the whole `--color-*` block ThemeStyleBlock prints,
+            // not one value: picking a preset moves every token at once.
+            'theme_slug' => $themeDeclarations,
             'ui_font' => $stacks,
             'manuscript_font' => $stacks,
             'ui_scale' => $uiScales,
@@ -53,8 +56,8 @@
             </x-slot>
 
             {{-- Native radios, not a <select> and not styled <div>s: arrow-key
-                 navigation comes free. The theme applies on submit; only the
-                 font fields below have a live preview. --}}
+                 navigation comes free. Picking one repaints the page live; the
+                 choice is stored only on submit. --}}
             <fieldset>
                 <legend class="sr-only">{{ __('Theme') }}</legend>
 

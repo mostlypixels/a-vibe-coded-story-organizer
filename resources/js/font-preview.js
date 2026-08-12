@@ -1,7 +1,9 @@
 /**
  * Live preview for the appearance form: picking a radio repaints the whole
- * page at once, because the same `:root` custom properties `FontStyleBlock`
- * writes server-side are re-written on `document.documentElement`.
+ * page at once, because the same `:root` custom properties `FontStyleBlock` and
+ * `ThemeStyleBlock` write server-side are re-written on
+ * `document.documentElement`. Fonts, sizes, spacing and the colour theme all
+ * preview through this one listener.
  *
  * Progressive enhancement only. The form submits and persists identically with
  * JS off, and nothing here is saved: navigating away discards the preview and
@@ -31,24 +33,39 @@ export const PREVIEW_PROPERTIES = {
 };
 
 /**
- * Pure lookup, exported for tests: returns `{ property, value }` for a known
- * field and slug, or `null` for anything else — an unknown field (the theme
- * radios go through the same listener), an unknown slug, or an inherited
- * Object key such as `constructor`.
+ * The fields whose map entry is a whole `property -> value` block instead of one
+ * value. A theme moves every colour token at once, so `ThemeStyleBlock` sends the
+ * same declarations it prints server-side and this file names no colour property.
+ */
+export const BLOCK_FIELDS = ['theme_slug'];
+
+const owns = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+
+/**
+ * Pure lookup, exported for tests: returns the `property -> value` declarations a
+ * known field and slug preview, or `null` for anything else — an unknown field, an
+ * unknown slug, or an inherited Object key such as `constructor`.
  */
 export function resolvePreview(maps, field, slug) {
-    const property = PREVIEW_PROPERTIES[field];
     const options = maps?.[field];
 
-    if (property === undefined || options === undefined) {
+    if (options === undefined || !owns(options, slug)) {
         return null;
     }
 
-    if (!Object.prototype.hasOwnProperty.call(options, slug)) {
+    if (BLOCK_FIELDS.includes(field)) {
+        const declarations = options[slug];
+
+        // A block arrives already keyed by property. Anything but an object means the
+        // server sent a shape this file does not understand: paint nothing.
+        return declarations !== null && typeof declarations === 'object' ? declarations : null;
+    }
+
+    if (!owns(PREVIEW_PROPERTIES, field)) {
         return null;
     }
 
-    return { property, value: options[slug] };
+    return { [PREVIEW_PROPERTIES[field]]: options[slug] };
 }
 
 /**
@@ -78,7 +95,9 @@ export function registerFontPreview(Alpine) {
                 return;
             }
 
-            document.documentElement.style.setProperty(resolved.property, resolved.value);
+            for (const [property, value] of Object.entries(resolved)) {
+                document.documentElement.style.setProperty(property, value);
+            }
         },
     }));
 }

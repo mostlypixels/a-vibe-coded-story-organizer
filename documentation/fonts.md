@@ -99,6 +99,11 @@ writes for it (`ui_font` → `--font-sans`, `manuscript_scale` → `--manuscript
 Two copies of that mapping — PHP's property list and JS's — would drift silently; keep
 them in the same shape when either changes.
 
+The theme radios preview through the same listener, but they are a `BLOCK_FIELDS` entry:
+a preset moves every colour token at once, so the map holds the whole `property -> value`
+block that `ThemeStyleBlock::declarations()` returns, and this file names no colour
+property of its own. `resolvePreview()` returns the block; `apply()` writes each pair.
+
 The line-spacing entries in that map hold **already-multiplied** values, one list per
 surface (`FontChoice::lineHeightsFor()`), because the browser must not do that arithmetic
 on a value it read out of the form.
