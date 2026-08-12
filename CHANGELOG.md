@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-12 — A "No halation" colour theme
+## 2026-08-12 — A "No halation" colour theme (#101)
 
 ### Added
 
