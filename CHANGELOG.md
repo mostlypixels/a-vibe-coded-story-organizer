@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-12 — Theme picker as flags
+
+### Changed
+
+- Configuration → Appearance is now titled after itself, and the theme card is called "Colour theme".
+- Themes are picked from a grid of rectangular flags, five per row like the font picker, instead of a list of colour dots. Each flag paints the theme's own colours behind its name.
+
 ## 2026-08-11 — Per-user fonts and text sizing (#99)
 
 ### Added
