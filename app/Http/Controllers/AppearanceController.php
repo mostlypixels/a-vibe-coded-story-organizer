@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateAppearanceRequest;
+use App\Services\ThemeStyleBlock;
 use App\Support\FontChoice;
 use App\Support\ThemePreset;
 use Illuminate\Http\RedirectResponse;
@@ -20,13 +21,17 @@ use Illuminate\View\View;
  */
 class AppearanceController extends Controller
 {
-    public function edit(): View
+    public function edit(ThemeStyleBlock $themeStyle): View
     {
         $user = auth()->user();
+        $themes = ThemePreset::all();
 
         return view('admin.appearance.edit', [
-            'themes' => ThemePreset::all(),
+            'themes' => $themes,
             'active' => ThemePreset::resolve($user?->theme_slug)->slug,
+            // The live preview writes these verbatim, so they come from the renderer
+            // that paints the saved page rather than from a second walk of the config.
+            'themeDeclarations' => array_map($themeStyle->declarations(...), $themes),
             'families' => config('fonts.families'),
             'uiScales' => config('fonts.ui_scales'),
             'manuscriptScales' => config('fonts.manuscript_scales'),

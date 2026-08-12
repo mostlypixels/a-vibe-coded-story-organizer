@@ -806,9 +806,12 @@ no default, sharing the "Configuration → Appearance" page with theming.
   **not** whitelist-validate its output: nothing it prints is ever request-derived,
   because `FontChoice::resolve()` only returns config-authored values.
 - **`resources/js/font-preview.js`** repaints `document.documentElement.style` live as
-  the picker's radios change, resolving each slug through a server-rendered lookup map
+  the picker's radios change — fonts, sizes, spacing **and the colour theme**, one
+  listener for all of them. Each slug resolves through a server-rendered lookup map
   with the same "unknown key → no-op" rule as the PHP side — never `input.value`
-  written straight into `setProperty()`.
+  written straight into `setProperty()`. A theme's map entry is the whole
+  `--color-*` block, from `ThemeStyleBlock::declarations()`, so preview and save
+  cannot disagree.
 - **The manuscript scale is relative, not absolute**: a percentage on `.prose` that
   composes with `ui_scale`'s `:root { font-size }`, not one overriding the other. Line
   spacing is the opposite — the two surfaces are independent, because a unitless line

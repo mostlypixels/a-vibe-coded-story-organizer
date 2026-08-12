@@ -22,6 +22,10 @@ const maps = {
     ui_scale: { normal: '100%', large: '112.5%' },
     manuscript_scale: { same: '100%', larger: '112.5%' },
     manuscript_leading: { normal: '1.6', loose: '1.9' },
+    theme_slug: {
+        midnight: { '--color-surface': '#101018', '--color-content': '#eeeef4' },
+        daylight: { '--color-surface': '#ffffff', '--color-content': '#101018' },
+    },
 };
 
 function mountFontPreview(Alpine) {
@@ -51,9 +55,27 @@ function pick(form, name, value) {
 describe('resolvePreview', () => {
     it('resolves a known slug to the authored value from the map', () => {
         expect(resolvePreview(maps, 'ui_font', 'georgia')).toEqual({
-            property: '--font-sans',
-            value: 'Georgia, Times, serif',
+            '--font-sans': 'Georgia, Times, serif',
         });
+    });
+
+    it('resolves a theme slug to the whole declaration block the server sent', () => {
+        expect(resolvePreview(maps, 'theme_slug', 'midnight')).toEqual({
+            '--color-surface': '#101018',
+            '--color-content': '#eeeef4',
+        });
+    });
+
+    it('is a no-op for an unknown theme slug', () => {
+        expect(resolvePreview(maps, 'theme_slug', 'nonesuch')).toBeNull();
+    });
+
+    it('is a no-op for a field no map lists', () => {
+        expect(resolvePreview(maps, 'container_width', 'wide')).toBeNull();
+    });
+
+    it('is a no-op when a theme entry is not a declaration block', () => {
+        expect(resolvePreview({ theme_slug: { broken: '#fff' } }, 'theme_slug', 'broken')).toBeNull();
     });
 
     it('is a no-op for an unknown slug', () => {
@@ -65,8 +87,8 @@ describe('resolvePreview', () => {
         expect(resolvePreview(maps, 'ui_font', '__proto__')).toBeNull();
     });
 
-    it('is a no-op for a field the preview does not drive, such as the theme radios', () => {
-        expect(resolvePreview(maps, 'theme_slug', 'midnight')).toBeNull();
+    it('is a no-op for an inherited key of the property list', () => {
+        expect(resolvePreview({ constructor: { a: 'b' } }, 'constructor', 'a')).toBeNull();
     });
 });
 
@@ -103,6 +125,28 @@ describe('registerFontPreview', () => {
         Object.values(PREVIEW_PROPERTIES)
             .filter((other) => other !== property)
             .forEach((other) => expect(style.getPropertyValue(other)).toBe(''));
+    });
+
+    it('a theme radio writes every colour property of that preset', () => {
+        const { form } = mountFontPreview(Alpine);
+
+        pick(form, 'theme_slug', 'midnight');
+
+        const style = document.documentElement.style;
+        expect(style.getPropertyValue('--color-surface').trim()).toBe('#101018');
+        expect(style.getPropertyValue('--color-content').trim()).toBe('#eeeef4');
+    });
+
+    /** Picking a second theme must replace the first, not merge with it. */
+    it('a second theme overwrites the properties of the first', () => {
+        const { form } = mountFontPreview(Alpine);
+
+        pick(form, 'theme_slug', 'midnight');
+        pick(form, 'theme_slug', 'daylight');
+
+        const style = document.documentElement.style;
+        expect(style.getPropertyValue('--color-surface').trim()).toBe('#ffffff');
+        expect(style.getPropertyValue('--color-content').trim()).toBe('#101018');
     });
 
     it('writes nothing for an unknown slug and does not throw', () => {

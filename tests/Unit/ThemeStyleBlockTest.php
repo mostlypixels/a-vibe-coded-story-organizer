@@ -112,6 +112,32 @@ class ThemeStyleBlockTest extends TestCase
     }
 
     /**
+     * The array the Appearance live preview consumes carries exactly what the rule
+     * prints, and drops the same values: a preview cannot show a colour the saved
+     * page refuses.
+     */
+    public function test_declarations_hold_the_same_properties_the_rule_prints(): void
+    {
+        $preset = $this->preset([
+            'surface' => '#fff',
+            'content' => 'oklch(0.62 0.11 220)',
+            'primary' => '</style><script>alert(1)</script>',
+        ]);
+
+        $block = new ThemeStyleBlock;
+        $css = $block->render($preset);
+
+        $this->assertSame([
+            '--color-surface' => '#fff',
+            '--color-content' => 'oklch(0.62 0.11 220)',
+        ], $block->declarations($preset));
+
+        foreach ($block->declarations($preset) as $property => $value) {
+            $this->assertStringContainsString("{$property}:{$value};", $css);
+        }
+    }
+
+    /**
      * @param  array<string, string>  $tokens
      */
     private function preset(array $tokens): ThemePreset

@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\ThemeStyleBlock;
 use App\Support\FontChoice;
+use App\Support\ThemePreset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -340,6 +342,29 @@ class AppearanceSettingsTest extends TestCase
         $this->assertSame(config('fonts.ui_scales'), $map['ui_scale']);
         $this->assertSame(config('fonts.manuscript_scales'), $map['manuscript_scale']);
         $this->assertSame(FontChoice::lineHeightsFor('manuscript'), $map['manuscript_leading']);
+    }
+
+    /**
+     * The theme entry is the same block ThemeStyleBlock prints server-side, so a
+     * previewed preset and a saved one paint the same pixels.
+     */
+    public function test_the_form_carries_the_colour_declarations_of_every_configured_preset(): void
+    {
+        $user = User::factory()->create();
+
+        $html = $this->actingAs($user)->get(route('admin.appearance.edit'))->getContent();
+
+        $this->assertSame(
+            1,
+            preg_match("/x-data=\"fontPreview\(JSON\.parse\('(.*?)'\)\)\"/", $html, $matches),
+        );
+
+        $map = json_decode(json_decode('"'.$matches[1].'"'), associative: true);
+        $block = app(ThemeStyleBlock::class);
+
+        foreach (ThemePreset::all() as $slug => $preset) {
+            $this->assertSame($block->declarations($preset), $map['theme_slug'][$slug]);
+        }
     }
 
     public function test_a_user_who_never_picked_a_font_sees_the_configured_defaults_marked_active(): void
