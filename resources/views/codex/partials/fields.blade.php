@@ -86,23 +86,27 @@
     @endif
 
     <x-slot:sidebar>
-        @if ($entry !== null)
+        @if ($entry === null)
+            <x-create-actions form="codex-entry-create-form" :cancel="route('projects.codex.index', [$project, $type->routeKey()])">
+                {{ __('Create :label', ['label' => $type->label()]) }}
+            </x-create-actions>
+        @else
+            {{-- The delete button submits a form that codex/edit.blade.php renders after the
+                 edit form, and reaches it with the `form` attribute. This whole partial is
+                 inside the edit form, and a form inside a form is invalid HTML: the browser
+                 discards the inner tag and ends the edit form at the first </form>. The
+                 delete route's `_method=DELETE` then rode along with Save. --}}
             <x-edit-actions
                 form="codex-entry-edit-form"
                 :history-model="$entry"
-                :delete-action="route('codex.destroy', $entry)"
-                :delete-confirm="__('Are you sure you want to delete this entry?')"
                 duplicate-modal="duplicate-codex-entry-{{ $entry->id }}"
             >
-                {{ __('Delete :label', ['label' => $type->label()]) }}
+                <x-slot:delete>
+                    <x-button variant="danger" type="submit" form="codex-entry-delete-form" :icon="true" class="w-full">
+                        {{ __('Delete :label', ['label' => $type->label()]) }}
+                    </x-button>
+                </x-slot:delete>
             </x-edit-actions>
-
-            <x-duplicate-dialog
-                name="duplicate-codex-entry-{{ $entry->id }}"
-                :action="route('codex.duplicate', $entry)"
-                :title="__('Duplicate :label', ['label' => $type->label()])"
-                :suggestion="$duplicateSuggestion"
-            />
         @endif
 
         <x-card :title="__('Cover')">

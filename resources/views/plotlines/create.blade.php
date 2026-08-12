@@ -5,7 +5,7 @@
 
     <x-edit-layout>
         <x-card>
-            <form method="POST" action="{{ route('projects.plotlines.store', $project) }}" class="space-y-6">
+            <form id="plotline-create-form" method="POST" action="{{ route('projects.plotlines.store', $project) }}" class="space-y-6">
                 @csrf
 
                 <div>
@@ -25,11 +25,13 @@
                     <x-color-picker name="color" :selected="old('color')" />
                     <x-input-error :messages="$errors->get('color')" class="mt-2" />
                 </div>
-
-                <div class="flex items-center gap-4">
-                    <x-button variant="primary">{{ __('Create Plotline') }}</x-button>
-                </div>
             </form>
         </x-card>
+
+        <x-slot:sidebar>
+            <x-create-actions form="plotline-create-form" :cancel="route('projects.plotlines.index', $project)">
+                {{ __('Create Plotline') }}
+            </x-create-actions>
+        </x-slot:sidebar>
     </x-edit-layout>
 </x-app-layout>

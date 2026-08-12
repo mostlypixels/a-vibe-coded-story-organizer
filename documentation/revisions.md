@@ -348,8 +348,8 @@ pre-set.
 `<x-entity-history-link>` takes the **model** and derives the slug via
 `AutosavableFields::slugFor($model::class)`. Do not add a slug prop: every call site that
 hand-writes `"act"`/`"codex"` is another chance to typo a 404 that only shows up when a
-writer clicks it. `<x-edit-actions>` renders it when given a `historyModel`; `plotlines/edit`
-(the one screen with no Actions card) renders it directly beside Save.
+writer clicks it. `<x-edit-actions>` renders it when given a `historyModel`, so every
+revisionable edit screen gets the link from its Actions card.
 
 ## Revisions browser (Tools ▸ Revisions)
 

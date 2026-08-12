@@ -5,16 +5,17 @@
 
     <x-edit-layout>
         <x-card>
-            <form method="POST" action="{{ route('projects.codex-attributes.store', $project) }}" class="space-y-6">
+            <form id="codex-attribute-create-form" method="POST" action="{{ route('projects.codex-attributes.store', $project) }}" class="space-y-6">
                 @csrf
 
                 @include('codex-attributes.partials.fields')
-
-                <div class="flex items-center gap-4">
-                    <x-button variant="primary">{{ __('Create Attribute') }}</x-button>
-                    <a href="{{ route('projects.codex-attributes.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Cancel') }}</a>
-                </div>
             </form>
         </x-card>
+
+        <x-slot:sidebar>
+            <x-create-actions form="codex-attribute-create-form" :cancel="route('projects.codex-attributes.index', $project)">
+                {{ __('Create Attribute') }}
+            </x-create-actions>
+        </x-slot:sidebar>
     </x-edit-layout>
 </x-app-layout>

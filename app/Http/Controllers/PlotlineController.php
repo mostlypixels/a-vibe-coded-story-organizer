@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
+use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\UpdatePlotlineRequest;
@@ -15,6 +16,7 @@ use Illuminate\View\View;
 class PlotlineController extends Controller
 {
     use RecordsManualRevisions;
+    use RedirectsAfterSave;
     use ResolvesIndexSorting;
 
     public function index(Request $request, Project $project): View
@@ -66,7 +68,11 @@ class PlotlineController extends Controller
 
         $this->recordManualSave($plotline, $beforeAutosavedFields);
 
-        return redirect()->route('projects.plotlines.index', $plotline->project);
+        return $this->redirectAfterSave(
+            $request,
+            ['plotlines.edit', $plotline],
+            ['projects.plotlines.index', $plotline->project],
+        );
     }
 
     public function destroy(Plotline $plotline): RedirectResponse
