@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-12 — Save a codex entry without deleting it
+## 2026-08-12 — Save a codex entry without deleting it (#102)
 
 ### Fixed
 
