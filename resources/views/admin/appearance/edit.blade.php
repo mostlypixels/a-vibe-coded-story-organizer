@@ -1,7 +1,7 @@
 <x-admin-layout>
     <x-slot name="header">
         <x-heading level="2">
-            {{ __('Configuration') }}
+            {{ __('Appearance & accessibility') }}
         </x-heading>
     </x-slot>
 
@@ -44,9 +44,9 @@
         @csrf
         @method('patch')
 
-        <x-card class="max-w-xl">
+        <x-card class="max-w-5xl">
             <x-slot name="header">
-                <x-heading level="3">{{ __('Appearance & accessibility') }}</x-heading>
+                <x-heading level="3">{{ __('Colour theme') }}</x-heading>
                 <p class="mt-1 text-sm text-content-muted">
                     {{ __('Choose the colour theme this account uses across the app.') }}
                 </p>
@@ -55,48 +55,18 @@
             {{-- Native radios, not a <select> and not styled <div>s: arrow-key
                  navigation comes free. The theme applies on submit; only the
                  font fields below have a live preview. --}}
-            <fieldset class="space-y-3">
+            <fieldset>
                 <legend class="sr-only">{{ __('Theme') }}</legend>
 
-                @php
-                    // The swatch strip is decoration only (aria-hidden below); the
-                    // visible text label carries the preset name. Values are data,
-                    // not classes, so they're re-validated with the same pattern
-                    // ThemeStyleBlock uses before ever reaching an inline style.
-                    $swatchTokens = ['surface', 'surface-raised', 'content', 'primary', 'accent', 'focus'];
-                @endphp
-
-                @foreach ($themes as $slug => $preset)
-                    <label
-                        for="theme-{{ $slug }}"
-                        class="flex items-start gap-3 rounded-md border border-border p-4 cursor-pointer"
-                    >
-                        <input
-                            type="radio"
-                            id="theme-{{ $slug }}"
-                            name="theme_slug"
-                            value="{{ $slug }}"
-                            class="mt-1 border-border-strong text-link focus:ring-focus"
-                            @checked($selectedTheme === $slug)
-                        >
-
-                        <span class="flex-1">
-                            <span class="block text-sm font-medium text-content">
-                                {{ __($preset->name) }}
-                            </span>
-
-                            <span class="mt-2 flex gap-1" aria-hidden="true">
-                                @foreach ($swatchTokens as $token)
-                                    @continue(! preg_match(\App\Support\Oklch::CSS_VALUE_PATTERN, $preset->tokens[$token] ?? ''))
-                                    <span
-                                        class="h-6 w-6 rounded-full border border-border"
-                                        style="background-color: {{ $preset->tokens[$token] }};"
-                                    ></span>
-                                @endforeach
-                            </span>
-                        </span>
-                    </label>
-                @endforeach
+                <div class="grid grid-cols-5 gap-3">
+                    @foreach ($themes as $slug => $preset)
+                        <x-theme-card
+                            :slug="$slug"
+                            :preset="$preset"
+                            :checked="$selectedTheme === $slug"
+                        />
+                    @endforeach
+                </div>
 
                 <x-input-error class="mt-2" :messages="$errors->get('theme_slug')" />
             </fieldset>
