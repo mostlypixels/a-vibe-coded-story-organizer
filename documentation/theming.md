@@ -55,9 +55,11 @@ compiles to nothing, silently.
 
 ## Presets are config, not database rows
 
-`config/themes.php` holds exactly three presets — **Daylight** (the app's original light
-look), **Dusk** (a dimmed light theme, no white anywhere), and **Low-glare dark** (a
-genuine dark theme with a low contrast ceiling to avoid halation). Nothing about a theme
+`config/themes.php` holds exactly four presets — **Daylight** (the app's original light
+look), **Dusk** (a dimmed light theme, no white anywhere), **Low-glare dark** (a genuine
+dark theme with a low contrast ceiling to avoid halation), and **No halation** (Low-glare
+dark's surfaces with every foreground pulled 53% of the way toward its background — see
+[Contrast](#contrast--floors-reject-ceilings-warn)). Nothing about a theme
 varies per request beyond which preset is active, so there is no `themes` table and no
 settings singleton — only `users.theme_slug` (nullable) varies at runtime.
 
@@ -134,9 +136,33 @@ and a ceiling:
   (15.0). A ceiling below the applicable floor is clamped up to it, so no ratio can be
   judged both `TooLow` and `TooHigh`.
 - Today the ceiling only warns for a *user's* own colour choice (not built yet — a later
-  spec); for the three presets shipped here, PHPUnit has no warning level, so
+  spec); for the presets shipped here, PHPUnit has no warning level, so
   `ThemeContrastTest` asserts the ceiling as a rejection too. A preset that breaches its
   own declared ceiling is a bug.
+
+### The one preset below the floors
+
+**No halation** declares `contrast_floor => 2.0`, which replaces *both* WCAG minimums for
+that preset alone. Its whole band is 2.03–3.71, so every pair in it fails WCAG 2.x.
+
+That is the preset, not a defect in it. Halation is not a shortage of contrast: for a
+reader whose astigmatism blooms a light glyph into a dark page, more contrast is more
+bloom, and the 4.5:1 minimum is the thing making the text unreadable. The minimums serve
+most readers and are kept everywhere else — three of the four presets meet them, none of
+the four below them is the default, and the choice is per user.
+
+The guard rails around the exemption:
+
+- One number per preset, in `config/themes.php` where a reviewer reads it, not a flag
+  that switches the checks off. The band still applies; it has moved.
+- `contrast_floor` replaces the text floor and the non-text floor together. The 4.5/3.0
+  split describes glyphs versus shapes at WCAG's levels; below 3:1 it distinguishes
+  nothing.
+- `ThemeContrastTest::test_only_no_halation_leaves_the_wcag_floors` pins the list of
+  presets that override the floors to exactly one. A second entry is far more likely to
+  be someone quieting a failing assertion than a second such decision — if it really is
+  the latter, edit that test and say why in the commit.
+- Do not raise No halation's ratios toward the minimums. Raising them deletes the preset.
 
 ## Adding a token
 
@@ -183,6 +209,15 @@ sit on.
   `ThemeContrastTest` and `ThemePresetTest`. Comment the anchors that produced them above
   the block, the way `dusk` and `low-glare-dark` do — the next person re-authoring the
   preset needs to know where to start, not just what it ended up as.
+- **No halation is derived, not ramped.** The ramps stop well above its band, so it is
+  Low-glare dark put through one formula: each foreground becomes
+  `L_background + 0.53 * (L_low_glare_foreground - L_background)`, hue and chroma
+  untouched. 0.53 is measured — it is the factor that reproduces the 3.09:1 and 2.76:1 of
+  the reference rendering it copies. Re-author it by re-running that formula against a
+  changed Low-glare dark, not by nudging individual tokens. Backgrounds keep their
+  Low-glare values, except the six solid fills (`primary`, `highlight` and the four
+  statuses), which take the same pull as a foreground — a saturated block of colour stays
+  the loudest thing on a page otherwise. The status *tints* do not move.
 - The two generated presets' four *surfaces* are half-steps of one ramp, not full ramp
   shades: elevation is a much smaller lightness change than a full ramp stride, and with a
   tight ceiling (10.0 for the dark preset) the floor-to-ceiling window is barely wide
@@ -193,7 +228,7 @@ sit on.
 
 Dark mode is a preset (`low-glare-dark`), not a second axis crossed with every other
 utility. Tailwind's `dark:` variant answers "what does this look like in the *other*
-mode" for exactly two modes; this feature ships three presets today and is built to hold
+mode" for exactly two modes; this feature ships four presets today and is built to hold
 more, so `dark:bg-gray-800` was never the right tool — it's also exactly the kind of
 hue-named class the vocabulary exists to prevent. `@custom-variant dark` is deliberately
 absent from `app.css`; do not add it back.

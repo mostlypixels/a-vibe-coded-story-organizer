@@ -79,4 +79,25 @@ class ColorContrastTest extends TestCase
         $this->assertSame(Verdict::Ok, ColorContrast::verdict(4.5, isText: true, ceiling: 2.0));
         $this->assertSame(Verdict::TooHigh, ColorContrast::verdict(4.6, isText: true, ceiling: 2.0));
     }
+
+    /**
+     * A preset's own floor stands in for *both* WCAG minimums — the text/non-text split
+     * stops meaning anything once a preset is deliberately below 3:1, so `isText` must
+     * make no difference to the verdict.
+     */
+    public function test_a_preset_floor_replaces_both_wcag_minimums(): void
+    {
+        $this->assertSame(Verdict::Ok, ColorContrast::verdict(2.1, isText: true, ceiling: 3.8, floor: 2.0));
+        $this->assertSame(Verdict::Ok, ColorContrast::verdict(2.1, isText: false, ceiling: 3.8, floor: 2.0));
+
+        $this->assertSame(Verdict::TooLow, ColorContrast::verdict(1.9, isText: false, ceiling: 3.8, floor: 2.0));
+    }
+
+    /**
+     * The override is opt-in: nothing that omits it may quietly lose the minimums.
+     */
+    public function test_omitting_the_floor_keeps_the_wcag_minimums(): void
+    {
+        $this->assertSame(Verdict::TooLow, ColorContrast::verdict(2.1, isText: true, ceiling: 15.0));
+    }
 }

@@ -131,6 +131,23 @@ class ThemePresetTest extends TestCase
     }
 
     /**
+     * Null, not a number: the WCAG floors have no config default to fall back to, and a
+     * preset that says nothing must not look like one that opted out of them.
+     */
+    public function test_the_contrast_floor_is_null_unless_a_preset_declares_one(): void
+    {
+        config()->set('themes.presets.silent', ['name' => 'Silent', 'tokens' => []]);
+        config()->set('themes.presets.lowered', [
+            'name' => 'Lowered',
+            'tokens' => [],
+            'contrast_floor' => 2.0,
+        ]);
+
+        $this->assertNull(ThemePreset::fromSlug('silent')->contrastFloor);
+        $this->assertSame(2.0, ThemePreset::fromSlug('lowered')->contrastFloor);
+    }
+
+    /**
      * Every token has a chosen partner: PAIRS is what makes an unreadable combination
      * unrepresentable, and it is only that if nothing is missing from it.
      *
