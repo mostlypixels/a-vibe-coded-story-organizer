@@ -18,12 +18,15 @@ final readonly class ThemePreset
     /**
      * @param  array<string, string>  $tokens  token name => CSS color value
      * @param  float  $contrastCeiling  the preset's own upper bound, or the config default
+     * @param  float|null  $contrastFloor  the preset's own lower bound, replacing both WCAG
+     *                                     minimums; null leaves them in force
      */
     public function __construct(
         public string $slug,
         public string $name,
         public array $tokens,
         public float $contrastCeiling,
+        public ?float $contrastFloor = null,
     ) {}
 
     /**
@@ -46,6 +49,9 @@ final readonly class ThemePreset
             // Absent means "no opinion beyond the house default". Read here rather
             // than in the contrast checker, so nothing downstream sees a null.
             contrastCeiling: (float) ($preset['contrast_ceiling'] ?? config('themes.contrast.default_ceiling')),
+            // No default to fall back to, deliberately: absent means the WCAG floors
+            // apply, and ColorContrast is where they live.
+            contrastFloor: isset($preset['contrast_floor']) ? (float) $preset['contrast_floor'] : null,
         );
     }
 

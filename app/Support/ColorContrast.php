@@ -17,6 +17,14 @@ use App\Enums\Verdict;
  * is the opposite kind of number — a taste judgement that differs per preset (a
  * low-glare dark theme caps contrast to avoid halation; a low-vision theme would want
  * it higher), so it is always passed in, never a constant here.
+ *
+ * ## A preset may replace the floors, and only deliberately
+ *
+ * `verdict()` takes an optional floor that stands in for both WCAG minimums. It exists
+ * for a preset built for readers whom the minimums make *worse* off — severe halation,
+ * where the bloom around a glyph is the thing that stops it being read — and it is
+ * the whole of the escape hatch: one number, per preset, written down in
+ * `config/themes.php` where a reviewer sees it. See the `no-halation` preset there.
  */
 final class ColorContrast
 {
@@ -51,10 +59,12 @@ final class ColorContrast
      * @param  float  $ceiling  the acting preset's upper bound; a ceiling below the
      *                          applicable floor is raised to it, so that no ratio can
      *                          be both too low and too high
+     * @param  float|null  $floor  a preset's own floor, replacing *both* WCAG minimums;
+     *                             null keeps them
      */
-    public static function verdict(float $ratio, bool $isText, float $ceiling): Verdict
+    public static function verdict(float $ratio, bool $isText, float $ceiling, ?float $floor = null): Verdict
     {
-        $floor = $isText ? self::TEXT_FLOOR : self::NON_TEXT_FLOOR;
+        $floor ??= $isText ? self::TEXT_FLOOR : self::NON_TEXT_FLOOR;
 
         if ($ratio < $floor) {
             return Verdict::TooLow;

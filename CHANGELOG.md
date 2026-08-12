@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-12 — A "No halation" colour theme
+
+### Added
+
+- A fourth colour theme, "No halation": Low-glare dark's surfaces with far softer text, buttons and status colours, for readers that bright colour blooms for. It sits below the WCAG contrast minimums on purpose.
+
 ## 2026-08-12 — Theme picker as flags (#100)
 
 ### Changed

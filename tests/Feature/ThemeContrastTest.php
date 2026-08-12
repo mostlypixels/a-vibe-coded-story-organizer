@@ -19,7 +19,9 @@ use Tests\TestCase;
  *
  * ## Floors reject, and so does the ceiling — here
  *
- * The floors are WCAG minimums and global. The ceiling is per preset and is documented
+ * The floors are WCAG minimums and global, unless a preset declares a `contrast_floor`
+ * that replaces them — `no-halation` does, and `test_only_no_halation_leaves_the_wcag_floors`
+ * below keeps that list at one. The ceiling is per preset and is documented
  * as "warn, don't reject" — but that governs *user* input in a later spec, where a
  * person picking their own colours should not be refused. These presets are ours, and
  * PHPUnit has no warning level, so a preset breaching the ceiling it declared for
@@ -76,14 +78,14 @@ class ThemeContrastTest extends TestCase
 
         $this->assertSame(
             Verdict::Ok,
-            ColorContrast::verdict($ratio, $isText, $preset->contrastCeiling),
+            ColorContrast::verdict($ratio, $isText, $preset->contrastCeiling, $preset->contrastFloor),
             sprintf(
                 'Preset [%s]: `%s` on `%s` measures %.2f:1, outside the %s–%.1f band.',
                 $slug,
                 $foreground,
                 $background,
                 $ratio,
-                $isText ? ColorContrast::TEXT_FLOOR : ColorContrast::NON_TEXT_FLOOR,
+                $preset->contrastFloor ?? ($isText ? ColorContrast::TEXT_FLOOR : ColorContrast::NON_TEXT_FLOOR),
                 $preset->contrastCeiling,
             ),
         );
@@ -119,7 +121,7 @@ class ThemeContrastTest extends TestCase
     {
         $surfaces = ['surface', 'surface-raised', 'surface-sunken', 'surface-overlay'];
 
-        foreach (['dusk', 'low-glare-dark'] as $slug) {
+        foreach (['dusk', 'low-glare-dark', 'no-halation'] as $slug) {
             $values = array_map(
                 static fn (string $token): string => ThemePreset::fromSlug($slug)->tokens[$token],
                 $surfaces,
@@ -131,6 +133,23 @@ class ThemeContrastTest extends TestCase
                 "Preset [{$slug}] collapses two of its four surfaces onto one value."
             );
         }
+    }
+
+    /**
+     * Dropping below the WCAG minimums is a decision taken once, for readers the
+     * minimums make worse off. A second preset doing it is far more likely to be
+     * someone silencing a failing assertion than a second such decision, so the list
+     * is pinned rather than left to grow.
+     */
+    public function test_only_no_halation_leaves_the_wcag_floors(): void
+    {
+        $overriding = array_keys(array_filter(
+            ThemePreset::all(),
+            static fn (ThemePreset $preset): bool => $preset->contrastFloor !== null,
+        ));
+
+        $this->assertSame(['no-halation'], $overriding);
+        $this->assertSame(2.0, ThemePreset::fromSlug('no-halation')->contrastFloor);
     }
 
     /**

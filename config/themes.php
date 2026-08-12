@@ -38,6 +38,10 @@ return [
     | App\Support\ColorContrast::TEXT_FLOOR / ::NON_TEXT_FLOOR. Do not restate them
     | here.
     |
+    | One preset overrides them anyway, with its own `contrast_floor`. That is the
+    | escape hatch for a reader the minimums make worse off, not a default anything
+    | falls back to — see the `no-halation` preset below.
+    |
     */
 
     'contrast' => [
@@ -385,6 +389,126 @@ return [
                 'info-content' => 'oklch(0.15 0.018 250)',        // neutral-950
                 'info-surface' => 'oklch(0.314 0.12 263)',        // info-800
                 'info-surface-content' => 'oklch(0.77 0.0971 263)',  // between info-200/300
+            ],
+        ],
+
+        /*
+         * Low-glare dark taken further, for severe halation: the same four surfaces,
+         * value for value, with every foreground moved 53% of the way toward the
+         * background it is painted on.
+         *
+         * ## Below the WCAG floors, on purpose
+         *
+         * The band is 2.03–3.71, so this preset declares a `contrast_floor` and every
+         * pair in it fails WCAG 2.x. That is the point rather than a defect: for a
+         * reader whose astigmatism blooms light glyphs into a dark page, the 4.5:1
+         * minimum makes the text *less* readable, and no amount of hue or weight fixes
+         * a halo. It is one preset among four, never the default, and a reader who
+         * needs the minimums has three others.
+         *
+         * Do not "repair" these numbers upward. Raising them is deleting the preset.
+         *
+         * ## How the values were derived
+         *
+         * Not from `theme:ramp` — the ramps stop well above this band. Each foreground
+         * is `L_background + 0.53 * (L_low_glare_foreground - L_background)`, hue and
+         * chroma untouched, then fitted to sRGB. 0.53 is measured, not chosen: it is
+         * the factor that puts `content` and `content-muted` on `surface-raised` at the
+         * 3.09:1 and 2.76:1 of the reference rendering this preset copies.
+         *
+         * Backgrounds keep their low-glare values, with one class of exception: the
+         * six *solid fills* — `primary`, `highlight` and the four statuses — take the
+         * same pull as a foreground, because a saturated block of colour stays the
+         * loudest thing on a page otherwise. The status tints do not move; see the
+         * notes on each below.
+         *
+         * `primary-hover` and `primary-active` follow `primary` by the same factor: the
+         * three states share one `primary-content`, and at full stride the pressed
+         * state carried it at 4.82:1, outside the band the rest of the preset holds to.
+         */
+        'no-halation' => [
+            'name' => 'No halation',
+            'contrast_ceiling' => 3.8,
+            'contrast_floor' => 2.0,
+            'tokens' => [
+                // Identical to Low-glare dark. The elevation this theme has left is
+                // the surfaces themselves, so they are the one thing not compressed.
+                'surface' => 'oklch(0.207 0.018 250)',
+                'surface-raised' => 'oklch(0.244 0.018 250)',
+                'surface-sunken' => 'oklch(0.17 0.018 250)',
+                'surface-overlay' => 'oklch(0.281 0.018 250)',
+
+                'scrim' => 'oklch(0.05 0 0)',
+
+                // The three weights are ~0.027 of lightness apart, half of Low-glare
+                // dark's spacing. Any wider and the top weight leaves the ceiling.
+                'content' => 'oklch(0.53 0.018 250)',
+                'content-muted' => 'oklch(0.504 0.018 250)',
+                'content-subtle' => 'oklch(0.476 0.018 250)',
+
+                'border' => 'oklch(0.305 0.018 250)',
+                'border-strong' => 'oklch(0.433 0.018 250)',
+                'focus' => 'oklch(0.498 0.0901 219)',
+
+                // A primary button is the largest saturated block on a page, so at
+                // Low-glare dark's lightness it stayed the brightest thing in a theme
+                // built to have no brightest thing. Pulled toward the page like a
+                // foreground; the two states follow it, and the chroma drop is the
+                // gamut fit, not a second choice — hue 219 leaves sRGB below L 0.5.
+                'primary' => 'oklch(0.438 0.0792 219)',
+                'primary-content' => 'oklch(0.213 0.018 250)',
+                'primary-hover' => 'oklch(0.481 0.087 219)',
+                'primary-active' => 'oklch(0.525 0.0949 219)',
+                'link' => 'oklch(0.498 0.0901 219)',
+                'link-hover' => 'oklch(0.52 0.094 219)',
+
+                'accent' => 'oklch(0.455 0.0823 219)',
+                'accent-content' => 'oklch(0.575 0.104 219)',
+                'accent-surface' => 'oklch(0.314 0.0568 219)',
+                'neutral' => 'oklch(0.396 0.018 250)',
+                'neutral-content' => 'oklch(0.657 0.018 250)',
+
+                // Pulled like the other fills, though a search match is the one thing
+                // here meant to catch the eye. It still does: nothing else on a page of
+                // prose is yellow, and hue carries it once lightness cannot.
+                'highlight' => 'oklch(0.481 0.0985 86)',
+                'highlight-content' => 'oklch(0.187 0.018 250)',
+                'table-header' => 'oklch(0.314 0.018 250)',
+                'table-header-content' => 'oklch(0.563 0.018 250)',
+
+                'nav' => 'oklch(0.15 0.018 250)',
+                // Measured against `nav-raised`, not `nav`: the raised band is the
+                // lighter of the two the nav text crosses, so anchoring there is what
+                // keeps the muted weight off the floor.
+                'nav-content' => 'oklch(0.52 0.018 250)',
+                'nav-content-muted' => 'oklch(0.459 0.018 250)',
+                'nav-raised' => 'oklch(0.232 0.042 219)',
+
+                // The four solid fills take the same pull as `primary`, and for the same
+                // reason — a Delete button is a saturated block, and one loud status
+                // would undo the preset on the page that shows it. They move together:
+                // a status is told apart here by hue, so a lightness that differs
+                // between the four would read as importance nobody meant.
+                //
+                // The *tints* do not move. At L 0.314 they are already close to the
+                // surfaces, and pulling them collapses the panel into the card behind
+                // it. Only the text on a tint moves.
+                'danger' => 'oklch(0.438 0.12 27)',
+                'danger-content' => 'oklch(0.177 0.018 250)',
+                'danger-surface' => 'oklch(0.314 0.12 27)',
+                'danger-surface-content' => 'oklch(0.523 0.1104 27)',
+                'success' => 'oklch(0.438 0.12 150)',
+                'success-content' => 'oklch(0.177 0.018 250)',
+                'success-surface' => 'oklch(0.314 0.0865 150)',
+                'success-surface-content' => 'oklch(0.523 0.12 150)',
+                'warning' => 'oklch(0.438 0.0897 86)',
+                'warning-content' => 'oklch(0.177 0.018 250)',
+                'warning-surface' => 'oklch(0.314 0.0643 86)',
+                'warning-surface-content' => 'oklch(0.523 0.1071 86)',
+                'info' => 'oklch(0.438 0.12 263)',
+                'info-content' => 'oklch(0.177 0.018 250)',
+                'info-surface' => 'oklch(0.314 0.12 263)',
+                'info-surface-content' => 'oklch(0.523 0.0971 263)',
             ],
         ],
 
