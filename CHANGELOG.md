@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-12 — Preview a colour theme before saving it
+## 2026-08-12 — Preview a colour theme before saving it (#103)
 
 ### Changed
 
