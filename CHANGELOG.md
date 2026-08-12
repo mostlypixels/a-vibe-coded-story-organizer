@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-12 — Theme picker as flags
+## 2026-08-12 — Theme picker as flags (#100)
 
 ### Changed
 
