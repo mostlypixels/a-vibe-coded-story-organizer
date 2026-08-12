@@ -193,6 +193,54 @@ class PlotlineTest extends TestCase
         $this->assertNotNull($revision->label);
     }
 
+    public function test_save_and_stay_returns_to_the_plotline_edit_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create();
+
+        $this->actingAs($user)->put(route('plotlines.update', $plotline), [
+            'name' => 'Stayed',
+            'color' => $plotline->color,
+            'stay' => 1,
+        ])
+            ->assertRedirect(route('plotlines.edit', $plotline))
+            ->assertSessionHas('status', 'saved');
+    }
+
+    public function test_the_edit_page_offers_both_save_buttons_bound_to_the_form(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create();
+
+        $this->actingAs($user)->get(route('plotlines.edit', $plotline))
+            ->assertOk()
+            ->assertSee('form="plotline-edit-form"', false)
+            ->assertSee('Save and stay');
+    }
+
+    /** The main plotline cannot be deleted, so its edit page must not offer the button. */
+    public function test_the_main_plotline_edit_page_has_no_delete_button(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $mainPlotline = $project->plotlines()->first();
+        $regular = Plotline::factory()->for($project)->create();
+
+        // The destroy URL equals the update URL, so the button is identified by its
+        // label and the DELETE method spoof instead.
+        $this->actingAs($user)->get(route('plotlines.edit', $mainPlotline))
+            ->assertOk()
+            ->assertDontSee('Delete Plotline')
+            ->assertDontSee('value="DELETE"', false);
+
+        $this->actingAs($user)->get(route('plotlines.edit', $regular))
+            ->assertOk()
+            ->assertSee('Delete Plotline')
+            ->assertSee('value="DELETE"', false);
+    }
+
     public function test_a_user_cannot_update_a_plotline_in_another_users_project(): void
     {
         $owner = User::factory()->create();
@@ -243,9 +291,8 @@ class PlotlineTest extends TestCase
 
     public function test_the_edit_page_links_to_the_plotlines_revision_history(): void
     {
-        // This screen has no sidebar Actions card, so the entity-level History
-        // link sits beside Save — same component, same destination. The closing
-        // quote prevents a match on the per-field `?field=` icon link beside
+        // The entity-level History link comes from the sidebar Actions card. The
+        // closing quote prevents a match on the per-field `?field=` icon link beside
         // the description editor.
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();

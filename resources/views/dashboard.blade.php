@@ -45,6 +45,7 @@
                         <x-table-heading><span class="sr-only">{{ __('Cover') }}</span></x-table-heading>
                         <x-table-heading>{{ __('Name') }}</x-table-heading>
                         <x-table-heading>{{ __('Description') }}</x-table-heading>
+                        <x-table-heading />
                     </x-slot:head>
 
                     @forelse ($projects as $project)
@@ -68,10 +69,19 @@
                                     &mdash;
                                 @endif
                             </td>
+                            <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                                <div class="flex items-center justify-end gap-1">
+                                    <x-icon-edit-link :href="route('projects.edit', $project)" />
+                                    <x-icon-delete-button
+                                        :action="route('projects.destroy', $project)"
+                                        :confirm="$deleteConfirms[$project->id]"
+                                    />
+                                </div>
+                            </td>
                         </x-table-row>
                     @empty
                         <x-table-empty
-                            :colspan="3"
+                            :colspan="4"
                             :create-url="route('projects.create')"
                             :create-label="__('New Project')"
                             :items="__('projects')"
@@ -86,23 +96,36 @@
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4">
                     @endif
 
-                    <a href="{{ route('projects.edit', $project) }}" class="block overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xs hover:shadow-md transition-shadow">
-                        @if ($project->cover_image)
-                            <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-24 w-full object-cover">
-                        @else
-                            <div class="h-24 w-full bg-surface" aria-hidden="true"></div>
-                        @endif
-                        <div class="p-2">
-                            <div class="text-sm font-semibold text-content truncate">{{ $project->name }}</div>
-                            <div class="mt-0.5 text-xs text-content-muted line-clamp-2">
-                                @if ($project->description)
-                                    <x-rich-text-excerpt :html="$project->description" :limit="60" />
-                                @else
-                                    &mdash;
-                                @endif
+                    {{-- The card is a <div>, not one big <a>: the row actions are a link and a
+                         form, and neither may nest inside an anchor. The cover and the name
+                         stay linked, so the whole card still opens the project. --}}
+                    <div class="overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xs hover:shadow-md transition-shadow">
+                        <a href="{{ route('projects.edit', $project) }}" class="block">
+                            @if ($project->cover_image)
+                                <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-24 w-full object-cover">
+                            @else
+                                <div class="h-24 w-full bg-surface" aria-hidden="true"></div>
+                            @endif
+                            <div class="p-2">
+                                <div class="text-sm font-semibold text-content truncate">{{ $project->name }}</div>
+                                <div class="mt-0.5 text-xs text-content-muted line-clamp-2">
+                                    @if ($project->description)
+                                        <x-rich-text-excerpt :html="$project->description" :limit="60" />
+                                    @else
+                                        &mdash;
+                                    @endif
+                                </div>
                             </div>
+                        </a>
+
+                        <div class="flex items-center justify-end gap-1 border-t border-border px-2 py-1.5">
+                            <x-icon-edit-link :href="route('projects.edit', $project)" />
+                            <x-icon-delete-button
+                                :action="route('projects.destroy', $project)"
+                                :confirm="$deleteConfirms[$project->id]"
+                            />
                         </div>
-                    </a>
+                    </div>
 
                     @if ($loop->last)
                         </div>

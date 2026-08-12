@@ -15,6 +15,26 @@
             </div>
         </form>
 
+        {{-- Delete and Duplicate each need their own <form>, so they stay outside the edit
+             form — its fields partial fills both columns, and a nested form is invalid HTML.
+             The buttons that submit these live in the sidebar and point here by id. --}}
+        <form
+            id="codex-entry-delete-form"
+            method="POST"
+            action="{{ route('codex.destroy', $entry) }}"
+            onsubmit="return confirm('{{ __('Are you sure you want to delete this entry?') }}')"
+        >
+            @csrf
+            @method('DELETE')
+        </form>
+
+        <x-duplicate-dialog
+            name="duplicate-codex-entry-{{ $entry->id }}"
+            :action="route('codex.duplicate', $entry)"
+            :title="__('Duplicate :label', ['label' => $type->label()])"
+            :suggestion="$duplicateSuggestion"
+        />
+
         {{-- Timeline editor lives outside the main form: its per-period forms post to the
              upsert/destroy routes independently (nested forms are invalid HTML). --}}
         @include('codex.partials.attribute-timeline')

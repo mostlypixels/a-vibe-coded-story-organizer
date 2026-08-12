@@ -743,6 +743,34 @@ class CodexEntryTest extends TestCase
             ->assertSee('value="Melusine (2)"', false);
     }
 
+    /**
+     * The edit form must hold every field it saves and nothing that changes its verb.
+     *
+     * A form inside a form is invalid HTML. The browser drops the inner tag and closes the
+     * edit form at the first `</form>`, so the delete form's `_method=DELETE` became part
+     * of the Save submit — the last `_method` wins and Save deleted the entry. Everything
+     * after that point (cover, tags, reference media) also stopped being submitted.
+     */
+    public function test_the_edit_form_holds_the_sidebar_fields_and_no_delete_method(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $html = $this->actingAs($user)
+            ->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->getContent();
+
+        $start = strpos($html, 'id="codex-entry-edit-form"');
+        $form = substr($html, $start, strpos($html, '</form>', $start) - $start);
+
+        $this->assertStringNotContainsString('value="DELETE"', $form);
+        // The sidebar sits after the Actions card, so it proves the form still runs to the end.
+        $this->assertStringContainsString('id="cover"', $form);
+        $this->assertStringContainsString('name="reference_files[]"', $form);
+    }
+
     public function test_the_duplicate_suggestion_ignores_same_named_entries_of_a_different_type(): void
     {
         $user = User::factory()->create();

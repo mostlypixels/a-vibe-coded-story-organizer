@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
  * Shared for the `->with('status', 'saved')` flash rather than for the three
  * lines: that flash is what renders the "Saved" confirmation on the edit page a
  * "Save and stay" returns to, and it is invisible from the call site whether a
- * given controller remembered it. Six of the seven did; centralising it means
- * the next entity cannot be the one that does not.
+ * given controller remembered it. Centralising it means the next entity cannot
+ * be the one that does not.
  */
 trait RedirectsAfterSave
 {

@@ -5,7 +5,7 @@
 
     <x-edit-layout>
         <x-card>
-            <form method="POST" action="{{ route('projects.acts.store', $project) }}" class="space-y-6">
+            <form id="act-create-form" method="POST" action="{{ route('projects.acts.store', $project) }}" class="space-y-6">
                 @csrf
 
                 <div>
@@ -20,11 +20,13 @@
                     <x-wysiwyg id="description" name="description" :value="old('description')" :rows="4" />
                     <x-input-error :messages="$errors->get('description')" class="mt-2" />
                 </div>
-
-                <div class="flex items-center gap-4">
-                    <x-button variant="primary">{{ __('Create Act') }}</x-button>
-                </div>
             </form>
         </x-card>
+
+        <x-slot:sidebar>
+            <x-create-actions form="act-create-form" :cancel="route('projects.acts.index', $project)">
+                {{ __('Create Act') }}
+            </x-create-actions>
+        </x-slot:sidebar>
     </x-edit-layout>
 </x-app-layout>

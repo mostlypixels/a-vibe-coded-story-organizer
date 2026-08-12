@@ -5,7 +5,7 @@
 
     <x-edit-layout>
         <x-card>
-            <form method="POST" action="{{ route('plotlines.update', $plotline) }}" class="space-y-6">
+            <form id="plotline-edit-form" method="POST" action="{{ route('plotlines.update', $plotline) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
@@ -24,20 +24,20 @@
                     <x-color-picker name="color" :selected="old('color', $plotline->color)" />
                     <x-input-error :messages="$errors->get('color')" class="mt-2" />
                 </div>
-
-                <div class="flex items-center gap-4">
-                    <x-button variant="primary" :icon="true">{{ __('Save') }}</x-button>
-
-                    {{-- This screen has no sidebar Actions card (see the other
-                         revisionable edit pages), so the entity-level History
-                         link sits beside Save rather than in x-edit-actions. --}}
-                    <x-entity-history-link :model="$plotline" />
-                </div>
             </form>
-
-            <x-delete-button :action="route('plotlines.destroy', $plotline)" :confirm="__('Are you sure you want to delete this plotline?')" class="mt-6">
-                {{ __('Delete Plotline') }}
-            </x-delete-button>
         </x-card>
+
+        <x-slot:sidebar>
+            {{-- The main plotline cannot be deleted (PlotlineController::destroy aborts 403),
+                 so it gets no Delete button — the same rule the index list follows. --}}
+            <x-edit-actions
+                form="plotline-edit-form"
+                :history-model="$plotline"
+                :delete-action="$plotline->is_main ? null : route('plotlines.destroy', $plotline)"
+                :delete-confirm="__('Are you sure you want to delete this plotline?')"
+            >
+                {{ __('Delete Plotline') }}
+            </x-edit-actions>
+        </x-slot:sidebar>
     </x-edit-layout>
 </x-app-layout>

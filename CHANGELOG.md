@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-12 — Save a codex entry without deleting it (#102)
+
+### Fixed
+
+- Saving a codex entry from its edit page deleted it instead.
+- Saving a codex entry no longer drops the cover, tags and reference media it was submitted with.
+
+### Changed
+
+- Every create page carries the same sidebar Actions card as its edit page, with Create and Cancel.
+- The plotline edit page gains Save and stay, History, and a Delete button, and hides Delete on the main plotline.
+- The project list offers Edit and Delete on each project, in both the list and grid views.
+
 ## 2026-08-12 — A "No halation" colour theme (#101)
 
 ### Added

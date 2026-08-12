@@ -43,6 +43,59 @@ class ProjectTest extends TestCase
         $response->assertSeeInOrder(['Apple', 'Zebra']);
     }
 
+    public function test_the_dashboard_offers_edit_and_delete_on_every_project_row(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('href="'.route('projects.edit', $project).'"', $html);
+        $this->assertStringContainsString('action="'.route('projects.destroy', $project).'"', $html);
+        // The list and the grid are two renderings of the same list, so both carry the
+        // actions — the writer's view preference must not decide what they can do.
+        $this->assertSame(2, substr_count($html, 'action="'.route('projects.destroy', $project).'"'));
+    }
+
+    public function test_the_dashboard_delete_warns_with_the_same_cascade_sentence_as_the_edit_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Act::factory()->for($project)->create();
+        CodexEntry::factory()->for($project)->create();
+
+        $expected = 'This project has 1 act and 1 codex entry, which will also be deleted.';
+
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee($expected);
+        $this->actingAs($user)->get(route('projects.edit', $project))->assertOk()->assertSee($expected);
+    }
+
+    public function test_the_dashboard_counts_cost_the_same_whatever_the_project_count(): void
+    {
+        // The delete warning needs four relation counts per project. They must come from
+        // the list query, not from one loadCount() per row.
+        $user = User::factory()->create();
+        Project::factory()->for($user)->create();
+
+        // The first request of a session writes rows a later one only reads, so warm it
+        // up before measuring — the comparison is between two steady-state requests.
+        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+        DB::enableQueryLog();
+        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $withOne = count(DB::getQueryLog());
+
+        Project::factory()->for($user)->count(4)->create();
+
+        // Flush after the factory writes, so only the request's own queries are counted.
+        DB::flushQueryLog();
+        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $withFive = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertSame($withOne, $withFive);
+    }
+
     public function test_a_user_can_create_a_project(): void
     {
         $user = User::factory()->create();

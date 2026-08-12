@@ -5,7 +5,7 @@
 
     <x-edit-layout>
         <x-card>
-            <form method="POST" action="{{ route('projects.events.store', $project) }}" class="space-y-6">
+            <form id="event-create-form" method="POST" action="{{ route('projects.events.store', $project) }}" class="space-y-6">
                 @csrf
 
                 <div>
@@ -38,11 +38,13 @@
                     </div>
                     <x-input-error :messages="$errors->get('plotlines')" class="mt-2" />
                 </div>
-
-                <div class="flex items-center gap-4">
-                    <x-button variant="primary">{{ __('Create Event') }}</x-button>
-                </div>
             </form>
         </x-card>
+
+        <x-slot:sidebar>
+            <x-create-actions form="event-create-form" :cancel="route('projects.events.index', $project)">
+                {{ __('Create Event') }}
+            </x-create-actions>
+        </x-slot:sidebar>
     </x-edit-layout>
 </x-app-layout>
