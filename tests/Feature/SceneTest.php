@@ -188,6 +188,26 @@ class SceneTest extends TestCase
         $this->assertNotNull($revision->label);
     }
 
+    /**
+     * Same rule as the autosave path: the baseline the form save seeds is the
+     * text the writer started from, never the text the form just wrote.
+     */
+    public function test_saving_the_edit_form_seeds_a_baseline_holding_the_pre_edit_contents(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['contents' => 'Old contents.']);
+
+        $this->actingAs($user)->put(
+            route('scenes.update', $scene),
+            $this->validPayload($chapter, ['contents' => 'Some **markdown** contents.']),
+        );
+
+        $baseline = $scene->revisions()->where('field', 'contents')->where('origin', RevisionOrigin::Baseline)->sole();
+
+        $this->assertSame('Old contents.', $baseline->value);
+    }
+
     public function test_a_user_cannot_update_another_users_scene(): void
     {
         $owner = User::factory()->create();

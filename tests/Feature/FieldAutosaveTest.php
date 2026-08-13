@@ -176,6 +176,29 @@ class FieldAutosaveTest extends TestCase
             ->count());
     }
 
+    /**
+     * The baseline must hold the text the writer started from. Seeding it after
+     * the save recorded the *new* text as the initial value, so the first edit
+     * of a session was invisible in every later diff — and unrecoverable, since
+     * the pre-edit text was then stored nowhere.
+     */
+    public function test_the_baseline_holds_the_text_from_before_the_first_autosave(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user, ['contents' => 'Original contents']);
+        $updatedAt = $scene->updated_at;
+
+        $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']),
+            ['value' => 'Original contents plus an edit', 'base_hash' => $this->hashOf('Original contents')],
+        )->assertOk();
+
+        $baseline = $scene->revisions()->where('field', 'contents')->where('origin', RevisionOrigin::Baseline)->sole();
+
+        $this->assertSame('Original contents', $baseline->value);
+        $this->assertTrue($baseline->created_at->equalTo($updatedAt));
+    }
+
     // ---------------------------------------------------------------------
     // Authorization
     // ---------------------------------------------------------------------

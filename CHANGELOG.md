@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-13 — Keep the text a field started from (#105)
+
+### Fixed
+
+- The oldest revision of a field held the text of the first edit instead of the text that came before it.
+
 ## 2026-08-13 — Match line endings between form saves and autosaves (#104)
 
 ### Fixed
