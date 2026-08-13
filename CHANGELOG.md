@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-13 — Keep the text a field started from
+## 2026-08-13 — Keep the text a field started from (#105)
 
 ### Fixed
 
