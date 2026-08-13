@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-13 — Match line endings between form saves and autosaves
+## 2026-08-13 — Match line endings between form saves and autosaves (#104)
 
 ### Fixed
 
