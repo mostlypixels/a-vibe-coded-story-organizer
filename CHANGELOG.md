@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-13 — Match line endings between form saves and autosaves
+
+### Fixed
+
+- Comparing a form save with an autosave of the same text marked every line as changed.
+
 ## 2026-08-12 — Preview a colour theme before saving it (#103)
 
 ### Changed
