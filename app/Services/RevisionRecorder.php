@@ -7,6 +7,7 @@ use App\Models\Revision;
 use App\Models\User;
 use App\Support\AutosavableFields;
 use App\Support\RevisionSummary;
+use DateTimeInterface;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
@@ -173,9 +174,19 @@ class RevisionRecorder
      * every caller ever passes, so it lives here rather than being repeated at
      * each call site. (It cannot be a parameter default: PHP default values
      * must be constant expressions, and the label embeds `now()`.)
+     *
+     * `$before` is also what a first-ever save seeds the baseline from, so
+     * `$heldSince` — the entity's `updated_at` as the caller read it, at the
+     * same moment — completes it. Without both, the baseline would hold the
+     * text the form just wrote and claim it as the initial value.
      */
-    public function recordManualChanges(Model $entity, array $before, User $user, ?string $label = null): void
-    {
+    public function recordManualChanges(
+        Model $entity,
+        array $before,
+        User $user,
+        ?string $label = null,
+        ?DateTimeInterface $heldSince = null,
+    ): void {
         $label ??= self::manualSaveLabel();
 
         foreach ($before as $field => $previousValue) {
@@ -184,6 +195,8 @@ class RevisionRecorder
             if ($currentValue === $previousValue) {
                 continue;
             }
+
+            $this->ensureBaseline($entity, $field, $previousValue, $heldSince);
 
             $this->record($entity, $field, $currentValue, $user, RevisionOrigin::Manual, $label);
         }
@@ -194,9 +207,10 @@ class RevisionRecorder
      * value for this field, but only if no revision at all exists yet for
      * this (entity, field) pair — a no-op on every later call.
      *
-     * `created_at` is stamped `$entity->updated_at`, not `now()`: that value
-     * provably held from that timestamp onward, whereas stamping `now()`
-     * would misrepresent the entire pre-baseline era for compare-by-date.
+     * `created_at` is stamped `$heldSince` (by default `$entity->updated_at`),
+     * not `now()`: that value provably held from that timestamp onward,
+     * whereas stamping `now()` would misrepresent the whole pre-baseline era
+     * for compare-by-date.
      * `user_id` is the project owner, not any particular editor, since no one
      * "wrote" the baseline.
      *
@@ -207,14 +221,32 @@ class RevisionRecorder
      * save that triggered the seeding: it is the pre-edit state, not part of
      * that save, and showing it inside that save point would attribute an
      * untouched value to the writer who happened to edit next.
+     *
+     * > [!WARNING]
+     * > Read from the entity, "current" means *the attribute as it stands when
+     * > you call this* — and a caller that saves first records the new value as
+     * > the initial one, which loses the true initial value for good. A caller
+     * > that already holds the pre-edit value passes it as `$previousValue`,
+     * > with the `updated_at` that went with it as `$heldSince`. The HTTP write
+     * > paths all do: the autosave endpoint and the entity forms both save
+     * > before they record. Reading from the entity is correct only where the
+     * > entity has not been edited yet — the baseline backfill migration.
+     *
+     * @param  string|null  $previousValue  the pre-edit value, when the caller knows it
+     * @param  DateTimeInterface|null  $heldSince  when `$previousValue` started to hold
      */
-    public function ensureBaseline(Model $entity, string $field): void
-    {
+    public function ensureBaseline(
+        Model $entity,
+        string $field,
+        ?string $previousValue = null,
+        ?DateTimeInterface $heldSince = null,
+    ): void {
         if ($entity->revisions()->where('field', $field)->exists()) {
             return;
         }
 
-        $current = $entity->getAttribute($field);
+        $current = $previousValue ?? $entity->getAttribute($field);
+        $heldSince ??= $entity->updated_at;
 
         if ($current === null || $current === '') {
             return;
@@ -234,7 +266,7 @@ class RevisionRecorder
             'user_id' => $entity->revisionProject()->user_id,
             'label' => null,
             'origin' => RevisionOrigin::Baseline,
-            'created_at' => $entity->updated_at,
+            'created_at' => $heldSince,
         ]);
     }
 

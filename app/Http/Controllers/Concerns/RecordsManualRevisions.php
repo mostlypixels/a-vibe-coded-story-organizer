@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Concerns;
 
 use App\Services\RevisionRecorder;
 use App\Support\AutosavableFields;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -30,6 +31,14 @@ use Illuminate\Database\Eloquent\Model;
 trait RecordsManualRevisions
 {
     /**
+     * The `updated_at` the model carried when {@see self::snapshotAutosaved()}
+     * read it, held for {@see self::recordManualSave()} — a first-ever save
+     * stamps the baseline it seeds with this, and the save has overwritten it
+     * by then. Request-lifetime state: a controller instance serves one action.
+     */
+    private ?DateTimeInterface $autosavedHeldSince = null;
+
+    /**
      * Capture the current value of every registered autosaved field on `$model`
      * that `$data` is about to overwrite. Must be called *before* the caller
      * applies `$data`, since that's the only point the pre-edit value is still
@@ -40,6 +49,8 @@ trait RecordsManualRevisions
      */
     protected function snapshotAutosaved(Model $model, array $data): array
     {
+        $this->autosavedHeldSince = $model->updated_at;
+
         return AutosavableFields::snapshotFieldsBeforeUpdate($model, $data);
     }
 
@@ -56,6 +67,7 @@ trait RecordsManualRevisions
      */
     protected function recordManualSave(Model $model, array $before): void
     {
-        app(RevisionRecorder::class)->recordManualChanges($model, $before, request()->user());
+        app(RevisionRecorder::class)
+            ->recordManualChanges($model, $before, request()->user(), heldSince: $this->autosavedHeldSince);
     }
 }

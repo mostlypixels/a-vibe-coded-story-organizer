@@ -49,6 +49,11 @@ class FieldAutosaveController extends Controller
             return response()->json(['message' => __('This field was changed elsewhere.')], 409);
         }
 
+        // The save below overwrites both of these, and the baseline seeded further
+        // down needs them as they are now: it stands for the value the writer
+        // started from, and for the moment that value started to hold.
+        $heldSince = $model->updated_at;
+
         $model->{$field} = $validated['value'] ?? '';
         $model->save(); // mutators run here, e.g. SanitizesRichHtml for rich fields.
 
@@ -78,9 +83,16 @@ class FieldAutosaveController extends Controller
         // undoing it leaves no trace. The full-form Save button's permanent, labeled
         // manual checkpoint is recorded separately, server-side, by the entity
         // controllers' update() via RevisionRecorder::recordManualChanges().
-        $recorded = $storedValue !== $currentValue
-            ? $recorder->record($model, $field, $storedValue, $request->user(), RevisionOrigin::Automatic)
-            : null;
+        // The baseline is seeded from the values captured above, and only inside
+        // this branch: a save that changed nothing must leave the field with no
+        // revisions at all, baseline included.
+        $recorded = null;
+
+        if ($storedValue !== $currentValue) {
+            $recorder->ensureBaseline($model, $field, $currentValue, $heldSince);
+
+            $recorded = $recorder->record($model, $field, $storedValue, $request->user(), RevisionOrigin::Automatic);
+        }
 
         // Coarse trigger (blur/Ctrl-S/submit) only, never a bare debounce tick,
         // and only for Scene.contents. SceneContentsChanged is a published seam
