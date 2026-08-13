@@ -4,12 +4,12 @@ status: draft
 
 # Display Configurator
 
-A settings page where a reader tunes the app to their own eyes: theme colors, fonts, and
-text sizing.
+A settings page where a reader tunes the app's colors to their own eyes.
 
-Third of three specs. Requires **`theme-switcher`**, which builds the token vocabulary, the
-OKLCH ramp generator and the `:root` override mechanism. This spec adds no new rendering
-machinery — it writes to the store spec 2 already reads from.
+Requires **`theme-switcher`**, which builds the token vocabulary, the OKLCH ramp generator
+and the `:root` override mechanism. This spec adds no new rendering machinery — it writes
+to the store `theme-switcher` already reads from. Typeface and sizing live in
+**`font-choice-settings`**, which shares this page's store and probably its screen.
 
 ## Why
 
@@ -44,35 +44,13 @@ with the comfortable band marked.
 > Validating a *range* rather than a floor is the whole point, and it is what the big
 > frameworks get wrong. Cheap to do once tokens are paired.
 
-## Fonts
-
-> [!WARNING]
-> **A color is a value; a font is a file.** An arbitrary Google Font means either a runtime
-> request to a third party — which the project's crawler/privacy posture rules out — or
-> pre-bundling. Realistic scope is a curated list bundled through Vite.
-
-The list should carry the reason each font is on it, not just its name:
-
-* **Atkinson Hyperlegible** — already shipped (`1d3cc17`); designed for low vision
-* A dyslexia-oriented face
-* A serif and a sans for ordinary preference
-* System stack, for anyone who has already solved this at the OS level
-
-Separate choices for **UI chrome** and **manuscript body** — a writer may want a
-proportional UI and a monospaced or serif draft.
-
-## Sizing
-
-* Base font size, and **line height and measure (max line length)** alongside it. For
-  convergence insufficiency the last two matter as much as the first; offering size alone
-  is the common half-measure.
-* Applied as custom properties like colors, so the mechanism is shared.
-
 ## Storage
 
-* Presets stay as rows with `is_preset` (spec 2). A user's settings are a row of overrides.
+* Presets stay as rows with `is_preset` (`theme-switcher`). A user's settings are a row of
+  overrides.
 * **Open question:** does editing a preset fork it into a personal copy, or override it in
-  place? Affects the schema and the "reset to default" affordance.
+  place? Affects the schema and the "reset to default" affordance. Shared with
+  `font-choice-settings`; the two must answer it the same way.
 
 ## Security
 
@@ -80,13 +58,12 @@ User input lands inside a `<style>` block. This is a CSS injection surface.
 
 * A dedicated `app/Rules/ValidColor` (alongside `ValidMarkdown`) enforcing a strict hex /
   `oklch()` pattern, used by the Form Request.
-* Font and size choices validated against the curated list / a numeric range —
-  `Rule::enum(...)` where an enum fits.
 * Never render an unvalidated value into the style block.
 
 ## Out of scope
 
-* The token vocabulary, ramp generator, `:root` mechanism, presets — spec 2.
+* The token vocabulary, ramp generator, `:root` mechanism, presets — `theme-switcher`.
+* Fonts, base size, line height, measure — `font-choice-settings`.
 * Per-project or per-document theming. This is a per-user display preference.
 
 ## Open questions
@@ -102,7 +79,6 @@ User input lands inside a `<style>` block. This is a CSS injection surface.
 
 * A user can build a readable dark theme from the basic tier without touching the advanced one.
 * Contrast readout live, with the comfortable band visible.
-* Font and size choices persist and apply to both chrome and manuscript.
 * Malformed or hostile color input is rejected by validation, with a test proving nothing
   reaches the style block.
 * Keyboard-accessible throughout — a display settings page failing keyboard access is a
