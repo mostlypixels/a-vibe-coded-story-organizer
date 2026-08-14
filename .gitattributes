@@ -9,3 +9,9 @@
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
+
+# Manuskript source files carry their original line endings; the importer
+# normalizes them itself. Left to the default `eol=lf` above, checkout would
+# silently rewrite this fixture's CRLF and its line-ending test would pass
+# vacuously against an already-normalized file.
+tests/Fixtures/manuskript/** -text

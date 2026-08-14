@@ -1,0 +1,9 @@
+ID:             2
+Name:           Tomas Ferreira
+Importance:     ?
+POV:            ?
+Color:          ?
+Age:            ?
+Motivation:     ?
+Full Summary:   ?
+Notes:          ?

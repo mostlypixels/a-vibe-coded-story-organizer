@@ -1,0 +1,9 @@
+ID:             3
+Name:           Aline & Fils <the shopkeeper>
+Importance:     ?
+POV:            ?
+Color:          ?
+Age:            ?
+Motivation:     ?
+Full Summary:   ?
+Notes:          ?

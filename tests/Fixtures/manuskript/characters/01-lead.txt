@@ -1,0 +1,11 @@
+ID:             1
+Name:           Renée Dupré
+Importance:     Main
+POV:            true
+Color:          #3b82f6
+Age:            34
+Motivation:     Escape the family orchard before the harvest ruins her plans.
+Full Summary:   A gardener turned reluctant heir, torn between duty and ambition.
+Notes:          Loves rain.
+                Hates goodbyes.
+                Keeps a journal in the potting shed.

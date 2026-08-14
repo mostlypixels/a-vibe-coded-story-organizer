@@ -1,0 +1,3 @@
+# A stray IDE grammar-checker file the real Manuskript tree carries inside a
+# chapter directory. It is not a scene: the importer skips it and counts it.
+rules: {}

@@ -1,0 +1,2 @@
+- Fix the timeline in chapter two.
+- Ask Mireille about the greenhouse scene.

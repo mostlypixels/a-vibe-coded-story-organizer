@@ -17,6 +17,10 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+### Added
+
+- `manuskript:import` artisan command to migrate a Manuskript project directory into a project: one act, its chapters and scenes (Markdown preserved, disallowed HTML stripped and marked), and characters as codex entries. Branch-only tooling, not shipped to `master`.
+
 ## 2026-08-13 — Keep the text a field started from (#105)
 
 ### Fixed
