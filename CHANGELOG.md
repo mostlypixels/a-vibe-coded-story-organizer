@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-15 — Total words in a footer on the Acts, Chapters, and Scenes lists
+## 2026-08-15 — Total words in a footer on the Acts, Chapters, and Scenes lists (#109)
 
 ### Added
 
