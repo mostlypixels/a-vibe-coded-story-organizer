@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\BookLanguage;
 use App\Enums\RevisionOrigin;
+use App\Enums\StoryOverviewMode;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
@@ -128,6 +129,15 @@ class ProjectTest extends TestCase
         $project = Project::factory()->for($user)->create(['name' => 'Untitled']);
 
         $this->assertSame(BookLanguage::English, $project->fresh()->language);
+    }
+
+    public function test_overview_render_mode_defaults_to_chapter_when_not_set_explicitly(): void
+    {
+        $user = User::factory()->create();
+
+        $project = Project::factory()->for($user)->create(['name' => 'Untitled']);
+
+        $this->assertSame(StoryOverviewMode::Chapter, $project->fresh()->overview_render_mode);
     }
 
     public function test_the_epub_metadata_attributes_are_mass_assignable(): void

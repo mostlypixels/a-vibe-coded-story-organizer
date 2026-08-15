@@ -180,6 +180,11 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     // /story path (now the Story section stub) to /story/overview.
     Route::get('/projects/{project}/story/overview', [StoryController::class, 'index'])->name('projects.story.overview');
 
+    // Persists the overview's render mode (chapter/book). Owner-only, mirroring
+    // PublicationSettingController's resolve -> authorize -> persist -> redirect shape.
+    Route::patch('/projects/{project}/story/overview/mode', [StoryController::class, 'updateMode'])
+        ->name('projects.story.overview.mode');
+
     // Full-text-ish search across one project's six searchable entities. Single
     // GET action (no AJAX): q/mode round-trip via the query string. Authorizes
     // via ProjectPolicy::view (SearchController + SearchRequest).

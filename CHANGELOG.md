@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-15 — Page the Story overview one chapter at a time (#107)
+
+### Added
+
+- A chapter pager and whole-book table of contents on the Story overview.
+- An owner-only setting to switch the Story overview between one chapter per page and the entire book.
+
+### Changed
+
+- The Story overview shows one chapter per page by default, keeping long stories responsive.
+
 ## 2026-08-13 — Keep the text a field started from (#105)
 
 ### Fixed
