@@ -6,6 +6,7 @@ use App\Enums\SearchMode;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
+use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
@@ -374,5 +375,165 @@ class SearchTest extends TestCase
         $response->assertSee('<fieldset', false);
         // Section headings are real <h2>s.
         $response->assertSee('<h2', false);
+    }
+
+    public function test_a_domain_page_shows_that_domains_matches(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Plotline::factory()->for($project)->create(['name' => 'Zephyrqux arc', 'description' => '']);
+        // Different domain — proves the domain page shows only its own column.
+        $this->sceneFor($project, ['name' => 'Zephyrqux scene', 'contents' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', ['project' => $project, 'domain' => 'plotlines', 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        $response->assertSee('Zephyrqux arc');
+        $response->assertDontSee('Zephyrqux scene');
+    }
+
+    public function test_a_domain_page_second_page_slices_correctly_and_carries_q_and_mode(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Plotline::factory()->for($project)->count(25)->sequence(
+            fn ($sequence) => ['name' => "Zephyrqux {$sequence->index}", 'description' => '']
+        )->create();
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', [
+                'project' => $project,
+                'domain' => 'plotlines',
+                'q' => 'zephyrqux',
+                'mode' => 'any',
+                'page' => 2,
+            ]));
+
+        $response->assertOk();
+        // Plotlines are ordered by name (alphabetically, not numerically), so
+        // page 1 (20 rows) ends at "…19" and page 2 holds "…4" through "…9".
+        $response->assertSee('Zephyrqux 5');
+        $response->assertDontSee('Zephyrqux 19');
+        // Page links carry q/mode onward.
+        $response->assertSee('q=zephyrqux', false);
+        $response->assertSee('mode=any', false);
+    }
+
+    public function test_a_domain_page_overshoot_page_shows_an_empty_state_not_a_500(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Plotline::factory()->for($project)->create(['name' => 'Zephyrqux arc', 'description' => '']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', [
+                'project' => $project,
+                'domain' => 'plotlines',
+                'q' => 'zephyrqux',
+                'page' => 99,
+            ]));
+
+        $response->assertOk();
+        $response->assertSee('No more results');
+    }
+
+    public function test_a_non_owner_cannot_view_a_domain_page(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+
+        $this->actingAs($other)
+            ->get(route('projects.search.domain', ['project' => $project, 'domain' => 'plotlines', 'q' => 'zephyrqux']))
+            ->assertForbidden();
+    }
+
+    public function test_an_unknown_domain_404s(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.search.index', $project).'/not-a-domain?q=zephyrqux')
+            ->assertNotFound();
+    }
+
+    public function test_a_blank_query_on_a_domain_page_redirects_to_the_main_search_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', ['project' => $project, 'domain' => 'plotlines']));
+
+        $response->assertRedirect(route('projects.search.index', ['project' => $project, 'mode' => 'all']));
+    }
+
+    public function test_a_column_over_the_cap_shows_only_capped_rows_and_a_see_all_link(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $cap = config('search.cap');
+        Plotline::factory()->for($project)->count($cap + 3)->sequence(
+            fn ($sequence) => ['name' => "Zephyrqux {$sequence->index}", 'description' => '']
+        )->create();
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'mode' => 'any']));
+
+        $response->assertOk();
+        $content = $response->getContent();
+
+        // Exactly `cap` rows render for the Plotlines column.
+        $this->assertSame($cap, preg_match_all('/Zephyrqux \d+/', $content));
+
+        $expectedHref = route('projects.search.domain', [
+            'project' => $project,
+            'domain' => 'plotlines',
+            'q' => 'zephyrqux',
+            'mode' => 'any',
+        ]);
+        $response->assertSee(e($expectedHref), false);
+        // N in the link text is the true total, not the capped count.
+        $response->assertSee(__('See all :count results', ['count' => $cap + 3]));
+    }
+
+    public function test_a_column_at_or_under_the_cap_shows_every_row_and_no_see_all_link(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $cap = config('search.cap');
+        Plotline::factory()->for($project)->count($cap)->sequence(
+            fn ($sequence) => ['name' => "Zephyrqux {$sequence->index}", 'description' => '']
+        )->create();
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        $content = $response->getContent();
+
+        $this->assertSame($cap, preg_match_all('/Zephyrqux \d+/', $content));
+        $response->assertDontSee('See all');
+    }
+
+    public function test_capping_one_column_does_not_truncate_a_smaller_sibling_column(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $cap = config('search.cap');
+        // Plotlines exceeds the cap; Events stays under it.
+        Plotline::factory()->for($project)->count($cap + 2)->sequence(
+            fn ($sequence) => ['name' => "Zephyrqux plot {$sequence->index}", 'description' => '']
+        )->create();
+        Event::factory()->for($project)->create(['title' => 'Zephyrqux event', 'description' => '']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        // The small Events column is untouched by the Plotlines cap.
+        $response->assertSee('Zephyrqux event');
     }
 }

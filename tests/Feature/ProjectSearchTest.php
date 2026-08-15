@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\SearchDomain;
 use App\Enums\SearchMode;
 use App\Models\Act;
 use App\Models\Chapter;
@@ -422,5 +423,66 @@ class ProjectSearchTest extends TestCase
         $results = $this->search($project, '   ');
 
         $this->assertTrue($results->isEmpty());
+    }
+
+    public function test_search_domain_returns_only_that_domains_matches(): void
+    {
+        $project = $this->project();
+
+        Plotline::factory()->for($project)->create(['name' => 'domainword plotline', 'description' => 'x']);
+        Event::factory()->for($project)->create(['title' => 'domainword event', 'description' => 'x']);
+
+        $rows = app(ProjectSearch::class)->searchDomain($project, SearchDomain::Plotlines, 'domainword', SearchMode::AllTerms);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(['Name'], $rows->first()->fieldLabels);
+    }
+
+    public function test_search_domain_codex_split_excludes_other_types(): void
+    {
+        $project = $this->project();
+
+        CodexEntry::factory()->for($project)->character()->create(['name' => 'splitword hero', 'description' => 'x']);
+        CodexEntry::factory()->for($project)->location()->create(['name' => 'splitword city', 'description' => 'x']);
+        CodexEntry::factory()->for($project)->organization()->create(['name' => 'splitword guild', 'description' => 'x']);
+
+        $characters = app(ProjectSearch::class)->searchDomain($project, SearchDomain::Characters, 'splitword', SearchMode::AllTerms);
+        $locations = app(ProjectSearch::class)->searchDomain($project, SearchDomain::Locations, 'splitword', SearchMode::AllTerms);
+        $organizations = app(ProjectSearch::class)->searchDomain($project, SearchDomain::Organizations, 'splitword', SearchMode::AllTerms);
+
+        $this->assertCount(1, $characters);
+        $this->assertCount(1, $locations);
+        $this->assertCount(1, $organizations);
+    }
+
+    public function test_search_domain_preserves_natural_order(): void
+    {
+        $project = $this->project();
+        $chapter = $this->chapterIn($project);
+
+        Scene::factory()->for($chapter)->create(['name' => 'plain', 'position' => 3, 'contents' => 'domainorder gamma', 'description' => 'x']);
+        Scene::factory()->for($chapter)->create(['name' => 'plain', 'position' => 1, 'contents' => 'domainorder alpha', 'description' => 'x']);
+        Scene::factory()->for($chapter)->create(['name' => 'plain', 'position' => 2, 'contents' => 'domainorder beta', 'description' => 'x']);
+
+        $rows = app(ProjectSearch::class)->searchDomain($project, SearchDomain::Scenes, 'domainorder', SearchMode::AllTerms);
+
+        $positions = $rows->map(fn (SearchResultRow $row) => $row->entity->position)->all();
+        $this->assertSame([1, 2, 3], $positions);
+    }
+
+    public function test_search_domain_returns_empty_collection_for_blank_query(): void
+    {
+        $project = $this->project();
+        Plotline::factory()->for($project)->create(['name' => 'anything']);
+
+        $rows = app(ProjectSearch::class)->searchDomain($project, SearchDomain::Plotlines, '   ', SearchMode::AllTerms);
+
+        $this->assertTrue($rows->isEmpty());
+    }
+
+    public function test_search_config_keys_load(): void
+    {
+        $this->assertSame(5, config('search.cap'));
+        $this->assertSame(20, config('search.per_page'));
     }
 }

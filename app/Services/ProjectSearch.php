@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\CodexEntryType;
+use App\Enums\SearchDomain;
 use App\Enums\SearchMode;
 use App\Models\Act;
 use App\Models\CodexEntry;
@@ -90,50 +91,97 @@ class ProjectSearch
 
         // One query per entity type. The three codex columns are sliced out of a
         // single CodexEntry search below rather than searched three times.
-        $codexRows = $this->searchEntity(
-            CodexEntry::query()->where('project_id', $project->id)->orderBy('name'),
-            self::CODEX_ENTRY_FIELDS,
-            $terms,
-            $mode,
-        );
+        $codexRows = $this->searchEntityFor(SearchDomain::Characters, $project, $terms, $mode);
 
         return new SearchResults(
-            plotlines: $this->searchEntity(
-                Plotline::query()->where('project_id', $project->id)->orderBy('name'),
-                self::PLOTLINE_FIELDS,
-                $terms,
-                $mode,
-            ),
-            events: $this->searchEntity(
-                Event::query()->where('project_id', $project->id)
-                    ->orderBy('event_datetime')->orderBy('id'),
-                self::EVENT_FIELDS,
-                $terms,
-                $mode,
-            ),
-            acts: $this->searchEntity(
-                Act::query()->where('project_id', $project->id)
-                    ->orderBy('position')->orderBy('id'),
-                self::ACT_FIELDS,
-                $terms,
-                $mode,
-            ),
-            chapters: $this->searchEntity(
-                $project->chapterQuery()->orderBy('position')->orderBy('id'),
-                self::CHAPTER_FIELDS,
-                $terms,
-                $mode,
-            ),
-            scenes: $this->searchEntity(
-                $project->sceneQuery()->orderBy('position')->orderBy('id'),
-                self::SCENE_FIELDS,
-                $terms,
-                $mode,
-            ),
+            plotlines: $this->searchEntityFor(SearchDomain::Plotlines, $project, $terms, $mode),
+            events: $this->searchEntityFor(SearchDomain::Events, $project, $terms, $mode),
+            acts: $this->searchEntityFor(SearchDomain::Acts, $project, $terms, $mode),
+            chapters: $this->searchEntityFor(SearchDomain::Chapters, $project, $terms, $mode),
+            scenes: $this->searchEntityFor(SearchDomain::Scenes, $project, $terms, $mode),
             characters: $this->codexRowsOfType($codexRows, CodexEntryType::Character),
             locations: $this->codexRowsOfType($codexRows, CodexEntryType::Location),
             organizations: $this->codexRowsOfType($codexRows, CodexEntryType::Organization),
         );
+    }
+
+    /**
+     * One domain's full matched collection, in the entity's natural order — the
+     * source for the domain "see all" page. Pagination is deliberately not done
+     * here: matching runs in PHP (see the class docblock), so a caller must slice
+     * this collection in memory, never add a SQL LIMIT/OFFSET upstream of it.
+     *
+     * @return Collection<int, SearchResultRow>
+     */
+    public function searchDomain(Project $project, SearchDomain $domain, string $query, SearchMode $mode): Collection
+    {
+        $terms = $this->terms($query, $mode);
+
+        if ($terms === []) {
+            return collect();
+        }
+
+        $rows = $this->searchEntityFor($domain, $project, $terms, $mode);
+
+        return match ($domain) {
+            SearchDomain::Characters => $this->codexRowsOfType($rows, CodexEntryType::Character),
+            SearchDomain::Locations => $this->codexRowsOfType($rows, CodexEntryType::Location),
+            SearchDomain::Organizations => $this->codexRowsOfType($rows, CodexEntryType::Organization),
+            default => $rows,
+        };
+    }
+
+    /**
+     * Run one domain's base query through {@see searchEntity}. Characters,
+     * Locations, and Organizations all read the same CodexEntry query and fields
+     * — the type split happens after, in {@see codexRowsOfType}.
+     *
+     * @param  array<int, string>  $terms
+     */
+    private function searchEntityFor(SearchDomain $domain, Project $project, array $terms, SearchMode $mode): Collection
+    {
+        [$query, $fields] = $this->queryFor($domain, $project);
+
+        return $this->searchEntity($query, $fields, $terms, $mode);
+    }
+
+    /**
+     * The base, project-scoped query and searchable-field map for one domain.
+     * Both the grouped search and the single-domain search read this one
+     * definition, so a column's query or field list is never written down twice.
+     *
+     * @return array{0: Builder, 1: array<string, string>}
+     */
+    private function queryFor(SearchDomain $domain, Project $project): array
+    {
+        return match ($domain) {
+            SearchDomain::Plotlines => [
+                Plotline::query()->where('project_id', $project->id)->orderBy('name'),
+                self::PLOTLINE_FIELDS,
+            ],
+            SearchDomain::Events => [
+                Event::query()->where('project_id', $project->id)
+                    ->orderBy('event_datetime')->orderBy('id'),
+                self::EVENT_FIELDS,
+            ],
+            SearchDomain::Acts => [
+                Act::query()->where('project_id', $project->id)
+                    ->orderBy('position')->orderBy('id'),
+                self::ACT_FIELDS,
+            ],
+            SearchDomain::Chapters => [
+                $project->chapterQuery()->orderBy('position')->orderBy('id'),
+                self::CHAPTER_FIELDS,
+            ],
+            SearchDomain::Scenes => [
+                $project->sceneQuery()->orderBy('position')->orderBy('id'),
+                self::SCENE_FIELDS,
+            ],
+            SearchDomain::Characters, SearchDomain::Locations, SearchDomain::Organizations => [
+                CodexEntry::query()->where('project_id', $project->id)->orderBy('name'),
+                self::CODEX_ENTRY_FIELDS,
+            ],
+        };
     }
 
     /**
