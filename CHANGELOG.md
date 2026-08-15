@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-15 — Total words in a footer on the Acts, Chapters, and Scenes lists (#109)
+
+### Added
+
+- A totals footer on the Acts, Chapters, and Scenes lists, summing words (and chapters or scenes) across the rows shown.
+
 ## 2026-08-15 — Cap search columns and page each domain's full results (#108)
 
 ### Added

@@ -825,6 +825,23 @@ class ChapterTest extends TestCase
             ->assertSee('47 words');
     }
 
+    public function test_the_chapters_index_footer_totals_words_across_every_chapter(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project)->create();
+        $chapterA = Chapter::factory()->for($act)->create();
+        $chapterB = Chapter::factory()->for($act)->create();
+        $this->sceneWithWordCount($chapterA, 613);
+        $this->sceneWithWordCount($chapterB, 449); // grand total: 1,062, distinct from any row
+
+        $this->actingAs($user)
+            ->get(route('projects.chapters.index', $project))
+            ->assertOk()
+            ->assertSee('Total')
+            ->assertSee('1,062 words');
+    }
+
     public function test_a_chapter_with_no_scenes_shows_zero_words_on_the_index(): void
     {
         $user = User::factory()->create();

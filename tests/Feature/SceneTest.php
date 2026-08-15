@@ -68,6 +68,20 @@ class SceneTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_the_scenes_index_footer_totals_words_across_the_listed_scenes(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        Scene::factory()->for($chapter)->create(['contents' => trim(str_repeat('word ', 613))]);
+        Scene::factory()->for($chapter)->create(['contents' => trim(str_repeat('word ', 449))]);
+
+        $this->actingAs($user)
+            ->get(route('projects.scenes.index', $chapter->act->project))
+            ->assertOk()
+            ->assertSee('Total')
+            ->assertSee('1,062 words'); // sum, distinct from either scene's own count
+    }
+
     public function test_a_user_can_create_a_scene(): void
     {
         $user = User::factory()->create();
