@@ -63,59 +63,26 @@
                     {{-- Timeline — Plotlines, Events. --}}
                     @if ($results->hasTimelineMatches())
                         <x-search.section :title="__('Timeline')">
-                            <x-search.result-table
-                                :title="__('Plotlines')"
-                                :rows="$results->plotlines"
-                                edit-route="plotlines.edit"
-                            />
-                            <x-search.result-table
-                                :title="__('Events')"
-                                :rows="$results->events"
-                                edit-route="events.edit"
-                                name-field="title"
-                            />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Plotlines" :results="$results" :project="$project" :query="$query" :mode="$mode" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Events" :results="$results" :project="$project" :query="$query" :mode="$mode" />
                         </x-search.section>
                     @endif
 
                     {{-- Story — Acts, Chapters, Scenes. --}}
                     @if ($results->hasStoryMatches())
                         <x-search.section :title="__('Story')">
-                            <x-search.result-table
-                                :title="__('Acts')"
-                                :rows="$results->acts"
-                                edit-route="acts.edit"
-                            />
-                            <x-search.result-table
-                                :title="__('Chapters')"
-                                :rows="$results->chapters"
-                                edit-route="chapters.edit"
-                            />
-                            <x-search.result-table
-                                :title="__('Scenes')"
-                                :rows="$results->scenes"
-                                edit-route="scenes.edit"
-                            />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Acts" :results="$results" :project="$project" :query="$query" :mode="$mode" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Chapters" :results="$results" :project="$project" :query="$query" :mode="$mode" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Scenes" :results="$results" :project="$project" :query="$query" :mode="$mode" />
                         </x-search.section>
                     @endif
 
                     {{-- Codex — one table per CodexEntryType. All share codex.edit. --}}
                     @if ($results->hasCodexMatches())
                         <x-search.section :title="__('Codex')">
-                            <x-search.result-table
-                                :title="__('Characters')"
-                                :rows="$results->characters"
-                                edit-route="codex.edit"
-                            />
-                            <x-search.result-table
-                                :title="__('Locations')"
-                                :rows="$results->locations"
-                                edit-route="codex.edit"
-                            />
-                            <x-search.result-table
-                                :title="__('Organizations')"
-                                :rows="$results->organizations"
-                                edit-route="codex.edit"
-                            />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Characters" :results="$results" :project="$project" :query="$query" :mode="$mode" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Locations" :results="$results" :project="$project" :query="$query" :mode="$mode" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Organizations" :results="$results" :project="$project" :query="$query" :mode="$mode" />
                         </x-search.section>
                     @endif
                 </div>

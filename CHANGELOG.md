@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-15 — Cap search columns and page each domain's full results
+
+### Added
+
+- Each search column shows its top matches with a "See all N results" link to a dedicated, paginated page for that entity type.
+- A footer band on data tables for a per-table action, such as the search "See all" link.
+
+### Changed
+
+- Search results are capped per column so a broad term no longer renders hundreds of rows on one page.
+
 ## 2026-08-15 — Page the Story overview one chapter at a time (#107)
 
 ### Added

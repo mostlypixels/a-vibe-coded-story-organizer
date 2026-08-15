@@ -1,31 +1,36 @@
 @props([
-    'title',
-    'rows',
-    'editRoute',
-    'nameField' => 'name',
+    'domain',
+    'results',
+    'project',
+    'query',
+    'mode',
 ])
 
 {{--
-    One entity type's search results: an <h3> heading over a full-width x-table
-    (same chrome as the entity list pages) with ONE row per matched entity.
-    Columns: Name (linked) | Matched in (the fields the terms appeared in) |
-    Preview (highlighted snippet) | trailing row-actions (view button).
+    One domain's search results: an <h3> heading over a full-width x-table (same
+    chrome as the entity list pages) with ONE row per matched entity. Columns:
+    Name (linked) | Matched in (the fields the terms appeared in) | Preview
+    (highlighted snippet) | trailing row-actions (view button).
 
-    An entity type with no matches renders NOTHING (no empty-state table) — only
-    types that actually matched appear. The parent view hides a whole section
+    A domain with no matches renders NOTHING (no empty-state table) — only
+    domains that actually matched appear. The parent view hides a whole section
     when all of its tables are empty (see SearchResults::has*Matches()).
 
+    The column is capped at config('search.cap') rows. A column with more
+    matches than the cap gets a "See all N results" link to that domain's own
+    paginated page instead of showing every row.
+
     Props:
-      • title     — the table heading (e.g. "Scenes", "Characters").
-      • rows      — Collection<App\Support\SearchResultRow> for this entity type.
-      • editRoute — the named route each row links to (e.g. "scenes.edit"); the row
-                    passes its entity to route() to build the edit URL.
-      • nameField — the entity attribute holding the display name ("name" for most,
-                    "title" for Event).
+      • domain  — the SearchDomain this table renders. Owns the heading text, the
+                  edit route, the display-name field, and which rows to pull off
+                  $results (see App\Enums\SearchDomain).
+      • results — the full SearchResults set the current search produced.
+      • project, query, mode — needed to build the "See all" link.
 --}}
+@php($rows = $domain->rowsFrom($results))
 @if ($rows->isNotEmpty())
     <div class="space-y-2">
-        <x-heading level="3">{{ $title }}</x-heading>
+        <x-heading level="3">{{ __($domain->label()) }}</x-heading>
 
         <x-table>
             <x-slot:head>
@@ -35,14 +40,29 @@
                 <x-table-heading />
             </x-slot:head>
 
-            @foreach ($rows as $row)
+            @foreach ($rows->take(config('search.cap')) as $row)
                 <x-search.result-row
                     :row="$row"
-                    :edit-route="$editRoute"
-                    :name-field="$nameField"
+                    :edit-route="$domain->editRoute()"
+                    :name-field="$domain->nameField()"
                     :striped="$loop->even"
                 />
             @endforeach
+
+            {{-- More matches than the cap: a right-aligned footer link to this
+                 domain's own paginated page, carrying the current query and mode. --}}
+            @if ($rows->count() > config('search.cap'))
+                <x-slot:foot>
+                    <td colspan="4" class="px-4 py-3 text-right text-sm">
+                        <a
+                            href="{{ route('projects.search.domain', ['project' => $project, 'domain' => $domain->value, 'q' => $query, 'mode' => $mode->value]) }}"
+                            class="text-link underline hover:text-link-hover"
+                        >
+                            {{ __('See all :count results', ['count' => $rows->count()]) }}
+                        </a>
+                    </td>
+                </x-slot:foot>
+            @endif
         </x-table>
     </div>
 @endif

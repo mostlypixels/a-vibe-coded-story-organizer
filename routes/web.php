@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\CodexEntryType;
+use App\Enums\SearchDomain;
 use App\Http\Controllers\ActController;
 use App\Http\Controllers\AppearanceController;
 use App\Http\Controllers\ChapterController;
@@ -189,6 +190,14 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     // GET action (no AJAX): q/mode round-trip via the query string. Authorizes
     // via ProjectPolicy::view (SearchController + SearchRequest).
     Route::get('/projects/{project}/search', [SearchController::class, 'index'])->name('projects.search.index');
+
+    // One domain's full, paginated result set ("see all N results" destination).
+    // The whereIn constraint (derived from SearchDomain) makes an unknown {domain}
+    // 404 before the controller runs, same pattern as the codex {type} routes.
+    Route::whereIn('domain', SearchDomain::routeKeys())->group(function () {
+        Route::get('/projects/{project}/search/{domain}', [SearchController::class, 'domain'])
+            ->name('projects.search.domain');
+    });
 
     Route::resource('projects.acts', ActController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])

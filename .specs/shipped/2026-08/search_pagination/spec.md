@@ -1,5 +1,8 @@
 ---
-status: draft
+status: shipped
+shipped: 2026-08-15
+planned: 2026-08-15
+expanded: 2026-08-15
 ---
 
 # Search result limiting and per-domain pagination

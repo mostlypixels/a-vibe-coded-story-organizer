@@ -1,4 +1,4 @@
-@props(['head' => null])
+@props(['head' => null, 'foot' => null])
 
 {{--
     Card-wrapped data table with striped, optionally sortable rows. Pair it with
@@ -15,6 +15,12 @@
             x-table-row :striped="$loop->even" ... td cells ...
           empty
             x-table-empty :colspan="N" (no-results message)
+          x-slot:foot                        (optional footer band)
+            td colspan="N" ... a full-width footer cell (e.g. a "see all" link)
+
+    The optional `foot` slot renders a <tfoot> band under the body — one <tr> the
+    caller fills with its own <td>s (spanning the columns as needed). Use it for a
+    per-table action such as a "see more" link, not for data rows.
 --}}
 <div class="bg-surface-raised overflow-hidden shadow-xs sm:rounded-lg">
     <table {{ $attributes->merge(['class' => 'min-w-full divide-y divide-border']) }}>
@@ -29,5 +35,11 @@
         <tbody>
             {{ $slot }}
         </tbody>
+
+        @isset($foot)
+            <tfoot class="bg-table-header border-t border-border">
+                <tr>{{ $foot }}</tr>
+            </tfoot>
+        @endisset
     </table>
 </div>
