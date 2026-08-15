@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-15 — Cap search columns and page each domain's full results
+## 2026-08-15 — Cap search columns and page each domain's full results (#108)
 
 ### Added
 
