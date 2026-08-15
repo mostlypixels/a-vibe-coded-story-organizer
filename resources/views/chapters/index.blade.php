@@ -75,6 +75,18 @@
                         :items="__('chapters')"
                     />
                 @endforelse
+
+                {{-- Totals of the rows shown (the filtered set when a search or act filter is active). --}}
+                @if ($chapters->isNotEmpty())
+                    <x-slot:foot>
+                        <td colspan="3" class="px-4 py-3 text-sm font-semibold text-table-header-content">{{ __('Total') }}</td>
+                        <td class="px-4 py-3 text-sm font-semibold text-table-header-content">{{ $chapters->sum('scenes_count') }}</td>
+                        <td class="px-4 py-3 text-right text-sm font-semibold text-table-header-content whitespace-nowrap">
+                            <x-word-count :count="$chapters->sum('word_count')" variant="inline" />
+                        </td>
+                        <td class="px-4 py-3"></td>
+                    </x-slot:foot>
+                @endif
             </x-table>
 
             {{-- Delete-with-move dialogs live outside the table (a modal <div> is not

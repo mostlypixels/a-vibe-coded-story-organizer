@@ -52,6 +52,21 @@ class ActTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_the_acts_index_footer_totals_words_across_the_listed_acts(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        $this->sceneWithWordCount($chapter, 40);
+        $this->sceneWithWordCount($chapter, 60);
+
+        $this->actingAs($user)
+            ->get(route('projects.acts.index', $project))
+            ->assertOk()
+            ->assertSee('Total')
+            ->assertSee('100 words');
+    }
+
     public function test_a_user_can_create_an_act(): void
     {
         $user = User::factory()->create();
