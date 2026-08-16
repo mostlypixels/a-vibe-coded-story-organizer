@@ -4,7 +4,7 @@ status: draft
 
 # Alias references — asynchronous rescan
 
-Follow-up to `alias_references_v1` (`.specs/planned/alias_references_v1/`).
+Follow-up to `alias_references_v1` (`.specs/shipped/2026-07/alias_references_v1/`).
 
 In v1, saving a codex entry whose aliases or name changed triggers a **synchronous**
 project-wide rescan of every scene's contents against the updated alias/name set (see
@@ -13,6 +13,38 @@ with many scenes, this makes a single entry save noticeably slower.
 
 This spec covers moving that project-wide rescan to a **background job**, for projects large
 enough that the synchronous cost becomes a real UX problem.
+
+## Measured baseline (2026-08-16)
+
+Largest sample available: the seeded long test project — 143 scenes, 1.2M characters,
+51 entries, 3 aliases. Measured by `codex:sync-references 4` against a **copy** of the dev
+database, and by an in-memory probe (`scripts/probe-test.sh`) reproducing the same shape.
+
+| Action | ms | queries |
+|---|---|---|
+| PUT, description only (no term change) | 17 | 12 |
+| PUT, name changed (rescan) | 23 | 156 |
+| GET the codex edit page | 57 | 14 |
+| Real-data rescan, file SQLite | 30–40 | — |
+
+`syncProject` scaling, 51 entries: 143 scenes 25 ms / 423 q · 500 scenes 66 ms / 1473 q ·
+1000 scenes 137 ms / 2944 q — **linear, ~0.13 ms and ~1–3 queries per scene**.
+
+- Saving is not slow today. The rescan costs less than rendering the edit page.
+- Cost is round-trips, not the regex: `sync()` runs one SELECT per scene even when nothing
+  changed (146 queries at 143 scenes with a correct pivot). Writes add only on real changes.
+- Extrapolated: ~250 ms at 1000 scenes, ~1 s at 4000 — roughly 7–30× the current sample.
+- Peak memory 94 MB in the probe: `syncProject` loads every scene's contents at once.
+
+Cheaper fixes to weigh against queuing, both of which also help a queued job:
+
+- Batch the pivot diff into one query set instead of per-scene `sync()`.
+- Chunk `sceneQuery()` to bound memory.
+
+> [!NOTE]
+> The numbers above come from generated content, not real prose. Import long public-domain
+> books and re-measure before this spec is expanded — that decides whether the threshold is
+> ever reached in practice.
 
 ## Open questions to work through when this is expanded
 
