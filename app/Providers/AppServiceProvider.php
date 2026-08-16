@@ -82,6 +82,12 @@ class AppServiceProvider extends ServiceProvider
                 ->with('breadcrumbs', new Breadcrumbs($navigation, request()));
         });
 
+        // The error pages carry a reduced bar. It gets its own composer because
+        // its nav must ignore the route — see ProjectNavigation::offRoute().
+        View::composer('layouts.error-navigation', function ($view) {
+            $view->with('navigation', ProjectNavigation::offRoute(request()->user()));
+        });
+
         // Same deal for the Configuration area's two link lists.
         View::composer(['admin.partials.sidebar', 'admin.data.partials.subnav'], function ($view) {
             $view->with('adminNavigation', new AdminNavigation);
