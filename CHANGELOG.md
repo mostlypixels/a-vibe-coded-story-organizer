@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-16 — Branded error pages (#111)
+
+### Added
+
+- Branded 403, 404, and 500 pages that follow the active theme and font.
+- A reduced navigation bar on the error pages, with the project picker and Configuration.
+
+### Fixed
+
+- An unknown URL now knows who is signed in, so its page carries the navigation bar.
+
 ## 2026-08-16 — A second seeded user with a minimal project (#110)
 
 ### Added

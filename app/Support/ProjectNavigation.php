@@ -159,6 +159,22 @@ class ProjectNavigation
         $this->toolsActive = $request->routeIs('projects.tools.*') || $this->revisionsActive || $this->progressActive;
     }
 
+    /**
+     * A navigation that ignores the current route, for the error pages.
+     *
+     * The error pages must not read the route: a 403 route names a project the
+     * viewer has no access to, and the picker would then show its name. This
+     * builds the nav from the account alone, so the trigger shows the stored
+     * active project and no section is highlighted.
+     */
+    public static function offRoute(?User $user): self
+    {
+        $request = Request::create('/');
+        $request->setUserResolver(fn () => $user);
+
+        return new self($request);
+    }
+
     /** Whether there is a project to build project-scoped links from. */
     public function hasProject(): bool
     {

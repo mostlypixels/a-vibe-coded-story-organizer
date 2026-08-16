@@ -322,3 +322,16 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// A router 404 is thrown BEFORE the `web` group runs, so the session never
+// starts and the error page renders as if the visitor were a guest — no project
+// picker, no Configuration link. This fallback matches instead, inside the
+// group, and aborts with the same 404 now that the user is known.
+// `Route::any(...)->fallback()`, not `Route::fallback()`: the helper answers GET
+// and HEAD only, so a POST to an unmatched URL would match its URI on the wrong
+// method and turn a 404 into a 405. `->fallback()` is what keeps the router
+// trying it last, so a real route — including one a test registers later —
+// always wins.
+Route::any('{unmatched}', fn () => abort(404))
+    ->where('unmatched', '.*')
+    ->fallback();
