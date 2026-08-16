@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-16 — A second seeded user with a minimal project
+## 2026-08-16 — A second seeded user with a minimal project (#110)
 
 ### Added
 
