@@ -41,7 +41,8 @@ class LoremIpsumSeeder extends Seeder
             'description' => '<p>Lorem ipsum.</p>',
         ]);
 
-        // Model events are off under `db:seed`, so the main plotline hook does not fire.
+        // Model events are off under `db:seed`, so neither the main plotline hook
+        // nor the first book hook fires. Both are seeded by hand, positions included.
         $project->plotlines()->firstWhere('is_main', true)
             ?? Plotline::create([
                 'project_id' => $project->id,
@@ -49,6 +50,9 @@ class LoremIpsumSeeder extends Seeder
                 'is_main' => true,
                 'color' => PlotlineColors::PRESETS[0],
             ]);
+
+        // Unnamed: a sole book shows the project's name (see Book::displayName()).
+        $project->books()->create(['position' => 1]);
 
         $act = $project->acts()->create([
             'name' => 'Lorem ipsum',

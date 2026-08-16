@@ -36,18 +36,18 @@ class StoryController extends Controller
 
     /**
      * The Story overview. Two render modes on the project's
-     * `overview_render_mode`: `Book` renders the whole tree on one page (slow on
-     * a long story, opt-in); `Chapter` (default) paginates one chapter per page
-     * and stays fast — only that chapter's scene bodies load, while numbering,
-     * the table of contents, and word totals stay whole-book through
-     * contents-free queries.
+     * `overview_render_mode`: `Whole` renders the whole tree on one page (slow
+     * on a long story, opt-in); `Chapter` (default) paginates one chapter per
+     * page and stays fast — only that chapter's scene bodies load, while
+     * numbering, the table of contents, and word totals stay story-wide
+     * through contents-free queries.
      */
     public function index(Project $project, Request $request): View
     {
         $this->authorize('view', $project);
 
-        if ($project->overview_render_mode === StoryOverviewMode::Book) {
-            return $this->book($project);
+        if ($project->overview_render_mode === StoryOverviewMode::Whole) {
+            return $this->whole($project);
         }
 
         return $this->chapter($project, $request->query('chapter'));
@@ -73,7 +73,7 @@ class StoryController extends Controller
     /**
      * Whole-story render: the full act -> chapter -> scene tree on one page.
      */
-    private function book(Project $project): View
+    private function whole(Project $project): View
     {
         $acts = $project->acts()
             ->with('chapters.scenes.event')
@@ -110,12 +110,12 @@ class StoryController extends Controller
     /**
      * One-chapter render. Loads only the target chapter's scene bodies; every
      * other figure on the page — numbering, the table of contents, per-act and
-     * book word totals — comes from contents-free queries, so the request cost
-     * does not grow with the rest of the story.
+     * story-wide word totals — comes from contents-free queries, so the request
+     * cost does not grow with the rest of the story.
      */
     private function chapter(Project $project, ?string $chapterId): View
     {
-        // The table of contents is whole-book: every act with its chapters, but
+        // The table of contents is story-wide: every act with its chapters, but
         // names and positions only — no scenes, no contents.
         $tocActs = $project->acts()
             ->select(['id', 'name', 'position'])
@@ -166,7 +166,7 @@ class StoryController extends Controller
     /**
      * The current chapter's project-wide neighbours (prev, next), from the
      * same contents-free `$tocActs` tree the TOC renders — no extra query.
-     * The pager walks the whole book, not just the current act, so the last
+     * The pager walks the whole story, not just the current act, so the last
      * chapter of an act neighbours the first chapter of the next one.
      *
      * @return array{0: ?Chapter, 1: ?Chapter}

@@ -204,7 +204,7 @@ class EpubExporter
      */
     public function export(Project $project): string
     {
-        $tree = $this->bookTree($project);
+        $tree = $this->actTree($project);
 
         // The one user-input failure of the whole pipeline: the project has not a single
         // scene anywhere, so the book would be nothing but blank outline pages. Thrown
@@ -290,7 +290,7 @@ class EpubExporter
      *
      * @return Collection<int, Act>
      */
-    public function bookTree(Project $project): Collection
+    public function actTree(Project $project): Collection
     {
         return $project->acts()
             ->with([
@@ -307,7 +307,7 @@ class EpubExporter
      * new outline would export as a book of blank pages.
      *
      * Reads the already eager-loaded relations rather than issuing a count query, so the
-     * guard costs nothing beyond {@see bookTree()}'s own three queries.
+     * guard costs nothing beyond {@see actTree()}'s own three queries.
      *
      * @param  Collection<int, Act>  $tree
      */
@@ -397,7 +397,7 @@ class EpubExporter
      *   - a per-scene `description` (rich HTML → XHTML) above each scene body.
      *
      * Scenes must already be position-ordered — pass a Chapter taken from
-     * {@see bookTree()}. A Chapter with no scenes is legitimate and renders as a
+     * {@see actTree()}. A Chapter with no scenes is legitimate and renders as a
      * heading-only page (no app-written filler). $settings and $numbering are nullable so
      * callers/tests can render with the project's lazy default and a freshly-derived
      * numbering, same as {@see renderAct()}.
@@ -854,7 +854,7 @@ class EpubExporter
      * Add every Act divider page and Chapter page as an EPUB chapter, wiring the two-level
      * nav as it goes: each Act is a root-level nav entry, and its Chapters are nested one
      * level below it (subLevel/backLevel bracket the Act's children). Both levels are walked
-     * in `position` order because {@see bookTree()} already returns them ordered. This is the
+     * in `position` order because {@see actTree()} already returns them ordered. This is the
      * `body` entry in `section_order` ({@see addSections()}).
      *
      * @param  Collection<int, Act>  $tree

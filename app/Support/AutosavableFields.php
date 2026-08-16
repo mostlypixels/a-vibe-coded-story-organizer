@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\FieldKind;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -57,6 +58,14 @@ class AutosavableFields
      */
     public const REGISTRY = [
         'project' => [Project::class, [
+            'description' => FieldKind::Rich,
+            'dedication' => FieldKind::Markdown,
+            'acknowledgements' => FieldKind::Markdown,
+            'preface' => FieldKind::Markdown,
+            'postface' => FieldKind::Markdown,
+            'rights' => FieldKind::Plain,
+        ]],
+        'book' => [Book::class, [
             'description' => FieldKind::Rich,
             'dedication' => FieldKind::Markdown,
             'acknowledgements' => FieldKind::Markdown,

@@ -21,15 +21,15 @@ class StoryTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * A project in `book` mode. The whole-tree assertions below (every chapter's
+     * A project in `whole` mode. The whole-tree assertions below (every chapter's
      * scenes, every chapter total, and the single-scene-query budget) describe
-     * `book` rendering; the default `chapter` mode paginates and is covered by
+     * `whole` rendering; the default `chapter` mode paginates and is covered by
      * its own tests further down.
      */
-    private function bookProject(User $user): Project
+    private function wholeProject(User $user): Project
     {
         return Project::factory()->for($user)->create([
-            'overview_render_mode' => StoryOverviewMode::Book,
+            'overview_render_mode' => StoryOverviewMode::Whole,
         ]);
     }
 
@@ -71,7 +71,7 @@ class StoryTest extends TestCase
     public function test_the_story_overview_orders_acts_by_position(): void
     {
         $user = User::factory()->create();
-        $project = $this->bookProject($user);
+        $project = $this->wholeProject($user);
         // Create out of position order to prove the view sorts, not insertion order.
         Act::factory()->for($project)->create(['name' => 'Later Act', 'position' => 2]);
         Act::factory()->for($project)->create(['name' => 'Earlier Act', 'position' => 1]);
@@ -116,7 +116,7 @@ class StoryTest extends TestCase
     public function test_chapter_act_and_project_totals_are_the_sum_of_their_scenes(): void
     {
         $user = User::factory()->create();
-        $project = $this->bookProject($user);
+        $project = $this->wholeProject($user);
 
         $actOne = Act::factory()->for($project)->create();
         $chapterA = Chapter::factory()->for($actOne)->create();
@@ -150,7 +150,7 @@ class StoryTest extends TestCase
     public function test_an_act_with_no_chapters_and_a_chapter_with_no_scenes_render_zero_words(): void
     {
         $user = User::factory()->create();
-        $project = $this->bookProject($user);
+        $project = $this->wholeProject($user);
 
         // Act with no chapters at all: its total, and the empty-chapters
         // message, must both render — not an error, not a blank total.
@@ -226,7 +226,7 @@ class StoryTest extends TestCase
     public function test_totals_add_no_queries_against_the_scenes_table(): void
     {
         $user = User::factory()->create();
-        $project = $this->bookProject($user);
+        $project = $this->wholeProject($user);
 
         foreach (range(1, 3) as $actNumber) {
             $act = Act::factory()->for($project)->create();
@@ -265,7 +265,7 @@ class StoryTest extends TestCase
     public function test_toc_and_headings_show_continuous_chapter_numbers_across_the_act_boundary(): void
     {
         $user = User::factory()->create();
-        $project = $this->bookProject($user);
+        $project = $this->wholeProject($user);
 
         $actOne = Act::factory()->for($project)->create();
         Chapter::factory()->for($actOne)->create();
@@ -290,7 +290,7 @@ class StoryTest extends TestCase
     public function test_act_numbers_close_the_gap_left_by_a_deleted_act(): void
     {
         $user = User::factory()->create();
-        $project = $this->bookProject($user);
+        $project = $this->wholeProject($user);
 
         $actOne = Act::factory()->for($project)->create(['name' => 'Act One']);
         $actTwo = Act::factory()->for($project)->create(['name' => 'Act Two']);
@@ -317,7 +317,7 @@ class StoryTest extends TestCase
     public function test_scene_numbers_render_and_run_unbroken_across_chapters(): void
     {
         $user = User::factory()->create();
-        $project = $this->bookProject($user);
+        $project = $this->wholeProject($user);
         $act = Act::factory()->for($project)->create();
 
         $chapterOne = Chapter::factory()->for($act)->create();
@@ -347,7 +347,7 @@ class StoryTest extends TestCase
     public function test_deriving_scene_numbers_adds_no_extra_queries_against_the_scenes_table(): void
     {
         $user = User::factory()->create();
-        $project = $this->bookProject($user);
+        $project = $this->wholeProject($user);
         $act = Act::factory()->for($project)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->count(3)->for($chapter)->create();
@@ -368,7 +368,7 @@ class StoryTest extends TestCase
 
     // ---------------------------------------------------------------------
     // Chapter mode (the default): one chapter's scene bodies render, while
-    // numbering, the TOC and word totals stay whole-book. Only the current
+    // numbering, the TOC and word totals stay story-wide. Only the current
     // chapter's `contents` is loaded, whatever the size of the rest.
     // ---------------------------------------------------------------------
 
@@ -439,11 +439,11 @@ class StoryTest extends TestCase
     }
 
     /**
-     * The act header and book totals are whole-book aggregates, not the loaded
+     * The act header and story totals are story-wide aggregates, not the loaded
      * chapter's sum. The first chapter (loaded) totals 613; its act totals 1,015
-     * and the book 1,062 — none of which the loaded chapter alone would produce.
+     * and the story 1,062 — none of which the loaded chapter alone would produce.
      */
-    public function test_chapter_mode_header_and_book_totals_span_the_whole_story(): void
+    public function test_chapter_mode_header_and_story_totals_span_the_whole_story(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -456,14 +456,14 @@ class StoryTest extends TestCase
 
         $actTwo = Act::factory()->for($project)->create(['position' => 2]);
         $chapterC = Chapter::factory()->for($actTwo)->create();
-        $this->sceneWithWordCount($chapterC, 47); // book total: 1,062
+        $this->sceneWithWordCount($chapterC, 47); // story total: 1,062
 
         $this->actingAs($user)
             ->get(route('projects.story.overview', $project))
             ->assertOk()
             ->assertSee('613 words') // the loaded chapter's own total
             ->assertSee('1,015 words') // whole act one, though only chapter A loaded
-            ->assertSee('1,062 words'); // whole book, though only chapter A loaded
+            ->assertSee('1,062 words'); // whole story, though only chapter A loaded
     }
 
     public function test_a_chapter_from_another_project_is_forbidden(): void
@@ -640,11 +640,11 @@ class StoryTest extends TestCase
 
         $this->actingAs($user)
             ->patch(route('projects.story.overview.mode', $project), [
-                'overview_render_mode' => StoryOverviewMode::Book->value,
+                'overview_render_mode' => StoryOverviewMode::Whole->value,
             ])
             ->assertRedirect(route('projects.story.overview', $project));
 
-        $this->assertSame(StoryOverviewMode::Book, $project->fresh()->overview_render_mode);
+        $this->assertSame(StoryOverviewMode::Whole, $project->fresh()->overview_render_mode);
     }
 
     public function test_switching_the_mode_preserves_the_current_chapter_query_param(): void
@@ -656,7 +656,7 @@ class StoryTest extends TestCase
 
         $this->actingAs($user)
             ->patch(route('projects.story.overview.mode', ['project' => $project, 'chapter' => $chapter->id]), [
-                'overview_render_mode' => StoryOverviewMode::Book->value,
+                'overview_render_mode' => StoryOverviewMode::Whole->value,
             ])
             ->assertRedirect(route('projects.story.overview', ['project' => $project, 'chapter' => $chapter->id]));
     }
@@ -681,7 +681,7 @@ class StoryTest extends TestCase
 
         $this->actingAs($other)
             ->patch(route('projects.story.overview.mode', $project), [
-                'overview_render_mode' => StoryOverviewMode::Book->value,
+                'overview_render_mode' => StoryOverviewMode::Whole->value,
             ])
             ->assertForbidden();
     }
@@ -697,10 +697,10 @@ class StoryTest extends TestCase
             ->assertSee(__('Story overview display'));
     }
 
-    public function test_book_mode_still_renders_every_chapters_scenes(): void
+    public function test_whole_mode_still_renders_every_chapters_scenes(): void
     {
         $user = User::factory()->create();
-        $project = $this->bookProject($user);
+        $project = $this->wholeProject($user);
         $act = Act::factory()->for($project)->create();
 
         $first = Chapter::factory()->for($act)->create(['position' => 1]);

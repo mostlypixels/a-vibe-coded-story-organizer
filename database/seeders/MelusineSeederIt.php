@@ -64,6 +64,11 @@ class MelusineSeederIt extends Seeder
                 'color' => PlotlineColors::PRESETS[0], // red-500
             ]);
 
+        // Model events are off under `db:seed`, so the first book hook does not
+        // fire either. Unnamed: a sole book shows the project's name
+        // (see Book::displayName()).
+        $project->books()->create(['position' => 1]);
+
         $curseOfPressine = Plotline::create([
             'project_id' => $project->id,
             'name' => 'La maledizione di Pressina',

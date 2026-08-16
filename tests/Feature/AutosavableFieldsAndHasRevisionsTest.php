@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\FieldKind;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -20,8 +21,8 @@ use Tests\TestCase;
 
 /**
  * The declarative wiring layer: the AutosavableFields registry and the
- * HasRevisions trait each of the 7 registered models implements. These tests
- * cover the lookups and the revisionProject() authorization boundary only.
+ * HasRevisions trait every registered model implements. These tests cover the
+ * lookups and the revisionProject() authorization boundary only.
  * RevisionRecorderTest covers the write path.
  */
 class AutosavableFieldsAndHasRevisionsTest extends TestCase
@@ -32,16 +33,16 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
     // AutosavableFields::slugs()
     // ---------------------------------------------------------------------
 
-    public function test_slugs_returns_exactly_the_seven_expected_slugs(): void
+    public function test_slugs_returns_exactly_the_expected_slugs(): void
     {
         $this->assertEqualsCanonicalizing(
-            ['project', 'act', 'chapter', 'plotline', 'event', 'scene', 'codex'],
+            ['project', 'book', 'act', 'chapter', 'plotline', 'event', 'scene', 'codex'],
             AutosavableFields::slugs(),
         );
     }
 
     // ---------------------------------------------------------------------
-    // AutosavableFields::modelFor() / kindOf() — the 14-field table
+    // AutosavableFields::modelFor() / kindOf() — the registered field table
     // ---------------------------------------------------------------------
 
     public static function registeredFieldProvider(): array
@@ -53,6 +54,12 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
             'project.preface' => ['project', 'preface', Project::class, FieldKind::Markdown],
             'project.postface' => ['project', 'postface', Project::class, FieldKind::Markdown],
             'project.rights' => ['project', 'rights', Project::class, FieldKind::Plain],
+            'book.description' => ['book', 'description', Book::class, FieldKind::Rich],
+            'book.dedication' => ['book', 'dedication', Book::class, FieldKind::Markdown],
+            'book.acknowledgements' => ['book', 'acknowledgements', Book::class, FieldKind::Markdown],
+            'book.preface' => ['book', 'preface', Book::class, FieldKind::Markdown],
+            'book.postface' => ['book', 'postface', Book::class, FieldKind::Markdown],
+            'book.rights' => ['book', 'rights', Book::class, FieldKind::Plain],
             'act.description' => ['act', 'description', Act::class, FieldKind::Rich],
             'chapter.description' => ['chapter', 'description', Chapter::class, FieldKind::Rich],
             'plotline.description' => ['plotline', 'description', Plotline::class, FieldKind::Rich],
@@ -109,6 +116,13 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
         $project = Project::factory()->create();
 
         $this->assertTrue($project->revisionProject()->is($project));
+    }
+
+    public function test_book_revision_project_is_its_project(): void
+    {
+        [$project, $book] = $this->projectWithBook();
+
+        $this->assertTrue($book->revisionProject()->is($project));
     }
 
     public function test_act_revision_project_is_its_project(): void

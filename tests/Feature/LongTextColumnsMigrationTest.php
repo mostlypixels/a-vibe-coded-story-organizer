@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -39,6 +40,7 @@ class LongTextColumnsMigrationTest extends TestCase
     {
         return [
             'projects' => ['description', 'dedication', 'acknowledgements', 'preface', 'postface', 'rights'],
+            'books' => ['description', 'dedication', 'acknowledgements', 'preface', 'postface', 'rights'],
             'acts' => ['description'],
             'chapters' => ['description'],
             'plotlines' => ['description'],
@@ -87,6 +89,17 @@ class LongTextColumnsMigrationTest extends TestCase
 
         $this->assertSame(100_000, strlen($fresh->rights));
         $this->assertSame($longValue, $fresh->rights);
+    }
+
+    public function test_book_dedication_round_trips_a_payload_larger_than_the_old_mysql_text_cap(): void
+    {
+        // `books` was created with longText() columns rather than widened later,
+        // so this guards the create migration against a copy of the old text().
+        $longValue = str_repeat('h', 100_000);
+
+        $book = Book::factory()->create(['dedication' => $longValue]);
+
+        $this->assertSame($longValue, Book::find($book->id)->dedication);
     }
 
     public function test_act_description_round_trips_a_payload_larger_than_the_old_mysql_text_cap(): void

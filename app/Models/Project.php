@@ -74,6 +74,27 @@ class Project extends Model
         return $this->hasMany(Act::class);
     }
 
+    /**
+     * The project's books, in reading order. Ordered by the relation itself
+     * because "the project's first book" is a concept the app relies on —
+     * the picker, the navigation fallback and the book index all mean the same
+     * first book.
+     */
+    public function books(): HasMany
+    {
+        return $this->hasMany(Book::class)->orderBy('position');
+    }
+
+    /**
+     * The book the writer was last in, or null before any book page is visited.
+     * Written by the route-tracking middleware only — `last_book_id` is not
+     * fillable, like `users.active_project_id`.
+     */
+    public function lastBook(): BelongsTo
+    {
+        return $this->belongsTo(Book::class, 'last_book_id');
+    }
+
     public function codexEntries(): HasMany
     {
         return $this->hasMany(CodexEntry::class);
@@ -235,6 +256,11 @@ class Project extends Model
     protected static function booted(): void
     {
         static::created(function (Project $project) {
+            // Every project holds at least one book. It starts unnamed, so it
+            // shows the project's name until the writer gives it one of its own
+            // (see Book::displayName()).
+            $project->books()->create([]);
+
             $mainPlotline = $project->plotlines()->create([
                 'name' => 'Main plotline',
                 'is_main' => true,

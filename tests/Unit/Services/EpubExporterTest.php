@@ -149,7 +149,7 @@ class EpubExporterTest extends TestCase
         // shift every later chapter's number the moment the author starts writing it.
         $empty = Chapter::factory()->for($act)->create();
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
 
         $this->assertCount(1, $tree);
         $this->assertCount(2, $tree->first()->chapters);
@@ -172,7 +172,7 @@ class EpubExporterTest extends TestCase
         // Act 3 has no chapters at all — still a divider.
         $bareAct = Act::factory()->for($project)->create();
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
 
         $this->assertSame(
             [$writtenAct->id, $outlinedAct->id, $bareAct->id],
@@ -201,7 +201,7 @@ class EpubExporterTest extends TestCase
         $chapterOfFirst = Chapter::factory()->for($laterButFirst)->create();
         Scene::factory()->for($chapterOfFirst)->create();
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
 
         $this->assertTrue($tree->first()->is($laterButFirst), 'Acts must sort by position, not insertion.');
 
@@ -258,7 +258,7 @@ class EpubExporterTest extends TestCase
         Scene::factory()->for($chapter)->create(['name' => 'SCENE_ONE_TITLE', 'contents' => 'First scene prose.']);
         Scene::factory()->for($chapter)->create(['name' => 'SCENE_TWO_TITLE', 'contents' => 'Second scene prose.']);
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         $html = $this->exporter()->renderChapter($renderedChapter, $project);
@@ -285,7 +285,7 @@ class EpubExporterTest extends TestCase
         $actTwo = Act::factory()->for($project)->create();
         $actTwoChapterOne = Chapter::factory()->for($actTwo)->create();
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $numbering = $tree->pluck('chapters')->flatten();
 
         // The count does not reset at the act boundary: the first chapter of Act 2 picks
@@ -314,7 +314,7 @@ class EpubExporterTest extends TestCase
 
         $middle->delete();
 
-        $survivors = $this->exporter()->bookTree($project->fresh());
+        $survivors = $this->exporter()->actTree($project->fresh());
         $this->assertSame([$first->id, $last->id], $survivors->pluck('id')->all());
 
         // The survivors number 1, 2 — gap-free — never the act with the deleted act's
@@ -339,7 +339,7 @@ class EpubExporterTest extends TestCase
 
         $toDelete->delete();
 
-        $tree = $this->exporter()->bookTree($project->fresh());
+        $tree = $this->exporter()->actTree($project->fresh());
         $survivingChapters = $tree->first()->chapters;
         $this->assertSame([$first->id, $placeholder->id], $survivingChapters->pluck('id')->all());
 
@@ -393,7 +393,7 @@ class EpubExporterTest extends TestCase
             'contents' => 'A dash -- and a range --- and an ellipsis... and "quotes".',
         ]);
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
 
         // Epub output: SmartPunct converts dashes, ellipsis, and straight quotes.
@@ -426,7 +426,7 @@ class EpubExporterTest extends TestCase
             'contents' => "This is ~~struck~~ text.\n\n- [ ] todo\n- [x] done",
         ]);
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
 
         $this->assertStringContainsString('<del>struck</del>', $html, 'strikethrough must render as <del>, not literal tildes');
@@ -1006,7 +1006,7 @@ class EpubExporterTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $actHtml = $this->exporter()->renderAct($tree->first(), $project);
         $chapterHtml = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
 
@@ -1031,7 +1031,7 @@ class EpubExporterTest extends TestCase
         $chapter->update(['position' => 12]);
         Scene::factory()->for($chapter)->create();
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         // The enum is the single source of truth: the chapter page heading and the
@@ -1065,7 +1065,7 @@ class EpubExporterTest extends TestCase
         $chapter->update(['position' => 5]);
         Scene::factory()->for($chapter)->create();
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         // Default format on a nameless chapter: "Chapter 1" with no trailing ": ".
@@ -1087,7 +1087,7 @@ class EpubExporterTest extends TestCase
         Scene::factory()->for($chapter)->create(['name' => 'The Meeting', 'contents' => 'Prose.']);
         Scene::factory()->for($chapter)->create(['name' => '', 'contents' => 'More prose.']);
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         // Off (default): no scene-title heading at all.
@@ -1135,7 +1135,7 @@ class EpubExporterTest extends TestCase
             'contents' => 'Scene prose.',
         ]);
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         // Off (default): neither description present.
@@ -1160,7 +1160,7 @@ class EpubExporterTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create(['description' => null]);
         Scene::factory()->for($chapter)->create(['description' => null, 'contents' => 'Prose.']);
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         $on = PublicationSetting::factory()->for($project)->make([
@@ -1181,7 +1181,7 @@ class EpubExporterTest extends TestCase
         Scene::factory()->for($chapter)->create(['contents' => 'First.']);
         Scene::factory()->for($chapter)->create(['contents' => 'Second.']);
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         $settings = PublicationSetting::factory()->for($project)->make(['divider_type' => 'decorative']);
@@ -1375,7 +1375,7 @@ class EpubExporterTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        $tree = $this->exporter()->bookTree($project);
+        $tree = $this->exporter()->actTree($project);
         $renderedChapter = $tree->first()->chapters->first();
 
         $default = $this->exporter()->renderChapter($renderedChapter, $project);

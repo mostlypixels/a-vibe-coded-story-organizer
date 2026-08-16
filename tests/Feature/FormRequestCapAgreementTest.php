@@ -58,6 +58,9 @@ class FormRequestCapAgreementTest extends TestCase
      */
     private const REQUESTS_BY_SLUG = [
         'project' => [StoreProjectRequest::class, UpdateProjectRequest::class],
+        // An empty list means no Form Request writes this slug's fields, so
+        // nothing can disagree with the registry about them.
+        'book' => [],
         'act' => [StoreActRequest::class, UpdateActRequest::class],
         'chapter' => [StoreChapterRequest::class, UpdateChapterRequest::class],
         'plotline' => [StorePlotlineRequest::class, UpdatePlotlineRequest::class],
