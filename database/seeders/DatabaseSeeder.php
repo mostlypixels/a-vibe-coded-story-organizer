@@ -37,6 +37,7 @@ class DatabaseSeeder extends Seeder
             MelusineSeederEn::class,
             MelusineSeederFr::class,
             MelusineSeederIt::class,
+            LoremIpsumSeeder::class,
         ]);
     }
 }

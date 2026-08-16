@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-16 — A second seeded user with a minimal project
+
+### Added
+
+- The seeder creates a second user owning a small "Lorem ipsum" project, so the demo data has more than one owner.
+
 ## 2026-08-15 — Total words in a footer on the Acts, Chapters, and Scenes lists (#109)
 
 ### Added
