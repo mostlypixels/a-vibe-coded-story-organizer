@@ -34,10 +34,28 @@ class DatabaseSeederTest extends TestCase
         $this->seed();
         $this->seed();
 
-        $this->assertSame(3, Project::count());
+        $this->assertSame(4, Project::count());
         $this->assertSame(1, Project::where('name', 'The Roman of Melusine')->count());
         $this->assertSame(1, Project::where('name', 'Le Roman de Mélusine')->count());
         $this->assertSame(1, Project::where('name', 'Il Romanzo di Melusina')->count());
+        $this->assertSame(1, Project::where('name', 'Lorem ipsum')->count());
+    }
+
+    /**
+     * The demo data needs an owner other than Admin, so a non-owner 403 can be
+     * seen by hand in the app.
+     */
+    public function test_the_seeder_gives_the_lorem_ipsum_project_a_second_owner(): void
+    {
+        $this->seed();
+        $this->seed();
+
+        $writer = User::where('email', 'writer@example.com')->firstOrFail();
+        $project = Project::where('name', 'Lorem ipsum')->firstOrFail();
+
+        $this->assertSame($writer->id, $project->user_id);
+        $this->assertNotSame($writer->id, Project::where('name', 'The Roman of Melusine')->firstOrFail()->user_id);
+        $this->assertSame(1, $project->acts()->count());
     }
 
     /**
