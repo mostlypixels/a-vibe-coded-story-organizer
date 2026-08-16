@@ -4,9 +4,7 @@ namespace App\Services\Import;
 
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
-use App\Enums\FieldKind;
 use App\Enums\ImportPhase;
-use App\Enums\RevisionOrigin;
 use App\Enums\SceneStatus;
 use App\Exceptions\ImportValidationException;
 use App\Http\Requests\UpdatePublicationSettingRequest;
@@ -17,17 +15,10 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\CodexMediaService;
 use App\Services\CoverImageService;
-use App\Services\RevisionRecorder;
-use App\Services\RevisionSummarizer;
-use App\Services\StaticSiteExporter;
-use App\Support\AutosavableFields;
-use App\Support\RevisionSummary;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -59,10 +50,8 @@ use Throwable;
  *   - Media bytes are copied to a freshly generated storage path; a declared
  *     media row whose bytes are absent (metadata-only export) still creates a
  *     row with a null path.
- *   - Revision history: when the manifest
- *     declares `includes_revisions: true`, every registered field's
- *     `revisions/<field>.json` sidecar is replayed onto the NEWLY created
- *     entity, one Revision row per array entry — see importRevisions().
+ *   - Import never replays revision history. An imported entity's history
+ *     starts empty, the same way a fresh entity's does.
  */
 class ProjectGraphImporter
 {
@@ -90,7 +79,6 @@ class ProjectGraphImporter
         private ContentSanitizer $contentSanitizer,
         private CodexMediaService $codexMediaService,
         private CoverImageService $coverImageService,
-        private RevisionSummarizer $summarizer,
     ) {}
 
     /**
@@ -111,9 +99,6 @@ class ProjectGraphImporter
      * as UNTRUSTED input: a valid config creates the project's row, an absent or
      * malformed one is skipped so the project falls back to the lazy default —
      * config is a presentation preference and must never fail the whole import.
-     *
-     * data/project/revisions/<field>.json sidecars are imported too, when the
-     * manifest declared `includes_revisions: true` — see importRevisions().
      */
     public function importProject(string $dataPath, User $user): Project
     {
@@ -129,10 +114,9 @@ class ProjectGraphImporter
         // Validate BEFORE opening the transaction — it touches no DB, and this
         // keeps a rejected config from ever influencing the project insert.
         $publicationSetting = $this->readPublicationSetting($dataPath);
-        $includeRevisions = $this->includesRevisions($dataPath);
         $snapshots = $this->readWordCountSnapshots($dataPath);
 
-        return DB::transaction(function () use ($dataPath, $user, $descriptor, $description, $dedication, $acknowledgements, $preface, $postface, $publicationSetting, $includeRevisions, $snapshots): Project {
+        return DB::transaction(function () use ($user, $descriptor, $description, $dedication, $acknowledgements, $preface, $postface, $publicationSetting, $snapshots): Project {
             $project = $user->projects()->create([
                 'name' => $this->collisionFreeName((string) $descriptor['name'], $user),
                 'description' => $description,
@@ -151,8 +135,6 @@ class ProjectGraphImporter
             }
 
             $this->importWordCountSnapshots($project, $snapshots);
-
-            $this->importRevisions($dataPath, 'data/project', 'project', $project, $user->id, $includeRevisions);
 
             return $project;
         });
@@ -278,17 +260,12 @@ class ProjectGraphImporter
      * everything else is inserted normally. Events resolve `plotline_ids`
      * through the plotline map built moments earlier.
      *
-     * Each plotline/event's revisions/<field>.json sidecars are imported
-     * alongside it — see
-     * importRevisions(). The importing user is $project->user_id (the project
-     * was created FOR that user in phase 1); this phase has no User parameter
-     * of its own.
+     * The importing user is $project->user_id (the project was created FOR
+     * that user in phase 1); this phase has no User parameter of its own.
      */
     public function importTimeline(string $dataPath, Project $project, array &$idMaps): void
     {
         $dataPath = $this->normalizePath($dataPath);
-        $includeRevisions = $this->includesRevisions($dataPath);
-        $userId = $project->user_id;
 
         $plotlines = $this->readEntityDescriptors($dataPath, 'data/timeline/plotlines/*/plotline.json');
         $events = $this->readEntityDescriptors($dataPath, 'data/timeline/events/*/event.json');
@@ -320,7 +297,7 @@ class ProjectGraphImporter
             Carbon::parse((string) $b['data']['event_datetime']), (int) $b['data']['id'],
         ]);
 
-        DB::transaction(function () use ($dataPath, $project, &$idMaps, $plotlines, $events, $mainPlotlines, $fixedEvents, $includeRevisions, $userId): void {
+        DB::transaction(function () use ($dataPath, $project, &$idMaps, $plotlines, $events, $mainPlotlines, $fixedEvents): void {
             // --- Plotlines: reconcile the main one, insert the rest. -------
             $mainRow = $project->plotlines()->where('is_main', true)->firstOrFail();
             $mainData = $mainPlotlines[0]['data'];
@@ -330,7 +307,6 @@ class ProjectGraphImporter
                 'description' => $this->readHtmlField($dataPath, $mainPlotlines[0]['directory'], $mainData),
             ]);
             $idMaps[self::MAP_PLOTLINES][(int) $mainData['id']] = $mainRow->id;
-            $this->importRevisions($dataPath, $mainPlotlines[0]['directory'], 'plotline', $mainRow, $userId, $includeRevisions);
 
             foreach ($plotlines as $item) {
                 if ((bool) $item['data']['is_main']) {
@@ -344,7 +320,6 @@ class ProjectGraphImporter
                     'description' => $this->readHtmlField($dataPath, $item['directory'], $item['data']),
                 ]);
                 $idMaps[self::MAP_PLOTLINES][(int) $item['data']['id']] = $plotline->id;
-                $this->importRevisions($dataPath, $item['directory'], 'plotline', $plotline, $userId, $includeRevisions);
             }
 
             // --- Events: reconcile the two bookends, insert the rest. ------
@@ -367,7 +342,6 @@ class ProjectGraphImporter
                 $row->plotlines()->sync(
                     $this->resolveIds($idMaps, self::MAP_PLOTLINES, $item['data']['plotline_ids'], $item['path'], 'plotline_ids'),
                 );
-                $this->importRevisions($dataPath, $item['directory'], 'event', $row, $userId, $includeRevisions);
             }
 
             foreach ($events as $item) {
@@ -386,7 +360,6 @@ class ProjectGraphImporter
                 $event->plotlines()->attach(
                     $this->resolveIds($idMaps, self::MAP_PLOTLINES, $item['data']['plotline_ids'], $item['path'], 'plotline_ids'),
                 );
-                $this->importRevisions($dataPath, $item['directory'], 'event', $event, $userId, $includeRevisions);
             }
         });
     }
@@ -403,20 +376,15 @@ class ProjectGraphImporter
      * as with codex media, disk copies live outside the DB transaction, so on
      * ANY failure the covers copied so far are unlinked before rethrowing — a
      * rolled-back phase never leaks orphan cover files.
-     *
-     * Each act/chapter/scene's revisions/<field>.json sidecars are imported
-     * alongside it — see importRevisions().
      */
     public function importStory(string $dataPath, Project $project, array &$idMaps): void
     {
         $dataPath = $this->normalizePath($dataPath);
-        $includeRevisions = $this->includesRevisions($dataPath);
-        $userId = $project->user_id;
 
         $copiedCovers = [];
 
         try {
-            DB::transaction(function () use ($dataPath, $project, &$idMaps, &$copiedCovers, $includeRevisions, $userId): void {
+            DB::transaction(function () use ($dataPath, $project, &$idMaps, &$copiedCovers): void {
                 foreach ($this->readEntityDescriptors($dataPath, 'data/acts/*/act.json') as $actItem) {
                     $act = $project->acts()->create([
                         'name' => $actItem['data']['name'],
@@ -424,9 +392,8 @@ class ProjectGraphImporter
                         'description' => $this->readHtmlField($dataPath, $actItem['directory'], $actItem['data']),
                     ]);
                     $idMaps[self::MAP_ACTS][(int) $actItem['data']['id']] = $act->id;
-                    $this->importRevisions($dataPath, $actItem['directory'], 'act', $act, $userId, $includeRevisions);
 
-                    $this->importChapters($dataPath, $act, $actItem['directory'], $idMaps, $copiedCovers, $userId, $includeRevisions);
+                    $this->importChapters($dataPath, $act, $actItem['directory'], $idMaps, $copiedCovers);
                 }
             });
         } catch (Throwable $exception) {
@@ -448,21 +415,15 @@ class ProjectGraphImporter
      * still creates its row with a null path. Disk copies are not covered by
      * the DB transaction, so on ANY failure the files copied so far are
      * removed before rethrowing — a rolled-back phase never leaks orphans.
-     *
-     * Each entry's revisions/<field>.json sidecars are imported
-     * alongside it — see importRevisions(). Tags/attributes are not
-     * registered in AutosavableFields, so they never carry any.
      */
     public function importCodex(string $dataPath, Project $project, array &$idMaps): void
     {
         $dataPath = $this->normalizePath($dataPath);
-        $includeRevisions = $this->includesRevisions($dataPath);
-        $userId = $project->user_id;
 
         $copiedPaths = [];
 
         try {
-            DB::transaction(function () use ($dataPath, $project, &$idMaps, &$copiedPaths, $includeRevisions, $userId): void {
+            DB::transaction(function () use ($dataPath, $project, &$idMaps, &$copiedPaths): void {
                 foreach ($this->readJsonIfPresent($dataPath, 'data/tags.json') as $tagData) {
                     $tag = $project->tags()->create(['name' => $tagData['name']]);
                     $idMaps[self::MAP_TAGS][(int) $tagData['id']] = $tag->id;
@@ -478,7 +439,7 @@ class ProjectGraphImporter
                 }
 
                 foreach ($this->readEntityDescriptors($dataPath, 'data/codex/*/*/entry.json') as $item) {
-                    $this->importCodexEntry($dataPath, $project, $item, $idMaps, $copiedPaths, $userId, $includeRevisions);
+                    $this->importCodexEntry($dataPath, $project, $item, $idMaps, $copiedPaths);
                 }
             });
         } catch (Throwable $exception) {
@@ -493,7 +454,7 @@ class ProjectGraphImporter
      *
      * @param  array<int, string>  $copiedCovers  cover paths copied so far (for rollback cleanup)
      */
-    private function importChapters(string $dataPath, Act $act, string $actDirectory, array &$idMaps, array &$copiedCovers, int $userId, bool $includeRevisions): void
+    private function importChapters(string $dataPath, Act $act, string $actDirectory, array &$idMaps, array &$copiedCovers): void
     {
         foreach ($this->readEntityDescriptors($dataPath, "{$actDirectory}/chapters/*/chapter.json") as $chapterItem) {
             $chapter = $act->chapters()->create([
@@ -503,10 +464,9 @@ class ProjectGraphImporter
                 'cover_image' => $this->importChapterCover($dataPath, $chapterItem, $copiedCovers),
             ]);
             $idMaps[self::MAP_CHAPTERS][(int) $chapterItem['data']['id']] = $chapter->id;
-            $this->importRevisions($dataPath, $chapterItem['directory'], 'chapter', $chapter, $userId, $includeRevisions);
 
             foreach ($this->readEntityDescriptors($dataPath, "{$chapterItem['directory']}/scenes/*/scene.json") as $sceneItem) {
-                $this->importScene($dataPath, $chapter, $sceneItem, $idMaps, $userId, $includeRevisions);
+                $this->importScene($dataPath, $chapter, $sceneItem, $idMaps);
             }
         }
     }
@@ -548,7 +508,7 @@ class ProjectGraphImporter
      *
      * @param  array{path: string, directory: string, data: array<string, mixed>}  $item
      */
-    private function importScene(string $dataPath, Chapter $chapter, array $item, array &$idMaps, int $userId, bool $includeRevisions): void
+    private function importScene(string $dataPath, Chapter $chapter, array $item, array &$idMaps): void
     {
         $data = $item['data'];
 
@@ -566,7 +526,6 @@ class ProjectGraphImporter
             'notes' => $this->readHtmlField($dataPath, $item['directory'], $data, 'notes_file'),
         ], fn (mixed $value): bool => $value !== null));
         $idMaps[self::MAP_SCENES][(int) $data['id']] = $scene->id;
-        $this->importRevisions($dataPath, $item['directory'], 'scene', $scene, $userId, $includeRevisions);
 
         $mentionedEventIds = $this->resolveIds($idMaps, self::MAP_EVENTS, $data['mentioned_event_ids'], $item['path'], 'mentioned_event_ids');
         if ($mentionedEventIds !== []) {
@@ -581,7 +540,7 @@ class ProjectGraphImporter
      * @param  array{path: string, directory: string, data: array<string, mixed>}  $item
      * @param  array<int, string>  $copiedPaths
      */
-    private function importCodexEntry(string $dataPath, Project $project, array $item, array &$idMaps, array &$copiedPaths, int $userId, bool $includeRevisions): void
+    private function importCodexEntry(string $dataPath, Project $project, array $item, array &$idMaps, array &$copiedPaths): void
     {
         $data = $item['data'];
 
@@ -594,7 +553,6 @@ class ProjectGraphImporter
             'description' => $this->readHtmlField($dataPath, $item['directory'], $data),
         ]);
         $idMaps[self::MAP_ENTRIES][(int) $data['id']] = $entry->id;
-        $this->importRevisions($dataPath, $item['directory'], 'codex', $entry, $userId, $includeRevisions);
 
         foreach ((array) $data['aliases'] as $alias) {
             $entry->aliases()->create(['alias' => (string) $alias]);
@@ -839,146 +797,6 @@ class ProjectGraphImporter
         return is_file("{$dataPath}/{$relativePath}")
             ? $this->readJson($dataPath, $relativePath)
             : [];
-    }
-
-    /**
-     * Whether this archive's manifest declared `includes_revisions: true`.
-     * Read tolerantly, the same way `readJsonIfPresent()` treats every other
-     * optional descriptor: a manifest without the key at all — every archive
-     * exported before this feature shipped — reads as false, not an error.
-     * Backward compatibility depends on it.
-     */
-    private function includesRevisions(string $dataPath): bool
-    {
-        $manifest = $this->readJsonIfPresent($dataPath, 'data/manifest.json');
-
-        return (bool) ($manifest['includes_revisions'] ?? false);
-    }
-
-    /**
-     * Import one entity's revision history from its `revisions/<field>.json`
-     * sidecars, written by App\Services\StaticSiteExporter. It is a no-op unless
-     * $includeRevisions is true, so every call site above calls it unconditionally.
-     *
-     * A field with no sidecar file is skipped, and that is not an error. The field
-     * was never autosaved, or the export toggle was off. The exporter omits the
-     * file. It never writes an empty one.
-     *
-     * These rules are binding for every imported row:
-     *   - keeps `created_at` verbatim from the archive — rewriting it to
-     *     import time would make the entire pre-import era claim to have been
-     *     written on restore day, breaking compare-by-date.
-     *   - gets `user_id` remapped to the IMPORTING user — the archive's own
-     *     user_id names an account on the source install that may not even
-     *     exist here.
-     *   - gets `origin` forced to `import` regardless of the source row's
-     *     origin, which exempts it from age-pruning (Revision::prunable()):
-     *     an import is an explicit act of preservation, not something a
-     *     nightly prune should be allowed to quietly erase.
-     *   - gets its `save_id` REMAPPED, never copied — see below.
-     *
-     * Save-point grouping survives an import as a *shape*, not as an identity.
-     * A source `save_id` names a group on another install and could collide
-     * with a local one, so each distinct source id is translated to one fresh
-     * local ULID: two source rows that were one save stay one save here, two
-     * source groups stay two groups. A row whose sidecar predates the feature
-     * has no `save_id` at all and gets a fresh id of its own.
-     *
-     * The translation table is local to this method — i.e. scoped to ONE
-     * entity — which also enforces the local invariant that a save point never
-     * spans entities (RevisionRecorder mints one id per (request, entity)).
-     * An archive is untrusted input: if a foreign one claims a single save
-     * covering two entities, importing it verbatim would let "Undo this save"
-     * reach into an entity the writer never asked about.
-     *
-     * Rich/Markdown values are run through the same ContentSanitizer gate as
-     * the entity's own current field value (readHtmlField()/
-     * readMarkdownField()) — a revision's stored value is just as much
-     * untrusted archive content as the live column, and it is later rendered
-     * on the history and compare pages.
-     *
-     * > [!IMPORTANT]
-     * > `summary_html` / `change_count` are **recomputed**, never read from the
-     * > archive: they are derived from the values in the sidecar, and the
-     * > exporter deliberately leaves derived data out of an interchange format.
-     * > Recomputing them here depends on **replay order** — the sidecar is
-     * > written oldest-first ({@see StaticSiteExporter::addRevisions()}),
-     * > so each row's predecessor is simply the row before it in this loop. Do
-     * > not reorder, filter or parallelise this replay without carrying the
-     * > predecessor along some other way, or every summary after the first will
-     * > describe the wrong pair of values.
-     */
-    private function importRevisions(string $dataPath, string $directory, string $slug, Model $entity, int $userId, bool $includeRevisions): void
-    {
-        if (! $includeRevisions) {
-            return;
-        }
-
-        [, $fields] = AutosavableFields::REGISTRY[$slug];
-
-        /** @var array<string, string> source save_id => fresh local ULID */
-        $saveIds = [];
-
-        foreach ($fields as $field => $kind) {
-            // The predecessor of the row about to be written, carried along the
-            // replay rather than queried back: the sidecar is oldest-first, so
-            // it is always the row this loop wrote last. Null for the first row,
-            // which has nothing before it and so gets no summary.
-            $previousValue = null;
-
-            foreach ($this->readJsonIfPresent($dataPath, "{$directory}/revisions/{$field}.json") as $revisionData) {
-                $value = (string) ($revisionData['value'] ?? '');
-
-                match ($kind) {
-                    FieldKind::Rich => $this->contentSanitizer->assertHtmlAllowed($value),
-                    FieldKind::Markdown => $this->contentSanitizer->assertMarkdownAllowed($value),
-                    FieldKind::Plain => null,
-                };
-
-                $sourceSaveId = $revisionData['save_id'] ?? null;
-                $summary = $this->summarizeImported($kind, $previousValue, $value);
-
-                $entity->revisions()->create([
-                    'field' => $field,
-                    'save_id' => is_string($sourceSaveId) && $sourceSaveId !== ''
-                        ? $saveIds[$sourceSaveId] ??= (string) Str::ulid()
-                        : (string) Str::ulid(),
-                    'value' => $value,
-                    'size_bytes' => strlen($value),
-                    'summary_html' => $summary->summaryHtml,
-                    'change_count' => $summary->changeCount,
-                    'project_id' => $entity->revisionProject()->id,
-                    'user_id' => $userId,
-                    'label' => $revisionData['label'] ?? null,
-                    'origin' => RevisionOrigin::Import,
-                    'created_at' => $revisionData['created_at'],
-                ]);
-
-                $previousValue = $value;
-            }
-        }
-    }
-
-    /**
-     * One imported row's summary, or an empty one if the diff layer trips over
-     * the archive's content.
-     *
-     * Guarded for the same reason {@see RevisionRecorder} guards
-     * its own call, only more so: this input is untrusted, and an import that
-     * fell over on a cosmetic list-page detail would lose the writer a whole
-     * project's history.
-     */
-    private function summarizeImported(FieldKind $kind, ?string $previousValue, string $value): RevisionSummary
-    {
-        try {
-            return $this->summarizer->summarize($kind, $previousValue, $value);
-        } catch (Throwable $exception) {
-            Log::warning('Could not summarize an imported revision; importing it without a summary.', [
-                'exception' => $exception,
-            ]);
-
-            return new RevisionSummary(null, 0);
-        }
     }
 
     /**

@@ -20,7 +20,7 @@ class PurgeRevisions extends Command
 {
     protected $signature = 'revisions:purge
         {--project= : Only purge revisions belonging to this project ID}
-        {--category= : Which category to purge (automatic, manual, labeled, imported)}
+        {--category= : Which category to purge (automatic, manual, labeled)}
         {--before= : Only purge revisions created before this date/time (any format Carbon::parse understands)}
         {--dry-run : Report what would be removed without deleting anything}';
 

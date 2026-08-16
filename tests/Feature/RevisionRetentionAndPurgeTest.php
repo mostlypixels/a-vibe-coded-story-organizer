@@ -8,6 +8,7 @@ use App\Models\Revision;
 use App\Models\RevisionSetting;
 use App\Services\RevisionPurger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 /**
@@ -231,7 +232,6 @@ class RevisionRetentionAndPurgeTest extends TestCase
         $this->assertModelMissing($rows['automatic']);
         $this->assertModelExists($rows['manual']);
         $this->assertModelExists($rows['labeled']);
-        $this->assertModelExists($rows['imported']);
     }
 
     public function test_purger_removes_exactly_the_manual_category(): void
@@ -244,7 +244,6 @@ class RevisionRetentionAndPurgeTest extends TestCase
         $this->assertModelExists($rows['automatic']);
         $this->assertModelMissing($rows['manual']);
         $this->assertModelExists($rows['labeled']);
-        $this->assertModelExists($rows['imported']);
     }
 
     public function test_purger_removes_exactly_the_labeled_category(): void
@@ -257,20 +256,13 @@ class RevisionRetentionAndPurgeTest extends TestCase
         $this->assertModelExists($rows['automatic']);
         $this->assertModelExists($rows['manual']);
         $this->assertModelMissing($rows['labeled']);
-        $this->assertModelExists($rows['imported']);
     }
 
-    public function test_purger_removes_exactly_the_imported_category(): void
+    public function test_purger_rejects_the_retired_imported_category(): void
     {
-        $rows = $this->seedOneRevisionPerCategory();
+        $this->expectException(InvalidArgumentException::class);
 
-        $result = (new RevisionPurger)->purge(RevisionPurger::CATEGORY_IMPORTED);
-
-        $this->assertSame(1, $result->count);
-        $this->assertModelExists($rows['automatic']);
-        $this->assertModelExists($rows['manual']);
-        $this->assertModelExists($rows['labeled']);
-        $this->assertModelMissing($rows['imported']);
+        (new RevisionPurger)->purge('imported');
     }
 
     public function test_purger_with_an_age_cutoff_removes_only_older_rows_in_the_category(): void
@@ -314,7 +306,7 @@ class RevisionRetentionAndPurgeTest extends TestCase
 
         $this->assertSame(1, $result->count);
         $this->assertModelExists($rows['automatic']);
-        $this->assertDatabaseCount('revisions', 4);
+        $this->assertDatabaseCount('revisions', 3);
     }
 
     public function test_purger_can_remove_a_labeled_or_manual_revision_when_explicitly_targeted(): void
@@ -339,7 +331,7 @@ class RevisionRetentionAndPurgeTest extends TestCase
 
     public function test_purger_rejects_an_unknown_category(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
 
         (new RevisionPurger)->purge('not-a-real-category');
     }
@@ -356,13 +348,13 @@ class RevisionRetentionAndPurgeTest extends TestCase
             ->expectsOutputToContain('Would remove 1 revision(s)')
             ->assertSuccessful();
 
-        $this->assertDatabaseCount('revisions', 4);
+        $this->assertDatabaseCount('revisions', 3);
 
         $this->artisan('revisions:purge', ['--category' => 'automatic'])
             ->expectsOutputToContain('Removed 1 revision(s)')
             ->assertSuccessful();
 
-        $this->assertDatabaseCount('revisions', 3);
+        $this->assertDatabaseCount('revisions', 2);
     }
 
     public function test_purge_command_requires_a_category(): void
@@ -401,7 +393,7 @@ class RevisionRetentionAndPurgeTest extends TestCase
     }
 
     /**
-     * Seed exactly one revision in each of RevisionPurger's four categories,
+     * Seed exactly one revision in each RevisionPurger category,
      * on distinct fields so category filters cannot accidentally overlap.
      *
      * @return array<string, Revision>
@@ -434,12 +426,6 @@ class RevisionRetentionAndPurgeTest extends TestCase
                 'field' => 'dedication',
                 'origin' => RevisionOrigin::Revert,
                 'label' => 'Reverted to last week',
-            ]),
-            'imported' => Revision::factory()->create([
-                ...$base,
-                'field' => 'preface',
-                'origin' => RevisionOrigin::Import,
-                'label' => null,
             ]),
         ];
     }

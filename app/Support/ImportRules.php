@@ -20,16 +20,15 @@ class ImportRules
     /**
      * The data/manifest.json `version` values this importer knows how to read.
      *
-     * Version 2 adds the four project front-/back-matter Markdown fields,
-     * chapter covers, and the serialized PublicationSetting — all additive, so
-     * version 1 archives (missing these keys) still import cleanly, just with
-     * the new fields defaulted/null.
+     * Version 3 dropped the `includes_revisions` manifest key and the
+     * `revisions/` sidecar — a removed key is a breaking layout change, so
+     * versions 1 and 2 are rejected rather than imported with history missing.
      * Extending this list is the one-line opt-in for a future breaking change
      * (see documentation/export-format.md → "The version contract").
      *
      * @var array<int, int>
      */
-    public const SUPPORTED_MANIFEST_VERSIONS = [1, 2];
+    public const SUPPORTED_MANIFEST_VERSIONS = [3];
 
     /**
      * Default archive size cap in kilobytes (200 MB).
@@ -130,6 +129,15 @@ class ImportRules
      */
     public static function isAllowedPath(string $path): bool
     {
+        // No v3 export can produce a revisions/ sidecar, so a zip carrying one
+        // is malformed by definition — reject it before the allow-list below
+        // would otherwise let it through under data/acts/, data/timeline/, etc.
+        // A path *segment* match, not a substring one: an entry legitimately
+        // slugged "...-revisions" must still be allowed.
+        if (preg_match('#(^|/)revisions/#', $path) === 1) {
+            return false;
+        }
+
         if (in_array($path, self::ALLOWED_FILES, true)) {
             return true;
         }

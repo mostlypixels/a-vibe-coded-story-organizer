@@ -16,9 +16,9 @@ use InvalidArgumentException;
  * This is the opposite number of Revision::prunable(): prune is the
  * unattended, safety-preserving daily sweep that never touches a labeled or
  * non-`automatic` row; purge is a deliberate action the user asked for, and
- * is explicitly *allowed* to remove those rows — without it, imported
- * revisions and a two-year `manual` history would be a one-way ratchet with
- * no release valve.
+ * is explicitly *allowed* to remove those rows — without it, a two-year
+ * `manual` and `labeled` history would be a one-way ratchet with no release
+ * valve.
  *
  * Both entry points call this single service, so the rules can never drift
  * between them:
@@ -31,15 +31,13 @@ class RevisionPurger
      * A category is a cross-cutting slice of the `revisions` table, not the
      * same thing as a RevisionOrigin case: "labeled" matches on the `label`
      * column regardless of origin (a manual or automatic revision can both
-     * be labeled), while the other three categories match on origin.
+     * be labeled), while the other categories match on origin.
      */
     public const CATEGORY_AUTOMATIC = 'automatic';
 
     public const CATEGORY_MANUAL = 'manual';
 
     public const CATEGORY_LABELED = 'labeled';
-
-    public const CATEGORY_IMPORTED = 'imported';
 
     /**
      * @var list<string>
@@ -48,7 +46,6 @@ class RevisionPurger
         self::CATEGORY_AUTOMATIC,
         self::CATEGORY_MANUAL,
         self::CATEGORY_LABELED,
-        self::CATEGORY_IMPORTED,
     ];
 
     /**
@@ -98,7 +95,6 @@ class RevisionPurger
             self::CATEGORY_AUTOMATIC => $query->where('origin', RevisionOrigin::Automatic),
             self::CATEGORY_MANUAL => $query->where('origin', RevisionOrigin::Manual),
             self::CATEGORY_LABELED => $query->whereNotNull('label'),
-            self::CATEGORY_IMPORTED => $query->where('origin', RevisionOrigin::Import),
         };
 
         if ($projectId !== null) {

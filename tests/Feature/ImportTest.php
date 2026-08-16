@@ -79,9 +79,8 @@ class ImportTest extends TestCase
         $this->assertSame('Fixture project', $project->name);
         $this->assertSame($user->id, $project->user_id);
 
-        // The fixture archive is a manifest-version-1 export, pre-dating the four
-        // epub-configuration front-/back-matter fields: their `*_file`
-        // links are absent from project.json, so they must import as null rather
+        // The fixture archive's project.json omits the four epub-configuration
+        // front-/back-matter `*_file` links, so they must import as null rather
         // than crash the graph importer.
         $this->assertNull($project->dedication);
         $this->assertNull($project->acknowledgements);
@@ -476,7 +475,7 @@ class ImportTest extends TestCase
         $zip->open($zipPath, ZipArchive::OVERWRITE);
 
         $zip->addFromString('data/manifest.json', json_encode([
-            'version' => 1, 'project_id' => 900,
+            'version' => 3, 'project_id' => 900,
             'exported_at' => '2026-07-13T00:00:00+00:00', 'includes_media' => true,
         ]));
 
@@ -552,7 +551,7 @@ class ImportTest extends TestCase
 
         $zip = new ZipArchive;
         $zip->open($zipPath, ZipArchive::OVERWRITE);
-        $zip->addFromString('data/manifest.json', json_encode(['version' => 1]));
+        $zip->addFromString('data/manifest.json', json_encode(['version' => 3]));
         $zip->addFromString('../escape.txt', 'pwned');
         $zip->close();
 

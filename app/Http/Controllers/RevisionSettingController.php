@@ -72,7 +72,7 @@ class RevisionSettingController extends Controller
 
     /**
      * Delete every revision in one whole RevisionPurger category
-     * (automatic/manual/labeled/imported) — the "per category" bulk-delete
+     * (automatic/manual/labeled) — the "per category" bulk-delete
      * actions on the storage panel. `{category}` is constrained at the
      * router to RevisionPurger::CATEGORIES, so an unknown value never
      * reaches here.

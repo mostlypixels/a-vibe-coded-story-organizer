@@ -3,7 +3,6 @@
 namespace Tests\Unit\Import;
 
 use App\Enums\ImportPhase;
-use App\Enums\RevisionOrigin;
 use App\Exceptions\ImportValidationException;
 use App\Models\Import;
 use App\Models\Project;
@@ -15,7 +14,6 @@ use App\Services\Import\ArchiveValidator;
 use App\Services\Import\ContentSanitizer;
 use App\Services\Import\ProjectGraphImporter;
 use App\Services\ProjectImporter;
-use App\Services\RevisionSummarizer;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -145,12 +143,9 @@ class ProjectImporterTest extends TestCase
         $this->assertSame(1, $project->codexEntries()->count());
         $this->assertSame(1, $project->tags()->count());
 
-        // The scene's revision sidecar imports too, as origin: import, owned by
-        // the importing user.
-        $scene = $project->acts()->firstOrFail()->chapters()->firstOrFail()->scenes()->where('name', 'Scene B')->firstOrFail();
-        $revision = $scene->revisions()->where('field', 'contents')->firstOrFail();
-        $this->assertSame(RevisionOrigin::Import, $revision->origin);
-        $this->assertSame($user->id, $revision->user_id);
+        // No import ever creates history — every imported entity starts with
+        // an empty revision trail, the same way a fresh entity's does.
+        $this->assertSame(0, Revision::query()->count());
 
         // Nothing left to resume from — the working files are gone.
         Storage::disk('local')->assertMissing($import->archive_path);
@@ -181,9 +176,6 @@ class ProjectImporterTest extends TestCase
         $this->assertSame(0, $project->tags()->count());
         $this->assertSame(0, $project->codexAttributes()->count());
         $this->assertSame(0, $project->codexEntries()->count());
-
-        // The Story phase's own revision import already committed.
-        $this->assertSame(1, Revision::query()->where('origin', RevisionOrigin::Import)->count());
 
         // The failure message is safe to display: it names the phase, never
         // the internal exception text.
@@ -225,10 +217,6 @@ class ProjectImporterTest extends TestCase
         $this->assertSame(1, $project->tags()->count());
         $this->assertSame(1, $project->codexAttributes()->count());
         $this->assertSame(1, $project->codexEntries()->count());
-
-        // The Story phase's revision import committed BEFORE the stall — a
-        // resume must not re-run it and duplicate the row.
-        $this->assertSame(1, Revision::query()->where('origin', RevisionOrigin::Import)->count());
 
         // Completion cleaned the working files up.
         Storage::disk('local')->assertMissing($import->archive_path);
@@ -288,7 +276,6 @@ class ProjectImporterTest extends TestCase
                 app(ContentSanitizer::class),
                 app(CodexMediaService::class),
                 app(CoverImageService::class),
-                app(RevisionSummarizer::class),
             ),
             app(SceneReferenceMatcher::class),
         );
@@ -307,7 +294,6 @@ class ProjectImporterTest extends TestCase
                 app(ContentSanitizer::class),
                 app(CodexMediaService::class),
                 app(CoverImageService::class),
-                app(RevisionSummarizer::class),
             ],
         )->makePartial();
         $graphImporter->shouldReceive('importCodex')->andThrow(new RuntimeException('boom'));
@@ -344,9 +330,8 @@ class ProjectImporterTest extends TestCase
         $zip->open($zipPath, ZipArchive::OVERWRITE);
 
         $zip->addFromString('data/manifest.json', json_encode([
-            'version' => 1, 'project_id' => 900,
+            'version' => 3, 'project_id' => 900,
             'exported_at' => '2026-07-13T00:00:00+00:00', 'includes_media' => true,
-            'includes_revisions' => true,
         ]));
 
         $zip->addFromString('data/project/project.json', json_encode([
@@ -382,13 +367,6 @@ class ProjectImporterTest extends TestCase
             'contents_file' => 'contents.md',
         ]));
         $zip->addFromString("{$sceneDir}/300-scene-b/contents.md", 'Some *prose* here.');
-        // A revision sidecar for Scene B's contents — the Story phase commits
-        // this row BEFORE the codex-phase stall in the tests below, so it is
-        // the one thing that proves a resume never re-runs an already
-        // committed phase's revision import a second time.
-        $zip->addFromString("{$sceneDir}/300-scene-b/revisions/contents.json", json_encode([
-            ['id' => 1, 'value' => 'An earlier draft.', 'origin' => 'manual', 'label' => null, 'user_id' => 999999, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
         $zip->addFromString("{$sceneDir}/301-scene-a/scene.json", json_encode([
             'id' => 301, 'name' => 'Scene A', 'position' => 1, 'status' => 'draft',
             'chapter_id' => 200, 'event_id' => null, 'mentioned_event_ids' => [],

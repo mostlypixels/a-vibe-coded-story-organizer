@@ -11,11 +11,9 @@ use App\Models\CodexMedia;
 use App\Models\Event;
 use App\Models\Project;
 use App\Models\PublicationSetting;
-use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\Tag;
 use App\Models\WordCountSnapshot;
-use App\Support\AutosavableFields;
 use App\Support\RichText;
 use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection;
@@ -52,29 +50,20 @@ class StaticSiteExporter
      * breaking change to the data/ layout. Documented in
      * documentation/export-format.md.
      *
-     * The epub-configuration feature bumped it to 2. One bump covers a whole
-     * feature, never one per change: that single bump takes in the four project
-     * front-/back-matter Markdown columns, chapter covers, and the serialized
-     * PublicationSetting.
-     * `ImportRules::SUPPORTED_MANIFEST_VERSIONS` still accepts the
-     * pre-bump version 1 — those archives simply import with the new fields null.
+     * The no-revisions-import-export feature bumped it to 3: the manifest no
+     * longer carries `includes_revisions`, and no `revisions/` sidecar is
+     * written. A removed manifest key is a breaking layout change, so
+     * `ImportRules::SUPPORTED_MANIFEST_VERSIONS` accepts version 3 only —
+     * older archives are rejected rather than imported with history dropped.
      */
-    private const DATA_VERSION = 2;
+    private const DATA_VERSION = 3;
 
     /**
      * Build the export and return the path to a ready temp zip. The caller (the
      * controller) streams it and deletes it after send. The temp file is removed
      * here too if the build throws, so no orphaned zips are left behind.
-     *
-     * $includeRevisions is the "Include revision history" toggle: when on,
-     * every registered field on every
-     * exported entity gets a data/.../revisions/<field>.json sidecar holding
-     * that field's WHOLE history as one array — never one file per revision
-     * (a heavily-edited scene must not add hundreds of entries to the zip).
-     * EPUB/PDF exports never include revisions; this toggle only affects this
-     * zip exporter.
      */
-    public function export(Project $project, bool $includeMedia, bool $includeRevisions = false): string
+    public function export(Project $project, bool $includeMedia): string
     {
         $path = $this->freshTempZipPath();
 
@@ -85,12 +74,12 @@ class StaticSiteExporter
 
         try {
             $this->addReadme($zip, $project);
-            $this->addManifest($zip, $project, $includeMedia, $includeRevisions);
+            $this->addManifest($zip, $project, $includeMedia);
             $this->addPublicationSetting($zip, $project);
             $this->addWordCountSnapshots($zip, $project);
-            $this->addStory($zip, $project, $includeMedia, $includeRevisions);
-            $this->addTimeline($zip, $project, $includeRevisions);
-            $this->addCodex($zip, $project, $includeMedia, $includeRevisions);
+            $this->addStory($zip, $project, $includeMedia);
+            $this->addTimeline($zip, $project);
+            $this->addCodex($zip, $project, $includeMedia);
             $this->addBook($zip, $project);
         } catch (\Throwable $e) {
             // Abandon the half-built archive and delete the temp file so a failed
@@ -111,17 +100,15 @@ class StaticSiteExporter
     /**
      * data/manifest.json — the archive's root descriptor. `includes_media`
      * reflects the "Include images & files" toggle; media BYTES are governed by
-     * it, but the manifest records the choice regardless. `includes_revisions`
-     * is the same pattern for the "Include revision history" toggle.
+     * it, but the manifest records the choice regardless.
      */
-    private function addManifest(ZipArchive $zip, Project $project, bool $includeMedia, bool $includeRevisions): void
+    private function addManifest(ZipArchive $zip, Project $project, bool $includeMedia): void
     {
         $manifest = [
             'version' => self::DATA_VERSION,
             'project_id' => $project->id,
             'exported_at' => now()->toIso8601String(),
             'includes_media' => $includeMedia,
-            'includes_revisions' => $includeRevisions,
         ];
 
         $this->addJson($zip, 'data/manifest.json', $manifest);
@@ -237,9 +224,9 @@ class StaticSiteExporter
      * raw field files (exact stored column values — never re-rendered or
      * re-sanitized). Nesting mirrors ownership.
      */
-    private function addStory(ZipArchive $zip, Project $project, bool $includeMedia, bool $includeRevisions): void
+    private function addStory(ZipArchive $zip, Project $project, bool $includeMedia): void
     {
-        $this->addProject($zip, $project, $includeRevisions);
+        $this->addProject($zip, $project);
 
         // Eager-load the whole tree once, ordered by position at every level (the
         // app-wide invariant that also drives book/ numbering) — no N+1. The scene's
@@ -262,7 +249,6 @@ class StaticSiteExporter
             ];
             $actJson += $this->addFieldFile($zip, $actDir, 'description_file', 'description.html', $act->description);
             $this->addJson($zip, "{$actDir}/act.json", $actJson);
-            $this->addRevisions($zip, $actDir, 'act', $act, $includeRevisions);
 
             foreach ($act->chapters as $chapter) {
                 $chapterDir = "{$actDir}/chapters/".$this->entityDir($chapter);
@@ -276,10 +262,9 @@ class StaticSiteExporter
                 $chapterJson += $this->addFieldFile($zip, $chapterDir, 'description_file', 'description.html', $chapter->description);
                 $chapterJson += $this->addChapterCover($zip, $chapterDir, $chapter, $includeMedia);
                 $this->addJson($zip, "{$chapterDir}/chapter.json", $chapterJson);
-                $this->addRevisions($zip, $chapterDir, 'chapter', $chapter, $includeRevisions);
 
                 foreach ($chapter->scenes as $scene) {
-                    $this->addScene($zip, $chapterDir, $scene, $includeRevisions);
+                    $this->addScene($zip, $chapterDir, $scene);
                 }
             }
         }
@@ -292,7 +277,7 @@ class StaticSiteExporter
      * non-empty. The four Markdown fields stay RAW — never rendered — like a
      * scene's contents.md.
      */
-    private function addProject(ZipArchive $zip, Project $project, bool $includeRevisions): void
+    private function addProject(ZipArchive $zip, Project $project): void
     {
         $dir = 'data/project';
 
@@ -309,7 +294,6 @@ class StaticSiteExporter
         $json += $this->addFieldFile($zip, $dir, 'postface_file', 'postface.md', $project->postface);
 
         $this->addJson($zip, "{$dir}/project.json", $json);
-        $this->addRevisions($zip, $dir, 'project', $project, $includeRevisions);
     }
 
     /**
@@ -319,7 +303,7 @@ class StaticSiteExporter
      * (share_token, share_expires_at) are deliberately excluded: they are
      * deployment secrets.
      */
-    private function addScene(ZipArchive $zip, string $chapterDir, Scene $scene, bool $includeRevisions): void
+    private function addScene(ZipArchive $zip, string $chapterDir, Scene $scene): void
     {
         $dir = "{$chapterDir}/scenes/".$this->entityDir($scene);
 
@@ -337,7 +321,6 @@ class StaticSiteExporter
         $json += $this->addFieldFile($zip, $dir, 'notes_file', 'notes.html', $scene->notes);
 
         $this->addJson($zip, "{$dir}/scene.json", $json);
-        $this->addRevisions($zip, $dir, 'scene', $scene, $includeRevisions);
     }
 
     /**
@@ -386,7 +369,7 @@ class StaticSiteExporter
      * not duplicating — them on a future import is an import-time concern, not handled
      * here (see documentation/export-format.md → Timeline).
      */
-    private function addTimeline(ZipArchive $zip, Project $project, bool $includeRevisions): void
+    private function addTimeline(ZipArchive $zip, Project $project): void
     {
         // Deterministic file iteration: plotlines by name (no position column exists),
         // events by (event_datetime, id) — the same canonical tie-break the bookend
@@ -411,11 +394,10 @@ class StaticSiteExporter
             $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $plotline->description);
 
             $this->addJson($zip, "{$dir}/plotline.json", $json);
-            $this->addRevisions($zip, $dir, 'plotline', $plotline, $includeRevisions);
         }
 
         foreach ($project->events as $event) {
-            $this->addEvent($zip, $event, $includeRevisions);
+            $this->addEvent($zip, $event);
         }
     }
 
@@ -426,7 +408,7 @@ class StaticSiteExporter
      * ISO-8601 string; `is_fixed` marks the Start/End bookends. `plotline_ids` comes
      * from the event_plotline pivot.
      */
-    private function addEvent(ZipArchive $zip, Event $event, bool $includeRevisions): void
+    private function addEvent(ZipArchive $zip, Event $event): void
     {
         $dir = 'data/timeline/events/'.$this->slugDir($event->id, $event->title);
 
@@ -441,7 +423,6 @@ class StaticSiteExporter
         $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $event->description);
 
         $this->addJson($zip, "{$dir}/event.json", $json);
-        $this->addRevisions($zip, $dir, 'event', $event, $includeRevisions);
     }
 
     /**
@@ -451,7 +432,7 @@ class StaticSiteExporter
      * ($includeMedia) governs whether media BYTES are copied; the media[] metadata in
      * each entry.json is written REGARDLESS.
      */
-    private function addCodex(ZipArchive $zip, Project $project, bool $includeMedia, bool $includeRevisions): void
+    private function addCodex(ZipArchive $zip, Project $project, bool $includeMedia): void
     {
         $this->addCodexAttributes($zip, $project);
         $this->addTags($zip, $project);
@@ -470,7 +451,7 @@ class StaticSiteExporter
         ]);
 
         foreach ($project->codexEntries as $entry) {
-            $this->addCodexEntry($zip, $entry, $includeMedia, $includeRevisions);
+            $this->addCodexEntry($zip, $entry, $includeMedia);
         }
     }
 
@@ -522,7 +503,7 @@ class StaticSiteExporter
      * `media[]` IS the manifest (there is deliberately no separate images/manifest.json).
      * It is written whether or not bytes are copied; only the bytes are toggle-governed.
      */
-    private function addCodexEntry(ZipArchive $zip, CodexEntry $entry, bool $includeMedia, bool $includeRevisions): void
+    private function addCodexEntry(ZipArchive $zip, CodexEntry $entry, bool $includeMedia): void
     {
         $dir = 'data/codex/'.$entry->type->value.'/'.$this->entityDir($entry);
 
@@ -544,7 +525,6 @@ class StaticSiteExporter
         $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $entry->description);
 
         $this->addJson($zip, "{$dir}/entry.json", $json);
-        $this->addRevisions($zip, $dir, 'codex', $entry, $includeRevisions);
     }
 
     /**
@@ -808,71 +788,6 @@ class StaticSiteExporter
         $this->addFromString($zip, "{$dir}/{$filename}", $value);
 
         return [$linkKey => $filename];
-    }
-
-    /**
-     * data/.../revisions/<field>.json — an entity's revision history for the
-     * "Include revision history" export toggle.
-     * Only called when $includeRevisions is true; a no-op call site otherwise, so
-     * every entity method above can call this unconditionally without its own
-     * `if ($includeRevisions)` guard.
-     *
-     * ONE FILE PER FIELD holding that field's WHOLE history as an array — never one
-     * file per revision, because a heavily-edited scene must not add hundreds of
-     * entries to the archive. A field with zero revisions writes
-     * nothing at all, matching addFieldFile()'s "omit rather than write empty"
-     * convention.
-     *
-     * $slug resolves the entity's registered fields via App\Support\
-     * AutosavableFields — the same single source of truth FieldAutosaveController
-     * and RevisionController use, so export can never drift from what the app
-     * actually revisions. Rows are read through the entity's own `revisions()`
-     * MorphMany relation (App\Models\Concerns\HasRevisions), never a raw
-     * polymorphic-type string, and only the columns actually needed are selected.
-     */
-    private function addRevisions(ZipArchive $zip, string $dir, string $slug, Model $entity, bool $includeRevisions): void
-    {
-        if (! $includeRevisions) {
-            return;
-        }
-
-        [, $fields] = AutosavableFields::REGISTRY[$slug];
-
-        foreach (array_keys($fields) as $field) {
-            $history = $entity->revisions()
-                ->where('field', $field)
-                ->oldest('created_at')
-                ->oldest('id')
-                ->get(['id', 'save_id', 'value', 'origin', 'label', 'user_id', 'created_at'])
-                ->map(fn (Revision $revision): array => [
-                    'id' => $revision->id,
-                    // The save-point grouping: rows sharing a save_id were
-                    // written by one Save. Import remaps it to a fresh local
-                    // id (never inserts this one verbatim — it names a group on
-                    // another install), which preserves the grouping without
-                    // borrowing the identity.
-                    //
-                    // summary_html/change_count are deliberately NOT exported:
-                    // they are derived from the values already in this file, and
-                    // derived data does not belong in an interchange format.
-                    'save_id' => $revision->save_id,
-                    'value' => $revision->value,
-                    'origin' => $revision->origin->value,
-                    'label' => $revision->label,
-                    'user_id' => $revision->user_id,
-                    'created_at' => $revision->created_at->toIso8601String(),
-                ])
-                ->all();
-
-            // A field that was never autosaved (e.g. a fresh scene) has no
-            // baseline/automatic rows yet — write nothing rather than an empty
-            // revisions/<field>.json for it.
-            if ($history === []) {
-                continue;
-            }
-
-            $this->addJson($zip, "{$dir}/revisions/{$field}.json", $history);
-        }
     }
 
     /**

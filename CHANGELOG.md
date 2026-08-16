@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-16 — No revisions in import/export (#112)
+
+### Removed
+
+- Revision history no longer ships in project export archives, and the export form's toggle for it.
+
+### Changed
+
+- Archives exported before this change can no longer be imported; only manifest version 3 is accepted.
+- The revision storage panel no longer offers an "Imported" category to bulk-delete.
+
 ## 2026-08-16 — Branded error pages (#111)
 
 ### Added
