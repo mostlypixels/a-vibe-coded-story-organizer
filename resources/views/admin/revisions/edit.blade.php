@@ -41,7 +41,7 @@
         <x-slot name="header">
             <x-heading level="3">{{ __('Retention') }}</x-heading>
             <p class="mt-1 text-sm text-content-muted">
-                {{ __('The nightly cleanup keeps unlabeled, autosaved revisions for this many days before removing them. Manual saves, labeled revisions, reverts, and imports are never removed by this — see the storage panel below to clear those explicitly.') }}
+                {{ __('The nightly cleanup keeps unlabeled, autosaved revisions for this many days before removing them. Manual saves, labeled revisions, and reverts are never removed by this — see the storage panel below to clear those explicitly.') }}
             </p>
         </x-slot>
 
@@ -77,7 +77,7 @@
         <x-slot name="header">
             <x-heading level="3">{{ __('Revision storage') }}</x-heading>
             <p class="mt-1 text-sm text-content-muted">
-                {{ __('Bulk-delete revisions by category or age. Unlike the nightly cleanup above, this can remove labeled, manual, reverted, and imported revisions — use it deliberately.') }}
+                {{ __('Bulk-delete revisions by category or age. Unlike the nightly cleanup above, this can remove labeled, manual, and reverted revisions — use it deliberately.') }}
             </p>
         </x-slot>
 
@@ -86,7 +86,6 @@
                 \App\Services\RevisionPurger::CATEGORY_AUTOMATIC => __('Automatic (autosaved)'),
                 \App\Services\RevisionPurger::CATEGORY_MANUAL => __('Manual'),
                 \App\Services\RevisionPurger::CATEGORY_LABELED => __('Labeled'),
-                \App\Services\RevisionPurger::CATEGORY_IMPORTED => __('Imported'),
             ];
         @endphp
 

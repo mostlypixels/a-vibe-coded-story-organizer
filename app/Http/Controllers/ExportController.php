@@ -24,11 +24,7 @@ class ExportController extends Controller
         $project = Project::findOrFail($request->integer('project_id'));
         $this->authorize('view', $project);
 
-        $zipPath = $exporter->export(
-            $project,
-            $request->boolean('include_images'),
-            $request->boolean('include_revisions')
-        );
+        $zipPath = $exporter->export($project, $request->boolean('include_images'));
 
         $filename = Str::slug($project->name).'-'.now()->format('Ymd-His').'.zip';
 

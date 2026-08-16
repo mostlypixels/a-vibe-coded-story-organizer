@@ -55,21 +55,6 @@
                     <x-input-error :messages="$errors->get('include_images')" class="mt-2" />
                 </div>
 
-                <div>
-                    <label for="include_revisions" class="inline-flex items-center">
-                        <input
-                            id="include_revisions"
-                            type="checkbox"
-                            name="include_revisions"
-                            value="1"
-                            @checked(old('include_revisions'))
-                            class="rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
-                        >
-                        <span class="ms-2 text-sm text-content-muted">{{ __('Include revision history') }}</span>
-                    </label>
-                    <x-input-error :messages="$errors->get('include_revisions')" class="mt-2" />
-                </div>
-
                 <x-button variant="primary">{{ __('Export') }}</x-button>
             </form>
         @endif

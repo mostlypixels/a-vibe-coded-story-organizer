@@ -165,9 +165,11 @@ class AdminRevisionsPageTest extends TestCase
         $response = $this->actingAs($user)->get(route('admin.revisions.edit'));
 
         $response->assertOk();
-        // Four categories, one row each seeded above.
+        // Three categories, one row each seeded above.
         $response->assertSeeInOrder(['Category', 'Count', 'Size'], false);
-        $this->assertDatabaseCount('revisions', 4);
+        $response->assertSeeInOrder(['Automatic (autosaved)', 'Manual', 'Labeled'], false);
+        $response->assertDontSee('Imported', false);
+        $this->assertDatabaseCount('revisions', 3);
         $this->assertNotNull($rows);
     }
 
@@ -186,7 +188,6 @@ class AdminRevisionsPageTest extends TestCase
         $this->assertModelMissing($rows['automatic']);
         $this->assertModelExists($rows['manual']);
         $this->assertModelExists($rows['labeled']);
-        $this->assertModelExists($rows['imported']);
     }
 
     public function test_purge_category_rejects_an_unregistered_category_at_the_router(): void
@@ -291,12 +292,6 @@ class AdminRevisionsPageTest extends TestCase
                 'field' => 'dedication',
                 'origin' => RevisionOrigin::Revert,
                 'label' => 'Reverted to last week',
-            ]),
-            'imported' => Revision::factory()->create([
-                ...$base,
-                'field' => 'preface',
-                'origin' => RevisionOrigin::Import,
-                'label' => null,
             ]),
         ];
     }

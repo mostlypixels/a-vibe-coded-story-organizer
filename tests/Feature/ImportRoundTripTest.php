@@ -17,6 +17,7 @@ use App\Models\Event;
 use App\Models\Import;
 use App\Models\Plotline;
 use App\Models\Project;
+use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\Tag;
 use App\Models\User;
@@ -192,6 +193,10 @@ class ImportRoundTripTest extends TestCase
         $this->assertSame(1, $imported->plotlines()->where('is_main', true)->count());
         $this->assertSame(2, $imported->events()->where('is_fixed', true)->count());
         $this->assertContiguousPositions($scenes->pluck('position')->all());
+
+        // Revision history never leaves the archive contract — the imported
+        // project starts with no history at all.
+        $this->assertSame(0, Revision::query()->count());
 
         // ------------------------------------------------------------------
         // Re-import the SAME zip a second time (same importer): a distinct,

@@ -37,7 +37,6 @@ final readonly class SavePoint
     public const ORIGIN_PRECEDENCE = [
         RevisionOrigin::Manual,
         RevisionOrigin::Revert,
-        RevisionOrigin::Import,
         RevisionOrigin::Automatic,
         RevisionOrigin::Baseline,
     ];

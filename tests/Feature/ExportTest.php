@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\ChapterTitleFormat;
 use App\Enums\CodexEntryType;
-use App\Enums\RevisionOrigin;
 use App\Enums\SceneStatus;
 use App\Models\Act;
 use App\Models\Chapter;
@@ -102,7 +101,7 @@ class ExportTest extends TestCase
         $this->assertIsArray($manifest, 'data/manifest.json is not valid JSON.');
         // The epub-configuration feature bumped this to 2 — see
         // StaticSiteExporter::DATA_VERSION.
-        $this->assertSame(2, $manifest['version']);
+        $this->assertSame(3, $manifest['version']);
         $this->assertSame($project->id, $manifest['project_id']);
         $this->assertTrue($manifest['includes_media']);
         $this->assertArrayHasKey('exported_at', $manifest);
@@ -210,7 +209,7 @@ class ExportTest extends TestCase
         $response->assertOk();
         $response->assertSee('name="project_id"', false);
         $response->assertSee('Include images & files');
-        $response->assertSee('Include revision history');
+        $response->assertDontSee('Include revision history');
         // The user's own project is offered...
         $response->assertSee('Exportable Tale');
         // ...but not another user's project.
@@ -1242,18 +1241,16 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Revision history export
+    // Revision history is never exported
     // ---------------------------------------------------------------------
 
-    public function test_manifest_records_revisions_toggle_off_by_default_and_writes_no_revisions_directories(): void
+    public function test_an_export_writes_no_revisions_even_when_the_project_has_revisions(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
         $scene = Scene::factory()->for($chapter)->create();
 
-        // A revision exists in the DB, but the toggle is off (omitted from the
-        // request) — none of it should reach the archive.
         Revision::factory()->count(3)->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
@@ -1264,108 +1261,35 @@ class ExportTest extends TestCase
         $zip = $this->exportZip($user, $project);
 
         $manifest = json_decode($zip->getFromName('data/manifest.json'), true);
-        $this->assertFalse($manifest['includes_revisions']);
+        $this->assertArrayNotHasKey('includes_revisions', $manifest);
         $this->assertNoZipEntryContains($zip, 'revisions/');
 
         $zip->close();
     }
 
-    public function test_toggle_on_writes_one_file_per_field_holding_the_whole_history_as_an_array(): void
+    public function test_a_stray_include_revisions_field_is_ignored_and_no_revisions_are_written(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
         $scene = Scene::factory()->for($chapter)->create();
 
-        // Five revisions on the SAME field: the export must produce exactly one
-        // zip entry (revisions/contents.json) holding all five as an array, not
-        // five separate entries.
-        $revisions = Revision::factory()->count(5)->sequence(
-            ['origin' => RevisionOrigin::Baseline],
-            ['origin' => RevisionOrigin::Automatic],
-            ['origin' => RevisionOrigin::Automatic],
-            ['origin' => RevisionOrigin::Manual, 'label' => 'Before the rewrite'],
-            ['origin' => RevisionOrigin::Automatic],
-        )->create([
+        Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
             'project_id' => $project->id,
             'field' => 'contents',
         ]);
 
-        $zip = $this->exportZipWithRevisions($user, $project);
-
-        $manifest = json_decode($zip->getFromName('data/manifest.json'), true);
-        $this->assertTrue($manifest['includes_revisions']);
-
-        $sceneDir = $this->sceneDir($project, $scene);
-        $raw = $zip->getFromName("{$sceneDir}/revisions/contents.json");
-        $this->assertNotFalse($raw, 'revisions/contents.json is missing from the export.');
-
-        $history = json_decode($raw, true);
-        $this->assertCount(5, $history, 'The whole revision history for the field should be one array, not one file per revision.');
-        $this->assertSame($revisions->pluck('id')->sort()->values()->all(), collect($history)->pluck('id')->sort()->values()->all());
-
-        // A labeled manual revision's label survives the round-trip.
-        $labeled = collect($history)->firstWhere('label', 'Before the rewrite');
-        $this->assertNotNull($labeled);
-        $this->assertSame('manual', $labeled['origin']);
-
-        $zip->close();
-    }
-
-    public function test_exported_rows_carry_their_save_id_but_not_the_derived_summary_columns(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
-        $scene = Scene::factory()->for($chapter)->create();
-
-        $revision = Revision::factory()->create([
-            'revisionable_type' => Scene::class,
-            'revisionable_id' => $scene->id,
+        $response = $this->actingAs($user)->post(route('admin.data.export'), [
             'project_id' => $project->id,
-            'field' => 'contents',
-            'save_id' => '01J0000000000000000000000A',
-            'summary_html' => '<ins>added</ins>',
-            'change_count' => 3,
+            'include_revisions' => '1',
         ]);
 
-        $zip = $this->exportZipWithRevisions($user, $project);
+        $response->assertOk();
 
-        $sceneDir = $this->sceneDir($project, $scene);
-        $history = json_decode($zip->getFromName("{$sceneDir}/revisions/contents.json"), true);
-
-        // The grouping travels with the archive — import remaps it to a fresh
-        // local id rather than inserting this one, which keeps "these rows were
-        // one save" true without borrowing another install's identity.
-        $this->assertSame($revision->save_id, $history[0]['save_id']);
-
-        // summary_html/change_count are derived from the values already in this
-        // file. Derived data has no place in an interchange format.
-        $this->assertArrayNotHasKey('summary_html', $history[0]);
-        $this->assertArrayNotHasKey('change_count', $history[0]);
-
-        $zip->close();
-    }
-
-    public function test_a_field_with_zero_revisions_writes_no_revisions_file_for_it(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
-        // A fresh scene, never autosaved — no revisions exist for any of its fields.
-        $scene = Scene::factory()->for($chapter)->create();
-
-        $zip = $this->exportZipWithRevisions($user, $project);
-
-        $sceneDir = $this->sceneDir($project, $scene);
-        $this->assertFalse(
-            $zip->getFromName("{$sceneDir}/revisions/contents.json"),
-            'A never-autosaved field should not get an empty revisions/<field>.json file.'
-        );
-        $this->assertNoZipEntryContains($zip, "{$sceneDir}/revisions/");
-
+        $zip = $this->openExport($response);
+        $this->assertNoZipEntryContains($zip, 'revisions/');
         $zip->close();
     }
 
@@ -1401,22 +1325,6 @@ class ExportTest extends TestCase
         $response = $this->actingAs($user)->post(route('admin.data.export'), [
             'project_id' => $project->id,
             'include_images' => '1',
-        ]);
-
-        $response->assertOk();
-
-        return $this->openExport($response);
-    }
-
-    /**
-     * Export the project with the "Include revision history" toggle ON and return
-     * the opened zip. Mirrors exportZip() but sends include_revisions.
-     */
-    private function exportZipWithRevisions(User $user, Project $project): ZipArchive
-    {
-        $response = $this->actingAs($user)->post(route('admin.data.export'), [
-            'project_id' => $project->id,
-            'include_revisions' => '1',
         ]);
 
         $response->assertOk();

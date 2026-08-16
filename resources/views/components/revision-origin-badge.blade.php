@@ -10,7 +10,6 @@
         \App\Enums\RevisionOrigin::Automatic => 'neutral',
         \App\Enums\RevisionOrigin::Manual => 'info',
         \App\Enums\RevisionOrigin::Revert => 'warning',
-        \App\Enums\RevisionOrigin::Import => 'accent',
         \App\Enums\RevisionOrigin::Baseline => 'neutral',
     };
 @endphp

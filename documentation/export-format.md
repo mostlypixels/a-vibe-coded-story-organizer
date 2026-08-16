@@ -32,7 +32,7 @@ The archive's root descriptor, written once per export:
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "project_id": 42,
   "exported_at": "2026-07-09T14:03:11+00:00",
   "includes_media": true
@@ -53,14 +53,17 @@ removed field, a changed directory scheme, a changed relationship encoding. Pure
 additive changes (a new optional field, a new entity type folder) do **not** bump it;
 an importer must ignore keys it does not recognize.
 
-> [!NOTE]
-> **Version 2** (the epub-configuration feature) is an exception to the "additive
-> changes don't bump" rule: it bumps once, deliberately, to cover every new field the
-> whole feature adds across its tasks — the four project front-/back-matter Markdown
-> fields below, chapter covers, and the serialized publication setting — rather than
-> bumping per task. All of it is still additive: a version 1 archive imports cleanly,
-> with every new field left `null`/default. `ImportRules::SUPPORTED_MANIFEST_VERSIONS`
-> accepts both `1` and `2`.
+> [!IMPORTANT]
+> **Only version 3 is supported.** `ImportRules::SUPPORTED_MANIFEST_VERSIONS = [3]` — an
+> archive exported before this contract, or a hand-crafted one declaring `1` or `2`, is
+> rejected outright. There is no migration path: pre-V1, nobody holds an archive they
+> cannot simply re-export.
+
+Revision history is **never exported** — no `revisions/` sidecar has ever existed in this
+document, and none will. Two reasons: it would multiply archive size many times over for
+data nobody restores, and an imported row could never be pruned by the automatic sweep
+(`Revision::prunable()` only touches `origin: automatic`), so it would be dead weight
+forever.
 
 ## `data/publication-setting.json`
 

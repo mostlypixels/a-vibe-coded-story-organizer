@@ -507,6 +507,9 @@ is the same **[`documentation/export-format.md`](export-format.md)** the exporte
   (the default, for installs with no queue worker) the whole import runs inline in the request and
   redirects to the finished project. With it on, `ImportController` dispatches `ProjectImportJob` and
   redirects with a "queued" status; only `run()` is ever deferred — validation still runs inline.
+- **Revisions are not part of the archive contract.** No export ever writes revision history,
+  and no import ever creates a `Revision` row; pre-v3 archives (which could carry a `revisions/`
+  sidecar) are rejected outright — see `revisions.md` → *Prune vs purge*.
 - **Two intentional authorization postures.** `POST admin.data.import` and
   `PATCH admin.data.import-settings` use the **any-authenticated-user** exception (like `CrawlerSetting`):
   there is no project yet to walk up to, so `ImportProjectRequest::authorize()` is simply

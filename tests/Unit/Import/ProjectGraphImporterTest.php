@@ -2,7 +2,6 @@
 
 namespace Tests\Unit\Import;
 
-use App\Enums\RevisionOrigin;
 use App\Enums\SceneStatus;
 use App\Exceptions\ImportValidationException;
 use App\Models\Project;
@@ -361,89 +360,15 @@ class ProjectGraphImporterTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Revision history import
+    // Import never replays revision history
     // ------------------------------------------------------------------
 
-    public function test_revisions_are_imported_with_origin_import_and_the_importing_users_id(): void
+    public function test_a_manifest_claiming_includes_revisions_and_a_sidecar_still_import_zero_revisions(): void
     {
+        // Import no longer reads the manifest's includes_revisions key at
+        // all, and never replays a sidecar even when one is present. This is
+        // the test that catches a half-removed replay.
         $this->writeManifest(includesRevisions: true);
-
-        $sceneRevisionsDir = 'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions';
-        $this->writeFixtureFile("{$sceneRevisionsDir}/contents.json", json_encode([
-            [
-                'id' => 1, 'value' => 'First draft.', 'origin' => 'baseline',
-                'label' => null, 'user_id' => 999999, 'created_at' => '2020-01-01T00:00:00+00:00',
-            ],
-            [
-                'id' => 2, 'value' => 'Some *prose* here, revised.', 'origin' => 'manual',
-                'label' => 'Before the rewrite', 'user_id' => 999999, 'created_at' => '2020-06-15T08:30:00+00:00',
-            ],
-        ]));
-
-        $user = User::factory()->create();
-        [$project] = $this->runFullImport($user);
-
-        $sceneB = Scene::query()->where('name', 'Scene B')->firstOrFail();
-        // revisions() itself orders latest-first (HasRevisions::revisions());
-        // re-sort ascending explicitly rather than fight that default order.
-        $history = $sceneB->revisions()->where('field', 'contents')->get()->sortBy('created_at')->values();
-
-        $this->assertCount(2, $history);
-        // Every imported row is origin: import — regardless of the source
-        // archive's own origin (baseline/manual above) — and belongs to the
-        // IMPORTING user, never whatever user_id the archive carried.
-        $this->assertTrue($history->every(fn (Revision $revision): bool => $revision->origin === RevisionOrigin::Import));
-        $this->assertTrue($history->every(fn (Revision $revision): bool => $revision->user_id === $user->id));
-        $this->assertTrue($history->every(fn (Revision $revision): bool => $revision->project_id === $project->id));
-
-        // created_at is PRESERVED verbatim from the archive, not rewritten to
-        // import time.
-        $this->assertSame('2020-01-01T00:00:00+00:00', $history[0]->created_at->toIso8601String());
-        $this->assertNull($history[0]->label);
-        $this->assertSame('2020-06-15T08:30:00+00:00', $history[1]->created_at->toIso8601String());
-        $this->assertSame('Before the rewrite', $history[1]->label);
-        $this->assertSame('Some *prose* here, revised.', $history[1]->value);
-    }
-
-    public function test_imported_rows_get_summaries_recomputed_in_replay_order(): void
-    {
-        $this->writeManifest(includesRevisions: true);
-
-        // summary_html/change_count are deliberately absent from the archive —
-        // they are derived from the values in it, and derived data does not
-        // belong in an interchange format. Each row's predecessor is the row
-        // before it in this file, which is why the replay order matters.
-        $sceneRevisionsDir = 'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions';
-        $this->writeFixtureFile("{$sceneRevisionsDir}/contents.json", json_encode([
-            ['id' => 1, 'value' => 'She waited.', 'origin' => 'baseline', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-            ['id' => 2, 'value' => 'She waited quietly.', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-02-01T00:00:00+00:00'],
-            ['id' => 3, 'value' => 'She waited quietly by the water.', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-03-01T00:00:00+00:00'],
-        ]));
-
-        $this->runFullImport(User::factory()->create());
-
-        $scene = Scene::query()->where('name', 'Scene B')->firstOrFail();
-        $history = $scene->revisions()->where('field', 'contents')->get()->sortBy('created_at')->values();
-
-        // The first row has nothing before it to be compared against.
-        $this->assertNull($history[0]->summary_html);
-        $this->assertSame(0, $history[0]->change_count);
-
-        // The others describe their own predecessor, not the whole file and not
-        // each other's pair.
-        $this->assertSame(1, $history[1]->change_count);
-        $this->assertStringContainsString('quietly.', $history[1]->summary_html);
-        // Compared against the row before it, not the one after: the words the
-        // *third* row introduced have no business in the second row's summary.
-        $this->assertStringNotContainsString('water', $history[1]->summary_html);
-
-        $this->assertSame(1, $history[2]->change_count);
-        $this->assertStringContainsString('by the water.', $history[2]->summary_html);
-    }
-
-    public function test_includes_revisions_false_imports_zero_revisions_even_when_a_sidecar_file_exists(): void
-    {
-        $this->writeManifest(includesRevisions: false);
         $this->writeFixtureFile(
             'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions/contents.json',
             json_encode([[
@@ -455,185 +380,6 @@ class ProjectGraphImporterTest extends TestCase
         $this->runFullImport(User::factory()->create());
 
         $this->assertSame(0, Revision::query()->count());
-    }
-
-    public function test_an_archive_with_no_manifest_at_all_imports_zero_revisions_without_error(): void
-    {
-        // The base fixture ships no data/manifest.json at all — an archive
-        // exported before this feature shipped. Must import cleanly with no
-        // revisions, not throw on the missing key.
-        $this->runFullImport(User::factory()->create());
-
-        $this->assertSame(0, Revision::query()->count());
-    }
-
-    public function test_revisions_are_imported_across_every_registered_entity_type(): void
-    {
-        $this->writeManifest(includesRevisions: true);
-
-        $this->writeFixtureFile('data/project/revisions/description.json', json_encode([
-            ['id' => 1, 'value' => '<p>Imported project description.</p>', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-        $this->writeFixtureFile('data/timeline/plotlines/700-central-arc/revisions/description.json', json_encode([
-            ['id' => 1, 'value' => '<p>Imported plotline description.</p>', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-        $this->writeFixtureFile('data/timeline/plotlines/701-side-quest/revisions/description.json', json_encode([
-            ['id' => 1, 'value' => '<p>Side quest history.</p>', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-        $this->writeFixtureFile('data/timeline/events/800-dawn-of-time/revisions/description.json', json_encode([
-            ['id' => 1, 'value' => '<p>Bookend history.</p>', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-        $this->writeFixtureFile('data/timeline/events/802-the-reveal/revisions/description.json', json_encode([
-            ['id' => 1, 'value' => '<p>Regular event history.</p>', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-        $this->writeFixtureFile('data/acts/100-act-one/revisions/description.json', json_encode([
-            ['id' => 1, 'value' => '<p>Act history.</p>', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-        $this->writeFixtureFile('data/acts/100-act-one/chapters/200-chapter-one/revisions/description.json', json_encode([
-            ['id' => 1, 'value' => '<p>Chapter history.</p>', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-        $this->writeFixtureFile('data/codex/character/400-alice-harker/revisions/description.json', json_encode([
-            ['id' => 1, 'value' => '<p>Codex entry history.</p>', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-
-        $user = User::factory()->create();
-        [$project] = $this->runFullImport($user);
-
-        $this->assertSame(1, $project->revisions()->where('field', 'description')->count());
-
-        $mainPlotline = $project->plotlines()->where('is_main', true)->firstOrFail();
-        $this->assertSame(1, $mainPlotline->revisions()->where('field', 'description')->count());
-        $sideQuest = $project->plotlines()->where('name', 'Side quest')->firstOrFail();
-        $this->assertSame(1, $sideQuest->revisions()->where('field', 'description')->count());
-
-        $this->assertSame(1, $project->startEvent()->revisions()->where('field', 'description')->count());
-        $reveal = $project->events()->where('title', 'The Reveal')->firstOrFail();
-        $this->assertSame(1, $reveal->revisions()->where('field', 'description')->count());
-
-        $act = $project->acts()->firstOrFail();
-        $this->assertSame(1, $act->revisions()->where('field', 'description')->count());
-        $chapter = $act->chapters()->firstOrFail();
-        $this->assertSame(1, $chapter->revisions()->where('field', 'description')->count());
-
-        $entry = $project->codexEntries()->firstOrFail();
-        $this->assertSame(1, $entry->revisions()->where('field', 'description')->count());
-
-        $this->assertSame(8, Revision::query()->where('origin', RevisionOrigin::Import)->count());
-    }
-
-    public function test_import_preserves_save_grouping_while_remapping_it_to_fresh_local_ids(): void
-    {
-        $this->writeManifest(includesRevisions: true);
-
-        $sceneRevisionsDir = 'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions';
-
-        // One source save touched two fields (SOURCE-SAVE-A), a later one
-        // touched a single field (SOURCE-SAVE-B).
-        $this->writeFixtureFile("{$sceneRevisionsDir}/contents.json", json_encode([
-            ['id' => 1, 'save_id' => 'SOURCE-SAVE-A', 'value' => 'Contents at save A.', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-            ['id' => 2, 'save_id' => 'SOURCE-SAVE-B', 'value' => 'Contents at save B.', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-02-01T00:00:00+00:00'],
-        ]));
-        $this->writeFixtureFile("{$sceneRevisionsDir}/description.json", json_encode([
-            ['id' => 3, 'save_id' => 'SOURCE-SAVE-A', 'value' => '<p>Description at save A.</p>', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-
-        $this->runFullImport(User::factory()->create());
-
-        $scene = Scene::query()->where('name', 'Scene B')->firstOrFail();
-        $saveIds = $scene->revisions()->get()->pluck('save_id', 'value');
-
-        // The two fields written by one source save are still one save point…
-        $this->assertSame($saveIds['Contents at save A.'], $saveIds['<p>Description at save A.</p>']);
-        // …a different one from the later save…
-        $this->assertNotSame($saveIds['Contents at save A.'], $saveIds['Contents at save B.']);
-        // …and it is a LOCAL id: a foreign save_id names a group on another
-        // install and could collide with one of ours, so grouping is preserved
-        // as a shape, never as an identity.
-        $this->assertNotContains('SOURCE-SAVE-A', $saveIds->all());
-        $this->assertNotContains('SOURCE-SAVE-B', $saveIds->all());
-        $this->assertSame(0, Revision::query()->whereNull('save_id')->count());
-    }
-
-    public function test_a_sidecar_predating_save_grouping_imports_one_fresh_save_point_per_row(): void
-    {
-        $this->writeManifest(includesRevisions: true);
-
-        // No save_id key at all — an archive exported before this feature.
-        $this->writeFixtureFile(
-            'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions/contents.json',
-            json_encode([
-                ['id' => 1, 'value' => 'Older draft.', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-                ['id' => 2, 'value' => 'Newer draft.', 'origin' => 'automatic', 'label' => null, 'user_id' => 1, 'created_at' => '2020-02-01T00:00:00+00:00'],
-            ]),
-        );
-
-        $this->runFullImport(User::factory()->create());
-
-        $saveIds = Revision::query()->pluck('save_id');
-
-        $this->assertCount(2, $saveIds->filter());
-        $this->assertCount(2, $saveIds->unique());
-    }
-
-    public function test_two_entities_never_share_a_save_point_even_if_the_archive_claims_they_do(): void
-    {
-        $this->writeManifest(includesRevisions: true);
-
-        // An archive is untrusted input. A save point is per (request, entity)
-        // here, so a foreign archive claiming one save across two entities must
-        // not be replayed verbatim — otherwise "Undo this save" could reach
-        // into an entity the writer never asked about.
-        $this->writeFixtureFile('data/acts/100-act-one/revisions/description.json', json_encode([
-            ['id' => 1, 'save_id' => 'SOURCE-SAVE-A', 'value' => '<p>Act history.</p>', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-        $this->writeFixtureFile('data/acts/100-act-one/chapters/200-chapter-one/revisions/description.json', json_encode([
-            ['id' => 2, 'save_id' => 'SOURCE-SAVE-A', 'value' => '<p>Chapter history.</p>', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-
-        [$project] = $this->runFullImport(User::factory()->create());
-
-        $act = $project->acts()->firstOrFail();
-        $chapter = $act->chapters()->firstOrFail();
-
-        $this->assertNotSame(
-            $act->revisions()->sole()->save_id,
-            $chapter->revisions()->sole()->save_id,
-        );
-    }
-
-    public function test_an_imported_revision_is_excluded_from_prunable_even_when_very_old(): void
-    {
-        $this->writeManifest(includesRevisions: true);
-
-        // Deliberately ancient created_at, well past any retention window.
-        // `origin: import` must still exempt it: a restored backup must not
-        // lose its history on the next scheduled prune.
-        $this->writeFixtureFile(
-            'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions/contents.json',
-            json_encode([[
-                'id' => 1, 'value' => 'Ancient draft.', 'origin' => 'automatic',
-                'label' => null, 'user_id' => 1, 'created_at' => '2000-01-01T00:00:00+00:00',
-            ]]),
-        );
-
-        $this->runFullImport(User::factory()->create());
-
-        $imported = Revision::query()->where('origin', RevisionOrigin::Import)->firstOrFail();
-
-        $prunableIds = (new Revision)->prunable()->pluck('id')->all();
-        $this->assertNotContains($imported->id, $prunableIds);
-    }
-
-    public function test_a_disallowed_html_value_inside_a_revision_sidecar_rejects_the_import(): void
-    {
-        $this->writeManifest(includesRevisions: true);
-        $this->writeFixtureFile('data/project/revisions/description.json', json_encode([
-            ['id' => 1, 'value' => '<p onclick="alert(1)">Hi</p>', 'origin' => 'manual', 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00'],
-        ]));
-
-        $this->expectException(ImportValidationException::class);
-
-        $this->importer()->importProject($this->fixtureRoot, User::factory()->create());
     }
 
     // ------------------------------------------------------------------
@@ -671,7 +417,7 @@ class ProjectGraphImporterTest extends TestCase
     private function writeManifest(bool $includesRevisions): void
     {
         $this->writeFixtureFile('data/manifest.json', json_encode([
-            'version' => 2,
+            'version' => 3,
             'project_id' => 900,
             'exported_at' => '2026-07-13T00:00:00+00:00',
             'includes_media' => false,

@@ -64,7 +64,7 @@ The only class that inserts or updates a `Revision`. Reached from:
 - The baseline-backfill migration, so a fresh install can't diverge from the live path.
 
 **Coalescing.** Inside a field's window, a run of `automatic` saves overwrites the same open
-row (plain `UPDATE`). Every other origin always inserts, so a Save, revert or import stays
+row (plain `UPDATE`). Every other origin always inserts, so a Save or revert stays
 individually visible even seconds after an autosave.
 
 > [!WARNING]
@@ -87,9 +87,9 @@ first.
 (not `now()`) so compare-by-date reads "this value held from here onward". Skipped when the
 field is empty.
 
-**Origin** (`App\Enums\RevisionOrigin`): `automatic` / `manual` / `revert` / `import` /
-`baseline` — how a row was created. Deliberately *not* the same taxonomy as purge
-categories. Labels are in its docblock.
+**Origin** (`App\Enums\RevisionOrigin`): `automatic` / `manual` / `revert` / `baseline` —
+how a row was created. Deliberately *not* the same taxonomy as purge categories. Labels are
+in its docblock.
 
 **Always set `project_id` explicitly** — never infer it from `revisionable_type`/`_id`.
 `HasRevisions::revisionProject()` walks to the owning `Project` (itself, for `Project`),
@@ -134,9 +134,8 @@ Purge exists as the release valve: without it an imported project's history or a
 `manual` trail is a one-way ratchet. Both entry points call the one service, so a dry-run
 preview and the real deletion can't report different counts.
 
-Its four **categories** are a cross-cutting slice, not a fifth origin: `automatic` /
-`manual` / `imported` map to origins, but `labeled` is `whereNotNull('label')` regardless of
-origin.
+Its three **categories** are a cross-cutting slice, not a fourth origin: `automatic` /
+`manual` map to origins, but `labeled` is `whereNotNull('label')` regardless of origin.
 
 ## Diffing — `App\Services\RevisionDiffer`
 
@@ -226,9 +225,7 @@ Three deliberate choices, easy to break:
 revision for the same `(entity, field)` strictly older than the row being written) and
 stores the summary on insert *and* on a coalescing update — a coalesced row's value is being
 replaced, so its summary is stale, and a row is never its own predecessor. Baselines store
-`null` / `0` and render as *Initial value*. `ProjectGraphImporter` does the same during a
-replay, computing each row's summary from the row before it in the sidecar — which is
-oldest-first, so **do not reorder that loop**. Summaries are never read from an archive.
+`null` / `0` and render as *Initial value*.
 
 > [!WARNING]
 > **A failed summary must never cost a save.** Both callers wrap the summarizer: if the diff

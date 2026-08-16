@@ -34,8 +34,6 @@ class ExportRequest extends FormRequest
             // Unchecked checkboxes are absent from the request; read the value with
             // $request->boolean('include_images') so absent means false.
             'include_images' => ['sometimes', 'boolean'],
-            // Same absent-means-false pattern for the revision-history toggle.
-            'include_revisions' => ['sometimes', 'boolean'],
         ];
     }
 }

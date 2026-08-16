@@ -156,6 +156,35 @@ class ArchiveValidatorTest extends TestCase
         $this->addToAssertionCount(1); // no exception thrown
     }
 
+    public function test_rejects_a_revisions_sidecar_entry(): void
+    {
+        // No v3 export can produce this path; a zip carrying one is malformed
+        // by definition and must be rejected before extraction.
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip);
+            $zip->addFromString('data/acts/1-act-one/revisions/contents.json', '[]');
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('unexpected file "data/acts/1-act-one/revisions/contents.json"');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    public function test_allows_an_entry_slug_that_merely_ends_in_revisions(): void
+    {
+        // Guard against an over-broad match: "revisions" is a path SEGMENT
+        // rule, not a substring one.
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip);
+            $zip->addFromString('data/acts/1-act-revisions/', '');
+        });
+
+        (new ArchiveValidator)->validate($path);
+
+        $this->addToAssertionCount(1); // no exception thrown
+    }
+
     // ------------------------------------------------------------------
     // Check 4 — the manifest
     // ------------------------------------------------------------------
@@ -180,6 +209,30 @@ class ArchiveValidatorTest extends TestCase
 
         $this->expectException(ImportValidationException::class);
         $this->expectExceptionMessage('export format version "999"');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    public function test_rejects_a_version_1_archive(): void
+    {
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip, manifestOverrides: ['version' => 1]);
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('export format version "1"');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    public function test_rejects_a_version_2_archive(): void
+    {
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip, manifestOverrides: ['version' => 2]);
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('export format version "2"');
 
         (new ArchiveValidator)->validate($path);
     }
@@ -479,7 +532,7 @@ class ArchiveValidatorTest extends TestCase
     private function manifest(array $overrides = []): array
     {
         return array_merge([
-            'version' => 1,
+            'version' => 3,
             'project_id' => 1,
             'exported_at' => '2026-07-13T00:00:00+00:00',
             'includes_media' => true,

@@ -46,13 +46,13 @@ class RevisionDataModelTest extends TestCase
     // RevisionOrigin enum
     // ---------------------------------------------------------------------
 
-    public function test_revision_origin_has_exactly_the_five_expected_cases(): void
+    public function test_revision_origin_has_exactly_the_four_expected_cases(): void
     {
         $cases = array_map(fn (RevisionOrigin $case) => $case->value, RevisionOrigin::cases());
 
-        $this->assertCount(5, RevisionOrigin::cases());
+        $this->assertCount(4, RevisionOrigin::cases());
         $this->assertEqualsCanonicalizing(
-            ['automatic', 'manual', 'revert', 'import', 'baseline'],
+            ['automatic', 'manual', 'revert', 'baseline'],
             $cases,
         );
     }
@@ -115,7 +115,7 @@ class RevisionDataModelTest extends TestCase
         // Each of these is the newest AND only row for its own distinct field,
         // so also give each a same-field older automatic sibling to prove the
         // exclusion is about origin, not "newest for the field".
-        foreach ([RevisionOrigin::Manual, RevisionOrigin::Revert, RevisionOrigin::Import, RevisionOrigin::Baseline] as $index => $origin) {
+        foreach ([RevisionOrigin::Manual, RevisionOrigin::Revert, RevisionOrigin::Baseline] as $index => $origin) {
             $field = "field_{$index}";
 
             Revision::factory()->create([
@@ -139,8 +139,8 @@ class RevisionDataModelTest extends TestCase
             ]);
         }
 
-        // Only the four older "automatic" siblings should be prunable — the
-        // manual/revert/import/baseline rows themselves never are.
+        // Only the older "automatic" siblings should be prunable — one per
+        // non-automatic origin above, and those rows themselves never are.
         $prunableIds = (new Revision)->prunable()->pluck('id')->sort()->values();
         $nonAutomaticIds = Revision::query()
             ->whereNot('origin', RevisionOrigin::Automatic)
@@ -148,7 +148,7 @@ class RevisionDataModelTest extends TestCase
             ->sort()
             ->values();
 
-        $this->assertCount(4, $prunableIds);
+        $this->assertCount($nonAutomaticIds->count(), $prunableIds);
         $this->assertEmpty($prunableIds->intersect($nonAutomaticIds));
     }
 
