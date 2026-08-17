@@ -96,8 +96,8 @@ class ProjectGraphImporter
      * `*_file` link keys, so readMarkdownField() returns null for each — no crash.
      *
      * The serialized PublicationSetting is read and validated here too,
-     * as UNTRUSTED input: a valid config creates the project's row, an absent or
-     * malformed one is skipped so the project falls back to the lazy default —
+     * as UNTRUSTED input: a valid config creates the book's row, an absent or
+     * malformed one is skipped so the book falls back to the lazy default —
      * config is a presentation preference and must never fail the whole import.
      */
     public function importProject(string $dataPath, User $user): Project
@@ -128,10 +128,13 @@ class ProjectGraphImporter
                 'total_word_goal' => isset($descriptor['total_word_goal']) ? (int) $descriptor['total_word_goal'] : null,
             ]);
 
-            // Only a fully-valid config becomes a row; otherwise the project is
-            // left with no PublicationSetting, i.e. the lazy default.
+            // Only a fully-valid config becomes a row; otherwise the book is left
+            // with no PublicationSetting, i.e. the lazy default. PublicationSetting
+            // belongs to a Book now — the project's freshly auto-created first
+            // book (Project::created ran synchronously above) is the stand-in
+            // this single-book-per-archive import writes it onto.
             if ($publicationSetting !== null) {
-                $project->publicationSetting()->create($publicationSetting);
+                $project->books()->first()->publicationSetting()->create($publicationSetting);
             }
 
             $this->importWordCountSnapshots($project, $snapshots);

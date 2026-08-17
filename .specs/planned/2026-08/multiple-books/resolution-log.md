@@ -128,6 +128,63 @@ Resolved in the planning grill, 2026-08-16. The full question-by-question record
   where no book is actually open — the same trap every other `*Active` flag already avoids by
   matching the route, never the fallback. Caught by
   `NavigationTest::test_no_dropdown_item_is_marked_on_home`.
+- **`EpubExporter`, `StaticSiteExporter` and `ProjectGraphImporter` still take/return a
+  `Project`, unconverted (that's task 12/13's job), but `PublicationSetting` moving off
+  `Project` broke every read they did of it.** Each now borrows `$project->books()->first()`
+  as a stand-in — the same pattern task 03/05 used for `ActController@store` and friends
+  before the story routes nested under `{book}`. `EpubExporter` centralises this in a new
+  private `publicationSettingFor(Project $project)`; `StaticSiteExporter` and
+  `ProjectGraphImporter` inline it at their one or two call sites each. All three ripple
+  away once task 12/13 convert their entry points to take a `Book`.
+- **The archive's `data/publication-setting.json` key renamed with the column**
+  (`include_project_cover` → `include_book_cover`), even though relocating the file itself
+  under `data/books/<id>/` is task 13's job. Leaving the JSON key spelled after a column
+  that no longer exists would have been actively misleading; the file's *location* is
+  unchanged for now.
+- **The Export-ebook config page (`DataTransferController::exportEbook`,
+  `export-ebook.blade.php`) resolves `PublicationSetting` off `$selectedProject->books()
+  ->first()`, not `lastBook`.** Matches the plain-`first()` stand-in precedent (task 05's
+  `ProjectController@show`), not `ProjectNavigation`'s `lastBook ?? first()` — that fallback
+  is specifically for nav/breadcrumb continuity, not a generic "current book" resolver.
+  Task 12 replaces this with a real book `<select>`.
+- **The config page's "Front & back matter" / "Metadata" sections still read `$selectedProject
+  ->dedication` / `->author` / etc., not the book's copies.** Correct for now: `EpubExporter`
+  itself still renders those PROJECT columns (task 12 moves it to the book), so showing the
+  book's copies here would describe an export that doesn't happen yet. Revisit together with
+  task 12.
+- **The generated `dc:identifier` URN changed from `urn:imagoldfish:project:{id}` to
+  `urn:imagoldfish:book:{id}`.** Not spelled out in `export-import.md`, but every other
+  identity in the export (title, cover, metadata) now keys off the book, and two books of
+  one project must not share a primary identifier. Nothing round-trips this value (the
+  importer never reads it back), so the rename is free.
+- **The Export-ebook page's picker is a single `<select name="book">`** (query param `?book=`,
+  `<optgroup>` per project), not a project `<select>` plus an implicit "first book" the way
+  the config-page stand-in worked before this task. `EpubExportRequest`'s payload field
+  renamed `project_id` → `book_id` to match, and the picker's `id` attribute renamed
+  `epub_project_id` → `epub_book_id`. `PublicationSettingController::backToConfigForm()`
+  redirects with `['book' => $book->id]` accordingly — any later task linking back to this
+  page must pass `book`, not `project`.
+- **The "Front & back matter" / "Metadata" sections on the config page now link to
+  `route('books.edit', $selectedBook)`, not the project edit page.** The book edit form
+  (task 07) already carries every one of these fields (`dedication`, `author`, `isbn`, …),
+  so the stand-in link task 11 left behind is replaced outright rather than carried forward.
+- **Every test that round-trips through the REAL `StaticSiteExporter` and the real HTTP
+  import route is temporarily skipped (`markTestSkipped`), not rewritten.** Task 13 bumps
+  `StaticSiteExporter::DATA_VERSION` to 4 and moves the archive layout (`data/books/`,
+  `books/`); `ImportRules`/`ArchiveValidator`/`ProjectGraphImporter` stay on version 3 until
+  task 14. A real export now fails the importer's manifest-version and allow-list checks, so
+  16 tests across `ImportRoundTripTest`, `PublicationSettingArchiveTest`,
+  `WordCountGoalsArchiveTest` and `ArchiveValidatorTest`
+  (`test_accepts_a_real_export_archive_*`) are skipped with a one-line reason rather than
+  rewritten to assert rejection — task 14 removes the guards, it does not rewrite the tests.
+  Two `ImportRoundTripTest` cases (`test_regeneration_fires_on_a_resumed_run_whose_phase_loop_is_empty`,
+  `test_an_import_that_fails_before_codex_writes_no_reference_rows`) build their `Import` row
+  directly rather than through the real exporter, so they are untouched and still exercise the
+  real code paths.
+- **`PublicationSettingArchiveTest::importWithInjectedConfig()` still injects its malformed
+  config at the old `data/publication-setting.json` root path**, not the new
+  per-book location. Moot while the test is skipped; task 14 must move the injection to
+  `{bookDir}/publication-setting.json` when it restores the test.
 
 ## Issues → resolutions
 
@@ -173,3 +230,29 @@ Resolved in the planning grill, 2026-08-16. The full question-by-question record
   other, unrelated queries share the same table and shape. The guard test instead builds a
   `ProjectNavigation` directly off the dispatched request (the `Tests\Unit\BreadcrumbsTest`
   pattern) and counts queries against that one instance.
+- **`dropConstrainedForeignId()` does not drop a separate `->unique()` index on the same
+  column, and SQLite's rebuild-the-table `DROP COLUMN` then chokes on the dangling index.**
+  `move_publication_settings_to_books` failed every test with `no such column: "project_id"`
+  while dropping it — `publication_settings.project_id` carried its own unique index
+  (`->foreignId('project_id')->unique()->constrained()`) that `dropConstrainedForeignId()`
+  never touches (it only drops the FK constraint and the column). Fixed by an explicit
+  `$table->dropUnique(['project_id'])` before `dropConstrainedForeignId()`, both directions.
+  Any migration dropping a `->unique()`'d foreign id hits this.
+- **`EpubExporter` already had a local variable named `$book`** — every method building the
+  package held the `Rampmaster\EPub\Core\EPub` library instance in `$book` (a `.epub` "book").
+  Converting the service to take a real `App\Models\Book` collided directly with it. Renamed
+  every library-instance variable/parameter to `$epub`; `$book` is now reserved for the domain
+  model everywhere in the file. Any other exporter/service that talks about a "book" in the
+  generic sense should check for the same collision before adding a `Book $book` parameter.
+- **`CodexEntry::factory()->for($project)->create()` alone does not make an entry appear in a
+  book's appendix**, even with the right type selected and the toggle on. The pre-task-12
+  appendix listed the whole project codex, so existing tests never needed a scene to
+  reference an entry; the new book-scoped filter joins through `scene_codex_entry`
+  (`Scene::codexReferences()` / `CodexEntry::referencingScenes()`), which only
+  `SceneReferenceMatcher` populates at runtime — a factory-built scene has no rows there.
+  Appendix tests now attach explicitly: `$scene->codexReferences()->attach($entry->id)`.
+- **`expanded/export-import.md`'s own `book.json` sample writes `"rights_file":
+  "rights.html"`, contradicting its own prose two lines above** ("write it as `rights.txt`,
+  never `.html`") and task 13's own line item. Followed the prose/task file: `rights` is a
+  plain-text column like `contents`, not rich HTML, so it exports as `rights.txt`. The JSON
+  sample in the expanded doc is stale; task 17 (documentation-sweep) should correct it.

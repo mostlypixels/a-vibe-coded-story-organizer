@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\SearchDomain;
 use App\Enums\SearchMode;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -320,9 +321,60 @@ class ProjectSearchTest extends TestCase
         $queries = DB::connection()->getQueryLog();
         DB::connection()->disableQueryLog();
 
-        // Exactly one query per searchable entity type — no N+1 across matched rows.
-        $this->assertCount(6, $queries);
+        // One query per searchable entity type, plus one naming the Act/Chapter/Scene
+        // rows' books (ProjectSearch::booksById()) — no N+1 across matched rows.
+        $this->assertCount(7, $queries);
         $this->assertGreaterThanOrEqual(14, $results->count());
+    }
+
+    public function test_act_chapter_and_scene_rows_carry_their_own_book(): void
+    {
+        $project = $this->project();
+        // Adding a second book freezes the first book's name to the project's —
+        // its own row is left out of this search on purpose.
+        $secondBook = Book::factory()->for($project)->create(['name' => 'Book Two']);
+
+        Act::factory()->for($secondBook)->create(['name' => 'starword act', 'description' => 'x']);
+        $act = Act::factory()->for($secondBook)->create(['name' => 'plain', 'description' => 'plain']);
+        $chapter = Chapter::factory()->for($act)->create(['name' => 'starword chapter', 'description' => 'x']);
+        Scene::factory()->for($chapter)->create(['name' => 'starword scene', 'contents' => 'x', 'description' => 'x']);
+
+        $results = $this->search($project, 'starword');
+
+        $this->assertSame('Book Two', $results->acts->first()->book->displayName());
+        $this->assertSame('Book Two', $results->chapters->first()->book->displayName());
+        $this->assertSame('Book Two', $results->scenes->first()->book->displayName());
+    }
+
+    /**
+     * The default state ({@see chapterIn()}) hangs the act off the project's sole,
+     * still-unnamed book — displayName() must fall back to the project's own name
+     * without a query per row (see ProjectSearch::booksById()).
+     */
+    public function test_a_sole_unnamed_books_display_name_falls_back_to_the_project_name(): void
+    {
+        $project = $this->project();
+        $chapter = $this->chapterIn($project);
+        Scene::factory()->for($chapter)->create(['name' => 'starword scene', 'contents' => 'x', 'description' => 'x']);
+
+        $results = $this->search($project, 'starword');
+
+        $this->assertSame($project->name, $results->scenes->first()->book->displayName());
+    }
+
+    public function test_plotline_event_and_codex_rows_carry_no_book(): void
+    {
+        $project = $this->project();
+
+        Plotline::factory()->for($project)->create(['name' => 'noBookWord plot', 'description' => 'x']);
+        Event::factory()->for($project)->create(['title' => 'noBookWord event', 'description' => 'x']);
+        CodexEntry::factory()->for($project)->character()->create(['name' => 'noBookWord hero', 'description' => 'x']);
+
+        $results = $this->search($project, 'noBookWord');
+
+        $this->assertNull($results->plotlines->first()->book);
+        $this->assertNull($results->events->first()->book);
+        $this->assertNull($results->characters->first()->book);
     }
 
     public function test_search_matches_raw_markdown_and_html_not_rendered_output(): void

@@ -140,7 +140,7 @@ class EpubExporterTest extends TestCase
 
     public function test_it_keeps_chapters_with_no_scenes(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
 
         $withScenes = Chapter::factory()->for($act)->create();
@@ -150,7 +150,7 @@ class EpubExporterTest extends TestCase
         // shift every later chapter's number the moment the author starts writing it.
         $empty = Chapter::factory()->for($act)->create();
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
 
         $this->assertCount(1, $tree);
         $this->assertCount(2, $tree->first()->chapters);
@@ -160,7 +160,7 @@ class EpubExporterTest extends TestCase
 
     public function test_it_keeps_acts_whose_chapters_are_all_empty(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
 
         $writtenAct = Act::factory()->for($book)->create();
         $writtenChapter = Chapter::factory()->for($writtenAct)->create();
@@ -173,7 +173,7 @@ class EpubExporterTest extends TestCase
         // Act 3 has no chapters at all — still a divider.
         $bareAct = Act::factory()->for($book)->create();
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
 
         $this->assertSame(
             [$writtenAct->id, $outlinedAct->id, $bareAct->id],
@@ -184,7 +184,7 @@ class EpubExporterTest extends TestCase
 
     public function test_the_book_tree_is_position_ordered_at_every_level(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
@@ -202,7 +202,7 @@ class EpubExporterTest extends TestCase
         $chapterOfFirst = Chapter::factory()->for($laterButFirst)->create();
         Scene::factory()->for($chapterOfFirst)->create();
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
 
         $this->assertTrue($tree->first()->is($laterButFirst), 'Acts must sort by position, not insertion.');
 
@@ -213,17 +213,17 @@ class EpubExporterTest extends TestCase
 
     public function test_act_page_renders_the_derived_number_not_the_raw_position(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create([
             'name' => 'The Gathering Storm',
             'description' => 'SECRET_DESCRIPTION',
         ]);
-        // A gap: the only act in the project, but its `position` is not 1. The rendered
-        // page must show the project-wide RANK (1), never the raw `position` column
+        // A gap: the only act in the book, but its `position` is not 1. The rendered
+        // page must show the book-wide RANK (1), never the raw `position` column
         // (continuous numbering, StoryNumbering).
         $act->update(['position' => 2]);
 
-        $html = $this->exporter()->renderAct($act, $project);
+        $html = $this->exporter()->renderAct($act, $book);
 
         $this->assertStringContainsString('Act 1', $html);
         $this->assertStringNotContainsString('Act 2', $html);
@@ -233,11 +233,11 @@ class EpubExporterTest extends TestCase
 
     public function test_act_page_with_blank_name_renders_number_only(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create(['name' => '']);
         $act->update(['position' => 1]);
 
-        $html = $this->exporter()->renderAct($act, $project);
+        $html = $this->exporter()->renderAct($act, $book);
 
         $this->assertStringContainsString('Act 1', $html);
         // No empty name paragraph when the name is blank.
@@ -246,23 +246,23 @@ class EpubExporterTest extends TestCase
 
     public function test_chapter_page_renders_hr_joined_scenes_without_titles_or_description(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create([
             'name' => 'A Long Expected Party',
             'description' => 'SECRET_DESCRIPTION',
         ]);
-        // A gap: sole chapter in the project, so its derived number is 1 regardless of
+        // A gap: sole chapter in the book, so its derived number is 1 regardless of
         // `position` (StoryNumbering).
         $chapter->update(['position' => 3]);
 
         Scene::factory()->for($chapter)->create(['name' => 'SCENE_ONE_TITLE', 'contents' => 'First scene prose.']);
         Scene::factory()->for($chapter)->create(['name' => 'SCENE_TWO_TITLE', 'contents' => 'Second scene prose.']);
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
         $renderedChapter = $tree->first()->chapters->first();
 
-        $html = $this->exporter()->renderChapter($renderedChapter, $project);
+        $html = $this->exporter()->renderChapter($renderedChapter, $book);
 
         $this->assertStringContainsString('Chapter 1: A Long Expected Party', $html);
         $this->assertStringContainsString('First scene prose.', $html);
@@ -273,11 +273,11 @@ class EpubExporterTest extends TestCase
         $this->assertStringNotContainsString('SCENE_TWO_TITLE', $html);
     }
 
-    // --- Continuous numbering: act/chapter numbers are project-wide ranks ---
+    // --- Continuous numbering: act/chapter numbers are book-wide ranks ---
 
     public function test_chapter_numbers_run_continuous_across_an_act_boundary(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
 
         $actOne = Act::factory()->for($book)->create();
         $actOneChapterOne = Chapter::factory()->for($actOne)->create();
@@ -286,28 +286,28 @@ class EpubExporterTest extends TestCase
         $actTwo = Act::factory()->for($book)->create();
         $actTwoChapterOne = Chapter::factory()->for($actTwo)->create();
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
         $numbering = $tree->pluck('chapters')->flatten();
 
         // The count does not reset at the act boundary: the first chapter of Act 2 picks
         // up where Act 1's chapters left off.
         $this->assertStringContainsString(
             'Chapter 1',
-            $this->exporter()->renderChapter($numbering->firstWhere('id', $actOneChapterOne->id), $project)
+            $this->exporter()->renderChapter($numbering->firstWhere('id', $actOneChapterOne->id), $book)
         );
         $this->assertStringContainsString(
             'Chapter 2',
-            $this->exporter()->renderChapter($numbering->firstWhere('id', $actOneChapterTwo->id), $project)
+            $this->exporter()->renderChapter($numbering->firstWhere('id', $actOneChapterTwo->id), $book)
         );
         $this->assertStringContainsString(
             'Chapter 3',
-            $this->exporter()->renderChapter($numbering->firstWhere('id', $actTwoChapterOne->id), $project)
+            $this->exporter()->renderChapter($numbering->firstWhere('id', $actTwoChapterOne->id), $book)
         );
     }
 
     public function test_act_numbers_are_continuous_and_gap_free_after_an_act_is_deleted(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
 
         $first = Act::factory()->for($book)->create(['name' => 'First']);
         $middle = Act::factory()->for($book)->create(['name' => 'Middle']);
@@ -315,19 +315,19 @@ class EpubExporterTest extends TestCase
 
         $middle->delete();
 
-        $survivors = $this->exporter()->actTree($project->fresh());
+        $survivors = $this->exporter()->actTree($book);
         $this->assertSame([$first->id, $last->id], $survivors->pluck('id')->all());
 
         // The survivors number 1, 2 — gap-free — never the act with the deleted act's
         // position left in between (which would read 1, 3).
-        $this->assertStringContainsString('Act 1', $this->exporter()->renderAct($survivors->first(), $project));
-        $this->assertStringContainsString('Act 2', $this->exporter()->renderAct($survivors->last(), $project));
-        $this->assertStringNotContainsString('Act 3', $this->exporter()->renderAct($survivors->last(), $project));
+        $this->assertStringContainsString('Act 1', $this->exporter()->renderAct($survivors->first(), $book));
+        $this->assertStringContainsString('Act 2', $this->exporter()->renderAct($survivors->last(), $book));
+        $this->assertStringNotContainsString('Act 3', $this->exporter()->renderAct($survivors->last(), $book));
     }
 
     public function test_chapter_numbers_stay_gap_free_after_a_chapter_is_deleted_leaving_placeholders(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
 
         $first = Chapter::factory()->for($act)->create(['name' => 'Written']);
@@ -340,24 +340,24 @@ class EpubExporterTest extends TestCase
 
         $toDelete->delete();
 
-        $tree = $this->exporter()->actTree($project->fresh());
+        $tree = $this->exporter()->actTree($book);
         $survivingChapters = $tree->first()->chapters;
         $this->assertSame([$first->id, $placeholder->id], $survivingChapters->pluck('id')->all());
 
         $this->assertStringContainsString(
             'Chapter 1: Written',
-            $this->exporter()->renderChapter($survivingChapters->first(), $project)
+            $this->exporter()->renderChapter($survivingChapters->first(), $book)
         );
         // Gap-free: the placeholder reads 2, not 3 (the deleted chapter's old position).
         $this->assertStringContainsString(
             'Chapter 2: Placeholder',
-            $this->exporter()->renderChapter($survivingChapters->last(), $project)
+            $this->exporter()->renderChapter($survivingChapters->last(), $book)
         );
     }
 
     public function test_the_toc_and_nav_agree_with_the_headings_across_an_act_boundary(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
 
         $actOne = Act::factory()->for($book)->create(['name' => 'Act One']);
         $chapterOne = Chapter::factory()->for($actOne)->create(['name' => 'First']);
@@ -369,7 +369,7 @@ class EpubExporterTest extends TestCase
         $chapterThree = Chapter::factory()->for($actTwo)->create(['name' => 'Third']);
         Scene::factory()->for($chapterThree)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $nav = (string) $this->entryOf($path, 'OEBPS/epub3toc.xhtml');
         $toc = (string) $this->entryOf($path, 'OEBPS/toc.xhtml');
@@ -387,15 +387,15 @@ class EpubExporterTest extends TestCase
 
     public function test_typography_is_smart_in_the_epub_but_scene_rendered_contents_is_unaffected(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create([
             'contents' => 'A dash -- and a range --- and an ellipsis... and "quotes".',
         ]);
 
-        $tree = $this->exporter()->actTree($project);
-        $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
+        $tree = $this->exporter()->actTree($book);
+        $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $book);
 
         // Epub output: SmartPunct converts dashes, ellipsis, and straight quotes.
         $this->assertStringContainsString("\u{2013}", $html, 'en-dash expected for --');
@@ -420,15 +420,15 @@ class EpubExporterTest extends TestCase
         // extensions alongside SmartPunct, so this markup renders as
         // real HTML instead of literal tildes/brackets — matching what the editor and
         // Scene::renderedContents() already produce via GFM.
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create([
             'contents' => "This is ~~struck~~ text.\n\n- [ ] todo\n- [x] done",
         ]);
 
-        $tree = $this->exporter()->actTree($project);
-        $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
+        $tree = $this->exporter()->actTree($book);
+        $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $book);
 
         $this->assertStringContainsString('<del>struck</del>', $html, 'strikethrough must render as <del>, not literal tildes');
         $this->assertStringNotContainsString('~~', $html);
@@ -443,25 +443,26 @@ class EpubExporterTest extends TestCase
     {
         Storage::fake('public');
         // A tiny but valid PNG so the cover embed reads real bytes off the public disk.
-        Storage::disk('public')->put('project-covers/cover.png', base64_decode(
+        Storage::disk('public')->put('book-covers/cover.png', base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
-        $project = Project::factory()->create([
+        $project = Project::factory()->create();
+        $book = $project->books()->first();
+        $book->update([
             'name' => 'The Whole Manuscript',
             'language' => 'fr',
             'author' => 'Jane Author',
             'publisher' => 'Imago Press',
             'rights' => 'Copyright 2026 Jane Author',
             'isbn' => '978-0-306-40615-7',
-            'cover_image' => 'project-covers/cover.png',
+            'cover_image' => 'book-covers/cover.png',
         ]);
-        $book = $project->books()->first();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $opf = $this->opfOf($path);
 
@@ -473,7 +474,7 @@ class EpubExporterTest extends TestCase
         $this->assertStringContainsString('<dc:rights>Copyright 2026 Jane Author</dc:rights>', $opf);
 
         // Both identifiers: the always-present generated URN AND the ISBN as a second one.
-        $this->assertStringContainsString("urn:imagoldfish:project:{$project->id}", $opf);
+        $this->assertStringContainsString("urn:imagoldfish:book:{$book->id}", $opf);
         $this->assertStringContainsString('urn:isbn:978-0-306-40615-7', $opf);
         $this->assertSame(2, substr_count($opf, '<dc:identifier'), 'both identifiers must be present');
 
@@ -492,20 +493,20 @@ class EpubExporterTest extends TestCase
 
     public function test_minimal_metadata_epub_opf_omits_optional_fields(): void
     {
-        // A plain factory project: language defaults to 'en', every optional field is null.
+        // A plain project: language defaults to 'en', every optional book field is null.
         $project = Project::factory()->create(['name' => 'Bare Bones']);
         $book = $project->books()->first();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $opf = $this->opfOf($path);
 
         $this->assertStringContainsString('<dc:title>Bare Bones</dc:title>', $opf);
         $this->assertStringContainsString('<dc:language>en</dc:language>', $opf);
-        $this->assertStringContainsString("urn:imagoldfish:project:{$project->id}", $opf);
+        $this->assertStringContainsString("urn:imagoldfish:book:{$book->id}", $opf);
 
         // Only the generated URN — no ISBN, no other optional Dublin Core fields.
         $this->assertSame(1, substr_count($opf, '<dc:identifier'), 'only the generated URN identifier');
@@ -522,18 +523,18 @@ class EpubExporterTest extends TestCase
     }
 
     /**
-     * The defaults regression guard, covering the metadata + project-cover slice.
+     * The defaults regression guard, covering the metadata + book-cover slice.
      *
      * Every PublicationSetting toggle must default to "no change to the output". This
-     * test exports the same richly-populated project twice —
+     * test exports the same richly-populated book twice —
      *   (a) with NO PublicationSetting row at all (the lazy default returned by
-     *       Project::publicationSettingOrDefault()), and
+     *       Book::publicationSettingOrDefault()), and
      *   (b) with an EXPLICIT row whose every column is the literal default value (the
      *       PublicationSettingFactory's default state, which mirrors
      *       publicationSettingOrDefault() field-for-field) —
      * and asserts the two generated .epub files are byte-for-byte identical. Because
      * applyMetadata() and applyCover() are gated behind toggles that default true, that
-     * match proves the gating is a true no-op for a default project.
+     * match proves the gating is a true no-op for a default book.
      *
      * > [!NOTE]
      * > A literal diff against a pre-feature commit's output needs a stored binary
@@ -543,31 +544,32 @@ class EpubExporterTest extends TestCase
     public function test_defaults_v1_regression_lazy_default_and_explicit_default_row_produce_byte_identical_epubs(): void
     {
         Storage::fake('public');
-        Storage::disk('public')->put('project-covers/cover.png', base64_decode(
+        Storage::disk('public')->put('book-covers/cover.png', base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
-        $project = Project::factory()->create([
+        $project = Project::factory()->create();
+        $book = $project->books()->first();
+        $book->update([
             'name' => 'The Whole Manuscript',
             'author' => 'Jane Author',
             'publisher' => 'Imago Press',
             'rights' => 'Copyright 2026 Jane Author',
             'isbn' => '978-0-306-40615-7',
-            'cover_image' => 'project-covers/cover.png',
+            'cover_image' => 'book-covers/cover.png',
         ]);
-        $book = $project->books()->first();
         $act = Act::factory()->for($book)->create(['name' => 'Act One']);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'A Beginning']);
         Scene::factory()->for($chapter)->create();
         Scene::factory()->for($chapter)->create();
 
-        $lazyPath = $this->exporter()->export($project->fresh());
+        $lazyPath = $this->exporter()->export($book->fresh());
 
         // Every column set to the literal default value — PublicationSettingFactory's
-        // definition() mirrors Project::publicationSettingOrDefault() field-for-field.
-        PublicationSetting::factory()->for($project)->create();
+        // definition() mirrors Book::publicationSettingOrDefault() field-for-field.
+        PublicationSetting::factory()->for($book)->create();
 
-        $explicitPath = $this->exporter()->export($project->fresh());
+        $explicitPath = $this->exporter()->export($book->fresh());
 
         // Compare the two packages entry-by-entry rather than as one raw byte stream. The
         // guard's intent is that the lazy-default and explicit-default paths produce
@@ -581,12 +583,12 @@ class EpubExporterTest extends TestCase
         $this->assertContentIdenticalIgnoringOpfTimestamp(
             $lazyPath,
             $explicitPath,
-            'a project with no PublicationSetting row and one with an explicit all-defaults row must export identical epub content'
+            'a book with no PublicationSetting row and one with an explicit all-defaults row must export identical epub content'
         );
 
         // Content-level sanity check on top of the byte match: today's chapter-heading
         // format, <hr/>-joined scenes with no titles, and metadata present because the
-        // columns are set — the exact shape a default project must keep.
+        // columns are set — the exact shape a default book must keep.
         $opf = $this->opfOf($explicitPath);
         $this->assertStringContainsString('<dc:creator', $opf);
         $this->assertStringContainsString('<dc:publisher>Imago Press</dc:publisher>', $opf);
@@ -594,7 +596,7 @@ class EpubExporterTest extends TestCase
         $this->assertStringContainsString('urn:isbn:978-0-306-40615-7', $opf);
         $this->assertStringContainsString('<meta name="cover" content="CoverImage"', $opf);
 
-        $chapterXhtml = $this->exporter()->renderChapter($chapter->fresh()->load('scenes'), $project);
+        $chapterXhtml = $this->exporter()->renderChapter($chapter->fresh()->load('scenes'), $book);
         $this->assertStringContainsString('Chapter 1: A Beginning', $chapterXhtml);
         $this->assertStringContainsString('<hr', $chapterXhtml);
 
@@ -604,17 +606,14 @@ class EpubExporterTest extends TestCase
 
     public function test_include_author_false_omits_dc_creator_but_keeps_other_metadata(): void
     {
-        $project = Project::factory()->create([
-            'author' => 'Jane Author',
-            'publisher' => 'Imago Press',
-        ]);
-        $book = $project->books()->first();
-        PublicationSetting::factory()->for($project)->create(['include_author' => false]);
+        [, $book] = $this->projectWithBook();
+        $book->update(['author' => 'Jane Author', 'publisher' => 'Imago Press']);
+        PublicationSetting::factory()->for($book)->create(['include_author' => false]);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
         $opf = $this->opfOf($path);
 
         $this->assertStringNotContainsString('<dc:creator', $opf);
@@ -625,14 +624,14 @@ class EpubExporterTest extends TestCase
 
     public function test_include_publisher_false_omits_dc_publisher(): void
     {
-        $project = Project::factory()->create(['publisher' => 'Imago Press']);
-        $book = $project->books()->first();
-        PublicationSetting::factory()->for($project)->create(['include_publisher' => false]);
+        [, $book] = $this->projectWithBook();
+        $book->update(['publisher' => 'Imago Press']);
+        PublicationSetting::factory()->for($book)->create(['include_publisher' => false]);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
         $opf = $this->opfOf($path);
 
         $this->assertStringNotContainsString('<dc:publisher', $opf);
@@ -642,14 +641,14 @@ class EpubExporterTest extends TestCase
 
     public function test_include_rights_false_omits_dc_rights(): void
     {
-        $project = Project::factory()->create(['rights' => 'Copyright 2026 Jane Author']);
-        $book = $project->books()->first();
-        PublicationSetting::factory()->for($project)->create(['include_rights' => false]);
+        [, $book] = $this->projectWithBook();
+        $book->update(['rights' => 'Copyright 2026 Jane Author']);
+        PublicationSetting::factory()->for($book)->create(['include_rights' => false]);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
         $opf = $this->opfOf($path);
 
         $this->assertStringNotContainsString('<dc:rights', $opf);
@@ -659,41 +658,39 @@ class EpubExporterTest extends TestCase
 
     public function test_include_isbn_false_omits_urn_isbn_identifier_but_keeps_generated_urn(): void
     {
-        $project = Project::factory()->create(['isbn' => '978-0-306-40615-7']);
-        $book = $project->books()->first();
-        PublicationSetting::factory()->for($project)->create(['include_isbn' => false]);
+        [, $book] = $this->projectWithBook();
+        $book->update(['isbn' => '978-0-306-40615-7']);
+        PublicationSetting::factory()->for($book)->create(['include_isbn' => false]);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
         $opf = $this->opfOf($path);
 
         $this->assertStringNotContainsString('urn:isbn:', $opf);
-        $this->assertStringContainsString("urn:imagoldfish:project:{$project->id}", $opf, 'the generated URN identifier is unconditional');
+        $this->assertStringContainsString("urn:imagoldfish:book:{$book->id}", $opf, 'the generated URN identifier is unconditional');
         $this->assertSame(1, substr_count($opf, '<dc:identifier'));
 
         @unlink($path);
     }
 
-    public function test_include_project_cover_false_omits_cover_but_keeps_title_urn_and_accessibility(): void
+    public function test_include_book_cover_false_omits_cover_but_keeps_title_urn_and_accessibility(): void
     {
         Storage::fake('public');
-        Storage::disk('public')->put('project-covers/cover.png', base64_decode(
+        Storage::disk('public')->put('book-covers/cover.png', base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
-        $project = Project::factory()->create([
-            'name' => 'The Whole Manuscript',
-            'cover_image' => 'project-covers/cover.png',
-        ]);
+        $project = Project::factory()->create(['name' => 'The Whole Manuscript']);
         $book = $project->books()->first();
-        PublicationSetting::factory()->for($project)->create(['include_project_cover' => false]);
+        $book->update(['cover_image' => 'book-covers/cover.png']);
+        PublicationSetting::factory()->for($book)->create(['include_book_cover' => false]);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
         $opf = $this->opfOf($path);
 
         $this->assertStringNotContainsString('<meta name="cover"', $opf);
@@ -701,7 +698,7 @@ class EpubExporterTest extends TestCase
 
         // Unconditional metadata is unaffected by the toggle.
         $this->assertStringContainsString('<dc:title>The Whole Manuscript</dc:title>', $opf);
-        $this->assertStringContainsString("urn:imagoldfish:project:{$project->id}", $opf);
+        $this->assertStringContainsString("urn:imagoldfish:book:{$book->id}", $opf);
         $this->assertStringContainsString('schema:accessibilitySummary', $opf);
 
         @unlink($path);
@@ -709,7 +706,7 @@ class EpubExporterTest extends TestCase
 
     public function test_toc_nav_is_two_level_with_chapters_nested_under_acts(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
 
         $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
@@ -717,7 +714,7 @@ class EpubExporterTest extends TestCase
         $chapter->update(['position' => 1]);
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $nav = $this->entryOf($path, 'OEBPS/epub3toc.xhtml');
         $this->assertNotFalse($nav, 'an EPUB 3 nav document must be packaged');
@@ -749,7 +746,7 @@ class EpubExporterTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $opf = $this->opfOf($path);
 
@@ -781,7 +778,7 @@ class EpubExporterTest extends TestCase
 
     public function test_toc_page_links_to_the_correct_act_and_chapter_files(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
 
         $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
@@ -789,7 +786,7 @@ class EpubExporterTest extends TestCase
         $chapter->update(['position' => 1]);
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $toc = $this->entryOf($path, 'OEBPS/toc.xhtml');
         $this->assertNotFalse($toc, 'a toc.xhtml content page must be packaged');
@@ -819,11 +816,12 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
-    public function test_title_page_renders_the_project_name_as_a_centered_larger_heading(): void
+    public function test_title_page_renders_the_books_display_name_as_a_centered_larger_heading(): void
     {
         $project = Project::factory()->create(['name' => 'A Very Large Story']);
+        $book = $project->books()->first();
 
-        $html = $this->exporter()->renderTitlePage($project);
+        $html = $this->exporter()->renderTitlePage($book);
 
         $dom = new DOMDocument;
         $dom->loadXML($html);
@@ -832,6 +830,7 @@ class EpubExporterTest extends TestCase
 
         $heading = $xpath->query("//*[local-name()='h1'][@class='story-title']")->item(0);
         $this->assertNotNull($heading, 'the title page must have an h1.story-title heading');
+        // The book has no name of its own, so its displayName() falls back to the project's.
         $this->assertSame('A Very Large Story', $heading->textContent);
 
         // The styling contract lives in styles.css: .title-page is centered and
@@ -928,12 +927,12 @@ class EpubExporterTest extends TestCase
         // Belt-and-braces: re-run BOTH gates against the shipped file from OUTSIDE the
         // service, proving the happy-path export is genuinely conformant (not merely that
         // export() happened not to throw).
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $zip = new ZipArchive;
         $this->assertTrue($zip->open($path) === true);
@@ -964,40 +963,41 @@ class EpubExporterTest extends TestCase
         }
     }
 
-    public function test_export_throws_epub_export_exception_when_the_project_has_no_scenes_anywhere(): void
+    public function test_export_throws_epub_export_exception_when_the_book_has_no_scenes_anywhere(): void
     {
         // An outline with acts and chapters but nothing written: the export would be a book
         // of blank pages, so the guard still refuses — it just triggers on "no scenes"
         // rather than on an empty (filtered) tree.
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         Chapter::factory()->for($act)->create();
         Chapter::factory()->for($act)->create();
 
         $this->expectException(EpubExportException::class);
 
-        $this->exporter()->export($project);
+        $this->exporter()->export($book);
     }
 
-    public function test_export_throws_epub_export_exception_for_a_project_with_no_acts(): void
+    public function test_export_throws_epub_export_exception_for_a_book_with_no_acts(): void
     {
         $project = Project::factory()->create();
+        $book = $project->books()->first();
 
         $this->expectException(EpubExportException::class);
 
-        $this->exporter()->export($project);
+        $this->exporter()->export($book);
     }
 
     public function test_dc_source_is_normalized_to_the_app_url_not_the_cli_artifact(): void
     {
         config(['app.url' => 'https://imagoldfish.test']);
 
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
         $opf = $this->opfOf($path);
 
         // The library derives dc:source from the request environment; under CLI that is the
@@ -1008,17 +1008,17 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
-    public function test_rendered_documents_carry_the_projects_language(): void
+    public function test_rendered_documents_carry_the_books_language(): void
     {
-        [$project, $book] = $this->projectWithBook();
-        $project->update(['language' => 'fr']);
+        [, $book] = $this->projectWithBook();
+        $book->update(['language' => 'fr']);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
-        $tree = $this->exporter()->actTree($project);
-        $actHtml = $this->exporter()->renderAct($tree->first(), $project);
-        $chapterHtml = $this->exporter()->renderChapter($tree->first()->chapters->first(), $project);
+        $tree = $this->exporter()->actTree($book);
+        $actHtml = $this->exporter()->renderAct($tree->first(), $book);
+        $chapterHtml = $this->exporter()->renderChapter($tree->first()->chapters->first(), $book);
 
         foreach ([$actHtml, $chapterHtml] as $html) {
             $this->assertStringContainsString('lang="fr"', $html);
@@ -1030,18 +1030,18 @@ class EpubExporterTest extends TestCase
 
     public function test_each_chapter_title_format_drives_both_the_heading_and_the_nav_label(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
         // The chapter's `position` (12) is deliberately not its display number: it is the
-        // only chapter in the project, so its derived project-wide number is 1
+        // only chapter in the book, so its derived book-wide number is 1
         // (StoryNumbering) — proving the heading/label follow the rank, not the
         // raw `position` column.
         $chapter = Chapter::factory()->for($act)->create(['name' => 'The Storm']);
         $chapter->update(['position' => 12]);
         Scene::factory()->for($chapter)->create();
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
         $renderedChapter = $tree->first()->chapters->first();
 
         // The enum is the single source of truth: the chapter page heading and the
@@ -1055,89 +1055,89 @@ class EpubExporterTest extends TestCase
         ];
 
         foreach ($expected as $format => $label) {
-            $settings = PublicationSetting::factory()->for($project)->make(['chapter_title_format' => $format]);
+            $settings = PublicationSetting::factory()->for($book)->make(['chapter_title_format' => $format]);
 
-            $chapterHtml = $this->exporter()->renderChapter($renderedChapter, $project, $settings);
+            $chapterHtml = $this->exporter()->renderChapter($renderedChapter, $book, $settings);
             $this->assertStringContainsString("<h1>{$label}</h1>", $chapterHtml, "heading for {$format}");
 
-            $tocHtml = $this->exporter()->renderToc($project, $tree, $settings);
+            $tocHtml = $this->exporter()->renderToc($book, $tree, $settings);
             $this->assertStringContainsString(">{$label}</a>", $tocHtml, "nav label for {$format}");
         }
     }
 
     public function test_a_nameless_chapter_has_no_dangling_separator_and_no_blank_heading(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
-        // A gap: sole chapter in the project, `position` 5 but a derived number of 1
+        // A gap: sole chapter in the book, `position` 5 but a derived number of 1
         // (StoryNumbering).
         $chapter = Chapter::factory()->for($act)->create(['name' => '']);
         $chapter->update(['position' => 5]);
         Scene::factory()->for($chapter)->create();
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
         $renderedChapter = $tree->first()->chapters->first();
 
         // Default format on a nameless chapter: "Chapter 1" with no trailing ": ".
-        $html = $this->exporter()->renderChapter($renderedChapter, $project);
+        $html = $this->exporter()->renderChapter($renderedChapter, $book);
         $this->assertStringContainsString('<h1>Chapter 1</h1>', $html);
         $this->assertStringNotContainsString('Chapter 1:', $html);
 
         // Title-only format on a nameless chapter yields no heading element at all.
-        $titleOnly = PublicationSetting::factory()->for($project)->make(['chapter_title_format' => 'title']);
-        $titleHtml = $this->exporter()->renderChapter($renderedChapter, $project, $titleOnly);
+        $titleOnly = PublicationSetting::factory()->for($book)->make(['chapter_title_format' => 'title']);
+        $titleHtml = $this->exporter()->renderChapter($renderedChapter, $book, $titleOnly);
         $this->assertStringNotContainsString('<h1>', $titleHtml);
     }
 
     public function test_scene_titles_render_only_when_enabled_and_non_empty(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['name' => 'The Meeting', 'contents' => 'Prose.']);
         Scene::factory()->for($chapter)->create(['name' => '', 'contents' => 'More prose.']);
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
         $renderedChapter = $tree->first()->chapters->first();
 
         // Off (default): no scene-title heading at all.
-        $off = $this->exporter()->renderChapter($renderedChapter, $project);
+        $off = $this->exporter()->renderChapter($renderedChapter, $book);
         $this->assertStringNotContainsString('The Meeting', $off);
         $this->assertStringNotContainsString('scene-title', $off);
 
         // On: the named scene gets an <h2>; the empty-named scene renders no blank heading.
-        $on = PublicationSetting::factory()->for($project)->make(['include_scene_titles' => true]);
-        $html = $this->exporter()->renderChapter($renderedChapter, $project, $on);
+        $on = PublicationSetting::factory()->for($book)->make(['include_scene_titles' => true]);
+        $html = $this->exporter()->renderChapter($renderedChapter, $book, $on);
         $this->assertStringContainsString('<h2 class="scene-title">The Meeting</h2>', $html);
         $this->assertSame(1, substr_count($html, 'scene-title'), 'the nameless scene must not add a blank title heading');
     }
 
     public function test_act_description_renders_only_when_enabled_and_non_empty(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create([
             'name' => 'Act Name',
             'description' => '<p>An act description.</p>',
         ]);
 
         // Off (default): the description is omitted (matches today's behaviour).
-        $off = $this->exporter()->renderAct($act, $project);
+        $off = $this->exporter()->renderAct($act, $book);
         $this->assertStringNotContainsString('An act description.', $off);
 
         // On: rendered as XHTML under the heading.
-        $on = PublicationSetting::factory()->for($project)->make(['include_act_descriptions' => true]);
-        $html = $this->exporter()->renderAct($act, $project, $on);
+        $on = PublicationSetting::factory()->for($book)->make(['include_act_descriptions' => true]);
+        $html = $this->exporter()->renderAct($act, $book, $on);
         $this->assertStringContainsString('<div class="act-description"><p>An act description.</p></div>', $html);
 
         // On but empty: no blank element.
         $act->update(['description' => null]);
-        $empty = $this->exporter()->renderAct($act->fresh(), $project, $on);
+        $empty = $this->exporter()->renderAct($act->fresh(), $book, $on);
         $this->assertStringNotContainsString('act-description', $empty);
     }
 
     public function test_chapter_and_scene_descriptions_render_only_when_enabled_and_non_empty(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['description' => '<p>Chapter blurb.</p>']);
         Scene::factory()->for($chapter)->create([
@@ -1145,39 +1145,39 @@ class EpubExporterTest extends TestCase
             'contents' => 'Scene prose.',
         ]);
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
         $renderedChapter = $tree->first()->chapters->first();
 
         // Off (default): neither description present.
-        $off = $this->exporter()->renderChapter($renderedChapter, $project);
+        $off = $this->exporter()->renderChapter($renderedChapter, $book);
         $this->assertStringNotContainsString('Chapter blurb.', $off);
         $this->assertStringNotContainsString('Scene blurb.', $off);
 
         // On: both present as XHTML.
-        $on = PublicationSetting::factory()->for($project)->make([
+        $on = PublicationSetting::factory()->for($book)->make([
             'include_chapter_descriptions' => true,
             'include_scene_descriptions' => true,
         ]);
-        $html = $this->exporter()->renderChapter($renderedChapter, $project, $on);
+        $html = $this->exporter()->renderChapter($renderedChapter, $book, $on);
         $this->assertStringContainsString('<div class="chapter-description"><p>Chapter blurb.</p></div>', $html);
         $this->assertStringContainsString('<div class="scene-description"><p>Scene blurb.</p></div>', $html);
     }
 
     public function test_chapter_and_scene_descriptions_toggle_on_but_empty_render_no_element(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['description' => null]);
         Scene::factory()->for($chapter)->create(['description' => null, 'contents' => 'Prose.']);
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
         $renderedChapter = $tree->first()->chapters->first();
 
-        $on = PublicationSetting::factory()->for($project)->make([
+        $on = PublicationSetting::factory()->for($book)->make([
             'include_chapter_descriptions' => true,
             'include_scene_descriptions' => true,
         ]);
-        $html = $this->exporter()->renderChapter($renderedChapter, $project, $on);
+        $html = $this->exporter()->renderChapter($renderedChapter, $book, $on);
 
         $this->assertStringNotContainsString('chapter-description', $html);
         $this->assertStringNotContainsString('scene-description', $html);
@@ -1185,17 +1185,17 @@ class EpubExporterTest extends TestCase
 
     public function test_decorative_divider_replaces_the_horizontal_rule_and_stays_well_formed(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'First.']);
         Scene::factory()->for($chapter)->create(['contents' => 'Second.']);
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
         $renderedChapter = $tree->first()->chapters->first();
 
-        $settings = PublicationSetting::factory()->for($project)->make(['divider_type' => 'decorative']);
-        $html = $this->exporter()->renderChapter($renderedChapter, $project, $settings);
+        $settings = PublicationSetting::factory()->for($book)->make(['divider_type' => 'decorative']);
+        $html = $this->exporter()->renderChapter($renderedChapter, $book, $settings);
 
         $this->assertStringNotContainsString('<hr/>', $html);
         $this->assertStringContainsString('<p class="divider">* * *</p>', $html);
@@ -1214,7 +1214,7 @@ class EpubExporterTest extends TestCase
 
     public function test_a_description_with_non_xhtml_markup_still_exports_a_valid_package(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
@@ -1227,11 +1227,11 @@ class EpubExporterTest extends TestCase
             'description' => '<p>Unclosed paragraph<br>with a bare void break and an <em>italic run',
         ]);
 
-        PublicationSetting::factory()->for($project)->create(['include_chapter_descriptions' => true]);
+        PublicationSetting::factory()->for($book)->create(['include_chapter_descriptions' => true]);
 
         // export() runs validatePackage() internally; a non-well-formed chapter page would
         // throw. A returned path proves the fragment normalised cleanly.
-        $path = $this->exporter()->export($project->fresh());
+        $path = $this->exporter()->export($book);
 
         $chapterEntry = null;
         $zip = new ZipArchive;
@@ -1257,7 +1257,7 @@ class EpubExporterTest extends TestCase
 
     public function test_acts_depth_lists_only_acts_and_folds_chapter_prose_into_one_page(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
 
@@ -1266,9 +1266,9 @@ class EpubExporterTest extends TestCase
         $chapterTwo = Chapter::factory()->for($act)->create(['name' => 'Second Chapter']);
         Scene::factory()->for($chapterTwo)->create(['contents' => 'CHAPTER_TWO_PROSE']);
 
-        PublicationSetting::factory()->for($project)->create(['table_of_contents_depth' => 'acts']);
+        PublicationSetting::factory()->for($book)->create(['table_of_contents_depth' => 'acts']);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         // In-book TOC page: exactly one act link, no chapter links at all.
         $toc = (string) $this->entryOf($path, 'OEBPS/toc.xhtml');
@@ -1319,7 +1319,7 @@ class EpubExporterTest extends TestCase
 
     public function test_scenes_depth_adds_scene_anchors_and_a_third_nav_level(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'The Beginning']);
@@ -1328,9 +1328,9 @@ class EpubExporterTest extends TestCase
         $namedScene = Scene::factory()->for($chapter)->create(['name' => 'The Meeting', 'contents' => 'Prose one.']);
         $unnamedScene = Scene::factory()->for($chapter)->create(['name' => '', 'contents' => 'Prose two.']);
 
-        PublicationSetting::factory()->for($project)->create(['table_of_contents_depth' => 'scenes']);
+        PublicationSetting::factory()->for($book)->create(['table_of_contents_depth' => 'scenes']);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         // The chapter document carries a real anchor for each scene id — the target the
         // fragment nav/TOC links resolve against.
@@ -1380,20 +1380,20 @@ class EpubExporterTest extends TestCase
     {
         // The default (Chapters) depth must not change today's chapter page: no scene
         // anchors, matching the overview's defaults===v1 contract.
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        $tree = $this->exporter()->actTree($project);
+        $tree = $this->exporter()->actTree($book);
         $renderedChapter = $tree->first()->chapters->first();
 
-        $default = $this->exporter()->renderChapter($renderedChapter, $project);
+        $default = $this->exporter()->renderChapter($renderedChapter, $book);
         $this->assertStringNotContainsString('scene-anchor', $default);
         $this->assertStringNotContainsString('id="scene-', $default);
 
-        $chapters = PublicationSetting::factory()->for($project)->make(['table_of_contents_depth' => 'chapters']);
-        $explicit = $this->exporter()->renderChapter($renderedChapter, $project, $chapters);
+        $chapters = PublicationSetting::factory()->for($book)->make(['table_of_contents_depth' => 'chapters']);
+        $explicit = $this->exporter()->renderChapter($renderedChapter, $book, $chapters);
         $this->assertStringNotContainsString('id="scene-', $explicit);
     }
 
@@ -1426,13 +1426,14 @@ class EpubExporterTest extends TestCase
 
     public function test_enabled_and_non_empty_matter_sections_render_at_the_position_dictated_by_section_order(): void
     {
-        $project = Project::factory()->create([
+        $project = Project::factory()->create();
+        $book = $project->books()->first();
+        $book->update([
             'dedication' => 'For *everyone* who believed.',
             'acknowledgements' => 'Thanks to my editor.',
             'preface' => 'A word before we begin.',
             'postface' => 'A word after the end.',
         ]);
-        $book = $project->books()->first();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
@@ -1441,7 +1442,7 @@ class EpubExporterTest extends TestCase
         // `title` stays pinned first.
         $order = ['title', 'dedication', 'acknowledgements', 'preface', 'toc', 'postface', 'body', 'appendix'];
 
-        PublicationSetting::factory()->for($project)->create([
+        PublicationSetting::factory()->for($book)->create([
             'include_dedication' => true,
             'include_acknowledgements' => true,
             'include_preface' => true,
@@ -1449,7 +1450,7 @@ class EpubExporterTest extends TestCase
             'section_order' => $order,
         ]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         foreach (['dedication.xhtml', 'acknowledgements.xhtml', 'preface.xhtml', 'postface.xhtml'] as $file) {
             $this->assertTrue(
@@ -1477,7 +1478,9 @@ class EpubExporterTest extends TestCase
 
     public function test_disabled_or_empty_matter_sections_are_absent(): void
     {
-        $project = Project::factory()->create([
+        $project = Project::factory()->create();
+        $book = $project->books()->first();
+        $book->update([
             // Non-empty content, but its toggle stays off.
             'dedication' => 'For everyone.',
             // Toggle on, but the field is empty.
@@ -1485,19 +1488,18 @@ class EpubExporterTest extends TestCase
             'acknowledgements' => '',
             'postface' => "   \n",
         ]);
-        $book = $project->books()->first();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        PublicationSetting::factory()->for($project)->create([
+        PublicationSetting::factory()->for($book)->create([
             'include_dedication' => false,
             'include_acknowledgements' => true,
             'include_preface' => true,
             'include_postface' => true,
         ]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         foreach (['dedication.xhtml', 'acknowledgements.xhtml', 'preface.xhtml', 'postface.xhtml'] as $file) {
             $this->assertFalse(
@@ -1511,17 +1513,16 @@ class EpubExporterTest extends TestCase
 
     public function test_matter_page_applies_smart_typography(): void
     {
-        $project = Project::factory()->create([
-            'dedication' => 'To "her" -- always.',
-        ]);
+        $project = Project::factory()->create();
         $book = $project->books()->first();
+        $book->update(['dedication' => 'To "her" -- always.']);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        PublicationSetting::factory()->for($project)->create(['include_dedication' => true]);
+        PublicationSetting::factory()->for($book)->create(['include_dedication' => true]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $dedication = (string) $this->entryOf($path, 'OEBPS/dedication.xhtml');
         $this->assertStringNotContainsString('"her"', $dedication, 'straight quotes must be converted');
@@ -1534,17 +1535,17 @@ class EpubExporterTest extends TestCase
 
     public function test_reordering_toc_and_body_changes_the_spine_order(): void
     {
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
         // Swap `toc` and `body` relative to the standard order.
-        PublicationSetting::factory()->for($project)->create([
+        PublicationSetting::factory()->for($book)->create([
             'section_order' => ['title', 'dedication', 'acknowledgements', 'preface', 'body', 'toc', 'postface', 'appendix'],
         ]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $hrefs = $this->spineHrefs($path);
 
@@ -1560,21 +1561,22 @@ class EpubExporterTest extends TestCase
     {
         // No PublicationSetting row at all (the lazy default): every include_* toggle for
         // front/back matter defaults false, so the export must contain no matter pages even
-        // though the Project happens to carry Markdown in those columns — this is the
+        // though the Book happens to carry Markdown in those columns — this is the
         // "toggle gates independently of content" half of the section rule, exercised
         // through the full export() pipeline via the lazy default.
-        $project = Project::factory()->create([
+        $project = Project::factory()->create();
+        $book = $project->books()->first();
+        $book->update([
             'dedication' => 'For everyone.',
             'acknowledgements' => 'Thanks.',
             'preface' => 'A preface.',
             'postface' => 'A postface.',
         ]);
-        $book = $project->books()->first();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         foreach (['dedication.xhtml', 'acknowledgements.xhtml', 'preface.xhtml', 'postface.xhtml'] as $file) {
             $this->assertFalse($this->epubHasEntryEndingWith($path, $file));
@@ -1595,14 +1597,14 @@ class EpubExporterTest extends TestCase
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['cover_image' => 'chapter-covers/cover.png']);
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        PublicationSetting::factory()->for($project)->create(['include_chapter_covers' => true]);
+        PublicationSetting::factory()->for($book)->create(['include_chapter_covers' => true]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $this->assertTrue(
             $this->epubHasEntryEndingWith($path, "images/chapter-cover-{$chapter->id}-cover.png"),
@@ -1635,14 +1637,14 @@ class EpubExporterTest extends TestCase
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['cover_image' => 'chapter-covers/cover.png']);
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
         // No PublicationSetting row at all — the lazy default's `include_chapter_covers`
         // is false.
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $this->assertFalse($this->epubHasEntryEndingWith($path, "images/chapter-cover-{$chapter->id}-cover.png"));
         $this->assertFalse($this->epubHasEntryEndingWith($path, "chapter-cover-{$chapter->id}.xhtml"));
@@ -1653,21 +1655,21 @@ class EpubExporterTest extends TestCase
     /**
      * A `cover_image` column pointing at a file that no longer exists on the
      * `public` disk must be skipped silently — mirroring how {@see EpubExporter::applyCover()}
-     * already treats a missing project cover — never aborting the export.
+     * already treats a missing book cover — never aborting the export.
      */
     public function test_chapter_with_a_missing_cover_file_is_skipped_and_the_export_still_succeeds(): void
     {
         Storage::fake('public');
         // Deliberately never written to the fake disk.
 
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['cover_image' => 'chapter-covers/missing.png']);
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
-        PublicationSetting::factory()->for($project)->create(['include_chapter_covers' => true]);
+        PublicationSetting::factory()->for($book)->create(['include_chapter_covers' => true]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $this->assertFalse($this->epubHasEntryEndingWith($path, "chapter-cover-{$chapter->id}.xhtml"));
         $this->assertTrue($this->epubHasEntryEndingWith($path, "chapter-{$chapter->id}.xhtml"), 'the chapter itself must still export');
@@ -1675,24 +1677,31 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
-    // --- Codex appendix skeleton (text only, no images) ---
+    // --- Codex appendix (book-scoped filter) ---
 
     /**
-     * Give a project a minimal surviving act/chapter/scene tree so export() has something to
-     * package (an empty tree throws before any appendix is reached).
+     * Give a project's book a minimal surviving act/chapter/scene tree so export() has
+     * something to package (an empty tree throws before any appendix is reached).
+     * Returns the book and its one scene — the appendix now lists only entries THIS
+     * scene references (see EpubExporter::addAppendixSection()), so appendix tests
+     * attach the entries they want to see via $scene->codexReferences().
+     *
+     * @return array{0: Book, 1: Scene}
      */
-    private function seedMinimalStory(Project $project): void
+    private function seedMinimalStory(Project $project): array
     {
         $book = $project->books()->first();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
-        Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
+        $scene = Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
+
+        return [$book, $scene];
     }
 
     public function test_appendix_lists_only_the_selected_types_in_type_then_name_order(): void
     {
         $project = Project::factory()->create();
-        $this->seedMinimalStory($project);
+        [$book, $scene] = $this->seedMinimalStory($project);
 
         // Two characters (name order must be Aragorn before Zelda) and one location — all three
         // are in the selected types. An organization entry is NOT selected and must be absent.
@@ -1701,12 +1710,16 @@ class EpubExporterTest extends TestCase
         $rivendell = CodexEntry::factory()->for($project)->location()->create(['name' => 'Rivendell', 'description' => '<p>An elven refuge.</p>']);
         $fellowship = CodexEntry::factory()->for($project)->organization()->create(['name' => 'The Fellowship', 'description' => '<p>A group.</p>']);
 
-        PublicationSetting::factory()->for($project)->create([
+        // The appendix filter is per book: only entries THIS book's own scenes
+        // reference appear, so the scene must reference every candidate entry.
+        $scene->codexReferences()->attach([$aragorn->id, $zelda->id, $rivendell->id, $fellowship->id]);
+
+        PublicationSetting::factory()->for($book)->create([
             'include_codex_appendix' => true,
             'appendix_entry_types' => ['character', 'location'],
         ]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         // The appendix heading page and each selected entry page are packaged.
         $this->assertTrue($this->epubHasEntryEndingWith($path, 'appendix.xhtml'), 'the appendix heading page must be packaged');
@@ -1714,7 +1727,7 @@ class EpubExporterTest extends TestCase
         $this->assertTrue($this->epubHasEntryEndingWith($path, "appendix-entry-{$zelda->id}.xhtml"));
         $this->assertTrue($this->epubHasEntryEndingWith($path, "appendix-entry-{$rivendell->id}.xhtml"));
 
-        // The unselected organization entry is absent.
+        // The unselected organization entry is absent, though referenced.
         $this->assertFalse(
             $this->epubHasEntryEndingWith($path, "appendix-entry-{$fellowship->id}.xhtml"),
             'an entry of an unselected type must not appear in the appendix'
@@ -1763,14 +1776,46 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
+    /**
+     * An entry no scene in the book references is excluded even though its type is
+     * selected and the toggle is on — the appendix lists only what this book's own
+     * scenes reference, never the full codex.
+     */
+    public function test_appendix_omits_an_entry_no_scene_in_the_book_references(): void
+    {
+        $project = Project::factory()->create();
+        [$book] = $this->seedMinimalStory($project);
+
+        $referenced = CodexEntry::factory()->for($project)->character()->create(['name' => 'Aragorn']);
+        $unreferenced = CodexEntry::factory()->for($project)->character()->create(['name' => 'Boromir']);
+
+        $referencingScene = Scene::factory()->for(Chapter::factory()->for(Act::factory()->for($book)))->create();
+        $referencingScene->codexReferences()->attach($referenced->id);
+
+        PublicationSetting::factory()->for($book)->create([
+            'include_codex_appendix' => true,
+            'appendix_entry_types' => ['character'],
+        ]);
+
+        $path = $this->exporter()->export($book);
+
+        $this->assertTrue($this->epubHasEntryEndingWith($path, "appendix-entry-{$referenced->id}.xhtml"));
+        $this->assertFalse(
+            $this->epubHasEntryEndingWith($path, "appendix-entry-{$unreferenced->id}.xhtml"),
+            'an entry no scene references must not appear, even though its type is selected'
+        );
+
+        @unlink($path);
+    }
+
     public function test_appendix_is_absent_when_the_toggle_is_off(): void
     {
         $project = Project::factory()->create();
-        $this->seedMinimalStory($project);
+        [$book] = $this->seedMinimalStory($project);
         $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Aragorn']);
 
         // No PublicationSetting row: the lazy default's include_codex_appendix is false.
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $this->assertFalse($this->epubHasEntryEndingWith($path, 'appendix.xhtml'));
         $this->assertFalse($this->epubHasEntryEndingWith($path, "appendix-entry-{$entry->id}.xhtml"));
@@ -1781,16 +1826,16 @@ class EpubExporterTest extends TestCase
     public function test_appendix_is_absent_when_no_types_are_selected(): void
     {
         $project = Project::factory()->create();
-        $this->seedMinimalStory($project);
+        [$book] = $this->seedMinimalStory($project);
         $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Aragorn']);
 
         // Toggle on, but no entry types chosen — nothing to render.
-        PublicationSetting::factory()->for($project)->create([
+        PublicationSetting::factory()->for($book)->create([
             'include_codex_appendix' => true,
             'appendix_entry_types' => [],
         ]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $this->assertFalse($this->epubHasEntryEndingWith($path, 'appendix.xhtml'));
         $this->assertFalse($this->epubHasEntryEndingWith($path, "appendix-entry-{$entry->id}.xhtml"));
@@ -1801,9 +1846,10 @@ class EpubExporterTest extends TestCase
     public function test_appendix_entry_with_non_xhtml_description_still_exports_a_valid_package(): void
     {
         $project = Project::factory()->create();
-        $this->seedMinimalStory($project);
+        [$book, $scene] = $this->seedMinimalStory($project);
 
         $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Broken Entry']);
+        $scene->codexReferences()->attach($entry->id);
 
         // Persist deliberately non-XHTML markup straight to the column, BYPASSING the codex
         // rich-HTML sanitizer, so the exporter sees an unclosed <p> and a bare void <br> — the
@@ -1813,13 +1859,13 @@ class EpubExporterTest extends TestCase
             'description' => '<p>Unclosed paragraph<br>with a bare void break and an <em>italic run',
         ]);
 
-        PublicationSetting::factory()->for($project)->create([
+        PublicationSetting::factory()->for($book)->create([
             'include_codex_appendix' => true,
             'appendix_entry_types' => ['character'],
         ]);
 
         // export() runs validatePackage() internally; a non-well-formed entry page would throw.
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $entryXhtml = (string) $this->entryOf($path, "OEBPS/appendix-entry-{$entry->id}.xhtml");
         $this->assertNotSame('', $entryXhtml, 'the appendix entry page must be packaged');
@@ -1855,12 +1901,13 @@ class EpubExporterTest extends TestCase
         Storage::disk('public')->put('codex-media/second.png', $this->fakeImageBytes());
 
         $project = Project::factory()->create();
-        $this->seedMinimalStory($project);
+        [$book, $scene] = $this->seedMinimalStory($project);
 
         $entry = CodexEntry::factory()->for($project)->character()->create([
             'name' => 'Aragorn',
             'description' => '<p>A ranger.</p>',
         ]);
+        $scene->codexReferences()->attach($entry->id);
         // Two reference images; the creating() hook gives them positions 1 then 2, so the
         // (collection, position) eager-load order makes first.png the "first image".
         CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create([
@@ -1872,13 +1919,13 @@ class EpubExporterTest extends TestCase
             'mime_type' => 'image/png',
         ]);
 
-        PublicationSetting::factory()->for($project)->create([
+        PublicationSetting::factory()->for($book)->create([
             'include_codex_appendix' => true,
             'appendix_entry_types' => ['character'],
             'appendix_include_images' => true,
         ]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         // The first image's bytes are packaged, namespaced by the entry id; the second is not.
         $this->assertTrue(
@@ -1901,7 +1948,7 @@ class EpubExporterTest extends TestCase
     /**
      * A media row pointing at a file that is no longer on the `public` disk is
      * skipped SILENTLY — the entry page still renders (text only) and the export still succeeds
-     * and validates. Mirrors the missing chapter-cover / project-cover behaviour.
+     * and validates. Mirrors the missing chapter-cover / book-cover behaviour.
      */
     public function test_appendix_entry_with_a_missing_image_file_is_skipped_and_export_still_validates(): void
     {
@@ -1909,25 +1956,26 @@ class EpubExporterTest extends TestCase
         // The media path below is deliberately never written to the fake disk.
 
         $project = Project::factory()->create();
-        $this->seedMinimalStory($project);
+        [$book, $scene] = $this->seedMinimalStory($project);
 
         $entry = CodexEntry::factory()->for($project)->character()->create([
             'name' => 'Aragorn',
             'description' => '<p>A ranger.</p>',
         ]);
+        $scene->codexReferences()->attach($entry->id);
         CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create([
             'path' => 'codex-media/missing.png',
             'mime_type' => 'image/png',
         ]);
 
-        PublicationSetting::factory()->for($project)->create([
+        PublicationSetting::factory()->for($book)->create([
             'include_codex_appendix' => true,
             'appendix_entry_types' => ['character'],
             'appendix_include_images' => true,
         ]);
 
         // export() runs validatePackage() internally; a missing file must not abort it.
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         $this->assertFalse(
             $this->epubHasEntryEndingWith($path, "images/appendix-entry-{$entry->id}-missing.png"),
@@ -1952,25 +2000,26 @@ class EpubExporterTest extends TestCase
         Storage::disk('public')->put('codex-media/first.png', $this->fakeImageBytes());
 
         $project = Project::factory()->create();
-        $this->seedMinimalStory($project);
+        [$book, $scene] = $this->seedMinimalStory($project);
 
         $entry = CodexEntry::factory()->for($project)->character()->create([
             'name' => 'Aragorn',
             'description' => '<p>A ranger.</p>',
         ]);
+        $scene->codexReferences()->attach($entry->id);
         CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create([
             'path' => 'codex-media/first.png',
             'mime_type' => 'image/png',
         ]);
 
         // Appendix on, but images explicitly off.
-        PublicationSetting::factory()->for($project)->create([
+        PublicationSetting::factory()->for($book)->create([
             'include_codex_appendix' => true,
             'appendix_entry_types' => ['character'],
             'appendix_include_images' => false,
         ]);
 
-        $path = $this->exporter()->export($project);
+        $path = $this->exporter()->export($book);
 
         // The appendix and the entry page are present, but no image bytes are packaged.
         $this->assertTrue($this->epubHasEntryEndingWith($path, "appendix-entry-{$entry->id}.xhtml"));

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\CodexMediaCollection;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
@@ -34,13 +35,16 @@ use ZipArchive;
  *
  * The archive has two top-level folders:
  *   - data/  — a lossless machine layer (source of truth for a future reimport)
- *   - book/  — a human reading version
+ *   - books/ — a human reading version
  *
- * It emits data/manifest.json, the data/ Story branch (project + acts → chapters →
- * scenes), the data/ Timeline branch (plotlines + events), the data/ Codex branch
- * (entries + attribute definitions + tags + media), and the book/ human reading
- * layer (TOC + compiled chapter pages). The book/ layer is the ONLY place Markdown
- * is rendered to HTML; data/ stays raw and lossless.
+ * It emits data/manifest.json, the project's own data/project/ descriptor, the
+ * data/books/ branch (one directory per book, each carrying its own publication
+ * metadata and its act -> chapter -> scene tree), the data/ Timeline branch
+ * (plotlines + events, project-wide), the data/ Codex branch (entries + attribute
+ * definitions + tags + media, project-wide), and the books/ human reading layer
+ * (a top-level index linking every book's own TOC + compiled chapter pages). The
+ * books/ layer is the ONLY place Markdown is rendered to HTML; data/ stays raw
+ * and lossless.
  */
 class StaticSiteExporter
 {
@@ -50,13 +54,15 @@ class StaticSiteExporter
      * breaking change to the data/ layout. Documented in
      * documentation/export-format.md.
      *
-     * The no-revisions-import-export feature bumped it to 3: the manifest no
-     * longer carries `includes_revisions`, and no `revisions/` sidecar is
-     * written. A removed manifest key is a breaking layout change, so
-     * `ImportRules::SUPPORTED_MANIFEST_VERSIONS` accepts version 3 only —
-     * older archives are rejected rather than imported with history dropped.
+     * The multiple-books feature bumped it to 4: the manuscript moved from
+     * data/acts/ (project-scoped) to data/books/<id>/acts/ (one directory per
+     * book), publication-setting.json moved inside each book's own directory,
+     * and the book/ reading layer gained a books/ level above it. A renamed or
+     * relocated path is a breaking layout change, so
+     * `ImportRules::SUPPORTED_MANIFEST_VERSIONS` accepts version 4 only —
+     * older archives are rejected rather than imported against the wrong shape.
      */
-    private const DATA_VERSION = 3;
+    private const DATA_VERSION = 4;
 
     /**
      * Build the export and return the path to a ready temp zip. The caller (the
@@ -75,12 +81,12 @@ class StaticSiteExporter
         try {
             $this->addReadme($zip, $project);
             $this->addManifest($zip, $project, $includeMedia);
-            $this->addPublicationSetting($zip, $project);
             $this->addWordCountSnapshots($zip, $project);
-            $this->addStory($zip, $project, $includeMedia);
+            $this->addProject($zip, $project, $includeMedia);
+            $this->addBooks($zip, $project, $includeMedia);
             $this->addTimeline($zip, $project);
             $this->addCodex($zip, $project, $includeMedia);
-            $this->addBook($zip, $project);
+            $this->addBooksReadingLayer($zip, $project);
         } catch (\Throwable $e) {
             // Abandon the half-built archive and delete the temp file so a failed
             // export never leaks a partial zip onto disk.
@@ -115,51 +121,6 @@ class StaticSiteExporter
     }
 
     /**
-     * data/publication-setting.json — the project's EPUB publication config, so a
-     * customised setting survives an export → import round-trip.
-     * RAW persisted values only, never rendered: booleans as booleans,
-     * enum columns as their backing string, the two ordered lists as arrays.
-     *
-     * The file is OMITTED entirely when the project has no saved row — the lazy
-     * default (Project::publicationSettingOrDefault()) means "no row" already
-     * equals "defaults", so writing a serialized default would add nothing. An
-     * import that finds no file therefore leaves the imported project on the same
-     * lazy default (ProjectGraphImporter::readPublicationSetting()).
-     */
-    private function addPublicationSetting(ZipArchive $zip, Project $project): void
-    {
-        $setting = $project->publicationSetting;
-
-        if ($setting === null) {
-            return;
-        }
-
-        $this->addJson($zip, 'data/publication-setting.json', [
-            'include_project_cover' => $setting->include_project_cover,
-            'include_chapter_covers' => $setting->include_chapter_covers,
-            'include_scene_titles' => $setting->include_scene_titles,
-            'include_act_descriptions' => $setting->include_act_descriptions,
-            'include_chapter_descriptions' => $setting->include_chapter_descriptions,
-            'include_scene_descriptions' => $setting->include_scene_descriptions,
-            'include_dedication' => $setting->include_dedication,
-            'include_acknowledgements' => $setting->include_acknowledgements,
-            'include_preface' => $setting->include_preface,
-            'include_postface' => $setting->include_postface,
-            'include_author' => $setting->include_author,
-            'include_publisher' => $setting->include_publisher,
-            'include_rights' => $setting->include_rights,
-            'include_isbn' => $setting->include_isbn,
-            'chapter_title_format' => $setting->chapter_title_format->value,
-            'table_of_contents_depth' => $setting->table_of_contents_depth->value,
-            'divider_type' => $setting->divider_type->value,
-            'section_order' => $setting->section_order,
-            'include_codex_appendix' => $setting->include_codex_appendix,
-            'appendix_entry_types' => $setting->appendix_entry_types,
-            'appendix_include_images' => $setting->appendix_include_images,
-        ]);
-    }
-
-    /**
      * data/word-count-snapshots.json — the project's writing history, as a flat
      * list of `{ recorded_on, word_count }` (oldest first), so a restore carries
      * the record forward instead of leaving a gap. Written like `data/tags.json`
@@ -184,7 +145,7 @@ class StaticSiteExporter
     /**
      * README.md — the archive's front door for whoever opens the zip. It carries the
      * project name, the export date, the project description as plain text (the stored
-     * HTML stripped to prose), and a short note pointing humans at book/ and machines
+     * HTML stripped to prose), and a short note pointing humans at books/ and machines
      * at data/. It renders nothing from data/ and is never a source of truth.
      */
     private function addReadme(ZipArchive $zip, Project $project): void
@@ -208,44 +169,115 @@ class StaticSiteExporter
         $lines[] = '## What is in this archive';
         $lines[] = '';
         $lines[] = 'This export has two folders. If you are a person who wants to **read** the '
-            .'story, open **`book/`** — start at `book/index.html` for a table of contents and '
-            .'clickable chapters. If you are a **program** restoring this backup, read '
-            .'**`data/`**: it is a complete, lossless copy of the project — every field, id, and '
-            .'relationship — that can be rebuilt exactly. `data/manifest.json` describes the '
-            .'archive. The `book/` folder is for reading only and is never the source of truth.';
+            .'story, open **`books/`** — start at `books/index.html` to pick a book, then its own '
+            .'table of contents for clickable chapters. If you are a **program** restoring this '
+            .'backup, read **`data/`**: it is a complete, lossless copy of the project — every '
+            .'field, id, and relationship — that can be rebuilt exactly. `data/manifest.json` '
+            .'describes the archive. The `books/` folder is for reading only and is never the '
+            .'source of truth.';
 
         $this->addFromString($zip, 'README.md', implode("\n", $lines)."\n");
     }
 
     /**
-     * The Story branch of data/: the project entity plus the act → chapter → scene
-     * tree. Every entity is a `<db-id>-slug` directory holding a per-entity JSON
-     * (scalars + stable ids + relationship id lists + links to its field files) and
-     * raw field files (exact stored column values — never re-rendered or
-     * re-sanitized). Nesting mirrors ownership.
+     * data/project/ — project.json (id, name, goals, description_file?, cover_file?)
+     * plus description.html and cover/<name>. Slimmed to the project's OWN columns:
+     * language, author, publisher, rights, isbn and the four front-/back-matter
+     * fields now belong to each book (see {@see addBookData()}) and are never
+     * written here.
      */
-    private function addStory(ZipArchive $zip, Project $project, bool $includeMedia): void
+    private function addProject(ZipArchive $zip, Project $project, bool $includeMedia): void
     {
-        $this->addProject($zip, $project);
+        $dir = 'data/project';
 
-        // Eager-load the whole tree once, ordered by position at every level (the
-        // app-wide invariant that also drives book/ numbering) — no N+1. The scene's
-        // mentioned events are loaded so we can emit their ids without a per-scene query.
+        $json = [
+            'id' => $project->id,
+            'name' => $project->name,
+            'daily_word_goal' => $project->daily_word_goal,
+            'total_word_goal' => $project->total_word_goal,
+        ];
+        $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $project->description);
+        $json += $this->addCoverFile($zip, $dir, $project->cover_image, $includeMedia);
+
+        $this->addJson($zip, "{$dir}/project.json", $json);
+    }
+
+    /**
+     * The data/books/ branch: one directory per book, in position order, each
+     * carrying its own publication metadata (see {@see addBookData()}) and its
+     * act -> chapter -> scene tree. Nesting mirrors ownership, the same rule the
+     * act/chapter/scene tree below it already follows.
+     */
+    private function addBooks(ZipArchive $zip, Project $project, bool $includeMedia): void
+    {
+        // Eager-load the whole books -> acts -> chapters -> scenes tree once,
+        // ordered by position at every level (the app-wide invariant that also
+        // drives books/ numbering) — no N+1. The scene's mentioned events are
+        // loaded so we can emit their ids without a per-scene query. chaperone()
+        // wires each book's inverse project relation so displayName() on an
+        // unnamed book (the common case) costs no extra query.
         $project->load([
-            'acts' => fn ($query) => $query->orderBy('position'),
-            'acts.chapters' => fn ($query) => $query->orderBy('position'),
-            'acts.chapters.scenes' => fn ($query) => $query->orderBy('position'),
-            'acts.chapters.scenes.mentionedEvents',
+            'books' => fn ($query) => $query->orderBy('position')->chaperone('project'),
+            'books.acts' => fn ($query) => $query->orderBy('position'),
+            'books.acts.chapters' => fn ($query) => $query->orderBy('position'),
+            'books.acts.chapters.scenes' => fn ($query) => $query->orderBy('position'),
+            'books.acts.chapters.scenes.mentionedEvents',
+            'books.publicationSetting',
         ]);
 
-        foreach ($project->acts as $act) {
-            $actDir = 'data/acts/'.$this->entityDir($act);
+        foreach ($project->books as $book) {
+            $this->addBookData($zip, $book, $includeMedia);
+        }
+    }
+
+    /**
+     * A single book's data/ directory: book.json (scalars + field-file links)
+     * plus its own description.html, rights.txt, the four front-/back-matter
+     * Markdown files, its cover, its publication-setting.json, and its
+     * act -> chapter -> scene tree underneath.
+     *
+     * `name` is written LITERALLY, including null — an unnamed book tracks its
+     * project's name ({@see Book::displayName()}), and coercing it to a string
+     * here would materialize a value that should keep drifting with the project.
+     * `rights` is a plain-text column (not rich HTML like `description`), so it
+     * is written as `rights.txt`, never `.html` — the same field-file convention
+     * as `contents.md`, just under a `.txt` name.
+     */
+    private function addBookData(ZipArchive $zip, Book $book, bool $includeMedia): void
+    {
+        $dir = 'data/books/'.$this->slugDir($book->id, $book->displayName());
+
+        $json = [
+            'id' => $book->id,
+            'name' => $book->name,
+            'position' => $book->position,
+            'project_id' => $book->project_id,
+            'language' => $book->language?->value,
+            'author' => $book->author,
+            'publisher' => $book->publisher,
+            'isbn' => $book->isbn,
+            'overview_render_mode' => $book->overview_render_mode?->value,
+        ];
+        $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $book->description);
+        $json += $this->addFieldFile($zip, $dir, 'rights_file', 'rights.txt', $book->rights);
+        $json += $this->addFieldFile($zip, $dir, 'dedication_file', 'dedication.md', $book->dedication);
+        $json += $this->addFieldFile($zip, $dir, 'acknowledgements_file', 'acknowledgements.md', $book->acknowledgements);
+        $json += $this->addFieldFile($zip, $dir, 'preface_file', 'preface.md', $book->preface);
+        $json += $this->addFieldFile($zip, $dir, 'postface_file', 'postface.md', $book->postface);
+        $json += $this->addCoverFile($zip, $dir, $book->cover_image, $includeMedia);
+
+        $this->addJson($zip, "{$dir}/book.json", $json);
+
+        $this->addBookPublicationSetting($zip, $dir, $book);
+
+        foreach ($book->acts as $act) {
+            $actDir = "{$dir}/acts/".$this->entityDir($act);
 
             $actJson = [
                 'id' => $act->id,
                 'name' => $act->name,
                 'position' => $act->position,
-                'project_id' => $project->id,
+                'book_id' => $act->book_id,
             ];
             $actJson += $this->addFieldFile($zip, $actDir, 'description_file', 'description.html', $act->description);
             $this->addJson($zip, "{$actDir}/act.json", $actJson);
@@ -260,7 +292,7 @@ class StaticSiteExporter
                     'act_id' => $chapter->act_id,
                 ];
                 $chapterJson += $this->addFieldFile($zip, $chapterDir, 'description_file', 'description.html', $chapter->description);
-                $chapterJson += $this->addChapterCover($zip, $chapterDir, $chapter, $includeMedia);
+                $chapterJson += $this->addCoverFile($zip, $chapterDir, $chapter->cover_image, $includeMedia);
                 $this->addJson($zip, "{$chapterDir}/chapter.json", $chapterJson);
 
                 foreach ($chapter->scenes as $scene) {
@@ -271,29 +303,51 @@ class StaticSiteExporter
     }
 
     /**
-     * data/project/ — project.json (id, name, description_file?, plus the four
-     * front-/back-matter Markdown field-file links) + description.html and any of
-     * dedication.md / acknowledgements.md / preface.md / postface.md that are
-     * non-empty. The four Markdown fields stay RAW — never rendered — like a
-     * scene's contents.md.
+     * {bookDir}/publication-setting.json — this book's EPUB publication config,
+     * so a customised setting survives an export -> import round-trip. Moved off
+     * the data/ root now that {@see PublicationSetting} belongs to a Book, not
+     * the Project.
+     *
+     * RAW persisted values only, never rendered: booleans as booleans, enum
+     * columns as their backing string, the two ordered lists as arrays.
+     *
+     * The file is OMITTED entirely when the book has no saved row — the lazy
+     * default ({@see Book::publicationSettingOrDefault()}) means "no row"
+     * already equals "defaults", so writing a serialized default would add
+     * nothing. An import that finds no file therefore leaves the imported book
+     * on the same lazy default.
      */
-    private function addProject(ZipArchive $zip, Project $project): void
+    private function addBookPublicationSetting(ZipArchive $zip, string $bookDir, Book $book): void
     {
-        $dir = 'data/project';
+        $setting = $book->publicationSetting;
 
-        $json = [
-            'id' => $project->id,
-            'name' => $project->name,
-            'daily_word_goal' => $project->daily_word_goal,
-            'total_word_goal' => $project->total_word_goal,
-        ];
-        $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $project->description);
-        $json += $this->addFieldFile($zip, $dir, 'dedication_file', 'dedication.md', $project->dedication);
-        $json += $this->addFieldFile($zip, $dir, 'acknowledgements_file', 'acknowledgements.md', $project->acknowledgements);
-        $json += $this->addFieldFile($zip, $dir, 'preface_file', 'preface.md', $project->preface);
-        $json += $this->addFieldFile($zip, $dir, 'postface_file', 'postface.md', $project->postface);
+        if ($setting === null) {
+            return;
+        }
 
-        $this->addJson($zip, "{$dir}/project.json", $json);
+        $this->addJson($zip, "{$bookDir}/publication-setting.json", [
+            'include_book_cover' => $setting->include_book_cover,
+            'include_chapter_covers' => $setting->include_chapter_covers,
+            'include_scene_titles' => $setting->include_scene_titles,
+            'include_act_descriptions' => $setting->include_act_descriptions,
+            'include_chapter_descriptions' => $setting->include_chapter_descriptions,
+            'include_scene_descriptions' => $setting->include_scene_descriptions,
+            'include_dedication' => $setting->include_dedication,
+            'include_acknowledgements' => $setting->include_acknowledgements,
+            'include_preface' => $setting->include_preface,
+            'include_postface' => $setting->include_postface,
+            'include_author' => $setting->include_author,
+            'include_publisher' => $setting->include_publisher,
+            'include_rights' => $setting->include_rights,
+            'include_isbn' => $setting->include_isbn,
+            'chapter_title_format' => $setting->chapter_title_format->value,
+            'table_of_contents_depth' => $setting->table_of_contents_depth->value,
+            'divider_type' => $setting->divider_type->value,
+            'section_order' => $setting->section_order,
+            'include_codex_appendix' => $setting->include_codex_appendix,
+            'appendix_entry_types' => $setting->appendix_entry_types,
+            'appendix_include_images' => $setting->appendix_include_images,
+        ]);
     }
 
     /**
@@ -324,33 +378,35 @@ class StaticSiteExporter
     }
 
     /**
-     * A chapter's cover image. Returns the `cover_file`
-     * link key to merge into chapter.json (a path relative to the chapter directory,
-     * `cover/<name>`) when the chapter has a cover, and — when $includeMedia is true —
-     * co-locates the file's BYTES at that path, exactly like codex media.
+     * A plain-path cover image belonging to a project, a book, or a chapter.
+     * Returns the `cover_file` link key to merge into the owning entity's JSON
+     * (a path relative to that entity's own directory, `cover/<name>`) when a
+     * cover is set, and — when $includeMedia is true — co-locates the file's
+     * BYTES at that path, exactly like codex media.
      *
      * The bytes are read straight off the `public` disk, never via the
-     * /storage URL, so the export never depends on `php artisan storage:link`. Like
-     * codex media, the link is written regardless of the toggle; only the bytes are
+     * /storage URL, so the export never depends on `php artisan storage:link`.
+     * The link is written regardless of the toggle; only the bytes are
      * conditional, and a metadata-only export imports back a null cover.
+     * basename-guarded so a stray path component can never escape the entity's
+     * own directory.
      *
      * @return array<string, string>
      */
-    private function addChapterCover(ZipArchive $zip, string $chapterDir, Chapter $chapter, bool $includeMedia): array
+    private function addCoverFile(ZipArchive $zip, string $dir, ?string $coverImage, bool $includeMedia): array
     {
-        if (blank($chapter->cover_image)) {
+        if (blank($coverImage)) {
             return [];
         }
 
-        // basename-guarded so a stray path component can never escape the chapter dir.
-        $relativePath = 'cover/'.basename($chapter->cover_image);
+        $relativePath = 'cover/'.basename($coverImage);
 
         if ($includeMedia) {
-            // A missing file on disk is skipped rather than aborting the whole export;
-            // the cover_file link still records that the chapter had a cover.
-            $bytes = Storage::disk('public')->get($chapter->cover_image);
+            // A missing file on disk is skipped rather than aborting the whole
+            // export; the cover_file link still records that a cover was set.
+            $bytes = Storage::disk('public')->get($coverImage);
             if ($bytes !== null) {
-                $this->addFromString($zip, "{$chapterDir}/{$relativePath}", $bytes);
+                $this->addFromString($zip, "{$dir}/{$relativePath}", $bytes);
             }
         }
 
@@ -586,38 +642,79 @@ class StaticSiteExporter
     }
 
     /**
-     * The book/ human reading layer — the manuscript, readable. Unlike data/, this is
-     * the ONE place the export renders Markdown to HTML (Str::markdown on scene
-     * `contents`, in the Blade templates). It holds no descriptions, notes, images, or
-     * data/ — only the compiled prose.
+     * The books/ human reading layer — books/index.html links every book's own
+     * table of contents (in position order), and each book gets its own
+     * books/NN/ folder ({@see addBookReadingLayer()}), NN being the book's
+     * zero-padded position.
+     */
+    private function addBooksReadingLayer(ZipArchive $zip, Project $project): void
+    {
+        $books = $project->books()->orderBy('position')->get();
+
+        $this->addBooksReadingIndex($zip, $project, $books);
+
+        foreach ($books as $book) {
+            $this->addBookReadingLayer($zip, $book);
+        }
+    }
+
+    /**
+     * books/index.html — the top-level index linking every book's own table of
+     * contents at books/NN/index.html. Titles use {@see Book::displayName()} so
+     * an unnamed book still gets a real label (the project's name) rather than
+     * a blank link.
      *
-     * Layout: book/index.html (a TOC of acts + chapter links) and book/NN/NN.html
-     * (one compiled page per chapter, folder = zero-padded act position, file =
-     * zero-padded per-act chapter position). Each chapter page carries prev/next
-     * reading links at top and bottom that follow global reading order ACROSS act
-     * boundaries; the first chapter's prev and the last chapter's next link back to
-     * the TOC. HTML lives in the Blade templates under resources/views/exports/book
-     * (guidelines: no string-built HTML in the service).
+     * @param  Collection<int, Book>  $books
+     */
+    private function addBooksReadingIndex(ZipArchive $zip, Project $project, Collection $books): void
+    {
+        $entries = $books->map(fn (Book $book) => [
+            'title' => $book->displayName(),
+            'href' => $this->bookFolder($book).'/index.html',
+        ])->all();
+
+        $html = view('exports.books.books-index', [
+            'projectName' => $project->name,
+            'books' => $entries,
+        ])->render();
+
+        $this->addFromString($zip, 'books/index.html', $html);
+    }
+
+    /**
+     * One book's reading layer: its own table of contents (books/NN/index.html)
+     * plus a compiled page per chapter (books/NN/NN/NN.html) — the same shape
+     * the whole project's book/ layer used to have, now written once per book.
+     * Unlike data/, this is the ONE place the export renders Markdown to HTML
+     * (Str::markdown on scene `contents`, in the Blade templates).
      *
-     * Act and chapter numbers are derived once from this same loaded tree via
-     * {@see StoryNumbering}, then threaded through both the TOC and the chapter
-     * pages, so the two can never disagree. The chapter heading is formatted by the
-     * project's {@see PublicationSetting::$chapter_title_format} — the same setting
-     * that drives the EPUB — so both exports agree on how a chapter number reads.
+     * Act and chapter numbers are derived once from this book's own loaded tree
+     * via {@see StoryNumbering}, then threaded through both the TOC and the
+     * chapter pages, so the two can never disagree. The chapter heading is
+     * formatted by the book's {@see PublicationSetting::$chapter_title_format}
+     * — the same setting that drives the EPUB — so both exports agree on how a
+     * chapter number reads.
+     *
+     * prev/next reading links stay INSIDE this book: the first chapter's prev
+     * and the last chapter's next both point at `../index.html`, this book's
+     * own TOC, never a sibling book.
      *
      * > [!WARNING]
-     * > `chapterHref()` must not use those display numbers. It is file identity
-     * > (folder = act position, file = per-act chapter position), and it must never
-     * > shift the URL of an already exported book.
+     * > `chapterHref()` must not use the display numbers above. It is file
+     * > identity (folder = act position, file = per-act chapter position),
+     * > relative to this book's own TOC, and must never shift the URL of an
+     * > already exported book.
      */
-    private function addBook(ZipArchive $zip, Project $project): void
+    private function addBookReadingLayer(ZipArchive $zip, Book $book): void
     {
-        $acts = $this->loadBookTree($project);
-        $settings = $project->publicationSettingOrDefault();
+        $acts = $this->loadActTree($book);
+        $settings = $book->publicationSettingOrDefault();
         $numbering = StoryNumbering::fromActs($acts);
+        $folder = $this->bookFolder($book);
 
-        // A flat, ordered chapter sequence (all chapters across all acts, in reading
-        // order) built once so both the TOC and prev/next navigation share it.
+        // A flat, ordered chapter sequence (all chapters across all acts of THIS
+        // book, in reading order) built once so both the TOC and prev/next
+        // navigation share it.
         $sequence = [];
         foreach ($acts as $act) {
             foreach ($act->chapters as $chapter) {
@@ -625,16 +722,17 @@ class StaticSiteExporter
             }
         }
 
-        $this->addBookIndex($zip, $project, $acts, $settings, $numbering);
+        $this->addBookReadingIndex($zip, $book, $folder, $acts, $settings, $numbering);
 
         $lastIndex = count($sequence) - 1;
         foreach ($sequence as $index => $item) {
             $act = $item['act'];
             $chapter = $item['chapter'];
 
-            // Chapter pages live one level below index.html (book/NN/NN.html), so
-            // prev/next reach a sibling chapter via ../NN/NN.html (crossing act
-            // folders when needed) and the TOC via ../index.html at the ends.
+            // Chapter pages live one level below this book's index.html
+            // (books/NN/NN/NN.html), so prev/next reach a sibling chapter via
+            // ../NN/NN.html (crossing act folders when needed) and this book's
+            // own TOC via ../index.html at the ends.
             $previous = $index > 0
                 ? '../'.$this->chapterHref($sequence[$index - 1]['act'], $sequence[$index - 1]['chapter'])
                 : '../index.html';
@@ -642,9 +740,9 @@ class StaticSiteExporter
                 ? '../'.$this->chapterHref($sequence[$index + 1]['act'], $sequence[$index + 1]['chapter'])
                 : '../index.html';
 
-            $html = view('exports.book.chapter', [
-                // Same formatted heading as the TOC entry, built from the
-                // book-wide chapter number, never $chapter->position.
+            $html = view('exports.books.chapter', [
+                // Same formatted heading as the TOC entry, built from this
+                // book's chapter number, never $chapter->position.
                 'chapterTitle' => $settings->chapter_title_format->format($numbering->chapter($chapter), $chapter->name),
                 // Render Markdown → HTML through the same Scene::renderedContents
                 // accessor the app's views use, so the reading layer and the app can
@@ -656,18 +754,19 @@ class StaticSiteExporter
                 'nextHref' => $next,
             ])->render();
 
-            $this->addFromString($zip, 'book/'.$this->chapterHref($act, $chapter), $html);
+            $this->addFromString($zip, "books/{$folder}/".$this->chapterHref($act, $chapter), $html);
         }
     }
 
     /**
-     * book/index.html — the TOC. Builds a plain data structure (act title + its
-     * chapter titles and hrefs, in position order) so the Blade template stays
-     * presentation-only; titles are HTML-escaped by Blade's {{ }}.
+     * books/NN/index.html — one book's own table of contents. Builds a plain
+     * data structure (act title + its chapter titles and hrefs, in position
+     * order) so the Blade template stays presentation-only; titles are
+     * HTML-escaped by Blade's {{ }}.
      *
      * @param  Collection<int, Act>  $acts
      */
-    private function addBookIndex(ZipArchive $zip, Project $project, Collection $acts, PublicationSetting $settings, StoryNumbering $numbering): void
+    private function addBookReadingIndex(ZipArchive $zip, Book $book, string $folder, Collection $acts, PublicationSetting $settings, StoryNumbering $numbering): void
     {
         $toc = [];
         foreach ($acts as $act) {
@@ -681,12 +780,12 @@ class StaticSiteExporter
             $toc[] = ['title' => $this->actTocTitle($act, $numbering), 'chapters' => $chapters];
         }
 
-        $html = view('exports.book.index', [
-            'projectName' => $project->name,
+        $html = view('exports.books.index', [
+            'bookName' => $book->displayName(),
             'toc' => $toc,
         ])->render();
 
-        $this->addFromString($zip, 'book/index.html', $html);
+        $this->addFromString($zip, "books/{$folder}/index.html", $html);
     }
 
     /**
@@ -706,7 +805,7 @@ class StaticSiteExporter
     }
 
     /**
-     * The TOC label for a Chapter, formatted by the project's configured
+     * The TOC label for a Chapter, formatted by the book's configured
      * {@see ChapterTitleFormat} — the same setting/value used for the chapter
      * page's own heading, so the two can never drift. Falls back to
      * "Chapter {number}" when the format is "Title" and the chapter has no name
@@ -722,10 +821,10 @@ class StaticSiteExporter
     }
 
     /**
-     * A chapter's path relative to book/: NN/NN.html — folder = zero-padded ACT
-     * position, file = zero-padded PER-ACT chapter position. Single source of truth
-     * for the TOC links, the prev/next links, and the written zip entry, so they can
-     * never drift apart.
+     * A chapter's path relative to its book's own folder: NN/NN.html — folder =
+     * zero-padded ACT position, file = zero-padded PER-ACT chapter position.
+     * Single source of truth for the TOC links, the prev/next links, and the
+     * written zip entry, so they can never drift apart.
      */
     private function chapterHref(Act $act, Chapter $chapter): string
     {
@@ -733,27 +832,40 @@ class StaticSiteExporter
     }
 
     /**
-     * Load the act → chapter → scene tree for the book/ layer, ordered by position at
-     * every level (the app-wide invariant that drives book/ numbering and reading
-     * order). Scenes carry only `contents` here — the reading layer needs nothing else.
-     * Reloaded independently of the data/ Story branch so the two layers never couple.
+     * The zero-padded folder segment for one book's reading layer
+     * (books/NN/...), derived from the book's own position among its
+     * project's books.
+     */
+    private function bookFolder(Book $book): string
+    {
+        return sprintf('%02d', $book->position);
+    }
+
+    /**
+     * Load one book's act → chapter → scene tree for the books/ layer, ordered
+     * by position at every level (the app-wide invariant that drives books/
+     * numbering and reading order). Scenes carry only `contents` here — the
+     * reading layer needs nothing else. Reloaded independently of the data/
+     * books branch so the two layers never couple.
      *
      * @return Collection<int, Act>
      */
-    private function loadBookTree(Project $project): Collection
+    private function loadActTree(Book $book): Collection
     {
-        return $project->acts()
+        return $book->acts()
             ->with([
                 'chapters' => fn ($query) => $query->orderBy('position'),
                 'chapters.scenes' => fn ($query) => $query->orderBy('position'),
             ])
-            ->orderBy('acts.position')
+            ->orderBy('position')
             ->get();
     }
 
     /**
      * The `<db-id>-slug` directory name for an entity. The id is the stable
-     * identity; the slug is cosmetic. Reused by every data/ branch.
+     * identity; the slug is cosmetic. Reused by every data/ branch whose
+     * display column is `name` and can never be null — a Book's slug is built
+     * directly off {@see Book::displayName()} instead (see {@see addBookData()}).
      */
     private function entityDir(Model $model): string
     {
@@ -763,7 +875,8 @@ class StaticSiteExporter
     /**
      * Build a `<id>-slug` directory segment from an explicit id + display name. Used
      * directly for entities whose display column is not `name` (e.g. an event's
-     * `title`); entityDir() delegates here for name-based entities.
+     * `title`), or whose name may be null (a Book); entityDir() delegates here for
+     * the common name-based case.
      */
     private function slugDir(int $id, string $name): string
     {

@@ -11,10 +11,10 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates a save of the Export-ebook configuration form for one project's
+ * Validates a save of the Export-ebook configuration form for one book's
  * PublicationSetting. Authorization mirrors PublicationSettingController@update
- * per CLAUDE.md: the write is ownership of the project, walked via the route
- * model binding.
+ * per CLAUDE.md: the write is ownership of the book's project, walked via the
+ * route model binding.
  */
 class UpdatePublicationSettingRequest extends FormRequest
 {
@@ -26,7 +26,7 @@ class UpdatePublicationSettingRequest extends FormRequest
      * @var array<int, string>
      */
     private const BOOLEAN_FIELDS = [
-        'include_project_cover',
+        'include_book_cover',
         'include_chapter_covers',
         'include_scene_titles',
         'include_act_descriptions',
@@ -46,7 +46,7 @@ class UpdatePublicationSettingRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('project'));
+        return $this->user()->can('update', $this->route('book')->project);
     }
 
     /**

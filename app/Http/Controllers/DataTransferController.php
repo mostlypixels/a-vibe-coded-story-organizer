@@ -32,24 +32,29 @@ class DataTransferController extends Controller
     }
 
     /**
-     * The EPUB export page: the config form for one selected project
-     * plus the existing download form. The project picker reloads this page via
-     * a plain GET (?project=) rather than JavaScript — selecting a project loads
-     * ITS saved PublicationSetting (or an unsaved default when it never visited
-     * this form). Falls back to the user's first project when none is selected
-     * or the query value doesn't resolve to one of their own projects.
+     * The EPUB export page: the config form for one selected book plus the
+     * download form. The picker is a single `<select>` of every book across
+     * every one of the user's projects, grouped into an `<optgroup>` per
+     * project (one book per row is common; a multi-book project's own volumes
+     * still need telling apart). It reloads this page via a plain GET (?book=)
+     * rather than JavaScript — selecting a book loads its PublicationSetting
+     * (or an unsaved default when it never visited this form). Falls back to
+     * the user's first project's first book when none is selected or the
+     * query value doesn't resolve to one of their own books.
      */
     public function exportEbook(Request $request): View
     {
-        $projects = $request->user()->projects()->orderBy('name')->get();
+        $projects = $request->user()->projects()->with('books')->orderBy('name')->get();
 
-        $selectedProject = $projects->firstWhere('id', (int) $request->query('project'))
-            ?? $projects->first();
+        $books = $projects->pluck('books')->flatten();
+
+        $selectedBook = $books->firstWhere('id', (int) $request->query('book'))
+            ?? $books->first();
 
         return view('admin.data.export-ebook', [
             'projects' => $projects,
-            'selectedProject' => $selectedProject,
-            'setting' => $selectedProject?->publicationSettingOrDefault(),
+            'selectedBook' => $selectedBook,
+            'setting' => $selectedBook?->publicationSettingOrDefault(),
         ]);
     }
 

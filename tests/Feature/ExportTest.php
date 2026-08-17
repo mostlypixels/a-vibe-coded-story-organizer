@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BookLanguage;
 use App\Enums\ChapterTitleFormat;
 use App\Enums\CodexEntryType;
 use App\Enums\SceneStatus;
+use App\Enums\StoryOverviewMode;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
@@ -100,9 +102,9 @@ class ExportTest extends TestCase
 
         $manifest = json_decode($raw, true);
         $this->assertIsArray($manifest, 'data/manifest.json is not valid JSON.');
-        // The epub-configuration feature bumped this to 2 — see
+        // The multiple-books feature bumped this to 4 — see
         // StaticSiteExporter::DATA_VERSION.
-        $this->assertSame(3, $manifest['version']);
+        $this->assertSame(4, $manifest['version']);
         $this->assertSame($project->id, $manifest['project_id']);
         $this->assertTrue($manifest['includes_media']);
         $this->assertArrayHasKey('exported_at', $manifest);
@@ -265,8 +267,8 @@ class ExportTest extends TestCase
         $this->assertStringContainsString('# Tale of Two Folders', $readme);
         $this->assertStringContainsString('| Date of export | '.now()->format('Y-m-d').' |', $readme);
 
-        // Points humans at book/ and machines at data/.
-        $this->assertStringContainsString('book/', $readme);
+        // Points humans at books/ and machines at data/.
+        $this->assertStringContainsString('books/', $readme);
         $this->assertStringContainsString('data/', $readme);
 
         $zip->close();
@@ -321,7 +323,7 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $actDir = "data/acts/{$act->id}-first-act";
+        $actDir = $this->bookDir($book)."/acts/{$act->id}-first-act";
         $chapterDir = "{$actDir}/chapters/{$chapter->id}-first-chapter";
         $sceneOneDir = "{$chapterDir}/scenes/{$sceneOne->id}-opening-scene";
         $sceneTwoDir = "{$chapterDir}/scenes/{$sceneTwo->id}-closing-scene";
@@ -353,11 +355,12 @@ class ExportTest extends TestCase
         $zip->close();
     }
 
-    public function test_the_four_frontmatter_markdown_fields_export_as_raw_field_files(): void
+    public function test_the_four_frontmatter_markdown_fields_export_as_raw_field_files_on_the_book(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create([
-            'name' => 'The Whole Book',
+        $project = Project::factory()->for($user)->create(['name' => 'The Whole Book']);
+        $book = $project->books()->first();
+        $book->update([
             'dedication' => 'For *everyone*.',
             'acknowledgements' => 'Thanks to my **editor**.',
             'preface' => 'A word before we begin.',
@@ -366,34 +369,44 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $project_json = json_decode($zip->getFromName('data/project/project.json'), true);
-        $this->assertSame('dedication.md', $project_json['dedication_file']);
-        $this->assertSame('acknowledgements.md', $project_json['acknowledgements_file']);
-        $this->assertSame('preface.md', $project_json['preface_file']);
-        $this->assertSame('postface.md', $project_json['postface_file']);
+        $bookDir = $this->bookDir($book);
+        $bookJson = json_decode($zip->getFromName("{$bookDir}/book.json"), true);
+        $this->assertSame('dedication.md', $bookJson['dedication_file']);
+        $this->assertSame('acknowledgements.md', $bookJson['acknowledgements_file']);
+        $this->assertSame('preface.md', $bookJson['preface_file']);
+        $this->assertSame('postface.md', $bookJson['postface_file']);
 
         // Raw Markdown, verbatim — never rendered/re-formatted.
-        $this->assertSame('For *everyone*.', $zip->getFromName('data/project/dedication.md'));
-        $this->assertSame('Thanks to my **editor**.', $zip->getFromName('data/project/acknowledgements.md'));
-        $this->assertSame('A word before we begin.', $zip->getFromName('data/project/preface.md'));
-        $this->assertSame('And so it ends.', $zip->getFromName('data/project/postface.md'));
+        $this->assertSame('For *everyone*.', $zip->getFromName("{$bookDir}/dedication.md"));
+        $this->assertSame('Thanks to my **editor**.', $zip->getFromName("{$bookDir}/acknowledgements.md"));
+        $this->assertSame('A word before we begin.', $zip->getFromName("{$bookDir}/preface.md"));
+        $this->assertSame('And so it ends.', $zip->getFromName("{$bookDir}/postface.md"));
 
-        $zip->close();
-    }
-
-    public function test_empty_frontmatter_fields_write_no_field_file_or_link(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create(['name' => 'The Whole Book']);
-
-        $zip = $this->exportZip($user, $project);
-
+        // The project's own descriptor never carries these fields any more —
+        // they belong to the book now.
         $project_json = json_decode($zip->getFromName('data/project/project.json'), true);
         $this->assertArrayNotHasKey('dedication_file', $project_json);
         $this->assertArrayNotHasKey('acknowledgements_file', $project_json);
         $this->assertArrayNotHasKey('preface_file', $project_json);
         $this->assertArrayNotHasKey('postface_file', $project_json);
-        $this->assertFalse($zip->locateName('data/project/dedication.md'));
+
+        $zip->close();
+    }
+
+    public function test_empty_frontmatter_fields_write_no_field_file_or_link_on_the_book(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $zip = $this->exportZip($user, $project);
+
+        $bookDir = $this->bookDir($book);
+        $bookJson = json_decode($zip->getFromName("{$bookDir}/book.json"), true);
+        $this->assertArrayNotHasKey('dedication_file', $bookJson);
+        $this->assertArrayNotHasKey('acknowledgements_file', $bookJson);
+        $this->assertArrayNotHasKey('preface_file', $bookJson);
+        $this->assertArrayNotHasKey('postface_file', $bookJson);
+        $this->assertFalse($zip->locateName("{$bookDir}/dedication.md"));
 
         $zip->close();
     }
@@ -408,12 +421,12 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $actJson = json_decode($zip->getFromName("data/acts/{$act->id}-".Str::slug($act->name).'/act.json'), true);
+        $actJson = json_decode($zip->getFromName($this->bookDir($book)."/acts/{$act->id}-".Str::slug($act->name).'/act.json'), true);
         $this->assertSame($act->id, $actJson['id']);
         $this->assertSame(3, $actJson['position']);
-        $this->assertSame($project->id, $actJson['project_id']);
+        $this->assertSame($book->id, $actJson['book_id']);
 
-        $chapterDir = "data/acts/{$act->id}-".Str::slug($act->name)
+        $chapterDir = $this->bookDir($book)."/acts/{$act->id}-".Str::slug($act->name)
             ."/chapters/{$chapter->id}-".Str::slug($chapter->name);
         $chapterJson = json_decode($zip->getFromName("{$chapterDir}/chapter.json"), true);
         $this->assertSame($chapter->id, $chapterJson['id']);
@@ -443,7 +456,7 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $sceneDir = $this->sceneDir($project, $scene);
+        $sceneDir = $this->sceneDir($book, $scene);
         $sceneJson = json_decode($zip->getFromName("{$sceneDir}/scene.json"), true);
 
         $this->assertSame($scene->id, $sceneJson['id']);
@@ -478,7 +491,7 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $sceneDir = $this->sceneDir($project, $scene);
+        $sceneDir = $this->sceneDir($book, $scene);
 
         // contents.md === the exact stored Markdown, NOT rendered to HTML.
         $contents = $zip->getFromName("{$sceneDir}/contents.md");
@@ -508,7 +521,7 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $sceneJson = json_decode($zip->getFromName($this->sceneDir($project, $scene).'/scene.json'), true);
+        $sceneJson = json_decode($zip->getFromName($this->sceneDir($book, $scene).'/scene.json'), true);
         $this->assertArrayNotHasKey('share_token', $sceneJson);
         $this->assertArrayNotHasKey('share_expires_at', $sceneJson);
 
@@ -525,7 +538,7 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $sceneDir = $this->sceneDir($project, $scene);
+        $sceneDir = $this->sceneDir($book, $scene);
         $this->assertFalse($zip->getFromName("{$sceneDir}/notes.html"), 'notes.html should be omitted for a null notes field.');
 
         $sceneJson = json_decode($zip->getFromName("{$sceneDir}/scene.json"), true);
@@ -538,20 +551,180 @@ class ExportTest extends TestCase
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
 
         $zip = $this->exportZip($user, $project);
 
         $this->assertNotFalse($zip->getFromName('data/project/project.json'));
 
-        // No act directories exist for a project with no acts.
+        // The auto-created book itself is still exported...
+        $this->assertNotFalse($zip->getFromName($this->bookDir($book).'/book.json'));
+
+        // ...but no act directories exist for a book with no acts.
         $hasActEntry = false;
         for ($index = 0; $index < $zip->numFiles; $index++) {
-            if (str_starts_with($zip->statIndex($index)['name'], 'data/acts/')) {
+            if (str_contains($zip->statIndex($index)['name'], '/acts/')) {
                 $hasActEntry = true;
                 break;
             }
         }
-        $this->assertFalse($hasActEntry, 'An empty project should produce no data/acts/* entries.');
+        $this->assertFalse($hasActEntry, 'An empty book should produce no acts/* entries.');
+
+        $zip->close();
+    }
+
+    // ---------------------------------------------------------------------
+    // data/books/ branch: book metadata, front/back matter, cover, config
+    // ---------------------------------------------------------------------
+
+    public function test_an_unnamed_book_writes_name_as_null(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $this->assertNull($book->name, 'the auto-created first book must start unnamed');
+
+        $zip = $this->exportZip($user, $project);
+
+        $bookJson = json_decode($zip->getFromName($this->bookDir($book).'/book.json'), true);
+        $this->assertArrayHasKey('name', $bookJson);
+        $this->assertNull($bookJson['name']);
+
+        $zip->close();
+    }
+
+    public function test_book_json_carries_every_metadata_field(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $book->update([
+            'name' => 'The Long Winter',
+            'language' => BookLanguage::French,
+            'author' => 'Jane Doe',
+            'publisher' => 'Acme Press',
+            'isbn' => '978-3-16-148410-0',
+            'overview_render_mode' => StoryOverviewMode::Whole,
+            'rights' => 'All rights reserved.',
+        ]);
+
+        $zip = $this->exportZip($user, $project);
+
+        $bookDir = $this->bookDir($book);
+        $bookJson = json_decode($zip->getFromName("{$bookDir}/book.json"), true);
+
+        $this->assertSame($book->id, $bookJson['id']);
+        $this->assertSame('The Long Winter', $bookJson['name']);
+        $this->assertSame(1, $bookJson['position']);
+        $this->assertSame($project->id, $bookJson['project_id']);
+        $this->assertSame('fr', $bookJson['language']);
+        $this->assertSame('Jane Doe', $bookJson['author']);
+        $this->assertSame('Acme Press', $bookJson['publisher']);
+        $this->assertSame('978-3-16-148410-0', $bookJson['isbn']);
+        $this->assertSame('whole', $bookJson['overview_render_mode']);
+
+        // rights is plain text, not rich HTML — written as .txt, never .html.
+        $this->assertSame('rights.txt', $bookJson['rights_file']);
+        $this->assertSame('All rights reserved.', $zip->getFromName("{$bookDir}/rights.txt"));
+
+        $zip->close();
+    }
+
+    public function test_book_cover_is_written_with_bytes_when_media_included(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+
+        // store() names the file with a random hash, not 'book-cover.jpg' —
+        // the exporter uses that stored basename verbatim (basename-guarded).
+        $coverPath = UploadedFile::fake()->image('book-cover.jpg', 20, 20)->store('book-covers', 'public');
+        $book->update(['cover_image' => $coverPath]);
+
+        $zip = $this->exportZipWithMedia($user, $project);
+
+        $bookDir = $this->bookDir($book);
+        $bookJson = json_decode($zip->getFromName("{$bookDir}/book.json"), true);
+        $this->assertSame('cover/'.basename($coverPath), $bookJson['cover_file']);
+        $this->assertSame(
+            Storage::disk('public')->get($coverPath),
+            $zip->getFromName("{$bookDir}/cover/".basename($coverPath))
+        );
+
+        $zip->close();
+    }
+
+    public function test_project_cover_is_written_with_bytes_when_media_included(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $coverPath = UploadedFile::fake()->image('project-cover.jpg', 20, 20)->store('project-covers', 'public');
+        $project->update(['cover_image' => $coverPath]);
+
+        $zip = $this->exportZipWithMedia($user, $project);
+
+        $projectJson = json_decode($zip->getFromName('data/project/project.json'), true);
+        $this->assertSame('cover/'.basename($coverPath), $projectJson['cover_file']);
+        $this->assertSame(
+            Storage::disk('public')->get($coverPath),
+            $zip->getFromName('data/project/cover/'.basename($coverPath))
+        );
+
+        $zip->close();
+    }
+
+    public function test_publication_setting_is_written_inside_the_book_folder(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        PublicationSetting::factory()->for($book)->create(['include_book_cover' => false]);
+
+        $zip = $this->exportZip($user, $project);
+
+        $bookDir = $this->bookDir($book);
+        $setting = json_decode($zip->getFromName("{$bookDir}/publication-setting.json"), true);
+        $this->assertNotNull($setting, "{$bookDir}/publication-setting.json is missing from the export.");
+        $this->assertFalse($setting['include_book_cover']);
+
+        // The old project-root location is gone.
+        $this->assertFalse($zip->getFromName('data/publication-setting.json'));
+
+        $zip->close();
+    }
+
+    public function test_a_two_book_project_exports_both_books_in_position_order(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'The Saga']);
+        $firstBook = $project->books()->first();
+
+        $secondBook = Book::factory()->for($project)->create(['name' => 'Volume Two']);
+        $firstBook->refresh(); // Book::created renamed it to the project's name.
+
+        $firstAct = Act::factory()->for($firstBook)->create(['name' => 'Book One Act', 'position' => 1]);
+        $secondAct = Act::factory()->for($secondBook)->create(['name' => 'Book Two Act', 'position' => 1]);
+
+        $zip = $this->exportZip($user, $project);
+
+        $firstJson = json_decode($zip->getFromName($this->bookDir($firstBook).'/book.json'), true);
+        $secondJson = json_decode($zip->getFromName($this->bookDir($secondBook).'/book.json'), true);
+
+        $this->assertSame(1, $firstJson['position']);
+        $this->assertSame('The Saga', $firstJson['name']);
+        $this->assertSame(2, $secondJson['position']);
+        $this->assertSame('Volume Two', $secondJson['name']);
+
+        // Each book's own act tree lives under its own book directory.
+        $this->assertNotFalse($zip->getFromName(
+            $this->bookDir($firstBook)."/acts/{$firstAct->id}-book-one-act/act.json"
+        ));
+        $this->assertNotFalse($zip->getFromName(
+            $this->bookDir($secondBook)."/acts/{$secondAct->id}-book-two-act/act.json"
+        ));
 
         $zip->close();
     }
@@ -947,7 +1120,7 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // book/ reading layer: TOC + compiled chapter pages + prev/next
+    // books/ reading layer: TOC + compiled chapter pages + prev/next
     // ---------------------------------------------------------------------
 
     public function test_book_index_lists_acts_and_links_every_chapter_file(): void
@@ -964,8 +1137,8 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $index = $zip->getFromName('book/index.html');
-        $this->assertNotFalse($index, 'book/index.html is missing from the export.');
+        $index = $zip->getFromName('books/01/index.html');
+        $this->assertNotFalse($index, 'books/01/index.html is missing from the export.');
 
         // Every act title appears as a TOC heading...
         $this->assertStringContainsString('The Beginning', $index);
@@ -1002,8 +1175,8 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $page = $zip->getFromName('book/01/01.html');
-        $this->assertNotFalse($page, 'book/01/01.html is missing from the export.');
+        $page = $zip->getFromName('books/01/01/01.html');
+        $this->assertNotFalse($page, 'books/01/01/01.html is missing from the export.');
 
         // The chapter title is present.
         $this->assertStringContainsString('A Compiled Chapter', $page);
@@ -1021,7 +1194,7 @@ class ExportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Continuous numbering in the book/ layer
+    // Continuous numbering in the books/ layer
     // ---------------------------------------------------------------------
 
     public function test_book_index_shows_continuous_chapter_numbers_across_the_act_boundary(): void
@@ -1038,7 +1211,7 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $index = $zip->getFromName('book/index.html');
+        $index = $zip->getFromName('books/01/index.html');
 
         // Default format is "Chapter N: Name" — chapter numbers run 1..3 straight
         // through the act boundary, never resetting to 1 for act two.
@@ -1068,15 +1241,15 @@ class ExportTest extends TestCase
         $zip = $this->exportZip($user, $project);
 
         // Act two's only chapter is still the project's SECOND chapter overall, even
-        // though its file lives at book/02/01.html (per-act file identity).
-        $page = $zip->getFromName('book/02/01.html');
+        // though its file lives at books/01/02/01.html (per-act file identity).
+        $page = $zip->getFromName('books/01/02/01.html');
         $this->assertStringContainsString('Chapter 2: Second Act, Third Chapter', $page);
 
         $zip->close();
     }
 
     /**
-     * Every ChapterTitleFormat drives the website's book/ output exactly the way it
+     * Every ChapterTitleFormat drives the website's books/ output exactly the way it
      * drives the EPUB — one setting, both exports, checked in both the TOC and the
      * chapter page heading.
      */
@@ -1098,13 +1271,13 @@ class ExportTest extends TestCase
         ];
 
         foreach ($expectations as $format => $expected) {
-            PublicationSetting::query()->where('project_id', $project->id)->delete();
-            PublicationSetting::factory()->for($project)->create(['chapter_title_format' => $format]);
+            PublicationSetting::query()->where('book_id', $book->id)->delete();
+            PublicationSetting::factory()->for($book)->create(['chapter_title_format' => $format]);
 
             $zip = $this->exportZip($user, $project);
 
-            $index = $zip->getFromName('book/index.html');
-            $page = $zip->getFromName('book/01/01.html');
+            $index = $zip->getFromName('books/01/index.html');
+            $page = $zip->getFromName('books/01/01/01.html');
 
             $this->assertStringContainsString($expected, $index, "format [{$format}] did not appear in the TOC.");
             $this->assertStringContainsString($expected, $page, "format [{$format}] did not appear on the chapter page.");
@@ -1122,12 +1295,12 @@ class ExportTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create(['name' => '', 'position' => 1]);
         Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
 
-        PublicationSetting::factory()->for($project)->create(['chapter_title_format' => ChapterTitleFormat::Title]);
+        PublicationSetting::factory()->for($book)->create(['chapter_title_format' => ChapterTitleFormat::Title]);
 
         $zip = $this->exportZip($user, $project);
 
         // The TOC falls back to "Chapter 1" rather than an empty link label.
-        $index = $zip->getFromName('book/index.html');
+        $index = $zip->getFromName('books/01/index.html');
         $this->assertStringContainsString('Chapter 1', $index);
 
         $zip->close();
@@ -1148,10 +1321,10 @@ class ExportTest extends TestCase
         $zip = $this->exportZip($user, $project);
 
         // Per-act numbering: act 2's first chapter is 02/01.html, not a global 03.
-        $this->assertNotFalse($zip->getFromName('book/01/01.html'));
-        $this->assertNotFalse($zip->getFromName('book/01/02.html'));
-        $this->assertNotFalse($zip->getFromName('book/02/01.html'));
-        $this->assertFalse($zip->getFromName('book/01/03.html'), 'Chapter numbering must reset per act.');
+        $this->assertNotFalse($zip->getFromName('books/01/01/01.html'));
+        $this->assertNotFalse($zip->getFromName('books/01/01/02.html'));
+        $this->assertNotFalse($zip->getFromName('books/01/02/01.html'));
+        $this->assertFalse($zip->getFromName('books/01/01/03.html'), 'Chapter numbering must reset per act.');
 
         $zip->close();
     }
@@ -1171,9 +1344,9 @@ class ExportTest extends TestCase
 
         $zip = $this->exportZip($user, $project);
 
-        $first = $zip->getFromName('book/01/01.html');
-        $middle = $zip->getFromName('book/01/02.html');
-        $last = $zip->getFromName('book/02/01.html');
+        $first = $zip->getFromName('books/01/01/01.html');
+        $middle = $zip->getFromName('books/01/01/02.html');
+        $last = $zip->getFromName('books/01/02/01.html');
 
         // First chapter: prev → the TOC, next → the following chapter.
         $this->assertStringContainsString('href="../index.html"', $first);
@@ -1206,37 +1379,61 @@ class ExportTest extends TestCase
         $zip = $this->exportZip($user, $project);
 
         // TOC: the act/chapter titles are plain text and must be escaped, never raw HTML.
-        $index = $zip->getFromName('book/index.html');
+        $index = $zip->getFromName('books/01/index.html');
         $this->assertStringContainsString('Act &amp; &lt;em&gt;Ampersand&lt;/em&gt;', $index);
         $this->assertStringContainsString('Chapter &lt;b&gt;Bold&lt;/b&gt;', $index);
         $this->assertStringNotContainsString('<em>Ampersand</em>', $index);
         $this->assertStringNotContainsString('<b>Bold</b>', $index);
 
         // Chapter page heading escapes the title too.
-        $page = $zip->getFromName('book/01/01.html');
+        $page = $zip->getFromName('books/01/01/01.html');
         $this->assertStringContainsString('Chapter &lt;b&gt;Bold&lt;/b&gt;', $page);
         $this->assertStringNotContainsString('<b>Bold</b>', $page);
 
         $zip->close();
     }
 
-    public function test_an_empty_project_still_exports_a_book_index_with_no_chapter_files(): void
+    public function test_an_empty_project_still_exports_a_books_index_with_no_chapter_files(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
 
         $zip = $this->exportZip($user, $project);
 
-        // The TOC renders even with nothing in it, no error.
-        $this->assertNotFalse($zip->getFromName('book/index.html'));
+        // The top-level books/ index and this book's own TOC both render even
+        // with nothing in them, no error.
+        $this->assertNotFalse($zip->getFromName('books/index.html'));
+        $this->assertNotFalse($zip->getFromName('books/01/index.html'));
 
-        // No compiled chapter pages exist for a project with no chapters.
+        // No compiled chapter pages exist for a book with no chapters.
         for ($index = 0; $index < $zip->numFiles; $index++) {
             $name = $zip->statIndex($index)['name'];
-            if (str_starts_with($name, 'book/') && $name !== 'book/index.html') {
-                $this->fail("An empty project should produce no book/ pages besides index.html; found {$name}.");
+            if (str_starts_with($name, 'books/01/') && $name !== 'books/01/index.html') {
+                $this->fail("An empty book should produce no books/01/ pages besides index.html; found {$name}.");
             }
         }
+
+        $zip->close();
+    }
+
+    public function test_books_index_links_every_books_own_table_of_contents(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'The Saga']);
+        $firstBook = $project->books()->first();
+
+        $secondBook = Book::factory()->for($project)->create(['name' => 'Volume Two']);
+        $firstBook->refresh(); // Book::created renamed it to the project's name.
+
+        $zip = $this->exportZip($user, $project);
+
+        $index = $zip->getFromName('books/index.html');
+        $this->assertNotFalse($index, 'books/index.html is missing from the export.');
+
+        $this->assertStringContainsString('The Saga', $index);
+        $this->assertStringContainsString('Volume Two', $index);
+        $this->assertStringContainsString('href="01/index.html"', $index);
+        $this->assertStringContainsString('href="02/index.html"', $index);
 
         $zip->close();
     }
@@ -1296,18 +1493,18 @@ class ExportTest extends TestCase
 
     /**
      * EPUB export has no include_revisions-equivalent option at all (v1 only takes
-     * project_id, per EpubExportRequest's own docblock) — a regression guard that
+     * book_id, per EpubExportRequest's own docblock) — a regression guard that
      * this toggle never leaks into that separate exporter.
      */
     public function test_epub_export_has_no_include_revisions_option(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
         Scene::factory()->for($chapter)->create();
 
         $response = $this->actingAs($user)->post(route('admin.data.export.epub'), [
-            'project_id' => $project->id,
+            'book_id' => $book->id,
             'include_revisions' => '1',
         ]);
 
@@ -1360,13 +1557,24 @@ class ExportTest extends TestCase
      * The data/ directory path of a scene, resolved via the same `<id>-slug` scheme
      * the exporter uses.
      */
-    private function sceneDir(Project $project, Scene $scene): string
+    private function sceneDir(Book $book, Scene $scene): string
     {
         $chapter = $scene->chapter;
         $act = $chapter->act;
 
-        return 'data/acts/'.$act->id.'-'.Str::slug($act->name)
+        return $this->bookDir($book).'/acts/'.$act->id.'-'.Str::slug($act->name)
             .'/chapters/'.$chapter->id.'-'.Str::slug($chapter->name)
             .'/scenes/'.$scene->id.'-'.Str::slug($scene->name);
+    }
+
+    /**
+     * The data/books/ directory path of a book, resolved via the same
+     * `<id>-slug` scheme the exporter uses. Computed off
+     * {@see Book::displayName()}, never `->name` directly — an unnamed book
+     * slugs its project's name.
+     */
+    private function bookDir(Book $book): string
+    {
+        return 'data/books/'.$book->id.'-'.Str::slug($book->displayName());
     }
 }

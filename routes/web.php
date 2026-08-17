@@ -108,20 +108,21 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         // the include_images toggle. The admin gate is "any authenticated user"; the
         // controller ALSO authorizes('view', $project) so a foreign project_id 403s.
         Route::post('/data/export', [ExportController::class, 'store'])->name('data.export');
-        // Export a project as a downloadable .epub. Same POST posture and ownership
-        // guard as the .zip export above; the EpubExporter owns tree filtering,
-        // rendering, packaging, and structural validation. A project with nothing to
-        // export redirects back with an error (EpubExportException), never a 500.
+        // Export one book as a downloadable .epub. Same POST posture and ownership
+        // guard as the .zip export above (walked via the book's project); the
+        // EpubExporter owns tree filtering, rendering, packaging, and structural
+        // validation. A book with nothing to export redirects back with an error
+        // (EpubExportException), never a 500.
         Route::post('/data/export/epub', [EpubExportController::class, 'store'])->name('data.export.epub');
 
         // Persists PublicationSetting (the Export-ebook config form) and reorders
-        // its section_order list. Ownership walks the {project} route binding,
-        // mirrored in UpdatePublicationSettingRequest::authorize().
-        Route::patch('/data/export/ebook/{project}/settings', [PublicationSettingController::class, 'update'])
+        // its section_order list. Ownership walks the {book} route binding to
+        // its project, mirrored in UpdatePublicationSettingRequest::authorize().
+        Route::patch('/data/export/ebook/{book}/settings', [PublicationSettingController::class, 'update'])
             ->name('data.publication-settings.update');
-        Route::patch('/data/export/ebook/{project}/settings/section-order/{section}/move-up', [PublicationSettingController::class, 'moveSectionUp'])
+        Route::patch('/data/export/ebook/{book}/settings/section-order/{section}/move-up', [PublicationSettingController::class, 'moveSectionUp'])
             ->name('data.publication-settings.section-order.move-up');
-        Route::patch('/data/export/ebook/{project}/settings/section-order/{section}/move-down', [PublicationSettingController::class, 'moveSectionDown'])
+        Route::patch('/data/export/ebook/{book}/settings/section-order/{section}/move-down', [PublicationSettingController::class, 'moveSectionDown'])
             ->name('data.publication-settings.section-order.move-down');
 
         // Import a project from an uploaded export .zip. Each import creates a

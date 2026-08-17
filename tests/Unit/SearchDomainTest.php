@@ -73,6 +73,23 @@ class SearchDomainTest extends TestCase
         }
     }
 
+    /**
+     * Only Acts, Chapters, and Scenes hang off a book — the codex and timeline
+     * domains stay project-wide.
+     */
+    public function test_carries_book_is_true_for_acts_chapters_and_scenes_only(): void
+    {
+        $this->assertTrue(SearchDomain::Acts->carriesBook());
+        $this->assertTrue(SearchDomain::Chapters->carriesBook());
+        $this->assertTrue(SearchDomain::Scenes->carriesBook());
+
+        $this->assertFalse(SearchDomain::Plotlines->carriesBook());
+        $this->assertFalse(SearchDomain::Events->carriesBook());
+        $this->assertFalse(SearchDomain::Characters->carriesBook());
+        $this->assertFalse(SearchDomain::Locations->carriesBook());
+        $this->assertFalse(SearchDomain::Organizations->carriesBook());
+    }
+
     public function test_route_keys_returns_every_domains_value(): void
     {
         $this->assertSame(

@@ -6,7 +6,7 @@ use App\Services\EpubExporter;
 use RuntimeException;
 
 /**
- * Thrown by {@see EpubExporter::export()} when a project has nothing to
+ * Thrown by {@see EpubExporter::export()} when a book has nothing to
  * export — every Act/Chapter was filtered out because no Chapter has any Scenes.
  *
  * This is the ONE epub-export failure that is a **user input problem**, not a bug: the
@@ -22,6 +22,6 @@ class EpubExportException extends RuntimeException
      */
     public static function nothingToExport(): self
     {
-        return new self('This project has no scenes to export yet. Add at least one scene to a chapter before exporting an epub.');
+        return new self('This book has no scenes to export yet. Add at least one scene to a chapter before exporting an epub.');
     }
 }

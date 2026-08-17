@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\CodexEntryType;
-use App\Models\Project;
+use App\Models\Book;
 use App\Models\PublicationSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,7 +30,7 @@ class PublicationSettingTest extends TestCase
     private function validPayload(array $overrides = []): array
     {
         return array_merge([
-            'include_project_cover' => '1',
+            'include_book_cover' => '1',
             'include_chapter_covers' => '0',
             'include_scene_titles' => '1',
             'include_act_descriptions' => '0',
@@ -61,17 +61,17 @@ class PublicationSettingTest extends TestCase
     public function test_owner_save_creates_the_publication_setting_row(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->assertSame(0, PublicationSetting::count());
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.update', $project), $this->validPayload())
-            ->assertRedirect(route('admin.data.export-ebook', ['project' => $project->id]));
+            ->patch(route('admin.data.publication-settings.update', $book), $this->validPayload())
+            ->assertRedirect(route('admin.data.export-ebook', ['book' => $book->id]));
 
         $this->assertSame(1, PublicationSetting::count());
 
-        $setting = $project->fresh()->publicationSetting;
+        $setting = $book->fresh()->publicationSetting;
         $this->assertNotNull($setting);
         $this->assertTrue($setting->include_scene_titles);
         $this->assertFalse($setting->include_act_descriptions);
@@ -88,28 +88,46 @@ class PublicationSettingTest extends TestCase
     public function test_second_save_updates_the_same_row_no_duplicate(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
-        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $project), $this->validPayload());
-        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $project), $this->validPayload([
+        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $book), $this->validPayload());
+        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $book), $this->validPayload([
             'include_scene_titles' => '0',
         ]));
 
         $this->assertSame(1, PublicationSetting::count());
-        $this->assertFalse($project->fresh()->publicationSetting->include_scene_titles);
+        $this->assertFalse($book->fresh()->publicationSetting->include_scene_titles);
     }
 
     public function test_saved_values_reload_into_the_config_form(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
-        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $project), $this->validPayload());
+        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $book), $this->validPayload());
 
-        $response = $this->actingAs($user)->get(route('admin.data.export-ebook', ['project' => $project->id]));
+        $response = $this->actingAs($user)->get(route('admin.data.export-ebook', ['book' => $book->id]));
 
         $response->assertOk();
         $response->assertSee('selected', false);
+    }
+
+    public function test_two_books_in_one_project_hold_independent_configs(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create(['name' => 'Book Two']);
+
+        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $firstBook), $this->validPayload([
+            'include_scene_titles' => '1',
+        ]));
+        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $secondBook), $this->validPayload([
+            'include_scene_titles' => '0',
+        ]));
+
+        $this->assertSame(2, PublicationSetting::count());
+        $this->assertTrue($firstBook->fresh()->publicationSetting->include_scene_titles);
+        $this->assertFalse($secondBook->fresh()->publicationSetting->include_scene_titles);
     }
 
     // -------------------------------------------------------------------
@@ -120,10 +138,10 @@ class PublicationSettingTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $project = Project::factory()->for($owner)->create();
+        [, $book] = $this->projectWithBook($owner);
 
         $this->actingAs($other)
-            ->patch(route('admin.data.publication-settings.update', $project), $this->validPayload())
+            ->patch(route('admin.data.publication-settings.update', $book), $this->validPayload())
             ->assertForbidden();
 
         $this->assertSame(0, PublicationSetting::count());
@@ -131,9 +149,9 @@ class PublicationSettingTest extends TestCase
 
     public function test_guest_update_is_redirected_to_login(): void
     {
-        $project = Project::factory()->create();
+        [, $book] = $this->projectWithBook();
 
-        $this->patch(route('admin.data.publication-settings.update', $project), $this->validPayload())
+        $this->patch(route('admin.data.publication-settings.update', $book), $this->validPayload())
             ->assertRedirect(route('login'));
     }
 
@@ -141,10 +159,21 @@ class PublicationSettingTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $project = Project::factory()->for($owner)->create();
+        [, $book] = $this->projectWithBook($owner);
 
         $this->actingAs($other)
-            ->patch(route('admin.data.publication-settings.section-order.move-down', ['project' => $project, 'section' => 'dedication']))
+            ->patch(route('admin.data.publication-settings.section-order.move-down', ['book' => $book, 'section' => 'dedication']))
+            ->assertForbidden();
+    }
+
+    public function test_non_owner_cannot_move_a_section_up(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [, $book] = $this->projectWithBook($owner);
+
+        $this->actingAs($other)
+            ->patch(route('admin.data.publication-settings.section-order.move-up', ['book' => $book, 'section' => 'dedication']))
             ->assertForbidden();
     }
 
@@ -155,10 +184,10 @@ class PublicationSettingTest extends TestCase
     public function test_invalid_divider_type_fails_validation(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.update', $project), $this->validPayload([
+            ->patch(route('admin.data.publication-settings.update', $book), $this->validPayload([
                 'divider_type' => 'not-a-real-divider',
             ]))
             ->assertSessionHasErrors('divider_type');
@@ -167,13 +196,13 @@ class PublicationSettingTest extends TestCase
     public function test_section_order_with_a_duplicate_fails_validation(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $order = PublicationSetting::SECTION_KEYS;
         $order[count($order) - 1] = $order[0]; // duplicate 'title', dropping 'appendix'
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.update', $project), $this->validPayload([
+            ->patch(route('admin.data.publication-settings.update', $book), $this->validPayload([
                 'section_order' => $order,
             ]))
             ->assertSessionHasErrors('section_order');
@@ -182,13 +211,13 @@ class PublicationSettingTest extends TestCase
     public function test_section_order_with_an_unknown_key_fails_validation(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $order = PublicationSetting::SECTION_KEYS;
         $order[] = 'not-a-real-section';
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.update', $project), $this->validPayload([
+            ->patch(route('admin.data.publication-settings.update', $book), $this->validPayload([
                 'section_order' => $order,
             ]))
             ->assertSessionHasErrors('section_order');
@@ -197,13 +226,13 @@ class PublicationSettingTest extends TestCase
     public function test_section_order_with_title_not_first_fails_validation(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $order = PublicationSetting::SECTION_KEYS;
         [$order[0], $order[1]] = [$order[1], $order[0]]; // 'title' no longer first
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.update', $project), $this->validPayload([
+            ->patch(route('admin.data.publication-settings.update', $book), $this->validPayload([
                 'section_order' => $order,
             ]))
             ->assertSessionHasErrors('section_order');
@@ -212,10 +241,10 @@ class PublicationSettingTest extends TestCase
     public function test_unknown_appendix_entry_type_fails_validation(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.update', $project), $this->validPayload([
+            ->patch(route('admin.data.publication-settings.update', $book), $this->validPayload([
                 'appendix_entry_types' => ['not-a-real-type'],
             ]))
             ->assertSessionHasErrors('appendix_entry_types.0');
@@ -228,14 +257,14 @@ class PublicationSettingTest extends TestCase
     public function test_move_section_down_swaps_it_with_its_neighbour(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $project), $this->validPayload());
+        [, $book] = $this->projectWithBook($user);
+        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $book), $this->validPayload());
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.section-order.move-down', ['project' => $project, 'section' => 'dedication']))
-            ->assertRedirect(route('admin.data.export-ebook', ['project' => $project->id]));
+            ->patch(route('admin.data.publication-settings.section-order.move-down', ['book' => $book, 'section' => 'dedication']))
+            ->assertRedirect(route('admin.data.export-ebook', ['book' => $book->id]));
 
-        $order = $project->fresh()->publicationSetting->section_order;
+        $order = $book->fresh()->publicationSetting->section_order;
         $this->assertSame('title', $order[0]);
         $this->assertSame('acknowledgements', $order[1]);
         $this->assertSame('dedication', $order[2]);
@@ -244,26 +273,26 @@ class PublicationSettingTest extends TestCase
     public function test_title_cannot_be_moved_out_of_first_position(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $project), $this->validPayload());
+        [, $book] = $this->projectWithBook($user);
+        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $book), $this->validPayload());
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.section-order.move-down', ['project' => $project, 'section' => 'title']));
+            ->patch(route('admin.data.publication-settings.section-order.move-down', ['book' => $book, 'section' => 'title']));
 
-        $order = $project->fresh()->publicationSetting->section_order;
+        $order = $book->fresh()->publicationSetting->section_order;
         $this->assertSame('title', $order[0]);
     }
 
     public function test_the_first_movable_section_cannot_move_above_title(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $project), $this->validPayload());
+        [, $book] = $this->projectWithBook($user);
+        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $book), $this->validPayload());
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.section-order.move-up', ['project' => $project, 'section' => 'dedication']));
+            ->patch(route('admin.data.publication-settings.section-order.move-up', ['book' => $book, 'section' => 'dedication']));
 
-        $order = $project->fresh()->publicationSetting->section_order;
+        $order = $book->fresh()->publicationSetting->section_order;
         $this->assertSame('title', $order[0]);
         $this->assertSame('dedication', $order[1]);
     }
@@ -271,13 +300,13 @@ class PublicationSettingTest extends TestCase
     public function test_move_section_up_swaps_it_with_its_neighbour(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $project), $this->validPayload());
+        [, $book] = $this->projectWithBook($user);
+        $this->actingAs($user)->patch(route('admin.data.publication-settings.update', $book), $this->validPayload());
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.section-order.move-up', ['project' => $project, 'section' => 'acknowledgements']));
+            ->patch(route('admin.data.publication-settings.section-order.move-up', ['book' => $book, 'section' => 'acknowledgements']));
 
-        $order = $project->fresh()->publicationSetting->section_order;
+        $order = $book->fresh()->publicationSetting->section_order;
         $this->assertSame('acknowledgements', $order[1]);
         $this->assertSame('dedication', $order[2]);
     }
@@ -285,10 +314,10 @@ class PublicationSettingTest extends TestCase
     public function test_moving_an_unknown_section_is_not_found(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
-            ->patch(route('admin.data.publication-settings.section-order.move-up', ['project' => $project, 'section' => 'not-a-real-section']))
+            ->patch(route('admin.data.publication-settings.section-order.move-up', ['book' => $book, 'section' => 'not-a-real-section']))
             ->assertNotFound();
     }
 }
