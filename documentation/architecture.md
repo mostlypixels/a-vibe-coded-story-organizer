@@ -10,15 +10,21 @@ User
  └── Project                (belongs to a user)
       ├── Plotline          (one is the "main plotline")
       ├── Event             (many-to-many with Plotline)
-      └── Act
-           └── Chapter
-                └── Scene
+      └── Book              (at least one, ordered by position)
+           └── Act
+                └── Chapter
+                     └── Scene
 ```
 
 - A `User` has many `Project`s.
-- Each `Project` has many `Plotline`s, `Event`s, and `Act`s.
+- Each `Project` has many `Plotline`s, `Event`s, and `Book`s.
 - `Event` ↔ `Plotline` is many-to-many (an event can touch several plotlines).
-- `Act` → `Chapter` → `Scene` is a strict three-level hierarchy (no many-to-many).
+- `Book` → `Act` → `Chapter` → `Scene` is a strict four-level hierarchy (no many-to-many).
+
+The split down the middle is the thing to hold on to: the **manuscript** hangs off the book,
+the **world** (plotlines, events, the codex, the word-count history) stays on the project and
+is shared by every book of it. A series therefore has one timeline and one codex, and one
+publishable volume per book — see *Books* below.
 
 The manuscript hierarchy is an **aggregate** rooted at `Project`: you almost never load
 a `Scene` in isolation without caring which `Project` owns it. That ownership root drives
@@ -34,15 +40,64 @@ owning project and authorizes against it:
 
 ```php
 // SceneController@edit
-$this->authorize('update', $scene->chapter->act->project);
+$this->authorize('update', $scene->chapter->act->book->project);
 ```
 
-Form Requests mirror the same check in their `authorize()` method.
+`Book` has no policy of its own either — a book action authorizes `$book->project`. Form
+Requests mirror the same check in their `authorize()` method.
 
 > [!IMPORTANT]
 > Every action that reads or writes a resource must authorize through the project. If you
 > add a new child controller, authorize via `->...->project`, and add a test proving a
 > non-owner gets a `403`. Route model binding alone is **not** access control.
+
+## Books
+
+A `Project` is a container for one or more `Book`s. Everything a volume publishes on —
+`language`, `author`, `publisher`, `isbn`, `rights`, the four front-/back-matter fields, the
+EPUB cover, the story-overview render mode and one `PublicationSetting` — is a column on the
+**book**, so two volumes of a series carry different metadata and export separately.
+
+- **Every project holds at least one book.** `Project::booted()`'s `created` hook makes it
+  beside the main plotline and the Start/End bookends. Deleting the last one is a `403` in
+  `BookController@destroy`, and the index renders no delete control for it — the same
+  belt-and-braces the main plotline gets.
+- **`books.name` is nullable, and that nullability *is* the name fallback.** `null` means "no
+  name of my own": `Book::displayName()` returns the project's name, so a one-book project
+  can never hold two names that drift apart. A `Book::created` hook copies the project's
+  current name onto every unnamed sibling, so adding volume two freezes volume one's label
+  before a later rename to a *series* title can retitle it.
+- **`Book::hasOwnName()` is the single predicate deciding how visible the book layer is** —
+  the picker's second line, the breadcrumb crumb, the `<title>`. Derived from the name, never
+  from a book count: a deliberately-named sole book still shows the layer, and no page pays
+  for a `count()`.
+- **`projects.last_book_id` remembers the book, per project.** `TrackActiveProject` writes it
+  exactly the way it writes `users.active_project_id` — after the response, only on a 2xx,
+  and never cleared by a page that names no book. That is what returns a Codex or Tools
+  detour to the book the writer was working in instead of always to book one. Not fillable.
+- **Book-scoped queries are `Book::chapterQuery()` / `Book::sceneQuery()`**, the twins of the
+  project's. `Project::acts()` survives only as a **read-only** `hasManyThrough(Act, Book)` —
+  it cannot `create()`, and its join puts `books.name`/`books.position` in scope, so every
+  bare column on it must be qualified or SQLite calls it ambiguous.
+- **An act can move between books**: `PATCH /acts/{act}/move-to-book` from the act edit page,
+  or the "move my acts to…" option in the book delete dialog. Both land the act at the
+  destination's `max(position) + 1`.
+
+> [!WARNING]
+> **Every display site calls `displayName()`, never `->name`.** The common case is an unnamed
+> sole book, and `->name` renders an empty string for it — in the picker, the breadcrumb, the
+> tab title, the search rows, both exporters and the EPUB's `dc:title` alike.
+
+> [!WARNING]
+> **A DB cascade bypasses model hooks, so it bypasses file cleanup.** `book → acts →
+> chapters` cascades in the database and fires neither `Act::deleting` nor
+> `Chapter::deleting`, so `Book::deleting` purges its own cover **and** every chapter cover
+> beneath it — the same leak `Project::deleting` closes one level up.
+
+> [!IMPORTANT]
+> Before extending any of this, read `.specs/shipped/2026-08/multiple-books/standing-issues.md`,
+> which holds the feature's **accepted costs** — known consequences of decisions, not bugs. Do
+> not "fix" one without re-opening the decision it came from.
 
 ## The main plotline invariant
 
@@ -54,14 +109,14 @@ in a `Project::booted()` `created` hook. This plotline **cannot be deleted** —
 > Any UI or logic that lists plotlines must account for the main plotline being
 > un-deletable, and it should generally stay pinned first in listings.
 
-## Act / Chapter / Scene ordering
+## Book / Act / Chapter / Scene ordering
 
-Each of `Act`, `Chapter`, `Scene` has a `position` integer, auto-assigned as
-`max(position) + 1` scoped to its parent (project for acts, act for chapters, chapter for
-scenes) via a `creating` hook in the model's `booted()` method.
+Each of `Book`, `Act`, `Chapter`, `Scene` has a `position` integer, auto-assigned as
+`max(position) + 1` scoped to its parent (project for books, **book** for acts, act for
+chapters, chapter for scenes) via a `creating` hook in the model's `booted()` method.
 
 - Titles are freeform and must **not** encode a number (no "Act 1" in the name). The `#`
-  column renders the derived project-wide **number**, not `position` directly — see
+  column renders the derived book-wide **number**, not `position` directly — see
   *Continuous numbering* below.
 - Reordering swaps `position` with the adjacent sibling via `moveUp` / `moveDown` controller
   actions (`PATCH /acts/{act}/move-up`, etc.). There is no drag-and-drop.
@@ -70,23 +125,27 @@ scenes) via a `creating` hook in the model's `booted()` method.
 
 > [!WARNING]
 > **Seeding caveat.** `DatabaseSeeder` uses `WithoutModelEvents`, which suppresses the
-> `creating` hook. `MelusineSeeder` therefore sets `position` explicitly (and creates the
-> main plotline manually) — if you add seeded acts/chapters/scenes, set `position` yourself.
+> `creating` hook — and, one level up, `Project::created`, so the auto-created book never
+> appears either. Every seeder therefore creates its book explicitly and sets `position` by
+> hand at every level (and creates the main plotline itself).
 
 ## Continuous numbering
 
 Every act, chapter and scene has two integers that deliberately disagree: `position` (above —
-per-parent, gappy, the only thing move-up/move-down writes) and **number** — project-wide,
+per-parent, gappy, the only thing move-up/move-down writes) and **number** — book-wide,
 gap-free, what the `#` column, the edit-page hints, the Story overview and both exports
 actually display. `number` is never stored; it is derived at read time by
-`App\Support\StoryNumbering`, which ranks every act by `(position, id)`, then every chapter
-continuously across every act boundary, then every scene continuously across every chapter
-boundary. `StoryNumbering::forProject($project)` loads the tree itself;
+`App\Support\StoryNumbering`, which ranks every act of one book by `(position, id)`, then
+every chapter continuously across every act boundary, then every scene continuously across
+every chapter boundary. `StoryNumbering::forBook($book)` loads the tree itself;
 `StoryNumbering::fromActs($acts)` derives from a tree the caller already has (the Story
 overview and both exporters, which have already eager-loaded it) to avoid loading it twice.
 
+**Numbering restarts at each book**: act 1 of book 2 is *Act 1*, and its chapters and scenes
+count from one too, because a reader of book 2 counts from one.
+
 > [!IMPORTANT]
-> The map must always be built from the **whole** project tree, never a filtered or paginated
+> The map must always be built from the **whole** book's tree, never a filtered or paginated
 > subset — filtering a list to one act must never change the numbers it shows. Looking up an
 > id the map wasn't built with is a bug, not a blank cell: `StoryNumbering` throws.
 
@@ -94,12 +153,13 @@ Three sites deliberately keep using `position` (or their own numbering) and must
 fed a derived number:
 
 - **Static-site chapter hrefs** — `StaticSiteExporter::chapterHref()` builds
-  `%02d/%02d.html` from raw act position and per-act chapter position. That URL is file
-  identity; a continuous number would break every previously exported link.
+  `%02d/%02d.html` from raw act position and per-act chapter position, relative to its
+  book's own folder. That URL is file identity; a continuous number would break every
+  previously exported link.
 - **The archive `data/` layer** — the export/import round-trip still carries `position`
   verbatim, so import stays unaffected.
 - **EPUB scene nav labels** — `sceneNavTitle()` keeps an untitled scene's per-chapter "Scene
-  3" label; a project-wide count means nothing to a reader under a chapter heading.
+  3" label; a book-wide count means nothing to a reader under a chapter heading.
 
 > [!NOTE]
 > Before this feature the EPUB silently dropped chapters with no scenes (and acts left with no
@@ -110,26 +170,40 @@ fed a derived number:
 
 ## Routing (shallow nested resources)
 
-Nested resource routes use Laravel's shallow nesting:
+Nested resource routes use Laravel's shallow nesting, and **what a route nests under says
+what owns the thing**: the manuscript nests under `{book}`, everything shared nests under
+`{project}`.
 
 ```php
-Route::resource('projects.scenes', SceneController::class)->shallow();
+Route::resource('books.scenes', SceneController::class)->shallow();   // the manuscript
+Route::resource('projects.books', BookController::class)->shallow();  // the volume layer
+Route::resource('projects.events', EventController::class)->shallow(); // shared world
 ```
 
-- `index` / `create` / `store` are nested under `/projects/{project}/...`.
-- `edit` / `update` / `destroy` are flat (`/scenes/{scene}`) — the child model alone
-  resolves the route.
-- Acts/chapters/scenes additionally have flat `PATCH .../move-up` and `.../move-down` routes.
+- `index` / `create` / `store` are nested under `/books/{book}/...` (story) or
+  `/projects/{project}/...` (books, plotlines, events, the codex, search, tools).
+- `edit` / `update` / `destroy` are flat (`/scenes/{scene}`, `/books/{book}`) — the child
+  model alone resolves the route, so a link to one act never has to name its book.
+- Books/acts/chapters/scenes additionally have flat `PATCH .../move-up` and `.../move-down`
+  routes; an act also has `PATCH /acts/{act}/move-to-book`.
+- Book-scoped: `books.story.home`, `books.story.overview`, `books.acts.*`,
+  `books.chapters.*`, `books.scenes.*`, `books.show|edit|update|destroy`.
+  Project-scoped: `projects.books.index|create|store`, `projects.timeline.home`,
+  `projects.codex.*`, `projects.search.*`, `projects.revisions.index`, `projects.progress`.
 - All routes require the `auth` middleware.
 
 ## Story overview
 
-`StoryController@index` (`GET /projects/{project}/story`) is a read-only page combining the
-full act/chapter/scene tree. Chapters render as `<article>`, scenes as `<section>`, and
-`Scene::contents` is rendered as Markdown via the `Scene::renderedContents` accessor (which
-wraps `Illuminate\Support\Str::markdown()` and the null-guard). That accessor is the **single
-home** for the render choice: the Story overview, the public share view, and the book export
-all read `$scene->renderedContents` so they can never render scene contents differently.
+`StoryController@index` (`GET /books/{book}/story/overview`) is a read-only page combining
+**one book's** full act/chapter/scene tree. Chapters render as `<article>`, scenes as
+`<section>`, and `Scene::contents` is rendered as Markdown via the `Scene::renderedContents`
+accessor (which wraps `Illuminate\Support\Str::markdown()` and the null-guard). That accessor
+is the **single home** for the render choice: the Story overview, the public share view, and
+the archive's `books/` reading layer all read `$scene->renderedContents` so they can never
+render scene contents differently.
+
+The page's render mode (one chapter at a time, or the whole book) is `StoryOverviewMode` on
+`books.overview_render_mode` — a book column, since the overview is a book's.
 
 > [!NOTE]
 > `Str::markdown()` is backed by `league/commonmark`, which is present as a **transitive**
@@ -217,7 +291,7 @@ scenes stay hidden regardless of the global toggle).
 
 ## Revisions (autosave + entity history)
 
-Fourteen long-text fields across the project tree (`Scene.contents` above all) autosave as
+Every long-text field across the project tree (`Scene.contents` above all) autosaves as
 the writer types, and every save that matters is recoverable through history / compare /
 undo. There is **no draft-vs-published split**: autosave writes the live column, so exports,
 search, share links and `SceneReferenceMatcher` always read what the writer sees.
@@ -263,13 +337,15 @@ Rules that bite if you don't know them:
 ## Word count
 
 A live counter in every prose field, per-scene counts on the story overview and the scene
-index, and chapter / act / project totals on the overview, the act and chapter indexes and
-the project header.
+index, and chapter / act / book / project totals on the overview, the act, chapter and book
+indexes, the book home and the project header.
 
-- **`scenes.word_count` is the only stored count.** Chapter, act and project totals are a
-  `SUM` over it — benchmarked (widest gap versus denormalising every level: 0.6 ms at 4,320
+- **`scenes.word_count` is the only stored count.** Chapter, act, book and project totals are
+  a `SUM` over it — benchmarked (widest gap versus denormalising every level: 0.6 ms at 4,320
   scenes / 6.3 M words), and the Story overview already eager-loads its scenes, so its totals
-  cost nothing. Do not add a column to `chapters`, `acts` or `projects`.
+  cost nothing. Do not add a column to `chapters`, `acts`, `books` or `projects`.
+- **A book total is a `SUM` over `Book::sceneQuery()`**; the project total keeps summing
+  `Project::sceneQuery()`, which now walks one level deeper (`chapter.act.book`).
 - **Only `scenes.contents` is ever counted** — never `description`, never `notes`.
 - `App\Support\WordCounter` is the one definition of "a word"; `x-word-count` the one place a
   count is formatted (including "0 words", which is never rendered blank).
@@ -306,6 +382,9 @@ autosave, manual save, and revert/undo the same way `scenes.word_count` does.
 - **Two goals only, both nullable, both open-ended**: `daily_word_goal`,
   `total_word_goal` on `projects`. A goal with a window (a monthly target) is
   a different feature (`.specs/draft/word-count-challenges/`).
+- **Goals and history stay project-level**, not per book: a writer's daily
+  output is one number whichever volume it went into, and
+  `word_count_snapshots` keeps its `project_id`.
 - The chart (`x-word-count-chart`, Tools ▸ Progress and the dashboard card)
   draws **bars** for the day's words and a flat line for the daily goal — never
   a cumulative view. The status strip on the Progress page always shows *now*
@@ -331,7 +410,9 @@ Enums live in `app/Enums`. The pattern (see `SceneStatus`):
 
 ## The Codex (characters, locations, organizations)
 
-The **Codex** is a project-scoped reference aggregate for the story's entities. It reuses
+The **Codex** is a **project**-scoped reference aggregate for the story's entities — shared by
+every book, like the timeline, because a character does not stop existing in volume two. It
+reuses
 every existing convention — authorization walks up to `Project`, shallow routes, Form
 Requests, index filtering in the controller — and adds the project's **first `app/Services`
 layer** for the one genuinely non-trivial piece: temporal attribute values.
@@ -389,7 +470,7 @@ Create.
 - **`scene_codex_entry` is always derived**, on both paths — neither service inserts into it
   directly.
 - Both routes (`scenes.duplicate`, `codex.duplicate`) share one `DuplicateEntityRequest`;
-  authorization walks to the project via `App\Support\RouteProject`, same as every other
+  authorization walks to the project via `App\Support\RouteContext`, same as every other
   action.
 - Both redirect to the **copy's edit page** with `session('status') === 'duplicated'`.
 
@@ -421,10 +502,11 @@ rule are all covered in **[`documentation/rich-text.md`](rich-text.md)**.
 ## Static file export
 
 **Admin → Export & import → Export** lets a signed-in user download one of their projects as a
-`.zip`. The archive has exactly two top-level folders — **`data/`** (a lossless machine copy, the
-source of truth for import) and **`book/`** (a human reading version of the manuscript).
-The full on-disk contract is **[`documentation/export-format.md`](export-format.md)**; this section
-is the architectural overview.
+`.zip` — the **whole** project, every book of it. The archive has exactly two top-level folders
+— **`data/`** (a lossless machine copy, the source of truth for import) and **`books/`** (a
+human reading version of the manuscript, one folder per book). The full on-disk contract is
+**[`documentation/export-format.md`](export-format.md)**; this section is the architectural
+overview.
 
 - **One service, HTTP-agnostic and async-ready.** `App\Services\StaticSiteExporter::export(Project,
   bool $includeMedia)` builds the whole archive and returns a finished temp-zip path — it takes no
@@ -443,14 +525,19 @@ is the architectural overview.
   to the service, and streams the download. `ExportRequest` validates the form (`project_id`,
   `include_images`).
 - **Two layers, one render boundary.** `data/` is **raw and lossless** — every field file holds the
-  exact stored column value, never re-rendered or re-sanitized. `book/` is the **only** place the
+  exact stored column value, never re-rendered or re-sanitized. `books/` is the **only** place the
   export renders Markdown to HTML — through the shared `Scene::renderedContents` accessor (the same
-  render path the in-app views use), via Blade templates under `resources/views/exports/book/`
+  render path the in-app views use), via Blade templates under `resources/views/exports/books/`
   rendered to string (HTML is never string-built in the service). Never blur the two.
-- **The `book/` TOC and chapter headings carry numbers** — the project-wide, gap-free number
+- **The manuscript sits under its book in both layers.** `data/books/<id>-slug/acts/…` mirrors
+  ownership the way the act/chapter/scene nesting already does, and each book carries its own
+  publication metadata and `publication-setting.json`. `books/NN/` is the reading layer's
+  per-book folder, `NN` being the book's `position`.
+- **Each book's TOC and chapter headings carry numbers** — the book-wide, gap-free number
   from [`StoryNumbering`](#continuous-numbering), formatted through the same
   `ChapterTitleFormat` setting the EPUB obeys. `chapterHref()` (file identity, `%02d/%02d.html`)
-  is untouched — it keeps reading raw `position`, never the derived number.
+  is untouched — it keeps reading raw `position`, never the derived number, and is now relative
+  to the book's own folder.
 - **The README's plain-text description** comes from `App\Support\RichText::toPlainText()`, the
   rich-text module's home for stripping stored HTML to prose — the exporter calls it rather than
   owning HTML-shape knowledge that has nothing to do with building a zip. Its sibling
@@ -468,7 +555,7 @@ is the architectural overview.
 ## Static site import
 
 **Admin → Export & import → Import** reads an export `.zip` back into a **brand-new** `Project` owned
-by the importing user. Import is a reconstruction from `data/` only — `book/` and `README.md` are
+by the importing user. Import is a reconstruction from `data/` only — `books/` and `README.md` are
 allowed to be present (real exports have them) but are **never read**. The on-disk contract it consumes
 is the same **[`documentation/export-format.md`](export-format.md)** the exporter writes.
 
@@ -488,11 +575,23 @@ is the same **[`documentation/export-format.md`](export-format.md)** the exporte
   failure, never a silently dropped relationship. `position` is replayed **verbatim** from the JSON,
   never re-derived from insertion order.
 - **Anchors are reconciled, not duplicated.** Creating the `Project` fires `Project::booted()`, which
-  seeds the main plotline and the Start/End bookend events. `ProjectGraphImporter` **updates those rows
-  in place** with the archive's recorded fields and maps the archive's ids onto them — so the invariant
-  (exactly one `is_main` plotline, exactly two `is_fixed` events) holds before and after import. A name
+  seeds the main plotline, the Start/End bookend events **and the first book**. `ProjectGraphImporter`
+  **updates those rows in place** with the archive's recorded fields and maps the archive's ids onto
+  them — so the invariants (exactly one `is_main` plotline, exactly two `is_fixed` events, at least one
+  book) hold before and after import. A name
   collision only ever renames the *new* project (a timestamp suffix); it never blocks creation or merges
   into an existing project.
+- **Books import inside the `story` phase**, not a fifth one: the phase list is a stored checkpoint
+  contract, and books own acts, which is what `story` already means. A `books` id map sits beside
+  `acts`/`chapters`/`scenes`.
+
+  > [!WARNING]
+  > **The order books are imported in is load-bearing.** `Book::created` copies the project name onto
+  > every unnamed sibling, so inserting a named book would rewrite a `null` name already restored
+  > beside it. `importStory()` therefore sorts the archive's books by `(position, id)` — `glob()`
+  > returns directory order, which is not position order — reconciles the **first** onto the
+  > auto-created row with `update()` (which fires no `created` event), and only then inserts the rest.
+  > Reverse it and a two-book import silently renames book one.
 - **Checkpointed for resumability.** `App\Services\ProjectImporter` (`start()` / `run()` / `discard()`)
   ties the gate, the graph importer, and an `Import` tracking record together. Validation is **always**
   synchronous (so a bad upload is an immediate form error). The four graph phases — `project → timeline
@@ -508,8 +607,11 @@ is the same **[`documentation/export-format.md`](export-format.md)** the exporte
   redirects to the finished project. With it on, `ImportController` dispatches `ProjectImportJob` and
   redirects with a "queued" status; only `run()` is ever deferred — validation still runs inline.
 - **Revisions are not part of the archive contract.** No export ever writes revision history,
-  and no import ever creates a `Revision` row; pre-v3 archives (which could carry a `revisions/`
-  sidecar) are rejected outright — see `revisions.md` → *Prune vs purge*.
+  and no import ever creates a `Revision` row; an archive old enough to carry a `revisions/`
+  sidecar is rejected outright — see `revisions.md` → *Prune vs purge*. Only the current
+  `data/` version is accepted at all (`ImportRules::SUPPORTED_MANIFEST_VERSIONS`); there is no
+  migration path between versions, because pre-V1 nobody holds an archive they cannot
+  re-export.
 - **Two intentional authorization postures.** `POST admin.data.import` and
   `PATCH admin.data.import-settings` use the **any-authenticated-user** exception (like `CrawlerSetting`):
   there is no project yet to walk up to, so `ImportProjectRequest::authorize()` is simply
@@ -527,15 +629,20 @@ is the same **[`documentation/export-format.md`](export-format.md)** the exporte
 
 ## EPUB export (publication settings)
 
-**Admin → Export & import → Export → Ebook** downloads a project as a standard `.epub`, built
-by `App\Services\EpubExporter` on `rampmaster/phpepub`. Like `StaticSiteExporter` it is
-HTTP-agnostic (takes a `Project`, returns a temp-file path, cleans up on exception), so a
+**Admin → Export & import → Export → Ebook** downloads **one book** as a standard `.epub`,
+built by `App\Services\EpubExporter` on `rampmaster/phpepub`. Like `StaticSiteExporter` it is
+HTTP-agnostic (takes a `Book`, returns a temp-file path, cleans up on exception), so a
 queued job could reuse it. The library owns the mechanical package (OPF, nav, NCX, zip); the
 service owns the content — every XHTML document (Blade under `resources/views/exports/epub/`,
 never string-built), the CSS, the metadata values, and the navigation shape.
 
+One book, one `.epub`: the picker on the config page is a book `<select>` grouped by project,
+the filename slugs the book's `displayName()`, and the title, cover, metadata, matter pages
+and `dc:identifier` (`urn:imagoldfish:book:{id}`) all come off the book. "Nothing to export"
+is per book too, so an empty volume never blocks its siblings.
+
 The whole export is parameterised by one lazily-resolved `PublicationSetting`
-(`Project::publicationSettingOrDefault()` returns an *unsaved* default when the project has no
+(`Book::publicationSettingOrDefault()` returns an *unsaved* default when the book has no
 row). `addSections()` walks its `section_order` array and dispatches each key —
 `title` / matter pages / `toc` / `body` / `appendix` — through a `match`.
 
@@ -544,6 +651,9 @@ Rules that bite if you don't know them:
 - **`validatePackage()` is a hard gate inside every `export()`**: every shipped `.xhtml` must
   parse as XML and the OPF must validate against the vendored EPUB 3 RelaxNG schema. A failure
   is a generator bug (`RuntimeException`), not the user-facing `EpubExportException`.
+- **The codex appendix is filtered to what this book's scenes reference.** The codex is shared
+  project-wide; an unfiltered appendix would print book three's characters in book two's
+  published file.
 - **Defaults must reproduce the pre-feature output byte-for-byte.** `EpubExporterTest`'s
   `defaults_v1_regression` guards this; every new gated feature ships off-by-default.
 - **Scene bodies never render through `Scene::renderedContents`** — the exporter has its own
@@ -577,6 +687,11 @@ a plain `GET` form with a full-page reload — no AJAX;
 `q` and `mode` round-trip via the query string, and an empty `q` is the normal landing state
 (the form with no results), never a validation error.
 
+- **Search stays project-wide**, deliberately: the codex is shared, and a writer searching a
+  series wants every hit. Act, chapter and scene rows therefore carry a **book** column
+  (`SearchResultRow::$book`, rendered by `x-search.result-row`) — without it a hit in a
+  three-book project is unlocatable. The book is eager-loaded on those three domains so the
+  fixed-query-count guarantee below survives.
 - **The service.** `App\Services\ProjectSearch` is the first (and template) occupant of the
   `app/Services` layer: the controller stays thin (resolve → authorize → delegate → view) and
   all query logic lives in `search(Project, string $query, SearchMode): SearchResults`. The
@@ -634,25 +749,34 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
   `aria-current` is what tests assert on.
 - **One source of truth for matching.** `App\Support\ProjectNavigation` is a per-request view
   model built by a view composer in `AppServiceProvider` and handed to the layout as
-  `$navigation`. It answers both of the nav's questions: which `Project` the request belongs to,
-  and which section is active (`storyActive`, `plotlinesActive`, `toolsActive`, …). Per-codex-type
-  highlighting is enum-aware: `codexTypeIsActive(CodexEntryType $type)`.
-- **The walk lives in `App\Support\RouteProject`.** It maps a route to its project, including the
-  shallow child routes (`/scenes/{scene}/edit`) that carry no `{project}` parameter, by walking
-  whatever model *did* bind up its aggregate. Both the nav and `TrackActiveProject` call it, so
-  they cannot disagree about which project a URL belongs to.
-- **The nav's project is `route ?? account`.** `$navigation->routeProject` is the URL's project;
-  `$navigation->project` falls back to the signed-in user's stored `activeProject` when the URL
-  has none, which is what keeps the menu and picker on screen over the dashboard, `/profile` and
-  `/admin/*`. The route always wins when there is one. The `*Active` flags still match the route
-  alone, so the dashboard renders the menu with nothing highlighted — no section is open.
-- **The stored value is the last project page loaded successfully.**
+  `$navigation`. It answers the nav's questions: which `Project` and which `Book` the request
+  belongs to, and which section is active (`storyActive`, `plotlinesActive`, `booksActive`, …).
+  Per-codex-type highlighting is enum-aware: `codexTypeIsActive(CodexEntryType $type)`.
+- **The walk lives in `App\Support\RouteContext`.** It maps a route to its project *and* its
+  book in one pass — resolving the book **is** the walk that resolves the project — including
+  the shallow child routes (`/scenes/{scene}/edit`) that carry neither parameter. Both the nav
+  and `TrackActiveProject` call it, so they cannot disagree about which project or book a URL
+  belongs to. A route outside the manuscript (`{plotline}`, `{event}`, `{codexEntry}`, …)
+  resolves a project and **no** book.
+- **The nav's project is `route ?? account`, and its book `route ?? remembered`.**
+  `$navigation->routeProject` / `routeBook` are the URL's; `$navigation->project` falls back to
+  the signed-in user's stored `activeProject`, and `$navigation->book` to
+  `$project->lastBook ?? $project->books()->first()`. That is what keeps the menu and picker on
+  screen over the dashboard, `/profile` and `/admin/*`, and what sends a Story link back to the
+  book the writer was in. The route always wins when there is one. The `*Active` flags still
+  match the route alone, so the dashboard renders the menu with nothing highlighted.
+- **The stored values are the last project and book pages loaded successfully.**
   `App\Http\Middleware\TrackActiveProject` (on the `auth` group in `routes/web.php`) writes
-  `users.active_project_id` *after* `$next($request)` and only on a 2xx. That gate **is** the
-  authorization check — the controller's `authorize()` has already run, so a 403 can never park
-  another writer's project in someone's picker. A page with no project in its URL leaves the
-  value alone; that is the persistence. `active_project_id` is not fillable, so nothing
-  user-submitted can reach it.
+  `users.active_project_id` and `projects.last_book_id` *after* `$next($request)` and only on a
+  2xx. That gate **is** the authorization check — the controller's `authorize()` has already
+  run, so a 403 can never park another writer's project in someone's picker. A page with no
+  project (or no book) in its URL leaves the value alone; that is the persistence. Neither
+  column is fillable, so nothing user-submitted can reach them.
+
+> [!WARNING]
+> **Match the route, never the fallback.** `$navigation->book` resolves even on the dashboard,
+> so comparing a picker row against it marks a book "open" on a page where none is. The
+> picker's active row compares against `routeBook`, the same rule every `*Active` flag follows.
 - **The menus are markup only.** `x-navigation.project-menu` (desktop) and
   `x-navigation.responsive-project-menu` (collapsed) both read the same `$navigation`, so they
   cannot drift. `x-navigation.dropdown-trigger` is the shared trigger button (label + chevron,
@@ -677,21 +801,33 @@ and their collapsed trigger buttons — and the responsive (mobile) menu.
 
 ## Project picker
 
-The bar's left block names the open project and switches between them —
-`ProjectNavigation::otherProjects()`, rendered by both `layouts.navigation` menus.
+The bar's left block names the open **book** and switches context — the project's own books
+(`ProjectNavigation::projectBooks()`), then every other project with its books
+(`otherProjects()`), rendered by both `layouts.navigation` menus.
 
+- **Two levels, one control.** The trigger shows the book's `displayName()`, with the project
+  beneath it in muted text **only when `Book::hasOwnName()`** — so a one-book project reads
+  exactly as it did before books existed. The panel lists the open project's books first (the
+  open one marked active), then `Manage books →`, then the other projects.
 - **It renders outside projects too.** On the dashboard, `/profile` and `/admin/*` it names the
   account's active project (see *Navigation active state*). "Choose a project" is the empty state
   for an account that has not opened one yet, not for "you left the project" — there is no leave
   control, and "All projects" is a link, not an exit.
 - **Capped at five, ordered by name.** A shortcut, not an index: the "All projects" link is the
-  complete list, so the cap costs a click and never a project. Both menus call the method, so it
-  is memoized — otherwise every authenticated page pays for two identical queries.
+  complete list, so the cap costs a click and never a project. Another project's books are
+  capped at five too; the **open** project lists all of its own. Both menus call these methods,
+  so they are memoized — otherwise every authenticated page pays for two identical queries.
 - **The open project is absent from the desktop panel** (the trigger already names it) but
-  present, marked active, in the responsive menu, which has no trigger.
+  present, marked active, in the responsive menu, which has no trigger. A book list, unlike the
+  project list, keeps its open entry: a list with a hole in it reads as broken.
 - **The nav bar is full-bleed**, unlike `<main>`'s `max-w-7xl`: the logo and the picker anchor the
   left corner, the account menu the right. Above 1280px the bar deliberately does not line up
   with the content under it.
+
+> [!WARNING]
+> **Eager-loading books does not wire up their inverse `project` relation**, so
+> `Book::displayName()` re-queries the project once per unnamed book — the common case, and an
+> N+1 straight through the picker. Both eager loads use Laravel's `chaperone('project')`.
 
 > [!WARNING]
 > `x-dropdown`'s `width` prop maps only the legacy `'48'`; everything else is passed through as a
@@ -700,21 +836,23 @@ The bar's left block names the open project and switches between them —
 
 ## Page title
 
-`App\Support\PageTitle` renders the `<title>` of the authenticated layout: `"<project name> -
-<app name>"` inside a project, the bare app name (`config('app.name')`, i.e. `APP_NAME`) outside
-one. The project name leads because browser tabs truncate from the right, and the tab is the only
-way to tell two open projects apart.
+`App\Support\PageTitle` renders the `<title>` of the authenticated layout: `"<book display name>
+- <app name>"` inside a book, `"<project name> - <app name>"` inside a project with no book in
+the URL, the bare app name (`config('app.name')`, i.e. `APP_NAME`) outside one. The name leads
+because browser tabs truncate from the right, and the tab is the only way to tell two open
+projects apart. A sole unnamed book renders the project's name through `displayName()`, so the
+title is unchanged for a one-book project.
 
 - The same view composer that builds `$navigation` also hands `layouts.app` a `$pageTitle`, built
-  from `$navigation->routeProject` — project resolution (including shallow child routes) stays in
-  one place.
+  from `$navigation->routeProject` and `routeBook` — context resolution (including shallow child
+  routes) stays in one place.
 - `layouts.guest`, `layouts.public` and `welcome` show `config('app.name')` alone: no project is
   open, and a share link should not put the project's name in the visitor's tab.
 - The app name is never a literal in a template — change it in `APP_NAME`.
 
 > [!WARNING]
-> The title follows the **URL**, never the account's active project — `routeProject`, not
-> `project`. Switching it to `$navigation->project` "so the title matches the nav" retitles the
+> The title follows the **URL**, never the account's active project or remembered book —
+> `routeProject`/`routeBook`, not `project`/`book`. Switching it to `$navigation->project` "so the title matches the nav" retitles the
 > dashboard, `/profile` and every Configuration page `"<project> - <app>"`, and the dashboard tab
 > becomes indistinguishable from the project's own in a row of tabs. The title answers *what is on
 > this page*; the nav answers *what am I working on*. `PageTitleTest` guards this.
@@ -724,16 +862,21 @@ way to tell two open projects apart.
 `App\Support\Breadcrumbs` renders the header band as a `Dashboard › Section › …` trail
 instead of a page title + "Back to X" link, mirroring the primary nav's section structure.
 
-- Built off `$navigation->routeProject`, never `->project` — the same rule as `PageTitle`
-  and for the same reason: off-route pages must show no trail, not the account's stored
-  project. Supplied by the same view composer, as `$breadcrumbs`.
+- Built off `$navigation->routeProject`/`routeBook`, never `->project`/`->book` — the same
+  rule as `PageTitle` and for the same reason: off-route pages must show no trail, not the
+  account's stored context. Supplied by the same view composer, as `$breadcrumbs`.
+- **A book crumb sits between Dashboard and the section**, on book-scoped pages only, and
+  **only when `Book::hasOwnName()`** — so `Dashboard › Story › Acts` for a sole unnamed book,
+  `Dashboard › Volume One › Story › Acts` once the book is named. It links `books.show`, and
+  is itself the current leaf on that page.
 - `IteratorAggregate`/`Countable` over `Crumb` (`app/Support/Crumb.php`): `label`, `?url`
   (`null` = not a link — the current crumb), `current`.
 - `layouts/app.blade.php` renders `<x-breadcrumbs>` on the left of the header band and a
   reserved-empty `$headerActions` slot on the right when the trail is non-empty; otherwise
   it falls back to the page's own `header` slot. Never both. A page also needs its own
   `<x-page-heading>` above its content, since the trail's `<nav>` is not a document heading.
-- Section crumbs (Story/Timeline/Codex/Tools) **link to their section stub** (`projects.<section>.home`);
+- Section crumbs (Story/Timeline/Codex/Tools) **link to their section stub** —
+  `books.story.home` for Story, `projects.<section>.home` for the rest;
   on the stub page itself the section is the current (unlinked) leaf. A `*.index` route's
   sub-index crumb *is* the current leaf; `*.edit`/`*.create` append an action-precise leaf
   instead (`Edit chapter 1`, `New scene`). The edit leaf names the bound model's **id**
@@ -743,7 +886,7 @@ instead of a page title + "Back to X" link, mirroring the primary nav's section 
   (`StoryController@home` + `Timeline`/`Codex`/`Tools` controllers) rendering only a heading and
   the word "stub" — real section dashboards land here later. They are the section crumb's link
   target and the first item in each nav dropdown. Story Overview moved off the bare `/story`
-  path (now the Story stub) to `projects.story.overview` at `/story/overview`.
+  path (now the Story stub) to `books.story.overview` at `/books/{book}/story/overview`.
 - **The revisions exception.** The per-field history/compare pages bind `{entity}`+`{id}`,
   not `{project}`, so `routeProject` is null and the central builder yields nothing for
   them. `RevisionController` builds their trail tail directly and passes it to the view —

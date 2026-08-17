@@ -40,69 +40,6 @@
             </form>
         </x-card>
 
-        <x-card :title="__('Book metadata')">
-            <p class="text-sm text-content-muted">{{ __('Used when exporting this project as an EPUB.') }}</p>
-
-            <div class="mt-4 space-y-6">
-                <div>
-                    <x-input-label for="language" :value="__('Language')" />
-                    <x-select id="language" name="language" form="project-edit-form" class="mt-1 block w-full" required>
-                        @foreach (\App\Enums\BookLanguage::cases() as $language)
-                            <option value="{{ $language->value }}" @selected(old('language', $project->language->value) === $language->value)>{{ $language->label() }}</option>
-                        @endforeach
-                    </x-select>
-                    <x-input-error :messages="$errors->get('language')" class="mt-2" />
-                </div>
-
-                <div>
-                    <x-input-label for="author" :value="__('Author')" />
-                    <x-text-input id="author" name="author" form="project-edit-form" type="text" class="mt-1 block w-full" :value="old('author', $project->author)" />
-                    <x-input-error :messages="$errors->get('author')" class="mt-2" />
-                </div>
-
-                <div>
-                    <x-input-label for="publisher" :value="__('Publisher')" />
-                    <x-text-input id="publisher" name="publisher" form="project-edit-form" type="text" class="mt-1 block w-full" :value="old('publisher', $project->publisher)" />
-                    <x-input-error :messages="$errors->get('publisher')" class="mt-2" />
-                </div>
-
-                <div>
-                    <x-autosave-field entity="project" :model="$project" field="rights" :label="__('Rights')" :rows="3" form="project-edit-form" />
-                    <p class="mt-1 text-xs text-content-subtle">{{ __('Copyright or rights statement.') }}</p>
-                </div>
-
-                <div>
-                    <x-input-label for="isbn" :value="__('ISBN')" />
-                    <x-text-input id="isbn" name="isbn" form="project-edit-form" type="text" class="mt-1 block w-full" :value="old('isbn', $project->isbn)" />
-                    <p class="mt-1 text-xs text-content-subtle">{{ __('ISBN-13, with or without hyphens.') }}</p>
-                    <x-input-error :messages="$errors->get('isbn')" class="mt-2" />
-                </div>
-            </div>
-        </x-card>
-
-        <x-card :title="__('Book front & back matter (Markdown)')">
-            <p class="text-sm text-content-muted">{{ __('Optional pages included in the EPUB export when enabled on the Export-ebook configuration page. These fields use Markdown (like scene contents), not the rich-text editor above.') }}</p>
-
-            <div class="mt-4 space-y-6">
-                <div>
-                    <x-autosave-field entity="project" :model="$project" field="dedication" :label="__('Dedication')" form="project-edit-form" />
-                </div>
-
-                <div>
-                    <x-autosave-field entity="project" :model="$project" field="acknowledgements" :label="__('Acknowledgements')" form="project-edit-form" />
-                </div>
-
-                <div>
-                    <x-autosave-field entity="project" :model="$project" field="preface" :label="__('Preface')" form="project-edit-form" />
-                </div>
-
-                <div>
-                    <x-autosave-field entity="project" :model="$project" field="postface" :label="__('Postface')" form="project-edit-form" />
-                    <p class="mt-1 text-xs text-content-subtle">{{ __('Rendered before any codex appendix.') }}</p>
-                </div>
-            </div>
-        </x-card>
-
         <x-slot:sidebar>
             <x-edit-actions
                 form="project-edit-form"

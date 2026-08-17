@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\FieldKind;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -20,8 +21,8 @@ use Tests\TestCase;
 
 /**
  * The declarative wiring layer: the AutosavableFields registry and the
- * HasRevisions trait each of the 7 registered models implements. These tests
- * cover the lookups and the revisionProject() authorization boundary only.
+ * HasRevisions trait every registered model implements. These tests cover the
+ * lookups and the revisionProject() authorization boundary only.
  * RevisionRecorderTest covers the write path.
  */
 class AutosavableFieldsAndHasRevisionsTest extends TestCase
@@ -32,27 +33,28 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
     // AutosavableFields::slugs()
     // ---------------------------------------------------------------------
 
-    public function test_slugs_returns_exactly_the_seven_expected_slugs(): void
+    public function test_slugs_returns_exactly_the_expected_slugs(): void
     {
         $this->assertEqualsCanonicalizing(
-            ['project', 'act', 'chapter', 'plotline', 'event', 'scene', 'codex'],
+            ['project', 'book', 'act', 'chapter', 'plotline', 'event', 'scene', 'codex'],
             AutosavableFields::slugs(),
         );
     }
 
     // ---------------------------------------------------------------------
-    // AutosavableFields::modelFor() / kindOf() — the 14-field table
+    // AutosavableFields::modelFor() / kindOf() — the registered field table
     // ---------------------------------------------------------------------
 
     public static function registeredFieldProvider(): array
     {
         return [
             'project.description' => ['project', 'description', Project::class, FieldKind::Rich],
-            'project.dedication' => ['project', 'dedication', Project::class, FieldKind::Markdown],
-            'project.acknowledgements' => ['project', 'acknowledgements', Project::class, FieldKind::Markdown],
-            'project.preface' => ['project', 'preface', Project::class, FieldKind::Markdown],
-            'project.postface' => ['project', 'postface', Project::class, FieldKind::Markdown],
-            'project.rights' => ['project', 'rights', Project::class, FieldKind::Plain],
+            'book.description' => ['book', 'description', Book::class, FieldKind::Rich],
+            'book.dedication' => ['book', 'dedication', Book::class, FieldKind::Markdown],
+            'book.acknowledgements' => ['book', 'acknowledgements', Book::class, FieldKind::Markdown],
+            'book.preface' => ['book', 'preface', Book::class, FieldKind::Markdown],
+            'book.postface' => ['book', 'postface', Book::class, FieldKind::Markdown],
+            'book.rights' => ['book', 'rights', Book::class, FieldKind::Plain],
             'act.description' => ['act', 'description', Act::class, FieldKind::Rich],
             'chapter.description' => ['chapter', 'description', Chapter::class, FieldKind::Rich],
             'plotline.description' => ['plotline', 'description', Plotline::class, FieldKind::Rich],
@@ -111,18 +113,25 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
         $this->assertTrue($project->revisionProject()->is($project));
     }
 
+    public function test_book_revision_project_is_its_project(): void
+    {
+        [$project, $book] = $this->projectWithBook();
+
+        $this->assertTrue($book->revisionProject()->is($project));
+    }
+
     public function test_act_revision_project_is_its_project(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
 
         $this->assertTrue($act->revisionProject()->is($project));
     }
 
     public function test_chapter_revision_project_is_its_act_project(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         $this->assertTrue($chapter->revisionProject()->is($project));
@@ -130,8 +139,8 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
 
     public function test_scene_revision_project_is_its_chapter_act_project(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create();
 
@@ -192,6 +201,21 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
         $this->assertSame('#'.$act->getKey(), $act->revisionDisplayName());
     }
 
+    public function test_revision_display_name_of_an_unnamed_book_is_the_project_name(): void
+    {
+        // Book overrides the fallback: `name` is nullable by design, so the
+        // plain `#<id>` would be what a reader sees on a one-book project.
+        $project = Project::factory()->create(['name' => 'Melusine']);
+        $book = $project->books()->first();
+
+        $this->assertNull($book->name);
+        $this->assertSame('Melusine', $book->revisionDisplayName());
+
+        $book->update(['name' => 'Volume One']);
+
+        $this->assertSame('Volume One', $book->fresh()->revisionDisplayName());
+    }
+
     // ---------------------------------------------------------------------
     // windowSeconds() / characterCap() — config lookups
     // ---------------------------------------------------------------------
@@ -208,7 +232,7 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
 
     public function test_character_cap_reads_the_specific_field_override(): void
     {
-        $this->assertSame(1_000, AutosavableFields::characterCap('project', 'rights'));
+        $this->assertSame(1_000, AutosavableFields::characterCap('book', 'rights'));
         $this->assertSame(1_000_000, AutosavableFields::characterCap('scene', 'contents'));
     }
 
@@ -245,7 +269,7 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
 
     public function test_validation_rule_for_a_plain_field_is_a_bare_string_rule_with_cap(): void
     {
-        $rule = AutosavableFields::validationRule('project', 'rights');
+        $rule = AutosavableFields::validationRule('book', 'rights');
 
         $this->assertSame(['nullable', 'string', 'max:1000'], $rule);
     }

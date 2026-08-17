@@ -7,35 +7,40 @@
     {{ __('Dashboard') }}
 </x-nav-link>
 
-<div class="flex items-center">
-    <x-dropdown align="left" width="48">
-        <x-slot name="trigger">
-            <x-navigation.dropdown-trigger :active="$navigation->storyActive">{{ __('Story') }}</x-navigation.dropdown-trigger>
-        </x-slot>
+{{-- Guarded on hasBook(), not hasProject(): a project always has a book, but
+     $navigation->book can still be null (a guest/error render), and every
+     route() call below needs one. --}}
+@if ($navigation->hasBook())
+    <div class="flex items-center">
+        <x-dropdown align="left" width="48">
+            <x-slot name="trigger">
+                <x-navigation.dropdown-trigger :active="$navigation->storyActive">{{ __('Story') }}</x-navigation.dropdown-trigger>
+            </x-slot>
 
-        <x-slot name="content">
-            <x-dropdown-link :href="route('projects.story.home', $navigation->project)" :active="$navigation->storyHomeActive">
-                {{ __('Story') }}
-            </x-dropdown-link>
+            <x-slot name="content">
+                <x-dropdown-link :href="route('books.story.home', $navigation->book)" :active="$navigation->storyHomeActive">
+                    {{ __('Story') }}
+                </x-dropdown-link>
 
-            <x-dropdown-link :href="route('projects.story.overview', $navigation->project)" :active="$navigation->storyOverviewActive">
-                {{ __('Overview') }}
-            </x-dropdown-link>
+                <x-dropdown-link :href="route('books.story.overview', $navigation->book)" :active="$navigation->storyOverviewActive">
+                    {{ __('Overview') }}
+                </x-dropdown-link>
 
-            <x-dropdown-link :href="route('projects.acts.index', $navigation->project)" :active="$navigation->actsActive">
-                {{ __('Acts') }}
-            </x-dropdown-link>
+                <x-dropdown-link :href="route('books.acts.index', $navigation->book)" :active="$navigation->actsActive">
+                    {{ __('Acts') }}
+                </x-dropdown-link>
 
-            <x-dropdown-link :href="route('projects.chapters.index', $navigation->project)" :active="$navigation->chaptersActive">
-                {{ __('Chapters') }}
-            </x-dropdown-link>
+                <x-dropdown-link :href="route('books.chapters.index', $navigation->book)" :active="$navigation->chaptersActive">
+                    {{ __('Chapters') }}
+                </x-dropdown-link>
 
-            <x-dropdown-link :href="route('projects.scenes.index', $navigation->project)" :active="$navigation->scenesActive">
-                {{ __('Scenes') }}
-            </x-dropdown-link>
-        </x-slot>
-    </x-dropdown>
-</div>
+                <x-dropdown-link :href="route('books.scenes.index', $navigation->book)" :active="$navigation->scenesActive">
+                    {{ __('Scenes') }}
+                </x-dropdown-link>
+            </x-slot>
+        </x-dropdown>
+    </div>
+@endif
 
 <div class="flex items-center">
     <x-dropdown align="left" width="48">

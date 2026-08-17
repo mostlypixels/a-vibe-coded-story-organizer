@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Publication settings for an EPUB export — toggles, formatting choices, and appendix options.
  *
- * One row per project; lazy-loaded via Project::publicationSettingOrDefault().
+ * One row per book; lazy-loaded via Book::publicationSettingOrDefault().
  * No auto-creation; an unsaved default is returned when no row exists.
  * See data-model.md and architecture.md for the full rationale.
  */
@@ -24,7 +24,7 @@ class PublicationSetting extends Model
      * Every valid `section_order` component key, in default reading order.
      * The single source of truth for the sortable list's membership — the
      * config form's validation rule, the model's reorder helpers, and the
-     * lazy default in Project::publicationSettingOrDefault() all read this
+     * lazy default in Book::publicationSettingOrDefault() all read this
      * instead of repeating the literal list (CLAUDE.md: no magic strings).
      *
      * @var array<int, string>
@@ -46,8 +46,8 @@ class PublicationSetting extends Model
     public const PINNED_FIRST_SECTION = 'title';
 
     protected $fillable = [
-        'project_id',
-        'include_project_cover',
+        'book_id',
+        'include_book_cover',
         'include_chapter_covers',
         'include_scene_titles',
         'include_act_descriptions',
@@ -71,7 +71,7 @@ class PublicationSetting extends Model
     ];
 
     protected $casts = [
-        'include_project_cover' => 'boolean',
+        'include_book_cover' => 'boolean',
         'include_chapter_covers' => 'boolean',
         'include_scene_titles' => 'boolean',
         'include_act_descriptions' => 'boolean',
@@ -94,9 +94,9 @@ class PublicationSetting extends Model
         'appendix_include_images' => 'boolean',
     ];
 
-    public function project(): BelongsTo
+    public function book(): BelongsTo
     {
-        return $this->belongsTo(Project::class);
+        return $this->belongsTo(Book::class);
     }
 
     /**

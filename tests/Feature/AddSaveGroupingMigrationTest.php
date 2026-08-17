@@ -105,7 +105,7 @@ class AddSaveGroupingMigrationTest extends TestCase
         Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->project->id,
+            'project_id' => $scene->chapter->act->book->project->id,
             'field' => 'contents',
             'value' => 'legacy history',
         ]);

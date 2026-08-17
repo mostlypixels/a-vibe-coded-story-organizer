@@ -35,7 +35,7 @@ class DataTransferTest extends TestCase
         $response->assertSee('Include images & files');
         $response->assertSee('Exportable Tale');
         // Not this page's controls.
-        $response->assertDontSee('id="epub_project_id"', false);
+        $response->assertDontSee('id="epub_book_id"', false);
         $response->assertDontSee('Archive (.zip)');
     }
 
@@ -47,7 +47,7 @@ class DataTransferTest extends TestCase
         $response = $this->actingAs($user)->get(route('admin.data.export-ebook'));
 
         $response->assertOk();
-        $response->assertSee('id="epub_project_id"', false);
+        $response->assertSee('id="epub_book_id"', false);
         $response->assertSee('Download EPUB');
         $response->assertSee('Epub-able Tale');
         // Not this page's controls.
@@ -67,7 +67,7 @@ class DataTransferTest extends TestCase
         $response->assertSee('Import settings');
         // Not this page's controls.
         $response->assertDontSee('name="project_id"', false);
-        $response->assertDontSee('id="epub_project_id"', false);
+        $response->assertDontSee('id="epub_book_id"', false);
     }
 
     // ---------------------------------------------------------------------

@@ -12,7 +12,7 @@ class StoreSceneRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('project'));
+        return $this->user()->can('update', $this->route('book')->project);
     }
 
     /**
@@ -20,13 +20,16 @@ class StoreSceneRequest extends FormRequest
      */
     public function rules(): array
     {
-        $project = $this->route('project');
+        $book = $this->route('book');
+        // Events, and the window they must fall in, are shared by every book in
+        // the project — only the chapter list is book-scoped.
+        $project = $book->project;
 
         return [
             'chapter_id' => [
                 'required',
                 'integer',
-                Rule::exists('chapters', 'id')->whereIn('act_id', $project->acts()->pluck('id')),
+                Rule::exists('chapters', 'id')->whereIn('act_id', $book->acts()->pluck('id')),
             ],
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('scene', 'description'),

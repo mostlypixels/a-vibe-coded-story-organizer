@@ -10,6 +10,8 @@
 /.idea
 /.nova
 /.phpunit.cache
+# Scratch space for work-in-progress notes. Never committed.
+/.scratchpad
 /.vscode
 /.zed
 /auth.json

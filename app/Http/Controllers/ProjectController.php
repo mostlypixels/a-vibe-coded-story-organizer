@@ -81,6 +81,12 @@ class ProjectController extends Controller
 
         return view('projects.show', [
             'project' => $project,
+            // "View the story" needs a book. The dashboard is project-wide, so it
+            // opens the first one.
+            'book' => $project->books()->first(),
+            // The compact book list card. withCount, not loadCount in a loop —
+            // one query for the whole card (CLAUDE.md's N+1 rule).
+            'books' => $project->books()->withCount('acts')->get(),
             'wordCount' => $wordCount,
             'recentScenes' => $recentScenes,
             'recentCodexEntries' => $recentCodexEntries,

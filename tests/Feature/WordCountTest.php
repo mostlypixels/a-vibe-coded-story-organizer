@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\FieldKind;
 use App\Enums\SceneStatus;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Revision;
@@ -34,8 +35,8 @@ class WordCountTest extends TestCase
 
     private function chapterFor(User $user): Chapter
     {
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         return Chapter::factory()->for($act)->create();
     }
@@ -125,7 +126,7 @@ class WordCountTest extends TestCase
         $old = Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->project->id,
+            'project_id' => $scene->chapter->act->book->project->id,
             'user_id' => $user->id,
             'field' => 'contents',
             'value' => 'Two words',
@@ -160,7 +161,7 @@ class WordCountTest extends TestCase
         Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->project->id,
+            'project_id' => $scene->chapter->act->book->project->id,
             'user_id' => $user->id,
             'save_id' => $saveA,
             'field' => 'contents',
@@ -172,7 +173,7 @@ class WordCountTest extends TestCase
         Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->project->id,
+            'project_id' => $scene->chapter->act->book->project->id,
             'user_id' => $user->id,
             'save_id' => $saveB,
             'field' => 'contents',
@@ -222,7 +223,7 @@ class WordCountTest extends TestCase
     }
 
     /**
-     * A minimal hand-built extraction root: one project, one act, one
+     * A minimal hand-built extraction root: one project, one book, one act, one
      * chapter, one scene with contents — everything ProjectGraphImporter's
      * importProject()/importStory() require and nothing more (mirrors
      * tests/Unit/Import/ProjectGraphImporterTest.php's fixture style).
@@ -234,15 +235,20 @@ class WordCountTest extends TestCase
             'name' => 'Word count import fixture',
         ]));
 
-        $this->writeFixtureFile($fixtureRoot, 'data/acts/100-act-one/act.json', json_encode([
+        $sceneDir = 'data/books/50-fixture-book/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-one';
+
+        $this->writeFixtureFile($fixtureRoot, 'data/books/50-fixture-book/book.json', json_encode([
+            'id' => 50, 'name' => null, 'position' => 1, 'project_id' => 900,
+        ]));
+        $this->writeFixtureFile($fixtureRoot, 'data/books/50-fixture-book/acts/100-act-one/act.json', json_encode([
             'id' => 100, 'name' => 'Act One', 'position' => 1,
         ]));
-        $this->writeFixtureFile($fixtureRoot, 'data/acts/100-act-one/chapters/200-chapter-one/chapter.json', json_encode([
+        $this->writeFixtureFile($fixtureRoot, 'data/books/50-fixture-book/acts/100-act-one/chapters/200-chapter-one/chapter.json', json_encode([
             'id' => 200, 'name' => 'Chapter One', 'position' => 1,
         ]));
         $this->writeFixtureFile(
             $fixtureRoot,
-            'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-one/scene.json',
+            "{$sceneDir}/scene.json",
             json_encode([
                 'id' => 300,
                 'name' => 'Imported scene',
@@ -253,11 +259,7 @@ class WordCountTest extends TestCase
                 'contents_file' => 'contents.md',
             ]),
         );
-        $this->writeFixtureFile(
-            $fixtureRoot,
-            'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-one/contents.md',
-            'Some imported prose to count.',
-        );
+        $this->writeFixtureFile($fixtureRoot, "{$sceneDir}/contents.md", 'Some imported prose to count.');
     }
 
     private function writeFixtureFile(string $fixtureRoot, string $relativePath, string $contents): void
@@ -338,5 +340,29 @@ class WordCountTest extends TestCase
         $scene->update(['contents' => '']);
 
         $this->assertSame(0, $scene->fresh()->word_count);
+    }
+
+    // ---------------------------------------------------------------------
+    // 9. The project total reaches every book
+    // ---------------------------------------------------------------------
+
+    /**
+     * A scene reaches its project through chapter → act → book, so the project
+     * total is the sum over every book. A total scoped to one book would under-
+     * report the moment a project holds a second.
+     */
+    public function test_the_project_total_sums_the_scenes_of_every_book(): void
+    {
+        [$project, $firstBook] = $this->projectWithBook();
+        $secondBook = Book::factory()->for($project)->create();
+
+        foreach ([$firstBook, $secondBook] as $book) {
+            $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+            Scene::factory()->for($chapter)->create(['contents' => 'One two three']);
+        }
+
+        $this->assertSame(6, (int) $project->sceneQuery()->sum('word_count'));
+        $this->assertSame(3, (int) $firstBook->sceneQuery()->sum('word_count'));
+        $this->assertSame(3, (int) $secondBook->sceneQuery()->sum('word_count'));
     }
 }

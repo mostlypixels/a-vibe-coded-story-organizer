@@ -10,14 +10,17 @@
     'secondaryCount' => 0,
     'secondarySingular' => null,
     'secondaryPlural' => null,
+    'tertiaryCount' => 0,
+    'tertiarySingular' => null,
+    'tertiaryPlural' => null,
     'destinationField' => 'move_children_to',
 ])
 
 {{--
     Reusable "move children elsewhere, or delete everything" confirmation dialog for a
-    parent entity that owns positioned children (Act → chapters, Chapter → scenes).
-    Built on <x-dialog> because a native confirm() cannot render the destination
-    <select>. Open it by dispatching `open-modal` with this dialog's `name`.
+    parent entity that owns positioned children (Act → chapters, Chapter → scenes,
+    Book → acts). Built on <x-dialog> because a native confirm() cannot render the
+    destination <select>. Open it by dispatching `open-modal` with this dialog's `name`.
 
     Props:
       - childCount / childSingular / childPlural — the DIRECT children that get moved
@@ -29,6 +32,9 @@
       - secondaryCount / secondarySingular / secondaryPlural — OPTIONAL grandchildren
         (e.g. an act's scenes) folded into the honest "delete everything" summary only.
         Omit them for a one-level entity like Chapter.
+      - tertiaryCount / tertiarySingular / tertiaryPlural — OPTIONAL great-grandchildren
+        (e.g. a book's scenes, below its acts and their chapters). Only meaningful
+        alongside a secondary count — a three-level entity like Book.
       - destinationField — the form field the destination id is submitted as
         (defaults to the `move_children_to` field both destroy actions read).
 
@@ -36,29 +42,31 @@
 --}}
 @php
     // "3 chapters" / "1 chapter" via this app's inline trans_choice convention.
-    $childPhrase = trans_choice(
-        '{1} :count '.$childSingular.'|[2,*] :count '.$childPlural,
-        $childCount,
-        ['count' => $childCount],
+    $countPhrase = fn (int $count, string $singular, string $plural) => trans_choice(
+        '{1} :count '.$singular.'|[2,*] :count '.$plural,
+        $count,
+        ['count' => $count],
     );
 
+    $childPhrase = $countPhrase($childCount, $childSingular, $childPlural);
+
     // The full honest cascade phrase for "delete everything": direct children plus,
-    // for a two-level entity, its grandchildren. With no secondary count it collapses
-    // back to just the child phrase.
-    $cascadePhrase = $childPhrase;
+    // for a two- or three-level entity, its grandchildren and great-grandchildren.
+    // With no further counts it collapses back to just the child phrase; with one or
+    // two more, they join the same way ProjectDeleteWarning's category list does.
+    $cascadeParts = [$childPhrase];
 
     if ($secondarySingular !== null && $secondaryCount > 0) {
-        $secondaryPhrase = trans_choice(
-            '{1} :count '.$secondarySingular.'|[2,*] :count '.$secondaryPlural,
-            $secondaryCount,
-            ['count' => $secondaryCount],
-        );
-
-        $cascadePhrase = __(':children and :grandchildren', [
-            'children' => $childPhrase,
-            'grandchildren' => $secondaryPhrase,
-        ]);
+        $cascadeParts[] = $countPhrase($secondaryCount, $secondarySingular, $secondaryPlural);
     }
+
+    if ($tertiarySingular !== null && $tertiaryCount > 0) {
+        $cascadeParts[] = $countPhrase($tertiaryCount, $tertiarySingular, $tertiaryPlural);
+    }
+
+    $cascadePhrase = count($cascadeParts) > 1
+        ? \Illuminate\Support\Arr::join($cascadeParts, ', ', ' '.__('and').' ')
+        : $cascadeParts[0];
 @endphp
 
 <x-dialog :name="$name" :title="$title">

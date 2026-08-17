@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\CodexEntryType;
+use App\Models\Book;
 use App\Models\CodexEntry;
 use App\Models\Project;
 use App\Models\User;
@@ -20,7 +21,7 @@ use Illuminate\Support\Collection;
  * AppServiceProvider, is the single source of truth for both menus.
  *
  * Adding a project-scoped section means touching this class and nothing else:
- * add the route-parameter fallback to RouteProject::resolve() if the section
+ * add the route-parameter fallback to RouteContext::resolve() if the section
  * owns models of its own, and add one `*Active` property below.
  *
  * The two questions have different answers since active-project persistence:
@@ -32,6 +33,9 @@ class ProjectNavigation
 {
     /** How many projects the picker offers before deferring to "All projects". */
     private const PICKER_PROJECT_LIMIT = 5;
+
+    /** How many of another project's books the picker offers, per project. */
+    private const PICKER_BOOK_LIMIT = 5;
 
     /**
      * The project the current *route* belongs to, or null outside a project.
@@ -53,6 +57,27 @@ class ProjectNavigation
      * return from.
      */
     public readonly ?Project $project;
+
+    /**
+     * The book the current *route* belongs to, or null when the route names
+     * no book (the timeline, the codex, the tools section, or any page
+     * outside a project). Never falls back — {@see PageTitle} needs to tell
+     * "this page is in a book" from "the nav is showing the last book you
+     * were in", the same distinction {@see $routeProject} draws for $project.
+     */
+    public readonly ?Book $routeBook;
+
+    /**
+     * The book the Story links point at: the route's book, or the project's
+     * remembered book ({@see Project::lastBook()}), or its first
+     * book when neither is set — so a Codex or Tools detour returns to the
+     * book the writer was working in, not always to book one.
+     *
+     * Null on a guest or error render, where there is no project either — so
+     * every `route('books.…', $navigation->book)` in the menus must guard on
+     * {@see hasBook()}, not on {@see hasProject()}.
+     */
+    public readonly ?Book $book;
 
     public readonly bool $homeActive;
 
@@ -97,6 +122,13 @@ class ProjectNavigation
     /** Tools dropdown trigger — true on the section stub or any Revisions/Progress page. */
     public readonly bool $toolsActive;
 
+    /**
+     * The books CRUD area (index/create/edit) — the picker's "Manage books"
+     * link lights up here. Deliberately excludes `books.show`, the book home
+     * page a book row in the picker links to, not the management screen.
+     */
+    public readonly bool $booksActive;
+
     /** The codex type being viewed, if any. Read via codexTypeIsActive(). */
     private readonly ?CodexEntryType $activeCodexType;
 
@@ -106,32 +138,39 @@ class ProjectNavigation
     /** Memoized otherProjects() result — both menus ask for it. */
     private ?Collection $otherProjects = null;
 
+    /** Memoized projectBooks() result — both menus ask for it. */
+    private ?Collection $projectBooks = null;
+
     public function __construct(Request $request)
     {
-        $this->routeProject = RouteProject::resolve($request);
+        $context = RouteContext::resolve($request);
+
+        $this->routeProject = $context->project;
         $this->user = $request->user();
         $this->project = $this->routeProject ?? $this->user?->activeProject;
+        $this->routeBook = $context->book;
+        $this->book = $this->routeBook ?? $this->project?->lastBook ?? $this->project?->books()->first();
 
         $this->homeActive = $request->routeIs('projects.show');
 
-        $this->storyHomeActive = $request->routeIs('projects.story.home');
+        $this->storyHomeActive = $request->routeIs('books.story.home');
         $this->timelineHomeActive = $request->routeIs('projects.timeline.home');
         $this->codexHomeActive = $request->routeIs('projects.codex.home');
         $this->toolsHomeActive = $request->routeIs('projects.tools.home');
 
-        // Each section matches both its project-scoped index routes
-        // (projects.acts.*) and its shallow child routes (acts.edit), so a page
+        // Each Story section matches both its book-scoped index routes
+        // (books.acts.*) and its shallow child routes (acts.edit), so a page
         // reached by either keeps its section highlighted.
         // Overview highlights only its own route now that the Story section has
-        // a separate stub landing (projects.story.home); a `projects.story.*`
-        // match would light Overview up on the stub too.
-        $this->storyOverviewActive = $request->routeIs('projects.story.overview');
-        $this->actsActive = $request->routeIs('projects.acts.*', 'acts.*');
-        $this->chaptersActive = $request->routeIs('projects.chapters.*', 'chapters.*');
-        $this->scenesActive = $request->routeIs('projects.scenes.*', 'scenes.*');
-        // `projects.story.*` covers the stub (home) and Overview; the child
+        // a separate stub landing (books.story.home); a `books.story.*` match
+        // would light Overview up on the stub too.
+        $this->storyOverviewActive = $request->routeIs('books.story.overview');
+        $this->actsActive = $request->routeIs('books.acts.*', 'acts.*');
+        $this->chaptersActive = $request->routeIs('books.chapters.*', 'chapters.*');
+        $this->scenesActive = $request->routeIs('books.scenes.*', 'scenes.*');
+        // `books.story.*` covers the stub (home) and Overview; the child
         // routes carry Story-section highlighting on their shallow edit pages.
-        $this->storyActive = $request->routeIs('projects.story.*')
+        $this->storyActive = $request->routeIs('books.story.*')
             || $this->actsActive
             || $this->chaptersActive
             || $this->scenesActive;
@@ -157,6 +196,14 @@ class ProjectNavigation
         $this->revisionsActive = $request->routeIs('projects.revisions.*', 'revisions.*');
         $this->progressActive = $request->routeIs('projects.progress');
         $this->toolsActive = $request->routeIs('projects.tools.*') || $this->revisionsActive || $this->progressActive;
+
+        // `projects.books.*` is safe as a wildcard (nothing else shares that
+        // prefix); the shallow routes need naming individually, because
+        // `books.*` would also sweep up every books.story.*/acts.*-style
+        // manuscript route.
+        $this->booksActive = $request->routeIs(
+            'projects.books.*', 'books.edit', 'books.update', 'books.destroy', 'books.move-up', 'books.move-down'
+        );
     }
 
     /**
@@ -181,6 +228,33 @@ class ProjectNavigation
         return $this->project !== null;
     }
 
+    /** Whether there is a book to build book-scoped links from. */
+    public function hasBook(): bool
+    {
+        return $this->book !== null;
+    }
+
+    /**
+     * The open project's own books, in reading order, for the picker's own
+     * group — every one of them, the current project's book list is never
+     * capped.
+     *
+     * Chaperoned: without it, {@see Book::displayName()} re-queries
+     * the project for every unnamed book in the list (the common case), one
+     * query each. Memoized for the same reason {@see otherProjects()} is —
+     * the desktop panel and the responsive menu both render this list.
+     *
+     * @return Collection<int, Book>
+     */
+    public function projectBooks(): Collection
+    {
+        if ($this->project === null) {
+            return collect();
+        }
+
+        return $this->projectBooks ??= $this->project->books()->chaperone('project')->get();
+    }
+
     /**
      * The user's other projects, for the picker's "switch to" list.
      *
@@ -193,7 +267,10 @@ class ProjectNavigation
      *
      * Lazy and memoized: the desktop and responsive menus both render the
      * picker, and without the cache that is two identical queries on every
-     * authenticated page.
+     * authenticated page. Each project's own books come eager-loaded and
+     * capped at {@see PICKER_BOOK_LIMIT} for the same reason, chaperoned so
+     * an unnamed one's {@see Book::displayName()} does not
+     * re-query its project.
      *
      * @return Collection<int, Project>
      */
@@ -207,6 +284,7 @@ class ProjectNavigation
             ->when($this->project, fn ($query) => $query->whereKeyNot($this->project->getKey()))
             ->orderBy('name')
             ->limit(self::PICKER_PROJECT_LIMIT)
+            ->with(['books' => fn ($query) => $query->orderBy('position')->limit(self::PICKER_BOOK_LIMIT)->chaperone('project')])
             ->get(['id', 'name']);
     }
 

@@ -2,13 +2,16 @@
 
 namespace App\Services\Import;
 
+use App\Enums\BookLanguage;
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
 use App\Enums\ImportPhase;
 use App\Enums\SceneStatus;
+use App\Enums\StoryOverviewMode;
 use App\Exceptions\ImportValidationException;
 use App\Http\Requests\UpdatePublicationSettingRequest;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Project;
@@ -34,7 +37,7 @@ use Throwable;
  *
  * Contract with the caller, App\Services\ProjectImporter:
  *   - `$dataPath` is the extraction root — the directory that CONTAINS `data/`
- *     (and possibly the ignored `book/` + `README.md`).
+ *     (and possibly the ignored `books/` + `README.md`).
  *   - The archive has already passed {@see ArchiveValidator}; this class still
  *     runs every description.html / notes.html / contents.md it reads through
  *     {@see ContentSanitizer} inline (nothing is persisted unsanitized).
@@ -43,8 +46,9 @@ use Throwable;
  *
  * Binding rules implemented here (see .specs → import → data-model.md):
  *   - Ids are ALWAYS remapped; an unresolvable reference throws, never skips.
- *   - The main plotline and Start/End bookends are reconciled onto the new
- *     project's auto-created rows (an update, never a duplicate insert).
+ *   - The main plotline, the Start/End bookends and the first book are
+ *     reconciled onto the new project's auto-created rows (an update, never a
+ *     duplicate insert).
  *   - `position` is replayed verbatim from the archive's JSON — never left
  *     null for the HasSiblingPosition creating() hook to re-derive.
  *   - Media bytes are copied to a freshly generated storage path; a declared
@@ -62,6 +66,8 @@ class ProjectGraphImporter
     public const MAP_PLOTLINES = 'plotlines';
 
     public const MAP_EVENTS = 'events';
+
+    public const MAP_BOOKS = 'books';
 
     public const MAP_ACTS = 'acts';
 
@@ -85,20 +91,16 @@ class ProjectGraphImporter
      * Phase 1 — create the Project for $user from data/project/.
      *
      * Creating the row triggers Project::booted()'s created hook, which
-     * auto-creates the main plotline and Start/End bookend events phase 2
-     * reconciles onto. On a name collision (case-insensitive match against the
-     * user's existing project names) the new name gets a timestamp suffix —
-     * import never merges into or blocks on an existing project.
+     * auto-creates the first book, the main plotline and the Start/End bookend
+     * events that later phases reconcile onto. On a name collision
+     * (case-insensitive match against the user's existing project names) the new
+     * name gets a timestamp suffix — import never merges into or blocks on an
+     * existing project.
      *
-     * The four front-/back-matter fields are Markdown, read through the same
-     * sanitizer gate as a scene's contents.md.
-     * An archive that pre-dates them (manifest version 1) simply omits their
-     * `*_file` link keys, so readMarkdownField() returns null for each — no crash.
-     *
-     * The serialized PublicationSetting is read and validated here too,
-     * as UNTRUSTED input: a valid config creates the project's row, an absent or
-     * malformed one is skipped so the project falls back to the lazy default —
-     * config is a presentation preference and must never fail the whole import.
+     * The publication metadata, the front-/back-matter pages and the EPUB cover
+     * belong to a book, not to the project: {@see importStory()} reads them.
+     * The project keeps its name, its description, its two word goals and its
+     * own dashboard cover.
      */
     public function importProject(string $dataPath, User $user): Project
     {
@@ -106,38 +108,35 @@ class ProjectGraphImporter
 
         $descriptor = $this->readJson($dataPath, 'data/project/project.json');
         $description = $this->readHtmlField($dataPath, 'data/project', $descriptor);
-        $dedication = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'dedication_file');
-        $acknowledgements = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'acknowledgements_file');
-        $preface = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'preface_file');
-        $postface = $this->readMarkdownField($dataPath, 'data/project', $descriptor, 'postface_file');
-
-        // Validate BEFORE opening the transaction — it touches no DB, and this
-        // keeps a rejected config from ever influencing the project insert.
-        $publicationSetting = $this->readPublicationSetting($dataPath);
         $snapshots = $this->readWordCountSnapshots($dataPath);
 
-        return DB::transaction(function () use ($user, $descriptor, $description, $dedication, $acknowledgements, $preface, $postface, $publicationSetting, $snapshots): Project {
-            $project = $user->projects()->create([
-                'name' => $this->collisionFreeName((string) $descriptor['name'], $user),
-                'description' => $description,
-                'dedication' => $dedication,
-                'acknowledgements' => $acknowledgements,
-                'preface' => $preface,
-                'postface' => $postface,
-                'daily_word_goal' => isset($descriptor['daily_word_goal']) ? (int) $descriptor['daily_word_goal'] : null,
-                'total_word_goal' => isset($descriptor['total_word_goal']) ? (int) $descriptor['total_word_goal'] : null,
-            ]);
+        // The cover is copied BEFORE the transaction opens: a disk copy is not
+        // covered by it, so a failure below must unlink the file by hand or a
+        // rolled-back phase leaks an orphan cover.
+        $copiedCovers = [];
+        $cover = $this->importCover($dataPath, 'data/project', $descriptor, CoverImageService::PROJECT_COVER_DIRECTORY, $copiedCovers);
 
-            // Only a fully-valid config becomes a row; otherwise the project is
-            // left with no PublicationSetting, i.e. the lazy default.
-            if ($publicationSetting !== null) {
-                $project->publicationSetting()->create($publicationSetting);
+        try {
+            return DB::transaction(function () use ($user, $descriptor, $description, $cover, $snapshots): Project {
+                $project = $user->projects()->create([
+                    'name' => $this->collisionFreeName((string) $descriptor['name'], $user),
+                    'description' => $description,
+                    'cover_image' => $cover,
+                    'daily_word_goal' => isset($descriptor['daily_word_goal']) ? (int) $descriptor['daily_word_goal'] : null,
+                    'total_word_goal' => isset($descriptor['total_word_goal']) ? (int) $descriptor['total_word_goal'] : null,
+                ]);
+
+                $this->importWordCountSnapshots($project, $snapshots);
+
+                return $project;
+            });
+        } catch (Throwable $exception) {
+            foreach ($copiedCovers as $coverPath) {
+                $this->coverImageService->delete($coverPath);
             }
 
-            $this->importWordCountSnapshots($project, $snapshots);
-
-            return $project;
-        });
+            throw $exception;
+        }
     }
 
     /**
@@ -183,17 +182,17 @@ class ProjectGraphImporter
     }
 
     /**
-     * Read and validate the archive's serialized PublicationSetting as untrusted
+     * Read and validate one book's serialized PublicationSetting as untrusted
      * input, returning a clean attributes array to persist, or null when there is
      * no config to apply (absent file, unreadable/non-array JSON, or a config that
-     * fails validation). A null NEVER fails the import — the project simply keeps
+     * fails validation). A null NEVER fails the import — the book simply keeps
      * the lazy default (CLAUDE.md untrusted-input posture).
      *
      * @return array<string, mixed>|null
      */
-    private function readPublicationSetting(string $dataPath): ?array
+    private function readPublicationSetting(string $dataPath, string $bookDirectory): ?array
     {
-        $absolute = "{$dataPath}/data/publication-setting.json";
+        $absolute = "{$dataPath}/{$bookDirectory}/publication-setting.json";
 
         if (! is_file($absolute)) {
             return null; // no config in the archive → lazy default
@@ -246,8 +245,8 @@ class ProjectGraphImporter
         }
 
         // validated() returns only keys that have rules (every settable column),
-        // so a hostile `id`/`project_id`/timestamps in the JSON are dropped; the
-        // project_id is set by the create()-through-relationship above.
+        // so a hostile `id`/`book_id`/timestamps in the JSON are dropped; the
+        // book_id is set by the create()-through-relationship.
         return $validator->validated();
     }
 
@@ -365,35 +364,73 @@ class ProjectGraphImporter
     }
 
     /**
-     * Phase 3 — the act → chapter → scene tree from data/acts/.
+     * Phase 3 — the book → act → chapter → scene tree from data/books/.
+     *
+     * Books import here, not in a phase of their own: the phase list is a stored
+     * checkpoint contract, and a book owns acts, which is what "story" means.
      *
      * Parentage follows the archive's directory nesting (the export contract:
      * "nesting mirrors ownership"); every `position` is replayed verbatim from
      * the JSON, and each scene's event references resolve through the event
      * map phase 2 fully populated.
      *
-     * A chapter's cover file is copied to a fresh public-disk path;
+     * Cover files (a book's, a chapter's) are copied to fresh public-disk paths;
      * as with codex media, disk copies live outside the DB transaction, so on
      * ANY failure the covers copied so far are unlinked before rethrowing — a
      * rolled-back phase never leaks orphan cover files.
+     *
+     * > [!WARNING]
+     * > The archive's lowest-`position` book UPDATES the row `Project::created`
+     * > already made, and only the rest are inserted. Insert them all and a
+     * > one-book import silently ends up with two books.
      */
     public function importStory(string $dataPath, Project $project, array &$idMaps): void
     {
         $dataPath = $this->normalizePath($dataPath);
 
+        $books = $this->readEntityDescriptors($dataPath, 'data/books/*/book.json');
+
+        // Lowest position first, id as the tie-break: the first book of this
+        // list is the one reconciled onto the auto-created row, and a later
+        // Book::created then only ever sees siblings that already have a name.
+        usort($books, fn (array $a, array $b): int => [
+            (int) $a['data']['position'], (int) $a['data']['id'],
+        ] <=> [
+            (int) $b['data']['position'], (int) $b['data']['id'],
+        ]);
+
+        // Validate every config BEFORE opening the transaction — it touches no
+        // DB, and this keeps a rejected config from influencing any insert.
+        $publicationSettings = [];
+        foreach ($books as $bookItem) {
+            $publicationSettings[$bookItem['directory']] = $this->readPublicationSetting($dataPath, $bookItem['directory']);
+        }
+
         $copiedCovers = [];
 
         try {
-            DB::transaction(function () use ($dataPath, $project, &$idMaps, &$copiedCovers): void {
-                foreach ($this->readEntityDescriptors($dataPath, 'data/acts/*/act.json') as $actItem) {
-                    $act = $project->acts()->create([
-                        'name' => $actItem['data']['name'],
-                        'position' => (int) $actItem['data']['position'],
-                        'description' => $this->readHtmlField($dataPath, $actItem['directory'], $actItem['data']),
-                    ]);
-                    $idMaps[self::MAP_ACTS][(int) $actItem['data']['id']] = $act->id;
+            DB::transaction(function () use ($dataPath, $project, &$idMaps, &$copiedCovers, $books, $publicationSettings): void {
+                $seededBook = $project->books()->first();
 
-                    $this->importChapters($dataPath, $act, $actItem['directory'], $idMaps, $copiedCovers);
+                foreach ($books as $index => $bookItem) {
+                    $attributes = $this->bookAttributes($dataPath, $bookItem, $copiedCovers);
+
+                    if ($index === 0) {
+                        $seededBook->update($attributes);
+                        $book = $seededBook;
+                    } else {
+                        $book = $project->books()->create($attributes);
+                    }
+                    $idMaps[self::MAP_BOOKS][(int) $bookItem['data']['id']] = $book->id;
+
+                    // Only a fully-valid config becomes a row; otherwise the book
+                    // keeps no PublicationSetting, i.e. the lazy default.
+                    $setting = $publicationSettings[$bookItem['directory']] ?? null;
+                    if ($setting !== null) {
+                        $book->publicationSetting()->create($setting);
+                    }
+
+                    $this->importActs($dataPath, $book, $bookItem['directory'], $idMaps, $copiedCovers);
                 }
             });
         } catch (Throwable $exception) {
@@ -402,6 +439,101 @@ class ProjectGraphImporter
             }
 
             throw $exception;
+        }
+    }
+
+    /**
+     * One book's persistable attributes, read from its descriptor and its
+     * sibling field files.
+     *
+     * `name` is written LITERALLY, including null: a null name means "no name of
+     * my own", so the imported book tracks its project's name exactly as the
+     * source book did. Coercing it to a string materializes the value and
+     * breaks that.
+     *
+     * @param  array{path: string, directory: string, data: array<string, mixed>}  $bookItem
+     * @param  array<int, string>  $copiedCovers
+     * @return array<string, mixed>
+     */
+    private function bookAttributes(string $dataPath, array $bookItem, array &$copiedCovers): array
+    {
+        $data = $bookItem['data'];
+        $directory = $bookItem['directory'];
+
+        $attributes = [
+            'name' => $data['name'],
+            'position' => (int) $data['position'],
+            'description' => $this->readHtmlField($dataPath, $directory, $data),
+            'language' => $this->parseBookLanguage($data['language'] ?? null, $bookItem['path']),
+            'author' => $data['author'] ?? null,
+            'publisher' => $data['publisher'] ?? null,
+            'isbn' => $data['isbn'] ?? null,
+            'overview_render_mode' => $this->parseOverviewRenderMode($data['overview_render_mode'] ?? null, $bookItem['path']),
+            // `rights` is a plain-text column, not a rich fragment: it needs no
+            // sanitizer gate, only the same "*_file link or nothing" rule.
+            'rights' => $this->readFieldFile($dataPath, $directory, $data, 'rights_file'),
+            'dedication' => $this->readMarkdownField($dataPath, $directory, $data, 'dedication_file'),
+            'acknowledgements' => $this->readMarkdownField($dataPath, $directory, $data, 'acknowledgements_file'),
+            'preface' => $this->readMarkdownField($dataPath, $directory, $data, 'preface_file'),
+            'postface' => $this->readMarkdownField($dataPath, $directory, $data, 'postface_file'),
+            'cover_image' => $this->importCover($dataPath, $directory, $data, CoverImageService::BOOK_COVER_DIRECTORY, $copiedCovers),
+        ];
+
+        // These two columns are NOT NULL with a database default. An archive
+        // that omits them must fall back to that default, never write null.
+        foreach (['language', 'overview_render_mode'] as $key) {
+            if ($attributes[$key] === null) {
+                unset($attributes[$key]);
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * Parse a book.json `language` into the enum. An absent/null value means
+     * "let the column default apply"; an unknown one is a corrupted archive.
+     */
+    private function parseBookLanguage(mixed $language, string $descriptorPath): ?BookLanguage
+    {
+        if ($language === null) {
+            return null;
+        }
+
+        return BookLanguage::tryFrom((string) $language)
+            ?? throw ImportValidationException::invalidDescriptorValue($descriptorPath, 'language');
+    }
+
+    /**
+     * Parse a book.json `overview_render_mode` into the enum, with the same
+     * null-means-default rule as {@see parseBookLanguage()}.
+     */
+    private function parseOverviewRenderMode(mixed $mode, string $descriptorPath): ?StoryOverviewMode
+    {
+        if ($mode === null) {
+            return null;
+        }
+
+        return StoryOverviewMode::tryFrom((string) $mode)
+            ?? throw ImportValidationException::invalidDescriptorValue($descriptorPath, 'overview_render_mode');
+    }
+
+    /**
+     * The acts (and everything below them) nested under one book directory.
+     *
+     * @param  array<int, string>  $copiedCovers  cover paths copied so far (for rollback cleanup)
+     */
+    private function importActs(string $dataPath, Book $book, string $bookDirectory, array &$idMaps, array &$copiedCovers): void
+    {
+        foreach ($this->readEntityDescriptors($dataPath, "{$bookDirectory}/acts/*/act.json") as $actItem) {
+            $act = $book->acts()->create([
+                'name' => $actItem['data']['name'],
+                'position' => (int) $actItem['data']['position'],
+                'description' => $this->readHtmlField($dataPath, $actItem['directory'], $actItem['data']),
+            ]);
+            $idMaps[self::MAP_ACTS][(int) $actItem['data']['id']] = $act->id;
+
+            $this->importChapters($dataPath, $act, $actItem['directory'], $idMaps, $copiedCovers);
         }
     }
 
@@ -461,7 +593,7 @@ class ProjectGraphImporter
                 'name' => $chapterItem['data']['name'],
                 'position' => (int) $chapterItem['data']['position'],
                 'description' => $this->readHtmlField($dataPath, $chapterItem['directory'], $chapterItem['data']),
-                'cover_image' => $this->importChapterCover($dataPath, $chapterItem, $copiedCovers),
+                'cover_image' => $this->importCover($dataPath, $chapterItem['directory'], $chapterItem['data'], CoverImageService::CHAPTER_COVER_DIRECTORY, $copiedCovers),
             ]);
             $idMaps[self::MAP_CHAPTERS][(int) $chapterItem['data']['id']] = $chapter->id;
 
@@ -472,31 +604,33 @@ class ProjectGraphImporter
     }
 
     /**
-     * Copy a chapter's cover file (linked by `cover_file` in chapter.json) to a
-     * freshly generated public-disk path and return it, or null when the chapter
-     * has no cover or ships no bytes (a metadata-only export declares the link but
-     * carries no file — the imported chapter then keeps a null cover, exactly like
-     * a metadata-only codex media row). ArchiveValidator has already content-sniffed
-     * the bytes and traversal-checked the declared path.
+     * Copy a project's, a book's or a chapter's cover file (linked by
+     * `cover_file` in its own descriptor) to a freshly generated public-disk path
+     * and return it, or null when the entity has no cover or ships no bytes (a
+     * metadata-only export declares the link but carries no file — the imported
+     * entity then keeps a null cover, exactly like a metadata-only codex media
+     * row). ArchiveValidator has already content-sniffed the bytes and
+     * traversal-checked the declared path.
      *
-     * @param  array{path: string, directory: string, data: array<string, mixed>}  $chapterItem
+     * @param  array<string, mixed>  $descriptor
+     * @param  string  $storageDirectory  the {@see CoverImageService} directory to copy into
      * @param  array<int, string>  $copiedCovers
      */
-    private function importChapterCover(string $dataPath, array $chapterItem, array &$copiedCovers): ?string
+    private function importCover(string $dataPath, string $directory, array $descriptor, string $storageDirectory, array &$copiedCovers): ?string
     {
-        $coverFile = $chapterItem['data']['cover_file'] ?? null;
+        $coverFile = $descriptor['cover_file'] ?? null;
 
         if (! is_string($coverFile) || $coverFile === '') {
             return null;
         }
 
-        $absoluteFile = "{$dataPath}/{$chapterItem['directory']}/{$coverFile}";
+        $absoluteFile = "{$dataPath}/{$directory}/{$coverFile}";
 
         if (! is_file($absoluteFile)) {
             return null; // metadata-only export: link declared, bytes absent
         }
 
-        $path = $this->coverImageService->storeImportedFile($absoluteFile, CoverImageService::CHAPTER_COVER_DIRECTORY);
+        $path = $this->coverImageService->storeImportedFile($absoluteFile, $storageDirectory);
         $copiedCovers[] = $path;
 
         return $path;

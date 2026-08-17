@@ -33,7 +33,7 @@ class CodexAsOfTest extends TestCase
     private function makeScenario(): array
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
         $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
         $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Hair color']);
@@ -45,7 +45,7 @@ class CodexAsOfTest extends TestCase
         $timeline->upsertAt($start, 'blonde');
         $timeline->upsertAt($backToClass, 'black');
 
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
         $scene = Scene::factory()->for($chapter)->create(['event_id' => $backToClass->id]);
 
         return [$user, $project, $backToClass, $scene];
@@ -67,9 +67,10 @@ class CodexAsOfTest extends TestCase
     public function test_scene_panel_shows_the_undetermined_state_when_unassigned(): void
     {
         [$user, $project] = $this->makeScenario();
+        $book = $project->books()->first();
 
         // A scene with no "happens during" event resolves to undetermined, not a crash.
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
         $unassigned = Scene::factory()->for($chapter)->create(['event_id' => null]);
 
         $this->actingAs($user)

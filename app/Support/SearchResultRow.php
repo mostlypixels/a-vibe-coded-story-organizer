@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Book;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -17,6 +18,10 @@ use Illuminate\Database\Eloquent\Model;
  *
  * `$snippet` is the pre-escaped, highlighted HTML produced by SearchSnippet — it
  * is the single value in the search feature intended for `{!! !!}` output.
+ *
+ * `$book` names the entity's book so a hit stays locatable in a multi-book
+ * project. It is set for Act/Chapter/Scene rows only ({@see SearchDomain::carriesBook()})
+ * — the codex and timeline are project-wide and never carry one.
  */
 class SearchResultRow
 {
@@ -24,11 +29,13 @@ class SearchResultRow
      * @param  Model  $entity  the matched entity (Act, Scene, CodexEntry, …)
      * @param  array<int, string>  $fieldLabels  human-readable labels of every field that matched, in field order (e.g. ['Name', 'Contents'])
      * @param  string  $snippet  pre-escaped, highlighted HTML from SearchSnippet (first matching field)
+     * @param  Book|null  $book  the entity's book, for Act/Chapter/Scene rows only
      */
     public function __construct(
         public readonly Model $entity,
         public readonly array $fieldLabels,
         public readonly string $snippet,
+        public readonly ?Book $book = null,
     ) {}
 
     /**

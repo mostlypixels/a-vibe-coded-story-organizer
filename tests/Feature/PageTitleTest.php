@@ -56,12 +56,53 @@ class PageTitleTest extends TestCase
         $response->assertSee('<title>AVCSO</title>', false);
     }
 
+    public function test_a_book_page_leads_with_the_books_own_name(): void
+    {
+        config(['app.name' => 'AVCSO']);
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
+        $book = $project->books()->first();
+        $book->update(['name' => 'Volume One']);
+
+        $response = $this->actingAs($user)->get(route('books.story.overview', $book));
+
+        $response->assertSee('<title>Volume One - AVCSO</title>', false);
+    }
+
+    public function test_a_sole_unnamed_book_renders_exactly_the_project_title(): void
+    {
+        config(['app.name' => 'AVCSO']);
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
+        $book = $project->books()->first();
+
+        $response = $this->actingAs($user)->get(route('books.story.overview', $book));
+
+        $response->assertSee('<title>Melusine - AVCSO</title>', false);
+    }
+
+    public function test_a_project_scoped_page_ignores_a_named_book_and_uses_the_project_name(): void
+    {
+        config(['app.name' => 'AVCSO']);
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
+        $book = $project->books()->first();
+        $book->update(['name' => 'Volume One']);
+
+        // The timeline route carries no {book} — the title must not leak the
+        // route's book in from anywhere else (e.g. the stored last_book_id).
+        $response = $this->actingAs($user)->get(route('projects.timeline.home', $project));
+
+        $response->assertSee('<title>Melusine - AVCSO</title>', false);
+    }
+
     public function test_a_shallow_child_route_still_finds_its_project(): void
     {
         config(['app.name' => 'AVCSO']);
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create();
 

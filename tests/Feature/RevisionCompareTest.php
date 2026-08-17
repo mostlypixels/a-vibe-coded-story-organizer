@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Revision;
@@ -27,7 +28,7 @@ class RevisionCompareTest extends TestCase
 
     private function actFor(User $user): Act
     {
-        return Act::factory()->for(Project::factory()->for($user)->create())->create();
+        return Act::factory()->for(Book::factory()->for(Project::factory()->for($user)->create()))->create();
     }
 
     private function sceneFor(User $user): Scene
@@ -43,7 +44,7 @@ class RevisionCompareTest extends TestCase
         return Revision::factory()->create([
             'revisionable_type' => Act::class,
             'revisionable_id' => $act->id,
-            'project_id' => $act->project->id,
+            'project_id' => $act->book->project->id,
             'field' => 'description',
             'save_id' => (string) Str::ulid(),
             ...$overrides,
@@ -61,10 +62,10 @@ class RevisionCompareTest extends TestCase
         return Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->project->id,
+            'project_id' => $scene->chapter->act->book->project->id,
             'field' => $field,
             'save_id' => (string) Str::ulid(),
-            'user_id' => $scene->chapter->act->project->user_id,
+            'user_id' => $scene->chapter->act->book->project->user_id,
             'value' => $value,
             'created_at' => $at,
         ]);
@@ -388,7 +389,7 @@ class RevisionCompareTest extends TestCase
         $make = fn (string $value, $at) => Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->project->id,
+            'project_id' => $scene->chapter->act->book->project->id,
             'field' => 'contents',
             'save_id' => (string) Str::ulid(),
             'user_id' => $user->id,

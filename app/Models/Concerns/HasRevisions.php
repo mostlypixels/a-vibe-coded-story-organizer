@@ -24,8 +24,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * resolution table:
  *
  *   - Act, Event, CodexEntry, Plotline: `return $this->project;`
- *   - Chapter: `return $this->act->project;`
- *   - Scene: `return $this->chapter->act->project;`
+ *   - Chapter: `return $this->act->book->project;`
+ *   - Scene: `return $this->chapter->act->book->project;`
  *   - Project: `return $this;`
  */
 trait HasRevisions

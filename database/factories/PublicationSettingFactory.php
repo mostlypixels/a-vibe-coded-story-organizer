@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Project;
+use App\Models\Book;
 use App\Models\PublicationSetting;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -19,8 +19,8 @@ class PublicationSettingFactory extends Factory
     public function definition(): array
     {
         return [
-            'project_id' => Project::factory(),
-            'include_project_cover' => true,
+            'book_id' => Book::factory(),
+            'include_book_cover' => true,
             'include_chapter_covers' => false,
             'include_scene_titles' => false,
             'include_act_descriptions' => false,

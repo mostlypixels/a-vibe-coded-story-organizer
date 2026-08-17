@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Project;
+use App\Models\Book;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -11,20 +11,21 @@ use Illuminate\Validation\Rule;
  *
  * Mirrors {@see ExportRequest}: the /admin area sits behind the `access-admin`
  * gate (any authenticated user), which is NOT ownership. Because the export reads
- * one user-owned project, this request also walks ProjectPolicy: a foreign or
- * missing project_id is a 403, never a silent export of another user's project.
- * The controller mirrors the same authorize('view', $project) check.
+ * one user-owned book, this request also walks up to the book's project via
+ * ProjectPolicy: a foreign or missing book_id is a 403, never a silent export of
+ * another user's book. The controller mirrors the same authorize('view', $book->project)
+ * check.
  *
  * There is no `include_images`-equivalent option in v1 — the epub never embeds
- * Codex media, so the only input is the project_id.
+ * Codex media, so the only input is the book_id.
  */
 class EpubExportRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $project = Project::find($this->input('project_id'));
+        $book = Book::find($this->input('book_id'));
 
-        return $project !== null && $this->user()->can('view', $project);
+        return $book !== null && $this->user()->can('view', $book->project);
     }
 
     /**
@@ -33,7 +34,7 @@ class EpubExportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_id' => ['required', 'integer', Rule::exists('projects', 'id')],
+            'book_id' => ['required', 'integer', Rule::exists('books', 'id')],
         ];
     }
 }

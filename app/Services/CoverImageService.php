@@ -28,6 +28,12 @@ class CoverImageService
     public const PROJECT_COVER_DIRECTORY = 'project-covers';
 
     /**
+     * The directory under the public disk where book covers (the EPUB cover)
+     * are stored.
+     */
+    public const BOOK_COVER_DIRECTORY = 'book-covers';
+
+    /**
      * The directory under the public disk where chapter covers are stored.
      */
     public const CHAPTER_COVER_DIRECTORY = 'chapter-covers';

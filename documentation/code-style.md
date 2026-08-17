@@ -13,8 +13,9 @@ surrounding code.
 ## Naming
 
 - Variables, methods, and classes are descriptive and meaningful. **Avoid abbreviations.**
-- Titles for acts/chapters/scenes are freeform and never encode their number — the `position`
-  is the number (see [architecture](architecture.md#act--chapter--scene-ordering)).
+- Titles for books/acts/chapters/scenes are freeform and never encode their number — the
+  `position` is the number (see
+  [architecture](architecture.md#book--act--chapter--scene-ordering)).
 
 ## Modern PHP is welcome
 

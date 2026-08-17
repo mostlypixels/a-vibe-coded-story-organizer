@@ -117,7 +117,7 @@ One button for every style. Renders an `<a>` when `href` is given, otherwise a `
 ```blade
 <x-button variant="danger">Delete</x-button>
 <x-button variant="secondary" type="button">Cancel</x-button>
-<x-button variant="primary" size="lg" :href="route('projects.acts.create', $project)">New Act</x-button>
+<x-button variant="primary" size="lg" :href="route('books.acts.create', $book)">New Act</x-button>
 ```
 
 ### Delete button (labelled, with confirm)
@@ -151,7 +151,7 @@ Surface container with an optional header and footer.
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <x-heading level="3">Acts</x-heading>
-            <x-button size="sm" :href="route('projects.acts.create', $project)">New</x-button>
+            <x-button size="sm" :href="route('books.acts.create', $book)">New</x-button>
         </div>
     </x-slot>
 
@@ -214,7 +214,7 @@ act / chapter / scene index pages. Four components work together:
         <x-table-empty
             :colspan="3"
             :filtered="request()->filled('search')"
-            :create-url="route('projects.acts.create', $project)"
+            :create-url="route('books.acts.create', $book)"
             :create-label="__('New Act')"
             :items="__('acts')"
         />

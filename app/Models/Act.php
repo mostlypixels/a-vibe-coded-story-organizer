@@ -26,9 +26,9 @@ class Act extends Model
         'position',
     ];
 
-    public function project(): BelongsTo
+    public function book(): BelongsTo
     {
-        return $this->belongsTo(Project::class);
+        return $this->belongsTo(Book::class);
     }
 
     public function chapters(): HasMany
@@ -57,22 +57,23 @@ class Act extends Model
      */
     public function revisionProject(): Project
     {
-        return $this->project;
+        return $this->book->project;
     }
 
     /**
-     * Acts are ordered within their project (see HasSiblingPosition).
+     * Acts are ordered within their book (see HasSiblingPosition). Two books in
+     * one project each start at position 1.
      */
     protected function siblingScopeColumn(): string
     {
-        return 'project_id';
+        return 'book_id';
     }
 
     protected static function booted(): void
     {
         static::creating(function (Act $act) {
             if (is_null($act->position)) {
-                $act->position = static::where('project_id', $act->project_id)->max('position') + 1;
+                $act->position = static::where('book_id', $act->book_id)->max('position') + 1;
             }
         });
 
@@ -93,7 +94,7 @@ class Act extends Model
         // The recorder re-sums, so an act deleted with its chapters reassigned
         // correctly leaves the total unchanged.
         static::deleted(function (Act $act): void {
-            app(WordCountSnapshotRecorder::class)->record($act->project);
+            app(WordCountSnapshotRecorder::class)->record($act->book->project);
         });
     }
 }

@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\BookLanguage;
-use App\Enums\StoryOverviewMode;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CodexMediaService;
@@ -14,7 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
@@ -26,24 +24,9 @@ class Project extends Model
     protected $fillable = [
         'name',
         'description',
-        'language',
-        'author',
-        'publisher',
-        'rights',
-        'isbn',
         'cover_image',
-        'dedication',
-        'acknowledgements',
-        'preface',
-        'postface',
         'daily_word_goal',
         'total_word_goal',
-        'overview_render_mode',
-    ];
-
-    protected $casts = [
-        'language' => BookLanguage::class,
-        'overview_render_mode' => StoryOverviewMode::class,
     ];
 
     public function user(): BelongsTo
@@ -69,9 +52,41 @@ class Project extends Model
         return $this->hasMany(Event::class);
     }
 
-    public function acts(): HasMany
+    /**
+     * Every act in the project, through its book — **read-only**.
+     *
+     * > [!WARNING]
+     * > A `hasManyThrough` cannot `create()`. A new act is created on its book:
+     * > `$book->acts()->create(...)`.
+     *
+     * The join brings `books.name` and `books.position` into scope, so a caller
+     * that orders or selects on this relation must qualify its columns
+     * (`acts.position`) — the same trap {@see self::chapterQuery()} documents.
+     */
+    public function acts(): HasManyThrough
     {
-        return $this->hasMany(Act::class);
+        return $this->hasManyThrough(Act::class, Book::class);
+    }
+
+    /**
+     * The project's books, in reading order. Ordered by the relation itself
+     * because "the project's first book" is a concept the app relies on —
+     * the picker, the navigation fallback and the book index all mean the same
+     * first book.
+     */
+    public function books(): HasMany
+    {
+        return $this->hasMany(Book::class)->orderBy('position');
+    }
+
+    /**
+     * The book the writer was last in, or null before any book page is visited.
+     * Written by the route-tracking middleware only — `last_book_id` is not
+     * fillable, like `users.active_project_id`.
+     */
+    public function lastBook(): BelongsTo
+    {
+        return $this->belongsTo(Book::class, 'last_book_id');
     }
 
     public function codexEntries(): HasMany
@@ -97,55 +112,11 @@ class Project extends Model
         return $this->hasMany(WordCountSnapshot::class);
     }
 
-    public function publicationSetting(): HasOne
-    {
-        return $this->hasOne(PublicationSetting::class);
-    }
-
-    /**
-     * Return the project's publication setting, or an unsaved default instance
-     * when no row exists. Never returns null, enabling code to access settings
-     * for projects that never visited the config form.
-     *
-     * The unsaved instance has all default attributes set to match what the
-     * database schema defaults would apply on insertion.
-     */
-    public function publicationSettingOrDefault(): PublicationSetting
-    {
-        if ($this->publicationSetting) {
-            return $this->publicationSetting;
-        }
-
-        return $this->publicationSetting()->make([
-            'include_project_cover' => true,
-            'include_chapter_covers' => false,
-            'include_author' => true,
-            'include_publisher' => true,
-            'include_rights' => true,
-            'include_isbn' => true,
-            'include_scene_titles' => false,
-            'include_act_descriptions' => false,
-            'include_chapter_descriptions' => false,
-            'include_scene_descriptions' => false,
-            'include_dedication' => false,
-            'include_acknowledgements' => false,
-            'include_preface' => false,
-            'include_postface' => false,
-            'chapter_title_format' => 'chapter_number_title',
-            'table_of_contents_depth' => 'chapters',
-            'divider_type' => 'horizontal_rule',
-            'section_order' => PublicationSetting::SECTION_KEYS,
-            'include_codex_appendix' => false,
-            'appendix_entry_types' => [],
-            'appendix_include_images' => false,
-        ]);
-    }
-
     /**
      * Every chapter in this project, as a query to build on.
      *
-     * Chapters belong to a project *through* their act, so there is no direct
-     * relation to hang this on — and the walk was being spelled out as
+     * Chapters belong to a project *through* their act and its book, so there is
+     * no direct relation to hang this on — and the walk was being spelled out as
      * `whereHas('act', …)` at eight call sites (both index queries, the edit
      * page's move destinations, the destroy action's destination lookup, the
      * cover purge in booted(), ProjectSearch, SceneReferenceMatcher).
@@ -160,7 +131,7 @@ class Project extends Model
      */
     public function chapterQuery(): Builder
     {
-        return Chapter::query()->whereHas('act', fn (Builder $query) => $query->where('project_id', $this->id));
+        return Chapter::query()->whereHas('act.book', fn (Builder $query) => $query->where('project_id', $this->id));
     }
 
     /**
@@ -170,7 +141,7 @@ class Project extends Model
      */
     public function sceneQuery(): Builder
     {
-        return Scene::query()->whereHas('chapter.act', fn (Builder $query) => $query->where('project_id', $this->id));
+        return Scene::query()->whereHas('chapter.act.book', fn (Builder $query) => $query->where('project_id', $this->id));
     }
 
     /**
@@ -235,6 +206,11 @@ class Project extends Model
     protected static function booted(): void
     {
         static::created(function (Project $project) {
+            // Every project holds at least one book. It starts unnamed, so it
+            // shows the project's name until the writer gives it one of its own
+            // (see Book::displayName()).
+            $project->books()->create([]);
+
             $mainPlotline = $project->plotlines()->create([
                 'name' => 'Main plotline',
                 'is_main' => true,

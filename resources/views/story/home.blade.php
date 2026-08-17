@@ -5,7 +5,7 @@
         <x-recent-list
             :title="__('Recently edited acts')"
             :items="$recentActs"
-            :all-url="route('projects.acts.index', $project)"
+            :all-url="route('books.acts.index', $book)"
             :all-label="__('View all acts')"
             :noun="__('acts')"
         />
@@ -13,7 +13,7 @@
         <x-recent-list
             :title="__('Recently edited chapters')"
             :items="$recentChapters"
-            :all-url="route('projects.chapters.index', $project)"
+            :all-url="route('books.chapters.index', $book)"
             :all-label="__('View all chapters')"
             :noun="__('chapters')"
             show-covers
@@ -22,7 +22,7 @@
         <x-recent-list
             :title="__('Recently edited scenes')"
             :items="$recentScenes"
-            :all-url="route('projects.scenes.index', $project)"
+            :all-url="route('books.scenes.index', $book)"
             :all-label="__('View all scenes')"
             :noun="__('scenes')"
         />

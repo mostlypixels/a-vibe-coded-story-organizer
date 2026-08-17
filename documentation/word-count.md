@@ -2,7 +2,7 @@
 
 One stored number — `scenes.word_count` — behind every count the writer sees: the live
 counter in each prose field, the per-scene figure on the story overview and index pages, and
-the chapter / act / project totals summed from it.
+the chapter / act / book / project totals summed from it.
 
 ## The counting rule
 
@@ -40,10 +40,11 @@ fences are removed first, so whatever still matches an *opening* fence is genuin
 ## Only scenes, only `contents`
 
 - **Only `scenes.contents` is ever counted or summed** — never `description`, never `notes`.
-- **Only `scenes` gets a column.** Chapter, act and project totals are a `SUM`. Benchmarked
-  at 150 / 960 / 4,320 scenes: the widest gap versus denormalising every level was **0.6 ms
-  at 6.3 M words**, and the story overview already eager-loads its scenes, so its totals cost
-  nothing at all. Do not add a `word_count` to `chapters`, `acts` or `projects`.
+- **Only `scenes` gets a column.** Chapter, act, book and project totals are a `SUM`.
+  Benchmarked at 150 / 960 / 4,320 scenes: the widest gap versus denormalising every level was
+  **0.6 ms at 6.3 M words**, and the story overview already eager-loads its scenes, so its
+  totals cost nothing at all. Do not add a `word_count` to `chapters`, `acts`, `books` or
+  `projects` — the book layer changed nothing here.
 - The column is `unsignedInteger` with `default(0)`, never nullable — 0 is a real answer
   ("no words yet"), so no caller has to handle "unknown".
 - A composite index on `(chapter_id, word_count)` makes the per-chapter `SUM` covering: the
@@ -84,18 +85,25 @@ Ancestor totals are aggregated **in the controller**, never in the view:
 | --- | --- |
 | Act index | `->withSum('scenes as word_count', 'word_count')` |
 | Chapter index | `->withSum('scenes as word_count', 'word_count')` |
+| Book index | one grouped `SELECT … GROUP BY acts.book_id`, joined by hand |
+| `books/show` header | `$book->sceneQuery()->sum('word_count')` |
 | `projects/show` header | `$project->sceneQuery()->sum('word_count')` |
 | Story overview | `->sum()` over the **already eager-loaded** act → chapter → scene tree — no query fires |
 
 > [!WARNING]
 > `withSum` leaves the attribute **`NULL`** for a row with no scenes — SQL `SUM` has no rows
 > to sum. Both index controllers normalise with `??= 0` so an empty act or chapter renders
-> "0 words" rather than blank.
+> "0 words" rather than blank. The book index has the same hole for a different reason: a book
+> with no scenes produces **no row** in a `GROUP BY`, so its total is filled in as `0`.
 
-Two traps worth knowing before you copy the pattern:
+Three traps worth knowing before you copy the pattern:
 
 - An act sums through its **own `scenes()` `HasManyThrough`**. A dot-nested path like
   `withSum('chapters.scenes', …)` is not a relation name and throws `BadMethodCallException`.
+- **A book has no scenes relation at all.** Eloquent's `HasManyThrough` spans one intermediate
+  model, and book → act → chapter → scene needs two, so the book index joins `chapters` and
+  `acts` by hand — the same way the chapter and scene index queries already do — and
+  `Book::sceneQuery()` uses a nested `whereHas('chapter.act')` for the single-book case.
 - **There is deliberately no `wordCount()` accessor** on `Chapter` or `Act`. An accessor is an
   invitation to call it inside a Blade loop, which is exactly the N+1 this design exists to
   prevent. Controllers aggregate; views render.
@@ -145,8 +153,11 @@ to stop recounting on every keystroke.
 
 `scenes.word_count` is also the only input to a project's writing history:
 `Scene`'s `saved`/`deleted` hooks call `App\Services\WordCountSnapshotRecorder`,
-which records the project's `SUM` onto a `word_count_snapshots` row for the
-writer's local day. That history, plus two open-ended goals
+which records the project's `SUM` — across every book — onto a
+`word_count_snapshots` row for the writer's local day. History and goals stay
+**project**-level: a day's output is one number whichever volume it went into.
+`Book::deleted` records too, because the book's scenes vanish by database
+cascade and fire no `Scene::deleted` of their own. That history, plus two open-ended goals
 (`daily_word_goal`, `total_word_goal`), power the Tools ▸ Progress chart and
 the dashboard card. Full reference: [`word-count-goals.md`](word-count-goals.md).
 

@@ -6,9 +6,9 @@ depth, and the regression guard every change must keep green.
 
 ## What owns what
 
-**Admin → Export & import → Export → Ebook** downloads a project as a standard `.epub`, built
-by `App\Services\EpubExporter` on `rampmaster/phpepub`. Like `StaticSiteExporter` it is
-**HTTP-agnostic** — takes a `Project`, returns a finished temp-file path, cleans up on
+**Admin → Export & import → Export → Ebook** downloads **one book** as a standard `.epub`,
+built by `App\Services\EpubExporter` on `rampmaster/phpepub`. Like `StaticSiteExporter` it is
+**HTTP-agnostic** — takes a `Book`, returns a finished temp-file path, cleans up on
 exception — so a queued job could reuse it.
 
 | Owner | Responsibility |
@@ -16,12 +16,32 @@ exception — so a queued job could reuse it.
 | The library | The mechanical package: mimetype, `container.xml`, OPF metadata/manifest/spine, EPUB 3 nav, NCX, the zip |
 | `EpubExporter` | The **content**: every XHTML document (Blade under `resources/views/exports/epub/`, never string-built in PHP), the CSS, the metadata *values*, the navigation shape |
 
+## One book, one `.epub`
+
+Everything the export reads about the publication is a column on the **book**, never the
+project: title (`Book::displayName()`), `language`, `author`, `publisher`, `isbn`, `rights`,
+the four matter pages, the cover, and the `PublicationSetting` row itself.
+
+- The config page's picker is a single `<select name="book">`, grouped by `<optgroup>` per
+  project, posting `book_id`. `EpubExportRequest` authorizes by walking `$book->project`, so
+  the admin gate still is not ownership.
+- The generated identifier is `urn:imagoldfish:book:{id}` — two books of one project must not
+  share a primary identifier. Nothing round-trips this value.
+- The filename slugs the book's display name.
+- `EpubExportException` ("nothing to export") is per **book**, so a project whose second
+  volume is still an empty outline exports its first volume fine.
+
+> [!WARNING]
+> `EpubExporter`'s local variable for the **library's** package object is always `$epub`.
+> `$book` is reserved for `App\Models\Book`. The library calls its own object a "book" too,
+> and the two silently collided while this service was converted.
+
 ## Two isolation rules — do not "simplify" these away
 
 - **Scene bodies and the four front-/back-matter Markdown pages render through the service's
   own private SmartPunct `CommonMarkConverter`** (smart dashes/ellipses/quotes), *never*
   `Scene::renderedContents`. That accessor is the shared render path for the Story overview,
-  the share page and the `book/` export, and must stay byte-for-byte identical.
+  the share page and the archive's `books/` layer, and must stay byte-for-byte identical.
 - **Rich-HTML fields** (act/chapter/scene `description`, codex entry `description`) go through
   one shared `App\Support\RichText::toXhtmlFragment()` (`DOMDocument` load-HTML → save the
   body fragment as XML), so a sanitized-but-not-XHTML fragment — an unclosed `<p>`, a bare
@@ -51,36 +71,35 @@ converter.
 
 ## Continuous numbers and the full outline
 
-`export()` builds `$tree` from `bookTree()` and derives `$numbering =
+`export()` builds `$tree` from `actTree($book)` and derives `$numbering =
 StoryNumbering::fromActs($tree)` once, threading it through every render/nav-label call —
-so every act and chapter number in the package comes from that one tree. See
+so every act and chapter number in the package comes from that one tree, and numbering
+restarts at each book exactly as it does in the app. See
 [`architecture.md` → Continuous numbering](architecture.md#continuous-numbering) for what
-`StoryNumbering` is; this section covers what changed in the exporter to make its numbers
+`StoryNumbering` is; this section covers what the exporter does to make its numbers
 match the app's.
 
-- **`bookTree()` (formerly `filteredTree()`) drops nothing.** A chapter with no scenes exports
-  as a heading-only page (its number and title, no body); an act with no chapters keeps its
-  divider page. Before this, the skip-empty filter meant a chapter's exported number shifted
-  the moment an author filled in a placeholder that used to be skipped — export numbers now
-  always equal app numbers.
-- **The refusal guard moved.** `export()` no longer refuses because the tree came back empty
-  after filtering — it refuses only when `hasAnyScene($tree)` is false, i.e. the project has
-  no scene anywhere. A `EpubExportException` either way; the message is unchanged. Without
-  this, a brand-new outline (acts and chapters, no prose yet) would export as a book of blank
-  pages.
+- **`actTree()` drops nothing.** A chapter with no scenes exports as a heading-only page (its
+  number and title, no body); an act with no chapters keeps its divider page. A skip-empty
+  filter would shift a chapter's exported number the moment an author filled in a placeholder
+  that used to be skipped — export numbers now always equal app numbers.
+- **The refusal guard is `hasAnyScene($tree)`**, not "the tree came back empty after
+  filtering": `export()` refuses only when **this book** has no scene anywhere, with an
+  `EpubExportException`. Without it, a brand-new outline (acts and chapters, no prose yet)
+  would export as a book of blank pages.
 - **The `position` view key is `number` throughout the export layer** — `actViewData()`,
   `chapterViewData()`, `actNavTitle()`, `chapterNavTitle()`, and every partial that renders a
   heading. `ChapterTitleFormat::format(int $number, ?string $name)` takes the same derived
-  number the website book layer uses (below), so a format choice reads identically in both
+  number the archive's `books/` layer uses, so a format choice reads identically in both
   exports.
 - **`sceneNavTitle()` is the one nav label left alone** — still `"Scene {$scene->position}"`,
-  per-chapter. It is the only place a scene number reaches a reader, and a project-wide count
+  per-chapter. It is the only place a scene number reaches a reader, and a book-wide count
   has no meaning under a chapter heading.
 
 ## `PublicationSetting` drives everything
 
 The whole export is parameterised by one lazily-resolved `PublicationSetting`
-(`Project::publicationSettingOrDefault()`, an **unsaved default** when the project has no
+(`Book::publicationSettingOrDefault()`, an **unsaved default** when the book has no
 row). `export()` resolves it once and threads it through every private method.
 
 All formatting/ordering choices live on **enums** — `ChapterTitleFormat::format()`,
@@ -91,12 +110,13 @@ drift.
 
 > [!IMPORTANT]
 > **Defaults reproduce the pre-feature output byte-for-byte.** Every metadata/cover toggle
-> defaults `true`; every *new* rendering (scene titles, all descriptions, front/back matter,
-> chapter covers, the codex appendix) defaults **off**. `EpubExporterTest`'s
-> `defaults_v1_regression` exports the same project twice — once on the lazy default, once on
+> defaults `true` (`include_book_cover` among them — renamed with its column when the cover
+> moved onto the book); every *new* rendering (scene titles, all descriptions, front/back
+> matter, chapter covers, the codex appendix) defaults **off**. `EpubExporterTest`'s
+> `defaults_v1_regression` exports the same book twice — once on the lazy default, once on
 > an explicit `PublicationSetting::factory()` row — and asserts the two `.epub`s are
 > content-identical. Keep it green: a new gated feature that is off-by-default cannot alter a
-> default project's output.
+> default book's output.
 
 > [!WARNING]
 > **That guard normalises the OPF timestamps; it does not compare raw bytes.** The library
@@ -122,7 +142,7 @@ each through a `match`:
 | `appendix` | `addAppendixSection()` | The optional codex appendix. |
 
 Each front-/back-matter section renders **only when its `include_*` toggle is on AND the
-Project's Markdown column is non-empty**. A disabled toggle *or* an empty field renders
+book's Markdown column is non-empty**. A disabled toggle *or* an empty field renders
 nothing, and this "enabled AND has content" rule extends to the appendix. A toggle gates a
 section **independently** of its position in the order.
 
@@ -173,7 +193,7 @@ fails (mirroring the project cover).
   immediately before the combined act page holding that chapter.
 - Image bytes go through the library's generic `addFile()` (manifest-only), namespaced
   `images/chapter-cover-{id}-{basename}`. **Never `setCoverImage()`** — that one-shot API is
-  reserved for the single package-level project cover in `applyCover()`.
+  reserved for the single package-level book cover in `applyCover()`.
 
 ## The codex appendix
 
@@ -185,10 +205,23 @@ A **true no-op** unless all three hold:
 
 1. `include_codex_appendix` is on,
 2. at least one `appendix_entry_types` is selected, and
-3. the project actually has entries of those types (a lone heading with no entries is
-   pointless).
+3. **this book's own scenes** actually reference entries of those types (a lone heading with
+   no entries is pointless).
 
-Entries load filtered to the selected types, ordered `(type, name)`.
+> [!IMPORTANT]
+> **The appendix is the one place a book export reaches into the shared project codex — and
+> it is filtered.** Entries are restricted to the ones `CodexEntry::referencingScenes()` ties
+> to `Book::sceneQuery()`, *before* the `appendix_entry_types` filter. Unfiltered, book two's
+> appendix would list book three's characters: a spoiler in a published file. A book that
+> references nothing gets **no appendix pages at all**, never the full codex.
+
+> [!WARNING]
+> `scene_codex_entry` is a **derived** pivot, populated only by `SceneReferenceMatcher` — a
+> factory-built scene has no rows in it. An appendix test must attach explicitly
+> (`$scene->codexReferences()->attach($entry->id)`); creating the entry and switching the
+> toggle on is not enough.
+
+Entries load ordered `(type, name)`.
 
 When `appendix_include_images` is on, each entry's `media` is eager-loaded (ordered
 `(collection, position)`, matching the archive) and `addAppendixEntryImage()` embeds the
@@ -201,28 +234,30 @@ Embedding all images, and a `Review` entity, are explicit V2 non-goals.
 
 ## Publication settings (the model)
 
-`App\Models\PublicationSetting` is **one lazy row per project**: never auto-created in
-`booted()`, no backfill migration.
+`App\Models\PublicationSetting` is **one lazy row per book** (`publication_settings.book_id`,
+unique): never auto-created in `booted()`, no backfill migration.
 
-- `Project::publicationSettingOrDefault()` returns an unsaved instance whose field defaults
+- `Book::publicationSettingOrDefault()` returns an unsaved instance whose field defaults
   match `PublicationSettingFactory::definition()` field-for-field. The two are what the
   defaults===v1 guard leans on — keep them in sync.
 - The config form is `PublicationSettingController` + `UpdatePublicationSettingRequest`, whose
   shared `configRules()` static is the single rule set used by **both** the form's `rules()`
   and the archive importer's untrusted-config validation (see *Static site import* and
   [`export-format.md`](export-format.md)), so form and import can't validate differently.
-- Authorization is the ordinary `ProjectPolicy` walk (`update` to write, `view` to
-  read/export) — no new policy.
+- Authorization is the ordinary `ProjectPolicy` walk, one level longer — `$book->project`
+  (`update` to write, `view` to read/export). There is no `BookPolicy`.
+- Its routes bind `{book}`, so a link back to the config page passes `['book' => $book->id]`,
+  never a project id.
 - `SECTION_KEYS` / `PINNED_FIRST_SECTION` and the `moveSectionUp/Down` helpers keep the
   sortable order's membership and pinning rules in one place.
 
 ## Review coverage — what has *not* been read closely
 
-`EpubExporter` (1252 lines) is the largest single-responsibility stretch in the codebase: it
+`EpubExporter` is the largest single-responsibility stretch in the codebase: it
 filters the tree, renders pages, packages, writes metadata, normalises the OPF, validates
 against the RNG schema and generates filenames. The 2026-07 review of the revisions work read
-it at method-signature level only, and `StaticSiteExporter` (856), `Import/ProjectGraphImporter`
-(949) and `ArchiveValidator` (473) not at all.
+it at method-signature level only, and `StaticSiteExporter`, `Import/ProjectGraphImporter`
+and `ArchiveValidator` not at all.
 
 Two consequences worth carrying:
 

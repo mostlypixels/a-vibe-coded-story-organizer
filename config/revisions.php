@@ -60,15 +60,15 @@ return [
 
     'caps' => [
         'scene.contents' => 1_000_000,
-        'project.rights' => 1_000,
+        'book.rights' => 1_000,
 
         // Front/back matter: a dedication or preface is a page or two, not a
         // chapter. 20,000 characters (~8 pages) was the Save form's long-standing
         // limit and stays the limit — autosave was the outlier at 100,000.
-        'project.dedication' => 20_000,
-        'project.acknowledgements' => 20_000,
-        'project.preface' => 20_000,
-        'project.postface' => 20_000,
+        'book.dedication' => 20_000,
+        'book.acknowledgements' => 20_000,
+        'book.preface' => 20_000,
+        'book.postface' => 20_000,
 
         'default' => 100_000, // descriptions
     ],

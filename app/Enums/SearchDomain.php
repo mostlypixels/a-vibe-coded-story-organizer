@@ -70,6 +70,19 @@ enum SearchDomain: string
     }
 
     /**
+     * Whether this domain's rows belong to a book. Acts, Chapters, and Scenes
+     * hang off the manuscript; Plotlines, Events, and the three Codex domains
+     * stay project-wide and never carry one.
+     */
+    public function carriesBook(): bool
+    {
+        return match ($this) {
+            self::Acts, self::Chapters, self::Scenes => true,
+            self::Plotlines, self::Events, self::Characters, self::Locations, self::Organizations => false,
+        };
+    }
+
+    /**
      * Pull this domain's rows off a result set.
      *
      * @return Collection<int, SearchResultRow>

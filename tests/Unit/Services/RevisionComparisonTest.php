@@ -3,6 +3,7 @@
 namespace Tests\Unit\Services;
 
 use App\Enums\FieldKind;
+use App\Models\Book;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Models\User;
@@ -32,6 +33,8 @@ class RevisionComparisonTest extends TestCase
 
     private RevisionComparison $comparison;
 
+    private Book $book;
+
     private Project $project;
 
     private User $user;
@@ -42,14 +45,14 @@ class RevisionComparisonTest extends TestCase
 
         $this->comparison = app(RevisionComparison::class);
         $this->user = User::factory()->create();
-        $this->project = Project::factory()->for($this->user)->create();
+        [$this->project, $this->book] = $this->projectWithBook($this->user);
     }
 
     private function revision(array $attributes = []): Revision
     {
         return Revision::factory()->create([
-            'revisionable_type' => Project::class,
-            'revisionable_id' => $this->project->id,
+            'revisionable_type' => Book::class,
+            'revisionable_id' => $this->book->id,
             'project_id' => $this->project->id,
             'user_id' => $this->user->id,
             'field' => 'description',
@@ -60,7 +63,7 @@ class RevisionComparisonTest extends TestCase
 
     private function pointOf(Revision $revision): SavePoint
     {
-        return collect(app(RevisionHistory::class)->savePoints($this->project))
+        return collect(app(RevisionHistory::class)->savePoints($this->book))
             ->firstOrFail(fn (SavePoint $point): bool => $point->saveId === $revision->save_id);
     }
 
@@ -69,7 +72,7 @@ class RevisionComparisonTest extends TestCase
         $from = $this->revision(['value' => '<p>The ferry left.</p>', 'created_at' => now()->subDays(2)]);
         $to = $this->revision(['value' => '<p>The ferry slipped away.</p>', 'created_at' => now()]);
 
-        $comparisons = $this->comparison->between($this->project, $this->pointOf($from), $this->pointOf($to));
+        $comparisons = $this->comparison->between($this->book, $this->pointOf($from), $this->pointOf($to));
 
         $this->assertCount(1, $comparisons);
         $this->assertSame('description', $comparisons[0]->field);
@@ -88,7 +91,7 @@ class RevisionComparisonTest extends TestCase
         $from = $this->revision(['field' => 'description', 'value' => '<p>Old</p>', 'created_at' => now()->subDays(2)]);
         $to = $this->revision(['field' => 'description', 'value' => '<p>New</p>', 'created_at' => now()]);
 
-        $comparisons = $this->comparison->between($this->project, $this->pointOf($from), $this->pointOf($to));
+        $comparisons = $this->comparison->between($this->book, $this->pointOf($from), $this->pointOf($to));
 
         $this->assertSame(['description'], $comparisons->pluck('field')->all());
     }
@@ -101,7 +104,7 @@ class RevisionComparisonTest extends TestCase
         $this->revision(['field' => 'dedication', 'value' => 'For her', 'created_at' => now()->subDays(2)]);
         $to = $this->revision(['field' => 'description', 'value' => '<p>New</p>', 'created_at' => now()]);
 
-        $comparisons = $this->comparison->between($this->project, $this->pointOf($from), $this->pointOf($to));
+        $comparisons = $this->comparison->between($this->book, $this->pointOf($from), $this->pointOf($to));
 
         $this->assertEqualsCanonicalizing(['description', 'dedication'], $comparisons->pluck('field')->all());
     }
@@ -111,7 +114,7 @@ class RevisionComparisonTest extends TestCase
         $from = $this->revision(['field' => 'description', 'created_at' => now()->subDays(2)]);
         $to = $this->revision(['field' => 'dedication', 'value' => 'For the ones who waited.', 'created_at' => now()]);
 
-        $comparisons = $this->comparison->between($this->project, $this->pointOf($from), $this->pointOf($to));
+        $comparisons = $this->comparison->between($this->book, $this->pointOf($from), $this->pointOf($to));
 
         $dedication = $comparisons->firstOrFail(fn ($comparison) => $comparison->field === 'dedication');
 
@@ -128,7 +131,7 @@ class RevisionComparisonTest extends TestCase
         $this->revision(['field' => 'description', 'value' => '<p>New</p>', 'created_at' => now()->subDay()]);
         $to = $this->revision(['field' => 'rights', 'value' => 'New rights', 'created_at' => now()]);
 
-        $comparisons = $this->comparison->between($this->project, $this->pointOf($from), $this->pointOf($to));
+        $comparisons = $this->comparison->between($this->book, $this->pointOf($from), $this->pointOf($to));
 
         // description, dedication, rights — the order AutosavableFields declares,
         // not the order the saves happened in.
@@ -141,7 +144,7 @@ class RevisionComparisonTest extends TestCase
         $this->revision(['field' => 'dedication', 'value' => 'For her', 'created_at' => now()->subDays(2)]);
         $to = $this->revision(['field' => 'description', 'value' => '<p>New</p>', 'created_at' => now()]);
 
-        $comparisons = $this->comparison->between($this->project, $this->pointOf($from), $this->pointOf($to), 'description');
+        $comparisons = $this->comparison->between($this->book, $this->pointOf($from), $this->pointOf($to), 'description');
 
         $this->assertCount(1, $comparisons);
         $this->assertSame('description', $comparisons[0]->field);
@@ -156,7 +159,7 @@ class RevisionComparisonTest extends TestCase
         $only = $this->revision(['field' => 'description', 'created_at' => now()]);
         $point = $this->pointOf($only);
 
-        $this->assertCount(0, $this->comparison->between($this->project, $point, $point));
+        $this->assertCount(0, $this->comparison->between($this->book, $point, $point));
     }
 
     public function test_the_differ_runs_once_per_changed_field_and_never_for_an_unchanged_one(): void
@@ -172,7 +175,7 @@ class RevisionComparisonTest extends TestCase
             $mock->shouldReceive('diff')->twice()->andReturn(new RevisionDiffResult('<p>diffed</p>', 1));
         });
 
-        $comparisons = app(RevisionComparison::class)->between($this->project, $this->pointOf($from), $this->pointOf($to));
+        $comparisons = app(RevisionComparison::class)->between($this->book, $this->pointOf($from), $this->pointOf($to));
 
         $this->assertCount(2, $comparisons);
     }

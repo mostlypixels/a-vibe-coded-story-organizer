@@ -6,6 +6,7 @@ use App\Enums\CodexEntryType;
 use App\Enums\SearchDomain;
 use App\Enums\SearchMode;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Plotline;
@@ -25,10 +26,12 @@ use Illuminate\Support\Collection;
  *
  * This is the one place the search queries are built. It runs exactly one query
  * per entity type (Act, Chapter, Scene, Event, Plotline, CodexEntry) — six
- * queries total, regardless of how many rows match — then, in PHP, turns each
- * matched entity into one {@see SearchResultRow} listing every matching field
- * (a Scene that matches in both `contents` and `notes` yields one row whose
- * matched fields are "Contents, Notes").
+ * queries total, regardless of how many rows match — plus one further query
+ * naming the Act/Chapter/Scene rows' books ({@see booksById()}), also fixed
+ * regardless of match count. Each matched entity then becomes one
+ * {@see SearchResultRow} in PHP, listing every matching field (a Scene that
+ * matches in both `contents` and `notes` yields one row whose matched fields
+ * are "Contents, Notes").
  *
  * Design decisions, all binding:
  *   - Matching runs in PHP, not SQL. Each entity's project-scoped rows are fetched
@@ -89,16 +92,18 @@ class ProjectSearch
             return $this->emptyResults();
         }
 
-        // One query per entity type. The three codex columns are sliced out of a
+        // One query per entity type, plus one to name the Act/Chapter/Scene rows'
+        // books (see booksById()). The three codex columns are sliced out of a
         // single CodexEntry search below rather than searched three times.
-        $codexRows = $this->searchEntityFor(SearchDomain::Characters, $project, $terms, $mode);
+        $books = $this->booksById($project);
+        $codexRows = $this->searchEntityFor(SearchDomain::Characters, $project, $terms, $mode, $books);
 
         return new SearchResults(
-            plotlines: $this->searchEntityFor(SearchDomain::Plotlines, $project, $terms, $mode),
-            events: $this->searchEntityFor(SearchDomain::Events, $project, $terms, $mode),
-            acts: $this->searchEntityFor(SearchDomain::Acts, $project, $terms, $mode),
-            chapters: $this->searchEntityFor(SearchDomain::Chapters, $project, $terms, $mode),
-            scenes: $this->searchEntityFor(SearchDomain::Scenes, $project, $terms, $mode),
+            plotlines: $this->searchEntityFor(SearchDomain::Plotlines, $project, $terms, $mode, $books),
+            events: $this->searchEntityFor(SearchDomain::Events, $project, $terms, $mode, $books),
+            acts: $this->searchEntityFor(SearchDomain::Acts, $project, $terms, $mode, $books),
+            chapters: $this->searchEntityFor(SearchDomain::Chapters, $project, $terms, $mode, $books),
+            scenes: $this->searchEntityFor(SearchDomain::Scenes, $project, $terms, $mode, $books),
             characters: $this->codexRowsOfType($codexRows, CodexEntryType::Character),
             locations: $this->codexRowsOfType($codexRows, CodexEntryType::Location),
             organizations: $this->codexRowsOfType($codexRows, CodexEntryType::Organization),
@@ -121,7 +126,8 @@ class ProjectSearch
             return collect();
         }
 
-        $rows = $this->searchEntityFor($domain, $project, $terms, $mode);
+        $books = $domain->carriesBook() ? $this->booksById($project) : collect();
+        $rows = $this->searchEntityFor($domain, $project, $terms, $mode, $books);
 
         return match ($domain) {
             SearchDomain::Characters => $this->codexRowsOfType($rows, CodexEntryType::Character),
@@ -137,18 +143,26 @@ class ProjectSearch
      * — the type split happens after, in {@see codexRowsOfType}.
      *
      * @param  array<int, string>  $terms
+     * @param  Collection<int, Book>  $books  the project's books, keyed by id (see booksById()) — passed
+     *                                        through even for domains that never carry one; only a
+     *                                        domain whose {@see SearchDomain::carriesBook()} is true reads it
      */
-    private function searchEntityFor(SearchDomain $domain, Project $project, array $terms, SearchMode $mode): Collection
+    private function searchEntityFor(SearchDomain $domain, Project $project, array $terms, SearchMode $mode, Collection $books): Collection
     {
         [$query, $fields] = $this->queryFor($domain, $project);
 
-        return $this->searchEntity($query, $fields, $terms, $mode);
+        return $this->searchEntity($query, $fields, $terms, $mode, $domain->carriesBook() ? $books : null);
     }
 
     /**
      * The base, project-scoped query and searchable-field map for one domain.
      * Both the grouped search and the single-domain search read this one
      * definition, so a column's query or field list is never written down twice.
+     *
+     * The Acts/Chapters/Scenes queries additionally select `book_id` — Acts
+     * carries the column already, Chapters and Scenes reach it by joining
+     * through `acts` — so {@see searchEntity} can attach each row's book from
+     * the already-fetched {@see booksById()} map without a query per row.
      *
      * @return array{0: Builder, 1: array<string, string>}
      */
@@ -165,16 +179,23 @@ class ProjectSearch
                 self::EVENT_FIELDS,
             ],
             SearchDomain::Acts => [
-                Act::query()->where('project_id', $project->id)
+                Act::query()->whereHas('book', fn (Builder $query) => $query->where('project_id', $project->id))
                     ->orderBy('position')->orderBy('id'),
                 self::ACT_FIELDS,
             ],
             SearchDomain::Chapters => [
-                $project->chapterQuery()->orderBy('position')->orderBy('id'),
+                $project->chapterQuery()
+                    ->join('acts', 'acts.id', '=', 'chapters.act_id')
+                    ->select('chapters.*', 'acts.book_id as book_id')
+                    ->orderBy('chapters.position')->orderBy('chapters.id'),
                 self::CHAPTER_FIELDS,
             ],
             SearchDomain::Scenes => [
-                $project->sceneQuery()->orderBy('position')->orderBy('id'),
+                $project->sceneQuery()
+                    ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
+                    ->join('acts', 'acts.id', '=', 'chapters.act_id')
+                    ->select('scenes.*', 'acts.book_id as book_id')
+                    ->orderBy('scenes.position')->orderBy('scenes.id'),
                 self::SCENE_FIELDS,
             ],
             SearchDomain::Characters, SearchDomain::Locations, SearchDomain::Organizations => [
@@ -182,6 +203,21 @@ class ProjectSearch
                 self::CODEX_ENTRY_FIELDS,
             ],
         };
+    }
+
+    /**
+     * The project's books, keyed by id, ready to attach to Act/Chapter/Scene
+     * result rows without a query per row. Each book's `project` relation is set
+     * to the already-loaded $project, so an unnamed book's
+     * {@see Book::displayName()} falls back to it without re-querying.
+     *
+     * @return Collection<int, Book>
+     */
+    private function booksById(Project $project): Collection
+    {
+        return $project->books()->get()
+            ->each(fn (Book $book) => $book->setRelation('project', $project))
+            ->keyBy('id');
     }
 
     /**
@@ -206,9 +242,11 @@ class ProjectSearch
      * @param  Builder  $query  the project-scoped base query for one entity
      * @param  array<string, string>  $fields  db_column => label
      * @param  array<int, string>  $terms
+     * @param  Collection<int, Book>|null  $books  the project's books keyed by id, for a domain whose
+     *                                             {@see SearchDomain::carriesBook()} is true — null otherwise
      * @return Collection<int, SearchResultRow>
      */
-    private function searchEntity(Builder $query, array $fields, array $terms, SearchMode $mode): Collection
+    private function searchEntity(Builder $query, array $fields, array $terms, SearchMode $mode, ?Collection $books): Collection
     {
         $columns = array_keys($fields);
 
@@ -234,7 +272,8 @@ class ProjectSearch
                 continue;
             }
 
-            $row = $this->rowFor($entity, $fields, $plainValues, $foldedValues, $terms, $foldedTerms);
+            $book = $books?->get($entity->getAttribute('book_id'));
+            $row = $this->rowFor($entity, $fields, $plainValues, $foldedValues, $terms, $foldedTerms, $book);
 
             if ($row !== null) {
                 $rows->push($row);
@@ -363,6 +402,7 @@ class ProjectSearch
      * @param  array<string, string>  $foldedValues  db_column => folded plain text
      * @param  array<int, string>  $terms  raw terms, for highlighting
      * @param  array<int, string>  $foldedTerms
+     * @param  Book|null  $book  the entity's book, for an Act/Chapter/Scene row
      */
     private function rowFor(
         Model $entity,
@@ -371,6 +411,7 @@ class ProjectSearch
         array $foldedValues,
         array $terms,
         array $foldedTerms,
+        ?Book $book,
     ): ?SearchResultRow {
         $matchedLabels = [];
         $snippet = null;
@@ -394,6 +435,7 @@ class ProjectSearch
             entity: $entity,
             fieldLabels: $matchedLabels,
             snippet: $snippet,
+            book: $book,
         );
     }
 

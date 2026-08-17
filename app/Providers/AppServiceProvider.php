@@ -65,17 +65,18 @@ class AppServiceProvider extends ServiceProvider
         //
         // layouts.app gets the same treatment for its <title>, off the same
         // object so project resolution stays in one place — but off
-        // `routeProject`, NOT `project`. The title answers "what is on this
-        // page"; the nav answers "what am I working on". Since active-project
-        // persistence those differ: `project` falls back to the account's stored
-        // project, and building the title from it would silently retitle the
-        // dashboard, /profile and every Configuration page "<project> - <app>",
-        // making the dashboard tab indistinguishable from the project's own.
+        // `routeProject`/`routeBook`, NOT `project`/`book`. The title answers
+        // "what is on this page"; the nav answers "what am I working on".
+        // Since active-project persistence those differ: `project` and `book`
+        // fall back to the account's stored context, and building the title
+        // from them would silently retitle the dashboard, /profile and every
+        // Configuration page "<project> - <app>", making the dashboard tab
+        // indistinguishable from the project's own.
         View::composer(['layouts.navigation', 'layouts.app'], function ($view) {
             $navigation = new ProjectNavigation(request());
 
             $view->with('navigation', $navigation)
-                ->with('pageTitle', new PageTitle($navigation->routeProject))
+                ->with('pageTitle', new PageTitle($navigation->routeProject, $navigation->routeBook))
                 // Off `routeProject` too (Breadcrumbs enforces it): the trail is
                 // empty off-project, so the layout band falls back to the page's
                 // own `header` slot. See documentation/architecture.md → Breadcrumbs.

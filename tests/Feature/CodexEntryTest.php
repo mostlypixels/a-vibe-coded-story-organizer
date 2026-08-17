@@ -230,7 +230,8 @@ class CodexEntryTest extends TestCase
      */
     private function sceneIn(Project $project, string $contents, ?string $name = null, ?Event $event = null): Scene
     {
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         $attributes = ['contents' => $contents];

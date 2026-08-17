@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services;
 
+use App\Models\Book;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Models\User;
@@ -28,6 +29,8 @@ class RevisionSnapshotTest extends TestCase
 
     private RevisionSnapshot $snapshots;
 
+    private Book $book;
+
     private Project $project;
 
     private User $user;
@@ -38,14 +41,14 @@ class RevisionSnapshotTest extends TestCase
 
         $this->snapshots = app(RevisionSnapshot::class);
         $this->user = User::factory()->create();
-        $this->project = Project::factory()->for($this->user)->create();
+        [$this->project, $this->book] = $this->projectWithBook($this->user);
     }
 
     private function revision(array $attributes = []): Revision
     {
         return Revision::factory()->create([
-            'revisionable_type' => Project::class,
-            'revisionable_id' => $this->project->id,
+            'revisionable_type' => Book::class,
+            'revisionable_id' => $this->book->id,
             'project_id' => $this->project->id,
             'user_id' => $this->user->id,
             'field' => 'description',
@@ -60,7 +63,7 @@ class RevisionSnapshotTest extends TestCase
      */
     private function pointOf(Revision $revision): SavePoint
     {
-        return collect(app(RevisionHistory::class)->savePoints($this->project))
+        return collect(app(RevisionHistory::class)->savePoints($this->book))
             ->firstOrFail(fn (SavePoint $point): bool => $point->saveId === $revision->save_id);
     }
 
@@ -72,7 +75,7 @@ class RevisionSnapshotTest extends TestCase
         $description = $this->revision(['field' => 'description', 'value' => 'Early description', 'created_at' => now()->subDays(3)]);
         $dedication = $this->revision(['field' => 'dedication', 'value' => 'For her', 'created_at' => now()->subDay()]);
 
-        $snapshot = $this->snapshots->asOf($this->project, $this->pointOf($dedication));
+        $snapshot = $this->snapshots->asOf($this->book, $this->pointOf($dedication));
 
         $this->assertSame($description->id, $snapshot->revisionIdFor('description'));
         $this->assertSame($dedication->id, $snapshot->revisionIdFor('dedication'));
@@ -82,7 +85,7 @@ class RevisionSnapshotTest extends TestCase
     {
         $only = $this->revision(['field' => 'description']);
 
-        $snapshot = $this->snapshots->asOf($this->project, $this->pointOf($only));
+        $snapshot = $this->snapshots->asOf($this->book, $this->pointOf($only));
 
         // Project registers six fields; all six are present, five of them null.
         $this->assertSame(
@@ -97,7 +100,7 @@ class RevisionSnapshotTest extends TestCase
         $moment = $this->revision(['field' => 'description', 'created_at' => now()->subDays(2)]);
         $this->revision(['field' => 'dedication', 'created_at' => now()]);
 
-        $snapshot = $this->snapshots->asOf($this->project, $this->pointOf($moment));
+        $snapshot = $this->snapshots->asOf($this->book, $this->pointOf($moment));
 
         $this->assertSame($moment->id, $snapshot->revisionIdFor('description'));
         // Written later — as of this moment the dedication did not exist yet.
@@ -113,8 +116,8 @@ class RevisionSnapshotTest extends TestCase
         $earlier = $this->revision(['field' => 'description', 'value' => 'Draft', 'created_at' => $moment]);
         $later = $this->revision(['field' => 'description', 'value' => 'Saved', 'created_at' => $moment]);
 
-        $this->assertSame($earlier->id, $this->snapshots->asOf($this->project, $this->pointOf($earlier))->revisionIdFor('description'));
-        $this->assertSame($later->id, $this->snapshots->asOf($this->project, $this->pointOf($later))->revisionIdFor('description'));
+        $this->assertSame($earlier->id, $this->snapshots->asOf($this->book, $this->pointOf($earlier))->revisionIdFor('description'));
+        $this->assertSame($later->id, $this->snapshots->asOf($this->book, $this->pointOf($later))->revisionIdFor('description'));
     }
 
     public function test_current_resolves_the_newest_revision_of_every_field(): void
@@ -123,7 +126,7 @@ class RevisionSnapshotTest extends TestCase
         $newest = $this->revision(['field' => 'description', 'value' => 'New', 'created_at' => now()]);
         $rights = $this->revision(['field' => 'rights', 'value' => 'All rights reserved.', 'created_at' => now()->subDay()]);
 
-        $snapshot = $this->snapshots->current($this->project);
+        $snapshot = $this->snapshots->current($this->book);
 
         $this->assertNull($snapshot->point);
         $this->assertSame($newest->id, $snapshot->revisionIdFor('description'));
@@ -143,8 +146,8 @@ class RevisionSnapshotTest extends TestCase
             }
         });
 
-        $this->snapshots->asOf($this->project, $point);
-        $this->snapshots->current($this->project);
+        $this->snapshots->asOf($this->book, $point);
+        $this->snapshots->current($this->book);
 
         $this->assertNotEmpty($selects);
 
@@ -155,20 +158,20 @@ class RevisionSnapshotTest extends TestCase
 
     public function test_a_snapshot_never_reaches_into_another_entitys_history(): void
     {
-        $other = Project::factory()->for($this->user)->create();
+        $other = Book::factory()->for($this->project)->create();
         $mine = $this->revision(['field' => 'description', 'created_at' => now()->subDay()]);
 
         Revision::factory()->create([
-            'revisionable_type' => Project::class,
+            'revisionable_type' => Book::class,
             'revisionable_id' => $other->id,
-            'project_id' => $other->id,
+            'project_id' => $this->project->id,
             'user_id' => $this->user->id,
             'field' => 'description',
             'save_id' => (string) Str::ulid(),
             'created_at' => now(),
         ]);
 
-        $snapshot = $this->snapshots->current($this->project);
+        $snapshot = $this->snapshots->current($this->book);
 
         $this->assertSame($mine->id, $snapshot->revisionIdFor('description'));
     }

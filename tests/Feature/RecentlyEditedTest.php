@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
@@ -37,8 +38,8 @@ class RecentlyEditedTest extends TestCase
      */
     private function chapterFor(User $user, string $actName = 'First act'): Chapter
     {
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['name' => $actName]);
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['name' => $actName]);
 
         return Chapter::factory()->for($act)->create(['name' => 'First chapter']);
     }
@@ -56,7 +57,7 @@ class RecentlyEditedTest extends TestCase
             ->forceFill(['updated_at' => now()])->save();
 
         $response = $this->actingAs($user)
-            ->get(route('projects.story.home', $chapter->act->project));
+            ->get(route('books.story.home', $chapter->act->book));
 
         $response->assertOk();
         $response->assertSeeInOrder(['Newer scene', 'Older scene']);
@@ -69,7 +70,7 @@ class RecentlyEditedTest extends TestCase
         Scene::factory()->for($chapter)->create(['name' => 'A scene']);
 
         $this->actingAs($user)
-            ->get(route('projects.story.home', $chapter->act->project))
+            ->get(route('books.story.home', $chapter->act->book))
             ->assertOk()
             ->assertSee('Act of departure — First chapter');
     }
@@ -77,15 +78,15 @@ class RecentlyEditedTest extends TestCase
     public function test_the_story_home_caps_each_list_at_the_recent_limit(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         // One more act than the list shows, oldest last so it is the one dropped.
         foreach (range(1, RecentItem::LIMIT + 1) as $index) {
-            Act::factory()->for($project)->create(['name' => "Act {$index}"])
+            Act::factory()->for($book)->create(['name' => "Act {$index}"])
                 ->forceFill(['updated_at' => now()->subMinutes($index)])->save();
         }
 
-        $response = $this->actingAs($user)->get(route('projects.story.home', $project));
+        $response = $this->actingAs($user)->get(route('books.story.home', $book));
 
         $response->assertOk();
         $response->assertSee('Act 1');
@@ -95,23 +96,23 @@ class RecentlyEditedTest extends TestCase
     public function test_the_story_home_links_to_the_full_indexes(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
-            ->get(route('projects.story.home', $project))
+            ->get(route('books.story.home', $book))
             ->assertOk()
-            ->assertSee(route('projects.acts.index', $project))
-            ->assertSee(route('projects.chapters.index', $project))
-            ->assertSee(route('projects.scenes.index', $project));
+            ->assertSee(route('books.acts.index', $book))
+            ->assertSee(route('books.chapters.index', $book))
+            ->assertSee(route('books.scenes.index', $book));
     }
 
     public function test_the_story_home_shows_an_empty_state_for_a_project_with_no_content(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
-            ->get(route('projects.story.home', $project))
+            ->get(route('books.story.home', $book))
             ->assertOk()
             ->assertSee(__('No :items yet.', ['items' => __('scenes')]));
     }
@@ -126,10 +127,28 @@ class RecentlyEditedTest extends TestCase
         Scene::factory()->for($otherChapter)->create(['name' => 'Someone elses project']);
 
         $this->actingAs($user)
-            ->get(route('projects.story.home', $chapter->act->project))
+            ->get(route('books.story.home', $chapter->act->book))
             ->assertOk()
             ->assertSee('Mine')
             ->assertDontSee('Someone elses project');
+    }
+
+    public function test_the_story_home_lists_only_the_book_in_the_url(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create();
+
+        Scene::factory()->for(Chapter::factory()->for(Act::factory()->for($firstBook)))
+            ->create(['name' => 'Volume one scene']);
+        Scene::factory()->for(Chapter::factory()->for(Act::factory()->for($secondBook)))
+            ->create(['name' => 'Volume two scene']);
+
+        $this->actingAs($user)
+            ->get(route('books.story.home', $firstBook))
+            ->assertOk()
+            ->assertSee('Volume one scene')
+            ->assertDontSee('Volume two scene');
     }
 
     // --- Dashboard lists --------------------------------------------------
@@ -138,7 +157,7 @@ class RecentlyEditedTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user, 'Act of departure');
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         Scene::factory()->for($chapter)->create(['name' => 'Older scene'])
             ->forceFill(['updated_at' => now()->subDay()])->save();
@@ -184,7 +203,7 @@ class RecentlyEditedTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         foreach (range(1, 4) as $index) {
             Scene::factory()->for($chapter)->create(['name' => "Scene {$index}"])
@@ -205,13 +224,13 @@ class RecentlyEditedTest extends TestCase
     public function test_the_dashboard_lists_say_so_when_a_project_is_empty(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
             ->get(route('projects.show', $project))
             ->assertOk()
             ->assertSee(__('No :items yet.', ['items' => __('scenes')]))
-            ->assertSee(route('projects.story.home', $project))
+            ->assertSee(route('books.story.home', $book))
             ->assertSee(route('projects.codex.home', $project));
     }
 
@@ -301,7 +320,7 @@ class RecentlyEditedTest extends TestCase
         $chapter->update(['cover_image' => 'chapters/first.jpg']);
 
         $this->actingAs($user)
-            ->get(route('projects.story.home', $chapter->act->project))
+            ->get(route('books.story.home', $chapter->act->book))
             ->assertOk()
             ->assertSee(Storage::disk('public')->url('chapters/first.jpg'));
     }

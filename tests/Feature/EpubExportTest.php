@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ChapterTitleFormat;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\PublicationSetting;
@@ -19,7 +20,7 @@ use ZipArchive;
  * HTTP layer to EpubExporter.
  *
  * Mirrors ExportTest's posture (owner-succeeds / non-owner-403 / guest-login /
- * validation), plus the one epub-specific path: an empty-content project redirects
+ * validation), plus the one epub-specific path: an empty-content book redirects
  * back with a session error (the EpubExportException → redirect translation)
  * instead of streaming a file.
  */
@@ -28,17 +29,21 @@ class EpubExportTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Give a project one act → chapter → scene so it clears the exporter's
-     * "no scenes anywhere" guard and actually produces a package.
+     * Give a project's book one act → chapter → scene so it clears the exporter's
+     * "no scenes anywhere" guard and actually produces a package. Returns the book
+     * so callers can post its id.
      */
-    private function seedExportableContent(Project $project): void
+    private function seedExportableContent(Project $project): Book
     {
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['position' => 1]);
         Scene::factory()->for($chapter)->create([
             'position' => 1,
             'contents' => 'Some prose for the chapter.',
         ]);
+
+        return $book;
     }
 
     /**
@@ -74,20 +79,22 @@ class EpubExportTest extends TestCase
     // Happy path
     // ---------------------------------------------------------------------
 
-    public function test_owner_can_export_a_project_as_an_epub_download(): void
+    public function test_owner_can_export_a_book_as_an_epub_download(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'My Great Story']);
-        $this->seedExportableContent($project);
+        $book = $this->seedExportableContent($project);
 
         $response = $this->actingAs($user)->post(route('admin.data.export.epub'), [
-            'project_id' => $project->id,
+            'book_id' => $book->id,
         ]);
 
         $response->assertOk();
         $response->assertHeader('content-type', 'application/epub+zip');
 
-        // Content-Disposition filename is <project-slug>-<Ymd>-<His>.epub.
+        // Content-Disposition filename is <book-display-name-slug>-<Ymd>-<His>.epub.
+        // The seeded book has no name of its own, so its displayName() falls back to
+        // the project's name.
         $this->assertMatchesRegularExpression(
             '/filename=.*my-great-story-\d{8}-\d{6}\.epub/',
             $response->headers->get('content-disposition')
@@ -116,18 +123,18 @@ class EpubExportTest extends TestCase
     public function test_a_chapter_with_a_blank_name_still_gets_a_navigation_label(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['position' => 1, 'name' => '']);
         Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Some prose.']);
 
-        PublicationSetting::factory()->for($project)->create([
+        PublicationSetting::factory()->for($book)->create([
             'chapter_title_format' => ChapterTitleFormat::Title,
         ]);
 
         $response = $this->actingAs($user)->post(route('admin.data.export.epub'), [
-            'project_id' => $project->id,
+            'book_id' => $book->id,
         ])->assertOk();
 
         // Both listings the reader can reach: the EPUB 3 nav document / NCX the reader
@@ -149,24 +156,25 @@ class EpubExportTest extends TestCase
     // Authorization (ownership, not just the admin gate)
     // ---------------------------------------------------------------------
 
-    public function test_a_user_cannot_export_another_users_project_as_epub(): void
+    public function test_a_user_cannot_export_another_users_book_as_epub(): void
     {
         $owner = User::factory()->create();
         $project = Project::factory()->for($owner)->create();
-        $this->seedExportableContent($project);
+        $book = $this->seedExportableContent($project);
 
         $intruder = User::factory()->create();
 
         $this->actingAs($intruder)
-            ->post(route('admin.data.export.epub'), ['project_id' => $project->id])
+            ->post(route('admin.data.export.epub'), ['book_id' => $book->id])
             ->assertForbidden();
     }
 
     public function test_a_guest_is_redirected_to_login(): void
     {
         $project = Project::factory()->create();
+        $book = $project->books()->first();
 
-        $this->post(route('admin.data.export.epub'), ['project_id' => $project->id])
+        $this->post(route('admin.data.export.epub'), ['book_id' => $book->id])
             ->assertRedirect(route('login'));
     }
 
@@ -175,11 +183,11 @@ class EpubExportTest extends TestCase
     // ---------------------------------------------------------------------
 
     /**
-     * A missing project_id is a 403, not a validation error: EpubExportRequest's
-     * authorize() runs before validation and resolves Project::find(null) to null,
+     * A missing book_id is a 403, not a validation error: EpubExportRequest's
+     * authorize() runs before validation and resolves Book::find(null) to null,
      * so it fails the ownership check first (mirrors ExportRequest).
      */
-    public function test_a_missing_project_id_is_forbidden(): void
+    public function test_a_missing_book_id_is_forbidden(): void
     {
         $user = User::factory()->create();
 
@@ -188,31 +196,32 @@ class EpubExportTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_a_nonexistent_project_id_is_forbidden(): void
+    public function test_a_nonexistent_book_id_is_forbidden(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->post(route('admin.data.export.epub'), ['project_id' => 999999])
+            ->post(route('admin.data.export.epub'), ['book_id' => 999999])
             ->assertForbidden();
     }
 
     // ---------------------------------------------------------------------
-    // Empty-content project: EpubExportException → redirect-back-with-error
+    // Empty-content book: EpubExportException → redirect-back-with-error
     // ---------------------------------------------------------------------
 
-    public function test_an_empty_project_redirects_back_with_an_error_instead_of_downloading(): void
+    public function test_an_empty_book_redirects_back_with_an_error_instead_of_downloading(): void
     {
         $user = User::factory()->create();
         // No acts/chapters/scenes at all.
         $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
 
         $response = $this->actingAs($user)
             ->from(route('admin.data.export-ebook'))
-            ->post(route('admin.data.export.epub'), ['project_id' => $project->id]);
+            ->post(route('admin.data.export.epub'), ['book_id' => $book->id]);
 
         $response->assertRedirect(route('admin.data.export-ebook'));
-        $response->assertSessionHasErrors('project_id');
+        $response->assertSessionHasErrors('book_id');
     }
 
     /**
@@ -220,19 +229,19 @@ class EpubExportTest extends TestCase
      * least one scene exists, but with zero scenes the book would be blank pages, so it is
      * the same user-facing redirect, not a 500.
      */
-    public function test_a_project_whose_only_chapter_has_no_scenes_redirects_back(): void
+    public function test_a_book_whose_only_chapter_has_no_scenes_redirects_back(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         Chapter::factory()->for($act)->create(['position' => 1]);
 
         $response = $this->actingAs($user)
             ->from(route('admin.data.export-ebook'))
-            ->post(route('admin.data.export.epub'), ['project_id' => $project->id]);
+            ->post(route('admin.data.export.epub'), ['book_id' => $book->id]);
 
         $response->assertRedirect(route('admin.data.export-ebook'));
-        $response->assertSessionHasErrors('project_id');
+        $response->assertSessionHasErrors('book_id');
     }
 
     /**
@@ -243,8 +252,8 @@ class EpubExportTest extends TestCase
     public function test_empty_chapters_export_as_heading_only_pages_alongside_the_written_ones(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
 
         $written = Chapter::factory()->for($act)->create(['position' => 1, 'name' => 'The Written One']);
         Scene::factory()->for($written)->create(['position' => 1, 'contents' => 'PROSE_MARKER']);
@@ -258,7 +267,7 @@ class EpubExportTest extends TestCase
         }
 
         $response = $this->actingAs($user)
-            ->post(route('admin.data.export.epub'), ['project_id' => $project->id]);
+            ->post(route('admin.data.export.epub'), ['book_id' => $book->id]);
 
         $response->assertOk();
 
@@ -285,19 +294,19 @@ class EpubExportTest extends TestCase
     public function test_an_act_with_only_empty_chapters_still_exports_its_divider(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $written = Act::factory()->for($project)->create(['position' => 1, 'name' => 'Written Act']);
+        $written = Act::factory()->for($book)->create(['position' => 1, 'name' => 'Written Act']);
         $chapter = Chapter::factory()->for($written)->create(['position' => 1]);
         Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
 
-        $outlined = Act::factory()->for($project)->create(['position' => 2, 'name' => 'Outlined Act']);
+        $outlined = Act::factory()->for($book)->create(['position' => 2, 'name' => 'Outlined Act']);
         Chapter::factory()->for($outlined)->create(['position' => 1]);
 
-        $bare = Act::factory()->for($project)->create(['position' => 3, 'name' => 'Bare Act']);
+        $bare = Act::factory()->for($book)->create(['position' => 3, 'name' => 'Bare Act']);
 
         $response = $this->actingAs($user)
-            ->post(route('admin.data.export.epub'), ['project_id' => $project->id]);
+            ->post(route('admin.data.export.epub'), ['book_id' => $book->id]);
 
         $response->assertOk();
 
@@ -318,7 +327,7 @@ class EpubExportTest extends TestCase
 
     /**
      * The export page renders the new Epub export section: its heading, a form that
-     * posts to the epub route with a project picker, the download button, and the
+     * posts to the epub route with a book picker, the download button, and the
      * epubcheck note/link the section must carry.
      */
     public function test_the_export_page_renders_the_epub_export_section(): void
@@ -331,9 +340,9 @@ class EpubExportTest extends TestCase
         $response->assertOk();
         $response->assertSeeText('Export ebook');
         $response->assertSee('Download EPUB');
-        // The section posts to the dedicated epub route with the project picker.
+        // The section posts to the dedicated epub route with the book picker.
         $response->assertSee('action="'.route('admin.data.export.epub').'"', false);
-        $response->assertSee('id="epub_project_id"', false);
+        $response->assertSee('id="epub_book_id"', false);
         $response->assertSee('Epub-able Tale');
         // The epubcheck note links out to the official validator.
         $response->assertSeeText('epubcheck');
@@ -353,6 +362,6 @@ class EpubExportTest extends TestCase
         $response->assertOk();
         $response->assertSee('Create a project first to export it.');
         $response->assertDontSee('Download EPUB');
-        $response->assertDontSee('id="epub_project_id"', false);
+        $response->assertDontSee('id="epub_book_id"', false);
     }
 }

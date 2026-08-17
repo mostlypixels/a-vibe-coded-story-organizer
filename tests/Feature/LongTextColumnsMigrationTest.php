@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -38,7 +39,8 @@ class LongTextColumnsMigrationTest extends TestCase
     private function registeredColumns(): array
     {
         return [
-            'projects' => ['description', 'dedication', 'acknowledgements', 'preface', 'postface', 'rights'],
+            'projects' => ['description'],
+            'books' => ['description', 'dedication', 'acknowledgements', 'preface', 'postface', 'rights'],
             'acts' => ['description'],
             'chapters' => ['description'],
             'plotlines' => ['description'],
@@ -77,16 +79,27 @@ class LongTextColumnsMigrationTest extends TestCase
         $this->assertSame($longValue, $fresh->contents);
     }
 
-    public function test_project_rights_round_trips_a_payload_larger_than_the_old_mysql_text_cap(): void
+    public function test_project_description_round_trips_a_payload_larger_than_the_old_mysql_text_cap(): void
     {
         $longValue = str_repeat('b', 100_000);
 
-        $project = Project::factory()->create(['rights' => $longValue]);
+        $project = Project::factory()->create(['description' => $longValue]);
 
         $fresh = Project::find($project->id);
 
-        $this->assertSame(100_000, strlen($fresh->rights));
-        $this->assertSame($longValue, $fresh->rights);
+        $this->assertSame(100_000, strlen($fresh->description));
+        $this->assertSame($longValue, $fresh->description);
+    }
+
+    public function test_book_dedication_round_trips_a_payload_larger_than_the_old_mysql_text_cap(): void
+    {
+        // `books` was created with longText() columns rather than widened later,
+        // so this guards the create migration against a copy of the old text().
+        $longValue = str_repeat('h', 100_000);
+
+        $book = Book::factory()->create(['dedication' => $longValue]);
+
+        $this->assertSame($longValue, Book::find($book->id)->dedication);
     }
 
     public function test_act_description_round_trips_a_payload_larger_than_the_old_mysql_text_cap(): void

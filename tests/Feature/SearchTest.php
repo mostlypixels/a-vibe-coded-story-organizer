@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\SearchMode;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -121,7 +122,8 @@ class SearchTest extends TestCase
      */
     private function sceneFor(Project $project, array $attributes): Scene
     {
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         return Scene::factory()->for($chapter)->create($attributes);
@@ -347,6 +349,42 @@ class SearchTest extends TestCase
         $this->assertSame(1, substr_count($content, '<table'));
     }
 
+    public function test_an_act_chapter_and_scene_hit_each_name_their_book(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = Book::factory()->for($project)->create(['name' => 'Zephyrqux Volume']);
+        $act = Act::factory()->for($book)->create(['name' => 'Zephyrqux act', 'description' => 'x']);
+        $chapter = Chapter::factory()->for($act)->create(['name' => 'Zephyrqux chapter', 'description' => 'x']);
+        Scene::factory()->for($chapter)->create(['name' => 'Zephyrqux scene', 'contents' => 'x', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        // One book label per matched Act/Chapter/Scene row.
+        $this->assertSame(
+            3,
+            substr_count($response->getContent(), '<div class="text-xs text-content-muted">Zephyrqux Volume</div>')
+        );
+    }
+
+    public function test_plotline_event_and_codex_rows_render_no_book_label(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Plotline::factory()->for($project)->create(['name' => 'Zephyrqux arc', 'description' => '']);
+        Event::factory()->for($project)->create(['title' => 'Zephyrqux event', 'description' => '']);
+        CodexEntry::factory()->for($project)->character()->create(['name' => 'Zephyrqux hero', 'description' => '']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        // No Act/Chapter/Scene matched, so the book label never renders.
+        $response->assertDontSee('<div class="text-xs text-content-muted">', false);
+    }
+
     public function test_codex_result_links_to_its_edit_page(): void
     {
         $user = User::factory()->create();
@@ -391,6 +429,20 @@ class SearchTest extends TestCase
         $response->assertOk();
         $response->assertSee('Zephyrqux arc');
         $response->assertDontSee('Zephyrqux scene');
+    }
+
+    public function test_a_domain_page_names_the_book_on_an_act_hit(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = Book::factory()->for($project)->create(['name' => 'Zephyrqux Volume']);
+        Act::factory()->for($book)->create(['name' => 'Zephyrqux act', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', ['project' => $project, 'domain' => 'acts', 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        $response->assertSeeHtml('<div class="text-xs text-content-muted">Zephyrqux Volume</div>');
     }
 
     public function test_a_domain_page_second_page_slices_correctly_and_carries_q_and_mode(): void

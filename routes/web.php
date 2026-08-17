@@ -4,6 +4,7 @@ use App\Enums\CodexEntryType;
 use App\Enums\SearchDomain;
 use App\Http\Controllers\ActController;
 use App\Http\Controllers\AppearanceController;
+use App\Http\Controllers\BookController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\CodexAttributeController;
 use App\Http\Controllers\CodexAttributeValueController;
@@ -107,20 +108,21 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         // the include_images toggle. The admin gate is "any authenticated user"; the
         // controller ALSO authorizes('view', $project) so a foreign project_id 403s.
         Route::post('/data/export', [ExportController::class, 'store'])->name('data.export');
-        // Export a project as a downloadable .epub. Same POST posture and ownership
-        // guard as the .zip export above; the EpubExporter owns tree filtering,
-        // rendering, packaging, and structural validation. A project with nothing to
-        // export redirects back with an error (EpubExportException), never a 500.
+        // Export one book as a downloadable .epub. Same POST posture and ownership
+        // guard as the .zip export above (walked via the book's project); the
+        // EpubExporter owns tree filtering, rendering, packaging, and structural
+        // validation. A book with nothing to export redirects back with an error
+        // (EpubExportException), never a 500.
         Route::post('/data/export/epub', [EpubExportController::class, 'store'])->name('data.export.epub');
 
         // Persists PublicationSetting (the Export-ebook config form) and reorders
-        // its section_order list. Ownership walks the {project} route binding,
-        // mirrored in UpdatePublicationSettingRequest::authorize().
-        Route::patch('/data/export/ebook/{project}/settings', [PublicationSettingController::class, 'update'])
+        // its section_order list. Ownership walks the {book} route binding to
+        // its project, mirrored in UpdatePublicationSettingRequest::authorize().
+        Route::patch('/data/export/ebook/{book}/settings', [PublicationSettingController::class, 'update'])
             ->name('data.publication-settings.update');
-        Route::patch('/data/export/ebook/{project}/settings/section-order/{section}/move-up', [PublicationSettingController::class, 'moveSectionUp'])
+        Route::patch('/data/export/ebook/{book}/settings/section-order/{section}/move-up', [PublicationSettingController::class, 'moveSectionUp'])
             ->name('data.publication-settings.section-order.move-up');
-        Route::patch('/data/export/ebook/{project}/settings/section-order/{section}/move-down', [PublicationSettingController::class, 'moveSectionDown'])
+        Route::patch('/data/export/ebook/{book}/settings/section-order/{section}/move-down', [PublicationSettingController::class, 'moveSectionDown'])
             ->name('data.publication-settings.section-order.move-down');
 
         // Import a project from an uploaded export .zip. Each import creates a
@@ -168,23 +170,37 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
 
+    // A project's books — the volume layer between Project and Act. `show` is
+    // the book home (books.show); its controller action lands in a later task,
+    // but the route is registered here alongside the rest of the resource.
+    // Shallow keeps edit/update/destroy (and the move actions below) flat on
+    // the child id, matching the acts/chapters/scenes convention below.
+    Route::resource('projects.books', BookController::class)
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
+        ->shallow();
+    Route::patch('/books/{book}/move-up', [BookController::class, 'moveUp'])->name('books.move-up');
+    Route::patch('/books/{book}/move-down', [BookController::class, 'moveDown'])->name('books.move-down');
+
     // Section landing pages. Each top-level nav section (Story, Timeline, Codex,
     // Tools) has a `home` route that its breadcrumb section crumb and its first
     // dropdown item link to. Placeholder stubs today — real section dashboards
     // land here later.
-    Route::get('/projects/{project}/story', [StoryController::class, 'home'])->name('projects.story.home');
+    // The manuscript lives in a book, so the Story section is book-scoped:
+    // /books/{book}/story. Timeline, Codex and Tools are shared across the
+    // project's books and keep {project}.
+    Route::get('/books/{book}/story', [StoryController::class, 'home'])->name('books.story.home');
     Route::get('/projects/{project}/timeline', [TimelineController::class, 'home'])->name('projects.timeline.home');
     Route::get('/projects/{project}/codex', [CodexController::class, 'home'])->name('projects.codex.home');
     Route::get('/projects/{project}/tools', [ToolsController::class, 'home'])->name('projects.tools.home');
 
-    // Story Overview — the full act/chapter/scene tree. Moved off the bare
+    // Story Overview — one book's act/chapter/scene tree. Moved off the bare
     // /story path (now the Story section stub) to /story/overview.
-    Route::get('/projects/{project}/story/overview', [StoryController::class, 'index'])->name('projects.story.overview');
+    Route::get('/books/{book}/story/overview', [StoryController::class, 'index'])->name('books.story.overview');
 
-    // Persists the overview's render mode (chapter/book). Owner-only, mirroring
+    // Persists the overview's render mode (chapter/whole). Owner-only, mirroring
     // PublicationSettingController's resolve -> authorize -> persist -> redirect shape.
-    Route::patch('/projects/{project}/story/overview/mode', [StoryController::class, 'updateMode'])
-        ->name('projects.story.overview.mode');
+    Route::patch('/books/{book}/story/overview/mode', [StoryController::class, 'updateMode'])
+        ->name('books.story.overview.mode');
 
     // Full-text-ish search across one project's six searchable entities. Single
     // GET action (no AJAX): q/mode round-trip via the query string. Authorizes
@@ -199,19 +215,25 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
             ->name('projects.search.domain');
     });
 
-    Route::resource('projects.acts', ActController::class)
+    // The manuscript nests under {book}. Shallow keeps edit/update/destroy (and
+    // the move actions below) flat on the child id, so a link to one act never
+    // has to name the book that holds it.
+    Route::resource('books.acts', ActController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
     Route::patch('/acts/{act}/move-up', [ActController::class, 'moveUp'])->name('acts.move-up');
     Route::patch('/acts/{act}/move-down', [ActController::class, 'moveDown'])->name('acts.move-down');
+    // Reparents the whole act (with its chapters and scenes) onto another book
+    // in the same project — the act edit page's destination-book control.
+    Route::patch('/acts/{act}/move-to-book', [ActController::class, 'moveToBook'])->name('acts.move-to-book');
 
-    Route::resource('projects.chapters', ChapterController::class)
+    Route::resource('books.chapters', ChapterController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
     Route::patch('/chapters/{chapter}/move-up', [ChapterController::class, 'moveUp'])->name('chapters.move-up');
     Route::patch('/chapters/{chapter}/move-down', [ChapterController::class, 'moveDown'])->name('chapters.move-down');
 
-    Route::resource('projects.scenes', SceneController::class)
+    Route::resource('books.scenes', SceneController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
     Route::patch('/scenes/{scene}/move-up', [SceneController::class, 'moveUp'])->name('scenes.move-up');

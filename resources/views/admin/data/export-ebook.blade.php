@@ -30,7 +30,7 @@
         </x-slot>
 
         <p class="text-sm text-content-muted">
-            {{ __('Configure and download one of your projects as an EPUB e-book, ready to open in any e-reader.') }}
+            {{ __('Configure and download one of your books as an EPUB e-book, ready to open in any e-reader.') }}
         </p>
 
         @if ($projects->isEmpty())
@@ -42,30 +42,36 @@
             </p>
         @else
             {{--
-                Project picker: a plain GET reload (no JavaScript) — matches
-                the "ordinary navigation" posture of the sub-nav above. Loads
-                the selected project's saved settings, or an unsaved default
-                when it has never visited this form.
+                Book picker: a plain GET reload (no JavaScript) — matches
+                the "ordinary navigation" posture of the sub-nav above. Every
+                book across every project, grouped into an optgroup per
+                project so a multi-book project's own volumes stay tellable
+                apart. Loads the selected book's saved settings, or an
+                unsaved default when it has never visited this form.
             --}}
             <form method="GET" action="{{ route('admin.data.export-ebook') }}" class="mt-6 max-w-lg flex items-end gap-3">
                 <div class="flex-1">
-                    <x-input-label for="epub_project_id" :value="__('Project')" />
-                    <x-select id="epub_project_id" name="project" class="mt-1 block w-full">
+                    <x-input-label for="epub_book_id" :value="__('Book')" />
+                    <x-select id="epub_book_id" name="book" class="mt-1 block w-full">
                         @foreach ($projects as $project)
-                            <option value="{{ $project->id }}" @selected($selectedProject?->id === $project->id)>
-                                {{ $project->name }}
-                            </option>
+                            <optgroup label="{{ $project->name }}">
+                                @foreach ($project->books as $book)
+                                    <option value="{{ $book->id }}" @selected($selectedBook?->id === $book->id)>
+                                        {{ $book->displayName() }}
+                                    </option>
+                                @endforeach
+                            </optgroup>
                         @endforeach
                     </x-select>
                 </div>
                 <x-button variant="primary">{{ __('Load') }}</x-button>
             </form>
 
-            @if ($selectedProject)
+            @if ($selectedBook)
                 @php $sectionOrder = $setting->section_order ?? \App\Models\PublicationSetting::SECTION_KEYS; @endphp
 
                 <fieldset class="mt-8 border border-border rounded-md px-4 pb-4">
-                    <legend class="px-2 text-sm font-semibold text-content">{{ $selectedProject->name }}</legend>
+                    <legend class="px-2 text-sm font-semibold text-content">{{ $selectedBook->displayName() }}</legend>
 
                 {{--
                     The config form: persists PublicationSetting. This only
@@ -74,7 +80,7 @@
                     move-up/move-down actions (mirrors ActController::moveUp),
                     not by editing this form.
                 --}}
-                <form method="POST" action="{{ route('admin.data.publication-settings.update', $selectedProject) }}" class="mt-8 space-y-8 max-w-2xl">
+                <form method="POST" action="{{ route('admin.data.publication-settings.update', $selectedBook) }}" class="mt-8 space-y-8 max-w-2xl">
                     @csrf
                     @method('patch')
 
@@ -86,7 +92,7 @@
                         <legend class="text-sm font-semibold text-content">{{ __('Content options') }}</legend>
 
                         @foreach ([
-                            'include_project_cover' => __('Include project cover'),
+                            'include_book_cover' => __('Include book cover'),
                             'include_chapter_covers' => __('Include chapter cover pages'),
                             'include_scene_titles' => __('Include scene titles'),
                             'include_act_descriptions' => __('Include act descriptions'),
@@ -115,16 +121,16 @@
 
                         <p class="text-sm text-content-muted">
                             {{ __('The dedication, acknowledgements, preface, and postface text itself is edited on the') }}
-                            <a href="{{ route('projects.edit', $selectedProject) }}" class="text-link underline hover:text-link-hover">
-                                {{ __('project edit page') }}
+                            <a href="{{ route('books.edit', $selectedBook) }}" class="text-link underline hover:text-link-hover">
+                                {{ __('book edit page') }}
                             </a>. {{ __("Toggle which of the ones you've written are included below.") }}
                         </p>
 
                         @foreach ([
-                            'include_dedication' => ['label' => __('Include dedication'), 'value' => $selectedProject->dedication],
-                            'include_acknowledgements' => ['label' => __('Include acknowledgements'), 'value' => $selectedProject->acknowledgements],
-                            'include_preface' => ['label' => __('Include preface'), 'value' => $selectedProject->preface],
-                            'include_postface' => ['label' => __('Include postface'), 'value' => $selectedProject->postface],
+                            'include_dedication' => ['label' => __('Include dedication'), 'value' => $selectedBook->dedication],
+                            'include_acknowledgements' => ['label' => __('Include acknowledgements'), 'value' => $selectedBook->acknowledgements],
+                            'include_preface' => ['label' => __('Include preface'), 'value' => $selectedBook->preface],
+                            'include_postface' => ['label' => __('Include postface'), 'value' => $selectedBook->postface],
                         ] as $field => $info)
                             <div>
                                 <label for="{{ $field }}" class="flex items-start gap-3">
@@ -150,10 +156,10 @@
                         <legend class="text-sm font-semibold text-content">{{ __('Metadata') }}</legend>
 
                         @foreach ([
-                            'include_author' => ['label' => __('Include author'), 'value' => $selectedProject->author],
-                            'include_publisher' => ['label' => __('Include publisher'), 'value' => $selectedProject->publisher],
-                            'include_rights' => ['label' => __('Include rights'), 'value' => $selectedProject->rights],
-                            'include_isbn' => ['label' => __('Include ISBN'), 'value' => $selectedProject->isbn],
+                            'include_author' => ['label' => __('Include author'), 'value' => $selectedBook->author],
+                            'include_publisher' => ['label' => __('Include publisher'), 'value' => $selectedBook->publisher],
+                            'include_rights' => ['label' => __('Include rights'), 'value' => $selectedBook->rights],
+                            'include_isbn' => ['label' => __('Include ISBN'), 'value' => $selectedBook->isbn],
                         ] as $field => $info)
                             <div>
                                 <label for="{{ $field }}" class="flex items-start gap-3">
@@ -175,8 +181,8 @@
 
                         <p class="text-xs text-content-muted">
                             {{ __('Change the underlying values on the') }}
-                            <a href="{{ route('projects.edit', $selectedProject) }}" class="text-link underline hover:text-link-hover">
-                                {{ __('project edit page') }}
+                            <a href="{{ route('books.edit', $selectedBook) }}" class="text-link underline hover:text-link-hover">
+                                {{ __('book edit page') }}
                             </a>.
                         </p>
                     </fieldset>
@@ -295,11 +301,11 @@
                                 <span class="text-sm text-content-muted">{{ ucfirst(str_replace('_', ' ', $sectionKey)) }}</span>
                                 <div class="flex gap-1">
                                     <x-icon-move-button direction="up"
-                                        :action="route('admin.data.publication-settings.section-order.move-up', ['project' => $selectedProject, 'section' => $sectionKey])"
+                                        :action="route('admin.data.publication-settings.section-order.move-up', ['book' => $selectedBook, 'section' => $sectionKey])"
                                         :disabled="$sectionKey === \App\Models\PublicationSetting::PINNED_FIRST_SECTION || $loop->index <= 1"
                                     />
                                     <x-icon-move-button direction="down"
-                                        :action="route('admin.data.publication-settings.section-order.move-down', ['project' => $selectedProject, 'section' => $sectionKey])"
+                                        :action="route('admin.data.publication-settings.section-order.move-down', ['book' => $selectedBook, 'section' => $sectionKey])"
                                         :disabled="$sectionKey === \App\Models\PublicationSetting::PINNED_FIRST_SECTION || $loop->last"
                                     />
                                 </div>
@@ -315,7 +321,7 @@
                 --}}
                 <form method="POST" action="{{ route('admin.data.export.epub') }}" class="mt-8 max-w-lg">
                     @csrf
-                    <input type="hidden" name="project_id" value="{{ $selectedProject->id }}">
+                    <input type="hidden" name="book_id" value="{{ $selectedBook->id }}">
                     <x-button variant="primary">{{ __('Download EPUB') }}</x-button>
                     <p class="mt-2 text-xs text-content-muted">{{ __('Exports using the saved configuration above.') }}</p>
                 </form>

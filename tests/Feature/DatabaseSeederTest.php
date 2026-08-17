@@ -59,6 +59,22 @@ class DatabaseSeederTest extends TestCase
     }
 
     /**
+     * `WithoutModelEvents` suppresses `Project::created`, so the hook that gives
+     * every project its first book never fires here. Each seeder creates the book
+     * itself — without it the demo projects would hold no book at all.
+     */
+    public function test_every_seeded_project_has_exactly_one_book(): void
+    {
+        $this->seed();
+        $this->seed();
+
+        foreach (Project::all() as $project) {
+            $this->assertSame(1, $project->books()->count(), "Book count for {$project->name}.");
+            $this->assertNull($project->books()->first()->name);
+        }
+    }
+
+    /**
      * MelusineSeeder{En,Fr,It} write scenes through `$chapter->scenes()->create()`,
      * but `DatabaseSeeder` uses `WithoutModelEvents`, which wraps the whole seeded
      * run in `Model::withoutEvents()`. So `Scene::booted()`'s word_count hook never

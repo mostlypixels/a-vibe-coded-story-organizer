@@ -33,10 +33,19 @@
                     <x-dropdown align="left" width="w-56" offset-classes="mt-0">
                         <x-slot name="trigger">
                             {{-- Square corners, full bar height: the block reads as part of the
-                                 bar's structure rather than a control floating on it. --}}
-                            @if ($navigation->hasProject())
+                                 bar's structure rather than a control floating on it. Guarded on
+                                 hasBook(), not hasProject() — see ProjectNavigation::$book. --}}
+                            @if ($navigation->hasBook())
                                 <button type="button" class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
-                                    {{ $navigation->project->name }}
+                                    {{-- The project sub-line only when the book has a name of its
+                                         own: a sole unnamed book (almost every project) shows one
+                                         line, not "Melusine" over "Melusine". --}}
+                                    <span class="flex flex-col items-start leading-tight">
+                                        <span>{{ $navigation->book->displayName() }}</span>
+                                        @if ($navigation->book->hasOwnName())
+                                            <span class="text-xs font-normal text-nav-content-muted">{{ $navigation->project->name }}</span>
+                                        @endif
+                                    </span>
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
                                 </button>
                             @else
@@ -51,12 +60,40 @@
                         </x-slot>
 
                         <x-slot name="content">
-                            {{-- The open project is deliberately absent: the trigger
-                                 already names it, so listing it again is a dead entry. --}}
-                            @foreach ($navigation->otherProjects() as $otherProject)
-                                <x-dropdown-link :href="route('projects.show', $otherProject)">
-                                    {{ $otherProject->name }}
+                            {{-- Two levels: the open project's own books first — the open one
+                                 stays listed and marked active, unlike the open project itself
+                                 (the trigger already names it) — a book list with a hole reads
+                                 as broken. Then every other project as an unlinked heading with
+                                 its (capped) books indented beneath.
+
+                                 "Active" here matches routeBook, not the fallback-including
+                                 book: on the dashboard, $navigation->book still names a book (it
+                                 has to, to build the Story links), but no book page is open, so
+                                 nothing in this list may claim to be current. --}}
+                            @if ($navigation->hasBook())
+                                @foreach ($navigation->projectBooks() as $projectBook)
+                                    <x-dropdown-link :href="route('books.show', $projectBook)" :active="$projectBook->is($navigation->routeBook)">
+                                        {{ $projectBook->displayName() }}
+                                    </x-dropdown-link>
+                                @endforeach
+
+                                <x-dropdown-link :href="route('projects.books.index', $navigation->project)" :active="$navigation->booksActive">
+                                    {{ __('Manage books') }} &rarr;
                                 </x-dropdown-link>
+
+                                <div class="border-t border-border"></div>
+                            @endif
+
+                            @foreach ($navigation->otherProjects() as $otherProject)
+                                <x-navigation.section-heading>{{ $otherProject->name }}</x-navigation.section-heading>
+
+                                @foreach ($otherProject->books as $otherBook)
+                                    <div class="pl-4">
+                                        <x-dropdown-link :href="route('books.show', $otherBook)">
+                                            {{ $otherBook->displayName() }}
+                                        </x-dropdown-link>
+                                    </div>
+                                @endforeach
                             @endforeach
 
                             <div class="border-t border-border"></div>
@@ -124,22 +161,34 @@
 
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        {{-- Mobile half of the picker: the same capped list, laid out as rows
-             rather than a panel. The open project stays visible here (marked
+        {{-- Mobile half of the picker: the same two levels, laid out as rows
+             rather than a panel. The open book stays visible here (marked
              active) because there is no trigger naming it. --}}
         <div class="px-4 py-3 border-b border-nav-raised">
             <div class="text-xs uppercase tracking-wide text-nav-content-muted mb-2">{{ __('Project') }}</div>
 
-            @if ($navigation->hasProject())
-                <x-responsive-nav-link :href="route('projects.show', $navigation->project)" :active="true">
-                    {{ $navigation->project->name }}
+            @if ($navigation->hasBook())
+                @foreach ($navigation->projectBooks() as $projectBook)
+                    <x-responsive-nav-link :href="route('books.show', $projectBook)" :active="$projectBook->is($navigation->routeBook)">
+                        {{ $projectBook->displayName() }}
+                    </x-responsive-nav-link>
+                @endforeach
+
+                <x-responsive-nav-link :href="route('projects.books.index', $navigation->project)" :active="$navigation->booksActive">
+                    {{ __('Manage books') }} &rarr;
                 </x-responsive-nav-link>
             @endif
 
             @foreach ($navigation->otherProjects() as $otherProject)
-                <x-responsive-nav-link :href="route('projects.show', $otherProject)">
-                    {{ $otherProject->name }}
-                </x-responsive-nav-link>
+                <x-navigation.section-heading>{{ $otherProject->name }}</x-navigation.section-heading>
+
+                @foreach ($otherProject->books as $otherBook)
+                    <div class="pl-4">
+                        <x-responsive-nav-link :href="route('books.show', $otherBook)">
+                            {{ $otherBook->displayName() }}
+                        </x-responsive-nav-link>
+                    </div>
+                @endforeach
             @endforeach
 
             <x-responsive-nav-link :href="route('dashboard')">{{ __('All projects') }} &rarr;</x-responsive-nav-link>

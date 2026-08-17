@@ -197,7 +197,7 @@ class ProjectImporterTest extends TestCase
         $project = $import->project;
 
         // Snapshot the committed story tree: a resume must NOT recreate it.
-        $actIds = $project->acts()->pluck('id')->all();
+        $actIds = $project->acts()->pluck('acts.id')->all();
         $chapterIds = $project->acts()->firstOrFail()->chapters()->pluck('id')->all();
         $sceneIds = $project->acts()->firstOrFail()->chapters()->firstOrFail()->scenes()->pluck('id')->all();
 
@@ -208,7 +208,7 @@ class ProjectImporterTest extends TestCase
         $this->assertNull($import->failure_message);
 
         // The story tree is byte-for-byte the same rows — no duplicates.
-        $this->assertSame($actIds, $project->acts()->pluck('id')->all());
+        $this->assertSame($actIds, $project->acts()->pluck('acts.id')->all());
         $this->assertSame($chapterIds, $project->acts()->firstOrFail()->chapters()->pluck('id')->all());
         $this->assertSame($sceneIds, $project->acts()->firstOrFail()->chapters()->firstOrFail()->scenes()->pluck('id')->all());
         $this->assertSame(1, Project::count());
@@ -330,7 +330,7 @@ class ProjectImporterTest extends TestCase
         $zip->open($zipPath, ZipArchive::OVERWRITE);
 
         $zip->addFromString('data/manifest.json', json_encode([
-            'version' => 3, 'project_id' => 900,
+            'version' => 4, 'project_id' => 900,
             'exported_at' => '2026-07-13T00:00:00+00:00', 'includes_media' => true,
         ]));
 
@@ -353,14 +353,18 @@ class ProjectImporterTest extends TestCase
             'is_fixed' => true, 'project_id' => 900, 'plotline_ids' => [700],
         ]));
 
-        // Story: one act, one chapter, two scenes.
-        $zip->addFromString('data/acts/100-act-one/act.json', json_encode([
-            'id' => 100, 'name' => 'Act One', 'position' => 1, 'project_id' => 900,
+        // Story: one book, one act, one chapter, two scenes.
+        $bookDir = 'data/books/50-fixture-book';
+        $zip->addFromString("{$bookDir}/book.json", json_encode([
+            'id' => 50, 'name' => null, 'position' => 1, 'project_id' => 900,
         ]));
-        $zip->addFromString('data/acts/100-act-one/chapters/200-chapter-one/chapter.json', json_encode([
+        $zip->addFromString("{$bookDir}/acts/100-act-one/act.json", json_encode([
+            'id' => 100, 'name' => 'Act One', 'position' => 1, 'book_id' => 50,
+        ]));
+        $zip->addFromString("{$bookDir}/acts/100-act-one/chapters/200-chapter-one/chapter.json", json_encode([
             'id' => 200, 'name' => 'Chapter One', 'position' => 1, 'act_id' => 100,
         ]));
-        $sceneDir = 'data/acts/100-act-one/chapters/200-chapter-one/scenes';
+        $sceneDir = "{$bookDir}/acts/100-act-one/chapters/200-chapter-one/scenes";
         $zip->addFromString("{$sceneDir}/300-scene-b/scene.json", json_encode([
             'id' => 300, 'name' => 'Scene B', 'position' => 2, 'status' => 'draft',
             'chapter_id' => 200, 'event_id' => 800, 'mentioned_event_ids' => [801],

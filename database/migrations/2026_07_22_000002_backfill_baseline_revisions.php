@@ -5,6 +5,7 @@ use App\Models\Revision;
 use App\Services\RevisionRecorder;
 use App\Support\AutosavableFields;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Seeds a `baseline` revision (App\Enums\RevisionOrigin::Baseline) for every
@@ -35,9 +36,16 @@ return new class extends Migration
         $recorder = app(RevisionRecorder::class);
 
         foreach (AutosavableFields::REGISTRY as [$modelClass, $fields]) {
+            // The registry is read live, so it can name a model whose table a
+            // LATER migration creates. Such a table holds no rows at this point
+            // in the history, and every row written after it does get its
+            // baseline from the live write path.
+            if (! Schema::hasTable((new $modelClass)->getTable())) {
+                continue;
+            }
+
             // chunkById rather than all()/each(): this walks every row of
-            // every registered model (Project, Act, Chapter, Plotline, Event,
-            // Scene, CodexEntry) across an entire existing install, so a
+            // every registered model across an entire existing install, so a
             // naive eager load risks memory exhaustion on a large project
             // set.
             $modelClass::query()->chunkById(200, function ($entities) use ($recorder, $fields) {

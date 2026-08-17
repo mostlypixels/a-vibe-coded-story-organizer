@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\CodexEntryType;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -23,6 +24,12 @@ use Illuminate\Support\Facades\Storage;
  * latest of each. Ordering is by `updated_at` — ANY write, not only a prose
  * change — because the lists answer "where was I last working?".
  *
+ * The manuscript methods take a `Project` **or** a `Book`: the Story landing
+ * page is book-scoped, while the project dashboard stays project-wide. Both
+ * models answer `acts()`, `chapterQuery()` and `sceneQuery()`, so the scope is
+ * the only thing that changes. Plotlines, events and the codex are shared by
+ * every book, so they take a project only.
+ *
  * > [!WARNING]
  * > Entities with no `updated_at` cannot appear here: Tag and CodexAlias carry
  * > no timestamps, and a Revision is immutable with only a `created_at`.
@@ -30,10 +37,10 @@ use Illuminate\Support\Facades\Storage;
 class RecentlyEdited
 {
     /** @return Collection<int, RecentItem> */
-    public function acts(Project $project, int $limit = RecentItem::LIMIT): Collection
+    public function acts(Project|Book $scope, int $limit = RecentItem::LIMIT): Collection
     {
-        return $project->acts()
-            ->latest('updated_at')
+        return $scope->acts()
+            ->latest('acts.updated_at')
             ->limit($limit)
             ->get()
             ->map(fn (Act $act) => new RecentItem(
@@ -44,9 +51,9 @@ class RecentlyEdited
     }
 
     /** @return Collection<int, RecentItem> */
-    public function chapters(Project $project, int $limit = RecentItem::LIMIT): Collection
+    public function chapters(Project|Book $scope, int $limit = RecentItem::LIMIT): Collection
     {
-        return $project->chapterQuery()
+        return $scope->chapterQuery()
             ->with('act')
             ->latest('updated_at')
             ->limit($limit)
@@ -63,9 +70,9 @@ class RecentlyEdited
     }
 
     /** @return Collection<int, RecentItem> */
-    public function scenes(Project $project, int $limit = RecentItem::LIMIT): Collection
+    public function scenes(Project|Book $scope, int $limit = RecentItem::LIMIT): Collection
     {
-        return $project->sceneQuery()
+        return $scope->sceneQuery()
             ->with('chapter.act')
             ->latest('updated_at')
             ->limit($limit)

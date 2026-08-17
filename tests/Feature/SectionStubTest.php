@@ -26,7 +26,7 @@ class SectionStubTest extends TestCase
     public static function stubRouteNames(): array
     {
         return [
-            'story' => ['projects.story.home'],
+            'story' => ['books.story.home'],
             'timeline' => ['projects.timeline.home'],
             'codex' => ['projects.codex.home'],
             'tools' => ['projects.tools.home'],
@@ -68,10 +68,10 @@ class SectionStubTest extends TestCase
     public function test_the_moved_story_overview_still_renders_at_its_new_url(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
-            ->get(route('projects.story.overview', $project))
+            ->get(route('books.story.overview', $book))
             ->assertOk()
             ->assertSee('Story Overview'); // the page heading keeps the section name
     }

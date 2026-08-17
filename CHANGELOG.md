@@ -17,6 +17,20 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-18 — Multiple books per project (#114)
+
+### Added
+
+- A project can hold several books, each with its own acts, chapters and scenes.
+- An act can move to another book of the same project, keeping its chapters and scenes.
+
+### Changed
+
+- Act, chapter and scene numbering restarts in each book.
+- Ebook export produces one file per book, with its own cover, publication settings and appendix.
+- Rights, dedication, acknowledgements, preface and postface belong to the book, not the project.
+- Archives exported before this change can no longer be imported; only manifest version 4 is accepted.
+
 ## 2026-08-16 — No revisions in import/export (#112)
 
 ### Removed

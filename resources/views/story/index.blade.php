@@ -1,12 +1,12 @@
 <x-app-layout>
     <x-page-heading>
-        {{ $project->name }} &mdash; {{ __('Story Overview') }}
+        {{ $book->displayName() }} &mdash; {{ __('Story Overview') }}
     </x-page-heading>
 
     <div class="space-y-6">
         <div class="flex items-center justify-end gap-4">
-            @can('update', $project)
-                <x-story-mode-switch :project="$project" :mode="$project->overview_render_mode" />
+            @can('update', $book->project)
+                <x-story-mode-switch :book="$book" :mode="$book->overview_render_mode" />
             @endcan
             <x-word-count :count="$wordCount" />
         </div>

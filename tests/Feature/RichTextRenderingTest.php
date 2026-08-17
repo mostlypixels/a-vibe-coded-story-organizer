@@ -32,8 +32,8 @@ class RichTextRenderingTest extends TestCase
     public function test_a_shared_scene_renders_allowed_formatting_but_no_script(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create(['description' => self::MALICIOUS_HTML]);
         $scene->forceFill([
@@ -54,8 +54,8 @@ class RichTextRenderingTest extends TestCase
     public function test_a_shared_scene_renders_the_manuscript_face_on_its_prose(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create(['description' => '<p>text</p>']);
         $scene->forceFill([
@@ -71,14 +71,14 @@ class RichTextRenderingTest extends TestCase
     public function test_acts_index_renders_an_escaped_text_excerpt_not_raw_html(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        Act::factory()->for($project)->create([
+        [, $book] = $this->projectWithBook($user);
+        Act::factory()->for($book)->create([
             'name' => 'An act with a rich description',
             'description' => self::MALICIOUS_HTML,
         ]);
 
         $this->actingAs($user)
-            ->get(route('projects.acts.index', $project))
+            ->get(route('books.acts.index', $book))
             ->assertOk()
             // The excerpt strips tags, so the readable text shows...
             ->assertSee('bold text')

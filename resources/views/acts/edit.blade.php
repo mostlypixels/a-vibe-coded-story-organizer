@@ -67,6 +67,29 @@
                     {{ __('Delete Act') }}
                 </x-edit-actions>
             @endif
+
+            @if ($destinationBooks->isNotEmpty())
+                <x-card :title="__('Move to another book')">
+                    <p class="text-sm text-content-muted">{{ __('Move this act, with its chapters and scenes, to another book in this project.') }}</p>
+
+                    <form method="POST" action="{{ route('acts.move-to-book', $act) }}" class="mt-3 space-y-3">
+                        @csrf
+                        @method('PATCH')
+
+                        <div>
+                            <x-input-label for="move-to-book-id" :value="__('Destination book')" class="sr-only" />
+                            <x-select id="move-to-book-id" name="book_id" class="block w-full sm:text-sm" required>
+                                @foreach ($destinationBooks as $destinationBook)
+                                    <option value="{{ $destinationBook->id }}">{{ $destinationBook->displayName() }}</option>
+                                @endforeach
+                            </x-select>
+                            <x-input-error :messages="$errors->get('book_id')" class="mt-2" />
+                        </div>
+
+                        <x-button variant="secondary" type="submit" class="w-full">{{ __('Move act') }}</x-button>
+                    </form>
+                </x-card>
+            @endif
         </x-slot:sidebar>
     </x-edit-layout>
 </x-app-layout>

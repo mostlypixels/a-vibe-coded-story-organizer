@@ -5,9 +5,8 @@ namespace Tests\Unit;
 use App\Enums\ChapterTitleFormat;
 use App\Enums\DividerType;
 use App\Enums\TableOfContentsDepth;
-use App\Models\Project;
+use App\Models\Book;
 use App\Models\PublicationSetting;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,11 +16,11 @@ class PublicationSettingTest extends TestCase
 
     public function test_default_attributes_match_overview_defaults(): void
     {
-        $project = Project::factory()->create();
-        $setting = PublicationSetting::factory()->create(['project_id' => $project->id]);
+        $book = Book::factory()->create();
+        $setting = PublicationSetting::factory()->create(['book_id' => $book->id]);
 
         // Metadata toggles default to true
-        $this->assertTrue($setting->include_project_cover);
+        $this->assertTrue($setting->include_book_cover);
         $this->assertTrue($setting->include_author);
         $this->assertTrue($setting->include_publisher);
         $this->assertTrue($setting->include_rights);
@@ -52,9 +51,9 @@ class PublicationSettingTest extends TestCase
 
     public function test_enum_casts_round_trip(): void
     {
-        $project = Project::factory()->create();
+        $book = Book::factory()->create();
         $setting = PublicationSetting::factory()->create([
-            'project_id' => $project->id,
+            'book_id' => $book->id,
             'chapter_title_format' => 'number_title',
             'table_of_contents_depth' => 'scenes',
             'divider_type' => 'decorative',
@@ -74,9 +73,9 @@ class PublicationSettingTest extends TestCase
 
     public function test_json_casts_round_trip(): void
     {
-        $project = Project::factory()->create();
+        $book = Book::factory()->create();
         $setting = PublicationSetting::factory()->create([
-            'project_id' => $project->id,
+            'book_id' => $book->id,
             'appendix_entry_types' => ['character', 'location'],
         ]);
 
@@ -86,45 +85,42 @@ class PublicationSettingTest extends TestCase
         $this->assertSame(['character', 'location'], $reloaded->appendix_entry_types);
     }
 
-    public function test_public_project_relation(): void
+    public function test_public_book_relation(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $setting = PublicationSetting::factory()->create(['project_id' => $project->id]);
+        [, $book] = $this->projectWithBook();
+        $setting = PublicationSetting::factory()->create(['book_id' => $book->id]);
 
         $reloaded = PublicationSetting::find($setting->id);
 
-        $this->assertInstanceOf(Project::class, $reloaded->project);
-        $this->assertSame($project->id, $reloaded->project->id);
+        $this->assertInstanceOf(Book::class, $reloaded->book);
+        $this->assertSame($book->id, $reloaded->book->id);
     }
 
     public function test_publication_setting_or_default_returns_unsaved_default_when_no_row_exists(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook();
 
-        $setting = $project->publicationSettingOrDefault();
+        $setting = $book->publicationSettingOrDefault();
 
         $this->assertInstanceOf(PublicationSetting::class, $setting);
         $this->assertNull($setting->id); // Unsaved
-        $this->assertSame($project->id, $setting->project_id);
+        $this->assertSame($book->id, $setting->book_id);
 
         // Default values are set
-        $this->assertTrue($setting->include_project_cover);
+        $this->assertTrue($setting->include_book_cover);
         $this->assertFalse($setting->include_scene_titles);
         $this->assertSame(ChapterTitleFormat::ChapterNumberTitle, $setting->chapter_title_format);
     }
 
     public function test_publication_setting_or_default_returns_persisted_row_when_it_exists(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook();
         $persistedSetting = PublicationSetting::factory()->create([
-            'project_id' => $project->id,
+            'book_id' => $book->id,
             'include_scene_titles' => true,
         ]);
 
-        $setting = $project->publicationSettingOrDefault();
+        $setting = $book->publicationSettingOrDefault();
 
         $this->assertInstanceOf(PublicationSetting::class, $setting);
         $this->assertNotNull($setting->id); // Saved

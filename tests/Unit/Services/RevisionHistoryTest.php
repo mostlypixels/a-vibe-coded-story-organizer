@@ -3,6 +3,7 @@
 namespace Tests\Unit\Services;
 
 use App\Enums\RevisionOrigin;
+use App\Models\Book;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Models\User;
@@ -27,6 +28,8 @@ class RevisionHistoryTest extends TestCase
 
     private RevisionHistory $history;
 
+    private Book $book;
+
     private Project $project;
 
     private User $user;
@@ -37,18 +40,18 @@ class RevisionHistoryTest extends TestCase
 
         $this->history = app(RevisionHistory::class);
         $this->user = User::factory()->create();
-        $this->project = Project::factory()->for($this->user)->create();
+        [$this->project, $this->book] = $this->projectWithBook($this->user);
     }
 
     /**
-     * One revision row against $this->project, with everything a test does not
+     * One revision row against $this->book, with everything a test does not
      * care about defaulted.
      */
     private function revision(array $attributes = []): Revision
     {
         return Revision::factory()->create([
-            'revisionable_type' => Project::class,
-            'revisionable_id' => $this->project->id,
+            'revisionable_type' => Book::class,
+            'revisionable_id' => $this->book->id,
             'project_id' => $this->project->id,
             'user_id' => $this->user->id,
             'field' => 'description',
@@ -68,7 +71,7 @@ class RevisionHistoryTest extends TestCase
         $this->revision(['save_id' => $saveId, 'field' => 'description', 'summary_html' => '<ins>new</ins>', 'change_count' => 2]);
         $this->revision(['save_id' => $saveId, 'field' => 'dedication', 'summary_html' => '<ins>for her</ins>', 'change_count' => 1]);
 
-        $page = $this->history->forEntity($this->project);
+        $page = $this->history->forEntity($this->book);
 
         $this->assertCount(1, $page->items());
 
@@ -95,7 +98,7 @@ class RevisionHistoryTest extends TestCase
         $third = $this->revision(['save_id' => $this->saveId(), 'created_at' => $moment]);
         $older = $this->revision(['save_id' => $this->saveId(), 'created_at' => $moment->copy()->subDay()]);
 
-        $saveIds = collect($this->history->forEntity($this->project)->items())->pluck('saveId')->all();
+        $saveIds = collect($this->history->forEntity($this->book)->items())->pluck('saveId')->all();
 
         $this->assertSame(
             [$third->save_id, $second->save_id, $first->save_id, $older->save_id],
@@ -108,7 +111,7 @@ class RevisionHistoryTest extends TestCase
         $older = $this->revision(['save_id' => $this->saveId(), 'created_at' => now()->subDays(2)]);
         $newer = $this->revision(['save_id' => $this->saveId(), 'created_at' => now()->subDay()]);
 
-        $points = collect($this->history->forEntity($this->project)->items());
+        $points = collect($this->history->forEntity($this->book)->items());
 
         $this->assertSame($older->save_id, $points[0]->previousSaveId);
         $this->assertTrue($points[0]->hasPrevious());
@@ -125,7 +128,7 @@ class RevisionHistoryTest extends TestCase
         $this->revision(['save_id' => $mixed, 'field' => 'dedication']);
         $this->revision(['save_id' => $this->saveId(), 'field' => 'dedication', 'created_at' => now()->subDay()]);
 
-        $points = collect($this->history->forEntity($this->project, ['field' => 'description'])->items());
+        $points = collect($this->history->forEntity($this->book, ['field' => 'description'])->items());
 
         // Only the save point that touched description, and only that entry of it.
         $this->assertCount(1, $points);
@@ -140,7 +143,7 @@ class RevisionHistoryTest extends TestCase
         $this->revision(['save_id' => $labelled, 'field' => 'dedication', 'label' => 'Saved 24 July 10:43']);
         $this->revision(['save_id' => $this->saveId(), 'label' => null, 'created_at' => now()->subDay()]);
 
-        $points = collect($this->history->forEntity($this->project, ['label' => '24 July'])->items());
+        $points = collect($this->history->forEntity($this->book, ['label' => '24 July'])->items());
 
         $this->assertCount(1, $points);
         $this->assertSame('Saved 24 July 10:43', $points[0]->label);
@@ -153,7 +156,7 @@ class RevisionHistoryTest extends TestCase
         $this->revision(['save_id' => $manual, 'origin' => RevisionOrigin::Manual, 'label' => 'Checkpoint']);
         $this->revision(['save_id' => $this->saveId(), 'origin' => RevisionOrigin::Automatic, 'created_at' => now()->subDay()]);
 
-        $points = collect($this->history->forEntity($this->project, ['manualOnly' => true])->items());
+        $points = collect($this->history->forEntity($this->book, ['manualOnly' => true])->items());
 
         $this->assertCount(1, $points);
         $this->assertSame($manual, $points[0]->saveId);
@@ -168,7 +171,7 @@ class RevisionHistoryTest extends TestCase
         $this->revision(['save_id' => $mixed, 'field' => 'description', 'origin' => RevisionOrigin::Automatic]);
         $this->revision(['save_id' => $mixed, 'field' => 'dedication', 'origin' => RevisionOrigin::Manual]);
 
-        $points = collect($this->history->forEntity($this->project, ['manualOnly' => true])->items());
+        $points = collect($this->history->forEntity($this->book, ['manualOnly' => true])->items());
 
         $this->assertCount(1, $points);
         $this->assertCount(2, $points[0]->entries);
@@ -185,7 +188,7 @@ class RevisionHistoryTest extends TestCase
         // Right field and origin, wrong label.
         $this->revision(['save_id' => $this->saveId(), 'field' => 'description', 'origin' => RevisionOrigin::Manual, 'label' => 'Something else', 'created_at' => now()->subDays(3)]);
 
-        $points = collect($this->history->forEntity($this->project, [
+        $points = collect($this->history->forEntity($this->book, [
             'field' => 'description',
             'label' => 'rewrite',
             'manualOnly' => true,
@@ -200,7 +203,7 @@ class RevisionHistoryTest extends TestCase
         $this->revision(['save_id' => $this->saveId(), 'created_at' => now()->subDay()]);
         $current = $this->revision(['save_id' => $this->saveId(), 'created_at' => now()]);
 
-        $points = collect($this->history->forEntity($this->project)->items());
+        $points = collect($this->history->forEntity($this->book)->items());
 
         $this->assertTrue($points[0]->isCurrent);
         $this->assertSame($current->save_id, $points[0]->saveId);
@@ -216,7 +219,7 @@ class RevisionHistoryTest extends TestCase
         $this->revision(['save_id' => $older, 'field' => 'description', 'created_at' => now()->subDay()]);
         $this->revision(['save_id' => $this->saveId(), 'field' => 'dedication', 'created_at' => now()]);
 
-        $points = collect($this->history->forEntity($this->project, ['field' => 'description'])->items());
+        $points = collect($this->history->forEntity($this->book, ['field' => 'description'])->items());
 
         $this->assertCount(1, $points);
         $this->assertSame($older, $points[0]->saveId);
@@ -229,7 +232,7 @@ class RevisionHistoryTest extends TestCase
         $this->revision(['save_id' => $saveId, 'field' => 'description', 'origin' => RevisionOrigin::Automatic]);
         $this->revision(['save_id' => $saveId, 'field' => 'dedication', 'origin' => RevisionOrigin::Manual]);
 
-        $points = collect($this->history->forEntity($this->project)->items());
+        $points = collect($this->history->forEntity($this->book)->items());
 
         $this->assertSame(RevisionOrigin::Manual, $points[0]->origin);
         $this->assertFalse($points[0]->isBaseline());
@@ -254,7 +257,7 @@ class RevisionHistoryTest extends TestCase
     {
         $this->revision(['save_id' => $this->saveId(), 'origin' => RevisionOrigin::Baseline, 'summary_html' => null, 'change_count' => 0]);
 
-        $point = collect($this->history->forEntity($this->project)->items())[0];
+        $point = collect($this->history->forEntity($this->book)->items())[0];
 
         $this->assertTrue($point->isBaseline());
         $this->assertNull($point->entries[0]->summaryHtml);
@@ -278,8 +281,8 @@ class RevisionHistoryTest extends TestCase
 
         $newestFirst = array_reverse($saveIds);
 
-        $first = $this->history->forEntity($this->project, page: 1);
-        $second = $this->history->forEntity($this->project, page: 2);
+        $first = $this->history->forEntity($this->book, page: 1);
+        $second = $this->history->forEntity($this->book, page: 2);
 
         // Three rendered, not four: the fourth group was fetched only so the
         // third row could name the save point before it.
@@ -304,7 +307,7 @@ class RevisionHistoryTest extends TestCase
             $this->revision(['save_id' => $this->saveId(), 'created_at' => now()->subDays(5 - $index)]);
         }
 
-        $points = $this->history->savePoints($this->project);
+        $points = $this->history->savePoints($this->book);
 
         $this->assertCount(5, $points);
         $this->assertTrue($points[0]->isCurrent);
@@ -316,31 +319,31 @@ class RevisionHistoryTest extends TestCase
         // The queries descend from the relation to its underlying builder to be
         // able to group and select; if that ever dropped the morph constraints,
         // every entity would show every other one's history.
-        $other = Project::factory()->for($this->user)->create();
+        $other = Book::factory()->for($this->project)->create();
         $mine = $this->revision(['save_id' => $this->saveId()]);
 
         Revision::factory()->create([
-            'revisionable_type' => Project::class,
+            'revisionable_type' => Book::class,
             'revisionable_id' => $other->id,
-            'project_id' => $other->id,
+            'project_id' => $this->project->id,
             'user_id' => $this->user->id,
             'save_id' => $this->saveId(),
         ]);
 
-        $points = collect($this->history->forEntity($this->project)->items());
+        $points = collect($this->history->forEntity($this->book)->items());
 
         $this->assertCount(1, $points);
         $this->assertSame($mine->save_id, $points[0]->saveId);
-        $this->assertSame(1, $this->history->forEntity($this->project)->total());
+        $this->assertSame(1, $this->history->forEntity($this->book)->total());
     }
 
     public function test_an_entity_with_no_history_pages_cleanly(): void
     {
-        $page = $this->history->forEntity($this->project);
+        $page = $this->history->forEntity($this->book);
 
         $this->assertSame(0, $page->total());
         $this->assertCount(0, $page->items());
-        $this->assertCount(0, $this->history->savePoints($this->project));
+        $this->assertCount(0, $this->history->savePoints($this->book));
     }
 
     public function test_no_query_this_service_runs_ever_selects_a_revisions_value(): void
@@ -357,8 +360,8 @@ class RevisionHistoryTest extends TestCase
             }
         });
 
-        $this->history->forEntity($this->project, ['field' => 'description']);
-        $this->history->savePoints($this->project);
+        $this->history->forEntity($this->book, ['field' => 'description']);
+        $this->history->savePoints($this->book);
 
         $this->assertNotEmpty($selects, 'the listener caught nothing — the assertion below would pass vacuously');
 

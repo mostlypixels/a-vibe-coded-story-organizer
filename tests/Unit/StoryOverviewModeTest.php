@@ -10,7 +10,7 @@ class StoryOverviewModeTest extends TestCase
     public function test_labels(): void
     {
         $this->assertSame('One chapter per page', StoryOverviewMode::Chapter->label());
-        $this->assertSame('Entire book', StoryOverviewMode::Book->label());
+        $this->assertSame('Whole book', StoryOverviewMode::Whole->label());
     }
 
     public function test_default_is_chapter(): void

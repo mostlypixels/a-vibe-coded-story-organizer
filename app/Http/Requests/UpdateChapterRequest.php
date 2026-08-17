@@ -11,7 +11,7 @@ class UpdateChapterRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('chapter')->act->project);
+        return $this->user()->can('update', $this->route('chapter')->act->book->project);
     }
 
     /**
@@ -23,7 +23,9 @@ class UpdateChapterRequest extends FormRequest
             'act_id' => [
                 'required',
                 'integer',
-                Rule::exists('acts', 'id')->where('project_id', $this->route('chapter')->act->project_id),
+                // A chapter moves between the acts of its own book. Moving a whole
+                // act to another book is the act edit page's job.
+                Rule::exists('acts', 'id')->where('book_id', $this->route('chapter')->act->book_id),
             ],
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('chapter', 'description'),

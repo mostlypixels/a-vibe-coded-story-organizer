@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Act;
 use App\Models\Chapter;
-use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,8 +21,8 @@ class LineEndingNormalizationTest extends TestCase
 
     private function sceneFor(User $user): Scene
     {
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         return Scene::factory()->for($chapter)->create(['contents' => 'Old contents.']);

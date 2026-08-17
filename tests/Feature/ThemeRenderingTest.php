@@ -42,7 +42,7 @@ class ThemeRenderingTest extends TestCase
     {
         $user = User::factory()->create();
         $scene = Scene::factory()->create();
-        $scene->chapter->act->project->update(['user_id' => $user->id]);
+        $scene->chapter->act->book->project->update(['user_id' => $user->id]);
         $scene->forceFill([
             'share_token' => 'theme-token',
             'share_expires_at' => now()->addDay(),
@@ -104,7 +104,7 @@ class ThemeRenderingTest extends TestCase
     {
         $user = User::factory()->create();
         $scene = Scene::factory()->create();
-        $scene->chapter->act->project->update(['user_id' => $user->id]);
+        $scene->chapter->act->book->project->update(['user_id' => $user->id]);
         $scene->forceFill([
             'share_token' => 'font-token',
             'share_expires_at' => now()->addDay(),
@@ -136,7 +136,7 @@ class ThemeRenderingTest extends TestCase
     {
         $owner = User::factory()->create(['ui_font' => 'atkinson']);
         $scene = Scene::factory()->create();
-        $scene->chapter->act->project->update(['user_id' => $owner->id]);
+        $scene->chapter->act->book->project->update(['user_id' => $owner->id]);
         $scene->forceFill([
             'share_token' => 'font-default-token',
             'share_expires_at' => now()->addDay(),

@@ -359,7 +359,19 @@ entity type → entity → field — of everything in the project that has revis
 - `App\Services\ProjectRevisionsBrowser` (following the `ProjectSearch` pattern) runs one
   grouped query over `revisions.project_id` for `(type, id, field)` triples with counts, then
   one small name query per present type — and **never selects `value`**.
+- **The manuscript types gain a book level**: act, chapter and scene entities group under the
+  book that owns them, in book `position` order, resolved by one extra query per type. The
+  browser itself stays **project**-scoped — books, projects, plotlines, events and codex
+  entries render ungrouped, because they are not a book's.
 - Only revised entities/fields appear.
+- **Every heading comes from `revisionDisplayName()`**, never from the display column read
+  raw. `Book` overrides it with `displayName()`, so an unnamed book shows its project's name
+  instead of `#<id>` — in the sidebar, the history page and the compare page alike.
+
+> [!WARNING]
+> A slug in `AutosavableFields::REGISTRY` but not in `ProjectRevisionsBrowser::GROUPS` breaks
+> no test. Its history pages resolve, but nothing in the browser links to them. Add the
+> `GROUPS` row whenever you register a new autosaving type.
 
 Bounded three further ways so a heavily-revised project stays navigable: a **count badge**
 per group heading; groups **default-collapse** (only the one holding the current entity

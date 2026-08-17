@@ -10,10 +10,11 @@ use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\DestroyChapterRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
+use App\Models\Book;
 use App\Models\Chapter;
-use App\Models\Project;
 use App\Services\CoverImageService;
 use App\Support\StoryNumbering;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,18 +31,19 @@ class ChapterController extends Controller
 
     public function __construct(private CoverImageService $coverImageService) {}
 
-    public function index(Request $request, Project $project): View
+    public function index(Request $request, Book $book): View
     {
-        $this->authorize('view', $project);
+        $this->authorize('view', $book->project);
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
-        $chapters = $project->chapterQuery()
-            // Joined so the `#` column can sort by story order (act order, then position
-            // within the act). Grouping by `act_id` instead — as this did — only matches
-            // story order until someone reorders an act. Because `acts` carries `name` and
-            // `position` columns of its own, every column below is table-qualified: the
-            // join makes bare `name`/`position` ambiguous (see Project::chapterQuery()).
+        $chapters = $book->chapterQuery()
+            // Joined so the `#` column can sort by story order (act order, then
+            // position within the act). Grouping by `act_id` instead — as this did —
+            // only matches story order until someone reorders an act. Because `acts`
+            // carries `name` and `position` columns of its own, every column below is
+            // table-qualified: the join makes bare `name`/`position` ambiguous (see
+            // Book::chapterQuery()).
             ->join('acts', 'acts.id', '=', 'chapters.act_id')
             ->with('act')
             ->withCount('scenes')
@@ -75,59 +77,60 @@ class ChapterController extends Controller
             $chapter->word_count ??= 0;
         }
 
-        // The delete-with-move dialog on each row needs the full set of the project's
+        // The delete-with-move dialog on each row needs the full set of the book's
         // chapters as move destinations, independent of the current search/act filter
         // above (moving is never limited to what the filter happens to match).
-        $destinationChapters = $project->chapterQuery()
+        $destinationChapters = $book->chapterQuery()
             ->orderBy('act_id')
             ->orderBy('position')
             ->get(['id', 'name', 'act_id']);
 
         return view('chapters.index', [
-            'project' => $project->load('acts'),
+            'book' => $book,
+            'acts' => $this->actsFor($book),
             'chapters' => $chapters,
             'destinationChapters' => $destinationChapters,
             'sort' => $sort,
             'direction' => $direction,
-            // Built from the whole project, never the filtered/paginated $chapters
+            // Built from the whole book, never the filtered/paginated $chapters
             // above — a chapters list filtered to one act must still start counting
-            // from that act's true project-wide number.
-            'numbering' => StoryNumbering::forProject($project),
+            // from that act's true book-wide number.
+            'numbering' => StoryNumbering::forBook($book),
         ]);
     }
 
-    public function create(Project $project): View
+    public function create(Book $book): View
     {
-        $this->authorize('update', $project);
+        $this->authorize('update', $book->project);
 
-        return view('chapters.create', ['project' => $project->load('acts')]);
+        return view('chapters.create', ['book' => $book, 'acts' => $this->actsFor($book)]);
     }
 
-    public function store(StoreChapterRequest $request, Project $project): RedirectResponse
+    public function store(StoreChapterRequest $request, Book $book): RedirectResponse
     {
         $validated = $request->validated();
-        $act = $project->acts()->findOrFail($validated['act_id']);
+        $act = $book->acts()->findOrFail($validated['act_id']);
 
         $act->chapters()->create(collect($validated)->except('act_id')->all());
 
-        return redirect()->route('projects.chapters.index', $project);
+        return redirect()->route('books.chapters.index', $book);
     }
 
     public function edit(Chapter $chapter): View
     {
-        $this->authorize('update', $chapter->act->project);
+        $book = $chapter->act->book;
 
-        $project = $chapter->act->project;
+        $this->authorize('update', $book->project);
 
         // Feeds the delete-with-move dialog's honest cascade summary: a chapter is a
         // one-level entity, so only its direct children (scenes) are counted.
         $chapter->loadCount('scenes');
 
-        // Every *other* chapter in the project is a candidate destination for moving
-        // this chapter's scenes. An empty list collapses the dialog to "delete
-        // everything".
-        $destinations = $project->chapterQuery()
-            ->where('id', '!=', $chapter->id)
+        // Every *other* chapter in the same book is a candidate destination for
+        // moving this chapter's scenes. An empty list collapses the dialog to
+        // "delete everything".
+        $destinations = $book->chapterQuery()
+            ->whereKeyNot($chapter->getKey())
             ->orderBy('act_id')
             ->orderBy('position')
             ->get();
@@ -139,9 +142,10 @@ class ChapterController extends Controller
 
         return view('chapters.edit', [
             'chapter' => $chapter,
-            'project' => $project->load('acts'),
+            'book' => $book,
+            'acts' => $this->actsFor($book),
             'destinations' => $destinations,
-            'numbering' => StoryNumbering::forProject($project),
+            'numbering' => StoryNumbering::forBook($book),
             'positionInAct' => $siblingIds->search($chapter->id) + 1,
             'totalInAct' => $siblingIds->count(),
         ]);
@@ -149,8 +153,8 @@ class ChapterController extends Controller
 
     public function update(UpdateChapterRequest $request, Chapter $chapter): RedirectResponse
     {
-        $project = $chapter->act->project;
-        $act = $project->acts()->findOrFail($request->validated()['act_id']);
+        $book = $chapter->act->book;
+        $act = $book->acts()->findOrFail($request->validated()['act_id']);
 
         // The cover is a file, not a mass-assignable column value, so keep it (and its
         // remove checkbox and the non-fillable act_id) out of the plain attribute fill.
@@ -199,21 +203,21 @@ class ChapterController extends Controller
 
         $this->recordManualSave($chapter, $beforeAutosavedFields);
 
-        return $this->redirectAfterSave($request, ['chapters.edit', $chapter], ['projects.chapters.index', $project]);
+        return $this->redirectAfterSave($request, ['chapters.edit', $chapter], ['books.chapters.index', $book]);
     }
 
     public function destroy(DestroyChapterRequest $request, Chapter $chapter): RedirectResponse
     {
         // Authorization is handled by DestroyChapterRequest::authorize() (mirrors the
         // walk-up-to-project check the other actions perform).
-        $project = $chapter->act->project;
+        $book = $chapter->act->book;
 
         // Reassignment (optional) and the delete itself are a single atomic unit: a
         // failure partway must never leave scenes half-moved or an orphaned chapter
         // (CLAUDE.md's multi-step-write transaction rule).
-        DB::transaction(function () use ($request, $chapter, $project) {
+        DB::transaction(function () use ($request, $chapter, $book) {
             if ($destinationId = $request->validated('move_children_to')) {
-                $destination = $project->chapterQuery()->findOrFail($destinationId);
+                $destination = $book->chapterQuery()->findOrFail($destinationId);
 
                 $this->reparentChildren($chapter, $destination, 'scenes', 'chapter');
             }
@@ -223,20 +227,28 @@ class ChapterController extends Controller
             $chapter->delete();
         });
 
-        return redirect()->route('projects.chapters.index', $project);
+        return redirect()->route('books.chapters.index', $book);
     }
 
     public function moveUp(Chapter $chapter): RedirectResponse
     {
-        $this->reorderSibling($chapter, $chapter->act->project, up: true);
+        $this->reorderSibling($chapter, $chapter->act->book->project, up: true);
 
         return redirect()->back();
     }
 
     public function moveDown(Chapter $chapter): RedirectResponse
     {
-        $this->reorderSibling($chapter, $chapter->act->project, up: false);
+        $this->reorderSibling($chapter, $chapter->act->book->project, up: false);
 
         return redirect()->back();
+    }
+
+    /**
+     * The book's acts, for the "which act?" select on the create and edit forms.
+     */
+    private function actsFor(Book $book): EloquentCollection
+    {
+        return $book->acts()->orderBy('position')->get();
     }
 }

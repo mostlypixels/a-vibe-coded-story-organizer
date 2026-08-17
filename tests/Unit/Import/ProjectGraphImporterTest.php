@@ -2,7 +2,9 @@
 
 namespace Tests\Unit\Import;
 
+use App\Enums\BookLanguage;
 use App\Enums\SceneStatus;
+use App\Enums\StoryOverviewMode;
 use App\Exceptions\ImportValidationException;
 use App\Models\Project;
 use App\Models\Revision;
@@ -33,6 +35,14 @@ class ProjectGraphImporterTest extends TestCase
      * A minimal valid 1x1 PNG for the cover media bytes.
      */
     private const TINY_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    /**
+     * The fixture's single book directory, and the act directory beneath it.
+     * The manuscript hangs off a book, so every story path starts here.
+     */
+    private const BOOK_DIR = 'data/books/50-fixture-book';
+
+    private const ACT_DIR = self::BOOK_DIR.'/acts/100-act-one';
 
     /**
      * The extraction root the fixture archive is written under (the directory
@@ -159,6 +169,47 @@ class ProjectGraphImporterTest extends TestCase
         $this->assertSame($autoCreatedEndId, $idMaps[ProjectGraphImporter::MAP_EVENTS][801]);
     }
 
+    public function test_the_archive_book_updates_the_auto_created_book_in_place(): void
+    {
+        $user = User::factory()->create();
+
+        $importer = $this->importer();
+        $project = $importer->importProject($this->fixtureRoot, $user);
+
+        // Capture the book Project::created made, BEFORE the story phase runs.
+        $autoCreatedBookId = $project->books()->firstOrFail()->id;
+
+        $idMaps = [];
+        $importer->importTimeline($this->fixtureRoot, $project, $idMaps);
+        $importer->importStory($this->fixtureRoot, $project, $idMaps);
+
+        // One book, not two: the archive's only book reconciled onto the row
+        // that already existed.
+        $this->assertSame(1, $project->books()->count());
+
+        $book = $project->books()->firstOrFail();
+        $this->assertSame($autoCreatedBookId, $book->id);
+        $this->assertSame($autoCreatedBookId, $idMaps[ProjectGraphImporter::MAP_BOOKS][50]);
+
+        // A null name stays null — the imported book keeps tracking the
+        // project's name instead of materializing a copy of it.
+        $this->assertNull($book->name);
+        $this->assertSame($project->name, $book->displayName());
+
+        // Every moved publication field lands on the book.
+        $this->assertSame(BookLanguage::French, $book->language);
+        $this->assertSame('Jane Author', $book->author);
+        $this->assertSame('Imaginary Press', $book->publisher);
+        $this->assertSame('978-0-306-40615-7', $book->isbn);
+        $this->assertSame(StoryOverviewMode::Whole, $book->overview_render_mode);
+        $this->assertSame('All rights reserved.', $book->rights);
+        $this->assertSame('For *everyone*.', $book->dedication);
+        $this->assertStringContainsString('<em>only</em>', (string) $book->description);
+
+        // The act tree hangs off that book.
+        $this->assertSame(1, $book->acts()->count());
+    }
+
     // ------------------------------------------------------------------
     // Position replay
     // ------------------------------------------------------------------
@@ -234,7 +285,7 @@ class ProjectGraphImporterTest extends TestCase
 
         // Corrupt Scene B's event_id to a source id no event.json carries.
         $this->mutateFixtureJson(
-            'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/scene.json',
+            self::ACT_DIR.'/chapters/200-chapter-one/scenes/300-scene-b/scene.json',
             fn (array $scene): array => array_merge($scene, ['event_id' => 999999]),
         );
 
@@ -370,7 +421,7 @@ class ProjectGraphImporterTest extends TestCase
         // the test that catches a half-removed replay.
         $this->writeManifest(includesRevisions: true);
         $this->writeFixtureFile(
-            'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-b/revisions/contents.json',
+            self::ACT_DIR.'/chapters/200-chapter-one/scenes/300-scene-b/revisions/contents.json',
             json_encode([[
                 'id' => 1, 'value' => 'Should not import.', 'origin' => 'manual',
                 'label' => null, 'user_id' => 1, 'created_at' => '2020-01-01T00:00:00+00:00',
@@ -417,7 +468,7 @@ class ProjectGraphImporterTest extends TestCase
     private function writeManifest(bool $includesRevisions): void
     {
         $this->writeFixtureFile('data/manifest.json', json_encode([
-            'version' => 3,
+            'version' => 4,
             'project_id' => 900,
             'exported_at' => '2026-07-13T00:00:00+00:00',
             'includes_media' => false,
@@ -476,18 +527,31 @@ class ProjectGraphImporterTest extends TestCase
             'is_fixed' => false, 'project_id' => 900, 'plotline_ids' => [700, 701],
         ]));
 
+        // --- Books: one book carrying the whole manuscript, with a null name
+        // (it tracks the project's) and its own publication metadata.
+        $this->writeFixtureFile(self::BOOK_DIR.'/book.json', json_encode([
+            'id' => 50, 'name' => null, 'position' => 1, 'project_id' => 900,
+            'language' => 'fr', 'author' => 'Jane Author', 'publisher' => 'Imaginary Press',
+            'isbn' => '978-0-306-40615-7', 'overview_render_mode' => 'whole',
+            'description_file' => 'description.html', 'rights_file' => 'rights.txt',
+            'dedication_file' => 'dedication.md',
+        ]));
+        $this->writeFixtureFile(self::BOOK_DIR.'/description.html', '<p>The <em>only</em> volume.</p>');
+        $this->writeFixtureFile(self::BOOK_DIR.'/rights.txt', 'All rights reserved.');
+        $this->writeFixtureFile(self::BOOK_DIR.'/dedication.md', 'For *everyone*.');
+
         // --- Story: one act, one chapter, two scenes whose positions disagree
         // with directory order (300-scene-b globs before 301-scene-a).
-        $this->writeFixtureFile('data/acts/100-act-one/act.json', json_encode([
-            'id' => 100, 'name' => 'Act One', 'position' => 1, 'project_id' => 900,
+        $this->writeFixtureFile(self::ACT_DIR.'/act.json', json_encode([
+            'id' => 100, 'name' => 'Act One', 'position' => 1, 'book_id' => 50,
             'description_file' => 'description.html',
         ]));
-        $this->writeFixtureFile('data/acts/100-act-one/description.html', '<p>Opening act.</p>');
-        $this->writeFixtureFile('data/acts/100-act-one/chapters/200-chapter-one/chapter.json', json_encode([
+        $this->writeFixtureFile(self::ACT_DIR.'/description.html', '<p>Opening act.</p>');
+        $this->writeFixtureFile(self::ACT_DIR.'/chapters/200-chapter-one/chapter.json', json_encode([
             'id' => 200, 'name' => 'Chapter One', 'position' => 1, 'act_id' => 100,
         ]));
 
-        $sceneDir = 'data/acts/100-act-one/chapters/200-chapter-one/scenes';
+        $sceneDir = self::ACT_DIR.'/chapters/200-chapter-one/scenes';
         $this->writeFixtureFile("{$sceneDir}/300-scene-b/scene.json", json_encode([
             'id' => 300, 'name' => 'Scene B', 'position' => 2, 'status' => 'to_edit',
             'chapter_id' => 200, 'event_id' => 802, 'mentioned_event_ids' => [800],

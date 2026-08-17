@@ -8,10 +8,11 @@ use App\Http\Controllers\Concerns\ReordersSiblings;
 use App\Http\Controllers\Concerns\ReparentsChildren;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\DestroyActRequest;
+use App\Http\Requests\MoveActToBookRequest;
 use App\Http\Requests\StoreActRequest;
 use App\Http\Requests\UpdateActRequest;
 use App\Models\Act;
-use App\Models\Project;
+use App\Models\Book;
 use App\Support\StoryNumbering;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,13 +27,13 @@ class ActController extends Controller
     use ReparentsChildren;
     use ResolvesIndexSorting;
 
-    public function index(Request $request, Project $project): View
+    public function index(Request $request, Book $book): View
     {
-        $this->authorize('view', $project);
+        $this->authorize('view', $book->project);
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
-        $acts = $project->acts()
+        $acts = $book->acts()
             ->withCount('chapters')
             // One grouped query for the whole page, via the act's own scenes()
             // HasManyThrough — a dot-nested relation path like 'chapters.scenes'
@@ -40,6 +41,7 @@ class ActController extends Controller
             // it must go through that relation directly.
             ->withSum('scenes as word_count', 'word_count')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
+            // $sort is allow-listed by resolveSorting().
             ->orderBy($sort, $direction)
             ->get();
 
@@ -52,37 +54,39 @@ class ActController extends Controller
         // The delete-with-move dialog on each row needs the full set of sibling acts as
         // move destinations, independent of the current search filter above (moving is
         // never limited to what the search happens to match).
-        $destinationActs = $project->acts()->orderBy('position')->get(['id', 'name', 'position']);
+        $destinationActs = $book->acts()
+            ->orderBy('position')
+            ->get(['id', 'name', 'position']);
 
         return view('acts.index', [
-            'project' => $project,
+            'book' => $book,
             'acts' => $acts,
             'destinationActs' => $destinationActs,
             'sort' => $sort,
             'direction' => $direction,
-            // Built from the whole project, never the (possibly search-filtered)
+            // Built from the whole book, never the (possibly search-filtered)
             // $acts above — a filtered acts list must still show its true numbers.
-            'numbering' => StoryNumbering::forProject($project),
+            'numbering' => StoryNumbering::forBook($book),
         ]);
     }
 
-    public function create(Project $project): View
+    public function create(Book $book): View
     {
-        $this->authorize('update', $project);
+        $this->authorize('update', $book->project);
 
-        return view('acts.create', ['project' => $project]);
+        return view('acts.create', ['book' => $book]);
     }
 
-    public function store(StoreActRequest $request, Project $project): RedirectResponse
+    public function store(StoreActRequest $request, Book $book): RedirectResponse
     {
-        $project->acts()->create($request->validated());
+        $book->acts()->create($request->validated());
 
-        return redirect()->route('projects.acts.index', $project);
+        return redirect()->route('books.acts.index', $book);
     }
 
     public function edit(Act $act): View
     {
-        $this->authorize('update', $act->project);
+        $this->authorize('update', $act->book->project);
 
         // Counts feed the delete-with-move dialog's honest cascade summary: an act's
         // direct children (chapters) plus its grandchildren (scenes, counted through
@@ -90,10 +94,19 @@ class ActController extends Controller
         $act->loadCount('chapters');
         $sceneCount = $act->scenes()->count();
 
-        // Every *other* act in the project is a candidate destination for moving this
-        // act's chapters. An empty list collapses the dialog to "delete everything".
-        $destinations = $act->project->acts()
-            ->where('id', '!=', $act->id)
+        // Every *other* act in the same book is a candidate destination for moving
+        // this act's chapters — the same set the book's acts index offers. An empty
+        // list collapses the dialog to "delete everything".
+        $destinations = $act->book->acts()
+            ->whereKeyNot($act->getKey())
+            ->orderBy('position')
+            ->get();
+
+        // Every *other* book in the same project is a candidate destination for
+        // moving this whole act. An empty list hides the move-to-book control —
+        // a one-book project has nowhere to send it.
+        $destinationBooks = $act->book->project->books()
+            ->whereKeyNot($act->book_id)
             ->orderBy('position')
             ->get();
 
@@ -101,8 +114,9 @@ class ActController extends Controller
             'act' => $act,
             'sceneCount' => $sceneCount,
             'destinations' => $destinations,
-            'numbering' => StoryNumbering::forProject($act->project),
-            'totalActs' => $act->project->acts()->count(),
+            'destinationBooks' => $destinationBooks,
+            'numbering' => StoryNumbering::forBook($act->book),
+            'totalActs' => $act->book->acts()->count(),
         ]);
     }
 
@@ -115,21 +129,38 @@ class ActController extends Controller
 
         $this->recordManualSave($act, $beforeAutosavedFields);
 
-        return $this->redirectAfterSave($request, ['acts.edit', $act], ['projects.acts.index', $act->project]);
+        return $this->redirectAfterSave($request, ['acts.edit', $act], ['books.acts.index', $act->book]);
+    }
+
+    /**
+     * Reparents a whole act, with its chapters and scenes, onto another book in
+     * the same project. Position is set explicitly: the `creating()` hook only
+     * fires on insert, and `book_id` is not mass-assignable, so the move goes
+     * through `associate()` (the two pitfalls ReparentsChildren documents).
+     */
+    public function moveToBook(MoveActToBookRequest $request, Act $act): RedirectResponse
+    {
+        $destination = Book::findOrFail($request->validated('book_id'));
+
+        $act->position = $destination->acts()->max('position') + 1;
+        $act->book()->associate($destination);
+        $act->save();
+
+        return redirect()->route('acts.edit', $act);
     }
 
     public function destroy(DestroyActRequest $request, Act $act): RedirectResponse
     {
         // Authorization is handled by DestroyActRequest::authorize() (mirrors the
         // walk-up-to-project check the other actions perform).
-        $project = $act->project;
+        $book = $act->book;
 
         // Reassignment (optional) and the delete itself are a single atomic unit: a
         // failure partway must never leave chapters half-moved or an orphaned act
         // (CLAUDE.md's multi-step-write transaction rule).
-        DB::transaction(function () use ($request, $act) {
+        DB::transaction(function () use ($request, $act, $book) {
             if ($destinationId = $request->validated('move_children_to')) {
-                $destination = $act->project->acts()->findOrFail($destinationId);
+                $destination = $book->acts()->findOrFail($destinationId);
 
                 $this->reparentChildren($act, $destination, 'chapters', 'act');
             }
@@ -139,19 +170,19 @@ class ActController extends Controller
             $act->delete();
         });
 
-        return redirect()->route('projects.acts.index', $project);
+        return redirect()->route('books.acts.index', $book);
     }
 
     public function moveUp(Act $act): RedirectResponse
     {
-        $this->reorderSibling($act, $act->project, up: true);
+        $this->reorderSibling($act, $act->book->project, up: true);
 
         return redirect()->back();
     }
 
     public function moveDown(Act $act): RedirectResponse
     {
-        $this->reorderSibling($act, $act->project, up: false);
+        $this->reorderSibling($act, $act->book->project, up: false);
 
         return redirect()->back();
     }

@@ -225,7 +225,7 @@ class RevisionDataModelTest extends TestCase
         $caps = config('revisions.caps');
 
         $this->assertSame(1_000_000, $caps['scene.contents']);
-        $this->assertSame(1_000, $caps['project.rights']);
+        $this->assertSame(1_000, $caps['book.rights']);
         $this->assertSame(100_000, $caps['default']);
     }
 
@@ -280,8 +280,8 @@ class RevisionDataModelTest extends TestCase
         // would be caught rather than passing the loop above.
         $this->assertSame(60, AutosavableFields::windowSeconds('scene', 'contents'));
         $this->assertSame(1_000_000, AutosavableFields::characterCap('scene', 'contents'));
-        $this->assertSame(1_000, AutosavableFields::characterCap('project', 'rights'));
-        $this->assertSame(20_000, AutosavableFields::characterCap('project', 'dedication'));
+        $this->assertSame(1_000, AutosavableFields::characterCap('book', 'rights'));
+        $this->assertSame(20_000, AutosavableFields::characterCap('book', 'dedication'));
     }
 
     public function test_config_retention_days_defaults_to_ninety(): void
