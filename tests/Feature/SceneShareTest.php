@@ -21,8 +21,8 @@ class SceneShareTest extends TestCase
      */
     private function sceneFor(User $user): Scene
     {
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         return Scene::factory()->for($chapter)->create();
@@ -287,13 +287,13 @@ class SceneShareTest extends TestCase
     public function test_the_public_page_shows_the_continuous_chapter_number_for_a_chapter_in_act_two(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $actOne = Act::factory()->for($project)->create();
+        $actOne = Act::factory()->for($book)->create();
         Chapter::factory()->for($actOne)->create();
         Chapter::factory()->for($actOne)->create();
 
-        $actTwo = Act::factory()->for($project)->create();
+        $actTwo = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($actTwo)->create();
         $scene = Scene::factory()->for($chapter)->create();
         $scene->forceFill([

@@ -70,9 +70,9 @@ class HtmlSanitizationTest extends TestCase
     {
         // No HTTP, no Form Request — this is the seeder/tinker path. The set-mutator is
         // the choke point, so the stored value is still clean.
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
-        $act = Act::factory()->for($project)->create([
+        $act = Act::factory()->for($book)->create([
             'description' => self::MALICIOUS_HTML,
         ]);
 
@@ -82,8 +82,8 @@ class HtmlSanitizationTest extends TestCase
     public function test_a_sanitized_description_is_not_rendered_as_a_script_tag(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        Act::factory()->for($project)->create(['description' => self::MALICIOUS_HTML]);
+        [$project, $book] = $this->projectWithBook($user);
+        Act::factory()->for($book)->create(['description' => self::MALICIOUS_HTML]);
 
         // Defense in depth: nothing executable reaches the page.
         $this->actingAs($user)
@@ -96,8 +96,8 @@ class HtmlSanitizationTest extends TestCase
     public function test_scene_notes_is_sanitized_as_html_but_contents_stays_markdown(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         $markdownContents = '# A heading
@@ -132,8 +132,8 @@ Some **markdown** with a [link](https://example.com).';
     public function test_a_null_description_stays_null_after_sanitization(): void
     {
         // The mutator preserves null so a nullable column is not turned into "".
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create(['description' => null]);
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create(['description' => null]);
 
         $this->assertNull($act->fresh()->description);
     }
@@ -164,8 +164,8 @@ Some **markdown** with a [link](https://example.com).';
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $project = Project::factory()->for($owner)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'Original']);
+        [$project, $book] = $this->projectWithBook($owner);
+        $act = Act::factory()->for($book)->create(['name' => 'Original']);
 
         $this->actingAs($owner)
             ->put(route('acts.update', $act), ['name' => 'Renamed', 'description' => '<p>ok</p>'])
@@ -182,8 +182,8 @@ Some **markdown** with a [link](https://example.com).';
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $project = Project::factory()->for($owner)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($owner);
+        $act = Act::factory()->for($book)->create();
 
         $this->actingAs($owner)
             ->post(route('projects.chapters.store', $project), [
@@ -207,8 +207,8 @@ Some **markdown** with a [link](https://example.com).';
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $project = Project::factory()->for($owner)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($owner);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['name' => 'Original']);
 
         $this->actingAs($owner)

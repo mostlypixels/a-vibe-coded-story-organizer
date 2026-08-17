@@ -216,7 +216,8 @@ class ContentSanitizerTest extends TestCase
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'Sanitizer round trip']);
-        $act = Act::factory()->for($project)->create(['name' => 'Act one']);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['name' => 'Act one']);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'Chapter one']);
 
         // description/notes pass through the SanitizesRichHtml mutator on save,

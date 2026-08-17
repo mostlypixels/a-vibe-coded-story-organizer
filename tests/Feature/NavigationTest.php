@@ -30,8 +30,8 @@ class NavigationTest extends TestCase
      */
     private function chapterFor(User $user): Chapter
     {
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         return Chapter::factory()->for($act)->create();
     }
@@ -67,7 +67,7 @@ class NavigationTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         $html = $this->actingAs($user)
             ->get(route('projects.scenes.index', $project))
@@ -81,7 +81,7 @@ class NavigationTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         $html = $this->actingAs($user)
             ->get(route('projects.scenes.index', $project))
@@ -97,7 +97,7 @@ class NavigationTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
         $scene = Scene::factory()->for($chapter)->create();
 
         // scenes.edit is matched by the `scenes.*` half of the matcher.
@@ -113,7 +113,7 @@ class NavigationTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         // On a Story page the trigger swaps to nav-link's active look.
         $this->actingAs($user)
@@ -207,7 +207,7 @@ class NavigationTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         // On a Codex page the Codex trigger is active; the Story trigger is not.
         $codexHtml = $this->actingAs($user)
@@ -279,7 +279,7 @@ class NavigationTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         $html = $this->actingAs($user)
             ->get(route('projects.scenes.index', $project))

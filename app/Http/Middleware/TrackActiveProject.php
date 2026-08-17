@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\RouteProject;
+use App\Support\RouteContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -41,7 +41,7 @@ class TrackActiveProject
         // 2. A page with no project in its route (dashboard, profile, admin)
         //    does nothing — it must never CLEAR the column. That is what makes
         //    the active project persist across a settings detour.
-        $project = RouteProject::resolve($request);
+        $project = RouteContext::resolve($request)->project;
 
         if ($user === null || $project === null) {
             return $response;

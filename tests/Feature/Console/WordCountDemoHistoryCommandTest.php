@@ -23,8 +23,8 @@ class WordCountDemoHistoryCommandTest extends TestCase
      */
     private function projectWithWords(int $wordCount): Project
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create();
 

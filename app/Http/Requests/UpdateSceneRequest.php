@@ -12,7 +12,7 @@ class UpdateSceneRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('scene')->chapter->act->project);
+        return $this->user()->can('update', $this->route('scene')->chapter->act->book->project);
     }
 
     /**
@@ -20,13 +20,13 @@ class UpdateSceneRequest extends FormRequest
      */
     public function rules(): array
     {
-        $project = $this->route('scene')->chapter->act->project;
+        $project = $this->route('scene')->chapter->act->book->project;
 
         return [
             'chapter_id' => [
                 'required',
                 'integer',
-                Rule::exists('chapters', 'id')->whereIn('act_id', $project->acts()->pluck('id')),
+                Rule::exists('chapters', 'id')->whereIn('act_id', $project->acts()->pluck('acts.id')),
             ],
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('scene', 'description'),

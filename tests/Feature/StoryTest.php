@@ -44,8 +44,8 @@ class StoryTest extends TestCase
     public function test_the_story_overview_renders_the_full_act_chapter_scene_tree(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'The First Act']);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['name' => 'The First Act']);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'The First Chapter']);
         Scene::factory()->for($chapter)->create(['name' => 'The First Scene']);
 
@@ -72,9 +72,10 @@ class StoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = $this->wholeProject($user);
+        $book = $project->books()->first();
         // Create out of position order to prove the view sorts, not insertion order.
-        Act::factory()->for($project)->create(['name' => 'Later Act', 'position' => 2]);
-        Act::factory()->for($project)->create(['name' => 'Earlier Act', 'position' => 1]);
+        Act::factory()->for($book)->create(['name' => 'Later Act', 'position' => 2]);
+        Act::factory()->for($book)->create(['name' => 'Earlier Act', 'position' => 1]);
 
         $this->actingAs($user)
             ->get(route('projects.story.overview', $project))
@@ -85,8 +86,8 @@ class StoryTest extends TestCase
     public function test_the_story_overview_orders_scenes_within_a_chapter_by_position(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         Scene::factory()->for($chapter)->create(['name' => 'Second Scene', 'position' => 2]);
@@ -117,8 +118,9 @@ class StoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = $this->wholeProject($user);
+        $book = $project->books()->first();
 
-        $actOne = Act::factory()->for($project)->create();
+        $actOne = Act::factory()->for($book)->create();
         $chapterA = Chapter::factory()->for($actOne)->create();
         $this->sceneWithWordCount($chapterA, 613);
         $this->sceneWithWordCount($chapterA, 402); // chapter A total: 1,015
@@ -126,7 +128,7 @@ class StoryTest extends TestCase
         $this->sceneWithWordCount($chapterB, 47); // chapter B total: 47
         // Act One total: 1,062
 
-        $actTwo = Act::factory()->for($project)->create();
+        $actTwo = Act::factory()->for($book)->create();
         $chapterC = Chapter::factory()->for($actTwo)->create();
         $this->sceneWithWordCount($chapterC, 213); // chapter C total: 213
         $chapterD = Chapter::factory()->for($actTwo)->create();
@@ -151,13 +153,14 @@ class StoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = $this->wholeProject($user);
+        $book = $project->books()->first();
 
         // Act with no chapters at all: its total, and the empty-chapters
         // message, must both render — not an error, not a blank total.
-        Act::factory()->for($project)->create();
+        Act::factory()->for($book)->create();
 
         // Act with one chapter that has no scenes.
-        $actTwo = Act::factory()->for($project)->create();
+        $actTwo = Act::factory()->for($book)->create();
         Chapter::factory()->for($actTwo)->create();
 
         $response = $this->actingAs($user)
@@ -186,8 +189,8 @@ class StoryTest extends TestCase
     public function test_totals_render_beside_the_act_and_chapter_headings_not_inside_them(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $this->sceneWithWordCount($chapter, 613);
 
@@ -227,9 +230,10 @@ class StoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = $this->wholeProject($user);
+        $book = $project->books()->first();
 
         foreach (range(1, 3) as $actNumber) {
-            $act = Act::factory()->for($project)->create();
+            $act = Act::factory()->for($book)->create();
 
             foreach (range(1, 3) as $chapterNumber) {
                 $chapter = Chapter::factory()->for($act)->create();
@@ -266,14 +270,15 @@ class StoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = $this->wholeProject($user);
+        $book = $project->books()->first();
 
-        $actOne = Act::factory()->for($project)->create();
+        $actOne = Act::factory()->for($book)->create();
         Chapter::factory()->for($actOne)->create();
         Chapter::factory()->for($actOne)->create();
 
         // Act two's first chapter is chapter 3 project-wide, even though its
         // own `position` within act two is 1.
-        $actTwo = Act::factory()->for($project)->create();
+        $actTwo = Act::factory()->for($book)->create();
         Chapter::factory()->for($actTwo)->create();
 
         $content = $this->actingAs($user)
@@ -291,10 +296,11 @@ class StoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = $this->wholeProject($user);
+        $book = $project->books()->first();
 
-        $actOne = Act::factory()->for($project)->create(['name' => 'Act One']);
-        $actTwo = Act::factory()->for($project)->create(['name' => 'Act Two']);
-        $actThree = Act::factory()->for($project)->create(['name' => 'Act Three']);
+        $actOne = Act::factory()->for($book)->create(['name' => 'Act One']);
+        $actTwo = Act::factory()->for($book)->create(['name' => 'Act Two']);
+        $actThree = Act::factory()->for($book)->create(['name' => 'Act Three']);
 
         $actTwo->delete();
 
@@ -318,7 +324,8 @@ class StoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = $this->wholeProject($user);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
 
         $chapterOne = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapterOne)->create(['name' => 'Scene A']);
@@ -348,7 +355,8 @@ class StoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = $this->wholeProject($user);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->count(3)->for($chapter)->create();
 
@@ -375,8 +383,8 @@ class StoryTest extends TestCase
     public function test_chapter_mode_renders_only_the_first_chapters_scenes_by_default(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $first = Chapter::factory()->for($act)->create(['position' => 1]);
         Scene::factory()->for($first)->create(['name' => 'Opening Scene']);
@@ -394,8 +402,8 @@ class StoryTest extends TestCase
     public function test_chapter_query_param_selects_that_chapter_and_hides_its_siblings(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $first = Chapter::factory()->for($act)->create(['position' => 1]);
         Scene::factory()->for($first)->create(['name' => 'Opening Scene']);
@@ -411,15 +419,15 @@ class StoryTest extends TestCase
     }
 
     /**
-     * Only the selected chapter loads, yet its number is its project-wide rank —
-     * the guard that chapter mode numbers through StoryNumbering::forProject()
+     * Only the selected chapter loads, yet its number is its book-wide rank —
+     * the guard that chapter mode numbers through StoryNumbering::forBook()
      * (the whole light tree), not fromActs() (which needs the loaded tree).
      */
     public function test_a_mid_story_chapter_shows_its_project_wide_number(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $chapters = [];
         foreach (range(1, 15) as $position) {
@@ -446,15 +454,15 @@ class StoryTest extends TestCase
     public function test_chapter_mode_header_and_story_totals_span_the_whole_story(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        $actOne = Act::factory()->for($book)->create(['position' => 1]);
         $chapterA = Chapter::factory()->for($actOne)->create(['position' => 1]);
         $this->sceneWithWordCount($chapterA, 613); // loaded chapter
         $chapterB = Chapter::factory()->for($actOne)->create(['position' => 2]);
         $this->sceneWithWordCount($chapterB, 402); // act one total: 1,015
 
-        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        $actTwo = Act::factory()->for($book)->create(['position' => 2]);
         $chapterC = Chapter::factory()->for($actTwo)->create();
         $this->sceneWithWordCount($chapterC, 47); // story total: 1,062
 
@@ -472,7 +480,8 @@ class StoryTest extends TestCase
         $project = Project::factory()->for($user)->create();
 
         $otherProject = Project::factory()->for($user)->create();
-        $otherAct = Act::factory()->for($otherProject)->create();
+        $otherBook = $otherProject->books()->first();
+        $otherAct = Act::factory()->for($otherBook)->create();
         $otherChapter = Chapter::factory()->for($otherAct)->create();
 
         $this->actingAs($user)
@@ -506,13 +515,15 @@ class StoryTest extends TestCase
         };
 
         $small = Project::factory()->for($user)->create();
-        $smallAct = Act::factory()->for($small)->create();
+        $smallBook = $small->books()->first();
+        $smallAct = Act::factory()->for($smallBook)->create();
         $smallChapter = Chapter::factory()->for($smallAct)->create();
         Scene::factory()->for($smallChapter)->create();
 
         $large = Project::factory()->for($user)->create();
+        $largeBook = $large->books()->first();
         foreach (range(1, 3) as $actNumber) {
-            $act = Act::factory()->for($large)->create();
+            $act = Act::factory()->for($largeBook)->create();
             foreach (range(1, 3) as $chapterNumber) {
                 $chapter = Chapter::factory()->for($act)->create();
                 Scene::factory()->count(3)->for($chapter)->create();
@@ -534,8 +545,8 @@ class StoryTest extends TestCase
     public function test_first_chapter_page_disables_previous_and_links_next_to_the_second_chapter(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $first = Chapter::factory()->for($act)->create(['position' => 1]);
         $second = Chapter::factory()->for($act)->create(['position' => 2]);
@@ -554,8 +565,8 @@ class StoryTest extends TestCase
     public function test_last_chapter_page_disables_next_and_links_previous_to_the_penultimate_chapter(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $penultimate = Chapter::factory()->for($act)->create(['position' => 1]);
         $last = Chapter::factory()->for($act)->create(['position' => 2]);
@@ -574,8 +585,8 @@ class StoryTest extends TestCase
     public function test_a_middle_chapter_links_to_its_correct_previous_and_next_chapters(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $first = Chapter::factory()->for($act)->create(['position' => 1]);
         $middle = Chapter::factory()->for($act)->create(['position' => 2]);
@@ -592,12 +603,12 @@ class StoryTest extends TestCase
     public function test_the_pager_crosses_an_act_boundary_to_the_adjacent_acts_chapter(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        $actOne = Act::factory()->for($book)->create(['position' => 1]);
         $lastOfActOne = Chapter::factory()->for($actOne)->create(['position' => 1]);
 
-        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        $actTwo = Act::factory()->for($book)->create(['position' => 2]);
         $firstOfActTwo = Chapter::factory()->for($actTwo)->create(['position' => 1]);
 
         $response = $this->actingAs($user)
@@ -610,8 +621,8 @@ class StoryTest extends TestCase
     public function test_chapter_mode_toc_links_carry_the_chapter_id_and_the_act_link_targets_its_first_chapter(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $first = Chapter::factory()->for($act)->create(['position' => 1]);
         $second = Chapter::factory()->for($act)->create(['position' => 2]);
@@ -650,8 +661,8 @@ class StoryTest extends TestCase
     public function test_switching_the_mode_preserves_the_current_chapter_query_param(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         $this->actingAs($user)
@@ -701,7 +712,8 @@ class StoryTest extends TestCase
     {
         $user = User::factory()->create();
         $project = $this->wholeProject($user);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
 
         $first = Chapter::factory()->for($act)->create(['position' => 1]);
         Scene::factory()->for($first)->create(['name' => 'Alpha Scene']);

@@ -61,7 +61,8 @@ class PageTitleTest extends TestCase
         config(['app.name' => 'AVCSO']);
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create();
 

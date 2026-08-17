@@ -197,7 +197,7 @@ class ProjectImporterTest extends TestCase
         $project = $import->project;
 
         // Snapshot the committed story tree: a resume must NOT recreate it.
-        $actIds = $project->acts()->pluck('id')->all();
+        $actIds = $project->acts()->pluck('acts.id')->all();
         $chapterIds = $project->acts()->firstOrFail()->chapters()->pluck('id')->all();
         $sceneIds = $project->acts()->firstOrFail()->chapters()->firstOrFail()->scenes()->pluck('id')->all();
 
@@ -208,7 +208,7 @@ class ProjectImporterTest extends TestCase
         $this->assertNull($import->failure_message);
 
         // The story tree is byte-for-byte the same rows — no duplicates.
-        $this->assertSame($actIds, $project->acts()->pluck('id')->all());
+        $this->assertSame($actIds, $project->acts()->pluck('acts.id')->all());
         $this->assertSame($chapterIds, $project->acts()->firstOrFail()->chapters()->pluck('id')->all());
         $this->assertSame($sceneIds, $project->acts()->firstOrFail()->chapters()->firstOrFail()->scenes()->pluck('id')->all());
         $this->assertSame(1, Project::count());

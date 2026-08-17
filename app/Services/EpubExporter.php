@@ -297,7 +297,7 @@ class EpubExporter
                 'chapters' => fn ($query) => $query->orderBy('position'),
                 'chapters.scenes' => fn ($query) => $query->orderBy('position'),
             ])
-            ->orderBy('position')
+            ->orderBy('acts.position')
             ->get();
     }
 
@@ -329,12 +329,13 @@ class EpubExporter
      * $settings is nullable so callers/tests can render with the project's lazy default;
      * the exporter's own pipeline always threads the resolved setting through. $numbering
      * is nullable the same way — a caller without a pre-built one (tests calling this
-     * directly) gets it derived fresh via {@see StoryNumbering::forProject()}.
+     * directly) gets it derived fresh via {@see StoryNumbering::forBook()}, scoped to the
+     * Act's own book.
      */
     public function renderAct(Act $act, Project $project, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $project->publicationSettingOrDefault();
-        $numbering ??= StoryNumbering::forProject($project);
+        $numbering ??= StoryNumbering::forBook($act->book);
 
         return view('exports.epub.act', $this->actViewData($act, $project, $settings, $numbering))->render();
     }
@@ -352,7 +353,7 @@ class EpubExporter
     public function renderActWithChapters(Act $act, Project $project, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $project->publicationSettingOrDefault();
-        $numbering ??= StoryNumbering::forProject($project);
+        $numbering ??= StoryNumbering::forBook($act->book);
 
         return view('exports.epub.act-combined', array_merge(
             $this->actViewData($act, $project, $settings, $numbering),
@@ -369,7 +370,7 @@ class EpubExporter
      * ({@see renderAct()}) and the combined act page ({@see renderActWithChapters()}) so the
      * two rendering paths can never drift.
      *
-     * `number` is the project-wide, gap-free rank from {@see StoryNumbering} — NOT
+     * `number` is the book-wide, gap-free rank from {@see StoryNumbering} — NOT
      * `$act->position`, which is the per-parent, gappy sort key. See StoryNumbering's own
      * docblock for why the export must never display `position`.
      *
@@ -405,7 +406,7 @@ class EpubExporter
     public function renderChapter(Chapter $chapter, Project $project, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $project->publicationSettingOrDefault();
-        $numbering ??= StoryNumbering::forProject($project);
+        $numbering ??= StoryNumbering::forBook($chapter->act->book);
 
         return view('exports.epub.chapter', $this->chapterViewData($chapter, $project, $settings, $numbering))->render();
     }
@@ -420,7 +421,7 @@ class EpubExporter
      * them and the default "Chapters" depth renders byte-for-byte as before. Each scene
      * carries its stable id for that anchor.
      *
-     * `number` — and the number fed into `heading` — is the project-wide, gap-free rank
+     * `number` — and the number fed into `heading` — is the book-wide, gap-free rank
      * from {@see StoryNumbering}, NOT `$chapter->position`. See {@see actViewData()}.
      *
      * @return array<string, mixed>
@@ -474,7 +475,7 @@ class EpubExporter
     public function renderToc(Project $project, Collection $tree, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $project->publicationSettingOrDefault();
-        // fromActs(), not forProject(): $tree is already the whole loaded tree, so deriving
+        // fromActs(), not forBook(): $tree is already the whole loaded tree, so deriving
         // from it avoids a second set of queries a caller-supplied $numbering would have
         // avoided anyway.
         $numbering ??= StoryNumbering::fromActs($tree);
@@ -1143,7 +1144,7 @@ class EpubExporter
 
     /**
      * The nav label for an Act: "Act {number}", with ": {name}" appended when the Act has
-     * a name (mirroring the page heading + name shape). `number` is the project-wide,
+     * a name (mirroring the page heading + name shape). `number` is the book-wide,
      * gap-free rank from {@see StoryNumbering} — see {@see actViewData()}.
      */
     private function actNavTitle(Act $act, StoryNumbering $numbering): string
@@ -1170,7 +1171,7 @@ class EpubExporter
      * that cannot cope with an empty label, and it matches what {@see sceneNavTitle()} and
      * {@see actNavTitle()} already do with a nameless scene or act.
      *
-     * `number` is the project-wide, gap-free rank from {@see StoryNumbering} — see
+     * `number` is the book-wide, gap-free rank from {@see StoryNumbering} — see
      * {@see chapterViewData()}.
      */
     private function chapterNavTitle(Chapter $chapter, ChapterTitleFormat $format, StoryNumbering $numbering): string

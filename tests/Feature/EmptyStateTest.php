@@ -75,8 +75,8 @@ class EmptyStateTest extends TestCase
     public function test_a_filtered_acts_index_shows_a_no_match_message_not_the_create_prompt(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        Act::factory()->for($project)->create(['name' => 'The Gathering']);
+        [$project, $book] = $this->projectWithBook($user);
+        Act::factory()->for($book)->create(['name' => 'The Gathering']);
 
         $response = $this->actingAs($user)->get(route('projects.acts.index', [$project, 'search' => 'no-such-act']));
 

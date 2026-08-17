@@ -385,8 +385,12 @@ class ProjectGraphImporter
 
         try {
             DB::transaction(function () use ($dataPath, $project, &$idMaps, &$copiedCovers): void {
+                // The archive carries one flat act list, and every project holds
+                // at least one book, so the whole manuscript lands in the first.
+                $book = $project->books()->first();
+
                 foreach ($this->readEntityDescriptors($dataPath, 'data/acts/*/act.json') as $actItem) {
-                    $act = $project->acts()->create([
+                    $act = $book->acts()->create([
                         'name' => $actItem['data']['name'],
                         'position' => (int) $actItem['data']['position'],
                         'description' => $this->readHtmlField($dataPath, $actItem['directory'], $actItem['data']),

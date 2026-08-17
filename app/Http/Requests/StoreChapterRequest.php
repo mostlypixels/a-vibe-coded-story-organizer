@@ -22,7 +22,9 @@ class StoreChapterRequest extends FormRequest
             'act_id' => [
                 'required',
                 'integer',
-                Rule::exists('acts', 'id')->where('project_id', $this->route('project')->id),
+                // An act belongs to a book, so the project's acts are the acts of
+                // its books.
+                Rule::exists('acts', 'id')->whereIn('book_id', $this->route('project')->books()->pluck('id')),
             ],
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('chapter', 'description'),

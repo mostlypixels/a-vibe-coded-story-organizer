@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ChapterTitleFormat;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\PublicationSetting;
@@ -33,7 +34,8 @@ class EpubExportTest extends TestCase
      */
     private function seedExportableContent(Project $project): void
     {
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['position' => 1]);
         Scene::factory()->for($chapter)->create([
             'position' => 1,
@@ -116,9 +118,9 @@ class EpubExportTest extends TestCase
     public function test_a_chapter_with_a_blank_name_still_gets_a_navigation_label(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['position' => 1, 'name' => '']);
         Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Some prose.']);
 
@@ -223,8 +225,8 @@ class EpubExportTest extends TestCase
     public function test_a_project_whose_only_chapter_has_no_scenes_redirects_back(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         Chapter::factory()->for($act)->create(['position' => 1]);
 
         $response = $this->actingAs($user)
@@ -243,8 +245,8 @@ class EpubExportTest extends TestCase
     public function test_empty_chapters_export_as_heading_only_pages_alongside_the_written_ones(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
 
         $written = Chapter::factory()->for($act)->create(['position' => 1, 'name' => 'The Written One']);
         Scene::factory()->for($written)->create(['position' => 1, 'contents' => 'PROSE_MARKER']);
@@ -285,16 +287,16 @@ class EpubExportTest extends TestCase
     public function test_an_act_with_only_empty_chapters_still_exports_its_divider(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $written = Act::factory()->for($project)->create(['position' => 1, 'name' => 'Written Act']);
+        $written = Act::factory()->for($book)->create(['position' => 1, 'name' => 'Written Act']);
         $chapter = Chapter::factory()->for($written)->create(['position' => 1]);
         Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
 
-        $outlined = Act::factory()->for($project)->create(['position' => 2, 'name' => 'Outlined Act']);
+        $outlined = Act::factory()->for($book)->create(['position' => 2, 'name' => 'Outlined Act']);
         Chapter::factory()->for($outlined)->create(['position' => 1]);
 
-        $bare = Act::factory()->for($project)->create(['position' => 3, 'name' => 'Bare Act']);
+        $bare = Act::factory()->for($book)->create(['position' => 3, 'name' => 'Bare Act']);
 
         $response = $this->actingAs($user)
             ->post(route('admin.data.export.epub'), ['project_id' => $project->id]);

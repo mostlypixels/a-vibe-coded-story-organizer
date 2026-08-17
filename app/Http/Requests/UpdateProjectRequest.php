@@ -10,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Six of this form's fields are also autosaved, so their rules come from
+ * This form's `description` is also autosaved, so its rule comes from
  * AutosavableFields::validationRule() rather than being spelled out here — see
  * that class's docblock for why the two paths must never disagree.
  */
@@ -52,17 +52,8 @@ class UpdateProjectRequest extends FormRequest
             'language' => ['required', Rule::enum(BookLanguage::class)],
             'author' => ['nullable', 'string', 'max:255'],
             'publisher' => ['nullable', 'string', 'max:255'],
-            'rights' => AutosavableFields::validationRule('project', 'rights'),
             'isbn' => ['nullable', 'string', new ValidIsbn],
             'cover_image' => CodexMediaRules::coverRules(),
-
-            // Book front/back-matter Markdown. These stay raw Markdown like
-            // Scene.contents — ValidMarkdown reuses the same well-formedness
-            // gate, never a rich-HTML sanitizer.
-            'dedication' => AutosavableFields::validationRule('project', 'dedication'),
-            'acknowledgements' => AutosavableFields::validationRule('project', 'acknowledgements'),
-            'preface' => AutosavableFields::validationRule('project', 'preface'),
-            'postface' => AutosavableFields::validationRule('project', 'postface'),
 
             // Open-ended writing targets. No cross-validation against each
             // other — a daily goal that does not multiply out to the total

@@ -48,7 +48,7 @@ class Scene extends Model
      */
     public function revisionProject(): Project
     {
-        return $this->chapter->act->project;
+        return $this->chapter->act->book->project;
     }
 
     /**
@@ -176,13 +176,13 @@ class Scene extends Model
                 : $scene->wasChanged('word_count');
 
             if ($movedTheTotal) {
-                app(WordCountSnapshotRecorder::class)->record($scene->chapter->act->project);
+                app(WordCountSnapshotRecorder::class)->record($scene->chapter->act->book->project);
             }
         });
 
         // Deleting is writing: the total drops.
         static::deleted(function (Scene $scene): void {
-            app(WordCountSnapshotRecorder::class)->record($scene->chapter->act->project);
+            app(WordCountSnapshotRecorder::class)->record($scene->chapter->act->book->project);
         });
     }
 }

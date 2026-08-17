@@ -165,7 +165,7 @@ class ProjectSearch
                 self::EVENT_FIELDS,
             ],
             SearchDomain::Acts => [
-                Act::query()->where('project_id', $project->id)
+                Act::query()->whereHas('book', fn (Builder $query) => $query->where('project_id', $project->id))
                     ->orderBy('position')->orderBy('id'),
                 self::ACT_FIELDS,
             ],

@@ -6,6 +6,7 @@ use App\Enums\BookLanguage;
 use App\Enums\RevisionOrigin;
 use App\Enums\StoryOverviewMode;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -61,8 +62,8 @@ class ProjectTest extends TestCase
     public function test_the_dashboard_delete_warns_with_the_same_cascade_sentence_as_the_edit_page(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        Act::factory()->for($book)->create();
         CodexEntry::factory()->for($project)->create();
 
         $expected = 'This project has 1 act and 1 codex entry, which will also be deleted.';
@@ -153,7 +154,6 @@ class ProjectTest extends TestCase
             'language' => 'fr',
             'author' => 'Jane Author',
             'publisher' => 'Imaginary Press',
-            'rights' => '© 2026 Jane Author',
             'isbn' => '978-0-306-40615-7',
             'cover_image' => 'covers/my-novel.jpg',
         ])->save();
@@ -163,7 +163,6 @@ class ProjectTest extends TestCase
         $this->assertSame(BookLanguage::French, $project->language);
         $this->assertSame('Jane Author', $project->author);
         $this->assertSame('Imaginary Press', $project->publisher);
-        $this->assertSame('© 2026 Jane Author', $project->rights);
         $this->assertSame('978-0-306-40615-7', $project->isbn);
         $this->assertSame('covers/my-novel.jpg', $project->cover_image);
     }
@@ -182,7 +181,6 @@ class ProjectTest extends TestCase
             'language' => 'fr',
             'author' => 'Jane Author',
             'publisher' => 'Imaginary Press',
-            'rights' => '© 2026 Jane Author',
             'isbn' => '978-0-306-40615-7',
             'cover_image' => UploadedFile::fake()->image('cover.jpg'),
         ]);
@@ -194,7 +192,6 @@ class ProjectTest extends TestCase
         $this->assertSame(BookLanguage::French, $project->language);
         $this->assertSame('Jane Author', $project->author);
         $this->assertSame('Imaginary Press', $project->publisher);
-        $this->assertSame('© 2026 Jane Author', $project->rights);
         $this->assertSame('978-0-306-40615-7', $project->isbn);
         $this->assertNotNull($project->cover_image);
         Storage::disk('public')->assertExists($project->cover_image);
@@ -328,8 +325,8 @@ class ProjectTest extends TestCase
     public function test_the_edit_page_footer_form_resyncs_codex_references_for_the_project(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create(['contents' => 'Mélusine walked into the room.']);
         $entry = CodexEntry::factory()->for($project)->create(['name' => 'Mélusine']);
@@ -376,74 +373,6 @@ class ProjectTest extends TestCase
     }
 
     // --- Front/back-matter Markdown --------------------------------------
-
-    public function test_owner_can_update_a_project_with_all_four_frontmatter_fields(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-
-        $response = $this->actingAs($user)->put(route('projects.update', $project), [
-            'name' => 'My Novel',
-            'language' => 'en',
-            'dedication' => 'For *everyone* who believed.',
-            'acknowledgements' => 'Thanks to my **editor**.',
-            'preface' => 'A word before we begin.',
-            'postface' => 'And so it ends.',
-        ]);
-
-        $response->assertRedirect(route('projects.show', $project));
-
-        $project = $project->fresh();
-        $this->assertSame('For *everyone* who believed.', $project->dedication);
-        $this->assertSame('Thanks to my **editor**.', $project->acknowledgements);
-        $this->assertSame('A word before we begin.', $project->preface);
-        $this->assertSame('And so it ends.', $project->postface);
-    }
-
-    public function test_updating_a_project_with_invalid_markdown_in_dedication_fails_validation(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-
-        // Invalid UTF-8 bytes make CommonMarkConverter throw
-        // UnexpectedEncodingException — the ValidMarkdown rule's failure path.
-        $response = $this->actingAs($user)->put(route('projects.update', $project), [
-            'name' => 'My Novel',
-            'language' => 'en',
-            'dedication' => "\xB1\x31",
-        ]);
-
-        $response->assertSessionHasErrors('dedication');
-    }
-
-    public function test_updating_a_project_with_dedication_over_the_max_length_fails_validation(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-
-        $response = $this->actingAs($user)->put(route('projects.update', $project), [
-            'name' => 'My Novel',
-            'language' => 'en',
-            'dedication' => str_repeat('a', 20001),
-        ]);
-
-        $response->assertSessionHasErrors('dedication');
-    }
-
-    public function test_a_non_owner_cannot_update_a_projects_frontmatter_fields(): void
-    {
-        $owner = User::factory()->create();
-        $other = User::factory()->create();
-        $project = Project::factory()->for($owner)->create();
-
-        $this->actingAs($other)->put(route('projects.update', $project), [
-            'name' => 'Hijacked',
-            'language' => 'en',
-            'dedication' => 'Hijacked dedication',
-        ])->assertForbidden();
-
-        $this->assertNull($project->fresh()->dedication);
-    }
 
     public function test_updating_a_project_with_an_unsupported_language_fails_validation(): void
     {
@@ -615,10 +544,10 @@ class ProjectTest extends TestCase
     public function test_the_edit_page_lists_only_non_zero_categories_in_the_delete_confirmation(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        Act::factory()->for($project)->create();
-        Act::factory()->for($project)->create();
+        Act::factory()->for($book)->create();
+        Act::factory()->for($book)->create();
         CodexEntry::factory()->for($project)->character()->create();
         CodexEntry::factory()->for($project)->character()->create();
         CodexEntry::factory()->for($project)->character()->create();
@@ -688,8 +617,8 @@ class ProjectTest extends TestCase
     public function test_the_project_page_shows_the_total_word_count(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         // A total far outside the range the plotline/event counts shown on the

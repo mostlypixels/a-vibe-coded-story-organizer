@@ -46,7 +46,8 @@ class ProjectSearchTest extends TestCase
      */
     private function chapterIn(Project $project): Chapter
     {
-        $act = Act::factory()->for($project)->create(['name' => 'plain act', 'description' => 'plain']);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['name' => 'plain act', 'description' => 'plain']);
 
         return Chapter::factory()->for($act)->create(['name' => 'plain chapter', 'description' => 'plain']);
     }
@@ -54,11 +55,12 @@ class ProjectSearchTest extends TestCase
     public function test_each_entity_type_is_returned_in_the_right_column_with_the_right_field_label(): void
     {
         $project = $this->project();
+        $book = $project->books()->first();
         $chapter = $this->chapterIn($project);
 
         Plotline::factory()->for($project)->create(['name' => 'quibble plotline', 'description' => 'x']);
         Event::factory()->for($project)->create(['title' => 'quibble event', 'description' => 'x']);
-        $act = Act::factory()->for($project)->create(['name' => 'quibble act', 'description' => 'x']);
+        $act = Act::factory()->for($book)->create(['name' => 'quibble act', 'description' => 'x']);
         Chapter::factory()->for($act)->create(['name' => 'quibble chapter', 'description' => 'x']);
         Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'the quibble scene', 'description' => 'x']);
         CodexEntry::factory()->for($project)->character()->create(['name' => 'quibble hero', 'description' => 'x']);

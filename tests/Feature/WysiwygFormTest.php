@@ -30,8 +30,8 @@ class WysiwygFormTest extends TestCase
     private function fixture(): array
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create();
         $plotline = Plotline::factory()->for($project)->create();

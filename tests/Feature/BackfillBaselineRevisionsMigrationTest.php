@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\RevisionOrigin;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -43,15 +44,17 @@ class BackfillBaselineRevisionsMigrationTest extends TestCase
 
     public function test_seeds_a_baseline_for_every_registered_field_with_a_non_empty_value(): void
     {
-        $project = Project::factory()->create([
-            'description' => 'project description',
-            'dedication' => 'project dedication',
-            'acknowledgements' => 'project acknowledgements',
-            'preface' => 'project preface',
-            'postface' => 'project postface',
-            'rights' => 'project rights',
+        $project = Project::factory()->create(['description' => 'project description']);
+        $book = $project->books()->first();
+        $book->update([
+            'description' => 'book description',
+            'dedication' => 'book dedication',
+            'acknowledgements' => 'book acknowledgements',
+            'preface' => 'book preface',
+            'postface' => 'book postface',
+            'rights' => 'book rights',
         ]);
-        $act = Act::factory()->for($project)->create(['description' => 'act description']);
+        $act = Act::factory()->for($book)->create(['description' => 'act description']);
         $chapter = Chapter::factory()->for($act)->create(['description' => 'chapter description']);
         $plotline = Plotline::factory()->for($project)->create(['description' => 'plotline description']);
         $event = Event::factory()->for($project)->create(['description' => 'event description']);
@@ -66,11 +69,12 @@ class BackfillBaselineRevisionsMigrationTest extends TestCase
 
         $expectations = [
             [$project, 'description', 'project description'],
-            [$project, 'dedication', 'project dedication'],
-            [$project, 'acknowledgements', 'project acknowledgements'],
-            [$project, 'preface', 'project preface'],
-            [$project, 'postface', 'project postface'],
-            [$project, 'rights', 'project rights'],
+            [$book, 'description', 'book description'],
+            [$book, 'dedication', 'book dedication'],
+            [$book, 'acknowledgements', 'book acknowledgements'],
+            [$book, 'preface', 'book preface'],
+            [$book, 'postface', 'book postface'],
+            [$book, 'rights', 'book rights'],
             [$act, 'description', 'act description'],
             [$chapter, 'description', 'chapter description'],
             [$plotline, 'description', 'plotline description'],
@@ -128,7 +132,9 @@ class BackfillBaselineRevisionsMigrationTest extends TestCase
 
     public function test_running_the_migration_twice_does_not_create_duplicate_baseline_rows(): void
     {
-        $project = Project::factory()->create(['rights' => 'project rights']);
+        $project = Project::factory()->create();
+        $book = $project->books()->first();
+        $book->update(['rights' => 'book rights']);
 
         $this->runBackfillMigration();
         $this->runBackfillMigration();
@@ -136,8 +142,8 @@ class BackfillBaselineRevisionsMigrationTest extends TestCase
         $this->assertSame(
             1,
             Revision::query()
-                ->where('revisionable_type', Project::class)
-                ->where('revisionable_id', $project->id)
+                ->where('revisionable_type', Book::class)
+                ->where('revisionable_id', $book->id)
                 ->where('field', 'rights')
                 ->count(),
         );
@@ -151,7 +157,7 @@ class BackfillBaselineRevisionsMigrationTest extends TestCase
         $existing = Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->project->id,
+            'project_id' => $scene->chapter->act->book->project->id,
             'user_id' => $user->id,
             'field' => 'contents',
             'value' => 'manually saved contents',

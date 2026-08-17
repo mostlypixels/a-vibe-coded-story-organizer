@@ -33,8 +33,8 @@ class RevisionBrowserTest extends TestCase
     public function test_owner_sees_a_sidebar_listing_a_revised_entitys_field(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'Act Alpha']);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['name' => 'Act Alpha']);
 
         $this->revisionFor(Act::class, $act->id, $project->id, 'description');
 
@@ -51,10 +51,10 @@ class RevisionBrowserTest extends TestCase
     public function test_entities_without_revisions_are_absent_from_the_sidebar(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $revised = Act::factory()->for($project)->create(['name' => 'Revised Act']);
-        Act::factory()->for($project)->create(['name' => 'Untouched Act']);
+        $revised = Act::factory()->for($book)->create(['name' => 'Revised Act']);
+        Act::factory()->for($book)->create(['name' => 'Untouched Act']);
 
         $this->revisionFor(Act::class, $revised->id, $project->id, 'description');
 
@@ -68,8 +68,8 @@ class RevisionBrowserTest extends TestCase
     public function test_a_field_without_revisions_is_absent_under_a_revised_entity(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create(['name' => 'Scene One']);
 
@@ -126,8 +126,8 @@ class RevisionBrowserTest extends TestCase
     {
         // A client-side filter narrows a large sidebar by name.
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $this->revisionFor(Act::class, $act->id, $project->id, 'description');
 
@@ -142,8 +142,8 @@ class RevisionBrowserTest extends TestCase
         // Groups default-collapse to bound a big sidebar. Only the group that
         // holds the entity in view starts open.
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create();
 
@@ -165,8 +165,8 @@ class RevisionBrowserTest extends TestCase
         // The sidebar's entity name is the way into the whole entity's history;
         // its field leaves are the same page with `?field=` set.
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'Act Alpha']);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['name' => 'Act Alpha']);
 
         $this->revisionFor(Act::class, $act->id, $project->id, 'description');
 
@@ -186,8 +186,8 @@ class RevisionBrowserTest extends TestCase
         // With no `?field=`, the active row is the entity name itself — and its
         // group still starts open, exactly as on a field-filtered page.
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'Act Alpha']);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['name' => 'Act Alpha']);
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create();
 
@@ -214,8 +214,8 @@ class RevisionBrowserTest extends TestCase
     public function test_the_history_page_renders_the_browser_sidebar_with_the_active_field(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $this->revisionFor(Act::class, $act->id, $project->id, 'description');
 

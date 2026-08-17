@@ -162,8 +162,8 @@ class RevisionRecorderTest extends TestCase
 
     public function test_record_sets_project_id_by_walking_a_scene_up_to_its_project(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create(['contents' => 'original']);
         $user = User::factory()->create();
@@ -189,8 +189,8 @@ class RevisionRecorderTest extends TestCase
 
     public function test_ensure_baseline_seeds_a_baseline_row_from_the_current_value(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create(['contents' => 'pre-edit value']);
 

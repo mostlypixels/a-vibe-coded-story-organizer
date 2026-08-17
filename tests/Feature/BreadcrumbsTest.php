@@ -117,7 +117,8 @@ class BreadcrumbsTest extends TestCase
     public function test_the_edit_leaf_renders_the_id_not_the_models_name(): void
     {
         $project = Project::factory()->for($this->user)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'A Named Act']);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['name' => 'A Named Act']);
 
         $nav = $this->breadcrumbNav(
             $this->actingAs($this->user)->get(route('acts.edit', $act))->assertOk()->getContent()
@@ -145,7 +146,8 @@ class BreadcrumbsTest extends TestCase
     public function test_the_revisions_history_page_renders_the_exception_trail(): void
     {
         $project = Project::factory()->for($this->user)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'The Curse Begins']);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['name' => 'The Curse Begins']);
 
         $nav = $this->breadcrumbNav(
             $this->actingAs($this->user)
@@ -167,7 +169,8 @@ class BreadcrumbsTest extends TestCase
     public function test_the_revisions_compare_page_renders_the_exception_trail(): void
     {
         $project = Project::factory()->for($this->user)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'The Curse Begins']);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['name' => 'The Curse Begins']);
 
         $nav = $this->breadcrumbNav(
             $this->actingAs($this->user)
@@ -186,8 +189,8 @@ class BreadcrumbsTest extends TestCase
     public function test_a_403_on_a_revisions_history_route_does_not_leak_the_label(): void
     {
         $other = User::factory()->create();
-        $project = Project::factory()->for($other)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'Concealed History Title']);
+        [$project, $book] = $this->projectWithBook($other);
+        $act = Act::factory()->for($book)->create(['name' => 'Concealed History Title']);
 
         $this->actingAs($this->user)
             ->get(route('revisions.index', ['entity' => 'act', 'id' => $act->id]))
@@ -239,7 +242,8 @@ class BreadcrumbsTest extends TestCase
     public function test_the_band_carries_exactly_one_landmark_one_current_and_hidden_separators(): void
     {
         $project = Project::factory()->for($this->user)->create();
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
 
         $html = $this->actingAs($this->user)
             ->get(route('acts.edit', $act))
@@ -305,8 +309,8 @@ class BreadcrumbsTest extends TestCase
     public function test_a_403_does_not_leak_the_bound_models_label(): void
     {
         $other = User::factory()->create();
-        $project = Project::factory()->for($other)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'Concealed Chapter Title']);
+        [$project, $book] = $this->projectWithBook($other);
+        $act = Act::factory()->for($book)->create(['name' => 'Concealed Chapter Title']);
 
         $this->actingAs($this->user)
             ->get(route('acts.edit', $act))

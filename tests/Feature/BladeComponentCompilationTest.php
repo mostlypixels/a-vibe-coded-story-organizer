@@ -42,13 +42,13 @@ class BladeComponentCompilationTest extends TestCase
     public function test_no_page_emits_an_uncompiled_component_tag(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
         // Two acts and two chapters so the "move or delete" dialog has a
         // destination to offer, and the reorder buttons render both enabled and
         // disabled (first/last row).
-        $act = Act::factory()->for($project)->create();
-        $secondAct = Act::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
+        $secondAct = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Chapter::factory()->for($secondAct)->create();
         $scene = Scene::factory()->for($chapter)->create();

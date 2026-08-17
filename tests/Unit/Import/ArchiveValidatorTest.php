@@ -586,8 +586,9 @@ class ArchiveValidatorTest extends TestCase
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'Round-trip project']);
+        $book = $project->books()->first();
 
-        $act = Act::factory()->for($project)->create(['name' => 'Act one']);
+        $act = Act::factory()->for($book)->create(['name' => 'Act one']);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'Chapter one']);
         Scene::factory()->for($chapter)->create(['name' => 'Scene one', 'contents' => 'Some *prose*.']);
 

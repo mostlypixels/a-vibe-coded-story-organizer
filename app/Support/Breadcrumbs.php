@@ -27,7 +27,7 @@ use Traversable;
  * Fully central: every label comes from the route name or a route-bound
  * model, never a view. The one documented exception is the revisions
  * history/compare pages (`revisions.index` etc.), which bind `{entity}`+`{id}`
- * rather than a `{project}` model — `RouteProject::resolve` yields null for
+ * rather than a `{project}` model — `RouteContext::resolve` yields null for
  * them, so this class correctly produces an empty trail and those views
  * supply their own trail tail instead.
  *

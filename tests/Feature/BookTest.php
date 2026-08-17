@@ -167,6 +167,23 @@ class BookTest extends TestCase
         Storage::disk('public')->assertMissing($coverPath);
     }
 
+    public function test_deleting_a_book_removes_its_chapters_cover_files(): void
+    {
+        Storage::fake('public');
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
+        $coverPath = 'chapter-covers/cascade-book-cover.jpg';
+        Storage::disk('public')->put($coverPath, 'contents');
+        Chapter::factory()->for($act)->create(['cover_image' => $coverPath]);
+
+        // Deleting the book cascades to its acts and their chapters at the DB
+        // level (bypassing Chapter::deleting); Book::deleting must purge the
+        // cover files itself.
+        $book->delete();
+
+        Storage::disk('public')->assertMissing($coverPath);
+    }
+
     public function test_deleting_a_project_cascades_to_its_books(): void
     {
         [$project, $book] = $this->projectWithBook();
@@ -179,8 +196,8 @@ class BookTest extends TestCase
     public function test_deleting_a_book_records_the_projects_word_count(): void
     {
         $user = User::factory()->create();
-        [$project] = $this->projectWithBook($user);
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($firstBook))->create();
         Scene::factory()->for($chapter)->create(['contents' => 'One two three']);
         $book = Book::factory()->for($project)->create();
 

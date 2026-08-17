@@ -71,7 +71,7 @@ class FormRequestCapAgreementTest extends TestCase
 
     /**
      * Route parameters the requests' rules() methods resolve, e.g.
-     * `$this->route('scene')->chapter->act->project`.
+     * `$this->route('scene')->chapter->act->book->project`.
      *
      * @var array<string, mixed>
      */
@@ -81,8 +81,8 @@ class FormRequestCapAgreementTest extends TestCase
     {
         parent::setUp();
 
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         $this->routeParameters = [
@@ -132,7 +132,7 @@ class FormRequestCapAgreementTest extends TestCase
 
         // Guards the guard: a typo'd map or a rules() that stopped exposing its
         // fields would otherwise make this test pass by checking nothing.
-        $this->assertSame(23, $checked, 'Expected 23 registered field rules across the Form Requests.');
+        $this->assertSame(18, $checked, 'Expected 18 registered field rules across the Form Requests.');
     }
 
     public function test_the_request_map_covers_every_registered_slug(): void
@@ -148,10 +148,10 @@ class FormRequestCapAgreementTest extends TestCase
     // The drift, end to end: both paths now refuse the same text
     // ---------------------------------------------------------------------
 
-    public function test_the_save_form_and_autosave_agree_on_the_front_matter_cap(): void
+    public function test_autosave_refuses_front_matter_over_the_shared_cap(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         // 40,000 characters is the exact gap the two caps used to leave open:
         // under autosave's 100,000 it was accepted and stored, over the form's
@@ -161,24 +161,18 @@ class FormRequestCapAgreementTest extends TestCase
         $inTheOldGap = str_repeat('a', 40_000);
 
         $this->actingAs($user)->patchJson(
-            route('autosave.update', ['entity' => 'project', 'id' => $project->id, 'field' => 'dedication']),
-            ['value' => $inTheOldGap, 'client_revision' => null],
+            route('autosave.update', ['entity' => 'book', 'id' => $book->id, 'field' => 'dedication']),
+            ['value' => $inTheOldGap, 'base_hash' => hash('sha256', '')],
         )->assertStatus(422)->assertJsonValidationErrors(['value']);
 
-        $this->actingAs($user)->put(route('projects.update', $project), [
-            'name' => $project->name,
-            'language' => 'en',
-            'dedication' => $inTheOldGap,
-        ])->assertSessionHasErrors('dedication');
-
-        $this->assertNull($project->fresh()->dedication);
+        $this->assertNull($book->fresh()->dedication);
     }
 
     public function test_the_save_form_now_caps_a_field_it_used_to_leave_unbounded(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         // `description` had no `max:` rule on the form path at all, so Save
         // accepted text every subsequent autosave would refuse.
@@ -191,17 +185,16 @@ class FormRequestCapAgreementTest extends TestCase
     public function test_front_matter_up_to_the_cap_is_still_accepted(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
-        $atCap = str_repeat('a', AutosavableFields::characterCap('project', 'dedication'));
+        $atCap = str_repeat('a', AutosavableFields::characterCap('book', 'dedication'));
 
-        $this->actingAs($user)->put(route('projects.update', $project), [
-            'name' => $project->name,
-            'language' => 'en',
-            'dedication' => $atCap,
-        ])->assertSessionHasNoErrors();
+        $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'book', 'id' => $book->id, 'field' => 'dedication']),
+            ['value' => $atCap, 'base_hash' => hash('sha256', '')],
+        )->assertOk();
 
-        $this->assertSame($atCap, $project->fresh()->dedication);
+        $this->assertSame($atCap, $book->fresh()->dedication);
     }
 
     // ---------------------------------------------------------------------
@@ -210,7 +203,7 @@ class FormRequestCapAgreementTest extends TestCase
      * Build a Form Request outside the HTTP kernel and read its rules().
      *
      * Only the route resolver is stubbed: several rules() methods walk a bound
-     * model up to its project (`$this->route('scene')->chapter->act->project`).
+     * model up to its project (`$this->route('scene')->chapter->act->book->project`).
      * FormRequest::route() calls `parameter()` on whatever the resolver returns,
      * so a tiny object is enough — no router, no request lifecycle, and
      * authorize() never runs.

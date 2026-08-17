@@ -26,7 +26,7 @@ class StoreSceneRequest extends FormRequest
             'chapter_id' => [
                 'required',
                 'integer',
-                Rule::exists('chapters', 'id')->whereIn('act_id', $project->acts()->pluck('id')),
+                Rule::exists('chapters', 'id')->whereIn('act_id', $project->acts()->pluck('acts.id')),
             ],
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('scene', 'description'),

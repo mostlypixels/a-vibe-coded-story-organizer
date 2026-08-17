@@ -67,38 +67,10 @@
                 </div>
 
                 <div>
-                    <x-autosave-field entity="project" :model="$project" field="rights" :label="__('Rights')" :rows="3" form="project-edit-form" />
-                    <p class="mt-1 text-xs text-content-subtle">{{ __('Copyright or rights statement.') }}</p>
-                </div>
-
-                <div>
                     <x-input-label for="isbn" :value="__('ISBN')" />
                     <x-text-input id="isbn" name="isbn" form="project-edit-form" type="text" class="mt-1 block w-full" :value="old('isbn', $project->isbn)" />
                     <p class="mt-1 text-xs text-content-subtle">{{ __('ISBN-13, with or without hyphens.') }}</p>
                     <x-input-error :messages="$errors->get('isbn')" class="mt-2" />
-                </div>
-            </div>
-        </x-card>
-
-        <x-card :title="__('Book front & back matter (Markdown)')">
-            <p class="text-sm text-content-muted">{{ __('Optional pages included in the EPUB export when enabled on the Export-ebook configuration page. These fields use Markdown (like scene contents), not the rich-text editor above.') }}</p>
-
-            <div class="mt-4 space-y-6">
-                <div>
-                    <x-autosave-field entity="project" :model="$project" field="dedication" :label="__('Dedication')" form="project-edit-form" />
-                </div>
-
-                <div>
-                    <x-autosave-field entity="project" :model="$project" field="acknowledgements" :label="__('Acknowledgements')" form="project-edit-form" />
-                </div>
-
-                <div>
-                    <x-autosave-field entity="project" :model="$project" field="preface" :label="__('Preface')" form="project-edit-form" />
-                </div>
-
-                <div>
-                    <x-autosave-field entity="project" :model="$project" field="postface" :label="__('Postface')" form="project-edit-form" />
-                    <p class="mt-1 text-xs text-content-subtle">{{ __('Rendered before any codex appendix.') }}</p>
                 </div>
             </div>
         </x-card>

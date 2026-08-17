@@ -121,7 +121,8 @@ class SearchTest extends TestCase
      */
     private function sceneFor(Project $project, array $attributes): Scene
     {
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         return Scene::factory()->for($chapter)->create($attributes);

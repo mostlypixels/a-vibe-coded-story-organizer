@@ -245,7 +245,7 @@ class StaticSiteExporter
                 'id' => $act->id,
                 'name' => $act->name,
                 'position' => $act->position,
-                'project_id' => $act->project_id,
+                'project_id' => $project->id,
             ];
             $actJson += $this->addFieldFile($zip, $actDir, 'description_file', 'description.html', $act->description);
             $this->addJson($zip, "{$actDir}/act.json", $actJson);
@@ -644,7 +644,7 @@ class StaticSiteExporter
 
             $html = view('exports.book.chapter', [
                 // Same formatted heading as the TOC entry, built from the
-                // project-wide chapter number, never $chapter->position.
+                // book-wide chapter number, never $chapter->position.
                 'chapterTitle' => $settings->chapter_title_format->format($numbering->chapter($chapter), $chapter->name),
                 // Render Markdown → HTML through the same Scene::renderedContents
                 // accessor the app's views use, so the reading layer and the app can
@@ -691,8 +691,8 @@ class StaticSiteExporter
 
     /**
      * The TOC label for an Act: "Act {number}: {name}", or just "Act {number}"
-     * when the Act has no name. `number` is the project-wide, gap-free rank from
-     * {@see StoryNumbering} — never `$act->position`, which is a per-project but
+     * when the Act has no name. `number` is the book-wide, gap-free rank from
+     * {@see StoryNumbering} — never `$act->position`, which is a per-book but
      * gappy sort key. Mirrors {@see EpubExporter}'s own act nav label so both
      * exports agree on how an act number reads.
      */
@@ -747,7 +747,7 @@ class StaticSiteExporter
                 'chapters' => fn ($query) => $query->orderBy('position'),
                 'chapters.scenes' => fn ($query) => $query->orderBy('position'),
             ])
-            ->orderBy('position')
+            ->orderBy('acts.position')
             ->get();
     }
 

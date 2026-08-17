@@ -17,7 +17,7 @@ class DestroyChapterRequest extends FormRequest
     {
         // Same boundary as ChapterController::destroy() itself — authorization walks up
         // to the owning project, never a new policy (CLAUDE.md authorization rule).
-        return $this->user()->can('update', $this->route('chapter')->act->project);
+        return $this->user()->can('update', $this->route('chapter')->act->book->project);
     }
 
     /**
@@ -26,14 +26,14 @@ class DestroyChapterRequest extends FormRequest
     public function rules(): array
     {
         $chapter = $this->route('chapter');
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         return [
             'move_children_to' => [
                 'nullable',
                 // Must be a real chapter in the same project (mirrors UpdateSceneRequest's
                 // chapter_id scoping: any chapter whose act belongs to this project) …
-                Rule::exists('chapters', 'id')->whereIn('act_id', $project->acts()->pluck('id')),
+                Rule::exists('chapters', 'id')->whereIn('act_id', $project->acts()->pluck('acts.id')),
                 // … and never the chapter being deleted itself.
                 Rule::notIn([$chapter->id]),
             ],

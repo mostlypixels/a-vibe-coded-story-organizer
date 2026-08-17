@@ -51,6 +51,44 @@ Resolved in the planning grill, 2026-08-16. The full question-by-question record
 - **`BookFactory` omits `position`** (`data-model.md` said 1). `Project::created` already makes
   the first book at position 1, so a hard-coded 1 collides on `Book::factory()->for($project)`.
   The `creating` hook assigns it, exactly as `ActFactory` relies on.
+- **Two of task 03's four migrations were deferred to the tasks that wire them.** Only
+  `add_book_id_to_acts_table` and `drop_moved_project_revisions` landed.
+  `move_publication_settings_to_books` breaks `Project::publicationSetting()` at once, and
+  `drop_book_metadata_from_projects` breaks `EpubExporter`, `StaticSiteExporter`,
+  `ProjectGraphImporter` and the project edit form at once — every one of those is scoped to a
+  later task, so landing the schema early meant either a red suite or writing those tasks here.
+  The green-suite invariant won. Land each migration with its wiring.
+- **The project edit form lost its front matter with no replacement yet.** `rights`,
+  `dedication`, `acknowledgements`, `preface` and `postface` left `AutosavableFields`,
+  `UpdateProjectRequest` and `projects/edit.blade.php`. The columns still exist and the
+  exporters still read them, but nothing writes them until the book edit form exists.
+- **`FormRequestCapAgreementTest` lost the form half of its two front-matter tests.** They
+  proved the Save form and autosave refuse the same text; no Save form writes a book's front
+  matter yet, so both now assert the autosave path alone. Restore the form half with the book
+  edit form.
+- **`ActController@store` creates the act on the project's first book.** The route still binds
+  `{project}` and `Project::acts()` is a read-only `hasManyThrough`, so the controller resolves
+  a book itself. It goes away when the story routes nest under `{book}`.
+- **The seeders still make one book each.** `data-model.md` asks `LoremIpsumSeeder` to seed a
+  two-book project. Held back: with numbering and the routes still project-wide, a second book's
+  acts interleave with the first's in every list.
+- **`ActController@index`, `ChapterController@index`, `SceneController@index` and
+  `StoryController`'s chapter-mode render resolve `StoryNumbering::forBook()` off the project's
+  first book**, the same stand-in `ActController@store` already uses. Their `edit` actions (and
+  `SharedSceneController`) instead derive the book straight off the entity (`$act->book`,
+  `$chapter->act->book`) — no "first book" guess needed once a specific act/chapter/scene is in
+  hand. Both go away when the story routes nest under `{book}`.
+- **`StaticSiteExporter` needed no `forProject` → `forBook` rename.** It already derives every
+  number via `fromActs()` on a tree it has already loaded, never `StoryNumbering::forProject()`
+  directly — only its docblock wording ("project-wide" → "book-wide") changed.
+- **Task 05's authorization walks were already grown a level.** Task 03 pointed `acts` at
+  `book_id` and removed `Act::project()`, so every `$act->project` / `$chapter->act->project` /
+  `$scene->chapter->act->project` call site — controllers, Form Requests, `revisionProject()` —
+  had to become `->book->project` at once just to keep the app compiling. Task 05's own diff is
+  the `RouteContext` rename plus its tests; no controller or Form Request needed touching.
+- **`DuplicateEntityRequest` is a third real caller of the old `RouteProject`**, not the two the
+  task named (`ProjectNavigation`, `TrackActiveProject`). Renaming the class breaks any caller
+  left pointing at the old name, so it was updated too — `RouteContext::resolve($this)->project`.
 
 ## Issues → resolutions
 
@@ -63,3 +101,16 @@ Resolved in the planning grill, 2026-08-16. The full question-by-question record
 - **`RevisionController::EDIT_ROUTES` has no `book` entry** until task 07 names `books.edit`, so a
   hand-typed `/revisions/book/{id}` is a 500 rather than a 404 in between. No UI reaches it: no
   book field is editable yet.
+- **`Project::acts()` joins `books`, and `books` carries `name`, `position`, `id` and
+  `updated_at`.** Every bare column on that relation is now an ambiguous-column error — the trap
+  `Project::chapterQuery()`'s docblock already documents, one level up. `pluck('id')`,
+  `orderBy('position')`, `select(['id', 'position'])` and `where('name', …)` all had to be
+  qualified, in app code *and* in tests. `find()`/`findOrFail()` qualify themselves.
+- **`Event::fake()` silences `Project::created`, so the project gets no book.** Two
+  `FieldAutosaveTest` cases faked events before building their fixture and then failed on
+  `Act::factory()->for(null)` with `Call to undefined method Builder::()`. The fixture is built
+  first now. Any test that fakes events and then creates a project hits this.
+- **SQLite drops a constrained column happily, but not a NOT NULL one on a populated table.**
+  `add_book_id_to_acts_table` deletes the manuscript rows before adding `book_id` — destructive
+  by design (pre-V1, reseed), and it also makes a forward `php artisan migrate` work instead of
+  erroring on an existing dev database.

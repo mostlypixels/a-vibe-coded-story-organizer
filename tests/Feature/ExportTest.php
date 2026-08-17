@@ -6,6 +6,7 @@ use App\Enums\ChapterTitleFormat;
 use App\Enums\CodexEntryType;
 use App\Enums\SceneStatus;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexAttribute;
 use App\Models\CodexAttributeValue;
@@ -311,9 +312,9 @@ class ExportTest extends TestCase
     public function test_story_tree_is_written_as_nested_entity_directories(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $act = Act::factory()->for($project)->create(['name' => 'First Act', 'position' => 1]);
+        $act = Act::factory()->for($book)->create(['name' => 'First Act', 'position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'First Chapter', 'position' => 1]);
         $sceneOne = Scene::factory()->for($chapter)->create(['name' => 'Opening Scene', 'position' => 1]);
         $sceneTwo = Scene::factory()->for($chapter)->create(['name' => 'Closing Scene', 'position' => 2]);
@@ -400,9 +401,9 @@ class ExportTest extends TestCase
     public function test_act_and_chapter_json_carry_position_and_parent_id(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $act = Act::factory()->for($project)->create(['position' => 3]);
+        $act = Act::factory()->for($book)->create(['position' => 3]);
         $chapter = Chapter::factory()->for($act)->create(['position' => 2]);
 
         $zip = $this->exportZip($user, $project);
@@ -425,8 +426,8 @@ class ExportTest extends TestCase
     public function test_scene_json_carries_scalars_relationships_and_status_value(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
 
         // The scene "happens during" one event and mentions another.
         $duringEvent = Event::factory()->for($project)->create();
@@ -459,8 +460,8 @@ class ExportTest extends TestCase
     public function test_field_files_hold_the_raw_stored_values_unrendered(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
 
         $markdown = "# A heading\n\nParagraph with **bold**.";
         // The description is a stored sanitized HTML fragment (no doctype wrapper).
@@ -495,8 +496,8 @@ class ExportTest extends TestCase
     public function test_scene_json_excludes_share_link_columns(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
 
         $scene = Scene::factory()->for($chapter)->create();
         // Give the scene a live share link — it must never reach the export.
@@ -517,8 +518,8 @@ class ExportTest extends TestCase
     public function test_null_content_fields_omit_the_file_and_the_link_key(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
 
         $scene = Scene::factory()->for($chapter)->create(['notes' => null]);
 
@@ -952,13 +953,13 @@ class ExportTest extends TestCase
     public function test_book_index_lists_acts_and_links_every_chapter_file(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $actOne = Act::factory()->for($project)->create(['name' => 'The Beginning', 'position' => 1]);
+        $actOne = Act::factory()->for($book)->create(['name' => 'The Beginning', 'position' => 1]);
         Chapter::factory()->for($actOne)->create(['name' => 'Opening Chapter', 'position' => 1]);
         Chapter::factory()->for($actOne)->create(['name' => 'Rising Action', 'position' => 2]);
 
-        $actTwo = Act::factory()->for($project)->create(['name' => 'The Reckoning', 'position' => 2]);
+        $actTwo = Act::factory()->for($book)->create(['name' => 'The Reckoning', 'position' => 2]);
         Chapter::factory()->for($actTwo)->create(['name' => 'The Climax', 'position' => 1]);
 
         $zip = $this->exportZip($user, $project);
@@ -983,9 +984,9 @@ class ExportTest extends TestCase
     public function test_chapter_page_renders_scene_contents_as_html_joined_by_hr_without_titles(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'A Compiled Chapter', 'position' => 1]);
 
         Scene::factory()->for($chapter)->create([
@@ -1026,13 +1027,13 @@ class ExportTest extends TestCase
     public function test_book_index_shows_continuous_chapter_numbers_across_the_act_boundary(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $actOne = Act::factory()->for($project)->create(['name' => 'The Beginning', 'position' => 1]);
+        $actOne = Act::factory()->for($book)->create(['name' => 'The Beginning', 'position' => 1]);
         Chapter::factory()->for($actOne)->create(['name' => 'Opening Chapter', 'position' => 1]);
         Chapter::factory()->for($actOne)->create(['name' => 'Rising Action', 'position' => 2]);
 
-        $actTwo = Act::factory()->for($project)->create(['name' => 'The Reckoning', 'position' => 2]);
+        $actTwo = Act::factory()->for($book)->create(['name' => 'The Reckoning', 'position' => 2]);
         Chapter::factory()->for($actTwo)->create(['name' => 'The Climax', 'position' => 1]);
 
         $zip = $this->exportZip($user, $project);
@@ -1055,12 +1056,12 @@ class ExportTest extends TestCase
     public function test_chapter_page_heading_carries_the_continuous_number(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        $actOne = Act::factory()->for($book)->create(['position' => 1]);
         Chapter::factory()->for($actOne)->create(['name' => 'First', 'position' => 1]);
 
-        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        $actTwo = Act::factory()->for($book)->create(['position' => 2]);
         $chapter = Chapter::factory()->for($actTwo)->create(['name' => 'Second Act, Third Chapter', 'position' => 1]);
         Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
 
@@ -1082,9 +1083,9 @@ class ExportTest extends TestCase
     public function test_every_chapter_title_format_drives_the_website_output(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'The Storm', 'position' => 1]);
         Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
 
@@ -1115,9 +1116,9 @@ class ExportTest extends TestCase
     public function test_a_nameless_chapter_under_the_title_format_still_gets_a_toc_label(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['name' => '', 'position' => 1]);
         Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Prose.']);
 
@@ -1135,13 +1136,13 @@ class ExportTest extends TestCase
     public function test_chapter_files_are_numbered_by_zero_padded_act_and_per_act_chapter_position(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        $actOne = Act::factory()->for($book)->create(['position' => 1]);
         Chapter::factory()->for($actOne)->create(['position' => 1]);
         Chapter::factory()->for($actOne)->create(['position' => 2]);
 
-        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        $actTwo = Act::factory()->for($book)->create(['position' => 2]);
         Chapter::factory()->for($actTwo)->create(['position' => 1]);
 
         $zip = $this->exportZip($user, $project);
@@ -1158,14 +1159,14 @@ class ExportTest extends TestCase
     public function test_prev_next_navigation_crosses_act_boundaries_and_ends_link_to_the_toc(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
         // Reading order: A (01/01) → B (01/02) → C (02/01), the last hop crossing acts.
-        $actOne = Act::factory()->for($project)->create(['position' => 1]);
+        $actOne = Act::factory()->for($book)->create(['position' => 1]);
         Chapter::factory()->for($actOne)->create(['position' => 1]);
         Chapter::factory()->for($actOne)->create(['position' => 2]);
 
-        $actTwo = Act::factory()->for($project)->create(['position' => 2]);
+        $actTwo = Act::factory()->for($book)->create(['position' => 2]);
         Chapter::factory()->for($actTwo)->create(['position' => 1]);
 
         $zip = $this->exportZip($user, $project);
@@ -1196,9 +1197,9 @@ class ExportTest extends TestCase
     public function test_titles_are_html_escaped_in_the_book_layer(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $act = Act::factory()->for($project)->create(['name' => 'Act & <em>Ampersand</em>', 'position' => 1]);
+        $act = Act::factory()->for($book)->create(['name' => 'Act & <em>Ampersand</em>', 'position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'Chapter <b>Bold</b>', 'position' => 1]);
         Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Plain prose.']);
 
@@ -1247,8 +1248,8 @@ class ExportTest extends TestCase
     public function test_an_export_writes_no_revisions_even_when_the_project_has_revisions(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
         $scene = Scene::factory()->for($chapter)->create();
 
         Revision::factory()->count(3)->create([
@@ -1270,8 +1271,8 @@ class ExportTest extends TestCase
     public function test_a_stray_include_revisions_field_is_ignored_and_no_revisions_are_written(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
         $scene = Scene::factory()->for($chapter)->create();
 
         Revision::factory()->create([
@@ -1301,8 +1302,8 @@ class ExportTest extends TestCase
     public function test_epub_export_has_no_include_revisions_option(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $chapter = Chapter::factory()->for(Act::factory()->for($project))->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
         Scene::factory()->for($chapter)->create();
 
         $response = $this->actingAs($user)->post(route('admin.data.export.epub'), [

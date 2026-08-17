@@ -25,7 +25,7 @@ class SceneShareController extends Controller
      */
     public function store(StoreSceneShareRequest $request, Scene $scene): RedirectResponse
     {
-        $this->authorize('update', $scene->chapter->act->project);
+        $this->authorize('update', $scene->chapter->act->book->project);
 
         $scene->share_token = Str::random(48);
         $scene->share_expires_at = now()->add($request->validated('duration'));
@@ -39,7 +39,7 @@ class SceneShareController extends Controller
      */
     public function destroy(Scene $scene): RedirectResponse
     {
-        $this->authorize('update', $scene->chapter->act->project);
+        $this->authorize('update', $scene->chapter->act->book->project);
 
         $scene->share_token = null;
         $scene->share_expires_at = null;

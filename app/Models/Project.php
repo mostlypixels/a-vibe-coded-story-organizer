@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
@@ -69,9 +70,20 @@ class Project extends Model
         return $this->hasMany(Event::class);
     }
 
-    public function acts(): HasMany
+    /**
+     * Every act in the project, through its book — **read-only**.
+     *
+     * > [!WARNING]
+     * > A `hasManyThrough` cannot `create()`. A new act is created on its book:
+     * > `$book->acts()->create(...)`.
+     *
+     * The join brings `books.name` and `books.position` into scope, so a caller
+     * that orders or selects on this relation must qualify its columns
+     * (`acts.position`) — the same trap {@see self::chapterQuery()} documents.
+     */
+    public function acts(): HasManyThrough
     {
-        return $this->hasMany(Act::class);
+        return $this->hasManyThrough(Act::class, Book::class);
     }
 
     /**
@@ -165,8 +177,8 @@ class Project extends Model
     /**
      * Every chapter in this project, as a query to build on.
      *
-     * Chapters belong to a project *through* their act, so there is no direct
-     * relation to hang this on — and the walk was being spelled out as
+     * Chapters belong to a project *through* their act and its book, so there is
+     * no direct relation to hang this on — and the walk was being spelled out as
      * `whereHas('act', …)` at eight call sites (both index queries, the edit
      * page's move destinations, the destroy action's destination lookup, the
      * cover purge in booted(), ProjectSearch, SceneReferenceMatcher).
@@ -181,7 +193,7 @@ class Project extends Model
      */
     public function chapterQuery(): Builder
     {
-        return Chapter::query()->whereHas('act', fn (Builder $query) => $query->where('project_id', $this->id));
+        return Chapter::query()->whereHas('act.book', fn (Builder $query) => $query->where('project_id', $this->id));
     }
 
     /**
@@ -191,7 +203,7 @@ class Project extends Model
      */
     public function sceneQuery(): Builder
     {
-        return Scene::query()->whereHas('chapter.act', fn (Builder $query) => $query->where('project_id', $this->id));
+        return Scene::query()->whereHas('chapter.act.book', fn (Builder $query) => $query->where('project_id', $this->id));
     }
 
     /**

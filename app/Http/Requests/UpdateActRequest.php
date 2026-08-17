@@ -9,7 +9,7 @@ class UpdateActRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('act')->project);
+        return $this->user()->can('update', $this->route('act')->book->project);
     }
 
     /**

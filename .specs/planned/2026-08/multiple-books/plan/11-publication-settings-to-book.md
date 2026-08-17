@@ -4,8 +4,8 @@
 
 ## Scope
 
-- `PublicationSetting` belongs to a `Book`; the `book_id` unique index replaces `project_id`
-  (the migration itself landed in task 03 — wire the model, controller and form here).
+- `move_publication_settings_to_books` — the `book_id` unique index replaces `project_id`. Task 03
+  deferred this migration here, where its model, controller and form wiring live.
 - `Project::publicationSettingOrDefault()` → `Book::publicationSettingOrDefault()`, returning
   the same unsaved default instance when no row exists.
 - Rename `include_project_cover` → `include_book_cover`, column and label ("Include book

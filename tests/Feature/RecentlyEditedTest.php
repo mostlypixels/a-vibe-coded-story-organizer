@@ -37,8 +37,8 @@ class RecentlyEditedTest extends TestCase
      */
     private function chapterFor(User $user, string $actName = 'First act'): Chapter
     {
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['name' => $actName]);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['name' => $actName]);
 
         return Chapter::factory()->for($act)->create(['name' => 'First chapter']);
     }
@@ -56,7 +56,7 @@ class RecentlyEditedTest extends TestCase
             ->forceFill(['updated_at' => now()])->save();
 
         $response = $this->actingAs($user)
-            ->get(route('projects.story.home', $chapter->act->project));
+            ->get(route('projects.story.home', $chapter->act->book->project));
 
         $response->assertOk();
         $response->assertSeeInOrder(['Newer scene', 'Older scene']);
@@ -69,7 +69,7 @@ class RecentlyEditedTest extends TestCase
         Scene::factory()->for($chapter)->create(['name' => 'A scene']);
 
         $this->actingAs($user)
-            ->get(route('projects.story.home', $chapter->act->project))
+            ->get(route('projects.story.home', $chapter->act->book->project))
             ->assertOk()
             ->assertSee('Act of departure — First chapter');
     }
@@ -77,11 +77,11 @@ class RecentlyEditedTest extends TestCase
     public function test_the_story_home_caps_each_list_at_the_recent_limit(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
         // One more act than the list shows, oldest last so it is the one dropped.
         foreach (range(1, RecentItem::LIMIT + 1) as $index) {
-            Act::factory()->for($project)->create(['name' => "Act {$index}"])
+            Act::factory()->for($book)->create(['name' => "Act {$index}"])
                 ->forceFill(['updated_at' => now()->subMinutes($index)])->save();
         }
 
@@ -126,7 +126,7 @@ class RecentlyEditedTest extends TestCase
         Scene::factory()->for($otherChapter)->create(['name' => 'Someone elses project']);
 
         $this->actingAs($user)
-            ->get(route('projects.story.home', $chapter->act->project))
+            ->get(route('projects.story.home', $chapter->act->book->project))
             ->assertOk()
             ->assertSee('Mine')
             ->assertDontSee('Someone elses project');
@@ -138,7 +138,7 @@ class RecentlyEditedTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user, 'Act of departure');
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         Scene::factory()->for($chapter)->create(['name' => 'Older scene'])
             ->forceFill(['updated_at' => now()->subDay()])->save();
@@ -184,7 +184,7 @@ class RecentlyEditedTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         foreach (range(1, 4) as $index) {
             Scene::factory()->for($chapter)->create(['name' => "Scene {$index}"])
@@ -301,7 +301,7 @@ class RecentlyEditedTest extends TestCase
         $chapter->update(['cover_image' => 'chapters/first.jpg']);
 
         $this->actingAs($user)
-            ->get(route('projects.story.home', $chapter->act->project))
+            ->get(route('projects.story.home', $chapter->act->book->project))
             ->assertOk()
             ->assertSee(Storage::disk('public')->url('chapters/first.jpg'));
     }

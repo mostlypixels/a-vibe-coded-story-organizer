@@ -9,9 +9,11 @@ use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CoverImageService;
 use App\Services\WordCountSnapshotRecorder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One volume of a project. A project holds at least one book, and the
@@ -57,6 +59,32 @@ class Book extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function acts(): HasMany
+    {
+        return $this->hasMany(Act::class);
+    }
+
+    /**
+     * Every chapter in this book, as a query to build on — the book-scoped twin
+     * of {@see Project::chapterQuery()}, and a Builder for the same reason: a
+     * relation would join `acts`, whose own `name`/`position` columns make every
+     * caller's `orderBy()` ambiguous.
+     */
+    public function chapterQuery(): Builder
+    {
+        return Chapter::query()->whereHas('act', fn (Builder $query) => $query->where('book_id', $this->id));
+    }
+
+    /**
+     * Every scene in this book, as a query to build on. The two-level twin of
+     * {@see self::chapterQuery()} — scenes reach the book through
+     * chapter → act.
+     */
+    public function sceneQuery(): Builder
+    {
+        return Scene::query()->whereHas('chapter.act', fn (Builder $query) => $query->where('book_id', $this->id));
     }
 
     /**
@@ -117,8 +145,22 @@ class Book extends Model
         // a book never removes its file automatically. Delete it here before the
         // row is gone, otherwise a book deletion leaks an orphan cover on the
         // public disk (media-lifecycle.md pitfall).
+        //
+        // book -> acts -> chapters cascades at the database level, which fires
+        // neither Act::deleting nor Chapter::deleting — so purge every chapter
+        // cover below this book here too, one query through the acts.
         static::deleting(function (Book $book) {
-            app(CoverImageService::class)->delete($book->cover_image);
+            $coverImageService = app(CoverImageService::class);
+
+            $coverImageService->delete($book->cover_image);
+
+            $chapterCovers = $book->chapterQuery()
+                ->whereNotNull('cover_image')
+                ->pluck('cover_image');
+
+            foreach ($chapterCovers as $coverPath) {
+                $coverImageService->delete($coverPath);
+            }
         });
 
         // The book's manuscript cascades at the database level, several levels

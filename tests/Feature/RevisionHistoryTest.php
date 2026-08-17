@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\RevisionOrigin;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Revision;
@@ -29,7 +30,7 @@ class RevisionHistoryTest extends TestCase
 
     private function actFor(User $user): Act
     {
-        return Act::factory()->for(Project::factory()->for($user)->create())->create();
+        return Act::factory()->for(Book::factory()->for(Project::factory()->for($user)->create()))->create();
     }
 
     private function sceneFor(User $user): Scene
@@ -42,10 +43,10 @@ class RevisionHistoryTest extends TestCase
         return Revision::factory()->create([
             'revisionable_type' => Act::class,
             'revisionable_id' => $act->id,
-            'project_id' => $act->project->id,
+            'project_id' => $act->book->project->id,
             'field' => 'description',
             'save_id' => (string) Str::ulid(),
-            'user_id' => $act->project->user_id,
+            'user_id' => $act->book->project->user_id,
             ...$overrides,
         ]);
     }
@@ -55,10 +56,10 @@ class RevisionHistoryTest extends TestCase
         return Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->project->id,
+            'project_id' => $scene->chapter->act->book->project->id,
             'field' => 'description',
             'save_id' => (string) Str::ulid(),
-            'user_id' => $scene->chapter->act->project->user_id,
+            'user_id' => $scene->chapter->act->book->project->user_id,
             ...$overrides,
         ]);
     }
@@ -115,7 +116,7 @@ class RevisionHistoryTest extends TestCase
 
         $this->actingAs($user)->get($this->historyUrl($act))->assertOk();
         $this->actingAs($user)->get(route('revisions.compare', ['entity' => 'act', 'id' => $act->id]))->assertOk();
-        $this->actingAs($user)->get(route('projects.revisions.index', $act->project))->assertOk();
+        $this->actingAs($user)->get(route('projects.revisions.index', $act->book->project))->assertOk();
 
         $this->actingAs($user)
             ->post(route('revisions.revert', $revision), ['base_hash' => hash('sha256', (string) $act->description)])

@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Exceptions\EpubExportException;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
@@ -139,8 +140,8 @@ class EpubExporterTest extends TestCase
 
     public function test_it_keeps_chapters_with_no_scenes(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
 
         $withScenes = Chapter::factory()->for($act)->create();
         Scene::factory()->for($withScenes)->create();
@@ -159,18 +160,18 @@ class EpubExporterTest extends TestCase
 
     public function test_it_keeps_acts_whose_chapters_are_all_empty(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
-        $writtenAct = Act::factory()->for($project)->create();
+        $writtenAct = Act::factory()->for($book)->create();
         $writtenChapter = Chapter::factory()->for($writtenAct)->create();
         Scene::factory()->for($writtenChapter)->create();
 
         // Act 2's only chapter has zero scenes — the act still exports its divider.
-        $outlinedAct = Act::factory()->for($project)->create();
+        $outlinedAct = Act::factory()->for($book)->create();
         Chapter::factory()->for($outlinedAct)->create();
 
         // Act 3 has no chapters at all — still a divider.
-        $bareAct = Act::factory()->for($project)->create();
+        $bareAct = Act::factory()->for($book)->create();
 
         $tree = $this->exporter()->actTree($project);
 
@@ -183,8 +184,8 @@ class EpubExporterTest extends TestCase
 
     public function test_the_book_tree_is_position_ordered_at_every_level(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         // Create scenes out of position order, then force positions 3, 1, 2.
@@ -196,7 +197,7 @@ class EpubExporterTest extends TestCase
         $second->update(['position' => 2]);
 
         // A second act with a lower position created afterwards must still sort first.
-        $laterButFirst = Act::factory()->for($project)->create();
+        $laterButFirst = Act::factory()->for($book)->create();
         $laterButFirst->update(['position' => 0]);
         $chapterOfFirst = Chapter::factory()->for($laterButFirst)->create();
         Scene::factory()->for($chapterOfFirst)->create();
@@ -212,8 +213,8 @@ class EpubExporterTest extends TestCase
 
     public function test_act_page_renders_the_derived_number_not_the_raw_position(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create([
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create([
             'name' => 'The Gathering Storm',
             'description' => 'SECRET_DESCRIPTION',
         ]);
@@ -232,8 +233,8 @@ class EpubExporterTest extends TestCase
 
     public function test_act_page_with_blank_name_renders_number_only(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create(['name' => '']);
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create(['name' => '']);
         $act->update(['position' => 1]);
 
         $html = $this->exporter()->renderAct($act, $project);
@@ -245,8 +246,8 @@ class EpubExporterTest extends TestCase
 
     public function test_chapter_page_renders_hr_joined_scenes_without_titles_or_description(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create([
             'name' => 'A Long Expected Party',
             'description' => 'SECRET_DESCRIPTION',
@@ -276,13 +277,13 @@ class EpubExporterTest extends TestCase
 
     public function test_chapter_numbers_run_continuous_across_an_act_boundary(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
-        $actOne = Act::factory()->for($project)->create();
+        $actOne = Act::factory()->for($book)->create();
         $actOneChapterOne = Chapter::factory()->for($actOne)->create();
         $actOneChapterTwo = Chapter::factory()->for($actOne)->create();
 
-        $actTwo = Act::factory()->for($project)->create();
+        $actTwo = Act::factory()->for($book)->create();
         $actTwoChapterOne = Chapter::factory()->for($actTwo)->create();
 
         $tree = $this->exporter()->actTree($project);
@@ -306,11 +307,11 @@ class EpubExporterTest extends TestCase
 
     public function test_act_numbers_are_continuous_and_gap_free_after_an_act_is_deleted(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
-        $first = Act::factory()->for($project)->create(['name' => 'First']);
-        $middle = Act::factory()->for($project)->create(['name' => 'Middle']);
-        $last = Act::factory()->for($project)->create(['name' => 'Last']);
+        $first = Act::factory()->for($book)->create(['name' => 'First']);
+        $middle = Act::factory()->for($book)->create(['name' => 'Middle']);
+        $last = Act::factory()->for($book)->create(['name' => 'Last']);
 
         $middle->delete();
 
@@ -326,8 +327,8 @@ class EpubExporterTest extends TestCase
 
     public function test_chapter_numbers_stay_gap_free_after_a_chapter_is_deleted_leaving_placeholders(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
 
         $first = Chapter::factory()->for($act)->create(['name' => 'Written']);
         Scene::factory()->for($first)->create();
@@ -356,15 +357,15 @@ class EpubExporterTest extends TestCase
 
     public function test_the_toc_and_nav_agree_with_the_headings_across_an_act_boundary(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
-        $actOne = Act::factory()->for($project)->create(['name' => 'Act One']);
+        $actOne = Act::factory()->for($book)->create(['name' => 'Act One']);
         $chapterOne = Chapter::factory()->for($actOne)->create(['name' => 'First']);
         Scene::factory()->for($chapterOne)->create();
         $chapterTwo = Chapter::factory()->for($actOne)->create(['name' => 'Second']);
         Scene::factory()->for($chapterTwo)->create();
 
-        $actTwo = Act::factory()->for($project)->create(['name' => 'Act Two']);
+        $actTwo = Act::factory()->for($book)->create(['name' => 'Act Two']);
         $chapterThree = Chapter::factory()->for($actTwo)->create(['name' => 'Third']);
         Scene::factory()->for($chapterThree)->create();
 
@@ -386,8 +387,8 @@ class EpubExporterTest extends TestCase
 
     public function test_typography_is_smart_in_the_epub_but_scene_rendered_contents_is_unaffected(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create([
             'contents' => 'A dash -- and a range --- and an ellipsis... and "quotes".',
@@ -419,8 +420,8 @@ class EpubExporterTest extends TestCase
         // extensions alongside SmartPunct, so this markup renders as
         // real HTML instead of literal tildes/brackets — matching what the editor and
         // Scene::renderedContents() already produce via GFM.
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create([
             'contents' => "This is ~~struck~~ text.\n\n- [ ] todo\n- [x] done",
@@ -455,7 +456,8 @@ class EpubExporterTest extends TestCase
             'isbn' => '978-0-306-40615-7',
             'cover_image' => 'project-covers/cover.png',
         ]);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -492,7 +494,8 @@ class EpubExporterTest extends TestCase
     {
         // A plain factory project: language defaults to 'en', every optional field is null.
         $project = Project::factory()->create(['name' => 'Bare Bones']);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -552,7 +555,8 @@ class EpubExporterTest extends TestCase
             'isbn' => '978-0-306-40615-7',
             'cover_image' => 'project-covers/cover.png',
         ]);
-        $act = Act::factory()->for($project)->create(['name' => 'Act One']);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['name' => 'Act One']);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'A Beginning']);
         Scene::factory()->for($chapter)->create();
         Scene::factory()->for($chapter)->create();
@@ -604,8 +608,9 @@ class EpubExporterTest extends TestCase
             'author' => 'Jane Author',
             'publisher' => 'Imago Press',
         ]);
+        $book = $project->books()->first();
         PublicationSetting::factory()->for($project)->create(['include_author' => false]);
-        $act = Act::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -621,8 +626,9 @@ class EpubExporterTest extends TestCase
     public function test_include_publisher_false_omits_dc_publisher(): void
     {
         $project = Project::factory()->create(['publisher' => 'Imago Press']);
+        $book = $project->books()->first();
         PublicationSetting::factory()->for($project)->create(['include_publisher' => false]);
-        $act = Act::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -637,8 +643,9 @@ class EpubExporterTest extends TestCase
     public function test_include_rights_false_omits_dc_rights(): void
     {
         $project = Project::factory()->create(['rights' => 'Copyright 2026 Jane Author']);
+        $book = $project->books()->first();
         PublicationSetting::factory()->for($project)->create(['include_rights' => false]);
-        $act = Act::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -653,8 +660,9 @@ class EpubExporterTest extends TestCase
     public function test_include_isbn_false_omits_urn_isbn_identifier_but_keeps_generated_urn(): void
     {
         $project = Project::factory()->create(['isbn' => '978-0-306-40615-7']);
+        $book = $project->books()->first();
         PublicationSetting::factory()->for($project)->create(['include_isbn' => false]);
-        $act = Act::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -679,8 +687,9 @@ class EpubExporterTest extends TestCase
             'name' => 'The Whole Manuscript',
             'cover_image' => 'project-covers/cover.png',
         ]);
+        $book = $project->books()->first();
         PublicationSetting::factory()->for($project)->create(['include_project_cover' => false]);
-        $act = Act::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -700,9 +709,9 @@ class EpubExporterTest extends TestCase
 
     public function test_toc_nav_is_two_level_with_chapters_nested_under_acts(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
-        $act = Act::factory()->for($project)->create(['name' => 'Rising Action']);
+        $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'The Beginning']);
         $chapter->update(['position' => 1]);
@@ -735,7 +744,8 @@ class EpubExporterTest extends TestCase
     public function test_front_matter_spine_order_is_title_then_toc_then_story(): void
     {
         $project = Project::factory()->create(['name' => 'The Front Matter Book']);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -771,9 +781,9 @@ class EpubExporterTest extends TestCase
 
     public function test_toc_page_links_to_the_correct_act_and_chapter_files(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
-        $act = Act::factory()->for($project)->create(['name' => 'Rising Action']);
+        $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'The Beginning']);
         $chapter->update(['position' => 1]);
@@ -918,8 +928,8 @@ class EpubExporterTest extends TestCase
         // Belt-and-braces: re-run BOTH gates against the shipped file from OUTSIDE the
         // service, proving the happy-path export is genuinely conformant (not merely that
         // export() happened not to throw).
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -959,8 +969,8 @@ class EpubExporterTest extends TestCase
         // An outline with acts and chapters but nothing written: the export would be a book
         // of blank pages, so the guard still refuses — it just triggers on "no scenes"
         // rather than on an empty (filtered) tree.
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         Chapter::factory()->for($act)->create();
         Chapter::factory()->for($act)->create();
 
@@ -982,8 +992,8 @@ class EpubExporterTest extends TestCase
     {
         config(['app.url' => 'https://imagoldfish.test']);
 
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -1000,9 +1010,9 @@ class EpubExporterTest extends TestCase
 
     public function test_rendered_documents_carry_the_projects_language(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
         $project->update(['language' => 'fr']);
-        $act = Act::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -1020,8 +1030,8 @@ class EpubExporterTest extends TestCase
 
     public function test_each_chapter_title_format_drives_both_the_heading_and_the_nav_label(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create(['name' => 'Rising Action']);
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
         // The chapter's `position` (12) is deliberately not its display number: it is the
         // only chapter in the project, so its derived project-wide number is 1
@@ -1057,8 +1067,8 @@ class EpubExporterTest extends TestCase
 
     public function test_a_nameless_chapter_has_no_dangling_separator_and_no_blank_heading(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         // A gap: sole chapter in the project, `position` 5 but a derived number of 1
         // (StoryNumbering).
         $chapter = Chapter::factory()->for($act)->create(['name' => '']);
@@ -1081,8 +1091,8 @@ class EpubExporterTest extends TestCase
 
     public function test_scene_titles_render_only_when_enabled_and_non_empty(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['name' => 'The Meeting', 'contents' => 'Prose.']);
         Scene::factory()->for($chapter)->create(['name' => '', 'contents' => 'More prose.']);
@@ -1104,8 +1114,8 @@ class EpubExporterTest extends TestCase
 
     public function test_act_description_renders_only_when_enabled_and_non_empty(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create([
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create([
             'name' => 'Act Name',
             'description' => '<p>An act description.</p>',
         ]);
@@ -1127,8 +1137,8 @@ class EpubExporterTest extends TestCase
 
     public function test_chapter_and_scene_descriptions_render_only_when_enabled_and_non_empty(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['description' => '<p>Chapter blurb.</p>']);
         Scene::factory()->for($chapter)->create([
             'description' => '<p>Scene blurb.</p>',
@@ -1155,8 +1165,8 @@ class EpubExporterTest extends TestCase
 
     public function test_chapter_and_scene_descriptions_toggle_on_but_empty_render_no_element(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['description' => null]);
         Scene::factory()->for($chapter)->create(['description' => null, 'contents' => 'Prose.']);
 
@@ -1175,8 +1185,8 @@ class EpubExporterTest extends TestCase
 
     public function test_decorative_divider_replaces_the_horizontal_rule_and_stays_well_formed(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'First.']);
         Scene::factory()->for($chapter)->create(['contents' => 'Second.']);
@@ -1204,8 +1214,8 @@ class EpubExporterTest extends TestCase
 
     public function test_a_description_with_non_xhtml_markup_still_exports_a_valid_package(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1247,8 +1257,8 @@ class EpubExporterTest extends TestCase
 
     public function test_acts_depth_lists_only_acts_and_folds_chapter_prose_into_one_page(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create(['name' => 'Rising Action']);
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
 
         $chapterOne = Chapter::factory()->for($act)->create(['name' => 'First Chapter']);
@@ -1309,8 +1319,8 @@ class EpubExporterTest extends TestCase
 
     public function test_scenes_depth_adds_scene_anchors_and_a_third_nav_level(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create(['name' => 'Rising Action']);
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create(['name' => 'Rising Action']);
         $act->update(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'The Beginning']);
         $chapter->update(['position' => 1]);
@@ -1370,8 +1380,8 @@ class EpubExporterTest extends TestCase
     {
         // The default (Chapters) depth must not change today's chapter page: no scene
         // anchors, matching the overview's defaults===v1 contract.
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1422,7 +1432,8 @@ class EpubExporterTest extends TestCase
             'preface' => 'A word before we begin.',
             'postface' => 'A word after the end.',
         ]);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1474,7 +1485,8 @@ class EpubExporterTest extends TestCase
             'acknowledgements' => '',
             'postface' => "   \n",
         ]);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1502,7 +1514,8 @@ class EpubExporterTest extends TestCase
         $project = Project::factory()->create([
             'dedication' => 'To "her" -- always.',
         ]);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1521,8 +1534,8 @@ class EpubExporterTest extends TestCase
 
     public function test_reordering_toc_and_body_changes_the_spine_order(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1556,7 +1569,8 @@ class EpubExporterTest extends TestCase
             'preface' => 'A preface.',
             'postface' => 'A postface.',
         ]);
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1581,8 +1595,8 @@ class EpubExporterTest extends TestCase
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['cover_image' => 'chapter-covers/cover.png']);
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1621,8 +1635,8 @@ class EpubExporterTest extends TestCase
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['cover_image' => 'chapter-covers/cover.png']);
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1646,8 +1660,8 @@ class EpubExporterTest extends TestCase
         Storage::fake('public');
         // Deliberately never written to the fake disk.
 
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['cover_image' => 'chapter-covers/missing.png']);
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
 
@@ -1669,7 +1683,8 @@ class EpubExporterTest extends TestCase
      */
     private function seedMinimalStory(Project $project): void
     {
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
     }

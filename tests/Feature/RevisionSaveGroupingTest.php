@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\BookLanguage;
 use App\Enums\RevisionOrigin;
 use App\Models\Act;
+use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Models\Scene;
@@ -56,19 +57,28 @@ class RevisionSaveGroupingTest extends TestCase
     public function test_one_form_submit_changing_two_autosaved_fields_writes_one_save_point(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create([
+        [, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $scene = Scene::factory()->for($chapter)->create([
             'description' => '<p>Old description</p>',
-            'rights' => '© old',
+            'notes' => '<p>Old notes</p>',
         ]);
 
-        $this->actingAs($user)->put(route('projects.update', $project), [
-            'name' => $project->name,
-            'language' => BookLanguage::English->value,
+        $this->actingAs($user)->put(route('scenes.update', $scene), [
+            'chapter_id' => $chapter->id,
+            'name' => $scene->name,
+            'status' => $scene->status->value,
+            'contents' => $scene->contents,
             'description' => '<p>New description</p>',
-            'rights' => '© new',
+            'notes' => '<p>New notes</p>',
         ])->assertRedirect();
 
-        $manualSaveIds = $this->saveIdsFor($project, RevisionOrigin::Manual);
+        $manualSaveIds = Revision::query()
+            ->where('revisionable_type', Scene::class)
+            ->where('revisionable_id', $scene->id)
+            ->where('origin', RevisionOrigin::Manual)
+            ->pluck('save_id')
+            ->all();
 
         $this->assertCount(2, $manualSaveIds, 'both changed fields should be recorded');
 

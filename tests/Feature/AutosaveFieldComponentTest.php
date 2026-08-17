@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Act;
 use App\Models\Chapter;
-use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use App\Support\WordCountFormat;
@@ -37,8 +36,8 @@ class AutosaveFieldComponentTest extends TestCase
     public function test_rich_kind_renders_the_wysiwyg_editor(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['description' => 'Hello world']);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['description' => 'Hello world']);
 
         $html = Blade::render(
             '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
@@ -52,11 +51,12 @@ class AutosaveFieldComponentTest extends TestCase
     public function test_plain_kind_renders_a_bare_textarea_not_the_rich_editor(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create(['rights' => 'All rights reserved.']);
+        [, $book] = $this->projectWithBook($user);
+        $book->update(['rights' => 'All rights reserved.']);
 
         $html = Blade::render(
-            '<x-autosave-field entity="project" :model="$project" field="rights" :label="__(\'Rights\')" />',
-            ['project' => $project],
+            '<x-autosave-field entity="book" :model="$book" field="rights" :label="__(\'Rights\')" />',
+            ['book' => $book],
         );
 
         $this->assertStringContainsString('<textarea', $html);
@@ -67,11 +67,12 @@ class AutosaveFieldComponentTest extends TestCase
     public function test_markdown_kind_renders_the_wysiwyg_editor_in_markdown_mode(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create(['dedication' => 'For my cat.']);
+        [, $book] = $this->projectWithBook($user);
+        $book->update(['dedication' => 'For my cat.']);
 
         $html = Blade::render(
-            '<x-autosave-field entity="project" :model="$project" field="dedication" :label="__(\'Dedication\')" />',
-            ['project' => $project],
+            '<x-autosave-field entity="book" :model="$book" field="dedication" :label="__(\'Dedication\')" />',
+            ['book' => $book],
         );
 
         $this->assertStringContainsString('data-format="markdown"', $html);
@@ -83,8 +84,8 @@ class AutosaveFieldComponentTest extends TestCase
         // Route::has() guard in autosave-field.blade.php resolves true and the
         // per-field History link renders.
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $html = Blade::render(
             '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
@@ -102,8 +103,8 @@ class AutosaveFieldComponentTest extends TestCase
     public function test_the_autosave_url_targets_the_generic_patch_endpoint(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $html = Blade::render(
             '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
@@ -123,8 +124,8 @@ class AutosaveFieldComponentTest extends TestCase
         // both gone, and so is the compare-URL config and data-hash attribute
         // that had no reader left once the modal was deleted.
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['description' => 'Hello world']);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['description' => 'Hello world']);
 
         $html = Blade::render(
             '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
@@ -146,8 +147,8 @@ class AutosaveFieldComponentTest extends TestCase
     public function test_the_live_word_count_renders_with_the_servers_initial_count(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['description' => 'One two three four']);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['description' => 'One two three four']);
 
         $html = Blade::render(
             '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
@@ -166,8 +167,8 @@ class AutosaveFieldComponentTest extends TestCase
     public function test_the_live_word_count_carries_aria_live_off(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create(['description' => 'Hello world']);
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['description' => 'Hello world']);
 
         $html = Blade::render(
             '<x-autosave-field entity="act" :model="$act" field="description" :label="__(\'Description\')" />',
@@ -192,8 +193,8 @@ class AutosaveFieldComponentTest extends TestCase
     public function test_the_live_word_count_for_scene_contents_reuses_the_stored_column(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create(['contents' => 'One two three']);
 

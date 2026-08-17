@@ -244,7 +244,8 @@ class PublicationSettingArchiveTest extends TestCase
     {
         $owner = User::factory()->create();
         $source = Project::factory()->for($owner)->create(['name' => 'Malformed Config Source']);
-        $act = $source->acts()->create(['name' => 'Act One', 'position' => 1]);
+        $sourceBook = $source->books()->first();
+        $act = $sourceBook->acts()->create(['name' => 'Act One', 'position' => 1]);
         $chapter = $act->chapters()->create(['name' => 'Chapter One', 'position' => 1]);
         Scene::factory()->for($chapter)->create([
             'name' => 'Scene One', 'position' => 1, 'contents' => 'The opening prose.',

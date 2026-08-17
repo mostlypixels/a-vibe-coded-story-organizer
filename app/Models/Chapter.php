@@ -41,7 +41,7 @@ class Chapter extends Model
      */
     public function revisionProject(): Project
     {
-        return $this->act->project;
+        return $this->act->book->project;
     }
 
     /**
@@ -74,7 +74,7 @@ class Chapter extends Model
         // Scene::deleted — so record the project's new total here. The
         // controller deletes inside a transaction, so this upsert joins it.
         static::deleted(function (Chapter $chapter): void {
-            app(WordCountSnapshotRecorder::class)->record($chapter->act->project);
+            app(WordCountSnapshotRecorder::class)->record($chapter->act->book->project);
         });
     }
 }

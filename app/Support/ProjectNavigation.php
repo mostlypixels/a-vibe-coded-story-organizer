@@ -20,7 +20,7 @@ use Illuminate\Support\Collection;
  * AppServiceProvider, is the single source of truth for both menus.
  *
  * Adding a project-scoped section means touching this class and nothing else:
- * add the route-parameter fallback to RouteProject::resolve() if the section
+ * add the route-parameter fallback to RouteContext::resolve() if the section
  * owns models of its own, and add one `*Active` property below.
  *
  * The two questions have different answers since active-project persistence:
@@ -108,7 +108,7 @@ class ProjectNavigation
 
     public function __construct(Request $request)
     {
-        $this->routeProject = RouteProject::resolve($request);
+        $this->routeProject = RouteContext::resolve($request)->project;
         $this->user = $request->user();
         $this->project = $this->routeProject ?? $this->user?->activeProject;
 

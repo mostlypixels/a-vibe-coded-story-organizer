@@ -33,7 +33,7 @@ class RecentlyEdited
     public function acts(Project $project, int $limit = RecentItem::LIMIT): Collection
     {
         return $project->acts()
-            ->latest('updated_at')
+            ->latest('acts.updated_at')
             ->limit($limit)
             ->get()
             ->map(fn (Act $act) => new RecentItem(

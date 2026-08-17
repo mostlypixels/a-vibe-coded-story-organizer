@@ -12,6 +12,8 @@
   id map. Acts, chapters and scenes hang off the imported book.
 - Per-book `publication-setting.json`, keeping its "untrusted, never fatal" posture.
 - Both new cover files (book, project) go through the content-sniff gate on bytes alone.
+- `drop_book_metadata_from_projects` — task 03 deferred it until the last reader was gone. The
+  importer is that reader; drop the columns once it writes the metadata onto books.
 
 **Not in scope:** any new `ImportPhase` case.
 

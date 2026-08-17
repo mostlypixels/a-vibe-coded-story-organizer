@@ -9,11 +9,11 @@ class StoreSceneShareRequest extends FormRequest
 {
     /**
      * Authorization walks up to the owning project, mirroring the controller's
-     * ProjectPolicy check ($scene->chapter->act->project).
+     * ProjectPolicy check ($scene->chapter->act->book->project).
      */
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('scene')->chapter->act->project);
+        return $this->user()->can('update', $this->route('scene')->chapter->act->book->project);
     }
 
     /**

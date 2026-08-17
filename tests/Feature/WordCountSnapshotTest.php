@@ -37,8 +37,8 @@ class WordCountSnapshotTest extends TestCase
      */
     private function emptySceneFor(User $user): Scene
     {
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         return Scene::factory()->for($chapter)->create(['contents' => '']);
@@ -53,7 +53,7 @@ class WordCountSnapshotTest extends TestCase
 
     private function projectOf(Scene $scene): Project
     {
-        return $scene->chapter->act->project;
+        return $scene->chapter->act->book->project;
     }
 
     private function hashOf(string $value): string
@@ -217,7 +217,8 @@ class WordCountSnapshotTest extends TestCase
         $user = User::factory()->create();
         $scene = $this->emptySceneFor($user);
         $project = $this->projectOf($scene);
-        $destination = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $destination = Act::factory()->for($book)->create();
 
         $scene->update(['contents' => 'One two three']);
 

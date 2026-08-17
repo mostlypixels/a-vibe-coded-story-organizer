@@ -77,7 +77,7 @@ class StoryController extends Controller
     {
         $acts = $project->acts()
             ->with('chapters.scenes.event')
-            ->orderBy('position')
+            ->orderBy('acts.position')
             ->get()
             ->each(function ($act) {
                 $act->chapters = $act->chapters->sortBy('position')->each(function ($chapter) {
@@ -115,15 +115,22 @@ class StoryController extends Controller
      */
     private function chapter(Project $project, ?string $chapterId): View
     {
+        // Every project holds at least one book, and this route still carries
+        // a project — numbering comes from the project's first book until the
+        // story routes nest under {book}.
+        $book = $project->books()->first();
+
         // The table of contents is story-wide: every act with its chapters, but
         // names and positions only — no scenes, no contents.
         $tocActs = $project->acts()
-            ->select(['id', 'name', 'position'])
+            // Qualified: the through-join brings books.name and books.position
+            // into scope (see Project::acts()).
+            ->select(['acts.id', 'acts.name', 'acts.position'])
             ->with(['chapters' => fn (HasMany $query) => $query
                 ->select(['id', 'name', 'position', 'act_id'])
                 ->orderBy('position'),
             ])
-            ->orderBy('position')
+            ->orderBy('acts.position')
             ->get();
 
         $currentChapter = $this->resolveChapter($project, $chapterId, $tocActs);
@@ -142,7 +149,8 @@ class StoryController extends Controller
         $actWordCounts = Scene::query()
             ->join('chapters', 'scenes.chapter_id', '=', 'chapters.id')
             ->join('acts', 'chapters.act_id', '=', 'acts.id')
-            ->where('acts.project_id', $project->id)
+            ->join('books', 'acts.book_id', '=', 'books.id')
+            ->where('books.project_id', $project->id)
             ->groupBy('chapters.act_id')
             ->selectRaw('chapters.act_id as act_id, sum(scenes.word_count) as total')
             ->pluck('total', 'act_id');
@@ -155,7 +163,7 @@ class StoryController extends Controller
             'currentChapter' => $currentChapter,
             'previousChapter' => $previousChapter,
             'nextChapter' => $nextChapter,
-            'numbering' => StoryNumbering::forProject($project),
+            'numbering' => StoryNumbering::forBook($book),
             'wordCount' => (int) $actWordCounts->sum(),
             'actWordCount' => $currentChapter === null
                 ? 0
@@ -195,14 +203,14 @@ class StoryController extends Controller
      * chapter position), or null when the project has no chapters.
      *
      * A `chapter` id is never trusted: an id for a chapter in another project
-     * (or an unknown id) is a 403, walked through `chapter->act->project`.
+     * (or an unknown id) is a 403, walked through `chapter->act->book->project`.
      */
     private function resolveChapter(Project $project, ?string $chapterId, Collection $tocActs): ?Chapter
     {
         if ($chapterId !== null) {
             $chapter = Chapter::with('act')->find($chapterId);
 
-            abort_if($chapter === null || $chapter->act->project_id !== $project->id, 403);
+            abort_if($chapter === null || $chapter->act->book->project_id !== $project->id, 403);
 
             return $chapter;
         }

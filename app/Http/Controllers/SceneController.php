@@ -35,6 +35,11 @@ class SceneController extends Controller
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
+        // Every project holds at least one book, and this route still carries
+        // a project — numbering comes from the project's first book until the
+        // story routes nest under {book}.
+        $book = $project->books()->first();
+
         $scenes = $project->sceneQuery()
             // Only the scene columns: the two joins below are there to sort by, not to
             // select from, and without this the joined `chapters`/`acts` columns would
@@ -42,13 +47,15 @@ class SceneController extends Controller
             // because this query has no withCount/withSum whose aliases a select() would
             // reset (the chapters index does — see ChapterController::index).
             ->select('scenes.*')
-            // Joined so the `#` column can sort by story order: act order, then chapter
-            // within the act, then scene within the chapter. Grouping by `chapter_id`
-            // instead — as this did — only matches story order until something is
-            // reordered. `chapters` and `acts` both carry `name` and `position`, so every
-            // column below is table-qualified to stay unambiguous.
+            // Joined so the `#` column can sort by story order: book order, then act
+            // order, then chapter within the act, then scene within the chapter.
+            // Grouping by `chapter_id` instead — as this did — only matches story order
+            // until something is reordered. `chapters`, `acts` and `books` all carry
+            // `name` and `position`, so every column below is table-qualified to stay
+            // unambiguous.
             ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
             ->join('acts', 'acts.id', '=', 'chapters.act_id')
+            ->join('books', 'books.id', '=', 'acts.book_id')
             ->with('chapter.act', 'event')
             ->when($request->filled('search'), fn ($query) => $query->where('scenes.name', 'like', '%'.$request->query('search').'%'))
             ->when($request->filled('chapter'), fn ($query) => $query->where('scenes.chapter_id', $request->query('chapter')))
@@ -59,6 +66,8 @@ class SceneController extends Controller
                 // The id tie-breaks are part of the contract: `position` has no unique
                 // constraint, so two siblings can share one and must still order stably.
                 fn ($query) => $query
+                    ->orderBy('books.position', $direction)
+                    ->orderBy('books.id', $direction)
                     ->orderBy('acts.position', $direction)
                     ->orderBy('acts.id', $direction)
                     ->orderBy('chapters.position', $direction)
@@ -86,10 +95,10 @@ class SceneController extends Controller
             'sort' => $sort,
             'direction' => $direction,
             'duplicateNames' => $duplicateNames,
-            // Built from the whole project, never the filtered/paginated $scenes
+            // Built from the whole book, never the filtered/paginated $scenes
             // above — a scenes list filtered to one chapter must still start
-            // counting from that chapter's true project-wide number.
-            'numbering' => StoryNumbering::forProject($project),
+            // counting from that chapter's true book-wide number.
+            'numbering' => StoryNumbering::forBook($book),
         ]);
     }
 
@@ -129,7 +138,7 @@ class SceneController extends Controller
 
     public function edit(Scene $scene, CodexAsOfResolver $codexAsOf): View
     {
-        $project = $scene->chapter->act->project;
+        $project = $scene->chapter->act->book->project;
 
         $this->authorize('update', $project);
 
@@ -148,7 +157,7 @@ class SceneController extends Controller
             'events' => $this->eventsFor($project),
             'windowMin' => $project->startEvent()->event_datetime->format('Y-m-d\TH:i'),
             'windowMax' => $project->endEvent()->event_datetime->format('Y-m-d\TH:i'),
-            'numbering' => StoryNumbering::forProject($project),
+            'numbering' => StoryNumbering::forBook($scene->chapter->act->book),
             'positionInChapter' => $siblingIds->search($scene->id) + 1,
             'totalInChapter' => $siblingIds->count(),
             // Codex values resolved as of the scene's "happens during" event (null when the
@@ -165,7 +174,7 @@ class SceneController extends Controller
 
     public function update(UpdateSceneRequest $request, Scene $scene, SceneReferenceMatcher $matcher): RedirectResponse
     {
-        $project = $scene->chapter->act->project;
+        $project = $scene->chapter->act->book->project;
         $validated = $request->validated();
         $chapter = $project->chapterQuery()->findOrFail($validated['chapter_id']);
         $sceneAttributes = $this->sceneAttributes($validated);
@@ -196,7 +205,7 @@ class SceneController extends Controller
 
     public function destroy(Scene $scene): RedirectResponse
     {
-        $project = $scene->chapter->act->project;
+        $project = $scene->chapter->act->book->project;
 
         $this->authorize('update', $project);
 
@@ -207,14 +216,14 @@ class SceneController extends Controller
 
     public function moveUp(Request $request, Scene $scene): RedirectResponse|JsonResponse
     {
-        $this->reorderSibling($scene, $scene->chapter->act->project, up: true);
+        $this->reorderSibling($scene, $scene->chapter->act->book->project, up: true);
 
         return $this->reorderResponse($request, $scene);
     }
 
     public function moveDown(Request $request, Scene $scene): RedirectResponse|JsonResponse
     {
-        $this->reorderSibling($scene, $scene->chapter->act->project, up: false);
+        $this->reorderSibling($scene, $scene->chapter->act->book->project, up: false);
 
         return $this->reorderResponse($request, $scene);
     }

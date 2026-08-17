@@ -67,7 +67,7 @@ class MelusineSeederIt extends Seeder
         // Model events are off under `db:seed`, so the first book hook does not
         // fire either. Unnamed: a sole book shows the project's name
         // (see Book::displayName()).
-        $project->books()->create(['position' => 1]);
+        $book = $project->books()->create(['position' => 1]);
 
         $curseOfPressine = Plotline::create([
             'project_id' => $project->id,
@@ -400,7 +400,7 @@ class MelusineSeederIt extends Seeder
             $chapters = $actData['chapters'];
             unset($actData['chapters']);
 
-            $act = $project->acts()->create($actData + ['position' => $actPosition + 1]);
+            $act = $book->acts()->create($actData + ['position' => $actPosition + 1]);
 
             foreach ($chapters as $chapterPosition => $chapterData) {
                 $scenes = $chapterData['scenes'];

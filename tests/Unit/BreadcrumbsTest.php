@@ -144,7 +144,8 @@ class BreadcrumbsTest extends TestCase
     public function test_an_edit_route_leaf_is_action_precise_and_uses_the_bound_models_id(): void
     {
         $project = Project::factory()->for($this->user)->create();
-        $act = Act::factory()->for($project)->create(['name' => 'The Rising Storm']);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['name' => 'The Rising Storm']);
 
         $breadcrumbs = $this->breadcrumbsFor('acts.edit', [$act]);
         $rows = $this->summarize($breadcrumbs);
@@ -159,7 +160,8 @@ class BreadcrumbsTest extends TestCase
     public function test_the_edit_leaf_names_the_id_not_the_models_name(): void
     {
         $project = Project::factory()->for($this->user)->create();
-        $act = Act::factory()->for($project)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['name' => 'A Chapter Name']);
 
         $breadcrumbs = $this->breadcrumbsFor('chapters.edit', [$chapter]);

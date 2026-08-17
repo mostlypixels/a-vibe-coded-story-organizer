@@ -49,11 +49,6 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
     {
         return [
             'project.description' => ['project', 'description', Project::class, FieldKind::Rich],
-            'project.dedication' => ['project', 'dedication', Project::class, FieldKind::Markdown],
-            'project.acknowledgements' => ['project', 'acknowledgements', Project::class, FieldKind::Markdown],
-            'project.preface' => ['project', 'preface', Project::class, FieldKind::Markdown],
-            'project.postface' => ['project', 'postface', Project::class, FieldKind::Markdown],
-            'project.rights' => ['project', 'rights', Project::class, FieldKind::Plain],
             'book.description' => ['book', 'description', Book::class, FieldKind::Rich],
             'book.dedication' => ['book', 'dedication', Book::class, FieldKind::Markdown],
             'book.acknowledgements' => ['book', 'acknowledgements', Book::class, FieldKind::Markdown],
@@ -127,16 +122,16 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
 
     public function test_act_revision_project_is_its_project(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
 
         $this->assertTrue($act->revisionProject()->is($project));
     }
 
     public function test_chapter_revision_project_is_its_act_project(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
         $this->assertTrue($chapter->revisionProject()->is($project));
@@ -144,8 +139,8 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
 
     public function test_scene_revision_project_is_its_chapter_act_project(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create();
 
@@ -222,7 +217,7 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
 
     public function test_character_cap_reads_the_specific_field_override(): void
     {
-        $this->assertSame(1_000, AutosavableFields::characterCap('project', 'rights'));
+        $this->assertSame(1_000, AutosavableFields::characterCap('book', 'rights'));
         $this->assertSame(1_000_000, AutosavableFields::characterCap('scene', 'contents'));
     }
 
@@ -259,7 +254,7 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
 
     public function test_validation_rule_for_a_plain_field_is_a_bare_string_rule_with_cap(): void
     {
-        $rule = AutosavableFields::validationRule('project', 'rights');
+        $rule = AutosavableFields::validationRule('book', 'rights');
 
         $this->assertSame(['nullable', 'string', 'max:1000'], $rule);
     }

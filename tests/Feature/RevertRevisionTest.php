@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\RevisionOrigin;
 use App\Exceptions\RevisionConflictException;
 use App\Models\Act;
-use App\Models\Project;
 use App\Models\Revision;
 use App\Models\User;
 use App\Services\RevisionRecorder;
@@ -35,9 +34,9 @@ class RevertRevisionTest extends TestCase
 
     private function actFor(User $user, array $overrides = []): Act
     {
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        return Act::factory()->for($project)->create($overrides);
+        return Act::factory()->for($book)->create($overrides);
     }
 
     private function revisionFor(Act $act, array $overrides = []): Revision
@@ -45,7 +44,7 @@ class RevertRevisionTest extends TestCase
         return Revision::factory()->create(array_merge([
             'revisionable_type' => Act::class,
             'revisionable_id' => $act->id,
-            'project_id' => $act->project->id,
+            'project_id' => $act->book->project->id,
             'field' => 'description',
         ], $overrides));
     }
@@ -386,7 +385,7 @@ class RevertRevisionTest extends TestCase
         $revisionOfA = Revision::factory()->create([
             'revisionable_type' => Act::class,
             'revisionable_id' => $act->id,
-            'project_id' => $act->project->id,
+            'project_id' => $act->book->project->id,
             'field' => 'description',
             'user_id' => $user->id,
             'value' => '<p>Version A</p>',

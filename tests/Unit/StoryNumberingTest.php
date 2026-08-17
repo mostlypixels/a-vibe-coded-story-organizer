@@ -3,8 +3,8 @@
 namespace Tests\Unit;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
-use App\Models\Project;
 use App\Models\Scene;
 use App\Support\StoryNumbering;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,10 +18,10 @@ class StoryNumberingTest extends TestCase
 
     public function test_chapters_and_scenes_number_continuously_across_acts(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
-        $actOne = Act::factory()->for($project)->create();
-        $actTwo = Act::factory()->for($project)->create();
+        $actOne = Act::factory()->for($book)->create();
+        $actTwo = Act::factory()->for($book)->create();
 
         $chapterOne = Chapter::factory()->for($actOne)->create();
         $chapterTwo = Chapter::factory()->for($actOne)->create();
@@ -34,7 +34,7 @@ class StoryNumberingTest extends TestCase
         $sceneFour = Scene::factory()->for($chapterThree)->create();
         $sceneFive = Scene::factory()->for($chapterFour)->create();
 
-        $numbering = StoryNumbering::forProject($project);
+        $numbering = StoryNumbering::forBook($book);
 
         $this->assertSame(1, $numbering->chapter($chapterOne));
         $this->assertSame(2, $numbering->chapter($chapterTwo));
@@ -51,8 +51,8 @@ class StoryNumberingTest extends TestCase
 
     public function test_deleting_a_middle_chapter_compacts_the_number_gap(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
 
         $chapters = [];
         foreach (range(1, 4) as $i) {
@@ -68,7 +68,7 @@ class StoryNumberingTest extends TestCase
         $this->assertSame(3, $third->fresh()->position);
         $this->assertSame(4, $fourth->fresh()->position);
 
-        $numbering = StoryNumbering::forProject($project);
+        $numbering = StoryNumbering::forBook($book);
 
         $this->assertSame(1, $numbering->chapter($first));
         $this->assertSame(2, $numbering->chapter($third));
@@ -77,11 +77,11 @@ class StoryNumberingTest extends TestCase
 
     public function test_deleting_a_middle_act_compacts_the_number_gap(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
         $acts = [];
         foreach (range(1, 4) as $i) {
-            $acts[] = Act::factory()->for($project)->create();
+            $acts[] = Act::factory()->for($book)->create();
         }
         [$first, $second, $third, $fourth] = $acts;
 
@@ -91,7 +91,7 @@ class StoryNumberingTest extends TestCase
         $this->assertSame(3, $third->fresh()->position);
         $this->assertSame(4, $fourth->fresh()->position);
 
-        $numbering = StoryNumbering::forProject($project);
+        $numbering = StoryNumbering::forBook($book);
 
         $this->assertSame(1, $numbering->act($first));
         $this->assertSame(2, $numbering->act($third));
@@ -100,17 +100,17 @@ class StoryNumberingTest extends TestCase
 
     public function test_reordering_acts_renumbers_their_chapters_without_writing_chapter_position(): void
     {
-        $project = Project::factory()->create();
+        [$project, $book] = $this->projectWithBook();
 
-        $actOne = Act::factory()->for($project)->create();
-        $actTwo = Act::factory()->for($project)->create();
+        $actOne = Act::factory()->for($book)->create();
+        $actTwo = Act::factory()->for($book)->create();
 
         $actOneChapterOne = Chapter::factory()->for($actOne)->create();
         $actOneChapterTwo = Chapter::factory()->for($actOne)->create();
         $actTwoChapterOne = Chapter::factory()->for($actTwo)->create();
         $actTwoChapterTwo = Chapter::factory()->for($actTwo)->create();
 
-        $before = StoryNumbering::forProject($project);
+        $before = StoryNumbering::forBook($book);
         $this->assertSame(1, $before->chapter($actOneChapterOne));
         $this->assertSame(2, $before->chapter($actOneChapterTwo));
         $this->assertSame(3, $before->chapter($actTwoChapterOne));
@@ -120,7 +120,7 @@ class StoryNumberingTest extends TestCase
         // chapter row.
         $actTwo->moveUp();
 
-        $after = StoryNumbering::forProject($project);
+        $after = StoryNumbering::forBook($book);
 
         $this->assertSame(1, $after->chapter($actTwoChapterOne));
         $this->assertSame(2, $after->chapter($actTwoChapterTwo));
@@ -135,39 +135,39 @@ class StoryNumberingTest extends TestCase
 
     public function test_siblings_sharing_a_position_number_deterministically_by_id(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
 
         $chapterA = Chapter::factory()->for($act)->create(['position' => 1]);
         $chapterB = Chapter::factory()->for($act)->create(['position' => 1]);
 
         $this->assertTrue($chapterA->id < $chapterB->id);
 
-        $numbering = StoryNumbering::forProject($project);
+        $numbering = StoryNumbering::forBook($book);
 
         $this->assertSame(1, $numbering->chapter($chapterA));
         $this->assertSame(2, $numbering->chapter($chapterB));
     }
 
-    public function test_from_acts_and_for_project_produce_identical_maps(): void
+    public function test_from_acts_and_for_book_produce_identical_maps(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create();
 
-        $viaForProject = StoryNumbering::forProject($project);
+        $viaForBook = StoryNumbering::forBook($book);
         $viaFromActs = StoryNumbering::fromActs($project->acts()->with('chapters.scenes')->get());
 
-        $this->assertSame($viaForProject->act($act), $viaFromActs->act($act));
-        $this->assertSame($viaForProject->chapter($chapter), $viaFromActs->chapter($chapter));
-        $this->assertSame($viaForProject->scene($scene), $viaFromActs->scene($scene));
+        $this->assertSame($viaForBook->act($act), $viaFromActs->act($act));
+        $this->assertSame($viaForBook->chapter($chapter), $viaFromActs->chapter($chapter));
+        $this->assertSame($viaForBook->scene($scene), $viaFromActs->scene($scene));
     }
 
     public function test_from_acts_fires_no_queries(): void
     {
-        $project = Project::factory()->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create();
 
@@ -185,8 +185,8 @@ class StoryNumberingTest extends TestCase
 
     public function test_unknown_act_id_throws(): void
     {
-        $project = Project::factory()->create();
-        $numbering = StoryNumbering::forProject($project);
+        [, $book] = $this->projectWithBook();
+        $numbering = StoryNumbering::forBook($book);
 
         $this->expectException(RuntimeException::class);
 
@@ -195,8 +195,8 @@ class StoryNumberingTest extends TestCase
 
     public function test_unknown_chapter_id_throws(): void
     {
-        $project = Project::factory()->create();
-        $numbering = StoryNumbering::forProject($project);
+        [, $book] = $this->projectWithBook();
+        $numbering = StoryNumbering::forBook($book);
 
         $this->expectException(RuntimeException::class);
 
@@ -205,11 +205,33 @@ class StoryNumberingTest extends TestCase
 
     public function test_unknown_scene_id_throws(): void
     {
-        $project = Project::factory()->create();
-        $numbering = StoryNumbering::forProject($project);
+        [, $book] = $this->projectWithBook();
+        $numbering = StoryNumbering::forBook($book);
 
         $this->expectException(RuntimeException::class);
 
         $numbering->scene(999999);
+    }
+
+    public function test_two_books_in_one_project_number_independently(): void
+    {
+        [$project, $bookOne] = $this->projectWithBook();
+        $bookTwo = Book::factory()->for($project)->create();
+
+        $bookOneAct = Act::factory()->for($bookOne)->create();
+        $bookOneChapter = Chapter::factory()->for($bookOneAct)->create();
+        Scene::factory()->for($bookOneChapter)->create();
+
+        $bookTwoAct = Act::factory()->for($bookTwo)->create();
+        $bookTwoChapter = Chapter::factory()->for($bookTwoAct)->create();
+        $bookTwoScene = Scene::factory()->for($bookTwoChapter)->create();
+
+        $numbering = StoryNumbering::forBook($bookTwo);
+
+        // Book two's own tree starts back at 1, unaffected by book one's acts,
+        // chapters and scenes sharing the same project.
+        $this->assertSame(1, $numbering->act($bookTwoAct));
+        $this->assertSame(1, $numbering->chapter($bookTwoChapter));
+        $this->assertSame(1, $numbering->scene($bookTwoScene));
     }
 }

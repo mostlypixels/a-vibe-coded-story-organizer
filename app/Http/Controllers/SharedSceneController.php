@@ -51,10 +51,10 @@ class SharedSceneController extends Controller
 
         return view('shared.scenes.show', [
             'scene' => $scene,
-            // One extra query (two indexed columns, over one project) to derive
+            // One extra query (two indexed columns, over one book) to derive
             // the continuous chapter number — accepted per expanded/ui.md; measure
             // before adding a cache.
-            'numbering' => StoryNumbering::forProject($scene->chapter->act->project),
+            'numbering' => StoryNumbering::forBook($scene->chapter->act->book),
         ]);
     }
 }

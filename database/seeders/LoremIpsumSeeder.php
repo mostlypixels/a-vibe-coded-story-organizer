@@ -52,9 +52,9 @@ class LoremIpsumSeeder extends Seeder
             ]);
 
         // Unnamed: a sole book shows the project's name (see Book::displayName()).
-        $project->books()->create(['position' => 1]);
+        $book = $project->books()->create(['position' => 1]);
 
-        $act = $project->acts()->create([
+        $act = $book->acts()->create([
             'name' => 'Lorem ipsum',
             'position' => 1,
         ]);

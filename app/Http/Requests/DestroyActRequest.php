@@ -17,7 +17,7 @@ class DestroyActRequest extends FormRequest
     {
         // Same boundary as ActController::destroy() itself — authorization walks up
         // to the owning project, never a new policy (CLAUDE.md authorization rule).
-        return $this->user()->can('update', $this->route('act')->project);
+        return $this->user()->can('update', $this->route('act')->book->project);
     }
 
     /**
@@ -31,8 +31,9 @@ class DestroyActRequest extends FormRequest
             'move_children_to' => [
                 'nullable',
                 // Must be a real act in the same project (mirrors UpdateChapterRequest's
-                // act_id scoping) …
-                Rule::exists('acts', 'id')->where('project_id', $act->project->id),
+                // act_id scoping). An act belongs to a book, so the project's acts are
+                // the acts of its books.
+                Rule::exists('acts', 'id')->whereIn('book_id', $act->book->project->books()->pluck('id')),
                 // … and never the act being deleted itself.
                 Rule::notIn([$act->id]),
             ],

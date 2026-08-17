@@ -103,10 +103,10 @@ class ImportRoundTripTest extends TestCase
         // Act Two was created first. The imported tree must read the same way.
         $this->assertSame(
             ['Act One', 'Act Two'],
-            $imported->acts()->orderBy('position')->pluck('name')->all(),
+            $imported->acts()->orderBy('acts.position')->pluck('acts.name')->all(),
         );
 
-        $importedActOne = $imported->acts()->where('name', 'Act One')->firstOrFail();
+        $importedActOne = $imported->acts()->where('acts.name', 'Act One')->firstOrFail();
         $importedChapter = $importedActOne->chapters()->orderBy('position')->firstOrFail();
         $this->assertSame('Chapter One', $importedChapter->name);
 
@@ -440,7 +440,8 @@ class ImportRoundTripTest extends TestCase
     {
         $owner = User::factory()->create();
         $project = Project::factory()->for($owner)->create(['name' => 'Covered Chronicle']);
-        $act = Act::factory()->for($project)->create(['name' => 'Act One', 'position' => 1]);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['name' => 'Act One', 'position' => 1]);
 
         // A genuine image on the fake public disk, referenced by the chapter's cover.
         $coverPath = UploadedFile::fake()->image('chapter-cover.jpg', 20, 20)->store('chapter-covers', 'public');
@@ -474,7 +475,8 @@ class ImportRoundTripTest extends TestCase
     {
         $owner = User::factory()->create();
         $project = Project::factory()->for($owner)->create(['name' => 'Metadata Only Chronicle']);
-        $act = Act::factory()->for($project)->create(['name' => 'Act One', 'position' => 1]);
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create(['name' => 'Act One', 'position' => 1]);
 
         $coverPath = UploadedFile::fake()->image('chapter-cover.jpg', 20, 20)->store('chapter-covers', 'public');
         Chapter::factory()->for($act)->create([
@@ -510,8 +512,8 @@ class ImportRoundTripTest extends TestCase
      */
     private function seedReferenceSkeleton(User $owner): array
     {
-        $project = Project::factory()->for($owner)->create();
-        $act = Act::factory()->for($project)->create(['position' => 1]);
+        [$project, $book] = $this->projectWithBook($owner);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
         $chapter = Chapter::factory()->for($act)->create(['position' => 1]);
 
         return [$project, $chapter];
@@ -532,6 +534,7 @@ class ImportRoundTripTest extends TestCase
             'preface' => 'A word before we begin.',
             'postface' => 'And so it ends.',
         ]);
+        $book = $project->books()->first();
 
         // Rename + restyle the auto-created is_main plotline (reconciliation axis).
         $main = $project->plotlines()->where('is_main', true)->firstOrFail();
@@ -552,8 +555,8 @@ class ImportRoundTripTest extends TestCase
 
         // Story tree with authoring order deliberately NOT matching position:
         // Act Two is created first but positioned second.
-        $actTwo = Act::factory()->for($project)->create(['name' => 'Act Two', 'position' => 2]);
-        $actOne = Act::factory()->for($project)->create(['name' => 'Act One', 'position' => 1]);
+        $actTwo = Act::factory()->for($book)->create(['name' => 'Act Two', 'position' => 2]);
+        $actOne = Act::factory()->for($book)->create(['name' => 'Act One', 'position' => 1]);
         Chapter::factory()->for($actTwo)->create(['name' => 'Chapter Two', 'position' => 1]);
         $chapter = Chapter::factory()->for($actOne)->create(['name' => 'Chapter One', 'position' => 1]);
 

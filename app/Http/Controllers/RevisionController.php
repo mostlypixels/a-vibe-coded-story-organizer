@@ -43,7 +43,7 @@ use Illuminate\View\View;
  * `index`/`compare` also supply their own breadcrumb trail tail (`revisionsTrail()`
  * below) — the one documented exception to the app's central, route-driven
  * {@see Breadcrumbs}. These routes bind `{entity}` (a slug) + `{id}`,
- * not a `{project}` model, so `RouteProject::resolve` can't find a project and
+ * not a `{project}` model, so `RouteContext::resolve` can't find a project and
  * the central builder yields an empty trail. This class already resolves the
  * project (and a label) via `resolveEntity()`, so the view is handed a finished
  * `Crumb[]` instead. See expanded/architecture.md → "The revisions exception".

@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Act;
-use App\Models\Project;
+use App\Models\Book;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -19,9 +19,9 @@ class ActFactory extends Factory
     public function definition(): array
     {
         // position is intentionally omitted: the Act::creating() hook assigns
-        // the next position scoped to the parent project.
+        // the next position scoped to the parent book.
         return [
-            'project_id' => Project::factory(),
+            'book_id' => Book::factory(),
             'name' => fake()->words(3, true),
             'description' => fake()->sentence(),
         ];

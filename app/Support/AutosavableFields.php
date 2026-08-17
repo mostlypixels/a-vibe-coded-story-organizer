@@ -59,11 +59,6 @@ class AutosavableFields
     public const REGISTRY = [
         'project' => [Project::class, [
             'description' => FieldKind::Rich,
-            'dedication' => FieldKind::Markdown,
-            'acknowledgements' => FieldKind::Markdown,
-            'preface' => FieldKind::Markdown,
-            'postface' => FieldKind::Markdown,
-            'rights' => FieldKind::Plain,
         ]],
         'book' => [Book::class, [
             'description' => FieldKind::Rich,

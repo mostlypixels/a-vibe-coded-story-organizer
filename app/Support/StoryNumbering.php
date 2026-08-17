@@ -3,33 +3,36 @@
 namespace App\Support;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
-use App\Models\Project;
 use App\Models\Scene;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use RuntimeException;
 
 /**
- * Continuous, project-wide display numbers for acts, chapters and scenes.
+ * Continuous, book-wide display numbers for acts, chapters and scenes.
  *
  * `position` is a per-parent, gappy sort key (the only thing move up/down
- * writes); `number` is its opposite — a project-wide, gap-free rank computed
+ * writes); `number` is its opposite — a book-wide, gap-free rank computed
  * at read time, never stored. This class is the single place that derivation
  * happens. See documentation/architecture.md -> "Continuous numbering".
+ *
+ * Numbering restarts at each book: Act 1 of book 2 is Act 1, and its
+ * chapters and scenes restart too — a reader of book 2 counts from one.
  *
  * A read-only lookup table, not a workflow, so it lives in app/Support next
  * to PlotlineColors rather than app/Services.
  */
 final class StoryNumbering
 {
-    /** @var array<int, int> act id => 1-based project-wide number */
+    /** @var array<int, int> act id => 1-based book-wide number */
     private array $actNumbers;
 
-    /** @var array<int, int> chapter id => 1-based project-wide number */
+    /** @var array<int, int> chapter id => 1-based book-wide number */
     private array $chapterNumbers;
 
-    /** @var array<int, int> scene id => 1-based project-wide number */
+    /** @var array<int, int> scene id => 1-based book-wide number */
     private array $sceneNumbers;
 
     /**
@@ -45,14 +48,14 @@ final class StoryNumbering
     }
 
     /**
-     * Load the minimal id/position/parent-fk tree for $project and derive its
-     * numbering. Fires one query per level (acts, chapters, scenes) through
-     * eager loading. Use {@see fromActs()} instead when the caller already
-     * holds the full tree, to avoid loading it twice.
+     * Load the minimal id/position tree for $book and derive its numbering.
+     * Fires one query per level (acts, chapters, scenes) through eager
+     * loading. Use {@see fromActs()} instead when the caller already holds
+     * the full tree, to avoid loading it twice.
      */
-    public static function forProject(Project $project): self
+    public static function forBook(Book $book): self
     {
-        $acts = $project->acts()
+        $acts = $book->acts()
             ->select(['id', 'position'])
             ->with(['chapters' => function (HasMany $query) {
                 $query->select(['id', 'act_id', 'position'])
@@ -69,7 +72,7 @@ final class StoryNumbering
      * Derive numbering from an already-loaded tree. Fires no queries.
      *
      * $acts must be every act (with its chapters, with their scenes) in the
-     * project — a filtered or paginated subset would compact the numbering
+     * book — a filtered or paginated subset would compact the numbering
      * around the missing rows, renumbering siblings that never moved.
      *
      * Each level is re-sorted here by (position, id) before ranking, so a
@@ -102,7 +105,7 @@ final class StoryNumbering
     }
 
     /**
-     * The project-wide, 1-based number for this act.
+     * The book-wide, 1-based number for this act.
      */
     public function act(Act|int $act): int
     {
@@ -110,7 +113,7 @@ final class StoryNumbering
     }
 
     /**
-     * The project-wide, 1-based number for this chapter — continuous across
+     * The book-wide, 1-based number for this chapter — continuous across
      * every act boundary.
      */
     public function chapter(Chapter|int $chapter): int
@@ -119,7 +122,7 @@ final class StoryNumbering
     }
 
     /**
-     * The project-wide, 1-based number for this scene — continuous across
+     * The book-wide, 1-based number for this scene — continuous across
      * every chapter and act boundary.
      */
     public function scene(Scene|int $scene): int

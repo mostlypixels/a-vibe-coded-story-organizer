@@ -36,13 +36,20 @@ class ChapterController extends Controller
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
+        // Every project holds at least one book, and this route still carries
+        // a project — numbering comes from the project's first book until the
+        // story routes nest under {book}.
+        $book = $project->books()->first();
+
         $chapters = $project->chapterQuery()
-            // Joined so the `#` column can sort by story order (act order, then position
-            // within the act). Grouping by `act_id` instead — as this did — only matches
-            // story order until someone reorders an act. Because `acts` carries `name` and
-            // `position` columns of its own, every column below is table-qualified: the
-            // join makes bare `name`/`position` ambiguous (see Project::chapterQuery()).
+            // Joined so the `#` column can sort by story order (book order, then act
+            // order, then position within the act). Grouping by `act_id` instead — as
+            // this did — only matches story order until someone reorders an act. Because
+            // `acts` and `books` each carry `name` and `position` columns of their own,
+            // every column below is table-qualified: the joins make bare
+            // `name`/`position` ambiguous (see Project::chapterQuery()).
             ->join('acts', 'acts.id', '=', 'chapters.act_id')
+            ->join('books', 'books.id', '=', 'acts.book_id')
             ->with('act')
             ->withCount('scenes')
             // One grouped query for the whole page — never a per-row sum() in the
@@ -60,6 +67,8 @@ class ChapterController extends Controller
                 // The id tie-breaks are part of the contract: `position` has no unique
                 // constraint, so two siblings can share one and must still order stably.
                 fn ($query) => $query
+                    ->orderBy('books.position', $direction)
+                    ->orderBy('books.id', $direction)
                     ->orderBy('acts.position', $direction)
                     ->orderBy('acts.id', $direction)
                     ->orderBy('chapters.position', $direction)
@@ -89,10 +98,10 @@ class ChapterController extends Controller
             'destinationChapters' => $destinationChapters,
             'sort' => $sort,
             'direction' => $direction,
-            // Built from the whole project, never the filtered/paginated $chapters
+            // Built from the whole book, never the filtered/paginated $chapters
             // above — a chapters list filtered to one act must still start counting
-            // from that act's true project-wide number.
-            'numbering' => StoryNumbering::forProject($project),
+            // from that act's true book-wide number.
+            'numbering' => StoryNumbering::forBook($book),
         ]);
     }
 
@@ -115,9 +124,9 @@ class ChapterController extends Controller
 
     public function edit(Chapter $chapter): View
     {
-        $this->authorize('update', $chapter->act->project);
+        $this->authorize('update', $chapter->act->book->project);
 
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         // Feeds the delete-with-move dialog's honest cascade summary: a chapter is a
         // one-level entity, so only its direct children (scenes) are counted.
@@ -141,7 +150,7 @@ class ChapterController extends Controller
             'chapter' => $chapter,
             'project' => $project->load('acts'),
             'destinations' => $destinations,
-            'numbering' => StoryNumbering::forProject($project),
+            'numbering' => StoryNumbering::forBook($chapter->act->book),
             'positionInAct' => $siblingIds->search($chapter->id) + 1,
             'totalInAct' => $siblingIds->count(),
         ]);
@@ -149,7 +158,7 @@ class ChapterController extends Controller
 
     public function update(UpdateChapterRequest $request, Chapter $chapter): RedirectResponse
     {
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
         $act = $project->acts()->findOrFail($request->validated()['act_id']);
 
         // The cover is a file, not a mass-assignable column value, so keep it (and its
@@ -206,7 +215,7 @@ class ChapterController extends Controller
     {
         // Authorization is handled by DestroyChapterRequest::authorize() (mirrors the
         // walk-up-to-project check the other actions perform).
-        $project = $chapter->act->project;
+        $project = $chapter->act->book->project;
 
         // Reassignment (optional) and the delete itself are a single atomic unit: a
         // failure partway must never leave scenes half-moved or an orphaned chapter
@@ -228,14 +237,14 @@ class ChapterController extends Controller
 
     public function moveUp(Chapter $chapter): RedirectResponse
     {
-        $this->reorderSibling($chapter, $chapter->act->project, up: true);
+        $this->reorderSibling($chapter, $chapter->act->book->project, up: true);
 
         return redirect()->back();
     }
 
     public function moveDown(Chapter $chapter): RedirectResponse
     {
-        $this->reorderSibling($chapter, $chapter->act->project, up: false);
+        $this->reorderSibling($chapter, $chapter->act->book->project, up: false);
 
         return redirect()->back();
     }

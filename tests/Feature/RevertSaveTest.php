@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\RevisionOrigin;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Revision;
@@ -53,7 +54,7 @@ class RevertSaveTest extends TestCase
 
     private function sceneFor(User $user): Scene
     {
-        $act = Act::factory()->for(Project::factory()->for($user)->create())->create();
+        $act = Act::factory()->for(Book::factory()->for(Project::factory()->for($user)->create()))->create();
 
         return Scene::factory()->for(Chapter::factory()->for($act)->create())->create([
             // The live state: what save B and save C left behind.
@@ -68,8 +69,8 @@ class RevertSaveTest extends TestCase
         return Revision::factory()->create([
             'revisionable_type' => Scene::class,
             'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->project->id,
-            'user_id' => $scene->chapter->act->project->user_id,
+            'project_id' => $scene->chapter->act->book->project->id,
+            'user_id' => $scene->chapter->act->book->project->user_id,
             'save_id' => $saveId,
             'field' => $field,
             'value' => $value,

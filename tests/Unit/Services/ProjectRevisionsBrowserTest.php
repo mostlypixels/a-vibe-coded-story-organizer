@@ -45,10 +45,11 @@ class ProjectRevisionsBrowserTest extends TestCase
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
+        $book = $project->books()->first();
 
         // A project-level field, an act, and a scene (reached through
         // chapter → act → project) all with history.
-        $act = Act::factory()->for($project)->create(['name' => 'Act Alpha']);
+        $act = Act::factory()->for($book)->create(['name' => 'Act Alpha']);
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create(['name' => 'Scene One']);
 
@@ -73,10 +74,10 @@ class ProjectRevisionsBrowserTest extends TestCase
     public function test_entities_without_revisions_are_absent(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $revised = Act::factory()->for($project)->create(['name' => 'Revised Act']);
-        Act::factory()->for($project)->create(['name' => 'Untouched Act']);
+        $revised = Act::factory()->for($book)->create(['name' => 'Revised Act']);
+        Act::factory()->for($book)->create(['name' => 'Untouched Act']);
 
         $this->revisionFor(Act::class, $revised->id, $project->id, 'description', 1);
 
@@ -89,8 +90,8 @@ class ProjectRevisionsBrowserTest extends TestCase
     public function test_a_field_leaf_links_to_its_history_page(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
 
         $this->revisionFor(Act::class, $act->id, $project->id, 'description', 1);
 
@@ -115,8 +116,8 @@ class ProjectRevisionsBrowserTest extends TestCase
     public function test_the_tree_never_hydrates_the_revision_value(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-        $act = Act::factory()->for($project)->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
         $this->revisionFor(Act::class, $act->id, $project->id, 'description', 1);
 
         DB::enableQueryLog();

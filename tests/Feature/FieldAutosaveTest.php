@@ -27,9 +27,9 @@ class FieldAutosaveTest extends TestCase
     /** Build a full project -> act chain owned by the given user. */
     private function actFor(User $user): Act
     {
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        return Act::factory()->for($project)->create();
+        return Act::factory()->for($book)->create();
     }
 
     /** Build a full project -> act -> chapter -> scene chain owned by the given user. */
@@ -251,14 +251,14 @@ class FieldAutosaveTest extends TestCase
     public function test_validation_failure_returns_422_using_the_registrys_rule(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
-        // project.rights has a 1_000 character cap (config/revisions.php).
+        // book.rights has a 1_000 character cap (config/revisions.php).
         $tooLong = str_repeat('a', 1_001);
 
         $this->actingAs($user)->patchJson(
-            route('autosave.update', ['entity' => 'project', 'id' => $project->id, 'field' => 'rights']),
-            ['value' => $tooLong, 'base_hash' => $this->hashOf($project->rights)],
+            route('autosave.update', ['entity' => 'book', 'id' => $book->id, 'field' => 'rights']),
+            ['value' => $tooLong, 'base_hash' => $this->hashOf($book->rights)],
         )->assertStatus(422)->assertJsonValidationErrors(['value']);
     }
 
@@ -343,7 +343,7 @@ class FieldAutosaveTest extends TestCase
     {
         $user = User::factory()->create();
         $scene = $this->sceneFor($user, ['contents' => 'Nothing interesting yet.']);
-        $project = $scene->chapter->act->project;
+        $project = $scene->chapter->act->book->project;
         CodexEntry::factory()->for($project)->create(['name' => 'Melchior']);
 
         $this->actingAs($user)->patchJson(
@@ -362,7 +362,7 @@ class FieldAutosaveTest extends TestCase
     {
         $user = User::factory()->create();
         $scene = $this->sceneFor($user, ['contents' => 'Nothing interesting yet.']);
-        $project = $scene->chapter->act->project;
+        $project = $scene->chapter->act->book->project;
         CodexEntry::factory()->for($project)->create(['name' => 'Melchior']);
 
         $this->actingAs($user)->patchJson(
@@ -375,10 +375,12 @@ class FieldAutosaveTest extends TestCase
 
     public function test_run_matcher_true_on_scene_contents_fires_scene_contents_changed(): void
     {
-        Event::fake();
-
         $user = User::factory()->create();
         $scene = $this->sceneFor($user, ['contents' => 'Old.']);
+
+        // Faked after the fixture: Event::fake() also silences the model events
+        // that give a new project its first book.
+        Event::fake();
 
         $this->actingAs($user)->patchJson(
             route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']),
@@ -390,10 +392,12 @@ class FieldAutosaveTest extends TestCase
 
     public function test_a_bare_debounce_tick_does_not_fire_scene_contents_changed(): void
     {
-        Event::fake();
-
         $user = User::factory()->create();
         $scene = $this->sceneFor($user, ['contents' => 'Old.']);
+
+        // Faked after the fixture: Event::fake() also silences the model events
+        // that give a new project its first book.
+        Event::fake();
 
         $this->actingAs($user)->patchJson(
             route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']),

@@ -22,6 +22,11 @@ stays red.
   `UpdateSceneRequest`, which pluck act ids off the project, all walk through books.
 - The raw `join('acts', …)` in `ChapterController` and `SceneController` gains a `books` join.
 - `ActFactory` swaps `project_id` for `book_id`.
+- Carried over from task 02 (see `resolution-log.md`), both blocked on `acts.book_id` until now:
+  - `Book::deleting` sweeps every chapter cover beneath it, with a `Storage::fake` test.
+  - `AutosavableFields` / `config/revisions.php` drop the five `project.*` entries for the moved
+    fields, together with the `Store`/`UpdateProjectRequest` rules and the project edit form
+    inputs that still write them.
 - The test sweep: ~55 files. Use task 02's `TestCase` helper where a test never mentions books;
   write `Book::factory()` explicitly where the test is *about* structure.
 
