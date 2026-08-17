@@ -10,7 +10,7 @@ class StoreChapterRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('project'));
+        return $this->user()->can('update', $this->route('book')->project);
     }
 
     /**
@@ -22,9 +22,7 @@ class StoreChapterRequest extends FormRequest
             'act_id' => [
                 'required',
                 'integer',
-                // An act belongs to a book, so the project's acts are the acts of
-                // its books.
-                Rule::exists('acts', 'id')->whereIn('book_id', $this->route('project')->books()->pluck('id')),
+                Rule::exists('acts', 'id')->where('book_id', $this->route('book')->getKey()),
             ],
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('chapter', 'description'),

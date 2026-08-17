@@ -23,12 +23,9 @@ class UpdateChapterRequest extends FormRequest
             'act_id' => [
                 'required',
                 'integer',
-                // An act belongs to a book, so the project's acts are the acts of
-                // its books.
-                Rule::exists('acts', 'id')->whereIn(
-                    'book_id',
-                    $this->route('chapter')->act->book->project->books()->pluck('id')
-                ),
+                // A chapter moves between the acts of its own book. Moving a whole
+                // act to another book is the act edit page's job.
+                Rule::exists('acts', 'id')->where('book_id', $this->route('chapter')->act->book_id),
             ],
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('chapter', 'description'),

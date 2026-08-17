@@ -83,9 +83,9 @@ class BreadcrumbsTest extends TestCase
 
     public function test_an_index_route_makes_the_sub_index_the_current_leaf(): void
     {
-        $project = Project::factory()->for($this->user)->create();
+        [, $book] = $this->projectWithBook($this->user);
 
-        $breadcrumbs = $this->breadcrumbsFor('projects.acts.index', [$project]);
+        $breadcrumbs = $this->breadcrumbsFor('books.acts.index', [$book]);
         $rows = $this->summarize($breadcrumbs);
 
         $this->assertSame(__('Dashboard'), $rows[0][0]);
@@ -94,24 +94,57 @@ class BreadcrumbsTest extends TestCase
 
         $this->assertSame(__('Story'), $rows[1][0]);
         // The section crumb now links to its stub landing.
-        $this->assertSame(route('projects.story.home', $project), $rows[1][1]);
+        $this->assertSame(route('books.story.home', $book), $rows[1][1]);
         $this->assertFalse($rows[1][2]);
 
         $this->assertSame([__('Acts'), null, true], $rows[2]);
         $this->assertCount(3, $rows, 'the index crumb is the leaf — no duplicate current crumb');
     }
 
+    public function test_a_named_book_prepends_a_book_crumb_linking_the_book_home(): void
+    {
+        [, $book] = $this->projectWithBook($this->user);
+        $book->update(['name' => 'Volume One']);
+
+        $rows = $this->summarize($this->breadcrumbsFor('books.acts.index', [$book]));
+
+        $this->assertSame(['Volume One', route('books.show', $book), false], $rows[1]);
+        $this->assertSame([__('Story'), route('books.story.home', $book), false], $rows[2]);
+        $this->assertSame([__('Acts'), null, true], $rows[3]);
+        $this->assertCount(4, $rows);
+    }
+
+    public function test_books_show_is_a_two_crumb_trail_naming_the_book_when_it_has_one(): void
+    {
+        [$project, $book] = $this->projectWithBook($this->user);
+        $book->update(['name' => 'Volume One']);
+
+        $this->assertSame([
+            [__('Dashboard'), route('projects.show', $project), false],
+            ['Volume One', null, true],
+        ], $this->summarize($this->breadcrumbsFor('books.show', [$book])));
+    }
+
+    public function test_books_show_yields_no_trail_when_the_book_has_no_name(): void
+    {
+        [, $book] = $this->projectWithBook($this->user);
+
+        $breadcrumbs = $this->breadcrumbsFor('books.show', [$book]);
+
+        $this->assertTrue($breadcrumbs->isEmpty());
+    }
+
     public function test_a_section_stub_page_is_a_two_crumb_trail_with_the_section_as_current_leaf(): void
     {
-        $project = Project::factory()->for($this->user)->create();
+        [$project, $book] = $this->projectWithBook($this->user);
 
         foreach ([
-            'projects.story.home' => __('Story'),
-            'projects.timeline.home' => __('Timeline'),
-            'projects.codex.home' => __('Codex'),
-            'projects.tools.home' => __('Tools'),
-        ] as $route => $label) {
-            $rows = $this->summarize($this->breadcrumbsFor($route, [$project]));
+            'books.story.home' => [__('Story'), $book],
+            'projects.timeline.home' => [__('Timeline'), $project],
+            'projects.codex.home' => [__('Codex'), $project],
+            'projects.tools.home' => [__('Tools'), $project],
+        ] as $route => [$label, $parent]) {
+            $rows = $this->summarize($this->breadcrumbsFor($route, [$parent]));
 
             $this->assertSame([__('Dashboard'), route('projects.show', $project), false], $rows[0], $route);
             $this->assertSame([$label, null, true], $rows[1], $route);
@@ -121,23 +154,23 @@ class BreadcrumbsTest extends TestCase
 
     public function test_the_story_overview_trail_links_story_and_names_overview(): void
     {
-        $project = Project::factory()->for($this->user)->create();
+        [, $book] = $this->projectWithBook($this->user);
 
-        $rows = $this->summarize($this->breadcrumbsFor('projects.story.overview', [$project]));
+        $rows = $this->summarize($this->breadcrumbsFor('books.story.overview', [$book]));
 
-        $this->assertSame([__('Story'), route('projects.story.home', $project), false], $rows[1]);
+        $this->assertSame([__('Story'), route('books.story.home', $book), false], $rows[1]);
         $this->assertSame([__('Overview'), null, true], $rows[2]);
         $this->assertCount(3, $rows);
     }
 
     public function test_a_create_route_leaf_names_the_action(): void
     {
-        $project = Project::factory()->for($this->user)->create();
+        [, $book] = $this->projectWithBook($this->user);
 
-        $breadcrumbs = $this->breadcrumbsFor('projects.scenes.create', [$project]);
+        $breadcrumbs = $this->breadcrumbsFor('books.scenes.create', [$book]);
         $rows = $this->summarize($breadcrumbs);
 
-        $this->assertSame([__('Scenes'), route('projects.scenes.index', $project), false], $rows[2]);
+        $this->assertSame([__('Scenes'), route('books.scenes.index', $book), false], $rows[2]);
         $this->assertSame([__('New :thing', ['thing' => __('scene')]), null, true], $rows[3]);
     }
 
@@ -150,7 +183,7 @@ class BreadcrumbsTest extends TestCase
         $breadcrumbs = $this->breadcrumbsFor('acts.edit', [$act]);
         $rows = $this->summarize($breadcrumbs);
 
-        $this->assertSame([__('Acts'), route('projects.acts.index', $project), false], $rows[2]);
+        $this->assertSame([__('Acts'), route('books.acts.index', $book), false], $rows[2]);
         $this->assertSame(
             [__('Edit :thing :id', ['thing' => __('act'), 'id' => $act->id]), null, true],
             $rows[3],

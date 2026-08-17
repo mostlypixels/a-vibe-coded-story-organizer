@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-page-heading>
-        {{ $project->name }} &mdash; {{ __('Scenes') }}
+        {{ $book->displayName() }} &mdash; {{ __('Scenes') }}
     </x-page-heading>
 
     <div class="space-y-6">
@@ -19,11 +19,11 @@
 
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search') || request()->filled('chapter'))
-                        <a href="{{ route('projects.scenes.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
+                        <a href="{{ route('books.scenes.index', $book) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
                     @endif
                 </form>
 
-                <x-button variant="primary" :href="route('projects.scenes.create', $project)">{{ __('New Scene') }}</x-button>
+                <x-button variant="primary" :href="route('books.scenes.create', $book)">{{ __('New Scene') }}</x-button>
             </div>
 
             <x-table>
@@ -76,7 +76,7 @@
                     <x-table-empty
                         :colspan="8"
                         :filtered="request()->hasAny(['search', 'chapter'])"
-                        :create-url="route('projects.scenes.create', $project)"
+                        :create-url="route('books.scenes.create', $book)"
                         :create-label="__('New Scene')"
                         :items="__('scenes')"
                     />

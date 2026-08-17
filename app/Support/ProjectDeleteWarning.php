@@ -34,6 +34,7 @@ class ProjectDeleteWarning
     public static function countRelations(): array
     {
         return [
+            'books',
             'acts',
             'plotlines' => fn ($query) => $query->where('is_main', false),
             'events' => fn ($query) => $query->where('is_fixed', false),
@@ -44,6 +45,12 @@ class ProjectDeleteWarning
     public static function for(Project $project): string
     {
         $categories = [
+            // Unlike the categories below, a one-book count is never adjusted
+            // down by one — it is hidden outright. A project always holds a
+            // book (Project::booted()), so a one-book project must read as
+            // having nothing unexpected to lose; a three-book project loses
+            // three books, not two, once there is more than one.
+            [$project->books_count > 1 ? $project->books_count : 0, '{1} :count book|[2,*] :count books'],
             [$project->acts_count, '{1} :count act|[2,*] :count acts'],
             [$project->plotlines_count, '{1} :count plotline|[2,*] :count plotlines'],
             [$project->events_count, '{1} :count event|[2,*] :count events'],

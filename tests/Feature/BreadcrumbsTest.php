@@ -87,10 +87,10 @@ class BreadcrumbsTest extends TestCase
 
     public function test_a_create_route_renders_an_action_precise_leaf(): void
     {
-        $project = Project::factory()->for($this->user)->create();
+        [, $book] = $this->projectWithBook($this->user);
 
         $nav = $this->breadcrumbNav(
-            $this->actingAs($this->user)->get(route('projects.scenes.create', $project))->assertOk()->getContent()
+            $this->actingAs($this->user)->get(route('books.scenes.create', $book))->assertOk()->getContent()
         );
 
         $this->assertStringContainsString(__('Story'), $nav);
@@ -189,7 +189,7 @@ class BreadcrumbsTest extends TestCase
     public function test_a_403_on_a_revisions_history_route_does_not_leak_the_label(): void
     {
         $other = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($other);
+        [, $book] = $this->projectWithBook($other);
         $act = Act::factory()->for($book)->create(['name' => 'Concealed History Title']);
 
         $this->actingAs($this->user)
@@ -224,17 +224,87 @@ class BreadcrumbsTest extends TestCase
         $this->assertStringContainsString(__('Dashboard'), $nav);
     }
 
-    public function test_section_crumbs_link_to_their_section_stub(): void
+    public function test_the_book_crumb_appears_on_story_pages_when_the_book_is_named(): void
     {
         $project = Project::factory()->for($this->user)->create();
+        $book = $project->books()->first();
+        $book->update(['name' => 'Volume One']);
 
         $nav = $this->breadcrumbNav(
-            $this->actingAs($this->user)->get(route('projects.acts.index', $project))->assertOk()->getContent()
+            $this->actingAs($this->user)->get(route('books.acts.index', $book))->assertOk()->getContent()
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/<a[^>]*href="'.preg_quote(e(route('books.show', $book)), '/').'"[^>]*>\s*Volume One\s*<\/a>/',
+            $nav,
+        );
+    }
+
+    public function test_the_book_crumb_is_absent_when_the_book_has_no_name_of_its_own(): void
+    {
+        [, $book] = $this->projectWithBook($this->user);
+
+        $nav = $this->breadcrumbNav(
+            $this->actingAs($this->user)->get(route('books.acts.index', $book))->assertOk()->getContent()
+        );
+
+        // Not a plain "does not contain" check: books.show's URL is a path
+        // prefix of every other book-scoped route (books.story.home,
+        // books.acts.index, …), so it is trivially a substring of those hrefs
+        // too. Anchor on the closing quote to match the full href exactly.
+        $this->assertDoesNotMatchRegularExpression(
+            '/href="'.preg_quote(e(route('books.show', $book)), '/').'"/',
+            $nav,
+        );
+    }
+
+    public function test_the_book_crumb_is_absent_on_codex_timeline_and_tools_even_when_the_book_is_named(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $book = $project->books()->first();
+        $book->update(['name' => 'Volume One']);
+
+        $nav = $this->breadcrumbNav(
+            $this->actingAs($this->user)->get(route('projects.codex.home', $project))->assertOk()->getContent()
+        );
+
+        $this->assertStringNotContainsString('Volume One', $nav);
+    }
+
+    public function test_books_show_renders_the_book_as_the_current_leaf_when_named(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $book = $project->books()->first();
+        $book->update(['name' => 'Volume One']);
+
+        $nav = $this->breadcrumbNav(
+            $this->actingAs($this->user)->get(route('books.show', $book))->assertOk()->getContent()
+        );
+
+        $this->assertStringContainsString(__('Dashboard'), $nav);
+        $this->assertMatchesRegularExpression('/aria-current="page"[^>]*>\s*Volume One/', $nav);
+    }
+
+    public function test_books_show_renders_no_band_when_the_book_has_no_name(): void
+    {
+        [, $book] = $this->projectWithBook($this->user);
+
+        $html = $this->actingAs($this->user)->get(route('books.show', $book))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('aria-label="Breadcrumb"', $html);
+    }
+
+    public function test_section_crumbs_link_to_their_section_stub(): void
+    {
+        [, $book] = $this->projectWithBook($this->user);
+
+        $nav = $this->breadcrumbNav(
+            $this->actingAs($this->user)->get(route('books.acts.index', $book))->assertOk()->getContent()
         );
 
         // The Story section crumb now links to its stub landing (was plain text).
         $this->assertMatchesRegularExpression(
-            '/<a[^>]*href="'.preg_quote(e(route('projects.story.home', $project)), '/').'"[^>]*>\s*'.preg_quote(__('Story'), '/').'\s*<\/a>/',
+            '/<a[^>]*href="'.preg_quote(e(route('books.story.home', $book)), '/').'"[^>]*>\s*'.preg_quote(__('Story'), '/').'\s*<\/a>/',
             $nav,
         );
     }
@@ -265,10 +335,10 @@ class BreadcrumbsTest extends TestCase
         // Regression: the band sets bg-nav-raised; without text-nav-content the
         // plain <span> crumbs (section triggers + current leaf) inherited the dark
         // body text and rendered near-invisibly on it (blue on lighter blue).
-        $project = Project::factory()->for($this->user)->create();
+        [, $book] = $this->projectWithBook($this->user);
 
         $html = $this->actingAs($this->user)
-            ->get(route('projects.acts.index', $project))
+            ->get(route('books.acts.index', $book))
             ->assertOk()
             ->getContent();
 
@@ -309,7 +379,7 @@ class BreadcrumbsTest extends TestCase
     public function test_a_403_does_not_leak_the_bound_models_label(): void
     {
         $other = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($other);
+        [, $book] = $this->projectWithBook($other);
         $act = Act::factory()->for($book)->create(['name' => 'Concealed Chapter Title']);
 
         $this->actingAs($this->user)

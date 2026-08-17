@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use App\Models\WordCountSnapshot;
+use App\Support\WordCountFormat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -209,5 +210,396 @@ class BookTest extends TestCase
         $book->delete();
 
         $this->assertSame(3, WordCountSnapshot::where('project_id', $project->id)->firstOrFail()->word_count);
+    }
+
+    // ---------------------------------------------------------------------
+    // CRUD, authorization and validation — the screens (BookController)
+    // ---------------------------------------------------------------------
+
+    public function test_the_books_index_lists_the_projects_books(): void
+    {
+        $user = User::factory()->create();
+        [$project] = $this->projectWithBook($user);
+        Book::factory()->for($project)->create(['name' => 'Volume Two']);
+
+        $this->actingAs($user)
+            ->get(route('projects.books.index', $project))
+            ->assertOk()
+            ->assertSee('Volume Two');
+    }
+
+    public function test_a_user_cannot_view_another_users_books_index(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [$project] = $this->projectWithBook($owner);
+
+        $this->actingAs($other)
+            ->get(route('projects.books.index', $project))
+            ->assertForbidden();
+    }
+
+    public function test_a_user_can_create_a_book(): void
+    {
+        $user = User::factory()->create();
+        [$project] = $this->projectWithBook($user);
+
+        $response = $this->actingAs($user)->post(route('projects.books.store', $project), [
+            'name' => 'Volume Two',
+            'description' => 'The second act of the saga.',
+        ]);
+
+        $response->assertRedirect(route('projects.books.index', $project));
+
+        $book = Book::where('name', 'Volume Two')->first();
+        $this->assertNotNull($book);
+        $this->assertSame($project->id, $book->project_id);
+        $this->assertSame(2, $book->position);
+    }
+
+    public function test_a_user_cannot_create_a_book_in_another_users_project(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [$project] = $this->projectWithBook($owner);
+
+        $this->actingAs($other)
+            ->post(route('projects.books.store', $project), ['name' => 'Sneaky Volume'])
+            ->assertForbidden();
+
+        $this->assertSame(1, $project->books()->count());
+    }
+
+    public function test_creating_a_second_book_requires_a_name(): void
+    {
+        $user = User::factory()->create();
+        [$project] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->post(route('projects.books.store', $project), ['name' => ''])
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame(1, $project->books()->count());
+    }
+
+    public function test_a_user_can_update_a_book(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        Book::factory()->for($project)->create(['name' => 'Volume Two']);
+        $book->update(['name' => 'Volume One']);
+
+        $response = $this->actingAs($user)->put(route('books.update', $book), [
+            'name' => 'Volume One, Revised',
+            'language' => 'en',
+        ]);
+
+        $response->assertRedirect(route('projects.books.index', $project));
+        $this->assertSame('Volume One, Revised', $book->fresh()->name);
+    }
+
+    public function test_updating_a_second_book_requires_a_name(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        Book::factory()->for($project)->create(['name' => 'Volume Two']);
+        $book->update(['name' => 'Volume One']);
+
+        $this->actingAs($user)
+            ->put(route('books.update', $book), ['name' => '', 'language' => 'en'])
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame('Volume One', $book->fresh()->name);
+    }
+
+    public function test_an_empty_name_on_the_sole_book_saves_fine(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $book->update(['name' => 'Temporarily Named']);
+
+        $response = $this->actingAs($user)->put(route('books.update', $book), [
+            'name' => '',
+            'language' => 'en',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertNull($book->fresh()->name);
+    }
+
+    public function test_a_user_cannot_update_another_users_book(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [, $book] = $this->projectWithBook($owner);
+        $book->update(['name' => 'Untouched']);
+
+        $this->actingAs($other)
+            ->put(route('books.update', $book), ['name' => 'Hacked', 'language' => 'en'])
+            ->assertForbidden();
+
+        $this->assertSame('Untouched', $book->fresh()->name);
+    }
+
+    // ---------------------------------------------------------------------
+    // Reordering — the routes (the swap itself is covered above at the model level)
+    // ---------------------------------------------------------------------
+
+    public function test_the_move_down_route_swaps_position_with_the_next_book(): void
+    {
+        $user = User::factory()->create();
+        [, $first] = $this->projectWithBook($user);
+        $second = Book::factory()->for($first->project)->create();
+
+        $this->actingAs($user)
+            ->patch(route('books.move-down', $first))
+            ->assertRedirect();
+
+        $this->assertSame(2, $first->fresh()->position);
+        $this->assertSame(1, $second->fresh()->position);
+    }
+
+    public function test_move_up_swaps_position_with_the_previous_book(): void
+    {
+        $user = User::factory()->create();
+        [, $first] = $this->projectWithBook($user);
+        $second = Book::factory()->for($first->project)->create();
+
+        $this->actingAs($user)
+            ->patch(route('books.move-up', $second))
+            ->assertRedirect();
+
+        $this->assertSame(2, $first->fresh()->position);
+        $this->assertSame(1, $second->fresh()->position);
+    }
+
+    public function test_move_down_at_the_end_is_a_no_op(): void
+    {
+        $user = User::factory()->create();
+        [, $first] = $this->projectWithBook($user);
+        $last = Book::factory()->for($first->project)->create();
+
+        $this->actingAs($user)->patch(route('books.move-down', $last))->assertRedirect();
+
+        $this->assertSame(1, $first->fresh()->position);
+        $this->assertSame(2, $last->fresh()->position);
+    }
+
+    public function test_move_up_at_the_start_is_a_no_op(): void
+    {
+        $user = User::factory()->create();
+        [, $first] = $this->projectWithBook($user);
+        Book::factory()->for($first->project)->create();
+
+        $this->actingAs($user)->patch(route('books.move-up', $first))->assertRedirect();
+
+        $this->assertSame(1, $first->fresh()->position);
+    }
+
+    public function test_a_non_owner_cannot_reorder_a_book(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [, $first] = $this->projectWithBook($owner);
+        Book::factory()->for($first->project)->create();
+
+        $this->actingAs($other)
+            ->patch(route('books.move-down', $first))
+            ->assertForbidden();
+        $this->actingAs($other)
+            ->patch(route('books.move-up', $first))
+            ->assertForbidden();
+
+        $this->assertSame(1, $first->fresh()->position);
+    }
+
+    // ---------------------------------------------------------------------
+    // Delete with "move acts elsewhere, or cascade" — and the last-book guard
+    // ---------------------------------------------------------------------
+
+    public function test_deleting_the_last_book_is_forbidden_and_the_book_survives(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->delete(route('books.destroy', $book))
+            ->assertForbidden();
+
+        $this->assertNotNull($book->fresh());
+    }
+
+    public function test_deleting_a_book_without_a_destination_cascades_its_acts(): void
+    {
+        $user = User::factory()->create();
+        [, $first] = $this->projectWithBook($user);
+        Book::factory()->for($first->project)->create();
+        $act = Act::factory()->for($first)->create();
+
+        $this->actingAs($user)
+            ->delete(route('books.destroy', $first))
+            ->assertRedirect();
+
+        $this->assertNull($first->fresh());
+        $this->assertNull($act->fresh());
+    }
+
+    public function test_deleting_a_book_can_move_its_acts_to_another_book(): void
+    {
+        $user = User::factory()->create();
+        [$project, $source] = $this->projectWithBook($user);
+        $destination = Book::factory()->for($project)->create();
+
+        // Destination already has one act (position 1).
+        Act::factory()->for($destination)->create(['position' => 1]);
+
+        // Source acts in a known order.
+        $first = Act::factory()->for($source)->create(['position' => 1, 'name' => 'Source First']);
+        $second = Act::factory()->for($source)->create(['position' => 2, 'name' => 'Source Second']);
+
+        $this->actingAs($user)
+            ->delete(route('books.destroy', $source), ['move_children_to' => $destination->id])
+            ->assertRedirect(route('projects.books.index', $project));
+
+        // Source book is gone; the moved acts are NOT deleted.
+        $this->assertNull($source->fresh());
+        $this->assertNotNull($first->fresh());
+        $this->assertNotNull($second->fresh());
+
+        // Every moved act now belongs to the destination.
+        $this->assertSame($destination->id, $first->fresh()->book_id);
+        $this->assertSame($destination->id, $second->fresh()->book_id);
+
+        // Appended after the destination's existing max position (1), in
+        // original order — and no position collides.
+        $this->assertSame(2, $first->fresh()->position);
+        $this->assertSame(3, $second->fresh()->position);
+    }
+
+    public function test_move_children_to_must_be_another_book_in_the_same_project(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        Book::factory()->for($book->project)->create();
+
+        // A destination in a different project is rejected.
+        $foreignBook = Book::factory()->for(Project::factory()->for($user))->create();
+
+        $this->actingAs($user)
+            ->delete(route('books.destroy', $book), ['move_children_to' => $foreignBook->id])
+            ->assertSessionHasErrors('move_children_to');
+
+        $this->assertNotNull($book->fresh());
+
+        // The book's own id as a destination is rejected (Rule::notIn).
+        $this->actingAs($user)
+            ->delete(route('books.destroy', $book), ['move_children_to' => $book->id])
+            ->assertSessionHasErrors('move_children_to');
+
+        $this->assertNotNull($book->fresh());
+    }
+
+    public function test_a_non_owner_cannot_delete_or_move_a_books_acts(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($owner);
+        $destination = Book::factory()->for($project)->create();
+
+        $this->actingAs($other)
+            ->delete(route('books.destroy', $book), ['move_children_to' => $destination->id])
+            ->assertForbidden();
+
+        $this->assertNotNull($book->fresh());
+    }
+
+    // ---------------------------------------------------------------------
+    // ProjectDeleteWarning — the true book count
+    // ---------------------------------------------------------------------
+
+    public function test_the_delete_warning_counts_books_truthfully_and_hides_the_category_at_one(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        // Forces a non-empty warning sentence even with only one book, so the
+        // absence of "book" below is a real assertion about the books category
+        // and not just the whole sentence collapsing to the unqualified question.
+        Act::factory()->for($book)->create();
+
+        // The exact sentence proves the books category is absent, not just
+        // that its count happens to be omitted from a shorter sentence.
+        $this->actingAs($user)
+            ->get(route('projects.edit', $project))
+            ->assertOk()
+            ->assertSee('This project has 1 act, which will also be deleted.', false);
+
+        // A three-book project loses three books, not two — the count is never
+        // adjusted down by one the way the plotline/event categories are.
+        Book::factory()->for($project)->create(['name' => 'Volume Two']);
+        Book::factory()->for($project)->create(['name' => 'Volume Three']);
+
+        $this->actingAs($user)
+            ->get(route('projects.edit', $project))
+            ->assertOk()
+            ->assertSee('This project has 3 books and 1 act, which will also be deleted.', false);
+    }
+
+    // ---------------------------------------------------------------------
+    // Book home (books.show)
+    // ---------------------------------------------------------------------
+
+    public function test_the_book_home_shows_the_books_word_count_and_recent_scenes(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        Scene::factory()->for($chapter)->create(['name' => 'A scene', 'contents' => 'One two three']);
+
+        $this->actingAs($user)
+            ->get(route('books.show', $book))
+            ->assertOk()
+            ->assertSee('A scene')
+            ->assertSee(WordCountFormat::text(3));
+    }
+
+    public function test_the_book_home_only_shows_this_books_scenes_and_word_count(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create();
+
+        Scene::factory()->for(Chapter::factory()->for(Act::factory()->for($firstBook)))
+            ->create(['name' => 'Volume one scene', 'contents' => 'One two three']);
+        Scene::factory()->for(Chapter::factory()->for(Act::factory()->for($secondBook)))
+            ->create(['name' => 'Volume two scene', 'contents' => 'One two three four five']);
+
+        $this->actingAs($user)
+            ->get(route('books.show', $firstBook))
+            ->assertOk()
+            ->assertSee('Volume one scene')
+            ->assertDontSee('Volume two scene')
+            ->assertSee(WordCountFormat::text(3));
+    }
+
+    public function test_a_book_with_no_scenes_shows_zero_words_not_blank(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->get(route('books.show', $book))
+            ->assertOk()
+            ->assertSee(WordCountFormat::text(0));
+    }
+
+    public function test_a_non_owner_cannot_view_the_book_home(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [, $book] = $this->projectWithBook($owner);
+
+        $this->actingAs($other)
+            ->get(route('books.show', $book))
+            ->assertForbidden();
     }
 }

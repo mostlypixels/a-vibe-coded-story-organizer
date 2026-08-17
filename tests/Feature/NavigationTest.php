@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
+use App\Support\ProjectNavigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -30,7 +32,7 @@ class NavigationTest extends TestCase
      */
     private function chapterFor(User $user): Chapter
     {
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
 
         return Chapter::factory()->for($act)->create();
@@ -67,37 +69,40 @@ class NavigationTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $html = $this->actingAs($user)
-            ->get(route('projects.scenes.index', $project))
+            ->get(route('books.scenes.index', $book))
             ->assertOk()
             ->getContent();
 
-        $this->assertLinkIsCurrent($html, route('projects.scenes.index', $project));
+        $this->assertLinkIsCurrent($html, route('books.scenes.index', $book));
     }
 
     public function test_a_non_active_sibling_is_not_marked(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $html = $this->actingAs($user)
-            ->get(route('projects.scenes.index', $project))
+            ->get(route('books.scenes.index', $book))
             ->assertOk()
             ->getContent();
 
         // Guards against over-broad matchers ("everything highlights"): on the
         // Scenes page the Acts item must be present but not current.
-        $this->assertLinkIsNotCurrent($html, route('projects.acts.index', $project));
+        $this->assertLinkIsNotCurrent($html, route('books.acts.index', $book));
     }
 
     public function test_a_child_route_still_highlights_its_section(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $scene = Scene::factory()->for($chapter)->create();
 
         // scenes.edit is matched by the `scenes.*` half of the matcher.
@@ -106,18 +111,19 @@ class NavigationTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertLinkIsCurrent($html, route('projects.scenes.index', $project));
+        $this->assertLinkIsCurrent($html, route('books.scenes.index', $book));
     }
 
     public function test_the_story_trigger_reflects_the_active_section(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         // On a Story page the trigger swaps to nav-link's active look.
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', $project))
+            ->get(route('books.scenes.index', $book))
             ->assertOk()
             ->assertSee('text-nav-content border-accent', false);
 
@@ -207,7 +213,8 @@ class NavigationTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         // On a Codex page the Codex trigger is active; the Story trigger is not.
         $codexHtml = $this->actingAs($user)
@@ -220,7 +227,7 @@ class NavigationTest extends TestCase
 
         // On a Story page the Codex trigger falls back to its inactive state.
         $storyHtml = $this->actingAs($user)
-            ->get(route('projects.scenes.index', $project))
+            ->get(route('books.scenes.index', $book))
             ->assertOk()
             ->getContent();
 
@@ -260,7 +267,7 @@ class NavigationTest extends TestCase
     public function test_the_search_link_is_marked_on_the_search_page(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
         $html = $this->actingAs($user)
             ->get(route('projects.search.index', $project))
@@ -272,17 +279,18 @@ class NavigationTest extends TestCase
         $this->assertLinkIsNotCurrent($html, route('projects.show', $project));
         $this->assertLinkIsNotCurrent($html, route('projects.plotlines.index', $project));
         $this->assertLinkIsNotCurrent($html, route('projects.codex.index', [$project, 'characters']));
-        $this->assertLinkIsNotCurrent($html, route('projects.story.overview', $project));
+        $this->assertLinkIsNotCurrent($html, route('books.story.overview', $book));
     }
 
     public function test_the_search_link_is_present_but_not_marked_on_a_non_search_page(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $html = $this->actingAs($user)
-            ->get(route('projects.scenes.index', $project))
+            ->get(route('books.scenes.index', $book))
             ->assertOk()
             ->getContent();
 
@@ -335,7 +343,7 @@ class NavigationTest extends TestCase
         );
     }
 
-    public function test_the_picker_names_the_open_project_and_offers_the_others(): void
+    public function test_the_picker_names_the_open_book_and_offers_other_projects(): void
     {
         $user = User::factory()->create();
         $open = Project::factory()->for($user)->create(['name' => 'The open one']);
@@ -346,8 +354,15 @@ class NavigationTest extends TestCase
             ->assertOk()
             ->getContent();
 
+        // The trigger names the open book — its sole book has none of its own,
+        // so it falls back to the project name.
         $this->assertStringContainsString('The open one', $html);
-        $this->assertStringContainsString('href="'.e(route('projects.show', $other)).'"', $html);
+
+        // Another project renders as an unlinked heading, its (sole, unnamed)
+        // book listed beneath it and linking to the book, not the project.
+        $this->assertStringContainsString('Another one', $html);
+        $this->assertStringContainsString('href="'.e(route('books.show', $other->books()->first())).'"', $html);
+        $this->assertStringNotContainsString('href="'.e(route('projects.show', $other)).'"', $html);
 
         // "All projects" is the overflow route out of a capped list, so it is
         // part of the contract, not decoration.
@@ -357,6 +372,131 @@ class NavigationTest extends TestCase
         // through verbatim, so width="56" would emit a junk `56` class and leave
         // the panel unsized. Pin the rendered class, not the attribute.
         $this->assertMatchesRegularExpression('/class="absolute z-50 mt-0 w-56 /', $html);
+    }
+
+    public function test_the_picker_lists_every_book_in_the_current_project_and_a_manage_books_link(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $firstBook->update(['name' => 'Volume One']);
+        $secondBook = Book::factory()->for($project)->create(['name' => 'Volume Two']);
+
+        $html = $this->actingAs($user)
+            ->get(route('books.show', $firstBook))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('href="'.e(route('books.show', $firstBook)).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('books.show', $secondBook)).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('projects.books.index', $project)).'"', $html);
+    }
+
+    public function test_the_open_book_stays_listed_and_marked_active(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $firstBook->update(['name' => 'Volume One']);
+        $secondBook = Book::factory()->for($project)->create(['name' => 'Volume Two']);
+
+        $html = $this->actingAs($user)
+            ->get(route('books.show', $firstBook))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertLinkIsCurrent($html, route('books.show', $firstBook));
+        $this->assertLinkIsNotCurrent($html, route('books.show', $secondBook));
+    }
+
+    public function test_a_sole_unnamed_book_shows_one_picker_line(): void
+    {
+        $user = User::factory()->create();
+        [$project] = $this->projectWithBook($user);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->getContent();
+
+        // No muted project sub-line under the trigger while the sole book
+        // carries no name of its own.
+        $this->assertDoesNotMatchRegularExpression(
+            '/text-xs font-normal text-nav-content-muted">\s*'.preg_quote(e($project->name), '/').'/',
+            $html,
+        );
+    }
+
+    public function test_a_named_book_shows_the_project_beneath_it_in_the_trigger(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $book->update(['name' => 'Volume One']);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Volume One', $html);
+        $this->assertMatchesRegularExpression(
+            '/text-xs font-normal text-nav-content-muted">\s*'.preg_quote(e($project->name), '/').'/',
+            $html,
+        );
+    }
+
+    public function test_the_pickers_other_project_book_list_is_capped_at_five(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $other = Project::factory()->for($user)->create(['name' => 'Aaa other']);
+
+        // $other already has one auto-created book (position 1); five more
+        // push it to six, one past the cap.
+        foreach (range(1, 5) as $i) {
+            Book::factory()->for($other)->create(['name' => "Book $i"]);
+        }
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Book 1', $html);
+        $this->assertStringContainsString('Book 4', $html);
+        $this->assertStringNotContainsString('Book 5', $html);
+    }
+
+    public function test_the_picker_stays_memoized_across_both_menus(): void
+    {
+        $user = User::factory()->create();
+        [$project] = $this->projectWithBook($user);
+        $this->projectWithBook($user);
+
+        // Build the same object the view composer builds, off the same
+        // dispatched request (the pattern Tests\Unit\BreadcrumbsTest uses),
+        // rather than counting "books" queries in the raw SQL log: the page
+        // itself already issues a few unrelated ones (ProjectController's own
+        // book list, ProjectNavigation::$book's plain ->first() fallback),
+        // which would make a log-scraping count fragile and miss the point.
+        $this->actingAs($user)->get(route('projects.show', $project))->assertOk();
+        $navigation = new ProjectNavigation($this->app->make('request'));
+
+        $queries = 0;
+        DB::listen(function () use (&$queries) {
+            $queries++;
+        });
+
+        // The desktop panel and the responsive menu each call both methods
+        // once; without memoization that would double every query below.
+        // projectBooks() is one query; otherProjects() is two (Eloquent
+        // eager-loads its books relation as a separate query from the
+        // projects themselves) — three total, however many times either
+        // method is called.
+        $navigation->projectBooks();
+        $navigation->projectBooks();
+        $navigation->otherProjects();
+        $navigation->otherProjects();
+
+        $this->assertSame(3, $queries);
     }
 
     public function test_the_picker_never_lists_another_users_project(): void

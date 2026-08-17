@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -25,7 +26,7 @@ class WysiwygFormTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * @return array{User, Project, Act, Chapter, Scene, Plotline, Event, CodexEntry}
+     * @return array{User, Project, Book, Act, Chapter, Scene, Plotline, Event, CodexEntry}
      */
     private function fixture(): array
     {
@@ -38,7 +39,7 @@ class WysiwygFormTest extends TestCase
         $event = Event::factory()->for($project)->create();
         $entry = CodexEntry::factory()->for($project)->character()->create();
 
-        return [$user, $project, $act, $chapter, $scene, $plotline, $event, $entry];
+        return [$user, $project, $book, $act, $chapter, $scene, $plotline, $event, $entry];
     }
 
     private function assertHasTextarea(string $url, User $user, string $field): void
@@ -52,22 +53,22 @@ class WysiwygFormTest extends TestCase
 
     public function test_every_swapped_form_renders_a_submittable_textarea(): void
     {
-        [$user, $project, $act, $chapter, $scene, $plotline, $event, $entry] = $this->fixture();
+        [$user, $project, $book, $act, $chapter, $scene, $plotline, $event, $entry] = $this->fixture();
 
         // Create forms (nested under the project) and edit forms (flat), all carrying
         // the progressive-enhancement <textarea> for the rich-HTML `description` field.
         $descriptionForms = [
             route('projects.create'),
             route('projects.edit', $project),
-            route('projects.acts.create', $project),
+            route('books.acts.create', $book),
             route('acts.edit', $act),
-            route('projects.chapters.create', $project),
+            route('books.chapters.create', $book),
             route('chapters.edit', $chapter),
             route('projects.plotlines.create', $project),
             route('plotlines.edit', $plotline),
             route('projects.events.create', $project),
             route('events.edit', $event),
-            route('projects.scenes.create', $project),
+            route('books.scenes.create', $book),
             route('scenes.edit', $scene),
             route('projects.codex.create', [$project, 'characters']),
             route('codex.edit', $entry),
@@ -78,19 +79,19 @@ class WysiwygFormTest extends TestCase
         }
 
         // Scene `notes` is also a rich-HTML editor; its textarea must survive too.
-        $this->assertHasTextarea(route('projects.scenes.create', $project), $user, 'notes');
+        $this->assertHasTextarea(route('books.scenes.create', $book), $user, 'notes');
         $this->assertHasTextarea(route('scenes.edit', $scene), $user, 'notes');
     }
 
     public function test_scene_contents_is_a_markdown_mode_wysiwyg(): void
     {
-        [$user, $project, , , $scene] = $this->fixture();
+        [$user, $project, $book, , , $scene] = $this->fixture();
 
         // Scene `contents` is now a WYSIWYG in markdown mode: it must render the
         // progressive-enhancement <textarea name="contents"> (so a JS-off submit still
         // works) AND be flagged data-format="markdown" (Underline/Strike dropped, value
         // serialized to CommonMark). This is distinct from the HTML-mode fields above.
-        foreach ([route('projects.scenes.create', $project), route('scenes.edit', $scene)] as $url) {
+        foreach ([route('books.scenes.create', $book), route('scenes.edit', $scene)] as $url) {
             $this->actingAs($user)
                 ->get($url)
                 ->assertOk()
@@ -102,7 +103,7 @@ class WysiwygFormTest extends TestCase
 
     public function test_scene_contents_is_stored_as_markdown_not_sanitized_html(): void
     {
-        [$user, $project, $act, $chapter, $scene] = $this->fixture();
+        [$user, $project, $book, $act, $chapter, $scene] = $this->fixture();
 
         // Scene contents stays out of the HTML-sanitization pipeline: raw Markdown is
         // stored verbatim (angle-bracket-free Markdown survives untouched), while a

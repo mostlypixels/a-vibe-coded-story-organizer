@@ -7,27 +7,30 @@
     {{ __('Dashboard') }}
 </x-responsive-nav-link>
 
-<x-navigation.section-heading>{{ __('Story') }}</x-navigation.section-heading>
+{{-- Guarded on hasBook(), not hasProject() — see project-menu.blade.php. --}}
+@if ($navigation->hasBook())
+    <x-navigation.section-heading>{{ __('Story') }}</x-navigation.section-heading>
 
-<x-responsive-nav-link :href="route('projects.story.home', $navigation->project)" :active="$navigation->storyHomeActive">
-    {{ __('Story') }}
-</x-responsive-nav-link>
+    <x-responsive-nav-link :href="route('books.story.home', $navigation->book)" :active="$navigation->storyHomeActive">
+        {{ __('Story') }}
+    </x-responsive-nav-link>
 
-<x-responsive-nav-link :href="route('projects.story.overview', $navigation->project)" :active="$navigation->storyOverviewActive">
-    {{ __('Overview') }}
-</x-responsive-nav-link>
+    <x-responsive-nav-link :href="route('books.story.overview', $navigation->book)" :active="$navigation->storyOverviewActive">
+        {{ __('Overview') }}
+    </x-responsive-nav-link>
 
-<x-responsive-nav-link :href="route('projects.acts.index', $navigation->project)" :active="$navigation->actsActive">
-    {{ __('Acts') }}
-</x-responsive-nav-link>
+    <x-responsive-nav-link :href="route('books.acts.index', $navigation->book)" :active="$navigation->actsActive">
+        {{ __('Acts') }}
+    </x-responsive-nav-link>
 
-<x-responsive-nav-link :href="route('projects.chapters.index', $navigation->project)" :active="$navigation->chaptersActive">
-    {{ __('Chapters') }}
-</x-responsive-nav-link>
+    <x-responsive-nav-link :href="route('books.chapters.index', $navigation->book)" :active="$navigation->chaptersActive">
+        {{ __('Chapters') }}
+    </x-responsive-nav-link>
 
-<x-responsive-nav-link :href="route('projects.scenes.index', $navigation->project)" :active="$navigation->scenesActive">
-    {{ __('Scenes') }}
-</x-responsive-nav-link>
+    <x-responsive-nav-link :href="route('books.scenes.index', $navigation->book)" :active="$navigation->scenesActive">
+        {{ __('Scenes') }}
+    </x-responsive-nav-link>
+@endif
 
 <x-navigation.section-heading>{{ __('Timeline') }}</x-navigation.section-heading>
 

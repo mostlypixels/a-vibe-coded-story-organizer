@@ -23,9 +23,9 @@ class EmptyStateTest extends TestCase
     public function test_the_acts_index_shows_a_friendly_empty_state_when_there_are_no_acts(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
-        $response = $this->actingAs($user)->get(route('projects.acts.index', $project));
+        $response = $this->actingAs($user)->get(route('books.acts.index', $book));
 
         $response->assertOk();
         $response->assertSee(__('No acts yet.'));
@@ -35,9 +35,9 @@ class EmptyStateTest extends TestCase
     public function test_the_chapters_index_shows_a_friendly_empty_state_when_there_are_no_chapters(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
-        $response = $this->actingAs($user)->get(route('projects.chapters.index', $project));
+        $response = $this->actingAs($user)->get(route('books.chapters.index', $book));
 
         $response->assertOk();
         $response->assertSee(__('No chapters yet.'));
@@ -46,9 +46,9 @@ class EmptyStateTest extends TestCase
     public function test_the_scenes_index_shows_a_friendly_empty_state_when_there_are_no_scenes(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
-        $response = $this->actingAs($user)->get(route('projects.scenes.index', $project));
+        $response = $this->actingAs($user)->get(route('books.scenes.index', $book));
 
         $response->assertOk();
         $response->assertSee(__('No scenes yet.'));
@@ -75,10 +75,10 @@ class EmptyStateTest extends TestCase
     public function test_a_filtered_acts_index_shows_a_no_match_message_not_the_create_prompt(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         Act::factory()->for($book)->create(['name' => 'The Gathering']);
 
-        $response = $this->actingAs($user)->get(route('projects.acts.index', [$project, 'search' => 'no-such-act']));
+        $response = $this->actingAs($user)->get(route('books.acts.index', [$book, 'search' => 'no-such-act']));
 
         $response->assertOk();
         $response->assertSee(__('No acts match your search or filters.'));

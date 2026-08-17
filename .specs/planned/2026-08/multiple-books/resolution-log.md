@@ -89,6 +89,45 @@ Resolved in the planning grill, 2026-08-16. The full question-by-question record
 - **`DuplicateEntityRequest` is a third real caller of the old `RouteProject`**, not the two the
   task named (`ProjectNavigation`, `TrackActiveProject`). Renaming the class breaks any caller
   left pointing at the old name, so it was updated too — `RouteContext::resolve($this)->project`.
+- **Every move destination narrowed from the project to the book**, in the dialogs *and* in the
+  `Rule::exists` behind them: `DestroyActRequest`, `DestroyChapterRequest`,
+  `Store/UpdateChapterRequest`'s `act_id`, `Store/UpdateSceneRequest`'s `chapter_id`. The task
+  named only the routes, but a book-scoped index with a project-wide rule accepts a POST the UI
+  never offers — and the controller then resolves the destination off `$book`, so a request that
+  passed validation dies on `findOrFail()`. Moving a whole act between books is task 16's control.
+- **`ProjectNavigation` gained `?Book $book`**, which task 09 owns. A Story link cannot be built
+  without a book. The fallback here is the route's book, else `$project->books()->first()`; task
+  09 replaces it with `$project->lastBook ?? …` and adds `routeBook`/`booksActive`.
+  `ProjectController@show` passes the same first-book stand-in for the dashboard's
+  "View the story".
+- **`Breadcrumbs::storyTrail()` already takes the book** (task 09's line item) — the story route
+  names changed here, so it had to. `entityTrail()` now takes `Project|Book`; the timeline, codex
+  and tools trails still pass a project.
+- **`RecentlyEdited::acts/chapters/scenes` widened to `Project|Book`.** The Story landing page is
+  book-scoped; the project dashboard is not.
+- **`projects.overview_render_mode` is now dead but still there.** The read and the write moved to
+  the book. The column, and its `Project` `$fillable`/`$casts` entries, go with the rest of the
+  moved metadata in `drop_book_metadata_from_projects`.
+- **The chapters index, create and edit forms take an `$acts` collection**, not `$project->acts`.
+  The act `<select>` must offer this book's acts only.
+- **`x-delete-with-move-dialog` gained an optional third tier** (`tertiaryCount`/
+  `tertiarySingular`/`tertiaryPlural`). The existing shape only expressed "direct children +
+  one grandchild level" (Act's chapters + scenes); a book's honest cascade is three levels
+  (acts, chapters, scenes). The three-part phrase joins with `Arr::join`, the same "X, Y and
+  Z" grammar `ProjectDeleteWarning` already uses. The books **index** dialog still counts acts
+  only, matching Act's own index/edit split — the full three-level summary is edit-page only,
+  where the extra counts are cheap (one book) rather than N+1 (one row per book).
+- **`booksActive` matches the books CRUD routes only** — `projects.books.index`/`create`,
+  and the shallow `books.edit`/`update`/`destroy`/`move-up`/`move-down` (named individually;
+  a `books.*` wildcard would also sweep up every `books.story.*`/`books.acts.*` manuscript
+  route). It deliberately excludes `books.show`: that page is the book home a picker row
+  already links to, not the "Manage books" link this flag lights.
+- **The picker's "open book" row compares against `routeBook`, not the fallback-including
+  `book`.** `ProjectNavigation::$book` still resolves via `lastBook`/first-book even on the
+  dashboard (Story links need one), so comparing against it marked a book "active" on a page
+  where no book is actually open — the same trap every other `*Active` flag already avoids by
+  matching the route, never the fallback. Caught by
+  `NavigationTest::test_no_dropdown_item_is_marked_on_home`.
 
 ## Issues → resolutions
 
@@ -114,3 +153,23 @@ Resolved in the planning grill, 2026-08-16. The full question-by-question record
   `add_book_id_to_acts_table` deletes the manuscript rows before adding `book_id` — destructive
   by design (pre-V1, reseed), and it also makes a forward `php artisan migrate` work instead of
   erroring on an existing dev database.
+- **A bulk script rewrote 30+ files as CRLF and `git diff` said nothing.** `.gitattributes` sets
+  `* text=auto eol=lf`, so git normalizes on read and the diff looked clean, while a PHP
+  multi-line string literal in `HtmlSanitizationTest` now held `\r\n` and stopped matching the
+  saved value. One test failed; the rest of the suite stayed green. Root cause: a Windows text
+  mode write translating `\n`. Write bytes, not text, when scripting a mass rename here, and
+  check for `\r\n` in `git diff --name-only` afterwards.
+- **`Book::displayName()` re-queries the project once per unnamed book when the parent isn't
+  chaperoned.** Eager-loading a project's `books` for the picker (`ProjectNavigation::
+  projectBooks()`, `otherProjects()`) doesn't wire up each book's inverse `project` relation on
+  its own, so calling `displayName()` on an unnamed one (the common case) is an N+1. Fixed with
+  Laravel's `chaperone('project')` on both eager loads.
+- **The `['layouts.navigation', 'layouts.app']` view composer builds two separate
+  `ProjectNavigation` instances per request** — `layouts.app`'s own composer call, and a second
+  one when it `@include`s `layouts.navigation`, which shadows the first for that nested view's
+  scope. Pre-existing (not a task 09 regression: `ProjectNavigation::$book`'s plain
+  `->books()->first()` fallback already ran twice), but it makes counting "books" queries in the
+  raw SQL log an unreliable way to guard `projectBooks()`/`otherProjects()`'s memoization —
+  other, unrelated queries share the same table and shape. The guard test instead builds a
+  `ProjectNavigation` directly off the dispatched request (the `Tests\Unit\BreadcrumbsTest`
+  pattern) and counts queries against that one instance.

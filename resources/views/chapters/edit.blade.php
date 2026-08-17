@@ -22,7 +22,7 @@
                 <div>
                     <x-input-label for="act_id" :value="__('Act')" />
                     <x-select id="act_id" name="act_id" class="mt-1 block w-full" required>
-                        @foreach ($project->acts as $act)
+                        @foreach ($acts as $act)
                             <option value="{{ $act->id }}" @selected(old('act_id', $chapter->act_id) == $act->id)>{{ $act->name }}</option>
                         @endforeach
                     </x-select>

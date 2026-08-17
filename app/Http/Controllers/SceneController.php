@@ -9,6 +9,7 @@ use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\DuplicateEntityRequest;
 use App\Http\Requests\StoreSceneRequest;
 use App\Http\Requests\UpdateSceneRequest;
+use App\Models\Book;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CodexAsOfResolver;
@@ -29,33 +30,26 @@ class SceneController extends Controller
     use ReordersSiblings;
     use ResolvesIndexSorting;
 
-    public function index(Request $request, Project $project): View
+    public function index(Request $request, Book $book): View
     {
-        $this->authorize('view', $project);
+        $this->authorize('view', $book->project);
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
-        // Every project holds at least one book, and this route still carries
-        // a project — numbering comes from the project's first book until the
-        // story routes nest under {book}.
-        $book = $project->books()->first();
-
-        $scenes = $project->sceneQuery()
+        $scenes = $book->sceneQuery()
             // Only the scene columns: the two joins below are there to sort by, not to
             // select from, and without this the joined `chapters`/`acts` columns would
             // overwrite same-named scene attributes on the hydrated models. Safe here
             // because this query has no withCount/withSum whose aliases a select() would
             // reset (the chapters index does — see ChapterController::index).
             ->select('scenes.*')
-            // Joined so the `#` column can sort by story order: book order, then act
-            // order, then chapter within the act, then scene within the chapter.
-            // Grouping by `chapter_id` instead — as this did — only matches story order
-            // until something is reordered. `chapters`, `acts` and `books` all carry
-            // `name` and `position`, so every column below is table-qualified to stay
-            // unambiguous.
+            // Joined so the `#` column can sort by story order: act order, then chapter
+            // within the act, then scene within the chapter. Grouping by `chapter_id`
+            // instead — as this did — only matches story order until something is
+            // reordered. `chapters` and `acts` both carry `name` and `position`, so
+            // every column below is table-qualified to stay unambiguous.
             ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
             ->join('acts', 'acts.id', '=', 'chapters.act_id')
-            ->join('books', 'books.id', '=', 'acts.book_id')
             ->with('chapter.act', 'event')
             ->when($request->filled('search'), fn ($query) => $query->where('scenes.name', 'like', '%'.$request->query('search').'%'))
             ->when($request->filled('chapter'), fn ($query) => $query->where('scenes.chapter_id', $request->query('chapter')))
@@ -66,8 +60,6 @@ class SceneController extends Controller
                 // The id tie-breaks are part of the contract: `position` has no unique
                 // constraint, so two siblings can share one and must still order stably.
                 fn ($query) => $query
-                    ->orderBy('books.position', $direction)
-                    ->orderBy('books.id', $direction)
                     ->orderBy('acts.position', $direction)
                     ->orderBy('acts.id', $direction)
                     ->orderBy('chapters.position', $direction)
@@ -80,17 +72,18 @@ class SceneController extends Controller
             ->get();
 
         // One project-wide name list backs every row's suggestion, so this stays a
-        // single query instead of one per row. Two rows can propose the same name —
-        // harmless, since a collision is accepted and the page reloads after each
-        // duplicate (see DuplicateName).
-        $names = $project->sceneQuery()->pluck('name');
+        // single query instead of one per row. Project-wide, not book-wide: a
+        // duplicate name is confusing across the whole series, not only this volume.
+        // Two rows can propose the same name — harmless, since a collision is accepted
+        // and the page reloads after each duplicate (see DuplicateName).
+        $names = $book->project->sceneQuery()->pluck('name');
         $duplicateNames = $scenes->mapWithKeys(
             fn (Scene $scene) => [$scene->id => DuplicateName::suggest($scene->name, $names)]
         );
 
         return view('scenes.index', [
-            'project' => $project,
-            'chapters' => $this->chaptersFor($project),
+            'book' => $book,
+            'chapters' => $this->chaptersFor($book),
             'scenes' => $scenes,
             'sort' => $sort,
             'direction' => $direction,
@@ -102,13 +95,17 @@ class SceneController extends Controller
         ]);
     }
 
-    public function create(Project $project): View
+    public function create(Book $book): View
     {
+        $project = $book->project;
+
         $this->authorize('update', $project);
 
         return view('scenes.create', [
-            'project' => $project,
-            'chapters' => $this->chaptersFor($project),
+            'book' => $book,
+            'chapters' => $this->chaptersFor($book),
+            // The timeline is shared by every book in the project, so the event
+            // list and its bounds stay project-wide.
             'events' => $this->eventsFor($project),
             // Bounds for the inline "New event" datetime — always a regular event, so it
             // sits inside [Start, End] (mirrors WithinEventWindow; server stays authoritative).
@@ -117,13 +114,13 @@ class SceneController extends Controller
         ]);
     }
 
-    public function store(StoreSceneRequest $request, Project $project, SceneReferenceMatcher $matcher): RedirectResponse
+    public function store(StoreSceneRequest $request, Book $book, SceneReferenceMatcher $matcher): RedirectResponse
     {
         $validated = $request->validated();
-        $chapter = $project->chapterQuery()->findOrFail($validated['chapter_id']);
+        $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
 
         $scene = $chapter->scenes()->create(
-            $this->sceneAttributes($validated) + ['event_id' => $this->resolveHappensDuringEvent($project, $validated)]
+            $this->sceneAttributes($validated) + ['event_id' => $this->resolveHappensDuringEvent($book->project, $validated)]
         );
 
         $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
@@ -133,12 +130,13 @@ class SceneController extends Controller
         // the point), mirroring the mentionedEvents()->sync() call above.
         $matcher->syncScene($scene);
 
-        return redirect()->route('projects.scenes.index', $project);
+        return redirect()->route('books.scenes.index', $book);
     }
 
     public function edit(Scene $scene, CodexAsOfResolver $codexAsOf): View
     {
-        $project = $scene->chapter->act->book->project;
+        $book = $scene->chapter->act->book;
+        $project = $book->project;
 
         $this->authorize('update', $project);
 
@@ -153,11 +151,12 @@ class SceneController extends Controller
         return view('scenes.edit', [
             'scene' => $scene,
             'project' => $project,
-            'chapters' => $this->chaptersFor($project),
+            'book' => $book,
+            'chapters' => $this->chaptersFor($book),
             'events' => $this->eventsFor($project),
             'windowMin' => $project->startEvent()->event_datetime->format('Y-m-d\TH:i'),
             'windowMax' => $project->endEvent()->event_datetime->format('Y-m-d\TH:i'),
-            'numbering' => StoryNumbering::forBook($scene->chapter->act->book),
+            'numbering' => StoryNumbering::forBook($book),
             'positionInChapter' => $siblingIds->search($scene->id) + 1,
             'totalInChapter' => $siblingIds->count(),
             // Codex values resolved as of the scene's "happens during" event (null when the
@@ -174,9 +173,10 @@ class SceneController extends Controller
 
     public function update(UpdateSceneRequest $request, Scene $scene, SceneReferenceMatcher $matcher): RedirectResponse
     {
-        $project = $scene->chapter->act->book->project;
+        $book = $scene->chapter->act->book;
+        $project = $book->project;
         $validated = $request->validated();
-        $chapter = $project->chapterQuery()->findOrFail($validated['chapter_id']);
+        $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
         $sceneAttributes = $this->sceneAttributes($validated);
 
         $beforeAutosavedFields = $this->snapshotAutosaved($scene, $sceneAttributes);
@@ -193,7 +193,7 @@ class SceneController extends Controller
 
         $this->recordManualSave($scene, $beforeAutosavedFields);
 
-        return $this->redirectAfterSave($request, ['scenes.edit', $scene], ['projects.scenes.index', $project]);
+        return $this->redirectAfterSave($request, ['scenes.edit', $scene], ['books.scenes.index', $book]);
     }
 
     public function duplicate(DuplicateEntityRequest $request, Scene $scene, SceneDuplicator $duplicator): RedirectResponse
@@ -205,13 +205,13 @@ class SceneController extends Controller
 
     public function destroy(Scene $scene): RedirectResponse
     {
-        $project = $scene->chapter->act->book->project;
+        $book = $scene->chapter->act->book;
 
-        $this->authorize('update', $project);
+        $this->authorize('update', $book->project);
 
         $scene->delete();
 
-        return redirect()->route('projects.scenes.index', $project);
+        return redirect()->route('books.scenes.index', $book);
     }
 
     public function moveUp(Request $request, Scene $scene): RedirectResponse|JsonResponse
@@ -240,9 +240,9 @@ class SceneController extends Controller
             : redirect()->back();
     }
 
-    private function chaptersFor(Project $project): Collection
+    private function chaptersFor(Book $book): Collection
     {
-        return $project->chapterQuery()
+        return $book->chapterQuery()
             ->with('act')
             ->orderBy('name')
             ->get();

@@ -33,11 +33,11 @@ class ActTest extends TestCase
     public function test_the_acts_index_lists_acts_for_the_owning_user(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         Act::factory()->for($book)->create(['name' => 'The Gathering Storm']);
 
         $this->actingAs($user)
-            ->get(route('projects.acts.index', $project))
+            ->get(route('books.acts.index', $book))
             ->assertOk()
             ->assertSee('The Gathering Storm');
     }
@@ -46,23 +46,23 @@ class ActTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $project = Project::factory()->for($owner)->create();
+        [, $book] = $this->projectWithBook($owner);
 
         $this->actingAs($other)
-            ->get(route('projects.acts.index', $project))
+            ->get(route('books.acts.index', $book))
             ->assertForbidden();
     }
 
     public function test_the_acts_index_footer_totals_words_across_the_listed_acts(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
         $this->sceneWithWordCount($chapter, 40);
         $this->sceneWithWordCount($chapter, 60);
 
         $this->actingAs($user)
-            ->get(route('projects.acts.index', $project))
+            ->get(route('books.acts.index', $book))
             ->assertOk()
             ->assertSee('Total')
             ->assertSee('100 words');
@@ -71,14 +71,14 @@ class ActTest extends TestCase
     public function test_a_user_can_create_an_act(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
 
-        $response = $this->actingAs($user)->post(route('projects.acts.store', $project), [
+        $response = $this->actingAs($user)->post(route('books.acts.store', $book), [
             'name' => 'Act One',
             'description' => 'The beginning.',
         ]);
 
-        $response->assertRedirect(route('projects.acts.index', $project));
+        $response->assertRedirect(route('books.acts.index', $book));
 
         $act = Act::first();
         $this->assertNotNull($act);
@@ -89,15 +89,45 @@ class ActTest extends TestCase
     public function test_act_positions_are_auto_assigned_sequentially_within_a_project(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
-            ->post(route('projects.acts.store', $project), ['name' => 'First']);
+            ->post(route('books.acts.store', $book), ['name' => 'First']);
         $this->actingAs($user)
-            ->post(route('projects.acts.store', $project), ['name' => 'Second']);
+            ->post(route('books.acts.store', $book), ['name' => 'Second']);
 
         $this->assertSame(1, Act::where('name', 'First')->value('position'));
         $this->assertSame(2, Act::where('name', 'Second')->value('position'));
+    }
+
+    public function test_the_acts_index_shows_only_the_acts_of_the_book_in_the_url(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create();
+
+        Act::factory()->for($firstBook)->create(['name' => 'Volume one act']);
+        Act::factory()->for($secondBook)->create(['name' => 'Volume two act']);
+
+        $this->actingAs($user)
+            ->get(route('books.acts.index', $firstBook))
+            ->assertOk()
+            ->assertSee('Volume one act')
+            ->assertDontSee('Volume two act');
+    }
+
+    public function test_a_new_act_joins_the_book_in_the_url_not_the_projects_first(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create();
+
+        $this->actingAs($user)
+            ->post(route('books.acts.store', $secondBook), ['name' => 'Volume two act'])
+            ->assertRedirect(route('books.acts.index', $secondBook));
+
+        $this->assertSame($secondBook->id, Act::where('name', 'Volume two act')->value('book_id'));
+        $this->assertSame(0, $firstBook->acts()->count());
     }
 
     public function test_act_positions_start_again_in_each_book(): void
@@ -137,10 +167,10 @@ class ActTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $project = Project::factory()->for($owner)->create();
+        [, $book] = $this->projectWithBook($owner);
 
         $this->actingAs($other)
-            ->post(route('projects.acts.store', $project), ['name' => 'Sneaky act'])
+            ->post(route('books.acts.store', $book), ['name' => 'Sneaky act'])
             ->assertForbidden();
 
         $this->assertSame(0, Act::count());
@@ -149,10 +179,10 @@ class ActTest extends TestCase
     public function test_act_creation_requires_a_name(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
-            ->post(route('projects.acts.store', $project), ['name' => ''])
+            ->post(route('books.acts.store', $book), ['name' => ''])
             ->assertSessionHasErrors('name');
 
         $this->assertSame(0, Act::count());
@@ -161,7 +191,7 @@ class ActTest extends TestCase
     public function test_a_user_can_update_an_act(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create(['name' => 'Old name']);
 
         $response = $this->actingAs($user)->put(route('acts.update', $act), [
@@ -169,14 +199,14 @@ class ActTest extends TestCase
             'description' => 'Rewritten.',
         ]);
 
-        $response->assertRedirect(route('projects.acts.index', $project));
+        $response->assertRedirect(route('books.acts.index', $book));
         $this->assertSame('New name', $act->fresh()->name);
     }
 
     public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_the_changed_description(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create(['description' => 'Old description']);
 
         $this->actingAs($user)->put(route('acts.update', $act), [
@@ -207,12 +237,12 @@ class ActTest extends TestCase
     public function test_a_user_can_delete_an_act(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
 
         $this->actingAs($user)
             ->delete(route('acts.destroy', $act))
-            ->assertRedirect(route('projects.acts.index', $project));
+            ->assertRedirect(route('books.acts.index', $book));
 
         $this->assertNull($act->fresh());
     }
@@ -237,7 +267,7 @@ class ActTest extends TestCase
     public function test_deleting_an_act_with_no_chapters_keeps_the_plain_confirmation(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
 
         // The edit page shows the original unqualified confirm(), no move-or-delete dialog.
@@ -250,7 +280,7 @@ class ActTest extends TestCase
         // And a bare DELETE (no move_children_to) still deletes normally.
         $this->actingAs($user)
             ->delete(route('acts.destroy', $act))
-            ->assertRedirect(route('projects.acts.index', $project));
+            ->assertRedirect(route('books.acts.index', $book));
 
         $this->assertNull($act->fresh());
     }
@@ -258,7 +288,7 @@ class ActTest extends TestCase
     public function test_edit_page_offers_delete_only_when_the_act_has_chapters_but_no_destination(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->count(3)->create();
@@ -277,7 +307,7 @@ class ActTest extends TestCase
     public function test_edit_page_offers_the_move_picker_when_another_act_exists(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
         Act::factory()->for($book)->create(['name' => 'Elsewhere']);
         Chapter::factory()->for($act)->count(2)->create();
@@ -292,7 +322,7 @@ class ActTest extends TestCase
     public function test_deleting_an_act_without_a_destination_cascades_as_before(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         // A sibling act exists, but the user chose "delete everything" (no move_children_to).
         Act::factory()->for($book)->create();
         $act = Act::factory()->for($book)->create();
@@ -301,7 +331,7 @@ class ActTest extends TestCase
 
         $this->actingAs($user)
             ->delete(route('acts.destroy', $act))
-            ->assertRedirect(route('projects.acts.index', $project));
+            ->assertRedirect(route('books.acts.index', $book));
 
         // The whole subtree is gone via the FK cascade, exactly as before this feature.
         $this->assertNull($act->fresh());
@@ -312,7 +342,7 @@ class ActTest extends TestCase
     public function test_deleting_an_act_can_move_its_chapters_to_another_act(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
 
         $source = Act::factory()->for($book)->create();
         $destination = Act::factory()->for($book)->create();
@@ -328,7 +358,7 @@ class ActTest extends TestCase
 
         $this->actingAs($user)
             ->delete(route('acts.destroy', $source), ['move_children_to' => $destination->id])
-            ->assertRedirect(route('projects.acts.index', $project));
+            ->assertRedirect(route('books.acts.index', $book));
 
         // Source act is gone; the moved chapters (and their scenes) are NOT deleted.
         $this->assertNull($source->fresh());
@@ -348,7 +378,7 @@ class ActTest extends TestCase
     public function test_moved_chapters_never_collide_positions_in_the_destination(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
 
         $source = Act::factory()->for($book)->create();
         $destination = Act::factory()->for($book)->create();
@@ -371,7 +401,7 @@ class ActTest extends TestCase
     public function test_move_children_to_must_be_another_act_in_the_same_project(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
         Chapter::factory()->for($act)->create();
 
@@ -396,7 +426,7 @@ class ActTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($owner);
+        [, $book] = $this->projectWithBook($owner);
         $act = Act::factory()->for($book)->create();
         $destination = Act::factory()->for($book)->create();
         Chapter::factory()->for($act)->create();
@@ -415,7 +445,7 @@ class ActTest extends TestCase
     public function test_move_down_swaps_position_with_the_next_act(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $first = Act::factory()->for($book)->create(['position' => 1]);
         $second = Act::factory()->for($book)->create(['position' => 2]);
 
@@ -430,7 +460,7 @@ class ActTest extends TestCase
     public function test_move_up_swaps_position_with_the_previous_act(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $first = Act::factory()->for($book)->create(['position' => 1]);
         $second = Act::factory()->for($book)->create(['position' => 2]);
 
@@ -445,7 +475,7 @@ class ActTest extends TestCase
     public function test_move_down_at_the_end_of_the_project_is_a_no_op(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $first = Act::factory()->for($book)->create(['position' => 1]);
         $last = Act::factory()->for($book)->create(['position' => 2]);
 
@@ -479,7 +509,7 @@ class ActTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($owner);
+        [, $book] = $this->projectWithBook($owner);
         $act = Act::factory()->for($book)->create(['position' => 1]);
         Act::factory()->for($book)->create(['position' => 2]);
 
@@ -496,7 +526,7 @@ class ActTest extends TestCase
         // quote prevents a match on the per-field `?field=` icon link beside
         // the description editor.
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
 
         $this->actingAs($user)
@@ -524,21 +554,21 @@ class ActTest extends TestCase
     }
 
     /**
-     * Acts are always numbered by their project-wide rank, same as their
+     * Acts are always numbered by their book-wide rank, same as their
      * `position` — but a gap in `position` (from a deleted sibling, say) must
      * still render a gap-free number.
      */
     public function test_the_acts_index_number_column_is_continuous_not_the_raw_position(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         Act::factory()->for($book)->create(['position' => 1]);
         // Gappy position (5): a regression back to `$act->position` would render
         // this row's '#' cell as "5" instead of "2".
         Act::factory()->for($book)->create(['name' => 'Closing Act', 'position' => 5]);
 
         $html = $this->actingAs($user)
-            ->get(route('projects.acts.index', ['project' => $project, 'sort' => 'position']))
+            ->get(route('books.acts.index', ['book' => $book, 'sort' => 'position']))
             ->assertOk()
             ->getContent();
 
@@ -552,12 +582,12 @@ class ActTest extends TestCase
     public function test_the_acts_index_numbers_stay_true_when_filtered_by_search(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         Act::factory()->for($book)->create(['position' => 1]);
         Act::factory()->for($book)->create(['name' => 'Fresh Start', 'position' => 2]);
 
         $html = $this->actingAs($user)
-            ->get(route('projects.acts.index', ['project' => $project, 'search' => 'Fresh Start', 'sort' => 'position']))
+            ->get(route('books.acts.index', ['book' => $book, 'search' => 'Fresh Start', 'sort' => 'position']))
             ->assertOk()
             ->getContent();
 
@@ -571,7 +601,7 @@ class ActTest extends TestCase
     public function test_the_edit_page_shows_the_continuous_number_and_the_act_total(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         Act::factory()->for($book)->create(['position' => 1]);
         $act = Act::factory()->for($book)->create(['position' => 2]);
         Act::factory()->for($book)->create(['position' => 3]);
@@ -587,7 +617,7 @@ class ActTest extends TestCase
     public function test_the_acts_index_shows_each_acts_total_word_count(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $actA = Act::factory()->for($book)->create(['name' => 'Act A']);
         $actB = Act::factory()->for($book)->create(['name' => 'Act B']);
         // Act A spans *two* chapters on purpose: the total is summed through the
@@ -606,7 +636,7 @@ class ActTest extends TestCase
         $this->sceneWithWordCount($chapterB, 33);
 
         $this->actingAs($user)
-            ->get(route('projects.acts.index', $project))
+            ->get(route('books.acts.index', $book))
             ->assertOk()
             ->assertSee('1,500 words')
             ->assertSee('33 words');
@@ -615,12 +645,12 @@ class ActTest extends TestCase
     public function test_an_act_with_no_scenes_shows_zero_words_on_the_index(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
         Chapter::factory()->for($act)->create(); // has a chapter, but no scenes on it
 
         $this->actingAs($user)
-            ->get(route('projects.acts.index', $project))
+            ->get(route('books.acts.index', $book))
             ->assertOk()
             ->assertSee('0 words');
     }
@@ -634,7 +664,7 @@ class ActTest extends TestCase
     public function test_the_acts_index_issues_one_grouped_query_for_word_counts(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
 
         foreach (range(1, 10) as $actNumber) {
             $act = Act::factory()->for($book)->create();
@@ -650,7 +680,7 @@ class ActTest extends TestCase
         });
 
         $this->actingAs($user)
-            ->get(route('projects.acts.index', $project))
+            ->get(route('books.acts.index', $book))
             ->assertOk();
 
         // 1 for the withSum() word-count aggregate, 1 more for StoryNumbering::

@@ -1,12 +1,12 @@
 <x-app-layout>
     <x-page-heading>
-        {{ $project->name }} &mdash; {{ __('Story Overview') }}
+        {{ $book->displayName() }} &mdash; {{ __('Story Overview') }}
     </x-page-heading>
 
     <div class="space-y-6">
         <div class="flex items-center justify-end gap-4">
-            @can('update', $project)
-                <x-story-mode-switch :project="$project" :mode="$project->overview_render_mode" :chapter-id="$currentChapter?->id" />
+            @can('update', $book->project)
+                <x-story-mode-switch :book="$book" :mode="$book->overview_render_mode" :chapter-id="$currentChapter?->id" />
             @endcan
             <x-word-count :count="$wordCount" />
         </div>
@@ -24,14 +24,14 @@
                             <div>
                                 @if ($act->chapters->isNotEmpty())
                                     @php($firstChapter = $act->chapters->first())
-                                    <a href="{{ route('projects.story.overview', ['project' => $project, 'chapter' => $firstChapter->id]) }}#chapter-{{ $firstChapter->id }}" class="font-semibold text-content hover:text-content-muted">
+                                    <a href="{{ route('books.story.overview', ['book' => $book, 'chapter' => $firstChapter->id]) }}#chapter-{{ $firstChapter->id }}" class="font-semibold text-content hover:text-content-muted">
                                         {{ __('Act :number', ['number' => $numbering->act($act)]) }} &mdash; {{ $act->name }}
                                     </a>
 
                                     <ul class="mt-1 ml-4 space-y-1">
                                         @foreach ($act->chapters as $chapter)
                                             <li>
-                                                <a href="{{ route('projects.story.overview', ['project' => $project, 'chapter' => $chapter->id]) }}#chapter-{{ $chapter->id }}" class="text-sm text-content-muted hover:text-content">
+                                                <a href="{{ route('books.story.overview', ['book' => $book, 'chapter' => $chapter->id]) }}#chapter-{{ $chapter->id }}" class="text-sm text-content-muted hover:text-content">
                                                     {{ __('Chapter :number', ['number' => $numbering->chapter($chapter)]) }} &mdash; {{ $chapter->name }}
                                                 </a>
                                             </li>
@@ -56,7 +56,7 @@
             <div class="lg:col-span-9 space-y-10">
                 @if ($currentChapter)
                     <div class="space-y-6">
-                        <x-chapter-pager :project="$project" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
+                        <x-chapter-pager :book="$book" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
 
                         <div class="flex items-center justify-between gap-4 text-nav-content bg-nav rounded-md px-4 py-2">
                             <h2 id="act-{{ $currentChapter->act->id }}" class="text-2xl font-bold scroll-mt-16">
@@ -71,7 +71,7 @@
 
                         <x-story-chapter :chapter="$currentChapter" :numbering="$numbering" />
 
-                        <x-chapter-pager :project="$project" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
+                        <x-chapter-pager :book="$book" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
                     </div>
                 @else
                     <p class="text-center text-content-muted">{{ __('No acts yet.') }}</p>

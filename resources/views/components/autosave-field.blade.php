@@ -5,11 +5,10 @@
     'label' => null,
     'rows' => 4,
     // Only needed when this field is rendered outside its owning <form> tag (e.g.
-    // projects/edit.blade.php's "Book metadata"/"front & back matter" cards, which
-    // sit below the closed </form> and associate every input via HTML5's `form=`
-    // attribute instead). Forwarded onto the actual input so the field still
-    // submits with the right form on a full-page Save, exactly like the textarea
-    // it replaces did.
+    // books/edit.blade.php's front/back-matter cards, which sit below the closed
+    // </form> and associate every input via HTML5's `form=` attribute instead).
+    // Forwarded onto the actual input so the field still submits with the right
+    // form on a full-page Save, exactly like the textarea it replaces did.
     'form' => null,
 ])
 

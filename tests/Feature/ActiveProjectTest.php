@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
@@ -167,13 +168,14 @@ class ActiveProjectTest extends TestCase
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
+        $book = $project->books()->first();
         $user->forceFill(['active_project_id' => $project->id])->save();
 
         $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
 
         // The point of the feature: the project menu renders on a page whose URL
         // names no project, so returning to the work is one click.
-        $this->assertStringContainsString('href="'.e(route('projects.story.overview', $project)).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('books.story.overview', $book)).'"', $html);
         $this->assertStringContainsString('Melusine', $html);
     }
 
@@ -194,18 +196,18 @@ class ActiveProjectTest extends TestCase
     public function test_the_dashboard_asks_for_a_project_when_none_is_active(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
 
         $this->assertStringContainsString('Choose a project', $html);
-        $this->assertStringNotContainsString('href="'.e(route('projects.story.overview', $project)).'"', $html);
+        $this->assertStringNotContainsString('href="'.e(route('books.story.overview', $book)).'"', $html);
     }
 
     public function test_deleting_the_active_project_returns_the_dashboard_to_choose_a_project(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [$project, $book] = $this->projectWithBook($user);
         $user->forceFill(['active_project_id' => $project->id])->save();
 
         $project->delete();
@@ -215,7 +217,7 @@ class ActiveProjectTest extends TestCase
         $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
 
         $this->assertStringContainsString('Choose a project', $html);
-        $this->assertStringNotContainsString('href="'.e(route('projects.story.overview', $project)).'"', $html);
+        $this->assertStringNotContainsString('href="'.e(route('books.story.overview', $book)).'"', $html);
     }
 
     public function test_the_route_project_wins_over_the_stored_one(): void
@@ -229,8 +231,53 @@ class ActiveProjectTest extends TestCase
         // project's page must build the menu from the URL's project.
         $html = $this->actingAs($user)->get(route('projects.show', $visited))->assertOk()->getContent();
 
-        $this->assertStringContainsString('href="'.e(route('projects.story.overview', $visited)).'"', $html);
-        $this->assertStringNotContainsString('href="'.e(route('projects.story.overview', $stored)).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('books.story.overview', $visited->books()->first())).'"', $html);
+        $this->assertStringNotContainsString('href="'.e(route('books.story.overview', $stored->books()->first())).'"', $html);
+    }
+
+    public function test_opening_a_book_page_records_it_as_the_last_book(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)->get(route('books.story.overview', $book))->assertOk();
+
+        $this->assertSame($book->id, $project->fresh()->last_book_id);
+    }
+
+    public function test_a_403_on_a_book_page_does_not_record_it(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($owner);
+
+        $this->actingAs($intruder)->get(route('books.story.overview', $book))->assertForbidden();
+
+        $this->assertNull($project->fresh()->last_book_id);
+    }
+
+    public function test_a_page_with_no_book_in_its_route_leaves_last_book_id_set(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $project->forceFill(['last_book_id' => $book->id])->save();
+
+        // The timeline carries no {book}: it must not CLEAR last_book_id.
+        $this->actingAs($user)->get(route('projects.timeline.home', $project))->assertOk();
+
+        $this->assertSame($book->id, $project->fresh()->last_book_id);
+    }
+
+    public function test_switching_books_replaces_the_last_book(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create();
+        $project->forceFill(['last_book_id' => $firstBook->id])->save();
+
+        $this->actingAs($user)->get(route('books.story.overview', $secondBook))->assertOk();
+
+        $this->assertSame($secondBook->id, $project->fresh()->last_book_id);
     }
 
     public function test_a_bare_login_redirects_to_the_active_project(): void

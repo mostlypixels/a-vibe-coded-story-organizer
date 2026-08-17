@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\RevisionOrigin;
 use App\Enums\SceneStatus;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexAlias;
 use App\Models\CodexEntry;
@@ -25,7 +26,7 @@ class SceneTest extends TestCase
      */
     private function chapterFor(User $user): Chapter
     {
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
 
         return Chapter::factory()->for($act)->create();
@@ -49,12 +50,44 @@ class SceneTest extends TestCase
         $chapter = $this->chapterFor($user);
         Scene::factory()->for($chapter)->create(['name' => 'A memorable scene']);
 
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', $project))
+            ->get(route('books.scenes.index', $book))
             ->assertOk()
             ->assertSee('A memorable scene');
+    }
+
+    public function test_the_scenes_index_shows_only_the_scenes_of_the_book_in_the_url(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create();
+
+        $firstChapter = Chapter::factory()->for(Act::factory()->for($firstBook))->create();
+        $secondChapter = Chapter::factory()->for(Act::factory()->for($secondBook))->create();
+        Scene::factory()->for($firstChapter)->create(['name' => 'Volume one scene']);
+        Scene::factory()->for($secondChapter)->create(['name' => 'Volume two scene']);
+
+        $this->actingAs($user)
+            ->get(route('books.scenes.index', $firstBook))
+            ->assertOk()
+            ->assertSee('Volume one scene')
+            ->assertDontSee('Volume two scene');
+    }
+
+    public function test_a_scene_cannot_be_attached_to_a_chapter_from_another_book(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $foreignChapter = Chapter::factory()->for(Act::factory()->for(Book::factory()->for($project)))->create();
+
+        $this->actingAs($user)
+            ->post(route('books.scenes.store', $firstBook), $this->validPayload($foreignChapter))
+            ->assertSessionHasErrors('chapter_id');
+
+        $this->assertSame(0, Scene::count());
     }
 
     public function test_a_user_cannot_view_scenes_of_another_users_project(): void
@@ -64,7 +97,7 @@ class SceneTest extends TestCase
         $chapter = $this->chapterFor($owner);
 
         $this->actingAs($other)
-            ->get(route('projects.scenes.index', $chapter->act->book->project))
+            ->get(route('books.scenes.index', $chapter->act->book))
             ->assertForbidden();
     }
 
@@ -76,7 +109,7 @@ class SceneTest extends TestCase
         Scene::factory()->for($chapter)->create(['contents' => trim(str_repeat('word ', 449))]);
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', $chapter->act->book->project))
+            ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
             ->assertSee('Total')
             ->assertSee('1,062 words'); // sum, distinct from either scene's own count
@@ -86,12 +119,13 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $response = $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter));
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter));
 
-        $response->assertRedirect(route('projects.scenes.index', $project));
+        $response->assertRedirect(route('books.scenes.index', $book));
 
         $scene = Scene::first();
         $this->assertNotNull($scene);
@@ -104,12 +138,13 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter, ['name' => 'First']));
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter, ['name' => 'First']));
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter, ['name' => 'Second']));
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter, ['name' => 'Second']));
 
         $this->assertSame(1, Scene::where('name', 'First')->value('position'));
         $this->assertSame(2, Scene::where('name', 'Second')->value('position'));
@@ -120,10 +155,11 @@ class SceneTest extends TestCase
         $owner = User::factory()->create();
         $other = User::factory()->create();
         $chapter = $this->chapterFor($owner);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $this->actingAs($other)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter))
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter))
             ->assertForbidden();
 
         $this->assertSame(0, Scene::count());
@@ -133,10 +169,11 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter, ['name' => '']))
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter, ['name' => '']))
             ->assertSessionHasErrors('name');
     }
 
@@ -144,22 +181,23 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter, ['status' => 'not-a-status']))
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter, ['status' => 'not-a-status']))
             ->assertSessionHasErrors('status');
     }
 
     public function test_a_scene_cannot_be_attached_to_a_chapter_from_another_project(): void
     {
         $user = User::factory()->create();
-        $ownProject = Project::factory()->for($user)->create();
+        [$ownProject, $ownBook] = $this->projectWithBook($user);
         $foreignChapter = $this->chapterFor($user); // belongs to a different project
 
         // Posting to $ownProject with a chapter_id that lives outside it must fail validation.
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $ownProject), $this->validPayload($foreignChapter))
+            ->post(route('books.scenes.store', $ownBook), $this->validPayload($foreignChapter))
             ->assertSessionHasErrors('chapter_id');
 
         $this->assertSame(0, Scene::count());
@@ -170,14 +208,15 @@ class SceneTest extends TestCase
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
         $scene = Scene::factory()->for($chapter)->create(['name' => 'Old name']);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $response = $this->actingAs($user)->put(
             route('scenes.update', $scene),
             $this->validPayload($chapter, ['name' => 'New name', 'status' => SceneStatus::Final->value]),
         );
 
-        $response->assertRedirect(route('projects.scenes.index', $project));
+        $response->assertRedirect(route('books.scenes.index', $book));
 
         $scene = $scene->fresh();
         $this->assertSame('New name', $scene->name);
@@ -241,11 +280,12 @@ class SceneTest extends TestCase
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
         $scene = Scene::factory()->for($chapter)->create();
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $this->actingAs($user)
             ->delete(route('scenes.destroy', $scene))
-            ->assertRedirect(route('projects.scenes.index', $project));
+            ->assertRedirect(route('books.scenes.index', $book));
 
         $this->assertNull($scene->fresh());
     }
@@ -268,11 +308,12 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter))
-            ->assertRedirect(route('projects.scenes.index', $project));
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter))
+            ->assertRedirect(route('books.scenes.index', $book));
 
         $this->assertNull(Scene::first()->event_id);
     }
@@ -281,11 +322,12 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $event = Event::factory()->for($project)->create();
 
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter, ['event_id' => $event->id]));
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter, ['event_id' => $event->id]));
 
         $this->assertSame($event->id, Scene::first()->event_id);
     }
@@ -294,9 +336,10 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
 
-        $this->actingAs($user)->post(route('projects.scenes.store', $project), $this->validPayload($chapter, [
+        $this->actingAs($user)->post(route('books.scenes.store', $book), $this->validPayload($chapter, [
             'new_event_title' => 'A brand new event',
             'new_event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
         ]));
@@ -313,11 +356,12 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $foreignEvent = Event::factory()->for(Project::factory()->for($user))->create();
 
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter, ['event_id' => $foreignEvent->id]))
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter, ['event_id' => $foreignEvent->id]))
             ->assertSessionHasErrors('event_id');
     }
 
@@ -325,12 +369,13 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $first = Event::factory()->for($project)->create();
         $second = Event::factory()->for($project)->create();
 
         $this->actingAs($user)->post(
-            route('projects.scenes.store', $project),
+            route('books.scenes.store', $book),
             $this->validPayload($chapter, ['mentioned_events' => [$first->id, $second->id]]),
         );
 
@@ -345,11 +390,12 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $foreignEvent = Event::factory()->for(Project::factory()->for($user))->create();
 
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), $this->validPayload($chapter, ['mentioned_events' => [$foreignEvent->id]]))
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter, ['mentioned_events' => [$foreignEvent->id]]))
             ->assertSessionHasErrors('mentioned_events.0');
 
         $this->assertSame(0, Scene::count());
@@ -381,7 +427,7 @@ class SceneTest extends TestCase
         Scene::factory()->for($chapter)->create(['event_id' => null]);
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', $chapter->act->book->project))
+            ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
             ->assertSee('Unassigned');
     }
@@ -390,11 +436,12 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $scene = Scene::factory()->for($chapter)->create();
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.create', $project))
+            ->get(route('books.scenes.create', $book))
             ->assertOk()
             ->assertSee('Happens during')
             ->assertSee('Mentions events')
@@ -410,13 +457,14 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $event = Event::factory()->for($project)->create(['title' => 'The Coronation']);
         Scene::factory()->for($chapter)->create(['event_id' => $event->id]);
         Scene::factory()->for($chapter)->create(['event_id' => null]);
 
         $this->actingAs($user)
-            ->get(route('projects.story.overview', $project))
+            ->get(route('books.story.overview', $book))
             ->assertOk()
             ->assertSee('The Coronation')
             ->assertSee('Unassigned');
@@ -473,7 +521,7 @@ class SceneTest extends TestCase
     public function test_scenes_only_swap_with_siblings_in_the_same_chapter(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
         $chapterOne = Chapter::factory()->for($act)->create();
         $chapterTwo = Chapter::factory()->for($act)->create();
@@ -553,13 +601,14 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $entry = $this->codexEntryIn($project, 'Melchior', 'Mel');
 
         $this->actingAs($user)->post(
-            route('projects.scenes.store', $project),
+            route('books.scenes.store', $book),
             $this->validPayload($chapter, ['contents' => 'Mel walked into the room.']),
-        )->assertRedirect(route('projects.scenes.index', $project));
+        )->assertRedirect(route('books.scenes.index', $book));
 
         $this->assertDatabaseHas('scene_codex_entry', [
             'scene_id' => Scene::first()->id,
@@ -571,7 +620,8 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $entry = $this->codexEntryIn($project, 'Melchior', 'Mel');
         $scene = Scene::factory()->for($chapter)->create(['contents' => 'Nobody here.']);
 
@@ -579,7 +629,7 @@ class SceneTest extends TestCase
         $this->actingAs($user)->put(
             route('scenes.update', $scene),
             $this->validPayload($chapter, ['contents' => 'Then Mel arrived.']),
-        )->assertRedirect(route('projects.scenes.index', $project));
+        )->assertRedirect(route('books.scenes.index', $book));
 
         $this->assertDatabaseHas('scene_codex_entry', [
             'scene_id' => $scene->id,
@@ -590,7 +640,7 @@ class SceneTest extends TestCase
         $this->actingAs($user)->put(
             route('scenes.update', $scene),
             $this->validPayload($chapter, ['contents' => 'The room is empty again.']),
-        )->assertRedirect(route('projects.scenes.index', $project));
+        )->assertRedirect(route('books.scenes.index', $book));
 
         $this->assertDatabaseMissing('scene_codex_entry', [
             'scene_id' => $scene->id,
@@ -602,13 +652,14 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $this->codexEntryIn($project, 'Melchior', 'Mel');
 
         $this->actingAs($user)->post(
-            route('projects.scenes.store', $project),
+            route('books.scenes.store', $book),
             $this->validPayload($chapter, ['contents' => 'Just an ordinary melody, nothing more.']),
-        )->assertRedirect(route('projects.scenes.index', $project));
+        )->assertRedirect(route('books.scenes.index', $book));
 
         $this->assertDatabaseMissing('scene_codex_entry', [
             'scene_id' => Scene::first()->id,
@@ -761,7 +812,7 @@ class SceneTest extends TestCase
     public function test_the_scenes_index_orders_by_story_order_after_an_act_is_reordered(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $actA = Act::factory()->for($book)->create(['position' => 1]);
         $actB = Act::factory()->for($book)->create(['position' => 2]);
         $chapterA = Chapter::factory()->for($actA)->create(['position' => 1]);
@@ -772,7 +823,7 @@ class SceneTest extends TestCase
         $this->actingAs($user)->patch(route('acts.move-up', $actB));
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', ['project' => $project, 'sort' => 'position']))
+            ->get(route('books.scenes.index', ['book' => $book, 'sort' => 'position']))
             ->assertOk()
             ->assertSeeInOrder(['Scene from B', 'Scene from A']);
     }
@@ -784,7 +835,7 @@ class SceneTest extends TestCase
     public function test_the_scenes_index_reverses_the_whole_story_when_sorted_descending(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create(['position' => 1]);
         $first = Chapter::factory()->for($act)->create(['position' => 1]);
         $second = Chapter::factory()->for($act)->create(['position' => 2]);
@@ -793,7 +844,7 @@ class SceneTest extends TestCase
         Scene::factory()->for($second)->create(['name' => 'Scene Three', 'position' => 1]);
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', ['project' => $project, 'sort' => 'position', 'direction' => 'desc']))
+            ->get(route('books.scenes.index', ['book' => $book, 'sort' => 'position', 'direction' => 'desc']))
             ->assertOk()
             ->assertSeeInOrder(['Scene Three', 'Scene Two', 'Scene One']);
     }
@@ -807,17 +858,18 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         Scene::factory()->for($chapter)->create(['name' => 'Zebra', 'position' => 1]);
         Scene::factory()->for($chapter)->create(['name' => 'Antelope', 'position' => 2]);
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', ['project' => $project, 'sort' => 'name']))
+            ->get(route('books.scenes.index', ['book' => $book, 'sort' => 'name']))
             ->assertOk()
             ->assertSeeInOrder(['Antelope', 'Zebra']);
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', ['project' => $project, 'search' => 'Zeb']))
+            ->get(route('books.scenes.index', ['book' => $book, 'search' => 'Zeb']))
             ->assertOk()
             ->assertSee('Zebra')
             ->assertDontSee('Antelope');
@@ -835,7 +887,7 @@ class SceneTest extends TestCase
         $scene = Scene::factory()->for($chapter)->create(['name' => 'The scene name', 'position' => 1]);
 
         $scenes = $this->actingAs($user)
-            ->get(route('projects.scenes.index', $chapter->act->book->project))
+            ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
             ->viewData('scenes');
 
@@ -868,7 +920,8 @@ class SceneTest extends TestCase
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $otherChapter = Chapter::factory()->for($chapter->act)->create(['position' => $chapter->position + 1]);
         Scene::factory()->for($chapter)->create(['name' => 'Opening', 'position' => 1]);
         // Gappy per-chapter position (5): a regression back to `$scene->position`
@@ -876,7 +929,7 @@ class SceneTest extends TestCase
         Scene::factory()->for($otherChapter)->create(['name' => 'Closing', 'position' => 5]);
 
         $html = $this->actingAs($user)
-            ->get(route('projects.scenes.index', ['project' => $project, 'sort' => 'position']))
+            ->get(route('books.scenes.index', ['book' => $book, 'sort' => 'position']))
             ->assertOk()
             ->getContent();
 
@@ -895,7 +948,7 @@ class SceneTest extends TestCase
         Scene::factory()->for($chapter)->create(['name' => 'A gappy scene', 'position' => 7]);
 
         $html = $this->actingAs($user)
-            ->get(route('projects.scenes.index', $chapter->act->book->project))
+            ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
             ->getContent();
 
@@ -909,20 +962,21 @@ class SceneTest extends TestCase
     /**
      * Filtering the list to one chapter must never renumber it: the map is built
      * from the whole project, so the first (and only) row shown still reads its
-     * true, project-wide number.
+     * true, book-wide number.
      */
-    public function test_the_scenes_index_numbers_stay_project_wide_when_filtered_to_one_chapter(): void
+    public function test_the_scenes_index_numbers_stay_book_wide_when_filtered_to_one_chapter(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $project = $chapter->act->book->project;
+        $book = $chapter->act->book;
+        $project = $book->project;
         $otherChapter = Chapter::factory()->for($chapter->act)->create(['position' => $chapter->position + 1]);
         Scene::factory()->for($chapter)->create(['position' => 1]);
         Scene::factory()->for($chapter)->create(['position' => 2]);
         Scene::factory()->for($otherChapter)->create(['name' => 'Fresh Start', 'position' => 1]);
 
         $html = $this->actingAs($user)
-            ->get(route('projects.scenes.index', ['project' => $project, 'chapter' => $otherChapter->id, 'sort' => 'position']))
+            ->get(route('books.scenes.index', ['book' => $book, 'chapter' => $otherChapter->id, 'sort' => 'position']))
             ->assertOk()
             ->getContent();
 
@@ -930,7 +984,7 @@ class SceneTest extends TestCase
     }
 
     /**
-     * The edit page's position hint shows both the continuous, project-wide number
+     * The edit page's position hint shows both the continuous, book-wide number
      * and the scene's rank among its chapter's siblings — the latter a gap-free
      * rank, not the raw (possibly gappy) `position` column.
      */
@@ -964,7 +1018,7 @@ class SceneTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', $chapter->act->book->project))
+            ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
             ->assertSee('358 words');
     }
@@ -976,7 +1030,7 @@ class SceneTest extends TestCase
         Scene::factory()->for($chapter)->create(['name' => 'Blank scene', 'contents' => '']);
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', $chapter->act->book->project))
+            ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
             ->assertSee('0 words');
     }
@@ -1091,7 +1145,7 @@ class SceneTest extends TestCase
     public function test_duplicating_a_scene_never_renumbers_another_chapters_scenes(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
         $chapterOne = Chapter::factory()->for($act)->create();
         $chapterTwo = Chapter::factory()->for($act)->create();
@@ -1202,7 +1256,7 @@ class SceneTest extends TestCase
         $scene = Scene::factory()->for($chapter)->create(['name' => 'Arrival']);
 
         $this->actingAs($user)
-            ->get(route('projects.scenes.index', $chapter->act->book->project))
+            ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
             ->assertSee('duplicate-scene-'.$scene->id, false)
             ->assertSee('value="Arrival (2)"', false);

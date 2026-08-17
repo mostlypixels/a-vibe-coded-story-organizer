@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Requests\StoreActRequest;
+use App\Http\Requests\StoreBookRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\StoreCodexEntryRequest;
 use App\Http\Requests\StoreEventRequest;
@@ -10,6 +11,7 @@ use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\StoreSceneRequest;
 use App\Http\Requests\UpdateActRequest;
+use App\Http\Requests\UpdateBookRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Http\Requests\UpdateCodexEntryRequest;
 use App\Http\Requests\UpdateEventRequest;
@@ -58,9 +60,7 @@ class FormRequestCapAgreementTest extends TestCase
      */
     private const REQUESTS_BY_SLUG = [
         'project' => [StoreProjectRequest::class, UpdateProjectRequest::class],
-        // An empty list means no Form Request writes this slug's fields, so
-        // nothing can disagree with the registry about them.
-        'book' => [],
+        'book' => [StoreBookRequest::class, UpdateBookRequest::class],
         'act' => [StoreActRequest::class, UpdateActRequest::class],
         'chapter' => [StoreChapterRequest::class, UpdateChapterRequest::class],
         'plotline' => [StorePlotlineRequest::class, UpdatePlotlineRequest::class],
@@ -87,6 +87,7 @@ class FormRequestCapAgreementTest extends TestCase
 
         $this->routeParameters = [
             'project' => $project,
+            'book' => $book,
             'act' => $act,
             'chapter' => $chapter,
             'scene' => Scene::factory()->for($chapter)->create(),
@@ -132,7 +133,7 @@ class FormRequestCapAgreementTest extends TestCase
 
         // Guards the guard: a typo'd map or a rules() that stopped exposing its
         // fields would otherwise make this test pass by checking nothing.
-        $this->assertSame(18, $checked, 'Expected 18 registered field rules across the Form Requests.');
+        $this->assertSame(25, $checked, 'Expected 25 registered field rules across the Form Requests.');
     }
 
     public function test_the_request_map_covers_every_registered_slug(): void
@@ -148,7 +149,7 @@ class FormRequestCapAgreementTest extends TestCase
     // The drift, end to end: both paths now refuse the same text
     // ---------------------------------------------------------------------
 
-    public function test_autosave_refuses_front_matter_over_the_shared_cap(): void
+    public function test_the_save_form_and_autosave_agree_on_the_front_matter_cap(): void
     {
         $user = User::factory()->create();
         [, $book] = $this->projectWithBook($user);
@@ -164,6 +165,11 @@ class FormRequestCapAgreementTest extends TestCase
             route('autosave.update', ['entity' => 'book', 'id' => $book->id, 'field' => 'dedication']),
             ['value' => $inTheOldGap, 'base_hash' => hash('sha256', '')],
         )->assertStatus(422)->assertJsonValidationErrors(['value']);
+
+        $this->actingAs($user)->put(route('books.update', $book), [
+            'language' => 'en',
+            'dedication' => $inTheOldGap,
+        ])->assertSessionHasErrors('dedication');
 
         $this->assertNull($book->fresh()->dedication);
     }
@@ -193,6 +199,13 @@ class FormRequestCapAgreementTest extends TestCase
             route('autosave.update', ['entity' => 'book', 'id' => $book->id, 'field' => 'dedication']),
             ['value' => $atCap, 'base_hash' => hash('sha256', '')],
         )->assertOk();
+
+        $this->assertSame($atCap, $book->fresh()->dedication);
+
+        $this->actingAs($user)->put(route('books.update', $book), [
+            'language' => 'en',
+            'dedication' => $atCap,
+        ])->assertSessionHasNoErrors();
 
         $this->assertSame($atCap, $book->fresh()->dedication);
     }

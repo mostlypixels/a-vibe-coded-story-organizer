@@ -54,14 +54,14 @@ class HtmlSanitizationTest extends TestCase
     public function test_a_description_is_sanitized_when_stored_over_http(): void
     {
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        [, $book] = $this->projectWithBook($user);
 
         $this->actingAs($user)
-            ->post(route('projects.acts.store', $project), [
+            ->post(route('books.acts.store', $book), [
                 'name' => 'A sanitized act',
                 'description' => self::MALICIOUS_HTML,
             ])
-            ->assertRedirect(route('projects.acts.index', $project));
+            ->assertRedirect(route('books.acts.index', $book));
 
         $this->assertSanitized(Act::first()->description);
     }
@@ -70,7 +70,7 @@ class HtmlSanitizationTest extends TestCase
     {
         // No HTTP, no Form Request — this is the seeder/tinker path. The set-mutator is
         // the choke point, so the stored value is still clean.
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
 
         $act = Act::factory()->for($book)->create([
             'description' => self::MALICIOUS_HTML,
@@ -82,12 +82,12 @@ class HtmlSanitizationTest extends TestCase
     public function test_a_sanitized_description_is_not_rendered_as_a_script_tag(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         Act::factory()->for($book)->create(['description' => self::MALICIOUS_HTML]);
 
         // Defense in depth: nothing executable reaches the page.
         $this->actingAs($user)
-            ->get(route('projects.acts.index', $project))
+            ->get(route('books.acts.index', $book))
             ->assertOk()
             ->assertDontSee('<script>', false)
             ->assertDontSee('onerror', false);
@@ -96,7 +96,7 @@ class HtmlSanitizationTest extends TestCase
     public function test_scene_notes_is_sanitized_as_html_but_contents_stays_markdown(): void
     {
         $user = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
@@ -105,7 +105,7 @@ class HtmlSanitizationTest extends TestCase
 Some **markdown** with a [link](https://example.com).';
 
         $this->actingAs($user)
-            ->post(route('projects.scenes.store', $project), [
+            ->post(route('books.scenes.store', $book), [
                 'chapter_id' => $chapter->id,
                 'name' => 'A scene',
                 'description' => null,
@@ -113,7 +113,7 @@ Some **markdown** with a [link](https://example.com).';
                 'notes' => self::MALICIOUS_HTML,
                 'status' => SceneStatus::Draft->value,
             ])
-            ->assertRedirect(route('projects.scenes.index', $project));
+            ->assertRedirect(route('books.scenes.index', $book));
 
         $scene = Scene::first();
 
@@ -132,7 +132,7 @@ Some **markdown** with a [link](https://example.com).';
     public function test_a_null_description_stays_null_after_sanitization(): void
     {
         // The mutator preserves null so a nullable column is not turned into "".
-        [$project, $book] = $this->projectWithBook();
+        [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create(['description' => null]);
 
         $this->assertNull($act->fresh()->description);
@@ -144,17 +144,17 @@ Some **markdown** with a [link](https://example.com).';
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $project = Project::factory()->for($owner)->create();
+        [$project, $book] = $this->projectWithBook($owner);
 
         $this->actingAs($owner)
-            ->post(route('projects.acts.store', $project), [
+            ->post(route('books.acts.store', $book), [
                 'name' => 'Owner act',
                 'description' => '<p>Rich <strong>description</strong></p>',
             ])
-            ->assertRedirect(route('projects.acts.index', $project));
+            ->assertRedirect(route('books.acts.index', $book));
 
         $this->actingAs($other)
-            ->post(route('projects.acts.store', $project), ['name' => 'Intruder act'])
+            ->post(route('books.acts.store', $book), ['name' => 'Intruder act'])
             ->assertForbidden();
 
         $this->assertSame(1, $project->acts()->count());
@@ -164,12 +164,12 @@ Some **markdown** with a [link](https://example.com).';
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($owner);
+        [, $book] = $this->projectWithBook($owner);
         $act = Act::factory()->for($book)->create(['name' => 'Original']);
 
         $this->actingAs($owner)
             ->put(route('acts.update', $act), ['name' => 'Renamed', 'description' => '<p>ok</p>'])
-            ->assertRedirect(route('projects.acts.index', $project));
+            ->assertRedirect(route('books.acts.index', $book));
         $this->assertSame('Renamed', $act->fresh()->name);
 
         $this->actingAs($other)
@@ -182,19 +182,19 @@ Some **markdown** with a [link](https://example.com).';
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($owner);
+        [, $book] = $this->projectWithBook($owner);
         $act = Act::factory()->for($book)->create();
 
         $this->actingAs($owner)
-            ->post(route('projects.chapters.store', $project), [
+            ->post(route('books.chapters.store', $book), [
                 'act_id' => $act->id,
                 'name' => 'Owner chapter',
                 'description' => '<p>Rich <em>chapter</em></p>',
             ])
-            ->assertRedirect(route('projects.chapters.index', $project));
+            ->assertRedirect(route('books.chapters.index', $book));
 
         $this->actingAs($other)
-            ->post(route('projects.chapters.store', $project), [
+            ->post(route('books.chapters.store', $book), [
                 'act_id' => $act->id,
                 'name' => 'Intruder chapter',
             ])
@@ -207,7 +207,7 @@ Some **markdown** with a [link](https://example.com).';
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        [$project, $book] = $this->projectWithBook($owner);
+        [, $book] = $this->projectWithBook($owner);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create(['name' => 'Original']);
 
@@ -217,7 +217,7 @@ Some **markdown** with a [link](https://example.com).';
                 'name' => 'Renamed',
                 'description' => '<p>ok</p>',
             ])
-            ->assertRedirect(route('projects.chapters.index', $project));
+            ->assertRedirect(route('books.chapters.index', $book));
         $this->assertSame('Renamed', $chapter->fresh()->name);
 
         $this->actingAs($other)

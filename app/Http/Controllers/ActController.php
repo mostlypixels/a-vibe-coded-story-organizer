@@ -11,7 +11,7 @@ use App\Http\Requests\DestroyActRequest;
 use App\Http\Requests\StoreActRequest;
 use App\Http\Requests\UpdateActRequest;
 use App\Models\Act;
-use App\Models\Project;
+use App\Models\Book;
 use App\Support\StoryNumbering;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,29 +26,22 @@ class ActController extends Controller
     use ReparentsChildren;
     use ResolvesIndexSorting;
 
-    public function index(Request $request, Project $project): View
+    public function index(Request $request, Book $book): View
     {
-        $this->authorize('view', $project);
+        $this->authorize('view', $book->project);
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
-        // Every project holds at least one book, and this route still carries
-        // a project — numbering comes from the project's first book until the
-        // story routes nest under {book}.
-        $book = $project->books()->first();
-
-        // Project::acts() joins `books`, which carries `name` and `position`
-        // columns of its own, so every column below is table-qualified.
-        $acts = $project->acts()
+        $acts = $book->acts()
             ->withCount('chapters')
             // One grouped query for the whole page, via the act's own scenes()
             // HasManyThrough — a dot-nested relation path like 'chapters.scenes'
             // is not a real relation name and throws BadMethodCallException, so
             // it must go through that relation directly.
             ->withSum('scenes as word_count', 'word_count')
-            ->when($request->filled('search'), fn ($query) => $query->where('acts.name', 'like', '%'.$request->query('search').'%'))
-            // $sort is allow-listed by resolveSorting(), so it is safe to qualify.
-            ->orderBy('acts.'.$sort, $direction)
+            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
+            // $sort is allow-listed by resolveSorting().
+            ->orderBy($sort, $direction)
             ->get();
 
         // withSum leaves word_count as NULL for an act with no scenes (SQL SUM has no
@@ -60,12 +53,12 @@ class ActController extends Controller
         // The delete-with-move dialog on each row needs the full set of sibling acts as
         // move destinations, independent of the current search filter above (moving is
         // never limited to what the search happens to match).
-        $destinationActs = $project->acts()
-            ->orderBy('acts.position')
-            ->get(['acts.id', 'acts.name', 'acts.position']);
+        $destinationActs = $book->acts()
+            ->orderBy('position')
+            ->get(['id', 'name', 'position']);
 
         return view('acts.index', [
-            'project' => $project,
+            'book' => $book,
             'acts' => $acts,
             'destinationActs' => $destinationActs,
             'sort' => $sort,
@@ -76,21 +69,18 @@ class ActController extends Controller
         ]);
     }
 
-    public function create(Project $project): View
+    public function create(Book $book): View
     {
-        $this->authorize('update', $project);
+        $this->authorize('update', $book->project);
 
-        return view('acts.create', ['project' => $project]);
+        return view('acts.create', ['book' => $book]);
     }
 
-    public function store(StoreActRequest $request, Project $project): RedirectResponse
+    public function store(StoreActRequest $request, Book $book): RedirectResponse
     {
-        // An act belongs to a book, and this route carries a project. The project
-        // always holds at least one book, and the form offers no choice between
-        // them, so a new act joins the first.
-        $project->books()->first()->acts()->create($request->validated());
+        $book->acts()->create($request->validated());
 
-        return redirect()->route('projects.acts.index', $project);
+        return redirect()->route('books.acts.index', $book);
     }
 
     public function edit(Act $act): View
@@ -103,11 +93,12 @@ class ActController extends Controller
         $act->loadCount('chapters');
         $sceneCount = $act->scenes()->count();
 
-        // Every *other* act in the project is a candidate destination for moving this
-        // act's chapters. An empty list collapses the dialog to "delete everything".
-        $destinations = $act->book->project->acts()
-            ->where('acts.id', '!=', $act->id)
-            ->orderBy('acts.position')
+        // Every *other* act in the same book is a candidate destination for moving
+        // this act's chapters — the same set the book's acts index offers. An empty
+        // list collapses the dialog to "delete everything".
+        $destinations = $act->book->acts()
+            ->whereKeyNot($act->getKey())
+            ->orderBy('position')
             ->get();
 
         return view('acts.edit', [
@@ -115,7 +106,7 @@ class ActController extends Controller
             'sceneCount' => $sceneCount,
             'destinations' => $destinations,
             'numbering' => StoryNumbering::forBook($act->book),
-            'totalActs' => $act->book->project->acts()->count(),
+            'totalActs' => $act->book->acts()->count(),
         ]);
     }
 
@@ -128,21 +119,21 @@ class ActController extends Controller
 
         $this->recordManualSave($act, $beforeAutosavedFields);
 
-        return $this->redirectAfterSave($request, ['acts.edit', $act], ['projects.acts.index', $act->book->project]);
+        return $this->redirectAfterSave($request, ['acts.edit', $act], ['books.acts.index', $act->book]);
     }
 
     public function destroy(DestroyActRequest $request, Act $act): RedirectResponse
     {
         // Authorization is handled by DestroyActRequest::authorize() (mirrors the
         // walk-up-to-project check the other actions perform).
-        $project = $act->book->project;
+        $book = $act->book;
 
         // Reassignment (optional) and the delete itself are a single atomic unit: a
         // failure partway must never leave chapters half-moved or an orphaned act
         // (CLAUDE.md's multi-step-write transaction rule).
-        DB::transaction(function () use ($request, $act) {
+        DB::transaction(function () use ($request, $act, $book) {
             if ($destinationId = $request->validated('move_children_to')) {
-                $destination = $act->book->project->acts()->findOrFail($destinationId);
+                $destination = $book->acts()->findOrFail($destinationId);
 
                 $this->reparentChildren($act, $destination, 'chapters', 'act');
             }
@@ -152,7 +143,7 @@ class ActController extends Controller
             $act->delete();
         });
 
-        return redirect()->route('projects.acts.index', $project);
+        return redirect()->route('books.acts.index', $book);
     }
 
     public function moveUp(Act $act): RedirectResponse

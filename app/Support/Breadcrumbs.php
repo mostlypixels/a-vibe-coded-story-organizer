@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\CodexEntryType;
+use App\Models\Book;
 use App\Models\Project;
 use ArrayIterator;
 use Countable;
@@ -16,13 +17,14 @@ use Traversable;
  * Dashboard and mirroring the primary nav's section structure
  * (`project-menu.blade.php`).
  *
- * Built off `$navigation->routeProject`, never `->project` — the same rule
- * as {@see PageTitle}, for the same reason: off-route pages (dashboard,
- * `/profile`, `/admin/*`) must not inherit the account's stored active
- * project, they must show no trail at all so the layout falls back to the
- * page's own `header` slot. Reuses `ProjectNavigation`'s `*Active` flags
- * rather than re-deriving "which section is active" — that decision lives
- * in exactly one place.
+ * Built off `$navigation->routeProject`/`routeBook`, never `->project`/`->book`
+ * — the same rule as {@see PageTitle}, for the same reason: off-route pages
+ * (dashboard, `/profile`, `/admin/*`) must not inherit the account's stored
+ * active project or book, they must show no trail at all so the layout falls
+ * back to the page's own `header` slot. Reuses `ProjectNavigation`'s
+ * `*Active` flags rather than re-deriving "which section is active" — that
+ * decision lives in exactly one place. A book-scoped page also gets a book
+ * crumb (see `bookCrumb()`), present only when the book has a name of its own.
  *
  * Fully central: every label comes from the route name or a route-bound
  * model, never a view. The one documented exception is the revisions
@@ -73,9 +75,22 @@ class Breadcrumbs implements Countable, IteratorAggregate
             return [new Crumb(__('Dashboard'), current: true)];
         }
 
+        // The book home is not a section like Story/Timeline/Codex/Tools — it
+        // IS the book crumb, as the current leaf. An unnamed book has no
+        // crumb to show (see bookCrumb()), so it renders no band at all and
+        // the page falls back to its own header slot, like every other
+        // unmatched route below.
+        if ($request->routeIs('books.show')) {
+            $bookCrumb = $this->bookCrumb($navigation->routeBook, current: true);
+
+            return $bookCrumb === []
+                ? []
+                : [new Crumb(__('Dashboard'), route('projects.show', $project)), ...$bookCrumb];
+        }
+
         $section = match (true) {
             $navigation->searchActive => [new Crumb(__('Search'), current: true)],
-            $navigation->storyActive => $this->storyTrail($project, $request),
+            $navigation->storyActive => $this->storyTrail($navigation->routeBook, $request),
             $navigation->timelineActive => $this->timelineTrail($project, $request),
             $navigation->codexActive => $this->codexTrail($navigation, $project, $request),
             $navigation->toolsActive => $this->toolsTrail($project, $request),
@@ -94,38 +109,57 @@ class Breadcrumbs implements Countable, IteratorAggregate
     }
 
     /**
+     * The book crumb: present only when the book has a name of its own (see
+     * {@see Book::hasOwnName()}) — a sole unnamed book renders no
+     * crumb, exactly today's trail. Links `books.show` unless it is itself
+     * the current leaf.
+     *
      * @return list<Crumb>
      */
-    private function storyTrail(Project $project, Request $request): array
+    private function bookCrumb(Book $book, bool $current): array
     {
+        if (! $book->hasOwnName()) {
+            return [];
+        }
+
+        return [new Crumb($book->displayName(), $current ? null : route('books.show', $book), $current)];
+    }
+
+    /**
+     * @return list<Crumb>
+     */
+    private function storyTrail(Book $book, Request $request): array
+    {
+        $bookCrumb = $this->bookCrumb($book, current: false);
+
         // On the section stub itself, Story is the current leaf.
-        if ($request->routeIs('projects.story.home')) {
-            return [new Crumb(__('Story'), current: true)];
+        if ($request->routeIs('books.story.home')) {
+            return [...$bookCrumb, new Crumb(__('Story'), current: true)];
         }
 
         // Everywhere below, Story links back to its stub landing.
-        $section = new Crumb(__('Story'), route('projects.story.home', $project));
+        $section = new Crumb(__('Story'), route('books.story.home', $book));
 
         // Story Overview has no create/edit page of its own — it is always
         // its own current leaf, like any other *.index route below.
-        if ($request->routeIs('projects.story.overview')) {
-            return [$section, new Crumb(__('Overview'), current: true)];
+        if ($request->routeIs('books.story.overview')) {
+            return [...$bookCrumb, $section, new Crumb(__('Overview'), current: true)];
         }
 
-        if ($request->routeIs('projects.acts.*', 'acts.*')) {
-            return [$section, ...$this->entityTrail(
-                $project, $request, __('Acts'), 'projects.acts.index', 'projects.acts.create', 'acts.edit', 'act', __('act')
+        if ($request->routeIs('books.acts.*', 'acts.*')) {
+            return [...$bookCrumb, $section, ...$this->entityTrail(
+                $book, $request, __('Acts'), 'books.acts.index', 'books.acts.create', 'acts.edit', 'act', __('act')
             )];
         }
 
-        if ($request->routeIs('projects.chapters.*', 'chapters.*')) {
-            return [$section, ...$this->entityTrail(
-                $project, $request, __('Chapters'), 'projects.chapters.index', 'projects.chapters.create', 'chapters.edit', 'chapter', __('chapter')
+        if ($request->routeIs('books.chapters.*', 'chapters.*')) {
+            return [...$bookCrumb, $section, ...$this->entityTrail(
+                $book, $request, __('Chapters'), 'books.chapters.index', 'books.chapters.create', 'chapters.edit', 'chapter', __('chapter')
             )];
         }
 
-        return [$section, ...$this->entityTrail(
-            $project, $request, __('Scenes'), 'projects.scenes.index', 'projects.scenes.create', 'scenes.edit', 'scene', __('scene')
+        return [...$bookCrumb, $section, ...$this->entityTrail(
+            $book, $request, __('Scenes'), 'books.scenes.index', 'books.scenes.create', 'scenes.edit', 'scene', __('scene')
         )];
     }
 
@@ -257,12 +291,13 @@ class Breadcrumbs implements Countable, IteratorAggregate
      * "Edit <thing> <id>". The id is the bound model's primary key, which
      * matches the URL — not the model's name.
      *
+     * @param  Project|Book  $parent  Whatever the index route nests under.
      * @param  string  $thing  Lowercase singular, mid-sentence after the verb
      *                         (e.g. "chapter" in "Edit chapter 1").
      * @return list<Crumb>
      */
     private function entityTrail(
-        Project $project,
+        Project|Book $parent,
         Request $request,
         string $indexLabel,
         string $indexRoute,
@@ -273,7 +308,7 @@ class Breadcrumbs implements Countable, IteratorAggregate
     ): array {
         if ($request->routeIs($createRoute)) {
             return [
-                new Crumb($indexLabel, route($indexRoute, $project)),
+                new Crumb($indexLabel, route($indexRoute, $parent)),
                 new Crumb(__('New :thing', ['thing' => $thing]), current: true),
             ];
         }
@@ -282,7 +317,7 @@ class Breadcrumbs implements Countable, IteratorAggregate
             $model = $request->route($routeParam);
 
             return [
-                new Crumb($indexLabel, route($indexRoute, $project)),
+                new Crumb($indexLabel, route($indexRoute, $parent)),
                 new Crumb(__('Edit :thing :id', ['thing' => $thing, 'id' => $model->id]), current: true),
             ];
         }

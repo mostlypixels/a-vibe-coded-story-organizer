@@ -5,14 +5,14 @@
 
     <x-edit-layout>
         <x-card>
-            <form id="chapter-create-form" method="POST" action="{{ route('projects.chapters.store', $project) }}" class="space-y-6">
+            <form id="chapter-create-form" method="POST" action="{{ route('books.chapters.store', $book) }}" class="space-y-6">
                 @csrf
 
                 <div>
                     <x-input-label for="act_id" :value="__('Act')" />
                     <x-select id="act_id" name="act_id" class="mt-1 block w-full" required>
                         <option value="">{{ __('Select an act...') }}</option>
-                        @foreach ($project->acts as $act)
+                        @foreach ($acts as $act)
                             <option value="{{ $act->id }}" @selected(old('act_id') == $act->id)>{{ $act->name }}</option>
                         @endforeach
                     </x-select>
@@ -35,7 +35,7 @@
         </x-card>
 
         <x-slot:sidebar>
-            <x-create-actions form="chapter-create-form" :cancel="route('projects.chapters.index', $project)">
+            <x-create-actions form="chapter-create-form" :cancel="route('books.chapters.index', $book)">
                 {{ __('Create Chapter') }}
             </x-create-actions>
         </x-slot:sidebar>

@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-page-heading>
-        {{ $project->name }} &mdash; {{ __('Chapters') }}
+        {{ $book->displayName() }} &mdash; {{ __('Chapters') }}
     </x-page-heading>
 
     <div class="space-y-6">
@@ -12,18 +12,18 @@
 
                     <x-select name="act" class="text-sm">
                         <option value="">{{ __('All acts') }}</option>
-                        @foreach ($project->acts as $act)
+                        @foreach ($acts as $act)
                             <option value="{{ $act->id }}" @selected(request('act') == $act->id)>{{ $act->name }}</option>
                         @endforeach
                     </x-select>
 
                     <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
                     @if (request()->filled('search') || request()->filled('act'))
-                        <a href="{{ route('projects.chapters.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
+                        <a href="{{ route('books.chapters.index', $book) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
                     @endif
                 </form>
 
-                <x-button variant="primary" :href="route('projects.chapters.create', $project)">{{ __('New Chapter') }}</x-button>
+                <x-button variant="primary" :href="route('books.chapters.create', $book)">{{ __('New Chapter') }}</x-button>
             </div>
 
             <x-table>
@@ -70,7 +70,7 @@
                     <x-table-empty
                         :colspan="6"
                         :filtered="request()->hasAny(['search', 'act'])"
-                        :create-url="route('projects.chapters.create', $project)"
+                        :create-url="route('books.chapters.create', $book)"
                         :create-label="__('New Chapter')"
                         :items="__('chapters')"
                     />

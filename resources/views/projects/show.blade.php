@@ -15,7 +15,7 @@
             <x-recent-list
                 :title="__('Recent scenes')"
                 :items="$recentScenes"
-                :all-url="route('projects.story.home', $project)"
+                :all-url="route('books.story.home', $book)"
                 :all-label="__('View the story')"
                 :noun="__('scenes')"
             />
@@ -32,11 +32,32 @@
 
         {{-- The same Actions card the edit pages open their sidebar with, so
              the one action this page has sits where a writer looks. --}}
-        <div class="lg:col-span-3">
+        <div class="lg:col-span-3 space-y-6">
             <x-card :title="__('Actions')">
                 <x-button :href="route('projects.edit', $project)" variant="primary" icon="tabler-pencil" class="w-full">
                     {{ __('Edit Project') }}
                 </x-button>
+            </x-card>
+
+            {{-- A compact list, not a second index — the books index
+                 (projects.books.index) is the full CRUD screen. --}}
+            <x-card :title="__('Books')">
+                <ul class="divide-y divide-border">
+                    @foreach ($books as $book)
+                        <li class="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                            <a href="{{ route('books.edit', $book) }}" class="text-sm font-medium text-content hover:text-link">
+                                {{ $book->displayName() }}
+                            </a>
+                            <span class="text-xs text-content-muted">
+                                {{ trans_choice('{1} :count act|[2,*] :count acts', $book->acts_count, ['count' => $book->acts_count]) }}
+                            </span>
+                        </li>
+                    @endforeach
+                </ul>
+
+                <a href="{{ route('projects.books.index', $project) }}" class="mt-3 block text-sm text-content-muted hover:text-content">
+                    {{ __('Manage books →') }}
+                </a>
             </x-card>
         </div>
     </div>

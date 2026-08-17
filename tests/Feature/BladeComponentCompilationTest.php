@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Project;
@@ -44,6 +45,12 @@ class BladeComponentCompilationTest extends TestCase
         $user = User::factory()->create();
         [$project, $book] = $this->projectWithBook($user);
 
+        // A second book, with acts of its own, so the books index/edit "move or
+        // delete" dialogs have a destination to offer, and their reorder buttons
+        // render both enabled and disabled (first/last row).
+        $secondBook = Book::factory()->for($project)->create();
+        Act::factory()->for($secondBook)->create();
+
         // Two acts and two chapters so the "move or delete" dialog has a
         // destination to offer, and the reorder buttons render both enabled and
         // disabled (first/last row).
@@ -55,7 +62,7 @@ class BladeComponentCompilationTest extends TestCase
         Scene::factory()->for($chapter)->create();
         $codexEntry = CodexEntry::factory()->for($project)->create();
 
-        foreach ($this->pages($project, $act, $chapter, $scene, $codexEntry) as $url) {
+        foreach ($this->pages($project, $book, $act, $chapter, $scene, $codexEntry) as $url) {
             $response = $this->actingAs($user)->get($url);
 
             $response->assertSuccessful();
@@ -75,6 +82,7 @@ class BladeComponentCompilationTest extends TestCase
      */
     private function pages(
         Project $project,
+        Book $book,
         Act $act,
         Chapter $chapter,
         Scene $scene,
@@ -84,12 +92,15 @@ class BladeComponentCompilationTest extends TestCase
             route('dashboard'),
             route('projects.show', $project),
             route('projects.edit', $project),
-            route('projects.story.overview', $project),
+            route('projects.books.index', $project),
+            route('projects.books.create', $project),
+            route('books.edit', $book),
+            route('books.story.overview', $book),
             route('projects.search.index', [$project, 'q' => 'a']),
             route('projects.revisions.index', $project),
-            route('projects.acts.index', $project),
-            route('projects.chapters.index', $project),
-            route('projects.scenes.index', $project),
+            route('books.acts.index', $book),
+            route('books.chapters.index', $book),
+            route('books.scenes.index', $book),
             route('projects.plotlines.index', $project),
             route('projects.events.index', $project),
             route('projects.codex-attributes.index', $project),

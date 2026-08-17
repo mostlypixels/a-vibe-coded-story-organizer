@@ -7,15 +7,15 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates a save of a project's `overview_render_mode`. Authorization
+ * Validates a save of a book's `overview_render_mode`. Authorization
  * mirrors StoryController::updateMode per CLAUDE.md: the write is ownership
- * of the project, walked via the route model binding.
+ * of the book's project, walked via the route model binding.
  */
 class UpdateStoryOverviewModeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('project'));
+        return $this->user()->can('update', $this->route('book')->project);
     }
 
     /**

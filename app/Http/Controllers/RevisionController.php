@@ -62,6 +62,7 @@ class RevisionController extends Controller
      */
     private const EDIT_ROUTES = [
         'project' => 'projects.edit',
+        'book' => 'books.edit',
         'act' => 'acts.edit',
         'chapter' => 'chapters.edit',
         'plotline' => 'plotlines.edit',

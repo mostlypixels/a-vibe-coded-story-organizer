@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Enums\StoryOverviewMode;
 use App\Http\Requests\UpdateStoryOverviewModeRequest;
+use App\Models\Book;
 use App\Models\Chapter;
-use App\Models\Project;
 use App\Models\Scene;
 use App\Services\RecentlyEdited;
 use App\Support\StoryNumbering;
@@ -22,35 +22,35 @@ class StoryController extends Controller
      * most recently, each with a link to its full index. Same shape as the
      * Timeline and Codex home actions.
      */
-    public function home(Project $project, RecentlyEdited $recentlyEdited): View
+    public function home(Book $book, RecentlyEdited $recentlyEdited): View
     {
-        $this->authorize('view', $project);
+        $this->authorize('view', $book->project);
 
         return view('story.home', [
-            'project' => $project,
-            'recentActs' => $recentlyEdited->acts($project),
-            'recentChapters' => $recentlyEdited->chapters($project),
-            'recentScenes' => $recentlyEdited->scenes($project),
+            'book' => $book,
+            'recentActs' => $recentlyEdited->acts($book),
+            'recentChapters' => $recentlyEdited->chapters($book),
+            'recentScenes' => $recentlyEdited->scenes($book),
         ]);
     }
 
     /**
-     * The Story overview. Two render modes on the project's
+     * The Story overview of one book. Two render modes on the book's
      * `overview_render_mode`: `Whole` renders the whole tree on one page (slow
      * on a long story, opt-in); `Chapter` (default) paginates one chapter per
      * page and stays fast — only that chapter's scene bodies load, while
-     * numbering, the table of contents, and word totals stay story-wide
+     * numbering, the table of contents, and word totals stay book-wide
      * through contents-free queries.
      */
-    public function index(Project $project, Request $request): View
+    public function index(Book $book, Request $request): View
     {
-        $this->authorize('view', $project);
+        $this->authorize('view', $book->project);
 
-        if ($project->overview_render_mode === StoryOverviewMode::Whole) {
-            return $this->whole($project);
+        if ($book->overview_render_mode === StoryOverviewMode::Whole) {
+            return $this->whole($book);
         }
 
-        return $this->chapter($project, $request->query('chapter'));
+        return $this->chapter($book, $request->query('chapter'));
     }
 
     /**
@@ -58,26 +58,26 @@ class StoryController extends Controller
      * to the overview, preserving the current `?chapter=` if the request came
      * from a chapter-mode page.
      */
-    public function updateMode(UpdateStoryOverviewModeRequest $request, Project $project): RedirectResponse
+    public function updateMode(UpdateStoryOverviewModeRequest $request, Book $book): RedirectResponse
     {
-        $this->authorize('update', $project);
+        $this->authorize('update', $book->project);
 
-        $project->update($request->validated());
+        $book->update($request->validated());
 
-        return redirect()->route('projects.story.overview', array_filter([
-            'project' => $project,
+        return redirect()->route('books.story.overview', array_filter([
+            'book' => $book,
             'chapter' => $request->query('chapter'),
         ]));
     }
 
     /**
-     * Whole-story render: the full act -> chapter -> scene tree on one page.
+     * Whole-book render: the full act -> chapter -> scene tree on one page.
      */
-    private function whole(Project $project): View
+    private function whole(Book $book): View
     {
-        $acts = $project->acts()
+        $acts = $book->acts()
             ->with('chapters.scenes.event')
-            ->orderBy('acts.position')
+            ->orderBy('position')
             ->get()
             ->each(function ($act) {
                 $act->chapters = $act->chapters->sortBy('position')->each(function ($chapter) {
@@ -98,7 +98,7 @@ class StoryController extends Controller
         );
 
         return view('story.index', [
-            'project' => $project,
+            'book' => $book,
             'acts' => $acts,
             'wordCount' => $wordCount,
             // The tree is already fully eager-loaded above, so fromActs()
@@ -110,30 +110,23 @@ class StoryController extends Controller
     /**
      * One-chapter render. Loads only the target chapter's scene bodies; every
      * other figure on the page — numbering, the table of contents, per-act and
-     * story-wide word totals — comes from contents-free queries, so the request
-     * cost does not grow with the rest of the story.
+     * book-wide word totals — comes from contents-free queries, so the request
+     * cost does not grow with the rest of the book.
      */
-    private function chapter(Project $project, ?string $chapterId): View
+    private function chapter(Book $book, ?string $chapterId): View
     {
-        // Every project holds at least one book, and this route still carries
-        // a project — numbering comes from the project's first book until the
-        // story routes nest under {book}.
-        $book = $project->books()->first();
-
-        // The table of contents is story-wide: every act with its chapters, but
+        // The table of contents is book-wide: every act with its chapters, but
         // names and positions only — no scenes, no contents.
-        $tocActs = $project->acts()
-            // Qualified: the through-join brings books.name and books.position
-            // into scope (see Project::acts()).
-            ->select(['acts.id', 'acts.name', 'acts.position'])
+        $tocActs = $book->acts()
+            ->select(['id', 'name', 'position'])
             ->with(['chapters' => fn (HasMany $query) => $query
                 ->select(['id', 'name', 'position', 'act_id'])
                 ->orderBy('position'),
             ])
-            ->orderBy('acts.position')
+            ->orderBy('position')
             ->get();
 
-        $currentChapter = $this->resolveChapter($project, $chapterId, $tocActs);
+        $currentChapter = $this->resolveChapter($book, $chapterId, $tocActs);
 
         if ($currentChapter !== null) {
             // The sole scene-contents fetch on the page.
@@ -144,13 +137,12 @@ class StoryController extends Controller
         }
 
         // Per-act word totals from one grouped aggregate joined chapter -> act,
-        // filtered to the project — no scene body loads. An act with no scenes
+        // filtered to the book — no scene body loads. An act with no scenes
         // never appears in the map, so `?? 0` keeps it null-safe below.
         $actWordCounts = Scene::query()
             ->join('chapters', 'scenes.chapter_id', '=', 'chapters.id')
             ->join('acts', 'chapters.act_id', '=', 'acts.id')
-            ->join('books', 'acts.book_id', '=', 'books.id')
-            ->where('books.project_id', $project->id)
+            ->where('acts.book_id', $book->id)
             ->groupBy('chapters.act_id')
             ->selectRaw('chapters.act_id as act_id, sum(scenes.word_count) as total')
             ->pluck('total', 'act_id');
@@ -158,7 +150,7 @@ class StoryController extends Controller
         [$previousChapter, $nextChapter] = $this->neighbourChapters($currentChapter, $tocActs);
 
         return view('story.chapter', [
-            'project' => $project,
+            'book' => $book,
             'tocActs' => $tocActs,
             'currentChapter' => $currentChapter,
             'previousChapter' => $previousChapter,
@@ -172,9 +164,9 @@ class StoryController extends Controller
     }
 
     /**
-     * The current chapter's project-wide neighbours (prev, next), from the
+     * The current chapter's book-wide neighbours (prev, next), from the
      * same contents-free `$tocActs` tree the TOC renders — no extra query.
-     * The pager walks the whole story, not just the current act, so the last
+     * The pager walks the whole book, not just the current act, so the last
      * chapter of an act neighbours the first chapter of the next one.
      *
      * @return array{0: ?Chapter, 1: ?Chapter}
@@ -198,19 +190,20 @@ class StoryController extends Controller
     }
 
     /**
-     * The chapter to render: the `chapter` id when given and owned by $project,
-     * otherwise the first chapter by project-wide order (act position, then
-     * chapter position), or null when the project has no chapters.
+     * The chapter to render: the `chapter` id when given and owned by $book,
+     * otherwise the first chapter by book-wide order (act position, then
+     * chapter position), or null when the book has no chapters.
      *
-     * A `chapter` id is never trusted: an id for a chapter in another project
-     * (or an unknown id) is a 403, walked through `chapter->act->book->project`.
+     * A `chapter` id is never trusted: an id for a chapter in another book —
+     * the writer's own next volume included — or an unknown id is a 403,
+     * walked through `chapter->act->book`.
      */
-    private function resolveChapter(Project $project, ?string $chapterId, Collection $tocActs): ?Chapter
+    private function resolveChapter(Book $book, ?string $chapterId, Collection $tocActs): ?Chapter
     {
         if ($chapterId !== null) {
             $chapter = Chapter::with('act')->find($chapterId);
 
-            abort_if($chapter === null || $chapter->act->book->project_id !== $project->id, 403);
+            abort_if($chapter === null || $chapter->act->book_id !== $book->id, 403);
 
             return $chapter;
         }

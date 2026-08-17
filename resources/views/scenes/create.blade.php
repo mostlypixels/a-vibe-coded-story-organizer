@@ -5,7 +5,7 @@
 
     <x-edit-layout>
         <x-card>
-                <form id="scene-create-form" method="POST" action="{{ route('projects.scenes.store', $project) }}" class="space-y-6">
+                <form id="scene-create-form" method="POST" action="{{ route('books.scenes.store', $book) }}" class="space-y-6">
                     @csrf
 
                     <div>
@@ -94,7 +94,7 @@
         </x-card>
 
         <x-slot:sidebar>
-            <x-create-actions form="scene-create-form" :cancel="route('projects.scenes.index', $project)">
+            <x-create-actions form="scene-create-form" :cancel="route('books.scenes.index', $book)">
                 {{ __('Create Scene') }}
             </x-create-actions>
         </x-slot:sidebar>

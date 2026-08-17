@@ -37,7 +37,7 @@ class WordCountSnapshotTest extends TestCase
      */
     private function emptySceneFor(User $user): Scene
     {
-        [$project, $book] = $this->projectWithBook($user);
+        [, $book] = $this->projectWithBook($user);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
 
@@ -224,7 +224,7 @@ class WordCountSnapshotTest extends TestCase
 
         $this->actingAs($user)
             ->delete(route('acts.destroy', $scene->chapter->act), ['move_children_to' => $destination->id])
-            ->assertRedirect(route('projects.acts.index', $project));
+            ->assertRedirect(route('books.acts.index', $book));
 
         $this->assertSame(3, $this->snapshotsFor($project)->first()->word_count);
     }

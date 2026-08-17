@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
  * Validates deleting an act, including the optional "move my chapters to another
  * act, then delete" choice. When `move_children_to` is omitted the delete is the
  * plain cascade (unchanged behaviour); when present it must name a *different* act
- * in the *same* project.
+ * in the *same* book.
  */
 class DestroyActRequest extends FormRequest
 {
@@ -30,10 +30,9 @@ class DestroyActRequest extends FormRequest
         return [
             'move_children_to' => [
                 'nullable',
-                // Must be a real act in the same project (mirrors UpdateChapterRequest's
-                // act_id scoping). An act belongs to a book, so the project's acts are
-                // the acts of its books.
-                Rule::exists('acts', 'id')->whereIn('book_id', $act->book->project->books()->pluck('id')),
+                // Must be a real act in the same book — the same set the dialog
+                // offers, so a valid choice is always one the controller can find.
+                Rule::exists('acts', 'id')->where('book_id', $act->book_id),
                 // … and never the act being deleted itself.
                 Rule::notIn([$act->id]),
             ],
