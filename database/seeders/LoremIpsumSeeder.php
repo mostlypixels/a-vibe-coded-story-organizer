@@ -37,7 +37,6 @@ class LoremIpsumSeeder extends Seeder
         $project = Project::create([
             'user_id' => $user->id,
             'name' => 'Lorem ipsum',
-            'language' => BookLanguage::English,
             'description' => '<p>Lorem ipsum.</p>',
         ]);
 
@@ -52,7 +51,10 @@ class LoremIpsumSeeder extends Seeder
             ]);
 
         // Unnamed: a sole book shows the project's name (see Book::displayName()).
-        $book = $project->books()->create(['position' => 1]);
+        $book = $project->books()->create([
+            'position' => 1,
+            'language' => BookLanguage::English,
+        ]);
 
         $act = $book->acts()->create([
             'name' => 'Lorem ipsum',

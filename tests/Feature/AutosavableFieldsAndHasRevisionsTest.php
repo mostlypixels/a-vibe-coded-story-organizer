@@ -201,6 +201,21 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
         $this->assertSame('#'.$act->getKey(), $act->revisionDisplayName());
     }
 
+    public function test_revision_display_name_of_an_unnamed_book_is_the_project_name(): void
+    {
+        // Book overrides the fallback: `name` is nullable by design, so the
+        // plain `#<id>` would be what a reader sees on a one-book project.
+        $project = Project::factory()->create(['name' => 'Melusine']);
+        $book = $project->books()->first();
+
+        $this->assertNull($book->name);
+        $this->assertSame('Melusine', $book->revisionDisplayName());
+
+        $book->update(['name' => 'Volume One']);
+
+        $this->assertSame('Volume One', $book->fresh()->revisionDisplayName());
+    }
+
     // ---------------------------------------------------------------------
     // windowSeconds() / characterCap() — config lookups
     // ---------------------------------------------------------------------

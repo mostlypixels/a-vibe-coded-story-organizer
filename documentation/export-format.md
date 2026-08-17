@@ -2,22 +2,35 @@
 
 This page is the specification for a project **export**, and therefore the contract
 the **import** feature reads (built — see [`architecture.md` → Static site import](architecture.md#static-site-import)).
-A `.zip` produced from **Admin → Export & import → Export** contains a top-level
-`README.md` plus two folders:
+A `.zip` produced from **Admin → Export & import → Export** holds the whole project — every
+book of it — as a top-level `README.md` plus two folders:
 
 - **`README.md`** — the archive's front door: the project name, the export date, the
   project description as plain text (the stored HTML stripped to prose), and a short note
-  sending humans to `book/` and machines to `data/`. Courtesy only; never a source of truth.
-- **`book/`** — a human reading version (TOC + compiled chapter pages). Presentation
-  only; never the source of truth. Specified in [The `book/` reading layer](#the-book-reading-layer)
-  below.
+  sending humans to `books/` and machines to `data/`. Courtesy only; never a source of truth.
+- **`books/`** — a human reading version, one folder per book (TOC + compiled chapter pages).
+  Presentation only; never the source of truth. Specified in
+  [The `books/` reading layer](#the-books-reading-layer) below.
 - **`data/`** — a **lossless**, machine-readable copy of the project, built to be
   reconstructed exactly by import. This document specifies `data/`.
 
 > [!IMPORTANT]
 > `data/` is **raw and lossless**. Every field file carries the **exact stored column
-> value** — never re-rendered, re-sanitized, or reformatted. Only the `book/` layer
+> value** — never re-rendered, re-sanitized, or reformatted. Only the `books/` layer
 > renders Markdown to HTML. Do not blur the two.
+
+## What lives where
+
+The archive mirrors the app's ownership split, so where a field sits in `data/` tells you who
+owns it:
+
+| Branch | Holds | Scope |
+|---|---|---|
+| `data/project/` | name, the two word goals, description, the dashboard cover | the project |
+| `data/books/<id>-slug/` | one book: publication metadata, matter pages, cover, publication setting, and its `act → chapter → scene` tree | per book |
+| `data/timeline/` | plotlines and events | the project, shared by every book |
+| `data/codex/`, `data/tags.json` | codex entries, attribute definitions, tags, media | the project, shared by every book |
+| `data/word-count-snapshots.json` | the writing history | the project |
 
 ## Stable identifiers
 
@@ -32,9 +45,9 @@ The archive's root descriptor, written once per export:
 
 ```json
 {
-  "version": 3,
+  "version": 4,
   "project_id": 42,
-  "exported_at": "2026-07-09T14:03:11+00:00",
+  "exported_at": "2026-08-17T14:03:11+00:00",
   "includes_media": true
 }
 ```
@@ -54,10 +67,12 @@ additive changes (a new optional field, a new entity type folder) do **not** bum
 an importer must ignore keys it does not recognize.
 
 > [!IMPORTANT]
-> **Only version 3 is supported.** `ImportRules::SUPPORTED_MANIFEST_VERSIONS = [3]` — an
-> archive exported before this contract, or a hand-crafted one declaring `1` or `2`, is
-> rejected outright. There is no migration path: pre-V1, nobody holds an archive they
-> cannot simply re-export.
+> **Only version 4 is supported.** `ImportRules::SUPPORTED_MANIFEST_VERSIONS = [4]` — every
+> older archive is rejected outright. Version 4 moved the manuscript under
+> `data/books/<id>-slug/acts/`, gave each book its own `publication-setting.json`, and renamed
+> the reading layer `book/` → `books/`; a relocated path is exactly the breaking change this
+> number exists for. There is no migration path between versions: pre-V1, nobody holds an
+> archive they cannot simply re-export.
 
 Revision history is **never exported** — no `revisions/` sidecar has ever existed in this
 document, and none will. Two reasons: it would multiply archive size many times over for
@@ -65,148 +80,123 @@ data nobody restores, and an imported row could never be pruned by the automatic
 (`Revision::prunable()` only touches `origin: automatic`), so it would be dead weight
 forever.
 
-## `data/publication-setting.json`
-
-The project's EPUB **publication settings** — the include-toggles, formatting choices, section
-order and appendix options from the Export-ebook config page (the
-`App\Models\PublicationSetting` row, one per project).
-
-A flat project-level descriptor like `data/tags.json`, written **only when the project has a
-saved `publication_settings` row**. A project that never visited the config form omits the file
-entirely; its lossless meaning is "the lazy default".
-
-```json
-{
-  "include_project_cover": true,
-  "include_chapter_covers": false,
-  "include_scene_titles": false,
-  "include_act_descriptions": false,
-  "include_chapter_descriptions": false,
-  "include_scene_descriptions": false,
-  "include_dedication": false,
-  "include_acknowledgements": false,
-  "include_preface": false,
-  "include_postface": false,
-  "include_author": true,
-  "include_publisher": true,
-  "include_rights": true,
-  "include_isbn": true,
-  "chapter_title_format": "chapter_number_title",
-  "table_of_contents_depth": "chapters",
-  "divider_type": "horizontal_rule",
-  "section_order": ["title", "dedication", "acknowledgements", "preface", "toc", "body", "postface", "appendix"],
-  "include_codex_appendix": false,
-  "appendix_entry_types": [],
-  "appendix_include_images": false
-}
-```
-
-Every value is the **raw persisted column value** (booleans as booleans, the three
-enum columns as their backing string, the two ordered lists as arrays) — never
-rendered. `project_id`, `id`, and timestamps are deliberately **omitted**: the
-import remaps the setting onto the freshly-created project.
-
-> [!IMPORTANT]
-> **This descriptor is validated as UNTRUSTED input on import, never trusted.**
-> Unlike the content descriptors, a malformed publication setting must **never
-> fail the whole import** — the config is a presentation preference. The importer
-> (`ProjectGraphImporter::readPublicationSetting()`) validates it against the exact
-> rules the config form uses (`UpdatePublicationSettingRequest::configRules()`);
-> on **any** failure — unreadable/non-object JSON, an illegal enum, a broken
-> `section_order` — it **logs, skips the config, and imports the content anyway**,
-> leaving the project on the lazy default. Unknown `appendix_entry_types` are the
-> one soft case: individual unknown codex types are **dropped**, and the rest of
-> the config still applies. `ArchiveValidator` allow-lists the path
-> (`ImportRules::ALLOWED_FILES`) but does **not** schema-check its content — that
-> is entirely the importer's job.
-
-> [!NOTE]
-> **The codex appendix carries no archive artifact of its own.** The three appendix
-> fields (`include_codex_appendix`, `appendix_entry_types`, `appendix_include_images`)
-> are pure EPUB-render *preferences* — at export time the appendix pages are built from
-> the entries and media already written under the **Codex branch** below. So the
-> round-trip needs nothing beyond these three booleans/arrays in
-> `publication-setting.json`: an imported project re-renders the appendix from its
-> restored Codex, selecting the same entry types and embedding each entry's first image
-> exactly as the source did.
-
-## `data/word-count-snapshots.json`
-
-The project's writing history — one row per writer-day, cumulative total. A flat array like
-`data/tags.json`, ordered oldest first:
-
-```json
-[
-  { "recorded_on": "2026-08-01", "word_count": 1200 },
-  { "recorded_on": "2026-08-02", "word_count": 1900 }
-]
-```
-
-Always written, even as `[]` — unlike `publication-setting.json`, "no history" is a real,
-representable state, not a lazy default. An archive exported **before this feature** has no
-such file at all; the importer reads that as "no history", not an error. Restored in bulk
-(`DB::table('word_count_snapshots')->insert(...)`, never through the model) so no
-`WordCountSnapshotRecorder` event fires on top of the restored rows.
-
-## The Story branch
-
-The manuscript tree — the project plus its `act → chapter → scene` hierarchy. **Nesting
-mirrors ownership**: a chapter directory lives inside its act, a scene inside its chapter.
-Every entity is a `<id>-slug` directory containing one **JSON descriptor** (scalars, stable
-ids, relationship id lists, and links to its field files) plus its **raw field files**.
-
-### The field-file convention
+## The field-file convention
 
 A content field is never inlined into JSON — it is written as a **sibling file** holding the
-**exact stored column value**, and the JSON links to it with a `*_file` key:
+**exact stored column value**, and the JSON links to it with a `*_file` key. The convention is
+identical in every branch:
 
 - `contents.md` — raw Markdown (scene prose, `contents` column, verbatim — **not** rendered).
 - `description.html`, `notes.html` — the stored **sanitized HTML fragment** (no `<!doctype>`,
   no wrapper, not re-rendered).
-- `dedication.md`, `acknowledgements.md`, `preface.md`, `postface.md` — the project's four
+- `dedication.md`, `acknowledgements.md`, `preface.md`, `postface.md` — a book's four
   front-/back-matter fields, raw Markdown like `contents.md` (never rich HTML, never
   re-rendered). Read on import through the same Markdown sanitizer gate as a scene's
   `contents.md`.
+- `rights.txt` — a book's `rights`. A `text` column, but **plain**, not rich: written as
+  `.txt` and never `.html`, so the importer's sanitizer does not treat it as a fragment.
+- `cover/<name>` — a plain-path cover image (project, book or chapter), co-located with its
+  owner exactly like a codex entry's `cover/…`.
 
 > [!IMPORTANT]
 > A **null or empty** content field omits **both** the file and its `*_file` key. This
 > null-handling rule is identical for every entity and every branch — never write an empty
 > field file or a dangling link.
 
-### Layout & shapes
+A `cover_file` link is the one deliberate exception to "the file is always there": the link is
+written whenever a cover is set, but the **bytes** ship only when the export includes media. A
+metadata-only export therefore declares `cover_file` and ships nothing, and the importer
+restores a **null** cover. Cover columns carry no declared mime, so the import security gate
+content-sniffs them on **bytes alone** (`finfo` + `getimagesize` must agree on an allowed image
+type) — a forged image rejects the archive.
+
+## The Project branch
+
+`data/project/` carries only the project's **own** columns. The publication metadata that used
+to live here belongs to each book now, and is never written at this level.
 
 ```
 data/project/
-  project.json            { id, name, daily_word_goal, total_word_goal, description_file?,
-                             dedication_file?, acknowledgements_file?, preface_file?, postface_file? }
+  project.json            { id, name, daily_word_goal, total_word_goal,
+                            description_file?, cover_file? }
   description.html
-  dedication.md
-  acknowledgements.md
-  preface.md
-  postface.md
-data/acts/<id>-slug/
-  act.json                { id, name, position, project_id, description_file? }
-  description.html
-  chapters/<id>-slug/
-    chapter.json          { id, name, position, act_id, description_file?, cover_file? }
-    description.html
-    cover/<name>          the chapter cover image bytes (only when media is included)
-    scenes/<id>-slug/
-      scene.json          (see below)
-      contents.md
-      description.html
-      notes.html
+  cover/<name>            the dashboard card image (bytes only when media is included)
 ```
 
-`chapter.json`'s `cover_file`:
+## The Books branch
 
-- Present only when the chapter has a cover image, linking a co-located `cover/<name>` file —
-  exactly like a codex entry's `cover/…` media.
-- The **bytes** ship only when the export includes media. A metadata-only export declares
-  `cover_file` but ships no bytes, and the importer restores the chapter with a **null** cover.
-- The cover is a plain path field with no declared mime, so the import security gate
-  content-sniffs it on **bytes alone** (`finfo` + `getimagesize` must agree on an allowed image
-  type). A forged image rejects the archive.
+One directory per book, in `position` order, each holding the book's own descriptor, its field
+files, its EPUB publication config, and its whole manuscript. **Nesting mirrors ownership** —
+the same rule the act → chapter → scene tree inside it already follows.
+
+```
+data/books/<id>-slug/
+  book.json               (see below)
+  description.html
+  rights.txt
+  dedication.md  acknowledgements.md  preface.md  postface.md
+  cover/<name>            the EPUB cover (bytes only when media is included)
+  publication-setting.json  (only when the book has a saved row)
+  acts/<id>-slug/
+    act.json              { id, name, position, book_id, description_file? }
+    description.html
+    chapters/<id>-slug/
+      chapter.json        { id, name, position, act_id, description_file?, cover_file? }
+      description.html
+      cover/<name>        the chapter cover image bytes
+      scenes/<id>-slug/
+        scene.json        (see below)
+        contents.md
+        description.html
+        notes.html
+```
+
+`book.json`:
+
+```json
+{
+  "id": 4,
+  "name": "The Long Winter",
+  "position": 1,
+  "project_id": 42,
+  "language": "en",
+  "author": "A. Writer",
+  "publisher": "Small Press",
+  "isbn": "978-3-16-148410-0",
+  "overview_render_mode": "chapter",
+  "description_file": "description.html",
+  "rights_file": "rights.txt",
+  "dedication_file": "dedication.md",
+  "acknowledgements_file": "acknowledgements.md",
+  "preface_file": "preface.md",
+  "postface_file": "postface.md",
+  "cover_file": "cover/front.jpg"
+}
+```
+
+| Key                     | Notes                                                                     |
+|-------------------------|---------------------------------------------------------------------------|
+| `name`                  | **Nullable, and written literally as `null`** — see the warning below.     |
+| `language`              | The `BookLanguage` **enum value** (e.g. `"en"`).                           |
+| `overview_render_mode`  | The `StoryOverviewMode` **enum value** (`"chapter"` or `"whole"`).         |
+| `position`              | Order within the project; replayed verbatim on import.                     |
+| `*_file`                | Present only when the field is non-empty (the null-handling rule).         |
+
+> [!WARNING]
+> **`name: null` must survive the round trip.** A null name means "this book has no name of
+> its own" and tracks the project's through every rename (see
+> [`architecture.md` → Books](architecture.md#books)). Coercing it to a string on export or on
+> import materializes the value and permanently breaks that tracking. It is the one key here
+> that may legitimately be `null` rather than absent.
+
+> [!WARNING]
+> **The order books are imported in is load-bearing.** `Book::created` copies the project's
+> name onto every unnamed sibling, so inserting a book rewrites a `null` name already restored
+> beside it. `ProjectGraphImporter::importStory()` sorts the archive's books by
+> `(position, id)` — `glob()` returns directory order, which is not position order —
+> reconciles the **first** onto the project's auto-created book with `update()` (which fires no
+> `created` event), then inserts the rest. Reverse it and a two-book import silently renames
+> book one.
 
 `scene.json`:
 
@@ -234,8 +224,9 @@ data/acts/<id>-slug/
 
 > [!NOTE]
 > `event_id` / `mentioned_event_ids` are recorded as **raw ids even though the Timeline
-> branch is written separately**. Export just records the ids; an import resolves them after
-> loading events. The scene never needs the event directories to exist.
+> branch is written separately**. Events stay project-scoped, so a scene in book 2 may point
+> at the same event as one in book 1. Export just records the ids; an import resolves them
+> after loading events.
 
 The scene share-link columns (`share_token`, `share_expires_at`) are **deliberately excluded**
 — they are per-deployment secrets, not manuscript content.
@@ -250,14 +241,95 @@ The scene share-link columns (`share_token`, `share_expires_at`) are **deliberat
 > `SceneReferenceMatcher::syncProject()` once after the graph-import phases, for where the
 > recomputation happens after import.
 
+### `<book>/publication-setting.json`
+
+The book's EPUB **publication settings** — the include-toggles, formatting choices, section
+order and appendix options from the Export-ebook config page (the
+`App\Models\PublicationSetting` row, one per **book**).
+
+Written **only when the book has a saved `publication_settings` row**. A book that never
+visited the config form omits the file entirely; its lossless meaning is "the lazy default"
+(`Book::publicationSettingOrDefault()`).
+
+```json
+{
+  "include_book_cover": true,
+  "include_chapter_covers": false,
+  "include_scene_titles": false,
+  "include_act_descriptions": false,
+  "include_chapter_descriptions": false,
+  "include_scene_descriptions": false,
+  "include_dedication": false,
+  "include_acknowledgements": false,
+  "include_preface": false,
+  "include_postface": false,
+  "include_author": true,
+  "include_publisher": true,
+  "include_rights": true,
+  "include_isbn": true,
+  "chapter_title_format": "chapter_number_title",
+  "table_of_contents_depth": "chapters",
+  "divider_type": "horizontal_rule",
+  "section_order": ["title", "dedication", "acknowledgements", "preface", "toc", "body", "postface", "appendix"],
+  "include_codex_appendix": false,
+  "appendix_entry_types": [],
+  "appendix_include_images": false
+}
+```
+
+Every value is the **raw persisted column value** (booleans as booleans, the three
+enum columns as their backing string, the two ordered lists as arrays) — never
+rendered. `book_id`, `id`, and timestamps are deliberately **omitted**: the
+import remaps the setting onto the freshly-created book.
+
+> [!IMPORTANT]
+> **This descriptor is validated as UNTRUSTED input on import, never trusted.**
+> Unlike the content descriptors, a malformed publication setting must **never
+> fail the whole import** — the config is a presentation preference. The importer
+> validates it against the exact rules the config form uses
+> (`UpdatePublicationSettingRequest::configRules()`); on **any** failure —
+> unreadable/non-object JSON, an illegal enum, a broken `section_order` — it
+> **logs, skips that book's config, and imports the content anyway**, leaving the
+> book on the lazy default. Unknown `appendix_entry_types` are the one soft case:
+> individual unknown codex types are **dropped**, and the rest of the config still
+> applies. `ArchiveValidator` allow-lists the path but does **not** schema-check its
+> content — that is entirely the importer's job.
+
+> [!NOTE]
+> **The codex appendix carries no archive artifact of its own.** The three appendix
+> fields (`include_codex_appendix`, `appendix_entry_types`, `appendix_include_images`)
+> are pure EPUB-render *preferences* — at export time the appendix pages are built from
+> the entries and media already written under the **Codex branch** below, filtered to the
+> ones this book's scenes reference. So the round-trip needs nothing beyond these three
+> booleans/arrays: an imported book re-renders the appendix from the restored Codex and
+> its own restored prose.
+
+## `data/word-count-snapshots.json`
+
+The project's writing history — one row per writer-day, cumulative total, **across every
+book** (goals and history are project-level). A flat array like `data/tags.json`, ordered
+oldest first:
+
+```json
+[
+  { "recorded_on": "2026-08-01", "word_count": 1200 },
+  { "recorded_on": "2026-08-02", "word_count": 1900 }
+]
+```
+
+Always written, even as `[]` — "no history" is a real, representable state, not a lazy
+default. Restored in bulk (`DB::table('word_count_snapshots')->insert(...)`, never through the
+model) so no `WordCountSnapshotRecorder` event fires on top of the restored rows.
+
 ## The Timeline branch
 
-The project's chronology — every **plotline** and **event**, under `data/timeline/`.
+The project's chronology — every **plotline** and **event**, under `data/timeline/`. Shared by
+every book: there is one Start/End bookend pair per project, not per volume.
 
-- **Not nested**, unlike the Story branch: an event belongs to many plotlines, not one, so
+- **Not nested**, unlike the Books branch: an event belongs to many plotlines, not one, so
   both live in flat type folders.
 - Each entity is a `<id>-slug` directory with a JSON descriptor plus its raw
-  `description.html` fragment — same field-file and null-handling rules as the Story branch.
+  `description.html` fragment — same field-file and null-handling rules as everywhere else.
 
 > [!IMPORTANT]
 > The auto-created **anchors are exported like any other row**: the `is_main` **main
@@ -307,19 +379,19 @@ data/timeline/events/<id>-slug/
 | `plotline_ids`   | Ids from the `event_plotline` pivot (`Event::plotlines`), by stable id.       |
 
 > [!NOTE]
-> **Import-time dedup concern.** The app auto-creates the main plotline and the Start/End
-> bookends whenever a project is created (`Project::booted()`). Import therefore
-> **matches those seeded rows rather than duplicating them** — it reuses the existing
-> `is_main` plotline and the earliest/latest `is_fixed` events instead of inserting new
-> ones — and remaps the archive's ids onto them. The export just records them faithfully;
-> reconciliation is the importer's job (`App\Services\Import\ProjectGraphImporter::importTimeline`).
+> **Import-time dedup concern.** The app auto-creates the main plotline, the Start/End
+> bookends and the first **book** whenever a project is created (`Project::booted()`).
+> Import therefore **matches those seeded rows rather than duplicating them** — it reuses the
+> existing `is_main` plotline, the earliest/latest `is_fixed` events and the auto-created
+> book — and remaps the archive's ids onto them. The export just records them faithfully;
+> reconciliation is the importer's job (`App\Services\Import\ProjectGraphImporter`).
 
 ## The Codex branch
 
 The project's world bible: every **Codex entry** (characters, locations, organizations) plus
 its **aliases**, **tags**, **attribute values over time** and **media**, alongside the
-project's flat **attribute definitions** and **tag** lists. The richest branch, and the one
-carrying the *attribute-over-time* relationship.
+project's flat **attribute definitions** and **tag** lists. Shared across books, and the
+richest branch — the one carrying the *attribute-over-time* relationship.
 
 ### Layout & shapes
 
@@ -409,7 +481,8 @@ by stable id:
 ### Media & the "Include images & files" toggle
 
 Media live only on Codex entries (`codex_media`), in three collections: `cover` (single),
-`reference_image`, `reference_file`.
+`reference_image`, `reference_file`. Project, book and chapter covers are plain path columns
+instead — see the field-file convention above.
 
 - Each row is described in the entry's `media[]` array — **`entry.json` IS the manifest**;
   there is deliberately no separate `images/manifest.json`.
@@ -427,45 +500,60 @@ Media live only on Codex entries (`codex_media`), in three collections: `cover` 
 > resizing, or transform. Bytes are read straight off the `public` disk, never the `/storage`
 > URL, so the export needs no `php artisan storage:link` (invariant 5).
 
-## The `book/` reading layer
+## The `books/` reading layer
 
-`book/` is the **human reading version** of the manuscript: deliberately narrow — just the
+`books/` is the **human reading version** of the manuscript: deliberately narrow — just the
 prose, readable — and **not** a source of truth. Import ignores it entirely and reconstructs
 the project from `data/`.
 
 > [!IMPORTANT]
-> **`book/` is the ONE place the export renders Markdown to HTML.** Each scene's `contents`
+> **`books/` is the ONE place the export renders Markdown to HTML.** Each scene's `contents`
 > column (raw CommonMark) is rendered with `Str::markdown()` — the same render path the app uses
 > on the Story overview and the shared-scene page. `data/` never renders anything (invariant 3);
-> `book/` renders only scene `contents`. It carries **no** descriptions, notes, images, statuses,
+> `books/` renders only scene `contents`. It carries **no** descriptions, notes, images, statuses,
 > events, or Codex/Timeline data — those live only, raw, in `data/`.
 
 ### Layout
 
 ```
-book/index.html          the table of contents (acts + chapter links)
-book/NN/                 one folder per act, named by the act's zero-padded position
-book/NN/NN.html          one compiled page per chapter, named by the chapter's
+books/index.html         lists every book, linking its own table of contents
+books/NN/                one folder per book, named by the book's zero-padded position
+books/NN/index.html      that book's table of contents (acts + chapter links)
+books/NN/NN/             one folder per act, named by the act's zero-padded position
+books/NN/NN/NN.html      one compiled page per chapter, named by the chapter's
                          zero-padded PER-ACT position
 ```
 
-Both numbers come from the app-wide `position` column, zero-padded to two digits:
+Every number comes from the app-wide `position` column, zero-padded to two digits:
 
-- The act folder uses the **act** position.
+- The book folder uses the **book** position (its order within the project).
+- The act folder uses the **act** position (its order within that book).
 - The chapter file uses the chapter's **per-act** position — positions restart at `01` inside
   each act, so act 2's first chapter is `02/01.html`, not a global `03`.
 - Reordering positions in the app renumbers the files on the next export.
 
-### `book/index.html` — the table of contents
+`StaticSiteExporter::chapterHref()` still builds `%02d/%02d.html`, unchanged: it is now
+relative to the book's own folder, so the file-identity rule (raw `position`, never a derived
+number) survived the book layer untouched — only the folder above it is new.
 
-- Lists every **act** (title as a heading) with its **chapters** as links to the compiled
-  pages, in `position` order.
-- Links are relative to `book/` (`01/01.html`, `02/01.html`).
+### `books/index.html` — the project index
+
+Every book, in `position` order, linking `NN/index.html`. Titles come from
+`Book::displayName()`, so an unnamed book gets the project's name rather than a blank link.
+Every project holds at least one book, so this list is never empty.
+
+### `books/NN/index.html` — one book's table of contents
+
+- Lists every **act** of that book (title as a heading) with its **chapters** as links to the
+  compiled pages, in `position` order.
+- Links are relative to the book's folder (`01/01.html`, `02/01.html`).
 - Act and chapter titles are **plain text and HTML-escaped** — the title columns are not rich
-  fields.
-- An empty project still emits a valid `index.html`, with no chapter links.
+  fields. Chapter headings are formatted through the book's own
+  `PublicationSetting::chapter_title_format`, the same setting the EPUB obeys, and carry the
+  book-wide number from [`StoryNumbering`](architecture.md#continuous-numbering).
+- A book with no acts still emits a valid `index.html`, with no chapter links.
 
-### `book/NN/NN.html` — a compiled chapter page
+### `books/NN/NN/NN.html` — a compiled chapter page
 
 Each chapter page contains:
 
@@ -474,16 +562,17 @@ Each chapter page contains:
   — with **no scene titles** (the reading layer is continuous prose, not a scene-by-scene index);
 - **prev/next** reading links at **both the top and the bottom** of the page.
 
-Prev/next follow the **global reading order across act boundaries**:
+Prev/next follow the reading order across act boundaries, but **never leave the book** — a book
+is a reading unit:
 
-- The last chapter of act *n* links forward to the first chapter of act *n+1*.
-- Chapter pages sit one level below `index.html`, so a sibling link is `../NN/NN.html`,
+- The last chapter of act *n* links forward to the first chapter of act *n+1*, in the same book.
+- Chapter pages sit one level below their book's TOC, so a sibling link is `../NN/NN.html`,
   crossing into another act's folder when needed (`../02/01.html`).
-- At the ends, the first chapter's *prev* and the last chapter's *next* point back to the TOC
-  at `../index.html`.
+- At the ends, the first chapter's *prev* and the last chapter's *next* both point at
+  `../index.html` — that book's own TOC, not the next book.
 
 Pages are **self-contained**: one full HTML document each, **minimal inline CSS** (readable
 serif body, constrained `max-width`), **no external assets** — so a page opens directly from
-the unzipped archive. The HTML lives in Blade templates under `resources/views/exports/book/`
-(`layout`, `index`, `chapter`), rendered to string by `StaticSiteExporter`. HTML is never
-string-built in the service.
+the unzipped archive. The HTML lives in Blade templates under `resources/views/exports/books/`
+(`layout`, `books-index`, `index`, `chapter`), rendered to string by `StaticSiteExporter`. HTML
+is never string-built in the service.

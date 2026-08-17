@@ -43,6 +43,12 @@ class ArchiveValidatorTest extends TestCase
     private const TINY_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
     /**
+     * The fixture chapter directory. Every manuscript path starts at a book:
+     * data/books/<book>/acts/<act>/chapters/<chapter>/.
+     */
+    private const CHAPTER_DIR = 'data/books/1-book/acts/1-act/chapters/1-chapter';
+
+    /**
      * Scratch directory holding this test's fixture zips; removed in tearDown.
      */
     private string $scratchDirectory;
@@ -142,13 +148,14 @@ class ArchiveValidatorTest extends TestCase
         (new ArchiveValidator)->validate($path);
     }
 
-    public function test_allows_but_ignores_the_book_layer_and_readme(): void
+    public function test_allows_but_ignores_the_books_layer_and_readme(): void
     {
         $path = $this->buildZip(function (ZipArchive $zip): void {
             $this->addValidBaseline($zip);
             $zip->addFromString('README.md', '# My Novel');
-            $zip->addFromString('book/index.html', '<!doctype html>');
-            $zip->addFromString('book/01/01.html', '<!doctype html>');
+            $zip->addFromString('books/index.html', '<!doctype html>');
+            $zip->addFromString('books/01/index.html', '<!doctype html>');
+            $zip->addFromString('books/01/01/01.html', '<!doctype html>');
         });
 
         (new ArchiveValidator)->validate($path);
@@ -158,15 +165,15 @@ class ArchiveValidatorTest extends TestCase
 
     public function test_rejects_a_revisions_sidecar_entry(): void
     {
-        // No v3 export can produce this path; a zip carrying one is malformed
-        // by definition and must be rejected before extraction.
+        // No supported export can produce this path; a zip carrying one is
+        // malformed by definition and must be rejected before extraction.
         $path = $this->buildZip(function (ZipArchive $zip): void {
             $this->addValidBaseline($zip);
-            $zip->addFromString('data/acts/1-act-one/revisions/contents.json', '[]');
+            $zip->addFromString('data/books/1-book/acts/1-act-one/revisions/contents.json', '[]');
         });
 
         $this->expectException(ImportValidationException::class);
-        $this->expectExceptionMessage('unexpected file "data/acts/1-act-one/revisions/contents.json"');
+        $this->expectExceptionMessage('unexpected file "data/books/1-book/acts/1-act-one/revisions/contents.json"');
 
         (new ArchiveValidator)->validate($path);
     }
@@ -177,7 +184,7 @@ class ArchiveValidatorTest extends TestCase
         // rule, not a substring one.
         $path = $this->buildZip(function (ZipArchive $zip): void {
             $this->addValidBaseline($zip);
-            $zip->addFromString('data/acts/1-act-revisions/', '');
+            $zip->addFromString('data/books/1-book/acts/1-act-revisions/', '');
         });
 
         (new ArchiveValidator)->validate($path);
@@ -237,6 +244,36 @@ class ArchiveValidatorTest extends TestCase
         (new ArchiveValidator)->validate($path);
     }
 
+    public function test_rejects_a_version_3_archive(): void
+    {
+        // Version 3 kept the manuscript at data/acts/ and one publication
+        // setting per project. There is no migration path: an archive claiming
+        // it is rejected on the manifest version alone.
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip, manifestOverrides: ['version' => 3]);
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('export format version "3"');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    public function test_rejects_the_previous_layouts_manuscript_path(): void
+    {
+        // data/acts/ left the allow-list with the layout, so a hand-edited
+        // manifest cannot smuggle the old tree back in.
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip);
+            $zip->addFromString('data/acts/1-act-one/act.json', '{}');
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('unexpected file "data/acts/1-act-one/act.json"');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
     // ------------------------------------------------------------------
     // Check 5 — JSON descriptor shapes
     // ------------------------------------------------------------------
@@ -257,11 +294,11 @@ class ArchiveValidatorTest extends TestCase
     {
         $path = $this->buildZip(function (ZipArchive $zip): void {
             $this->addValidBaseline($zip);
-            $zip->addFromString('data/acts/1-act-one/act.json', '{this is not json');
+            $zip->addFromString('data/books/1-book/acts/1-act-one/act.json', '{this is not json');
         });
 
         $this->expectException(ImportValidationException::class);
-        $this->expectExceptionMessage('"data/acts/1-act-one/act.json" is not valid JSON');
+        $this->expectExceptionMessage('"data/books/1-book/acts/1-act-one/act.json" is not valid JSON');
 
         (new ArchiveValidator)->validate($path);
     }
@@ -273,7 +310,7 @@ class ArchiveValidatorTest extends TestCase
             // A scene.json without `position` — position replay (a binding
             // import invariant) would be impossible.
             $zip->addFromString(
-                'data/acts/1-act-one/chapters/1-chapter-one/scenes/1-scene-one/scene.json',
+                'data/books/1-book/acts/1-act-one/chapters/1-chapter-one/scenes/1-scene-one/scene.json',
                 json_encode([
                     'id' => 1,
                     'name' => 'Scene one',
@@ -403,8 +440,43 @@ class ArchiveValidatorTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Check 6 (chapter covers) — content-sniffed like codex media
+    // Check 6 (plain cover columns) — content-sniffed like codex media
     // ------------------------------------------------------------------
+
+    public function test_rejects_a_book_cover_whose_content_is_not_an_image(): void
+    {
+        // A book's cover_file is a plain path column with no declared mime, so
+        // it is judged on its bytes alone — exactly like a chapter's.
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip);
+            $zip->addFromString('data/books/1-book/book.json', json_encode([
+                'id' => 1, 'name' => null, 'position' => 1, 'project_id' => 1,
+                'cover_file' => 'cover/front.jpg',
+            ]));
+            $zip->addFromString('data/books/1-book/cover/front.jpg', '<?php echo "definitely not a jpeg";');
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('is not the type of file it claims to be');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    public function test_rejects_a_project_cover_whose_content_is_not_an_image(): void
+    {
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $zip->addFromString('data/manifest.json', json_encode($this->manifest()));
+            $zip->addFromString('data/project/project.json', json_encode([
+                'id' => 1, 'name' => 'Fixture project', 'cover_file' => 'cover/card.jpg',
+            ]));
+            $zip->addFromString('data/project/cover/card.jpg', '<?php echo "definitely not a jpeg";');
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('is not the type of file it claims to be');
+
+        (new ArchiveValidator)->validate($path);
+    }
 
     public function test_rejects_a_chapter_cover_whose_content_is_not_an_image(): void
     {
@@ -415,7 +487,7 @@ class ArchiveValidatorTest extends TestCase
         $path = $this->buildZip(function (ZipArchive $zip) use ($phpBytes): void {
             $this->addValidBaseline($zip);
             $this->addChapterWithCover($zip, 'cover/portrait.jpg');
-            $zip->addFromString('data/acts/1-act/chapters/1-chapter/cover/portrait.jpg', $phpBytes);
+            $zip->addFromString(self::CHAPTER_DIR.'/cover/portrait.jpg', $phpBytes);
         });
 
         $this->expectException(ImportValidationException::class);
@@ -431,7 +503,7 @@ class ArchiveValidatorTest extends TestCase
         $path = $this->buildZip(function (ZipArchive $zip) use ($pngBytes): void {
             $this->addValidBaseline($zip);
             $this->addChapterWithCover($zip, 'cover/portrait.png');
-            $zip->addFromString('data/acts/1-act/chapters/1-chapter/cover/portrait.png', $pngBytes);
+            $zip->addFromString(self::CHAPTER_DIR.'/cover/portrait.png', $pngBytes);
         });
 
         (new ArchiveValidator)->validate($path);
@@ -475,12 +547,6 @@ class ArchiveValidatorTest extends TestCase
 
     public function test_accepts_a_real_export_archive_with_media(): void
     {
-        // StaticSiteExporter now writes manifest version 4 (data/books/...),
-        // but ImportRules::SUPPORTED_MANIFEST_VERSIONS and ALLOWED_DIRECTORIES
-        // still only understand version 3 until archive-v4-import lands.
-        // Remove this guard when that task updates both.
-        $this->markTestSkipped('Pending archive-v4-import: the validator does not accept v4 archives yet.');
-
         $path = $this->exportSeededProject(includeMedia: true);
 
         (new ArchiveValidator)->validate($path);
@@ -492,9 +558,6 @@ class ArchiveValidatorTest extends TestCase
 
     public function test_accepts_a_real_export_archive_without_media_bytes(): void
     {
-        // See test_accepts_a_real_export_archive_with_media() above.
-        $this->markTestSkipped('Pending archive-v4-import: the validator does not accept v4 archives yet.');
-
         $path = $this->exportSeededProject(includeMedia: false);
 
         (new ArchiveValidator)->validate($path);
@@ -541,7 +604,7 @@ class ArchiveValidatorTest extends TestCase
     private function manifest(array $overrides = []): array
     {
         return array_merge([
-            'version' => 3,
+            'version' => 4,
             'project_id' => 1,
             'exported_at' => '2026-07-13T00:00:00+00:00',
             'includes_media' => true,
@@ -549,13 +612,12 @@ class ArchiveValidatorTest extends TestCase
     }
 
     /**
-     * Add a shape-valid chapter.json (at data/acts/1-act/chapters/1-chapter/)
-     * whose `cover_file` links the given relative path. The cover BYTES are the
-     * caller's business.
+     * Add a shape-valid chapter.json under the fixture book, whose `cover_file`
+     * links the given relative path. The cover BYTES are the caller's business.
      */
     private function addChapterWithCover(ZipArchive $zip, string $coverFile): void
     {
-        $zip->addFromString('data/acts/1-act/chapters/1-chapter/chapter.json', json_encode([
+        $zip->addFromString(self::CHAPTER_DIR.'/chapter.json', json_encode([
             'id' => 1,
             'name' => 'Chapter one',
             'position' => 1,
@@ -593,9 +655,19 @@ class ArchiveValidatorTest extends TestCase
     {
         Storage::fake('public');
 
+        // Genuine png bytes behind every cover, so the export copies real
+        // images for the validator to content-sniff.
+        $pngBytes = base64_decode(self::TINY_PNG_BASE64);
+        Storage::disk('public')->put('project-covers/card.png', $pngBytes);
+        Storage::disk('public')->put('book-covers/front.png', $pngBytes);
+
         $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create(['name' => 'Round-trip project']);
+        $project = Project::factory()->for($user)->create([
+            'name' => 'Round-trip project',
+            'cover_image' => 'project-covers/card.png',
+        ]);
         $book = $project->books()->first();
+        $book->update(['cover_image' => 'book-covers/front.png']);
 
         $act = Act::factory()->for($book)->create(['name' => 'Act one']);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'Chapter one']);
@@ -616,9 +688,6 @@ class ArchiveValidatorTest extends TestCase
             ->startingAt($event)
             ->create(['codex_attribute_id' => $attribute->id, 'value' => '29']);
 
-        // A REAL png on the fake public disk so the export can copy genuine
-        // image bytes the validator then content-sniffs.
-        $pngBytes = base64_decode(self::TINY_PNG_BASE64);
         Storage::disk('public')->put('codex-media/portrait.png', $pngBytes);
         CodexMedia::factory()->cover()->for($entry, 'entry')->create([
             'path' => 'codex-media/portrait.png',

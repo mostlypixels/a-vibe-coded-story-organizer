@@ -175,10 +175,10 @@ class RevisionRecorderTest extends TestCase
 
     public function test_record_sets_project_id_to_its_own_id_for_a_project_entity(): void
     {
-        $project = Project::factory()->create(['rights' => 'original']);
+        $project = Project::factory()->create(['description' => 'original']);
         $user = User::factory()->create();
 
-        $revision = $this->recorder->record($project, 'rights', 'edited', $user, RevisionOrigin::Automatic);
+        $revision = $this->recorder->record($project, 'description', 'edited', $user, RevisionOrigin::Automatic);
 
         $this->assertSame($project->id, $revision->project_id);
     }

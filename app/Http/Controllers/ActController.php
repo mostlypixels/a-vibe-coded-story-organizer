@@ -8,6 +8,7 @@ use App\Http\Controllers\Concerns\ReordersSiblings;
 use App\Http\Controllers\Concerns\ReparentsChildren;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\DestroyActRequest;
+use App\Http\Requests\MoveActToBookRequest;
 use App\Http\Requests\StoreActRequest;
 use App\Http\Requests\UpdateActRequest;
 use App\Models\Act;
@@ -101,10 +102,19 @@ class ActController extends Controller
             ->orderBy('position')
             ->get();
 
+        // Every *other* book in the same project is a candidate destination for
+        // moving this whole act. An empty list hides the move-to-book control —
+        // a one-book project has nowhere to send it.
+        $destinationBooks = $act->book->project->books()
+            ->whereKeyNot($act->book_id)
+            ->orderBy('position')
+            ->get();
+
         return view('acts.edit', [
             'act' => $act,
             'sceneCount' => $sceneCount,
             'destinations' => $destinations,
+            'destinationBooks' => $destinationBooks,
             'numbering' => StoryNumbering::forBook($act->book),
             'totalActs' => $act->book->acts()->count(),
         ]);
@@ -120,6 +130,23 @@ class ActController extends Controller
         $this->recordManualSave($act, $beforeAutosavedFields);
 
         return $this->redirectAfterSave($request, ['acts.edit', $act], ['books.acts.index', $act->book]);
+    }
+
+    /**
+     * Reparents a whole act, with its chapters and scenes, onto another book in
+     * the same project. Position is set explicitly: the `creating()` hook only
+     * fires on insert, and `book_id` is not mass-assignable, so the move goes
+     * through `associate()` (the two pitfalls ReparentsChildren documents).
+     */
+    public function moveToBook(MoveActToBookRequest $request, Act $act): RedirectResponse
+    {
+        $destination = Book::findOrFail($request->validated('book_id'));
+
+        $act->position = $destination->acts()->max('position') + 1;
+        $act->book()->associate($destination);
+        $act->save();
+
+        return redirect()->route('acts.edit', $act);
     }
 
     public function destroy(DestroyActRequest $request, Act $act): RedirectResponse

@@ -9,6 +9,7 @@ use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
+use App\Support\StoryNumbering;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -518,6 +519,112 @@ class ActTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame(1, $act->fresh()->position);
+    }
+
+    // ---------------------------------------------------------------------
+    // Move to another book
+    // ---------------------------------------------------------------------
+
+    public function test_edit_page_hides_the_move_to_book_control_with_one_book(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+
+        $this->actingAs($user)
+            ->get(route('acts.edit', $act))
+            ->assertOk()
+            ->assertDontSee('Move to another book');
+    }
+
+    public function test_edit_page_offers_the_move_to_book_control_with_another_book(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $otherBook = Book::factory()->for($project)->create(['name' => 'Volume Two']);
+        $act = Act::factory()->for($book)->create();
+
+        $this->actingAs($user)
+            ->get(route('acts.edit', $act))
+            ->assertOk()
+            ->assertSee('Move to another book')
+            ->assertSee('Volume Two');
+    }
+
+    public function test_a_user_can_move_an_act_to_another_book(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $destination = Book::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create();
+
+        // The destination already has an act at position 1.
+        Act::factory()->for($destination)->create(['position' => 1]);
+
+        $this->actingAs($user)
+            ->patch(route('acts.move-to-book', $act), ['book_id' => $destination->id])
+            ->assertRedirect(route('acts.edit', $act));
+
+        $act->refresh();
+        $this->assertSame($destination->id, $act->book_id);
+        // Appended after the destination's existing max position (1).
+        $this->assertSame(2, $act->position);
+
+        // The act keeps its whole subtree — only its parent changed.
+        $this->assertSame($act->id, $chapter->fresh()->act_id);
+        $this->assertNotNull($scene->fresh());
+    }
+
+    public function test_numbering_in_both_books_is_recomputed_after_the_move(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $destination = Book::factory()->for($project)->create();
+
+        $stayingActOne = Act::factory()->for($book)->create(['position' => 1]);
+        $moving = Act::factory()->for($book)->create(['position' => 2]);
+        $stayingActTwo = Act::factory()->for($destination)->create(['position' => 1]);
+
+        $this->actingAs($user)
+            ->patch(route('acts.move-to-book', $moving), ['book_id' => $destination->id]);
+
+        // The source book renumbers its remaining act down to 1.
+        $this->assertSame(1, StoryNumbering::forBook($book->fresh())->act($stayingActOne));
+
+        // The destination book gains the moved act as its number 2.
+        $this->assertSame(1, StoryNumbering::forBook($destination->fresh())->act($stayingActTwo));
+        $this->assertSame(2, StoryNumbering::forBook($destination->fresh())->act($moving->fresh()));
+    }
+
+    public function test_moving_an_act_to_a_book_in_another_project_is_forbidden(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $foreignBook = Book::factory()->for(Project::factory()->for($user))->create();
+
+        $this->actingAs($user)
+            ->patch(route('acts.move-to-book', $act), ['book_id' => $foreignBook->id])
+            ->assertForbidden();
+
+        $this->assertSame($book->id, $act->fresh()->book_id);
+    }
+
+    public function test_a_non_owner_cannot_move_an_act_to_another_book(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($owner);
+        $destination = Book::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
+
+        $this->actingAs($other)
+            ->patch(route('acts.move-to-book', $act), ['book_id' => $destination->id])
+            ->assertForbidden();
+
+        $this->assertSame($book->id, $act->fresh()->book_id);
     }
 
     public function test_the_edit_page_links_to_the_acts_revision_history(): void

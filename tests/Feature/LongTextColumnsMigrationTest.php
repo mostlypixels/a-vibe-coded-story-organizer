@@ -39,7 +39,7 @@ class LongTextColumnsMigrationTest extends TestCase
     private function registeredColumns(): array
     {
         return [
-            'projects' => ['description', 'dedication', 'acknowledgements', 'preface', 'postface', 'rights'],
+            'projects' => ['description'],
             'books' => ['description', 'dedication', 'acknowledgements', 'preface', 'postface', 'rights'],
             'acts' => ['description'],
             'chapters' => ['description'],
@@ -79,16 +79,16 @@ class LongTextColumnsMigrationTest extends TestCase
         $this->assertSame($longValue, $fresh->contents);
     }
 
-    public function test_project_rights_round_trips_a_payload_larger_than_the_old_mysql_text_cap(): void
+    public function test_project_description_round_trips_a_payload_larger_than_the_old_mysql_text_cap(): void
     {
         $longValue = str_repeat('b', 100_000);
 
-        $project = Project::factory()->create(['rights' => $longValue]);
+        $project = Project::factory()->create(['description' => $longValue]);
 
         $fresh = Project::find($project->id);
 
-        $this->assertSame(100_000, strlen($fresh->rights));
-        $this->assertSame($longValue, $fresh->rights);
+        $this->assertSame(100_000, strlen($fresh->description));
+        $this->assertSame($longValue, $fresh->description);
     }
 
     public function test_book_dedication_round_trips_a_payload_larger_than_the_old_mysql_text_cap(): void

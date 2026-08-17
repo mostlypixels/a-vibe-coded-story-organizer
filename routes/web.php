@@ -223,6 +223,9 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->shallow();
     Route::patch('/acts/{act}/move-up', [ActController::class, 'moveUp'])->name('acts.move-up');
     Route::patch('/acts/{act}/move-down', [ActController::class, 'moveDown'])->name('acts.move-down');
+    // Reparents the whole act (with its chapters and scenes) onto another book
+    // in the same project — the act edit page's destination-book control.
+    Route::patch('/acts/{act}/move-to-book', [ActController::class, 'moveToBook'])->name('acts.move-to-book');
 
     Route::resource('books.chapters', ChapterController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])

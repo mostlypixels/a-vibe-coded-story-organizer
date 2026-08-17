@@ -25,7 +25,7 @@ use ZipArchive;
  *      get the same test before they are joined: that JSON is attacker-controlled
  *      too.
  *   3. Every entry sits inside the allow-listed arborescence ({@see ImportRules});
- *      book/ and README.md are allowed (real exports have them) but never read.
+ *      books/ and README.md are allowed (real exports have them) but never read.
  *   4. data/manifest.json exists, parses, and its version is supported.
  *   5. Every JSON descriptor decodes and carries its required keys (the shapes in
  *      documentation/export-format.md).
@@ -33,9 +33,9 @@ use ZipArchive;
  *      bytes are included), matches its declared size, and — crucially — its
  *      ACTUAL content (finfo/getimagesize on the bytes) matches its declared
  *      mime/collection. This is the check that stops a renamed executable.
- *      A chapter.json `cover_file` is sniffed the same way, but it declares no
- *      size and no mime, so the bytes are only measured against the allowed
- *      image types.
+ *      A project/book/chapter `cover_file` is sniffed the same way, but it
+ *      declares no size and no mime, so the bytes are only measured against the
+ *      allowed image types.
  */
 class ArchiveValidator
 {
@@ -47,7 +47,10 @@ class ArchiveValidator
      * @var array<string, array<int, string>>
      */
     private const DESCRIPTOR_REQUIRED_KEYS = [
-        'act.json' => ['id', 'name', 'position', 'project_id'],
+        // `name` may hold null on a book (it then tracks the project's name),
+        // but the key must still be present — see requireKeys().
+        'book.json' => ['id', 'name', 'position', 'project_id'],
+        'act.json' => ['id', 'name', 'position', 'book_id'],
         'chapter.json' => ['id', 'name', 'position', 'act_id'],
         'scene.json' => ['id', 'name', 'position', 'status', 'chapter_id', 'event_id', 'mentioned_event_ids'],
         'plotline.json' => ['id', 'name', 'color', 'is_main', 'project_id'],
@@ -90,6 +93,15 @@ class ArchiveValidator
     private const MEDIA_ITEM_REQUIRED_KEYS = ['id', 'collection', 'position', 'original_name', 'mime_type', 'size', 'file'];
 
     /**
+     * Descriptor basenames that may link a plain `cover_file` (check 6). These
+     * are path columns with no declared mime, so their bytes are judged on
+     * content alone — see {@see validateCovers()}.
+     *
+     * @var array<int, string>
+     */
+    private const COVER_BEARING_DESCRIPTORS = ['project.json', 'book.json', 'chapter.json'];
+
+    /**
      * Validate the archive at the given path, throwing on the first violation.
      *
      * @throws ImportValidationException
@@ -108,7 +120,7 @@ class ArchiveValidator
             $manifest = $this->validateManifest($zip);       // check 4
             $entryDescriptors = $this->validateDescriptors($zip, $entries); // check 5
             $this->validateMedia($zip, $entryDescriptors, (bool) $manifest['includes_media']); // check 6
-            $this->validateChapterCovers($zip, $entries, (bool) $manifest['includes_media']); // check 6 (chapter covers)
+            $this->validateCovers($zip, $entries, (bool) $manifest['includes_media']); // check 6 (plain cover columns)
         } finally {
             $zip->close();
         }
@@ -342,12 +354,12 @@ class ArchiveValidator
     }
 
     /**
-     * Check 6 (chapter covers): every chapter.json that links a `cover_file`
-     * points at a genuine image inside its own directory. The cover is a plain
-     * path field — unlike codex media it carries no declared mime — so it is
-     * validated on CONTENT alone: the bytes must sniff
-     * (finfo AND getimagesize, agreeing) as one of the allowed image types. A
-     * forged image (e.g. a renamed .php) is rejected.
+     * Check 6 (plain cover columns): every project.json, book.json and
+     * chapter.json that links a `cover_file` points at a genuine image inside
+     * its own directory. A cover is a plain path field — unlike codex media it
+     * carries no declared mime — so it is validated on CONTENT alone: the bytes
+     * must sniff (finfo AND getimagesize, agreeing) as one of the allowed image
+     * types. A forged image (e.g. a renamed .php) is rejected.
      *
      * The file's presence is required only when the manifest says bytes are
      * included, mirroring codex media: a metadata-only export legitimately ships
@@ -355,17 +367,17 @@ class ArchiveValidator
      *
      * @param  array<int, string>  $entries
      */
-    private function validateChapterCovers(ZipArchive $zip, array $entries, bool $includesMedia): void
+    private function validateCovers(ZipArchive $zip, array $entries, bool $includesMedia): void
     {
         foreach ($entries as $path) {
-            if (basename($path) !== 'chapter.json' || ! str_starts_with($path, 'data/')) {
+            if (! in_array(basename($path), self::COVER_BEARING_DESCRIPTORS, true) || ! str_starts_with($path, 'data/')) {
                 continue;
             }
 
             $descriptor = $this->decodeJson($zip, $path);
 
             if (! array_key_exists('cover_file', $descriptor)) {
-                continue; // a chapter without a cover
+                continue; // an entity without a cover
             }
 
             // The declared relative path is attacker-controlled JSON — give it the
@@ -387,15 +399,15 @@ class ArchiveValidator
                 continue;
             }
 
-            $this->validateChapterCoverContent($path, $archivePath, $bytes);
+            $this->validateCoverContent($path, $archivePath, $bytes);
         }
     }
 
     /**
-     * Content-sniff one chapter cover's bytes: finfo and getimagesize must agree on
-     * an allowed image mime. A renamed non-image fails both sniffers and is rejected.
+     * Content-sniff one cover's bytes: finfo and getimagesize must agree on an
+     * allowed image mime. A renamed non-image fails both sniffers and is rejected.
      */
-    private function validateChapterCoverContent(string $descriptorPath, string $archivePath, string $bytes): void
+    private function validateCoverContent(string $descriptorPath, string $archivePath, string $bytes): void
     {
         $sniffedMime = (new finfo(FILEINFO_MIME_TYPE))->buffer($bytes) ?: '';
         $imageInfo = getimagesizefromstring($bytes);

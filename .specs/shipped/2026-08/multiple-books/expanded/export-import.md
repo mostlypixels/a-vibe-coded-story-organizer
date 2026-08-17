@@ -37,7 +37,7 @@ data/codex/…                      unchanged (project-scoped)
   "id": 4, "name": "The Long Winter", "position": 1, "project_id": 42,
   "language": "en", "author": "…", "publisher": "…", "isbn": "…",
   "overview_render_mode": "chapter",
-  "description_file": "description.html", "rights_file": "rights.html",
+  "description_file": "description.html", "rights_file": "rights.txt",
   "dedication_file": "dedication.md", "acknowledgements_file": "acknowledgements.md",
   "preface_file": "preface.md", "postface_file": "postface.md",
   "cover_file": "cover/front.jpg"

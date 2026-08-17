@@ -2,12 +2,9 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\BookLanguage;
-use App\Rules\ValidIsbn;
 use App\Support\AutosavableFields;
 use App\Support\CodexMediaRules;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /**
  * This form's `description` is also autosaved, so its rule comes from
@@ -44,15 +41,10 @@ class UpdateProjectRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('project', 'description'),
 
-            // Book (epub) metadata. `language` is required with a DB default of 'en', and is
-            // a closed dropdown (BookLanguage) rather than free BCP-47 text — add a case there
-            // when another language is supported, don't widen this back to a string rule.
-            // The rest are optional. `cover_image` reuses the Codex cover file rules (same
-            // mime/size list) rather than duplicating them here.
-            'language' => ['required', Rule::enum(BookLanguage::class)],
-            'author' => ['nullable', 'string', 'max:255'],
-            'publisher' => ['nullable', 'string', 'max:255'],
-            'isbn' => ['nullable', 'string', new ValidIsbn],
+            // The dashboard card image. It reuses the Codex cover file rules
+            // (same mime/size list) rather than duplicating them here. The EPUB
+            // metadata and the EPUB cover belong to a Book — see
+            // UpdateBookRequest.
             'cover_image' => CodexMediaRules::coverRules(),
 
             // Open-ended writing targets. No cross-validation against each

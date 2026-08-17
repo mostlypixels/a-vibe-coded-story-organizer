@@ -5,9 +5,29 @@ appears in code review or docs and you're unsure what it means, start here.
 
 ## Domain terms
 
-**Project** — the top-level container a user works in. Owns plotlines, events, and the
-manuscript structure. Ownership of every child resource is derived from the project's
-`user_id`.
+**Project** — the top-level container a user works in. Owns one or more **books** (the
+manuscript) plus the shared world: plotlines, events, the codex, and the word-count history.
+Ownership of every child resource is derived from the project's `user_id`.
+
+**Book** — one volume of a project, and the owner of the manuscript: `Book → Act → Chapter →
+Scene`. It also owns everything a volume publishes on — `language`, `author`, `publisher`,
+`isbn`, `rights`, the four front-/back-matter fields, the EPUB cover — and one
+`PublicationSetting`, so each book exports as its own `.epub`. Every project holds **at least
+one**; the last one cannot be deleted (a `403`, like the main plotline). A project with a
+single book behaves exactly as a project did before books existed. See
+[architecture](architecture.md#books).
+
+**Book name fallback** — `books.name` is **nullable**, and `null` means *"no name of my own"*:
+`Book::displayName()` returns the project's name instead, so a one-book project cannot hold two
+names that drift apart. Adding a second book fires a `Book::created` hook that copies the
+project's current name onto every unnamed sibling, freezing volume one's label before a later
+rename to a series title can reach it. `Book::hasOwnName()` (`name !== null`) is the single
+predicate deciding how visible the book layer is: picker second line, breadcrumb crumb, page
+title.
+
+> [!WARNING]
+> Every display site calls `displayName()`, never `->name` — `->name` renders an empty string
+> for the common case.
 
 **Plotline** — a narrative thread through the story. A project has many. One is the
 **main plotline**.
@@ -28,21 +48,23 @@ the earliest `is_fixed` event, the timeline anchor never moves. Resolved through
 `Project::startEvent()` / `Project::endEvent()` methods in canonical `(event_datetime, id)`
 order — never re-queried elsewhere.
 
-**Act → Chapter → Scene** — the three-level manuscript hierarchy. An act has many chapters;
-a chapter has many scenes. Strictly nested (no many-to-many).
+**Act → Chapter → Scene** — the three-level manuscript hierarchy inside a **book**. An act has
+many chapters; a chapter has many scenes. Strictly nested (no many-to-many).
 
-**Position** — the integer that orders acts within a project, chapters within an act, and
-scenes within a chapter. Auto-assigned on create, gappy (never renumbered), and the only thing
-move-up/move-down writes. Titles never encode it.
+**Position** — the integer that orders books within a project, acts within a **book**, chapters
+within an act, and scenes within a chapter. Auto-assigned on create, gappy (never renumbered),
+and the only thing move-up/move-down writes. Titles never encode it.
 
-**Number** — the project-wide, gap-free display rank shown to the reader/writer: the `#`
+**Number** — the **book**-wide, gap-free display rank shown to the reader/writer: the `#`
 column, edit-page hints, the Story overview, and both exports. Derived from `position` at read
 time by `StoryNumbering`, never stored — acts, chapters and scenes each rank continuously
-across their parent's boundary, so a displayed number never has a gap. See
+across their parent's boundary, so a displayed number never has a gap. Numbering **restarts at
+each book**: act 1 of book 2 is *Act 1*. See
 [architecture](architecture.md#continuous-numbering).
 
-**Story overview** — the read-only page (`projects.story.index`) that renders the whole
-act/chapter/scene tree with a table of contents and Markdown-rendered scene contents.
+**Story overview** — the read-only page (`books.story.overview`) that renders one book's whole
+act/chapter/scene tree with a table of contents and Markdown-rendered scene contents. Its
+render mode (chapter at a time, or the whole book) is `books.overview_render_mode`.
 
 **Codex entry** — a reference sheet for a story entity: a **character**, **location**, or
 **organization**. All three share one `codex_entries` table, distinguished by a `type` enum
@@ -128,7 +150,8 @@ are the *select-only* variant — custom-built, but no free typing.
 
 **Aggregate** (domain-driven design) — a cluster of related objects treated as a unit for data
 changes, with one entity as the root. Here, `Project` is the aggregate root for the manuscript
-hierarchy; you authorize and reason about scenes *through* their project.
+hierarchy; you authorize and reason about scenes *through* their book and its project
+(`$scene->chapter->act->book->project`).
 
 **Policy** — a class holding authorization logic for a model (`app/Policies/ProjectPolicy`).
 Controllers call `$this->authorize('update', $project)`; the policy returns `true`/`false`.
@@ -151,12 +174,12 @@ Follow the guideline: **don't add a service before there is a real second caller
 
 **Model lifecycle hook (`booted()`)** — Eloquent event listeners registered in a model's
 `booted()` method (`creating`, `created`, ...). Used here to enforce **invariants**:
-auto-assigning `position` and auto-creating the main plotline. Distinct from application
-workflow, which does *not* belong in models.
+auto-assigning `position`, and auto-creating the main plotline, the Start/End bookends and the
+project's first book. Distinct from application workflow, which does *not* belong in models.
 
 > [!WARNING]
 > Lifecycle hooks are suppressed when a seeder uses `WithoutModelEvents`. See the seeding
-> caveat in [architecture](architecture.md#act--chapter--scene-ordering).
+> caveat in [architecture](architecture.md#book--act--chapter--scene-ordering).
 
 **Backed enum** — a PHP enum with a scalar value (`enum SceneStatus: string`). Stored as a
 string column, cast on the model, validated with `Rule::enum()`, and given a human label via a

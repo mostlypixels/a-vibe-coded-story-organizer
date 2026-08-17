@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\ProjectImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -79,13 +80,17 @@ class ImportTest extends TestCase
         $this->assertSame('Fixture project', $project->name);
         $this->assertSame($user->id, $project->user_id);
 
-        // The fixture archive's project.json omits the four epub-configuration
+        // Project::created seeds a book, and the archive's only book UPDATES
+        // that row rather than adding a second one.
+        $book = $project->books()->sole();
+
+        // The fixture archive's book.json omits the four epub-configuration
         // front-/back-matter `*_file` links, so they must import as null rather
         // than crash the graph importer.
-        $this->assertNull($project->dedication);
-        $this->assertNull($project->acknowledgements);
-        $this->assertNull($project->preface);
-        $this->assertNull($project->postface);
+        $this->assertNull($book->dedication);
+        $this->assertNull($book->acknowledgements);
+        $this->assertNull($book->preface);
+        $this->assertNull($book->postface);
 
         $response->assertRedirect(route('projects.show', $project));
 
@@ -228,6 +233,48 @@ class ImportTest extends TestCase
         // Rejected at the Form Request — nothing was ever stored or imported.
         $this->assertSame(0, Import::count());
         $this->assertSame(0, Project::count());
+    }
+
+    // ---------------------------------------------------------------------
+    // The version gate — the previous layout is rejected, never migrated
+    // ---------------------------------------------------------------------
+
+    public function test_a_version_3_archive_is_rejected(): void
+    {
+        // Version 3 kept the manuscript at data/acts/ and one publication
+        // setting per project. Nothing reads that layout any more, so an
+        // archive claiming it comes back as a form error.
+        $this->actingAs(User::factory()->create())
+            ->post(route('admin.data.import'), ['archive' => $this->makeValidUpload(manifestVersion: 3)])
+            ->assertSessionHasErrors('archive');
+
+        $this->assertSame(0, Project::count());
+        $this->assertSame(0, Import::count());
+    }
+
+    // ---------------------------------------------------------------------
+    // A book's publication config is untrusted input, never fatal
+    // ---------------------------------------------------------------------
+
+    public function test_a_malformed_book_publication_config_is_logged_and_the_content_still_imports(): void
+    {
+        Log::spy();
+
+        $this->actingAs($user = User::factory()->create())
+            ->post(route('admin.data.import'), [
+                'archive' => $this->makeValidUpload(publicationSetting: '{"chapter_title_format": "not_a_real_format"}'),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $project = $user->projects()->sole();
+
+        // The config was discarded — the book rides the lazy default...
+        $this->assertFalse($project->books()->sole()->publicationSetting()->exists());
+        Log::shouldHaveReceived('warning')->once();
+
+        // ...while the manuscript imported in full.
+        $this->assertSame('Act One', $project->acts()->sole()->name);
+        $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
     }
 
     // ---------------------------------------------------------------------
@@ -460,11 +507,15 @@ class ImportTest extends TestCase
 
     /**
      * A complete, valid export archive as an UploadedFile: manifest, project,
-     * the two timeline anchors on the main plotline, one act → chapter → two
-     * scenes, tags, one attribute, and one codex entry with a cover image whose
-     * bytes are included. Mirrors the ProjectImporter service-test fixture.
+     * the two timeline anchors on the main plotline, one book → act → chapter →
+     * two scenes, tags, one attribute, and one codex entry with a cover image
+     * whose bytes are included. Mirrors the ProjectImporter service-test fixture.
+     *
+     * $manifestVersion writes a version other than the current one (the version
+     * gate); $publicationSetting adds a raw {bookDir}/publication-setting.json
+     * so a test can hand the importer a malformed config.
      */
-    private function makeValidUpload(): UploadedFile
+    private function makeValidUpload(int $manifestVersion = 4, ?string $publicationSetting = null): UploadedFile
     {
         $zipPath = tempnam(sys_get_temp_dir(), 'import-http-test');
         $this->tempFiles[] = $zipPath;
@@ -475,7 +526,7 @@ class ImportTest extends TestCase
         $zip->open($zipPath, ZipArchive::OVERWRITE);
 
         $zip->addFromString('data/manifest.json', json_encode([
-            'version' => 3, 'project_id' => 900,
+            'version' => $manifestVersion, 'project_id' => 900,
             'exported_at' => '2026-07-13T00:00:00+00:00', 'includes_media' => true,
         ]));
 
@@ -496,13 +547,20 @@ class ImportTest extends TestCase
             'is_fixed' => true, 'project_id' => 900, 'plotline_ids' => [700],
         ]));
 
-        $zip->addFromString('data/acts/100-act-one/act.json', json_encode([
-            'id' => 100, 'name' => 'Act One', 'position' => 1, 'project_id' => 900,
+        $bookDir = 'data/books/50-fixture-book';
+        $zip->addFromString("{$bookDir}/book.json", json_encode([
+            'id' => 50, 'name' => null, 'position' => 1, 'project_id' => 900,
         ]));
-        $zip->addFromString('data/acts/100-act-one/chapters/200-chapter-one/chapter.json', json_encode([
+        if ($publicationSetting !== null) {
+            $zip->addFromString("{$bookDir}/publication-setting.json", $publicationSetting);
+        }
+        $zip->addFromString("{$bookDir}/acts/100-act-one/act.json", json_encode([
+            'id' => 100, 'name' => 'Act One', 'position' => 1, 'book_id' => 50,
+        ]));
+        $zip->addFromString("{$bookDir}/acts/100-act-one/chapters/200-chapter-one/chapter.json", json_encode([
             'id' => 200, 'name' => 'Chapter One', 'position' => 1, 'act_id' => 100,
         ]));
-        $sceneDir = 'data/acts/100-act-one/chapters/200-chapter-one/scenes';
+        $sceneDir = "{$bookDir}/acts/100-act-one/chapters/200-chapter-one/scenes";
         $zip->addFromString("{$sceneDir}/300-scene-b/scene.json", json_encode([
             'id' => 300, 'name' => 'Scene B', 'position' => 2, 'status' => 'draft',
             'chapter_id' => 200, 'event_id' => 800, 'mentioned_event_ids' => [801],
@@ -551,7 +609,7 @@ class ImportTest extends TestCase
 
         $zip = new ZipArchive;
         $zip->open($zipPath, ZipArchive::OVERWRITE);
-        $zip->addFromString('data/manifest.json', json_encode(['version' => 3]));
+        $zip->addFromString('data/manifest.json', json_encode(['version' => 4]));
         $zip->addFromString('../escape.txt', 'pwned');
         $zip->close();
 

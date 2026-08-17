@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BookLanguage;
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
 use App\Enums\ImportPhase;
 use App\Enums\SceneStatus;
 use App\Http\Controllers\ImportController;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexAttribute;
 use App\Models\CodexAttributeValue;
@@ -67,27 +69,12 @@ class ImportRoundTripTest extends TestCase
         Storage::fake('public');
     }
 
-    /**
-     * StaticSiteExporter now writes manifest version 4 (data/books/... + the
-     * books/ reading layer), but ImportRules::SUPPORTED_MANIFEST_VERSIONS and
-     * ProjectGraphImporter still only understand version 3 until archive-v4-import
-     * lands. Every test here that round-trips through the REAL exporter and the
-     * real HTTP import route is temporarily skipped rather than rewritten twice;
-     * remove this guard when that task restores full v4 import support.
-     */
-    private function skipUntilV4ImportLands(): void
-    {
-        $this->markTestSkipped('Pending archive-v4-import: the importer does not read v4 archives yet.');
-    }
-
     // ------------------------------------------------------------------
     // Round-trip WITH media bytes
     // ------------------------------------------------------------------
 
     public function test_a_full_export_import_round_trip_reconstructs_the_whole_project(): void
     {
-        $this->skipUntilV4ImportLands();
-
         $owner = User::factory()->create();
         $source = $this->seedSourceProject($owner);
 
@@ -107,21 +94,66 @@ class ImportRoundTripTest extends TestCase
         $this->assertSame($importer->id, $imported->user_id, 'the imported project is owned by the importer, not the source owner');
         $this->assertSame($source->name, $imported->name);
         $this->assertSame($source->description, $imported->description);
-        $this->assertSame($source->dedication, $imported->dedication);
-        $this->assertSame($source->acknowledgements, $imported->acknowledgements);
-        $this->assertSame($source->preface, $imported->preface);
-        $this->assertSame($source->postface, $imported->postface);
         $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
 
-        // ---- Story tree: names, order (by position), and content -------
-        // Source acts by position: Act One (1) then Act Two (2) — even though
-        // Act Two was created first. The imported tree must read the same way.
+        // The project cover lands at a fresh path holding the source bytes.
+        $this->assertNotNull($imported->cover_image);
+        $this->assertNotSame($source->cover_image, $imported->cover_image);
         $this->assertSame(
-            ['Act One', 'Act Two'],
-            $imported->acts()->orderBy('acts.position')->pluck('acts.name')->all(),
+            Storage::disk('public')->get($source->cover_image),
+            Storage::disk('public')->get($imported->cover_image),
         );
 
-        $importedActOne = $imported->acts()->where('acts.name', 'Act One')->firstOrFail();
+        // ---- Books: count, order, and every moved metadata column ------
+        $sourceBooks = $source->books()->get();
+        $importedBooks = $imported->books()->get();
+        $this->assertCount(2, $importedBooks);
+        $this->assertSame([1, 2], $importedBooks->pluck('position')->all());
+
+        [$firstBook, $secondBook] = [$importedBooks[0], $importedBooks[1]];
+
+        $this->assertSame('Volume One', $firstBook->name);
+        $this->assertSame(BookLanguage::French, $firstBook->language);
+        $this->assertSame('Jane Author', $firstBook->author);
+        $this->assertSame('Imaginary Press', $firstBook->publisher);
+        $this->assertSame('All rights reserved.', $firstBook->rights);
+        $this->assertSame('978-0-306-40615-7', $firstBook->isbn);
+        $this->assertSame($sourceBooks[0]->description, $firstBook->description);
+        $this->assertSame('For *everyone* who believed.', $firstBook->dedication);
+        $this->assertSame('Thanks to my **editor**.', $firstBook->acknowledgements);
+        $this->assertSame('A word before we begin.', $firstBook->preface);
+        $this->assertSame('And so it ends.', $firstBook->postface);
+
+        // The book cover, like the project's, is copied to a fresh path.
+        $this->assertNotNull($firstBook->cover_image);
+        $this->assertNotSame($sourceBooks[0]->cover_image, $firstBook->cover_image);
+        $this->assertSame(
+            Storage::disk('public')->get($sourceBooks[0]->cover_image),
+            Storage::disk('public')->get($firstBook->cover_image),
+        );
+
+        // The second book carries its OWN metadata and no name at all: a null
+        // name must survive, so the book keeps tracking the project's name.
+        $this->assertNull($secondBook->name);
+        $this->assertSame($imported->name, $secondBook->displayName());
+        $this->assertSame(BookLanguage::English, $secondBook->language);
+        $this->assertSame('A. Nother', $secondBook->author);
+        $this->assertNull($secondBook->cover_image);
+
+        // ---- Story tree: names, order (by position), and content -------
+        // Each book keeps its OWN acts. Source acts by position within book
+        // one: Act One (1) then Act Two (2) — even though Act Two was created
+        // first. The imported tree must read the same way.
+        $this->assertSame(
+            ['Act One', 'Act Two'],
+            $firstBook->acts()->orderBy('position')->pluck('name')->all(),
+        );
+        $this->assertSame(
+            ['Interlude'],
+            $secondBook->acts()->orderBy('position')->pluck('name')->all(),
+        );
+
+        $importedActOne = $firstBook->acts()->where('name', 'Act One')->firstOrFail();
         $importedChapter = $importedActOne->chapters()->orderBy('position')->firstOrFail();
         $this->assertSame('Chapter One', $importedChapter->name);
 
@@ -234,8 +266,6 @@ class ImportRoundTripTest extends TestCase
 
     public function test_a_round_trip_without_media_keeps_metadata_but_creates_no_files(): void
     {
-        $this->skipUntilV4ImportLands();
-
         $owner = User::factory()->create();
         $source = $this->seedSourceProject($owner);
 
@@ -281,8 +311,6 @@ class ImportRoundTripTest extends TestCase
      */
     public function test_import_regenerates_scene_codex_references_that_the_archive_never_carried(): void
     {
-        $this->skipUntilV4ImportLands();
-
         $owner = User::factory()->create();
         [$project, $chapter] = $this->seedReferenceSkeleton($owner);
 
@@ -331,8 +359,6 @@ class ImportRoundTripTest extends TestCase
      */
     public function test_import_regenerates_overlapping_alias_references_to_every_matching_entry(): void
     {
-        $this->skipUntilV4ImportLands();
-
         $owner = User::factory()->create();
         [$project, $chapter] = $this->seedReferenceSkeleton($owner);
 
@@ -459,8 +485,6 @@ class ImportRoundTripTest extends TestCase
 
     public function test_a_chapter_cover_survives_an_export_import_round_trip(): void
     {
-        $this->skipUntilV4ImportLands();
-
         $owner = User::factory()->create();
         $project = Project::factory()->for($owner)->create(['name' => 'Covered Chronicle']);
         $book = $project->books()->first();
@@ -496,8 +520,6 @@ class ImportRoundTripTest extends TestCase
 
     public function test_a_metadata_only_export_imports_a_chapter_with_no_cover(): void
     {
-        $this->skipUntilV4ImportLands();
-
         $owner = User::factory()->create();
         $project = Project::factory()->for($owner)->create(['name' => 'Metadata Only Chronicle']);
         $book = $project->books()->first();
@@ -554,12 +576,36 @@ class ImportRoundTripTest extends TestCase
         $project = Project::factory()->for($owner)->create([
             'name' => 'The Round Trip Chronicle',
             'description' => '<p>An <strong>epic</strong> tale.</p>',
+            // The dashboard card image, a different image from a book cover.
+            'cover_image' => UploadedFile::fake()->image('card.jpg', 20, 20)->store('project-covers', 'public'),
+        ]);
+
+        // Book one: named, and carrying every moved publication column.
+        $book = $project->books()->first();
+        $book->update([
+            'name' => 'Volume One',
+            'description' => '<p>The <em>first</em> volume.</p>',
+            'language' => BookLanguage::French,
+            'author' => 'Jane Author',
+            'publisher' => 'Imaginary Press',
+            'rights' => 'All rights reserved.',
+            'isbn' => '978-0-306-40615-7',
             'dedication' => 'For *everyone* who believed.',
             'acknowledgements' => 'Thanks to my **editor**.',
             'preface' => 'A word before we begin.',
             'postface' => 'And so it ends.',
+            'cover_image' => UploadedFile::fake()->image('front.jpg', 20, 20)->store('book-covers', 'public'),
         ]);
-        $book = $project->books()->first();
+
+        // Book two: DIFFERENT metadata and deliberately unnamed, so the
+        // round-trip has to carry a null name across rather than materialize
+        // the project's name into it.
+        $secondBook = Book::factory()->for($project)->create([
+            'name' => null,
+            'position' => 2,
+            'language' => BookLanguage::English,
+            'author' => 'A. Nother',
+        ]);
 
         // Rename + restyle the auto-created is_main plotline (reconciliation axis).
         $main = $project->plotlines()->where('is_main', true)->firstOrFail();
@@ -584,6 +630,9 @@ class ImportRoundTripTest extends TestCase
         $actOne = Act::factory()->for($book)->create(['name' => 'Act One', 'position' => 1]);
         Chapter::factory()->for($actTwo)->create(['name' => 'Chapter Two', 'position' => 1]);
         $chapter = Chapter::factory()->for($actOne)->create(['name' => 'Chapter One', 'position' => 1]);
+
+        // Book two's own act, proving the manuscript splits per book.
+        Act::factory()->for($secondBook)->create(['name' => 'Interlude', 'position' => 1]);
 
         // Scene B authored before Scene A but positioned second.
         $sceneB = Scene::factory()->for($chapter)->create([

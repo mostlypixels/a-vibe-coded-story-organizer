@@ -141,6 +141,15 @@ class Book extends Model
     }
 
     /**
+     * A revisions heading is a display site like any other. The `name` column
+     * alone prints `#<id>` for a book that has no name of its own.
+     */
+    public function revisionDisplayName(): string
+    {
+        return $this->displayName();
+    }
+
+    /**
      * The name to print for this book, anywhere a reader sees one: its own name,
      * or the project's while it has none.
      */

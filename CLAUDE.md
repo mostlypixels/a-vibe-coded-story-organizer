@@ -73,7 +73,9 @@ Use the `mp-draft-spec` skill. Folder location and `status:` frontmatter must ag
 
 * Every controller action that reads or writes a resource must authorize it. Authorization flows from
   the owning `Project` via `ProjectPolicy` (`view` / `update` / `delete`); child resources authorize by
-  walking up to their project (e.g. `$this->authorize('update', $scene->chapter->act->project)`).
+  walking up to their project (e.g. `$this->authorize('update', $scene->chapter->act->book->project)`).
+  The manuscript hangs off a `Book`, so every story walk goes through it; `Book` has no policy of its
+  own either (`$this->authorize('update', $book->project)`).
 * Mirror the same check in the Form Request's `authorize()` (`$this->user()->can('update', ...)`).
 * Never rely on route model binding or hidden form fields alone for access control.
 * Always cover the negative case in tests: a non-owner must get a 403.
@@ -110,9 +112,10 @@ reached; do not re-add it. The `x-robots-meta` component is the single source of
   `:memory:` with `force="true"`, so a probe cannot reach dev data whatever `.env` says, and
   factories and `RefreshDatabase` come for free. When a probe genuinely needs the seeded
   data, wrap it in a transaction and roll back.
-* Scenes, Acts, Chapters, and the Story overview each now have a dedicated feature test
-  (`SceneTest` / `ActTest` / `ChapterTest` / `StoryTest`) covering CRUD, authorization, validation,
-  the `position` invariant, and reordering. Keep them in step as you touch those controllers.
+* Books, Scenes, Acts, Chapters, and the Story overview each now have a dedicated feature test
+  (`BookTest` / `SceneTest` / `ActTest` / `ChapterTest` / `StoryTest`) covering CRUD, authorization,
+  validation, the `position` invariant, and reordering. Keep them in step as you touch those
+  controllers.
 
 ### Documentation
 

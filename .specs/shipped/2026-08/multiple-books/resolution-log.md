@@ -186,6 +186,37 @@ Resolved in the planning grill, 2026-08-16. The full question-by-question record
   per-book location. Moot while the test is skipped; task 14 must move the injection to
   `{bookDir}/publication-setting.json` when it restores the test.
 
+- **`drop_book_metadata_from_projects` drops ten columns, not `data-model.md`'s "twelve".**
+  `language`, `author`, `publisher`, `rights`, `isbn`, the four matter fields and
+  `overview_render_mode`. `projects.cover_image` (the dashboard card image) and
+  `projects.description` stay — both are the project's own, not the book's.
+- **The project edit form lost its "Book metadata" card, and `UpdateProjectRequest` its
+  `language`/`author`/`publisher`/`isbn` rules.** The task named only the migration, but that
+  form was the last writer of four dropped columns; leaving it would 500 the page. Its
+  `ProjectTest` coverage (defaults, mass assignment, the ISBN and language rules) moved to
+  `BookTest`, where the fields now live.
+- **The seeders set `language` on the book they create**, not on the project. Same reason.
+- **The importer reads the project cover too** (`data/project/cover/`), not only the book's.
+  The v4 layout adds it, `ArchiveValidator` content-sniffs it, and `addProject()` writing a
+  `cover_file` nothing reads back is the gap this export version exists to close.
+  `importChapterCover()` widened into a shared `importCover()`, and
+  `validateChapterCovers()` into `validateCovers()` over project/book/chapter alike.
+- **`importProject()` no longer reads front matter or a publication setting.** Both are per
+  book, so `importStory()` owns them — that phase already had to grow the `books` level.
+- **`ActController::moveToBook` sets `position` and calls `associate()` directly, not through
+  `ReparentsChildren`.** That trait moves a parent's whole children collection onto another
+  parent; moving one act (the child itself) has no such collection, so the "append after the
+  destination's max position" rule is reproduced inline rather than forced through a
+  many-children signature.
+- **The documentation sweep reached four pages the task did not name.** `documentation/`
+  is checked by `DocumentationLinksTest`, and the sweep renamed
+  `architecture.md`'s `## Act / Chapter / Scene ordering` heading to include Book — which
+  breaks the two pages linking that anchor (`glossary.md`, `code-style.md`). Both were
+  updated. `ui-components.md`'s three `route('projects.acts.create', $project)` examples
+  named a route that no longer exists, and `revisions.md`'s browser section described a
+  sidebar tree without the book level task 15 added. All four are one- or two-line
+  corrections, not new sections.
+
 ## Issues → resolutions
 
 - **`2026_07_22_000002_backfill_baseline_revisions` reads `AutosavableFields::REGISTRY` live**, so
@@ -256,3 +287,36 @@ Resolved in the planning grill, 2026-08-16. The full question-by-question record
   never `.html`") and task 13's own line item. Followed the prose/task file: `rights` is a
   plain-text column like `contents`, not rich HTML, so it exports as `rights.txt`. The JSON
   sample in the expanded doc is stale; task 17 (documentation-sweep) should correct it.
+- **`Book::created` renames every unnamed sibling, so the import order of books is
+  load-bearing.** A null `name` has to survive the round trip, but inserting a book fires the
+  hook that materializes the project's name onto any null-named sibling already imported.
+  `importStory()` therefore sorts the archive's books by `(position, id)` — `glob()` returns
+  directory order, which is not position order — and reconciles the FIRST one onto the
+  auto-created row with `update()`, which fires no `created` event. Every later insert then
+  only ever sees siblings that already carry a name. Reverse the order and a two-book import
+  silently rewrites book one's name.
+- **`books.language` and `books.overview_render_mode` are NOT NULL with a database default.**
+  An archive that omits either (or carries `null`) must drop the key from the attribute array
+  rather than write `null`, otherwise a hand-built or older-generation archive fails the
+  insert. Every other book column is nullable and replays verbatim.
+- **`bash scripts/verify.sh` fails intermittently on Windows with
+  `ZipArchive::close(): Renaming temporary file failed: Permission denied`** in
+  `EpubExporter`, roughly one full run in three. Root cause is environmental, not the code: a
+  parallel `paratest` run writes many temp zips at once, and a Windows file lock (indexer or
+  antivirus) can still hold one when `close()` renames it. The failing test always passes on
+  its own. Re-run the suite before hunting a regression in EPUB code you did not touch.
+- **The `book` slug never reached `ProjectRevisionsBrowser::GROUPS`.** Documenting the browser
+  surfaced it: a book's six autosaving fields write revisions and its history page resolves
+  (`RevisionController::EDIT_ROUTES` has `book` => `books.edit`), but the Tools ▸ Revisions
+  sidebar has no book group, so nothing links there. Only one direction is guarded — every
+  `GROUPS` slug must be a registered slug; a registered slug absent from `GROUPS` fails
+  nothing. Left as it is (a documentation task must not grow a feature) and recorded in
+  `standing-issues.md`, with the fix named: a `GROUPS` entry plus its name query.
+- **Fixed after the plan closed, on the user's call**: the `book` group is in, and with it a
+  second defect it uncovered. `HasRevisions::revisionDisplayName()` reads the display column
+  raw and falls back to `#<id>`, so an unnamed book titled *itself* `#5` — on the history and
+  compare pages too, not only the new sidebar row. `Book` now overrides it with
+  `displayName()`, and `ProjectRevisionsBrowser` calls `revisionDisplayName()` instead of
+  reading the column, so the one fallback rule serves every surface. The browser sets the
+  `project` relation by hand on the books it hydrates, the same N+1 guard `booksFor()` uses.
+  What stays true is the missing guard that hid this — see `standing-issues.md`.

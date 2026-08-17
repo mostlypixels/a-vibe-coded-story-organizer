@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\BookLanguage;
-use App\Enums\StoryOverviewMode;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CodexMediaService;
@@ -26,24 +24,9 @@ class Project extends Model
     protected $fillable = [
         'name',
         'description',
-        'language',
-        'author',
-        'publisher',
-        'rights',
-        'isbn',
         'cover_image',
-        'dedication',
-        'acknowledgements',
-        'preface',
-        'postface',
         'daily_word_goal',
         'total_word_goal',
-        'overview_render_mode',
-    ];
-
-    protected $casts = [
-        'language' => BookLanguage::class,
-        'overview_render_mode' => StoryOverviewMode::class,
     ];
 
     public function user(): BelongsTo

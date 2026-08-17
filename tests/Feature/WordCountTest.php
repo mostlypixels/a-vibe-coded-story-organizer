@@ -223,7 +223,7 @@ class WordCountTest extends TestCase
     }
 
     /**
-     * A minimal hand-built extraction root: one project, one act, one
+     * A minimal hand-built extraction root: one project, one book, one act, one
      * chapter, one scene with contents — everything ProjectGraphImporter's
      * importProject()/importStory() require and nothing more (mirrors
      * tests/Unit/Import/ProjectGraphImporterTest.php's fixture style).
@@ -235,15 +235,20 @@ class WordCountTest extends TestCase
             'name' => 'Word count import fixture',
         ]));
 
-        $this->writeFixtureFile($fixtureRoot, 'data/acts/100-act-one/act.json', json_encode([
+        $sceneDir = 'data/books/50-fixture-book/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-one';
+
+        $this->writeFixtureFile($fixtureRoot, 'data/books/50-fixture-book/book.json', json_encode([
+            'id' => 50, 'name' => null, 'position' => 1, 'project_id' => 900,
+        ]));
+        $this->writeFixtureFile($fixtureRoot, 'data/books/50-fixture-book/acts/100-act-one/act.json', json_encode([
             'id' => 100, 'name' => 'Act One', 'position' => 1,
         ]));
-        $this->writeFixtureFile($fixtureRoot, 'data/acts/100-act-one/chapters/200-chapter-one/chapter.json', json_encode([
+        $this->writeFixtureFile($fixtureRoot, 'data/books/50-fixture-book/acts/100-act-one/chapters/200-chapter-one/chapter.json', json_encode([
             'id' => 200, 'name' => 'Chapter One', 'position' => 1,
         ]));
         $this->writeFixtureFile(
             $fixtureRoot,
-            'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-one/scene.json',
+            "{$sceneDir}/scene.json",
             json_encode([
                 'id' => 300,
                 'name' => 'Imported scene',
@@ -254,11 +259,7 @@ class WordCountTest extends TestCase
                 'contents_file' => 'contents.md',
             ]),
         );
-        $this->writeFixtureFile(
-            $fixtureRoot,
-            'data/acts/100-act-one/chapters/200-chapter-one/scenes/300-scene-one/contents.md',
-            'Some imported prose to count.',
-        );
+        $this->writeFixtureFile($fixtureRoot, "{$sceneDir}/contents.md", 'Some imported prose to count.');
     }
 
     private function writeFixtureFile(string $fixtureRoot, string $relativePath, string $contents): void

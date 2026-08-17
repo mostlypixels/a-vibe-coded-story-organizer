@@ -8,6 +8,12 @@
     its whole history, a field leaf opens it filtered to that field (`?field=`).
     Every URL comes from the tree, never assembled in this template.
 
+    Acts, chapters and scenes are further grouped under a book heading
+    ($group->books, one entry per book, entities in book position order).
+    Every other type comes back as a single bucket with `name: null`, so no
+    heading renders and the entity list looks exactly as it did before — one
+    shape, walked the same way regardless of whether the type is book-scoped.
+
     Expects: $tree, $project, and the active $activeEntity / $activeId /
     $activeField (any may be null on the landing page).
 
@@ -49,9 +55,11 @@
 
     @forelse ($tree as $group)
         @php
-            // Lower-cased entity names for this group, handed to the client-side
-            // filter so typing narrows the list without a round-trip.
-            $entityNames = $group->entities->map(fn ($entity) => \Illuminate\Support\Str::lower($entity->name))->values()->all();
+            // Lower-cased entity names for this group (every book combined),
+            // handed to the client-side filter so typing narrows the list
+            // without a round-trip.
+            $groupEntities = $group->books->flatMap(fn ($bookGroup) => $bookGroup->entities);
+            $entityNames = $groupEntities->map(fn ($entity) => \Illuminate\Support\Str::lower($entity->name))->values()->all();
             // Only the group holding the entity currently being viewed starts
             // open; every other group starts collapsed.
             $startOpen = $activeEntity === $group->type;
@@ -69,49 +77,69 @@
             >
                 <span class="flex items-center gap-2">
                     <span>{{ __($group->label) }}</span>
-                    <x-badge>{{ $group->entities->count() }}</x-badge>
+                    <x-badge>{{ $groupEntities->count() }}</x-badge>
                 </span>
                 <x-tabler-chevron-down class="h-4 w-4 transition-transform" x-bind:class="{ '-rotate-90': ! (filter.trim() !== '' || open) }" />
             </button>
 
             {{-- Force-open while filtering so matches are always visible. --}}
-            <ul x-show="filter.trim() !== '' || open" class="mt-1 space-y-2">
-                @foreach ($group->entities as $treeEntity)
-                    <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from(\Illuminate\Support\Str::lower($treeEntity->name)) }}.includes(filter.trim().toLowerCase())">
-                        @php
-                            // The entity name links to its whole history; a field
-                            // leaf below is the same page with `?field=` set. So
-                            // the name is the active row exactly when this entity
-                            // is being viewed with no field filter.
-                            $entityIsActive = $activeEntity === $group->type
-                                && $activeId === $treeEntity->id
-                                && $activeField === null;
-                        @endphp
-                        <x-sidebar-link
-                            :href="$treeEntity->url"
-                            :active="$entityIsActive"
-                            :title="$treeEntity->name"
-                            class="block px-2 py-1 font-medium truncate border-s-2"
-                        >
-                            {{ $treeEntity->name }}
-                        </x-sidebar-link>
+            <ul x-show="filter.trim() !== '' || open" class="mt-1 space-y-3">
+                @foreach ($group->books as $bookGroup)
+                    @php
+                        $bookEntityNames = $bookGroup->entities->map(fn ($entity) => \Illuminate\Support\Str::lower($entity->name))->values()->all();
+                    @endphp
+                    {{-- The book heading is a list item of its own, holding the
+                         nested <ul> of entities — the same shape an entity's own
+                         field leaves already nest under it. A book with no name
+                         of its own (books.name only) is still labelled: it comes
+                         from ProjectRevisionsBrowser already resolved through
+                         Book::displayName(). Ungrouped types (name === null)
+                         render no heading, so the list looks unchanged. --}}
+                    <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from($bookEntityNames) }}.some(name => name.includes(filter.trim().toLowerCase()))">
+                        @if ($bookGroup->name !== null)
+                            <p class="px-2 text-xs font-medium text-content-muted truncate">{{ $bookGroup->name }}</p>
+                        @endif
 
-                        <ul class="ms-2 border-s border-border">
-                            @foreach ($treeEntity->fields as $leaf)
-                                @php
-                                    $isActive = $activeEntity === $leaf->entity
-                                        && $activeId === $treeEntity->id
-                                        && $activeField === $leaf->field;
-                                @endphp
-                                <li>
+                        <ul class="space-y-2">
+                            @foreach ($bookGroup->entities as $treeEntity)
+                                <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from(\Illuminate\Support\Str::lower($treeEntity->name)) }}.includes(filter.trim().toLowerCase())">
+                                    @php
+                                        // The entity name links to its whole history; a field
+                                        // leaf below is the same page with `?field=` set. So
+                                        // the name is the active row exactly when this entity
+                                        // is being viewed with no field filter.
+                                        $entityIsActive = $activeEntity === $group->type
+                                            && $activeId === $treeEntity->id
+                                            && $activeField === null;
+                                    @endphp
                                     <x-sidebar-link
-                                        :href="$leaf->url"
-                                        :active="$isActive"
-                                        class="flex items-center justify-between gap-2 ps-3 pe-2 py-1 border-s-2"
+                                        :href="$treeEntity->url"
+                                        :active="$entityIsActive"
+                                        :title="$treeEntity->name"
+                                        class="block px-2 py-1 font-medium truncate border-s-2"
                                     >
-                                        <span class="truncate">{{ $leaf->label }}</span>
-                                        <x-badge>{{ $leaf->count }}</x-badge>
+                                        {{ $treeEntity->name }}
                                     </x-sidebar-link>
+
+                                    <ul class="ms-2 border-s border-border">
+                                        @foreach ($treeEntity->fields as $leaf)
+                                            @php
+                                                $isActive = $activeEntity === $leaf->entity
+                                                    && $activeId === $treeEntity->id
+                                                    && $activeField === $leaf->field;
+                                            @endphp
+                                            <li>
+                                                <x-sidebar-link
+                                                    :href="$leaf->url"
+                                                    :active="$isActive"
+                                                    class="flex items-center justify-between gap-2 ps-3 pe-2 py-1 border-s-2"
+                                                >
+                                                    <span class="truncate">{{ $leaf->label }}</span>
+                                                    <x-badge>{{ $leaf->count }}</x-badge>
+                                                </x-sidebar-link>
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 </li>
                             @endforeach
                         </ul>

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BookLanguage;
+use App\Enums\StoryOverviewMode;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
@@ -325,6 +327,68 @@ class BookTest extends TestCase
 
         $response->assertSessionHasNoErrors();
         $this->assertNull($book->fresh()->name);
+    }
+
+    // ---------------------------------------------------------------------
+    // Publication metadata (epub export) — moved off the project
+    // ---------------------------------------------------------------------
+
+    public function test_language_and_overview_render_mode_default_when_not_set_explicitly(): void
+    {
+        [, $book] = $this->projectWithBook();
+
+        $book = $book->fresh();
+        $this->assertSame(BookLanguage::English, $book->language);
+        $this->assertSame(StoryOverviewMode::Chapter, $book->overview_render_mode);
+    }
+
+    public function test_the_epub_metadata_attributes_are_mass_assignable(): void
+    {
+        [, $book] = $this->projectWithBook();
+
+        // fill() proves mass-assignability; the factory supplies only the
+        // non-fillable project_id association.
+        $book->fill([
+            'language' => 'fr',
+            'author' => 'Jane Author',
+            'publisher' => 'Imaginary Press',
+            'isbn' => '978-0-306-40615-7',
+            'cover_image' => 'book-covers/my-novel.jpg',
+        ])->save();
+
+        $book = $book->fresh();
+        $this->assertSame(BookLanguage::French, $book->language);
+        $this->assertSame('Jane Author', $book->author);
+        $this->assertSame('Imaginary Press', $book->publisher);
+        $this->assertSame('978-0-306-40615-7', $book->isbn);
+        $this->assertSame('book-covers/my-novel.jpg', $book->cover_image);
+    }
+
+    public function test_updating_a_book_with_an_invalid_isbn_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->put(route('books.update', $book), [
+                'name' => 'My Novel',
+                'language' => 'en',
+                'isbn' => '978-0-306-40615-0', // bad checksum
+            ])
+            ->assertSessionHasErrors('isbn');
+    }
+
+    public function test_updating_a_book_with_an_unsupported_language_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->put(route('books.update', $book), [
+                'name' => 'My Novel',
+                'language' => 'ja', // not a supported BookLanguage case
+            ])
+            ->assertSessionHasErrors('language');
     }
 
     public function test_a_user_cannot_update_another_users_book(): void

@@ -7,6 +7,7 @@ use App\Enums\CodexEntryType;
 use App\Enums\DividerType;
 use App\Enums\ImportPhase;
 use App\Enums\TableOfContentsDepth;
+use App\Models\Book;
 use App\Models\Import;
 use App\Models\Project;
 use App\Models\PublicationSetting;
@@ -16,6 +17,7 @@ use App\Services\StaticSiteExporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -58,20 +60,6 @@ class PublicationSettingArchiveTest extends TestCase
         }
 
         parent::tearDown();
-    }
-
-    /**
-     * StaticSiteExporter now writes manifest version 4 (data/books/... + a
-     * per-book publication-setting.json), but ImportRules and
-     * ProjectGraphImporter still only understand version 3 until
-     * archive-v4-import lands. Every test here round-trips through the REAL
-     * exporter and the real HTTP import route, so all of them are temporarily
-     * skipped rather than rewritten twice; remove this guard when that task
-     * restores full v4 import support.
-     */
-    private function skipUntilV4ImportLands(): void
-    {
-        $this->markTestSkipped('Pending archive-v4-import: the importer does not read v4 archives yet.');
     }
 
     // ------------------------------------------------------------------
@@ -232,13 +220,13 @@ class PublicationSettingArchiveTest extends TestCase
      */
     private function exportThenImport(Project $source, ?string $injectedConfig = null): Project
     {
-        $this->skipUntilV4ImportLands();
-
         $zipPath = app(StaticSiteExporter::class)->export($source, includeMedia: false);
         $this->tempFiles[] = $zipPath;
 
         if ($injectedConfig !== null) {
-            $this->injectFile($zipPath, 'data/publication-setting.json', $injectedConfig);
+            // The config lives inside its own book's directory now, so the
+            // injection has to reproduce the exporter's <id>-slug folder name.
+            $this->injectFile($zipPath, $this->bookDirectory($source->books()->firstOrFail()).'/publication-setting.json', $injectedConfig);
         }
 
         $importer = User::factory()->create();
@@ -323,6 +311,15 @@ class PublicationSettingArchiveTest extends TestCase
             ->scenes()->firstOrFail();
         $this->assertSame('The opening prose.', $scene->contents);
         $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
+    }
+
+    /**
+     * One book's directory inside the archive, spelled exactly as
+     * StaticSiteExporter writes it: `data/books/<id>-<slug of displayName>`.
+     */
+    private function bookDirectory(Book $book): string
+    {
+        return 'data/books/'.$book->id.'-'.Str::slug($book->displayName());
     }
 
     /**

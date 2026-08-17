@@ -2,8 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Act;
+use App\Models\Book;
+use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Revision;
+use App\Models\Scene;
 use App\Support\AutosavableFields;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -25,6 +29,12 @@ use Illuminate\Support\Str;
  * Never hydrates `revisions.value`: the browser only ever needs counts and the
  * (type, id, field) coordinates, so it selects nothing else — the same
  * "list queries never hydrate value" invariant RevisionController::index keeps.
+ *
+ * The browser stays project-scoped — `revisions.project_id` never changes —
+ * but a project can hold several books, so each act, chapter and scene is
+ * additionally grouped under its own book (MANUSCRIPT_GROUPS). The project,
+ * the books themselves, plotlines, events and codex entries are project-wide,
+ * not per book, so they render ungrouped. See booksFor().
  */
 class ProjectRevisionsBrowser
 {
@@ -41,6 +51,7 @@ class ProjectRevisionsBrowser
      */
     private const GROUPS = [
         'project' => 'Project',
+        'book' => 'Books',
         'act' => 'Acts',
         'chapter' => 'Chapters',
         'scene' => 'Scenes',
@@ -50,23 +61,42 @@ class ProjectRevisionsBrowser
     ];
 
     /**
+     * The GROUPS slugs that are book-scoped. The sidebar groups these under
+     * a book heading; every other slug is project-scoped and renders as one
+     * ungrouped list, exactly as before.
+     *
+     * @var list<string>
+     */
+    private const MANUSCRIPT_GROUPS = ['act', 'chapter', 'scene'];
+
+    /**
      * Assemble the tree for one already-authorized project.
      *
      * One grouped query over `revisions` (scoped by the real `project_id` FK
      * every revision carries — see App\Services\RevisionRecorder, which always
      * stamps it) yields the (type, id, field) triples that have history, plus
      * their counts. A second, tiny query per present entity type then loads
-     * just the id + display name of the referenced entities. No other query
-     * runs, and `value` is never selected.
+     * just the id + display name of the referenced entities, and — for the
+     * manuscript types only — a third tiny query resolves each entity's book.
+     * No other query runs, and `value` is never selected.
+     *
+     * Acts, chapters and scenes are grouped under the book they belong to
+     * (MANUSCRIPT_GROUPS); the project, the books, plotlines, events and codex
+     * entries are project-scoped, so each comes back as one ungrouped bucket
+     * (`books` holding a single entry with `name: null`) — see booksFor().
      *
      * @return Collection<int, object{
      *     type: string,
      *     label: string,
-     *     entities: Collection<int, object{
-     *         id: int,
-     *         name: string,
-     *         url: string,
-     *         fields: Collection<int, object{field: string, label: string, count: int, url: string, entity: string}>
+     *     books: Collection<int, object{
+     *         id: ?int,
+     *         name: ?string,
+     *         entities: Collection<int, object{
+     *             id: int,
+     *             name: string,
+     *             url: string,
+     *             fields: Collection<int, object{field: string, label: string, count: int, url: string, entity: string}>
+     *         }>
      *     }>
      * }>
      */
@@ -91,7 +121,7 @@ class ProjectRevisionsBrowser
             ->groupBy('revisionable_type');
 
         return collect(self::GROUPS)
-            ->map(function (string $label, string $slug) use ($countsByType) {
+            ->map(function (string $label, string $slug) use ($countsByType, $project) {
                 $modelClass = AutosavableFields::modelFor($slug);
                 $rows = $countsByType->get($modelClass);
 
@@ -102,11 +132,75 @@ class ProjectRevisionsBrowser
                 return (object) [
                     'type' => $slug,
                     'label' => $label,
-                    'entities' => $this->entitiesFor($slug, $modelClass, $rows),
+                    'books' => $this->booksFor($slug, $modelClass, $rows, $project),
                 ];
             })
             ->filter()
             ->values();
+    }
+
+    /**
+     * Group one entity type's revised entities by book, in book position
+     * order. Only MANUSCRIPT_GROUPS actually belong to a book — every other
+     * type comes back as a single bucket (`id: null, name: null`) holding
+     * every entity, so the sidebar renders no heading for it and still walks
+     * one shape either way.
+     */
+    private function booksFor(string $slug, string $modelClass, Collection $rows, Project $project): Collection
+    {
+        $entities = $this->entitiesFor($slug, $modelClass, $rows, $project);
+
+        if (! in_array($slug, self::MANUSCRIPT_GROUPS, true)) {
+            return collect([(object) ['id' => null, 'name' => null, 'entities' => $entities]]);
+        }
+
+        $bookIdByEntity = $this->bookIdsFor($slug, $entities->pluck('id'));
+
+        // The project is already known — every book here belongs to it — so
+        // the inverse relation is set by hand instead of an eager-loaded
+        // `project` column. displayName() falls back to it for an unnamed
+        // book; without this it would re-query the project once per unnamed
+        // book (the same N+1 App\Models\Book's docblock warns about).
+        $booksById = Book::query()
+            ->whereIn('id', $bookIdByEntity->unique()->values())
+            ->get(['id', 'name', 'position'])
+            ->each(fn (Book $book) => $book->setRelation('project', $project))
+            ->keyBy('id');
+
+        return $entities
+            ->groupBy(fn (object $entity) => $bookIdByEntity->get($entity->id))
+            ->map(fn (Collection $bookEntities, int $bookId) => (object) [
+                'id' => $bookId,
+                'name' => $booksById->get($bookId)?->displayName() ?? '#'.$bookId,
+                'entities' => $bookEntities->values(),
+            ])
+            ->sortBy(fn (object $bookGroup) => $booksById->get($bookGroup->id)?->position)
+            ->values();
+    }
+
+    /**
+     * The book each revised entity belongs to, as revisionable_id => book_id.
+     * Only Act carries `book_id` directly; a chapter reaches it through its
+     * act, a scene through its chapter's act — so each needs its own join.
+     *
+     * @param  Collection<int, int>  $ids
+     * @return Collection<int, int>
+     */
+    private function bookIdsFor(string $slug, Collection $ids): Collection
+    {
+        return match ($slug) {
+            'act' => Act::query()->whereIn('id', $ids)->pluck('book_id', 'id'),
+            'chapter' => Chapter::query()
+                ->join('acts', 'acts.id', '=', 'chapters.act_id')
+                ->whereIn('chapters.id', $ids)
+                ->pluck('acts.book_id', 'chapters.id'),
+            'scene' => Scene::query()
+                ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
+                ->join('acts', 'acts.id', '=', 'chapters.act_id')
+                ->whereIn('scenes.id', $ids)
+                ->pluck('acts.book_id', 'scenes.id'),
+            default => collect(),
+        };
     }
 
     /**
@@ -117,7 +211,7 @@ class ProjectRevisionsBrowser
      * @param  Collection<int, object>  $rows  grouped revision rows for this type
      * @return Collection<int, object{id: int, name: string, url: string, fields: Collection}>
      */
-    private function entitiesFor(string $slug, string $modelClass, Collection $rows): Collection
+    private function entitiesFor(string $slug, string $modelClass, Collection $rows, Project $project): Collection
     {
         // The single column that titles this entity type — `name` for all but
         // Event (`title`), owned by HasRevisions::revisionDisplayColumn() so the
@@ -130,14 +224,17 @@ class ProjectRevisionsBrowser
         $names = $modelClass::query()
             ->whereIn('id', $rows->pluck('revisionable_id')->unique())
             ->get(['id', $displayColumn])
+            // A Book prints its project's name while it has none of its own, so
+            // the inverse relation is set by hand. Same N+1 booksFor() avoids.
+            ->each(fn ($entity) => $entity instanceof Book ? $entity->setRelation('project', $project) : null)
             ->keyBy('id');
 
         return $rows
             ->groupBy('revisionable_id')
-            ->map(function (Collection $fieldRows, int $id) use ($slug, $names, $displayColumn) {
+            ->map(function (Collection $fieldRows, int $id) use ($slug, $names) {
                 return (object) [
                     'id' => $id,
-                    'name' => (string) ($names->get($id)?->getAttribute($displayColumn) ?? '#'.$id),
+                    'name' => $names->get($id)?->revisionDisplayName() ?? '#'.$id,
                     // The entity's *unfiltered* history — the whole-entity view
                     // its field leaves are a `?field=` filter on top of. Built
                     // here rather than in Blade for the same reason the leaves'

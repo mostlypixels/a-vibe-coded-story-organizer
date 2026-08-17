@@ -20,15 +20,16 @@ class ImportRules
     /**
      * The data/manifest.json `version` values this importer knows how to read.
      *
-     * Version 3 dropped the `includes_revisions` manifest key and the
-     * `revisions/` sidecar — a removed key is a breaking layout change, so
-     * versions 1 and 2 are rejected rather than imported with history missing.
-     * Extending this list is the one-line opt-in for a future breaking change
-     * (see documentation/export-format.md → "The version contract").
+     * Version 4 moved the manuscript under `data/books/<id>/acts/` and gave each
+     * book its own `publication-setting.json`. A relocated path is a breaking
+     * layout change, so every older version is rejected rather than imported
+     * against the wrong shape. Extending this list is the one-line opt-in for a
+     * future breaking change (see documentation/export-format.md → "The version
+     * contract").
      *
      * @var array<int, int>
      */
-    public const SUPPORTED_MANIFEST_VERSIONS = [3];
+    public const SUPPORTED_MANIFEST_VERSIONS = [4];
 
     /**
      * Default archive size cap in kilobytes (200 MB).
@@ -51,11 +52,6 @@ class ImportRules
     public const ALLOWED_FILES = [
         'data/manifest.json',
         'data/tags.json',
-        // The serialized PublicationSetting. A flat project-level descriptor
-        // like data/tags.json; its CONTENT is not schema-checked by
-        // ArchiveValidator — the importer validates it as untrusted input and
-        // falls back to defaults on anything malformed.
-        'data/publication-setting.json',
         // The project's writing history — a flat list like data/tags.json.
         // Absent in every archive exported before this feature; the importer
         // treats a missing file as "no history".
@@ -66,17 +62,21 @@ class ImportRules
     /**
      * Directory prefixes under which any entry is allowed.
      *
-     * book/ is part of a real export (the human reading layer) but, like
+     * The manuscript lives under data/books/, one directory per book, and each
+     * book carries its own publication-setting.json — so no flat descriptor for
+     * it sits at the data/ root.
+     *
+     * books/ is part of a real export (the human reading layer) but, like
      * README.md, is allowed-but-ignored — the importer never reads it.
      *
      * @var array<int, string>
      */
     public const ALLOWED_DIRECTORIES = [
         'data/project/',
-        'data/acts/',
+        'data/books/',
         'data/timeline/',
         'data/codex/',
-        'book/',
+        'books/',
     ];
 
     /**
@@ -124,14 +124,15 @@ class ImportRules
      * allow-listed arborescence.
      *
      * A trailing-slash directory entry is allowed both under an allowed prefix
-     * (e.g. "data/acts/1-act-one/") and as an ancestor of one (e.g. "data/" —
+     * (e.g. "data/books/1-book-one/") and as an ancestor of one (e.g. "data/" —
      * some zip tools emit parent directory entries explicitly).
      */
     public static function isAllowedPath(string $path): bool
     {
-        // No v3 export can produce a revisions/ sidecar, so a zip carrying one
-        // is malformed by definition — reject it before the allow-list below
-        // would otherwise let it through under data/acts/, data/timeline/, etc.
+        // No supported export can produce a revisions/ sidecar, so a zip
+        // carrying one is malformed by definition — reject it before the
+        // allow-list below would otherwise let it through under data/books/,
+        // data/timeline/, etc.
         // A path *segment* match, not a substring one: an entry legitimately
         // slugged "...-revisions" must still be allowed.
         if (preg_match('#(^|/)revisions/#', $path) === 1) {

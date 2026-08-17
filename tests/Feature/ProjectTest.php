@@ -2,11 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Enums\BookLanguage;
 use App\Enums\RevisionOrigin;
-use App\Enums\StoryOverviewMode;
 use App\Models\Act;
-use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -121,55 +118,9 @@ class ProjectTest extends TestCase
         $this->actingAs($other)->get(route('projects.show', $project))->assertForbidden();
     }
 
-    // --- Publication metadata columns (epub export) ------------------------
+    // --- Project edit form: the dashboard cover ----------------------------
 
-    public function test_language_defaults_to_en_when_not_set_explicitly(): void
-    {
-        $user = User::factory()->create();
-
-        $project = Project::factory()->for($user)->create(['name' => 'Untitled']);
-
-        $this->assertSame(BookLanguage::English, $project->fresh()->language);
-    }
-
-    public function test_overview_render_mode_defaults_to_chapter_when_not_set_explicitly(): void
-    {
-        $user = User::factory()->create();
-
-        $project = Project::factory()->for($user)->create(['name' => 'Untitled']);
-
-        $this->assertSame(StoryOverviewMode::Chapter, $project->fresh()->overview_render_mode);
-    }
-
-    public function test_the_epub_metadata_attributes_are_mass_assignable(): void
-    {
-        $user = User::factory()->create();
-
-        // fill() proves mass-assignability of the six new columns; the factory
-        // supplies only the non-fillable user_id association.
-        $project = Project::factory()->for($user)->create();
-        $project->fill([
-            'name' => 'My Novel',
-            'description' => 'A test project',
-            'language' => 'fr',
-            'author' => 'Jane Author',
-            'publisher' => 'Imaginary Press',
-            'isbn' => '978-0-306-40615-7',
-            'cover_image' => 'covers/my-novel.jpg',
-        ])->save();
-
-        $project = $project->fresh();
-
-        $this->assertSame(BookLanguage::French, $project->language);
-        $this->assertSame('Jane Author', $project->author);
-        $this->assertSame('Imaginary Press', $project->publisher);
-        $this->assertSame('978-0-306-40615-7', $project->isbn);
-        $this->assertSame('covers/my-novel.jpg', $project->cover_image);
-    }
-
-    // --- Project edit form: book metadata + cover upload -------------------
-
-    public function test_owner_can_update_a_project_with_all_book_metadata_and_a_cover(): void
+    public function test_owner_can_update_a_project_with_a_cover(): void
     {
         Storage::fake('public');
         $user = User::factory()->create();
@@ -178,10 +129,6 @@ class ProjectTest extends TestCase
         $response = $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => 'My Novel',
             'description' => 'A test project',
-            'language' => 'fr',
-            'author' => 'Jane Author',
-            'publisher' => 'Imaginary Press',
-            'isbn' => '978-0-306-40615-7',
             'cover_image' => UploadedFile::fake()->image('cover.jpg'),
         ]);
 
@@ -189,10 +136,6 @@ class ProjectTest extends TestCase
 
         $project = $project->fresh();
         $this->assertSame('My Novel', $project->name);
-        $this->assertSame(BookLanguage::French, $project->language);
-        $this->assertSame('Jane Author', $project->author);
-        $this->assertSame('Imaginary Press', $project->publisher);
-        $this->assertSame('978-0-306-40615-7', $project->isbn);
         $this->assertNotNull($project->cover_image);
         Storage::disk('public')->assertExists($project->cover_image);
     }
@@ -205,7 +148,6 @@ class ProjectTest extends TestCase
         $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => $project->name,
             'description' => 'New description',
-            'language' => 'en',
         ]);
 
         $revision = $project->revisions()->where('field', 'description')->latest('created_at')->first();
@@ -224,7 +166,6 @@ class ProjectTest extends TestCase
         $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => 'New name',
             'description' => 'Same description',
-            'language' => 'en',
         ]);
 
         $this->assertSame(0, $project->revisions()->where('field', 'description')->count());
@@ -238,7 +179,6 @@ class ProjectTest extends TestCase
 
         $this->actingAs($other)->put(route('projects.update', $project), [
             'name' => 'Hijacked',
-            'language' => 'en',
         ])->assertForbidden();
     }
 
@@ -249,7 +189,6 @@ class ProjectTest extends TestCase
 
         $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => $project->name,
-            'language' => 'en',
             'daily_word_goal' => '500',
             'total_word_goal' => '80000',
         ]);
@@ -267,7 +206,6 @@ class ProjectTest extends TestCase
 
         $this->actingAs($other)->put(route('projects.update', $project), [
             'name' => 'Hijacked',
-            'language' => 'en',
             'daily_word_goal' => '500',
         ])->assertForbidden();
 
@@ -284,7 +222,6 @@ class ProjectTest extends TestCase
 
         $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => $project->name,
-            'language' => 'en',
             'daily_word_goal' => '',
             'total_word_goal' => '',
         ]);
@@ -301,7 +238,6 @@ class ProjectTest extends TestCase
 
         $response = $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => $project->name,
-            'language' => 'en',
             'daily_word_goal' => '-5',
         ]);
 
@@ -315,7 +251,6 @@ class ProjectTest extends TestCase
 
         $response = $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => $project->name,
-            'language' => 'en',
             'total_word_goal' => 'lots',
         ]);
 
@@ -358,35 +293,6 @@ class ProjectTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_updating_a_project_with_an_invalid_isbn_fails_validation(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-
-        $response = $this->actingAs($user)->put(route('projects.update', $project), [
-            'name' => 'My Novel',
-            'language' => 'en',
-            'isbn' => '978-0-306-40615-0', // bad checksum
-        ]);
-
-        $response->assertSessionHasErrors('isbn');
-    }
-
-    // --- Front/back-matter Markdown --------------------------------------
-
-    public function test_updating_a_project_with_an_unsupported_language_fails_validation(): void
-    {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
-
-        $response = $this->actingAs($user)->put(route('projects.update', $project), [
-            'name' => 'My Novel',
-            'language' => 'ja', // not a supported BookLanguage case
-        ]);
-
-        $response->assertSessionHasErrors('language');
-    }
-
     public function test_updating_a_project_with_an_invalid_cover_fails_validation(): void
     {
         Storage::fake('public');
@@ -396,7 +302,6 @@ class ProjectTest extends TestCase
         // Wrong mime type (a PDF, not an image).
         $wrongType = $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => 'My Novel',
-            'language' => 'en',
             'cover_image' => UploadedFile::fake()->create('cover.pdf', 100, 'application/pdf'),
         ]);
         $wrongType->assertSessionHasErrors('cover_image');
@@ -404,7 +309,6 @@ class ProjectTest extends TestCase
         // Oversized image (over the 5 MB / 5120 KB cover limit).
         $oversized = $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => 'My Novel',
-            'language' => 'en',
             'cover_image' => UploadedFile::fake()->image('huge.jpg')->size(6000),
         ]);
         $oversized->assertSessionHasErrors('cover_image');
@@ -420,7 +324,6 @@ class ProjectTest extends TestCase
 
         $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => 'My Novel',
-            'language' => 'en',
             'cover_image' => UploadedFile::fake()->image('new-cover.jpg'),
         ])->assertRedirect();
 
@@ -440,7 +343,6 @@ class ProjectTest extends TestCase
 
         $this->actingAs($user)->put(route('projects.update', $project), [
             'name' => 'My Novel',
-            'language' => 'en',
             'remove_cover_image' => '1',
         ])->assertRedirect();
 

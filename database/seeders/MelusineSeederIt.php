@@ -44,7 +44,6 @@ class MelusineSeederIt extends Seeder
         $project = Project::create([
             'user_id' => $user->id,
             'name' => 'Il Romanzo di Melusina',
-            'language' => BookLanguage::Italian,
             'description' => <<<'HTML'
                 <p>Una leggenda medievale della fata <strong>Melusina</strong>, della sua maledizione, del suo matrimonio con <em>Raimondino di Lusignano</em>, e del destino dei loro nove figli.</p>
                 <h3>I fili della narrazione</h3>
@@ -67,7 +66,10 @@ class MelusineSeederIt extends Seeder
         // Model events are off under `db:seed`, so the first book hook does not
         // fire either. Unnamed: a sole book shows the project's name
         // (see Book::displayName()).
-        $book = $project->books()->create(['position' => 1]);
+        $book = $project->books()->create([
+            'position' => 1,
+            'language' => BookLanguage::Italian,
+        ]);
 
         $curseOfPressine = Plotline::create([
             'project_id' => $project->id,
