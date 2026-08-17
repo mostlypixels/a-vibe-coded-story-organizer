@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-18 — Multiple books per project
+## 2026-08-18 — Multiple books per project (#114)
 
 ### Added
 
