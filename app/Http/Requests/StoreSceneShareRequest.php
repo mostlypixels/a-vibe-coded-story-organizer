@@ -7,22 +7,12 @@ use Illuminate\Validation\Rule;
 
 class StoreSceneShareRequest extends FormRequest
 {
-    /**
-     * Authorization walks up to the owning project, mirroring the controller's
-     * ProjectPolicy check ($scene->chapter->act->book->project).
-     */
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('scene')->chapter->act->book->project);
     }
 
-    /**
-     * The duration is validated against the config whitelist so no lifetime is
-     * ever hard-coded in a controller or view. Values are the CarbonInterval-
-     * parseable strings from config/sharing.php.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

@@ -6,14 +6,7 @@ use App\Models\Book;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * Validates and authorizes moving a whole act to another book.
- *
- * Mirrors EpubExportRequest: the destination is a second user-owned resource,
- * so authorize() also confirms it belongs to the SAME project as the act's
- * current book — a foreign or missing book_id is a 403, never a silent
- * cross-project move. Moving a book between projects stays out of scope.
- */
+/** The destination book must belong to the act's current project. */
 class MoveActToBookRequest extends FormRequest
 {
     public function authorize(): bool
@@ -42,8 +35,6 @@ class MoveActToBookRequest extends FormRequest
             'book_id' => [
                 'required',
                 'integer',
-                // Same set authorize() already checked — belt and braces, the
-                // same pairing DestroyActRequest keeps for move_children_to.
                 Rule::exists('books', 'id')->where('project_id', $act->book->project_id),
                 Rule::notIn([$act->book_id]),
             ],

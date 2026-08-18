@@ -6,12 +6,7 @@ use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * A project always already has a book (Project::booted()), so any book this
- * creates is at least the project's second — its name is never optional (see
- * Book::hasOwnName()). The rest of the book's metadata is edited later, not on
- * this form — see UpdateBookRequest.
- */
+/** A new book needs a name because each project already has its default book. */
 class StoreBookRequest extends FormRequest
 {
     public function authorize(): bool

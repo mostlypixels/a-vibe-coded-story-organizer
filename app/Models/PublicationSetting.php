@@ -25,7 +25,7 @@ class PublicationSetting extends Model
      * The single source of truth for the sortable list's membership — the
      * config form's validation rule, the model's reorder helpers, and the
      * lazy default in Book::publicationSettingOrDefault() all read this
-     * instead of repeating the literal list (CLAUDE.md: no magic strings).
+     * instead of repeating the literal list.
      *
      * @var array<int, string>
      */

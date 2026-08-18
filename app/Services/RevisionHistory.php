@@ -16,46 +16,16 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Every read query the history page and the compare pickers make.
+ * Reads revision history and folds rows into {@see SavePoint} values.
  *
- * Follows the {@see ProjectSearch} template (CLAUDE.md's "reusable domain
- * workflows"): the controller resolves and authorizes the entity, this service
- * owns the queries. It is the one place `revisions` rows are folded into
- * {@see SavePoint}s.
- *
- * ## Two queries, and the folding happens in PHP
- *
- * 1. a `GROUP BY save_id` over the entity's rows, for the page of save points;
- * 2. the rows belonging to those save points — **never selecting `value`**.
- *
- * No window functions, no `GROUP_CONCAT`, no engine-specific string
- * concatenation: this app runs on five database engines, and the only way to be
- * sure they all produce the same plan is to ask each of them for very little.
- * Turning rows into value objects is PHP's job, over at most one page of rows.
- *
- * > [!NOTE]
- * > There is no "revisions without a `save_id`" branch anywhere in here, and
- * > there should never be one. The migration that introduced save points
- * > deleted the rows that predated it precisely so this code has one case
- * > instead of two (see `documentation/architecture.md` → *Revisions*).
- *
- * > [!NOTE]
- * > {@see self::savePoints()} deliberately does **not** paginate: it feeds the
- * > compare pickers, which are a bounded list narrowed by their own in-panel
- * > filters rather than by paging. It loads one entity's rows without their
- * > values, so the cost is small — but if an entity ever accumulates enough
- * > history to make that untrue, this method is the seam to change.
+ * Portable grouped queries run in the database. PHP builds the value objects.
+ * List queries must not select revision values.
  */
 class RevisionHistory
 {
     /**
-     * One page of an entity's history, newest save point first.
-     *
-     * `$filters` accepts `field` (exact), `label` (substring, matching the
-     * search box that predates this page) and `manualOnly` (deliberate
-     * checkpoints only). They narrow which save *points* appear; only `field`
-     * also narrows the entries inside them, because a save point that qualifies
-     * should show what it actually contains.
+     * Label and manual filters select save points. Only the field filter also
+     * limits entries inside a selected save point.
      *
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return LengthAwarePaginatorContract<int, SavePoint>
@@ -65,9 +35,7 @@ class RevisionHistory
         $perPage = $this->perPage();
         $page = max(1, $page);
 
-        // One group beyond the page. It is never rendered — it exists so the
-        // last row on the page can still name the save point before it, which
-        // is what its "compare with previous" link addresses.
+        // Load one boundary group for the last "compare with previous" link.
         $groups = $this->groupQuery($entity, $filters)
             ->limit($perPage + 1)
             ->offset(($page - 1) * $perPage)
@@ -83,9 +51,6 @@ class RevisionHistory
     }
 
     /**
-     * Every save point of an entity, newest first — the option list the compare
-     * pickers render.
-     *
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return Collection<int, SavePoint>
      */
@@ -97,10 +62,6 @@ class RevisionHistory
     }
 
     /**
-     * The save points, as one row each: the id, when the save finished, and the
-     * id of its last row (the tie-break — a burst can write several rows inside
-     * the same second, and `created_at` alone would order them arbitrarily).
-     *
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return Builder<Revision>
      */
@@ -115,26 +76,15 @@ class RevisionHistory
             ->orderByDesc('last_id');
     }
 
-    /**
-     * How many save points the filters match, for the paginator's total.
-     *
-     * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
-     */
+    /** @param array{field?: ?string, label?: ?string, manualOnly?: bool} $filters */
     private function countGroups(Model $entity, array $filters): int
     {
         return $this->rowQuery($entity, $filters)->distinct()->count('save_id');
     }
 
     /**
-     * The entity's revision rows, filtered but neither grouped nor ordered.
-     *
-     * Two details are load-bearing. `getQuery()` descends from the relation to
-     * the query builder it wraps, so the morph constraints are still applied but
-     * `select()`/`groupBy()` return something this method can type. And
-     * `reorder()` drops the newest-first sort `HasRevisions::revisions()` adds by
-     * default: an `ORDER BY created_at` left hanging on a `GROUP BY save_id`
-     * query is a hard error on PostgreSQL and under MySQL's `ONLY_FULL_GROUP_BY`.
-     * Callers that want an order state it themselves.
+     * Removes the relation's default order before callers add grouping.
+     * PostgreSQL and strict MySQL reject that order with GROUP BY.
      *
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return Builder<Revision>
@@ -148,19 +98,11 @@ class RevisionHistory
             ->getQuery()
             ->reorder()
             ->when($field !== null && $field !== '', fn (Builder $query) => $query->where('field', $field))
-            // Substring, not exact: this is the label *search* box the
-            // per-field history page already had, kept as it was.
             ->when($label !== '', fn (Builder $query) => $query->where('label', 'like', '%'.$label.'%'))
             ->when($filters['manualOnly'] ?? false, fn (Builder $query) => $query->where('origin', RevisionOrigin::Manual));
     }
 
     /**
-     * Fold grouped rows into `SavePoint`s, rendering only the first `$limit` of
-     * them.
-     *
-     * `$groups` may hold one more than `$limit` — the boundary group — which is
-     * read for its id and then dropped.
-     *
      * @param  Collection<int, Revision>  $groups
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return Collection<int, SavePoint>
@@ -182,19 +124,13 @@ class RevisionHistory
 
             return new SavePoint(
                 saveId: $group->save_id,
-                // Parsed by hand: `saved_at` is an aggregate alias, so it
-                // arrives as a raw driver string rather than through the
-                // model's `created_at` cast.
+                // Aggregate aliases do not pass through model casts.
                 savedAt: Carbon::parse($group->saved_at),
                 authorName: $rows->first()?->user?->name,
-                // The first label any row carries: a save labels the *event*,
-                // and every row written by one Save is stamped with the same
-                // one, so "first non-null" is a tie-break that rarely fires.
                 label: $rows->pluck('label')->filter()->first(),
                 origin: SavePoint::dominantOrigin($rows->pluck('origin')),
                 isCurrent: $group->save_id === $currentSaveId,
                 lastRevisionId: (int) $group->last_id,
-                // Newest-first ordering means "the one after this in the list".
                 previousSaveId: $groups->get($index + 1)?->save_id,
                 entries: $this->entriesFor($entity, $rows),
             );
@@ -202,13 +138,8 @@ class RevisionHistory
     }
 
     /**
-     * The rows of the given save points, keyed by `save_id`.
-     *
      * > [!IMPORTANT]
-     * > `value` is not in the select list, and must not be added to it. A page
-     * > of history can span dozens of revisions of a scene's contents; loading
-     * > them would mean megabytes read to render text nobody asked to see.
-     * > `size_bytes` and `summary_html` exist precisely so this query stays small.
+     * > Do not select `value`. History lists use size and summary fields instead.
      *
      * @param  list<string>  $saveIds
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
@@ -220,9 +151,6 @@ class RevisionHistory
             ->getQuery()
             ->reorder()
             ->whereIn('save_id', $saveIds)
-            // Only the field filter narrows the entries: a save point that
-            // survived a label or manual-only filter still describes everything
-            // that save actually touched.
             ->when(
                 ($filters['field'] ?? null) !== null && $filters['field'] !== '',
                 fn (Builder $query) => $query->where('field', $filters['field']),
@@ -234,14 +162,8 @@ class RevisionHistory
     }
 
     /**
-     * One save point's rows as `SaveEntry`s, in registry field order.
-     *
-     * Registry order rather than write order, so a save that touched a
-     * project's description and its dedication lists them the same way every
-     * time — and the same way the edit form does.
-     *
      * @param  Collection<int, Revision>  $rows
-     * @return Collection<int, SaveEntry>
+     * @return Collection<int, SaveEntry> Entries in registry field order.
      */
     private function entriesFor(Model $entity, Collection $rows): Collection
     {
@@ -269,14 +191,7 @@ class RevisionHistory
             ->values();
     }
 
-    /**
-     * The entity's newest save point — the one its live state came from.
-     *
-     * Resolved with **no filters applied**, deliberately: "Current" is a fact
-     * about the entity, not about the list being looked at. Deriving it from
-     * the filtered page would crown whatever happened to be at the top of it and
-     * tell the writer that an old save is her current text.
-     */
+    /** Returns the unfiltered newest save point that represents current state. */
     private function currentSaveId(Model $entity): ?string
     {
         return $this->groupQuery($entity, [])->first()?->save_id;

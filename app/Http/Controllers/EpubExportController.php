@@ -26,9 +26,7 @@ class EpubExportController extends Controller
 {
     public function store(EpubExportRequest $request, EpubExporter $exporter): BinaryFileResponse|RedirectResponse
     {
-        // The admin gate is "any authenticated user"; authorize ownership too so a
-        // foreign book_id 403s (mirrors EpubExportRequest::authorize()). book_id
-        // is validated as an existing id, so findOrFail is a belt-and-braces guard.
+        // The global admin gate does not prove ownership of the selected book.
         $book = Book::findOrFail($request->integer('book_id'));
         $this->authorize('view', $book->project);
 

@@ -9,12 +9,7 @@ use App\Support\CodexMediaRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * `description` and the four front/back-matter fields are also autosaved, so
- * their rules come from AutosavableFields::validationRule() rather than being
- * spelled out here — see that class's docblock for why the two paths must
- * never disagree.
- */
+/** Uses the same rich-text rules as the autosave endpoint. */
 class UpdateBookRequest extends FormRequest
 {
     public function authorize(): bool
@@ -30,9 +25,7 @@ class UpdateBookRequest extends FormRequest
         $book = $this->route('book');
 
         return [
-            // Optional only while this is the project's sole book — a second
-            // book always needs a name of its own, so two books never show
-            // the same label (see Book::hasOwnName()).
+            // Only a project's sole book can use the project name.
             'name' => [
                 Rule::requiredIf(fn () => $book->project->books()->whereKeyNot($book->id)->exists()),
                 'nullable',
@@ -41,8 +34,6 @@ class UpdateBookRequest extends FormRequest
             ],
             'description' => AutosavableFields::validationRule('book', 'description'),
 
-            // The moved EPUB metadata (data-model.md "Changed foreign keys") —
-            // same rules as UpdateProjectRequest applied to it before the move.
             'language' => ['required', Rule::enum(BookLanguage::class)],
             'author' => ['nullable', 'string', 'max:255'],
             'publisher' => ['nullable', 'string', 'max:255'],

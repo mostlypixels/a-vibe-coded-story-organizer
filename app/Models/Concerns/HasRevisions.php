@@ -14,9 +14,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  *
  * `revisionProject()` is the authorization boundary for the whole feature — the
  * autosave controller, the revision history/compare/revert actions, and the purge
- * preview all authorize via `ProjectPolicy` against whatever this method returns,
- * never against the revisionable model directly (CLAUDE.md's "authorization always
- * walks to the owning Project" rule). Reads (history, compare, the browser landing)
+ * preview all authorize via `ProjectPolicy` against whatever this method returns.
+ * Reads (history, compare, the browser landing)
  * gate on `view`; writes (autosave, revert, purge) gate on `update` — set on purpose
  * so a future view-only collaborator could read history without being able to change
  * it, even though the two abilities resolve to the same owner today. Each using model

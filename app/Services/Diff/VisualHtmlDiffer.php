@@ -11,25 +11,10 @@ use App\Support\VisualDiff;
 use Jfcherng\Diff\SequenceMatcher;
 
 /**
- * Compares two rich-HTML values the way a reader would: paragraph by
- * paragraph, then word by word inside the paragraphs that actually changed.
+ * Compares rich HTML by block and then by word inside changed blocks.
  *
- * Two levels rather than one, mirroring MediaWiki's wikidiff2. A single
- * word-level diff over a whole field would happily "match" a word in the first
- * paragraph with the same word in the last, producing a shredded, unreadable
- * result — and it would be quadratic over the entire field instead of over one
- * block.
- *
- * The sequence matching itself is `jfcherng/php-sequence-matcher` (BSD-3),
- * already installed as a dependency of the `jfcherng/php-diff` this app uses
- * for Markdown fields. It is a plain Myers matcher over arrays of strings,
- * which is exactly the primitive needed; everything HTML-aware lives in
- * {@see HtmlTokenizer} (in) and {@see DiffHtmlRenderer} (out). That is why this
- * feature adds no new composer dependency — see expanded/diffing.md for the
- * library evaluation, including why the one mature HTML-diff package
- * (`caxy/php-htmldiff`, GPL-2.0) was rejected.
- *
- * Produces structure, never HTML.
+ * Block matching prevents distant equal words from producing a fragmented diff.
+ * {@see HtmlTokenizer} parses input. {@see DiffHtmlRenderer} produces safe HTML.
  */
 class VisualHtmlDiffer
 {
@@ -143,18 +128,7 @@ class VisualHtmlDiffer
     }
 
     /**
-     * A run of blocks replaced by another run.
-     *
-     * The two runs are paired up in order — old #1 against new #1, and so on —
-     * and each pair gets the word-level pass. Any leftover block on either side
-     * is a plain removal or insertion.
-     *
-     * > [!NOTE]
-     * > A paragraph *moved* elsewhere in the field therefore reports as a
-     * > removal plus an insertion rather than as a move. This is a deliberate,
-     * > tested limitation: detecting moves means matching blocks across the
-     * > whole document, which costs far more than it buys for prose that is
-     * > edited in place far more often than it is rearranged.
+     * Pairs replacement blocks by position. Moved blocks appear as removal and insertion.
      *
      * @param  list<DiffBlock>  $blocks
      * @param  list<HtmlBlock>  $oldBlocks

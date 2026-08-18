@@ -17,8 +17,7 @@ use Illuminate\Http\Request;
  * Keeping that check in one place is the point of this trait — a new index that
  * forgets it would be an injection hole, and there is now nothing to forget.
  *
- * This is deliberately *not* a query scope: CLAUDE.md keeps index filtering,
- * sorting and search in the controller's `index()`, and this trait only resolves
+ * This is not a query scope. The trait only resolves
  * the two values — the caller still writes its own `orderBy()`, because which
  * secondary sort a page needs (chapters group by `act_id` first, scenes by
  * `chapter_id`) is the page's business.

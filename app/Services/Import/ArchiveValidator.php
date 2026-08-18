@@ -9,46 +9,16 @@ use finfo;
 use ZipArchive;
 
 /**
- * The import security gate: validates an uploaded export archive BEFORE anything
- * is extracted to the importer's working directory or written to the database
- * (invariant: nothing from an archive is persisted until it has passed here and
- * the ContentSanitizer, see .specs → import → architecture.md).
+ * Validates an archive before extraction or database writes.
  *
- * Six checks, in order — the first failure throws {@see ImportValidationException}
- * with a user-safe message naming the offending file/rule:
- *
- *   1. The upload is a real zip (ZipArchive::open()'s return code, not the extension).
- *   2. No zip-slip: every entry name is inspected for "..", absolute, or drive-letter
- *      paths before anything is read. Nothing is EVER extracted to disk here —
- *      entries are only ever read into memory — so a hostile name can never place
- *      a file anywhere. The relative paths an entry.json or a chapter.json declares
- *      get the same test before they are joined: that JSON is attacker-controlled
- *      too.
- *   3. Every entry sits inside the allow-listed arborescence ({@see ImportRules});
- *      books/ and README.md are allowed (real exports have them) but never read.
- *   4. data/manifest.json exists, parses, and its version is supported.
- *   5. Every JSON descriptor decodes and carries its required keys (the shapes in
- *      documentation/export-format.md).
- *   6. Every media file an entry.json declares exists (when the manifest says
- *      bytes are included), matches its declared size, and — crucially — its
- *      ACTUAL content (finfo/getimagesize on the bytes) matches its declared
- *      mime/collection. This is the check that stops a renamed executable.
- *      A project/book/chapter `cover_file` is sniffed the same way, but it
- *      declares no size and no mime, so the bytes are only measured against the
- *      allowed image types.
+ * It checks ZIP structure, safe paths, allowed locations, the manifest version,
+ * descriptor shapes, media sizes, and content-sniffed MIME types. Declared JSON
+ * paths receive the same traversal checks as ZIP entry names.
  */
 class ArchiveValidator
 {
-    /**
-     * Required keys per descriptor basename, for descriptors that live at a
-     * per-entity path (check 5). Shapes come from documentation/export-format.md;
-     * keys may hold null (e.g. a scene's event_id) but must be PRESENT.
-     *
-     * @var array<string, array<int, string>>
-     */
+    /** @var array<string, array<int, string>> Required keys can contain null. */
     private const DESCRIPTOR_REQUIRED_KEYS = [
-        // `name` may hold null on a book (it then tracks the project's name),
-        // but the key must still be present — see requireKeys().
         'book.json' => ['id', 'name', 'position', 'project_id'],
         'act.json' => ['id', 'name', 'position', 'book_id'],
         'chapter.json' => ['id', 'name', 'position', 'act_id'],
@@ -58,47 +28,23 @@ class ArchiveValidator
         'entry.json' => ['id', 'name', 'type', 'project_id', 'aliases', 'tag_ids', 'attribute_values', 'media'],
     ];
 
-    /**
-     * Required keys of data/manifest.json (check 4).
-     *
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     private const MANIFEST_REQUIRED_KEYS = ['version', 'project_id', 'exported_at', 'includes_media'];
 
-    /**
-     * Required keys of data/project/project.json — the one per-entity descriptor
-     * whose PRESENCE is also required (an export without its root entity cannot
-     * be imported at all).
-     *
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     private const PROJECT_REQUIRED_KEYS = ['id', 'name'];
 
-    /**
-     * Required keys of each item in the flat list descriptors (check 5).
-     *
-     * @var array<string, array<int, string>>
-     */
+    /** @var array<string, array<int, string>> */
     private const LIST_ITEM_REQUIRED_KEYS = [
         'data/codex/attributes.json' => ['id', 'name', 'applies_to', 'position'],
         'data/tags.json' => ['id', 'name'],
         'data/word-count-snapshots.json' => ['recorded_on', 'word_count'],
     ];
 
-    /**
-     * Required keys of each media[] item inside an entry.json (check 6).
-     *
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     private const MEDIA_ITEM_REQUIRED_KEYS = ['id', 'collection', 'position', 'original_name', 'mime_type', 'size', 'file'];
 
-    /**
-     * Descriptor basenames that may link a plain `cover_file` (check 6). These
-     * are path columns with no declared mime, so their bytes are judged on
-     * content alone — see {@see validateCovers()}.
-     *
-     * @var array<int, string>
-     */
+    /** @var array<int, string> Descriptors that can link a content-sniffed cover. */
     private const COVER_BEARING_DESCRIPTORS = ['project.json', 'book.json', 'chapter.json'];
 
     /**
@@ -110,7 +56,7 @@ class ArchiveValidator
     {
         $zip = new ZipArchive;
 
-        // Check 1 — a real zip, judged by libzip, not by the file extension.
+        // Libzip, not the extension, determines whether the upload is a ZIP.
         if ($zip->open($archivePath) !== true) {
             throw ImportValidationException::notAZip();
         }
@@ -126,13 +72,7 @@ class ArchiveValidator
         }
     }
 
-    /**
-     * Checks 2 + 3: walk every entry name in the central directory and reject
-     * anything unsafe (zip-slip) or outside the allow-listed arborescence.
-     * Nothing is extracted — names are inspected as strings only.
-     *
-     * @return array<int, string> every non-directory entry name
-     */
+    /** @return array<int, string> Safe, allowed, non-directory entry names. */
     private function safeEntryNames(ZipArchive $zip): array
     {
         $entries = [];
@@ -148,7 +88,6 @@ class ArchiveValidator
                 throw ImportValidationException::disallowedEntryPath($name);
             }
 
-            // Pure directory entries carry no content; keep only real files.
             if (! str_ends_with($name, '/')) {
                 $entries[] = $name;
             }
@@ -157,25 +96,17 @@ class ArchiveValidator
         return $entries;
     }
 
-    /**
-     * The zip-slip test, applied to archive entry names AND to the relative
-     * media paths an entry.json declares: reject "..", ".", empty segments,
-     * backslashes (our exporter only ever writes "/"), absolute paths, drive
-     * letters, and NUL bytes. String inspection only — never resolved on disk.
-     */
+    /** Rejects traversal, absolute paths, drive paths, backslashes, and null bytes. */
     private function isUnsafePath(string $path): bool
     {
         if ($path === '' || str_contains($path, "\0") || str_contains($path, '\\')) {
             return true;
         }
 
-        // Absolute ("/etc/passwd") or drive-letter ("C:...") paths.
         if (str_starts_with($path, '/') || preg_match('/^[A-Za-z]:/', $path) === 1) {
             return true;
         }
 
-        // A trailing slash marks a directory entry; trim it before splitting so
-        // it doesn't read as an empty segment.
         foreach (explode('/', rtrim($path, '/')) as $segment) {
             if ($segment === '' || $segment === '.' || $segment === '..') {
                 return true;
@@ -185,12 +116,7 @@ class ArchiveValidator
         return false;
     }
 
-    /**
-     * Check 4: data/manifest.json exists, parses, has its required keys, and its
-     * `version` is one this importer can read.
-     *
-     * @return array<string, mixed> the decoded manifest
-     */
+    /** @return array<string, mixed> A valid supported manifest. */
     private function validateManifest(ZipArchive $zip): array
     {
         if ($zip->locateName('data/manifest.json') === false) {
@@ -200,8 +126,7 @@ class ArchiveValidator
         $manifest = $this->decodeJson($zip, 'data/manifest.json');
         $this->requireKeys('data/manifest.json', $manifest, self::MANIFEST_REQUIRED_KEYS);
 
-        // Strict comparison: the exporter writes an integer version; a string
-        // "1" is not a value any real export produces.
+        // Real exports store the version as an integer.
         if (! in_array($manifest['version'], ImportRules::SUPPORTED_MANIFEST_VERSIONS, true)) {
             throw ImportValidationException::unsupportedManifestVersion($manifest['version']);
         }
@@ -210,18 +135,12 @@ class ArchiveValidator
     }
 
     /**
-     * Check 5: every JSON descriptor in the archive decodes and has its required
-     * keys. The decoded entry.json descriptors are returned (keyed by their
-     * archive path) so check 6 doesn't decode them a second time.
-     *
      * @param  array<int, string>  $entries
-     * @return array<string, array<string, mixed>> decoded entry.json data by path
+     * @return array<string, array<string, mixed>> Entry descriptors by archive path.
      */
     private function validateDescriptors(ZipArchive $zip, array $entries): array
     {
-        // The root entity descriptor must exist — without it there is no project
-        // to import (its absence would otherwise surface as a confusing failure
-        // deep inside the graph importer).
+        // An archive without its project descriptor has no root entity.
         if ($zip->locateName('data/project/project.json') === false) {
             throw ImportValidationException::missingDescriptor('data/project/project.json');
         }
@@ -236,8 +155,6 @@ class ArchiveValidator
                 continue;
             }
 
-            // The two flat list descriptors: a JSON array whose every item has
-            // the required keys.
             if (isset(self::LIST_ITEM_REQUIRED_KEYS[$path])) {
                 $list = $this->decodeJson($zip, $path);
                 if (! array_is_list($list)) {
@@ -250,8 +167,6 @@ class ArchiveValidator
                 continue;
             }
 
-            // Per-entity descriptors, matched by basename inside the (already
-            // allow-listed) data/ branches.
             $basename = basename($path);
             if (str_starts_with($path, 'data/') && isset(self::DESCRIPTOR_REQUIRED_KEYS[$basename])) {
                 $descriptor = $this->decodeJson($zip, $path);
@@ -266,14 +181,7 @@ class ArchiveValidator
         return $entryDescriptors;
     }
 
-    /**
-     * Check 6: every media[] item an entry.json declares is well-formed, its file
-     * exists in the zip (required only when the manifest says bytes are included —
-     * a metadata-only export legitimately ships none), its actual size matches the
-     * declared size, and its ACTUAL content matches its declared mime/collection.
-     *
-     * @param  array<string, array<string, mixed>>  $entryDescriptors
-     */
+    /** @param array<string, array<string, mixed>> $entryDescriptors */
     private function validateMedia(ZipArchive $zip, array $entryDescriptors, bool $includesMedia): void
     {
         foreach ($entryDescriptors as $descriptorPath => $descriptor) {
@@ -281,8 +189,6 @@ class ArchiveValidator
                 throw ImportValidationException::invalidDescriptorValue($descriptorPath, 'media');
             }
 
-            // The entry's directory inside the archive; media `file` paths are
-            // relative to it (export-format.md → Media).
             $entryDirectory = dirname($descriptorPath);
 
             foreach ($descriptor['media'] as $media) {
@@ -293,8 +199,7 @@ class ArchiveValidator
                     throw ImportValidationException::invalidDescriptorValue($descriptorPath, 'media.collection');
                 }
 
-                // The declared relative path is attacker-controlled JSON — give it
-                // the same zip-slip treatment as a real entry name before joining.
+                // Treat declared JSON paths as untrusted archive entry names.
                 $file = $media['file'];
                 if (! is_string($file) || $this->isUnsafePath($file) || str_ends_with($file, '/')) {
                     throw ImportValidationException::unsafeEntryPath(is_string($file) ? $file : '');
@@ -305,11 +210,7 @@ class ArchiveValidator
         }
     }
 
-    /**
-     * Size + content-sniff validation for one declared media file.
-     *
-     * @param  array<string, mixed>  $media  the media[] item from entry.json
-     */
+    /** @param array<string, mixed> $media */
     private function validateMediaFile(
         ZipArchive $zip,
         string $descriptorPath,
@@ -321,9 +222,7 @@ class ArchiveValidator
         $stat = $zip->statName($archivePath);
 
         if ($stat === false) {
-            // Metadata-only exports (the "Include images & files" toggle off)
-            // declare every media row but ship no bytes — that is valid. An
-            // archive that CLAIMS to include media but is missing a file is not.
+            // Metadata-only archives can declare media without bytes.
             if ($includesMedia) {
                 throw ImportValidationException::missingMediaFile($descriptorPath, $archivePath);
             }
@@ -331,13 +230,11 @@ class ArchiveValidator
             return;
         }
 
-        // Declared size vs. the file's actual (uncompressed) size in the zip.
         if (abs($stat['size'] - (int) $media['size']) > ImportRules::MEDIA_SIZE_TOLERANCE_BYTES) {
             throw ImportValidationException::mediaSizeMismatch($archivePath);
         }
 
-        // Read the bytes into memory (never extracted to disk) and re-derive the
-        // type from CONTENT — the declared mime_type/extension is not trusted.
+        // Sniff bytes in memory. Do not trust the declared MIME type or extension.
         $bytes = $zip->getFromName($archivePath);
         if ($bytes === false) {
             throw ImportValidationException::missingMediaFile($descriptorPath, $archivePath);
@@ -353,20 +250,7 @@ class ArchiveValidator
         };
     }
 
-    /**
-     * Check 6 (plain cover columns): every project.json, book.json and
-     * chapter.json that links a `cover_file` points at a genuine image inside
-     * its own directory. A cover is a plain path field — unlike codex media it
-     * carries no declared mime — so it is validated on CONTENT alone: the bytes
-     * must sniff (finfo AND getimagesize, agreeing) as one of the allowed image
-     * types. A forged image (e.g. a renamed .php) is rejected.
-     *
-     * The file's presence is required only when the manifest says bytes are
-     * included, mirroring codex media: a metadata-only export legitimately ships
-     * the `cover_file` link but no bytes.
-     *
-     * @param  array<int, string>  $entries
-     */
+    /** @param array<int, string> $entries */
     private function validateCovers(ZipArchive $zip, array $entries, bool $includesMedia): void
     {
         foreach ($entries as $path) {
@@ -380,8 +264,7 @@ class ArchiveValidator
                 continue; // an entity without a cover
             }
 
-            // The declared relative path is attacker-controlled JSON — give it the
-            // same zip-slip treatment as a real entry name before joining.
+            // Treat declared JSON paths as untrusted archive entry names.
             $coverFile = $descriptor['cover_file'];
             if (! is_string($coverFile) || $this->isUnsafePath($coverFile) || str_ends_with($coverFile, '/')) {
                 throw ImportValidationException::unsafeEntryPath(is_string($coverFile) ? $coverFile : '');
@@ -391,7 +274,6 @@ class ArchiveValidator
             $bytes = $zip->getFromName($archivePath);
 
             if ($bytes === false) {
-                // No bytes: valid only for a metadata-only export.
                 if ($includesMedia) {
                     throw ImportValidationException::missingMediaFile($path, $archivePath);
                 }
@@ -403,10 +285,7 @@ class ArchiveValidator
         }
     }
 
-    /**
-     * Content-sniff one cover's bytes: finfo and getimagesize must agree on an
-     * allowed image mime. A renamed non-image fails both sniffers and is rejected.
-     */
+    /** Requires finfo and getimagesize to agree on an allowed image type. */
     private function validateCoverContent(string $descriptorPath, string $archivePath, string $bytes): void
     {
         $sniffedMime = (new finfo(FILEINFO_MIME_TYPE))->buffer($bytes) ?: '';
@@ -419,12 +298,7 @@ class ArchiveValidator
         }
     }
 
-    /**
-     * A cover / reference image must declare an allowed image mime AND actually
-     * BE that image: finfo and getimagesize (a second, image-specific sniffer)
-     * must both agree with the declaration. A renamed .php fails here — its
-     * bytes sniff as text/x-php and never parse as an image.
-     */
+    /** Requires the declaration, finfo, and getimagesize to agree. */
     private function validateImageContent(string $descriptorPath, string $archivePath, string $bytes, string $declaredMime, string $sniffedMime): void
     {
         if (! in_array($declaredMime, ImportRules::IMAGE_MIME_TYPES, true)) {
@@ -439,11 +313,8 @@ class ArchiveValidator
     }
 
     /**
-     * A reference file must declare an allowed document mime and its actual
-     * content must sniff as one of the allowed document types. Set membership —
-     * not strict declared === sniffed equality — because libmagic's spelling for
-     * office documents varies across versions, while the security property only
-     * needs "the bytes are genuinely one of the allowed document types".
+     * Requires declared and sniffed document types to be allowed.
+     * Libmagic can use different valid names for office formats.
      */
     private function validateReferenceFileContent(string $descriptorPath, string $archivePath, string $declaredMime, string $sniffedMime): void
     {
@@ -474,9 +345,6 @@ class ArchiveValidator
     }
 
     /**
-     * Assert every required key is PRESENT (values may be null — e.g. a scene's
-     * nullable event_id), naming the descriptor and the first missing key.
-     *
      * @param  array<mixed>  $data
      * @param  array<int, string>  $keys
      */

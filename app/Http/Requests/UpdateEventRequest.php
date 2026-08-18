@@ -22,9 +22,7 @@ class UpdateEventRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('event', 'description'),
-            // Start/End bookends are editable, but every event stays inside the [Start, End]
-            // window and the bookends stay first/last — WithinEventWindow enforces both, and
-            // branches on the bookend being edited so Start/End bound only themselves.
+            // The Start and End events must remain the first and last events.
             'event_datetime' => ['required', 'date', new WithinEventWindow($this->route('event')->project, $this->route('event'))],
             'plotlines' => ['required', 'array', 'min:1'],
             'plotlines.*' => [

@@ -2,36 +2,21 @@
 
 namespace App\Services\Diff;
 
-use App\Services\HtmlSanitizer;
 use App\Support\HtmlBlock;
 use App\Support\InlineToken;
-use App\Support\RichText;
-use App\Support\RichTextFields;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
 use DOMText;
 
 /**
- * Turns one stored rich-HTML value into the flat list of {@see HtmlBlock}s the
- * visual differ compares.
+ * Converts stored rich HTML into the {@see HtmlBlock} values used by the differ.
  *
- * > [!IMPORTANT]
- * > This class is **not** a security boundary. Its input is always a value that
- * > already went through {@see HtmlSanitizer} on write, and its
- * > output is never HTML — it is text and marks. Safety on the way back out is
- * > {@see DiffHtmlRenderer}'s job: that class escapes every text node and emits
- * > only tags from its own allow-list, so nothing here can produce markup.
- *
- * Its vocabulary is exactly {@see RichTextFields::ALLOWED_TAGS} — the tags the
- * sanitizer can leave behind. Anything else is ignored rather than guessed at.
+ * This class is not a security boundary and emits no HTML. The renderer escapes
+ * all output. Unknown tags are ignored.
  *
  * > [!WARNING]
- * > Only ever call this for `FieldKind::Rich` fields. `Scene.contents` and the
- * > front-/back-matter fields are Markdown: the writer authors that markup, so
- * > it is diffed as source. Routing Markdown through an HTML parser would
- * > silently rewrite what she typed. The split is architectural — see
- * > {@see RevisionDiffer}.
+ * > Use this tokenizer only for rich fields. Markdown must remain source text.
  */
 class HtmlTokenizer
 {
@@ -92,24 +77,14 @@ class HtmlTokenizer
         return $blocks;
     }
 
-    /**
-     * Parse to a `<body>` node, repairing whatever the markup gets wrong.
-     *
-     * Same round-trip (and the same libxml error handling) as
-     * {@see RichText::toXhtmlFragment()}: the HTML parser closes unclosed tags
-     * instead of throwing, and its complaints are captured and discarded —
-     * a legacy row with malformed HTML must still produce a readable diff, not
-     * an exception on a history page.
-     */
+    /** Parses a body and repairs malformed legacy HTML instead of failing history. */
     private function parseBody(string $html): ?DOMNode
     {
         $previousUseErrors = libxml_use_internal_errors(true);
         libxml_clear_errors();
 
         $document = new DOMDocument;
-        // The XML processing instruction forces UTF-8 (loadHTML assumes
-        // ISO-8859-1 otherwise and mangles multibyte text);
-        // LIBXML_HTML_NODEFDTD keeps it from inventing a doctype.
+        // loadHTML assumes ISO-8859-1 unless the processing instruction sets UTF-8.
         $document->loadHTML('<?xml encoding="UTF-8"?>'.$html, LIBXML_HTML_NODEFDTD);
 
         libxml_clear_errors();

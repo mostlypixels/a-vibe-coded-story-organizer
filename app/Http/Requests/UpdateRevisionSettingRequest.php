@@ -2,24 +2,10 @@
 
 namespace App\Http\Requests;
 
-use App\Models\RevisionSetting;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-/**
- * Validates an update to the global {@see RevisionSetting} singleton's
- * `retention_days`.
- *
- * Like {@see UpdateImportSettingRequest} and {@see UpdateCrawlerSettingRequest}, the
- * revision settings are GLOBAL (owned by no Project or User), so this uses the
- * any-authenticated-user exception: the `auth` + `access-admin` middleware blocks
- * guests; this confirms a user is present. See documentation/architecture.md.
- *
- * The confirm-gated "lowering destroys history" step lives in
- * RevisionSettingController, not here — this request only validates the raw bounds
- * (min:7, max:3650) that apply regardless of whether the value is being raised or
- * lowered, or whether this is the first or the confirming submission.
- */
+/** Validates the global revision retention period. */
 class UpdateRevisionSettingRequest extends FormRequest
 {
     public function authorize(): bool

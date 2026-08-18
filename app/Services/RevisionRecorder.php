@@ -15,83 +15,35 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * The one place the application writes to the `revisions` table.
+ * Writes revisions, coalesces autosaves, seeds baselines, and assigns save IDs.
  *
- * Called by App\Http\Controllers\FieldAutosaveController and by the baseline
- * backfill migration. Both must use this one code path. Never
- * copy this logic into a migration — the live path and the backfill would then
- * drift.
- *
- * Deliberately does *not* decide whether to write at all. The byte-identical
- * no-op check ("typing something and undoing it leaves no trace") is the
- * caller's job: it compares the incoming value against the entity's current
- * column value before it calls record(). This class only knows how to coalesce
- * and how to seed a baseline.
- *
- * It is also the only place `save_id` — the *save point* grouping key the
- * history/compare/revert screens address — is minted. That requires the
- * recorder to be **one instance per request**: it is registered as
- * `$this->app->scoped()` in App\Providers\AppServiceProvider.
+ * Callers skip unchanged values. The scoped service instance groups all fields
+ * that one request saves on the same entity.
  */
 class RevisionRecorder
 {
-    /**
-     * The save-point id minted for each entity touched during this request,
-     * keyed by `"<class>:<key>"`. Deliberately per (request, entity) rather
-     * than per request: App\Services\Import\ProjectGraphImporter writes
-     * revisions for hundreds of entities in a single request, and grouping
-     * them into one save point would make "Undo this save" offer to revert an
-     * entire imported project.
-     *
-     * Instance state, not static and not session-backed — it must reset
-     * between requests, which is exactly the `scoped()` binding's lifetime.
-     *
-     * @var array<string, string>
-     */
+    /** @var array<string, string> One save ID per entity in this request. */
     private array $saveIds = [];
 
     public function __construct(private readonly RevisionSummarizer $summarizer) {}
 
-    /**
-     * The save point every row written for `$entity` during this request
-     * belongs to, minted on first use.
-     */
+    /** Returns or creates this request's save ID for an entity. */
     public function currentSaveId(Model $entity): string
     {
         return $this->saveIds[$this->saveKey($entity)] ??= (string) Str::ulid();
     }
 
-    /**
-     * Deliberately open a *new* save point for `$entity` inside a request that
-     * has already written to it — used by the whole-save revert, whose result
-     * must be a save point of its own rather than joining the rows it was
-     * triggered from.
-     */
+    /** Starts a separate save point for an undo. */
     public function startNewSave(Model $entity): void
     {
         unset($this->saveIds[$this->saveKey($entity)]);
     }
 
     /**
-     * Record a new value for one revisionable field, coalescing with an
-     * already-open automatic revision when one exists.
+     * Records one field value.
      *
-     * `origin: automatic` revisions coalesce: if an automatic revision for
-     * this exact (entity, field) was created within the field's configured
-     * window (App\Support\AutosavableFields::windowSeconds()), that row's
-     * `value`/`size_bytes` are overwritten in place rather than inserting a
-     * new row. Every other origin (manual, revert, import) always inserts a
-     * fresh row — this is what makes a form-submit Save a permanent,
-     * individually visible entry even seconds after an autosave.
-     *
-     * A coalescing update keeps the row's original `save_id`, exactly as it
-     * already keeps its original `created_at`: it is the same continuing
-     * editing burst, and rewriting either would make the row claim to be
-     * something it is not. Accepted consequence (see documentation/
-     * architecture.md): if a save touches three fields and one of them
-     * coalesces into a still-open row from an earlier burst, that field lands
-     * in the *earlier* save point, so the group the writer thinks of as "the
-     * save I just made" lists two fields, not three.
+     * Automatic revisions within the field's window update the open row. Other
+     * origins always insert a row. Coalescing preserves the original time and save ID.
      */
     public function record(
         Model $entity,
@@ -108,10 +60,7 @@ class RevisionRecorder
             : null;
 
         if ($open !== null) {
-            // The row's value is being replaced, so its stored summary is now
-            // describing a diff that no longer exists. Recomputed against the
-            // row *before* this one — a coalescing row is never its own
-            // predecessor, however many times the burst overwrites it.
+            // Recompute the summary against the row before the coalesced row.
             $summary = $this->summarize($entity, $field, $value, $this->predecessorValue($entity, $field, $open));
 
             $open->update([
@@ -124,9 +73,7 @@ class RevisionRecorder
             return $open;
         }
 
-        // Resolved after ensureBaseline() above, so the first real edit to a
-        // field is summarised against the baseline it just seeded rather than
-        // against nothing.
+        // The first edit compares against the baseline created above.
         $summary = $this->summarize($entity, $field, $value, $this->predecessorValue($entity, $field));
 
         return $entity->revisions()->create([
@@ -144,41 +91,16 @@ class RevisionRecorder
         ]);
     }
 
-    /**
-     * The auto-generated label every full-form Save button's manual checkpoint
-     * gets, e.g. "Saved 24 July 10:43" — the same `d F H:i` format
-     * RevisionController's revert action already uses for its own
-     * auto-generated "Reverted to :date" label, kept as one shared format
-     * rather than each caller picking its own.
-     */
+    /** Returns the standard label for a manual save. */
     public static function manualSaveLabel(): string
     {
         return __('Saved :date', ['date' => now()->format('d F H:i')]);
     }
 
     /**
-     * Record a manual checkpoint for every field in `$before` whose value
-     * changed compared to `$entity`'s current (already-saved) value.
+     * Records changed fields from a full form as one manual checkpoint.
      *
-     * `$before` is App\Support\AutosavableFields::snapshotFieldsBeforeUpdate()'s
-     * output, taken by the caller *before* it applied the form's data to
-     * `$entity` — this method has no other way to know the pre-edit value once
-     * that update has already overwritten it. A full-form Save button commonly
-     * covers several autosaved fields in one submit (e.g. Project's
-     * description/rights/dedication/acknowledgements/preface/postface); only
-     * the fields a writer actually touched get a new row, so clicking Save
-     * after editing just one of them doesn't also spam empty-diff manual rows
-     * for the rest.
-     *
-     * `$label` defaults to {@see self::manualSaveLabel()} — the only label
-     * every caller ever passes, so it lives here rather than being repeated at
-     * each call site. (It cannot be a parameter default: PHP default values
-     * must be constant expressions, and the label embeds `now()`.)
-     *
-     * `$before` is also what a first-ever save seeds the baseline from, so
-     * `$heldSince` — the entity's `updated_at` as the caller read it, at the
-     * same moment — completes it. Without both, the baseline would hold the
-     * text the form just wrote and claim it as the initial value.
+     * The caller must capture `$before` and `$heldSince` before it updates the model.
      */
     public function recordManualChanges(
         Model $entity,
@@ -203,37 +125,15 @@ class RevisionRecorder
     }
 
     /**
-     * Seed a `baseline` revision holding the entity's *current* (pre-edit)
-     * value for this field, but only if no revision at all exists yet for
-     * this (entity, field) pair — a no-op on every later call.
+     * Seeds a separate baseline from the first non-empty pre-edit value.
      *
-     * `created_at` is stamped `$heldSince` (by default `$entity->updated_at`),
-     * not `now()`: that value provably held from that timestamp onward,
-     * whereas stamping `now()` would misrepresent the whole pre-baseline era
-     * for compare-by-date.
-     * `user_id` is the project owner, not any particular editor, since no one
-     * "wrote" the baseline.
-     *
-     * Skipped entirely when the field's current value is null/empty — an
-     * empty field has nothing worth preserving.
-     *
-     * The baseline gets a `save_id` all of its own rather than joining the
-     * save that triggered the seeding: it is the pre-edit state, not part of
-     * that save, and showing it inside that save point would attribute an
-     * untouched value to the writer who happened to edit next.
+     * The baseline uses the time that value began to apply, not the current time.
      *
      * > [!WARNING]
-     * > Read from the entity, "current" means *the attribute as it stands when
-     * > you call this* — and a caller that saves first records the new value as
-     * > the initial one, which loses the true initial value for good. A caller
-     * > that already holds the pre-edit value passes it as `$previousValue`,
-     * > with the `updated_at` that went with it as `$heldSince`. The HTTP write
-     * > paths all do: the autosave endpoint and the entity forms both save
-     * > before they record. Reading from the entity is correct only where the
-     * > entity has not been edited yet — the baseline backfill migration.
+     * > A caller that already saved must pass the pre-edit value and time.
      *
-     * @param  string|null  $previousValue  the pre-edit value, when the caller knows it
-     * @param  DateTimeInterface|null  $heldSince  when `$previousValue` started to hold
+     * @param  string|null  $previousValue  The known pre-edit value.
+     * @param  DateTimeInterface|null  $heldSince  When that value began to apply.
      */
     public function ensureBaseline(
         Model $entity,
@@ -257,9 +157,6 @@ class RevisionRecorder
             'save_id' => (string) Str::ulid(),
             'value' => $current,
             'size_bytes' => strlen($current),
-            // A baseline has nothing before it, so there is no change to
-            // summarise. The history list renders these as "Initial value"
-            // rather than as an empty diff.
             'summary_html' => null,
             'change_count' => 0,
             'project_id' => $entity->revisionProject()->id,
@@ -270,35 +167,23 @@ class RevisionRecorder
         ]);
     }
 
-    /**
-     * The most recently recorded revision for this (entity, field) pair, if
-     * any — used by callers to decide whether a byte-identical write can be
-     * skipped, and to report the revision id a save just touched.
-     */
+    /** Returns the latest revision for a field. */
     public function lastRevisionFor(Model $entity, string $field): ?Revision
     {
         return $entity->revisions()->where('field', $field)->latest('created_at')->first();
     }
 
-    /**
-     * The `value` of {@see self::lastRevisionFor()}, or null if this
-     * (entity, field) pair has no revision yet.
-     */
+    /** Returns the latest stored value for a field. */
     public function lastValueFor(Model $entity, string $field): ?string
     {
         return $this->lastRevisionFor($entity, $field)?->value;
     }
 
     /**
-     * Summarise a value against what it replaced, for the row's stored
-     * `summary_html` / `change_count`.
+     * Builds the stored summary.
      *
      * > [!IMPORTANT]
-     * > Wrapped, and deliberately so: a revision without a summary is a
-     * > cosmetic problem, a lost save is not. Whatever the diff layer trips
-     * > over — a malformed stored value, an unsupported construct — the
-     * > writer's text still reaches the database, and the row simply has
-     * > nothing to say about itself on the history list.
+     * > A summary failure must never prevent the revision write.
      */
     private function summarize(Model $entity, string $field, string $value, ?string $previousValue): RevisionSummary
     {
@@ -318,24 +203,13 @@ class RevisionRecorder
         }
     }
 
-    /**
-     * The value this (entity, field) held before the row being written — the
-     * newest revision strictly older than it.
-     *
-     * `$before` is passed only on a coalescing update, where the row being
-     * rewritten already exists and must be stepped over. On an insert the row
-     * does not exist yet, so the newest revision *is* the predecessor.
-     *
-     * Reads one column of one row: the write path already touches this
-     * neighbourhood, and it buys a history list that never diffs anything.
-     */
+    /** Returns the value before a new or coalesced revision. */
     private function predecessorValue(Model $entity, string $field, ?Revision $before = null): ?string
     {
         $revisions = $entity->revisions()->where('field', $field);
 
         if ($before !== null) {
-            // Ordering is by (created_at, id), so "older than" has to be too —
-            // a burst can write several rows inside the same second.
+            // The ID breaks ties between revisions in the same second.
             $revisions->where(fn (Builder $query) => $query
                 ->where('created_at', '<', $before->created_at)
                 ->orWhere(fn (Builder $tie) => $tie
@@ -354,11 +228,7 @@ class RevisionRecorder
         return $entity::class.':'.$entity->getKey();
     }
 
-    /**
-     * The still-open automatic revision for this (entity, field) pair, if
-     * its coalescing window (App\Support\AutosavableFields::windowSeconds())
-     * hasn't closed yet.
-     */
+    /** Returns the open automatic revision within the field's window. */
     private function openAutomaticRevision(Model $entity, string $field): ?Revision
     {
         $slug = AutosavableFields::slugFor($entity::class);

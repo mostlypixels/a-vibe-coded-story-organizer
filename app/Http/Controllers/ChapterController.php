@@ -212,9 +212,7 @@ class ChapterController extends Controller
         // walk-up-to-project check the other actions perform).
         $book = $chapter->act->book;
 
-        // Reassignment (optional) and the delete itself are a single atomic unit: a
-        // failure partway must never leave scenes half-moved or an orphaned chapter
-        // (CLAUDE.md's multi-step-write transaction rule).
+        // Reassignment and deletion must succeed or fail together.
         DB::transaction(function () use ($request, $chapter, $book) {
             if ($destinationId = $request->validated('move_children_to')) {
                 $destination = $book->chapterQuery()->findOrFail($destinationId);

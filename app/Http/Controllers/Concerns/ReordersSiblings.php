@@ -12,9 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  * {@see HasSiblingPosition} owns the swap itself; this owns the two things every
  * one of the six move actions (Act, Chapter and Scene × up, down) did around it:
  * authorize against the owning Project, then move. That pairing was repeated
- * verbatim, and forgetting the authorize half is exactly the kind of hole
- * CLAUDE.md's "every action authorizes" rule exists to prevent — so it is now
- * impossible to call the move without it.
+ * verbatim. This trait prevents a move without the matching authorization.
  *
  * The **response is deliberately not absorbed**: Act and Chapter always redirect
  * back, while Scene's pair also answers JSON for the Story overview's AJAX

@@ -10,7 +10,6 @@ class UpdateCodexAttributeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Walk up to the owning project (the flat route only binds the attribute).
         return $this->user()->can('update', $this->route('codexAttribute')->project);
     }
 

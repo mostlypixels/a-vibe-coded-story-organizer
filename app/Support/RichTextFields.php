@@ -11,29 +11,14 @@ use App\Models\Project;
 use App\Models\Scene;
 
 /**
- * Single source of truth for the rich-HTML text feature (guidelines: centralize
- * reference data in app/Support, no magic-string field lists scattered across
- * views/requests/models). Mirrors PlotlineColors / CodexMediaRules.
+ * Defines rich-HTML fields and the sanitizer allow-list.
  *
- * It answers two questions in one place:
- *   1. Which model+field pairs are rich HTML. This drives the set-mutators, the
- *      SanitizeHtml Form Request rules, and the x-wysiwyg/x-rich-text views.
- *   2. What the HtmlSanitizer allow-list is (tags, attributes, URL schemes). This
- *      MUST stay a superset of what the editor's slash menu can produce.
- *
- * Scene.contents is deliberately absent: it stays Markdown-only (ValidMarkdown +
- * Str::markdown()), never routed through the sanitizer. It IS edited through the
- * same x-wysiwyg editor as every rich-HTML field, in its `markdown` mode
- * (scenes/edit.blade.php renders `<x-wysiwyg ... markdown>`) — only the sanitizer
- * is bypassed, not the editor.
+ * The allow-list must include all HTML that the editor produces. Scene contents
+ * are Markdown and do not belong in this registry.
  */
 class RichTextFields
 {
-    /**
-     * The rich-HTML field list, keyed by model class.
-     *
-     * @var array<class-string, list<string>>
-     */
+    /** @var array<class-string, list<string>> */
     public const FIELDS = [
         Project::class => ['description'],
         Act::class => ['description'],
@@ -44,19 +29,7 @@ class RichTextFields
         CodexEntry::class => ['description'],
     ];
 
-    /**
-     * Tags the sanitizer permits. Everything else is stripped. Deliberately no
-     * <script>/<iframe>/<object> and no presentational attributes (style/class) on
-     * any tag. Keep it in sync with the editor slash menu.
-     *
-     * `table`/`thead`/`tbody`/`tr`/`th`/`td` (tables), `img` (image references —
-     * uploading new images is still out of scope, only referencing an existing URL),
-     * and `label`/`input`/`span`/`div` (the task-list checkbox markup TipTap's
-     * TaskItem/TaskList extensions render — see ALLOWED_ATTRIBUTES for the attributes
-     * each of those carries) were added by the expand-tip-tap feature.
-     *
-     * @var list<string>
-     */
+    /** @var list<string> Tags that the editor can produce and the sanitizer permits. */
     public const ALLOWED_TAGS = [
         'p', 'h1', 'h2', 'h3', 'h4', 'strong', 'em', 'u', 's', 'sub', 'sup',
         'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'br', 'hr',
@@ -66,61 +39,29 @@ class RichTextFields
     ];
 
     /**
-     * Attributes each tag carries in the sanitized output, keyed by tag name. A tag
-     * absent from this map is allowed bare (no attributes at all) — see
-     * purifierAllowedHtml(), which falls back to the tag name alone in that case.
-     *
-     * Note this only restricts which attribute *names* survive, not their values
-     * (HTMLPurifier's `HTML.Allowed` directive has no per-attribute value
-     * restriction beyond `URI.AllowedSchemes` for href/src) — e.g. `input`'s `type`
-     * attribute isn't pinned to `checkbox` here; that's an accepted limitation of
-     * this mechanism, not an oversight.
+     * HTMLPurifier limits attribute names but not their values.
      *
      * @var array<string, list<string>>
      */
     public const ALLOWED_ATTRIBUTES = [
         'a' => ['href'],
         'img' => ['src', 'alt', 'title', 'width', 'height'],
-        // TipTap's TaskList/TaskItem (@tiptap/extension-list) render:
-        //   <ul data-type="taskList"><li data-type="taskItem" data-checked="true">
-        //     <label><input type="checkbox" checked></label><span></span><div>…</div>
-        //   </li></ul>
+        // TipTap uses these attributes for task lists.
         'ul' => ['data-type'],
         'li' => ['data-type', 'data-checked'],
-        // `disabled` is added alongside type/checked because GFM's rendered task-list
-        // (league/commonmark's TaskList extension, used by Str::markdown() for the
-        // Scene.contents Markdown carve-out and checked here by
-        // ContentSanitizer::assertMarkdownAllowed()) emits a static, read-only
-        // <input disabled type="checkbox">, distinct from TipTap's own editable
-        // checkbox markup (which never sets it). Not a security concern either way.
+        // GFM adds `disabled` to its static task-list checkboxes.
         'input' => ['type', 'checked', 'disabled'],
-        // colspan/rowspan (table merge/split — HTML-mode fields only) are
-        // structural, not presentational: without them a merged cell's HTML
-        // renders with the wrong grid shape entirely. Note the
-        // editor's own Table override (resources/js/wysiwyg.js's PlainTable) strips
-        // the extension's default `style`/<colgroup>/<col> output before it ever
-        // reaches the sanitizer, so no exception for `style` is needed here — this
-        // app deliberately never emits it for tables.
+        // Merged cells need these structural attributes. The editor removes table styles.
         'td' => ['colspan', 'rowspan'],
         'th' => ['colspan', 'rowspan'],
-        // The callout node (`> [!NOTE]` etc.) presents over the existing
-        // <blockquote> element via this attribute — no new tag needed.
+        // Callouts use a blockquote with a data-callout attribute.
         'blockquote' => ['data-callout-type'],
     ];
 
-    /**
-     * URL schemes allowed on <a href> and <img src>. Relative URLs carry no scheme
-     * and remain permitted; javascript: and data: are blocked by omission.
-     *
-     * @var list<string>
-     */
+    /** @var list<string> Relative URLs remain valid without an entry here. */
     public const ALLOWED_SCHEMES = ['http', 'https'];
 
-    /**
-     * The flat list of rich-HTML fields as "Model.field" strings.
-     *
-     * @return list<string>
-     */
+    /** @return list<string> Rich-HTML fields as "Model.field" strings. */
     public static function all(): array
     {
         $fields = [];
@@ -137,8 +78,6 @@ class RichTextFields
     }
 
     /**
-     * The rich-HTML field names for a given model class.
-     *
      * @param  class-string  $model
      * @return list<string>
      */
@@ -147,21 +86,13 @@ class RichTextFields
         return self::FIELDS[$model] ?? [];
     }
 
-    /**
-     * Whether the given model+field is a rich-HTML field.
-     *
-     * @param  class-string  $model
-     */
+    /** @param class-string $model */
     public static function isRich(string $model, string $field): bool
     {
         return in_array($field, self::forModel($model), true);
     }
 
-    /**
-     * The HTMLPurifier "HTML.Allowed" directive built from the tag allow-list plus
-     * ALLOWED_ATTRIBUTES: a tag with entries there becomes "tag[attr1|attr2]", a tag
-     * without any becomes the bare tag name.
-     */
+    /** Builds the HTMLPurifier allow-list directive. */
     public static function purifierAllowedHtml(): string
     {
         $tags = array_map(
@@ -174,11 +105,7 @@ class RichTextFields
         return implode(',', $tags);
     }
 
-    /**
-     * The HTMLPurifier "URI.AllowedSchemes" directive: a scheme => true map.
-     *
-     * @return array<string, bool>
-     */
+    /** @return array<string, bool> */
     public static function purifierAllowedSchemes(): array
     {
         return array_fill_keys(self::ALLOWED_SCHEMES, true);

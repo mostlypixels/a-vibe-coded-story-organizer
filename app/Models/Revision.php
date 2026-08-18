@@ -97,13 +97,8 @@ class Revision extends Model
      * exactly the one a reader sees as current.
      *
      * > [!WARNING]
-     * > This used to read `whereNotIn('id', SELECT MAX(id) … GROUP BY …)`, which
-     * > is only the same thing while insertion order matches timestamp order
-     * > within a triple. It does not always: baselines are deliberately
-     * > back-dated to the entity's `updated_at`. Given a field whose newest
-     * > revision by timestamp was inserted *before* an older one, `MAX(id)`
-     * > protected the older row and left the newest one prunable — deleting the
-     * > version the writer would have been shown. Do not "simplify" it back.
+     * > Insertion order cannot identify the newest row. Baselines use an earlier
+     * > timestamp and can have a later ID.
      *
      * Expressed as "a strictly newer sibling exists" rather than as a grouped
      * subquery: it is the same portable SQL shape (no ROW_NUMBER() / PARTITION

@@ -10,7 +10,6 @@ class StoreCodexAttributeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Mirror ProjectPolicy@update: only the owner may add attributes to a project.
         return $this->user()->can('update', $this->route('project'));
     }
 
@@ -21,8 +20,6 @@ class StoreCodexAttributeRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            // At least one entry type must show the attribute, and every submitted
-            // value must be a valid CodexEntryType (no arbitrary sheet keys).
             'applies_to' => ['required', 'array', 'min:1'],
             'applies_to.*' => [Rule::enum(CodexEntryType::class)],
         ];

@@ -178,16 +178,12 @@ class BookController extends Controller
 
     public function destroy(DestroyBookRequest $request, Book $book): RedirectResponse
     {
-        // A project always holds at least one book (Project::booted()). The
-        // index renders no delete control for the last one at all — this is
-        // the belt half of that belt-and-braces guard.
+        // A project must always keep at least one book.
         abort_if($book->project->books()->count() === 1, 403);
 
         $project = $book->project;
 
-        // Reassignment (optional) and the delete itself are a single atomic unit: a
-        // failure partway must never leave acts half-moved or an orphaned book
-        // (CLAUDE.md's multi-step-write transaction rule).
+        // Reassignment and deletion must succeed or fail together.
         DB::transaction(function () use ($request, $book, $project) {
             if ($destinationId = $request->validated('move_children_to')) {
                 $destination = $project->books()->findOrFail($destinationId);

@@ -23,8 +23,7 @@ use Illuminate\Database\Eloquent\Model;
  *    dropped — a no-op that looks like a successful move. Reparenting has to go
  *    through the relationship's `associate()`.
  *
- * The caller owns the transaction: this is one half of a "reassign, then delete"
- * unit, and both halves must commit or neither (CLAUDE.md's multi-step-write rule).
+ * The caller owns the transaction. Reassignment and deletion must commit together.
  */
 trait ReparentsChildren
 {

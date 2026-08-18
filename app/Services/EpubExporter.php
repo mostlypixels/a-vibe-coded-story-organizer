@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\ChapterTitleFormat;
-use App\Enums\TableOfContentsDepth;
 use App\Exceptions\EpubExportException;
 use App\Models\Act;
 use App\Models\Book;
@@ -28,149 +27,67 @@ use RuntimeException;
 use ZipArchive;
 
 /**
- * Builds the in-memory content of one Book's EPUB export.
+ * Builds one book's EPUB 3 file.
  *
- * HTTP-agnostic and analogous to {@see StaticSiteExporter}: it takes a Book and
- * produces the ordered act/chapter tree and the rendered XHTML content documents.
- * {@see export()} packages them into an .epub file on disk.
+ * Metadata, covers, matter pages, and publication settings belong to the book.
+ * Appendix entries come from the project codex. Only entries referenced by this
+ * book can appear in its appendix.
  *
- * Every book of a project exports as its own separate .epub — metadata, cover, the
- * four matter pages and PublicationSetting all belong to the Book, never the Project.
- * The codex appendix is the one exception: its entries come from the shared project
- * codex, filtered to what this book's own scenes reference (see
- * {@see addAppendixSection()}).
+ * The EPUB library builds the package, OPF, spine, and navigation document. This
+ * service supplies metadata, CSS, XHTML views, and the story navigation tree.
+ * {@see addSections()} applies the configured section order.
  *
- * The rampmaster/phpepub library owns the mimetype, container.xml, the OPF
- * (metadata/manifest/spine) and the EPUB 3 nav document. This service owns the XHTML
- * content (Blade), the metadata values it gives the library, the CSS, and the
- * Act → Chapter (→ Scene) navigation. Its local variable for the library's own `EPub`
- * package object is always `$epub`, never `$book` — `$book` is reserved for the
- * `App\Models\Book` this whole service reads from.
+ * Navigation can stop at acts, chapters, or scenes. Act depth combines each act
+ * and its chapters on one page. Scene depth links to anchors in chapter pages.
+ * A chapter cover is a sibling of its chapter in the navigation tree.
  *
- * ## Page order and navigation depth
- *
- * {@see addSections()} follows `PublicationSetting::section_order`. The author sets the
- * position of the title page, the table of contents, the body, and the Markdown pages
- * (dedication, acknowledgements, preface, postface). That in-book table of contents is a
- * real spine page, not the reader-chrome nav document the library builds.
- *
- * `table_of_contents_depth` sets the navigation depth:
- *   - "Acts" folds each act's chapters into one combined spine page, so only acts appear
- *     in the nav.
- *   - "Chapters" (the default) is the two-level Act → Chapter tree.
- *   - "Scenes" adds a third level of per-scene in-page anchor links.
- *
- * {@see addChapterCoverPage()} puts a full-page cover before a chapter's content, gated by
- * `include_chapter_covers`. The cover page is a nav SIBLING of the chapter, never a child,
- * so it does not disturb the nested scene anchors at "Scenes" depth.
- *
- * {@see addAppendixSection()} fills the reserved `appendix` slot: a heading page plus one
- * page per selected codex entry (name + rich-HTML description normalised to XHTML). Its
- * gates are `include_codex_appendix` and `appendix_entry_types`.
- *
- * ## The two kinds of failure
- *
- * A book with no scenes throws {@see EpubExportException}. That is a USER problem, and
- * the controller surfaces it as a validation-style error.
- *
- * {@see validatePackage()} checks every shipped XHTML document for XML well-formedness and
- * validates the OPF against the vendored EPUB 3 RelaxNG grammar. A failure there is a
- * generator BUG, so it throws a plain RuntimeException — let it 500 and be logged.
+ * An empty book causes {@see EpubExportException}. Invalid generated XML or OPF
+ * content causes a RuntimeException because it is a generator error.
  *
  * > [!WARNING]
- * > Two isolation rules. Break either one and the damage is silent.
- * > - Scene contents render through this service's OWN CommonMark converter, configured
- * >   with SmartPunctExtension (smart dashes, ellipses and quotes). Never through
- * >   `Scene::renderedContents` — that accessor is the shared render path for the Story
- * >   overview, the share page and the book/ export, and must stay byte-for-byte equal.
- * > - HTML renders through the Blade views under resources/views/exports/epub/, never from
- * >   strings built here. The book/ layer follows the same rule.
+ * > Use this service's private SmartPunct converter for scene Markdown. Do not
+ * > change the shared scene renderer.
+ * >
+ * > Render EPUB HTML through resources/views/exports/epub/. Do not build it here.
  */
 class EpubExporter
 {
     public function __construct(private CoverImageService $coverImageService) {}
 
-    /**
-     * The stylesheet's flat filename inside the epub package. The CSS is written beside
-     * the content documents under this name, and the Blade layout links to it by exactly
-     * this name — single source of truth, so the link and the packaged file can never
-     * drift apart.
-     */
+    /** The shared stylesheet name in the package and Blade layout. */
     public const STYLESHEET_FILENAME = 'styles.css';
 
-    /**
-     * The BCP-47 code used when a Book somehow has no `language` (the column is NOT
-     * NULL with a DB default of 'en', so this is a belt-and-braces fallback only).
-     */
+    /** The fallback BCP-47 language code. */
     private const DEFAULT_LANGUAGE = 'en';
 
-    /**
-     * The EPUB version the package is built as. EPUB 3 is required: the content documents
-     * are XHTML5 with `epub:type`, the nav is an EPUB 3 nav document, and the accessibility
-     * metadata is emitted as EPUB 3 `<meta property="schema:...">` entries — none of which
-     * EPUB 2 supports.
-     */
+    /** EPUB 3 supports XHTML5, navigation, and accessibility metadata. */
     private const EPUB_VERSION = EPub::BOOK_VERSION_EPUB3;
 
-    /**
-     * Accessibility metadata for a text-only publication navigable by its table of
-     * contents. Emitted via the library's native accessibility methods (never hand-written
-     * OPF XML) so it always reflects what the package actually is.
-     */
+    /** Accessibility metadata for a text publication with a table of contents. */
     private const ACCESSIBILITY_SUMMARY = 'Text-only publication with structural navigation via table of contents.';
 
     private const ACCESS_MODE = 'textual';
 
     private const ACCESSIBILITY_FEATURE = 'structuralNavigation';
 
-    /**
-     * The path of the OPF package document inside the generated epub. Fixed by the
-     * rampmaster/phpepub library (bookRoot `OEBPS/` + `book.opf`) and referenced by the
-     * container.xml it writes — the single place this service needs it, to correct the
-     * `dc:language` the library under-reports (see {@see correctOpfLanguage()}).
-     */
+    /** The library's fixed OPF path inside the package. */
     private const OPF_ENTRY = 'OEBPS/book.opf';
 
-    /**
-     * The vendored EPUB 3 OPF RelaxNG schema (RelaxNG XML syntax), relative to
-     * `resource_path()`. {@see validatePackage()} validates the generated OPF against
-     * this. Its two
-     * `<include>`d modules (`datatypes.rng`, `epub-prefix-attr.rng`) live beside it and are
-     * resolved relative to this file — see resources/epub-schemas/README.md for provenance.
-     */
+    /** The vendored EPUB 3 OPF RelaxNG schema, relative to resource_path(). */
     private const OPF_SCHEMA = 'epub-schemas/package-30.rng';
 
-    /**
-     * Filenames for the title page and the in-book table of contents, added by
-     * {@see addTitleSection()} / {@see addTocSection()} wherever `section_order` places
-     * them (title is pinned first). Distinct from the EPUB 3 nav document (the reader-chrome
-     * TOC rampmaster/phpepub builds automatically) — these are real, readable content pages
-     * in the spine.
-     */
+    /** Filenames for the readable title and contents pages in the spine. */
     private const TITLE_FILE = 'title.xhtml';
 
     private const TOC_FILE = 'toc.xhtml';
 
-    /**
-     * Filename and heading for the codex appendix section heading/cover page, added by
-     * {@see addAppendixSection()} at the `appendix` slot of the `section_order` walk.
-     * The individual entry pages ({@see appendixEntryFileName()}) nest one nav level beneath it.
-     */
+    /** Filename and heading for the appendix root page. */
     private const APPENDIX_FILE = 'appendix.xhtml';
 
     private const APPENDIX_HEADING = 'Appendix';
 
     /**
-     * Front/back-matter section keys {@see addSections()} renders as a Markdown page: each
-     * maps its `section_order` key to the Book Markdown column it reads, the
-     * `PublicationSetting` toggle that gates it, the page heading, and its in-package
-     * filename. Single source of truth for {@see addMatterSection()}, so the four sections
-     * share one code path instead of four near-identical private methods — the "no magic
-     * strings" invariant, applied to the matter-section wiring itself.
-     *
-     * `title`, `toc`, `body`, and `appendix` are NOT matter sections: they render through
-     * their own dedicated methods ({@see addTitleSection()}, {@see addTocSection()},
-     * {@see addBody()}, {@see addAppendixSection()}).
+     * Maps each Markdown matter section to its field, toggle, heading, and file.
      *
      * @var array<string, array{field: string, toggle: string, heading: string, file: string}>
      */
@@ -202,37 +119,23 @@ class EpubExporter
     ];
 
     /**
-     * Package a Book's rendered tree into an actual .epub file and return the path to it
-     * on disk. The calling controller streams the file and deletes it after
-     * send; the temp file is also removed here if packaging throws, so a failed export never
-     * leaks a partial file — mirroring {@see StaticSiteExporter::export()}.
+     * Builds a temporary EPUB and returns its path.
      *
-     * The two-level TOC/nav (Acts as parent entries, their Chapters nested underneath, both
-     * in `position` order) is built through the library's chapter/sub-level API, never
-     * hand-written XML.
+     * A failed export removes its partial file.
      */
     public function export(Book $book): string
     {
         $tree = $this->actTree($book);
 
-        // The one user-input failure of the whole pipeline: the book has not a single
-        // scene anywhere, so it would be nothing but blank outline pages. Thrown BEFORE
-        // any temp file exists; the controller turns it into a redirect-back-with-error.
-        // Every other failure below is a generator bug and throws loudly (see
-        // validatePackage()).
+        // Reject an empty book before this method creates a temporary file.
         if (! $this->hasAnyScene($tree)) {
             throw EpubExportException::nothingToExport();
         }
 
-        // Read once and thread through every private method that needs it. Lazy: a book
-        // with no saved row gets an unsaved default instance whose toggles reproduce
-        // today's output byte-for-byte (see PublicationSettingTest / the
-        // defaults-regression guard in EpubExporterTest).
+        // A book without saved settings uses the model's default settings.
         $settings = $book->publicationSettingOrDefault();
 
-        // Built once from the already-loaded $tree (fromActs() fires zero queries) and
-        // threaded through every render/nav-label call below, so every act/chapter number
-        // in the package is derived from THIS SAME tree — see StoryNumbering.
+        // Use one numbering map for all pages and navigation labels.
         $numbering = StoryNumbering::fromActs($tree);
 
         $epub = new EPub(self::EPUB_VERSION, $this->language($book));
@@ -245,19 +148,14 @@ class EpubExporter
         $path = $this->freshTempEpubPath();
 
         try {
-            // getBook() finalizes the package (OPF, nav, NCX, zip) and returns the raw
-            // bytes; writing them to our own uuid-named temp path keeps the same temp-file
-            // lifecycle/cleanup contract as StaticSiteExporter rather than delegating the
-            // filename to the library's saveBook().
+            // Control the temporary path so concurrent exports cannot share a file.
             $bytes = $epub->getBook();
 
             if (file_put_contents($path, $bytes) === false) {
                 throw new RuntimeException("Unable to write the generated epub to {$path}.");
             }
 
-            // Post-process the finalized OPF (dc:language + dc:source), THEN structurally
-            // validate the shipped package. Validation runs last so it checks exactly what
-            // the reader will open, including the corrections above.
+            // Validate after OPF corrections so validation covers the final package.
             $this->normalizeOpf($path, $book);
             $this->validatePackage($path);
         } catch (\Throwable $e) {
@@ -271,30 +169,14 @@ class EpubExporter
         return $path;
     }
 
-    /**
-     * The epub-only Markdown converter, built lazily and reused across every scene of a
-     * single export. Kept private so the SmartPunct typography can never leak out of this
-     * service into the app's shared Scene::renderedContents render path.
-     */
+    /** The private SmartPunct converter for this export. */
     private ?CommonMarkConverter $converter = null;
 
     /**
-     * Load the book's WHOLE act → chapter → scene tree, position-ordered at every level
-     * (mirrors StaticSiteExporter::loadBookTree()'s eager-load shape). Nothing is dropped:
-     * a Chapter with zero Scenes exports as a heading-only page, and an Act with zero
-     * Chapters keeps its divider.
+     * Loads the complete ordered story tree.
      *
-     * That is a deliberate reversal of the old skip-empty filter. Authors organise before
-     * they write, so an empty chapter is a placeholder, not an accident — filtering it out
-     * shifted every later chapter's number the moment the author started writing it, and the
-     * exported book disagreed with the app in the meantime. Exporting the full outline keeps
-     * export numbers equal to app numbers at all times, and matches what
-     * {@see StaticSiteExporter} has always published.
-     *
-     * The result is the exact tree the nav/spine and validation steps walk, and the tree the
-     * tests assert against directly. "Nothing to export" is no longer an empty tree — it is
-     * {@see hasAnyScene()} returning false, which {@see export()} turns into an
-     * EpubExportException.
+     * Empty outline items remain because their removal would change story numbers.
+     * {@see hasAnyScene()} determines whether the book has exportable content.
      *
      * @return Collection<int, Act>
      */
@@ -309,16 +191,7 @@ class EpubExporter
             ->get();
     }
 
-    /**
-     * Does the exported tree contain a single scene anywhere? The one thing that makes an
-     * export worth producing now that empty chapters and acts are kept: without it a brand
-     * new outline would export as a book of blank pages.
-     *
-     * Reads the already eager-loaded relations rather than issuing a count query, so the
-     * guard costs nothing beyond {@see actTree()}'s own three queries.
-     *
-     * @param  Collection<int, Act>  $tree
-     */
+    /** @param Collection<int, Act> $tree */
     private function hasAnyScene(Collection $tree): bool
     {
         return $tree->contains(
@@ -328,17 +201,7 @@ class EpubExporter
         );
     }
 
-    /**
-     * Render one Act divider document as an XHTML string: "Act {position}" plus the Act's
-     * name on its own line (omitted when blank). The Act `description` (rich HTML,
-     * normalised to well-formed XHTML) is rendered underneath only when
-     * `include_act_descriptions` is on and the description is non-empty.
-     *
-     * $settings is nullable so callers/tests can render with the book's lazy default;
-     * the exporter's own pipeline always threads the resolved setting through. $numbering
-     * is nullable the same way — a caller without a pre-built one (tests calling this
-     * directly) gets it derived fresh via {@see StoryNumbering::forBook()}.
-     */
+    /** Renders an act divider and its optional rich-text description. */
     public function renderAct(Act $act, Book $book, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $book->publicationSettingOrDefault();
@@ -347,16 +210,7 @@ class EpubExporter
         return view('exports.epub.act', $this->actViewData($act, $book, $settings, $numbering))->render();
     }
 
-    /**
-     * Render one Act together with every one of its Chapters as a single spine document —
-     * the page used at the "Acts" {@see TableOfContentsDepth}. The navigation lists only
-     * acts at that depth, so the chapters cannot each own a nav entry; folding them into the
-     * act's own page keeps all prose in the reading order behind a single act nav entry.
-     * See exports/epub/act-combined.blade.php for why the library forces this shape.
-     *
-     * $settings and $numbering are nullable so callers/tests can render with the book's
-     * lazy default and a freshly-derived numbering, same as {@see renderAct()}.
-     */
+    /** Combines an act and its chapters when navigation stops at acts. */
     public function renderActWithChapters(Act $act, Book $book, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $book->publicationSettingOrDefault();
@@ -373,13 +227,7 @@ class EpubExporter
     }
 
     /**
-     * The view data for an Act divider body — shared by the standalone act page
-     * ({@see renderAct()}) and the combined act page ({@see renderActWithChapters()}) so the
-     * two rendering paths can never drift.
-     *
-     * `number` is the book-wide, gap-free rank from {@see StoryNumbering} — NOT
-     * `$act->position`, which is the per-parent, gappy sort key. See StoryNumbering's own
-     * docblock for why the export must never display `position`.
+     * Uses the gap-free story number instead of the database position.
      *
      * @return array<string, mixed>
      */
@@ -395,20 +243,10 @@ class EpubExporter
     }
 
     /**
-     * Render one Chapter document as an XHTML string. The heading comes from
-     * {@see ChapterTitleFormat::format()} (the single source of truth shared with the
-     * nav/TOC label). Its Scenes' Markdown is compiled to HTML and interleaved with the
-     * configured {@see DividerType} snippet. Optional, config-gated additions — each
-     * rendered only when its toggle is on AND the underlying content is non-empty:
-     *   - the Chapter `description` (rich HTML → XHTML) under the heading,
-     *   - a per-scene title (`Scene.name`) above each scene, and
-     *   - a per-scene `description` (rich HTML → XHTML) above each scene body.
+     * Renders one chapter and its ordered scenes.
      *
-     * Scenes must already be position-ordered — pass a Chapter taken from
-     * {@see actTree()}. A Chapter with no scenes is legitimate and renders as a
-     * heading-only page (no app-written filler). $settings and $numbering are nullable so
-     * callers/tests can render with the book's lazy default and a freshly-derived
-     * numbering, same as {@see renderAct()}.
+     * Settings can add descriptions, scene titles, and scene dividers. An empty
+     * chapter renders only its heading.
      */
     public function renderChapter(Chapter $chapter, Book $book, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
@@ -419,17 +257,8 @@ class EpubExporter
     }
 
     /**
-     * The view data for a Chapter body — shared by the standalone chapter page
-     * ({@see renderChapter()}) and the combined act page ({@see renderActWithChapters()}).
-     *
-     * The `sceneAnchors` flag turns on per-scene `id="scene-{id}"` anchors, but ONLY at the
-     * "Scenes" {@see TableOfContentsDepth}: that is the sole depth whose nav/TOC links to
-     * `chapter-{id}.xhtml#scene-{id}`, so the anchors exist exactly when something points at
-     * them and the default "Chapters" depth renders byte-for-byte as before. Each scene
-     * carries its stable id for that anchor.
-     *
-     * `number` — and the number fed into `heading` — is the book-wide, gap-free rank
-     * from {@see StoryNumbering}, NOT `$chapter->position`. See {@see actViewData()}.
+     * Adds stable scene anchors only when scene-level navigation uses them.
+     * Uses the gap-free story number instead of the database position.
      *
      * @return array<string, mixed>
      */
@@ -458,11 +287,7 @@ class EpubExporter
         ];
     }
 
-    /**
-     * Render the story title page: the Book's display name, centered and in larger text, as
-     * its own page — the first content document in the book, before the table of contents.
-     * An unnamed book publishes under its project's name (see {@see Book::displayName()}).
-     */
+    /** Renders the title page with the book's display name. */
     public function renderTitlePage(Book $book): string
     {
         return view('exports.epub.title', [
@@ -472,28 +297,19 @@ class EpubExporter
     }
 
     /**
-     * Render the in-book table of contents: a nested list of every Act (its nav title) with
-     * its Chapters underneath, each linking to the page
-     * {@see addBody()} will give it. Distinct from the EPUB 3 nav document the
-     * library builds automatically (that's reader chrome); this is a real page in the
-     * spine, at whatever position `section_order` places it.
+     * Renders the readable contents page in the spine.
      *
      * @param  Collection<int, Act>  $tree
      */
     public function renderToc(Book $book, Collection $tree, ?PublicationSetting $settings = null, ?StoryNumbering $numbering = null): string
     {
         $settings ??= $book->publicationSettingOrDefault();
-        // fromActs(), not forBook(): $tree is already the whole loaded tree, so deriving
-        // from it avoids a second set of queries a caller-supplied $numbering would have
-        // avoided anyway.
+        // Build numbering from the loaded tree without another query.
         $numbering ??= StoryNumbering::fromActs($tree);
         $format = $settings->chapter_title_format;
         $depth = $settings->table_of_contents_depth;
 
-        // The depth toggle decides how far each entry's children array is populated; the
-        // toc view has no depth logic of its own — it nests only while a children array is
-        // non-empty. "Acts" ⇒ no chapters; "Chapters" ⇒ chapters, no scenes; "Scenes" ⇒
-        // chapters with per-scene anchor links.
+        // Empty child arrays stop the view at the configured navigation depth.
         $entries = $tree->map(fn (Act $act) => [
             'href' => $this->actFileName($act),
             'label' => $this->actNavTitle($act, $numbering),
@@ -517,29 +333,17 @@ class EpubExporter
         ])->render();
     }
 
-    /**
-     * The epub stylesheet's contents, read from the single source file. It is written
-     * into the package under {@see STYLESHEET_FILENAME}.
-     */
+    /** Returns the stylesheet stored under {@see STYLESHEET_FILENAME}. */
     public function stylesheet(): string
     {
         return file_get_contents(resource_path('views/exports/epub/styles.css'));
     }
 
     /**
-     * Map the Book's fields onto the library's metadata setters. Optional fields
-     * (author, publisher, rights, ISBN) are only set when present, so the OPF never carries
-     * empty/placeholder values for fields the author left blank.
+     * Adds enabled, non-empty book metadata.
      *
-     * Identifiers: the generated `urn:imagoldfish:book:{id}` is always the package's
-     * unique identifier (a URI-scheme dc:identifier). When the Book has an ISBN, a
-     * SECOND dc:identifier is added (expressed as `urn:isbn:{isbn}`) — it never replaces the
-     * generated URN.
-     *
-     * Each optional block is additionally gated by its `PublicationSetting` toggle:
-     * `include_author`, `include_publisher`, `include_rights`, `include_isbn`. All four
-     * default `true`, so a default or absent setting emits the full metadata. Title,
-     * language, the primary URN and the accessibility metadata are never gated, by design.
+     * The stable book URN remains the primary identifier. An ISBN adds a second
+     * identifier. Title, language, the URN, and accessibility data are required.
      */
     private function applyMetadata(EPub $epub, Book $book, PublicationSetting $settings): void
     {
@@ -548,14 +352,11 @@ class EpubExporter
         $epub->setIdentifier($this->primaryIdentifier($book), EPub::IDENTIFIER_URI);
 
         if ($settings->include_author && filled($book->author)) {
-            // The sort key doubles as the display name — the app has no separate "sort as"
-            // field, so there is nothing better to supply.
             $epub->setAuthor($book->author, $book->author);
         }
 
         if ($settings->include_publisher && filled($book->publisher)) {
-            // The publisher URL is intentionally empty: the app stores only a name, and a
-            // blank URL keeps the library from emitting a spurious dc:relation.
+            // The app stores no publisher URL.
             $epub->setPublisher($book->publisher, '');
         }
 
@@ -564,28 +365,20 @@ class EpubExporter
         }
 
         if ($settings->include_isbn && filled($book->isbn)) {
-            // EPUB 3 does not render the legacy `opf:scheme` attribute, so the ISBN scheme
-            // is expressed via the standard `urn:isbn:` URI form as a second dc:identifier,
-            // added through the library's custom-metadata API rather than hand-written XML.
+            // EPUB 3 expresses the ISBN scheme in the identifier URI.
             $epub->addCustomMetaValue(new DublinCore(DublinCore::IDENTIFIER, 'urn:isbn:'.$book->isbn));
         }
 
-        // Accessibility metadata is always present (built via the library's native methods,
-        // never hand-written OPF XML) — this is a text-only publication navigable by its TOC.
+        // Use the library API so accessibility data stays consistent with the package.
         $epub->setAccessibilitySummary(self::ACCESSIBILITY_SUMMARY);
         $epub->addAccessMode(self::ACCESS_MODE);
         $epub->addAccessibilityFeature(self::ACCESSIBILITY_FEATURE);
     }
 
     /**
-     * Embed the Book's cover image when set. The bytes are read straight off the
-     * `public` disk (never via the /storage URL, so the export never depends on
-     * `php artisan storage:link`) and handed to the library's cover API, which builds the
-     * cover manifest item, the OPF `<meta name="cover">`, and the cover page. A cover row
-     * that points at a missing file is silently skipped rather than aborting the export.
+     * Adds an enabled book cover from the public disk through the library cover API.
      *
-     * Gated by `$settings->include_book_cover`, default `true` — a default or absent
-     * setting embeds the cover.
+     * A missing file does not fail the export. The export does not need a storage link.
      */
     private function applyCover(EPub $epub, Book $book, PublicationSetting $settings): void
     {
@@ -598,9 +391,7 @@ class EpubExporter
             return;
         }
 
-        // basename gives the library a clean filename (for the manifest item + extension);
-        // the mime type comes from the stored file, falling back to extension-derivation
-        // inside the library when the disk can't report one.
+        // The library can derive the MIME type from the extension when needed.
         $epub->setCoverImage(
             basename($book->cover_image),
             $bytes,
@@ -609,20 +400,9 @@ class EpubExporter
     }
 
     /**
-     * Drive the whole book's page order off `section_order`. Falls back to
-     * {@see PublicationSetting::SECTION_KEYS} (the standard reading order) when the setting
-     * carries no order — the lazy-default row from `publicationSettingOrDefault()` already
-     * fills this in, so that fallback is a belt-and-braces guard, not the common path.
+     * Adds enabled, non-empty sections in the configured order.
      *
-     * `title` is always first in practice (the model pins it there and the config form
-     * cannot reorder it — see `PublicationSetting::PINNED_FIRST_SECTION`), but this method
-     * does not special-case that: it simply renders whatever order it is given, one section
-     * at a time, so the pinning is enforced in exactly one place (the model).
-     *
-     * Each front/back-matter Markdown section (`dedication`/`acknowledgements`/`preface`/
-     * `postface`) renders only when its `include_*` toggle is on AND the Book's field is
-     * non-empty — see {@see addMatterSection()}. The `appendix` slot renders the codex
-     * appendix via {@see addAppendixSection()}.
+     * The model owns title-page pinning. This method uses the order as supplied.
      *
      * @param  Collection<int, Act>  $tree
      */
@@ -637,15 +417,12 @@ class EpubExporter
                 'toc' => $this->addTocSection($epub, $book, $tree, $settings, $numbering),
                 'body' => $this->addBody($epub, $book, $tree, $settings, $numbering),
                 'appendix' => $this->addAppendixSection($epub, $book, $settings),
-                // Any unrecognised key renders nothing.
                 default => null,
             };
         }
     }
 
-    /**
-     * Add the story title page as its own root-level nav entry.
-     */
+    /** Adds the title page as a root navigation entry. */
     private function addTitleSection(EPub $epub, Book $book): void
     {
         $titleXhtml = $this->renderTitlePage($book);
@@ -653,13 +430,7 @@ class EpubExporter
         $epub->addChapter($book->displayName(), self::TITLE_FILE, $titleXhtml);
     }
 
-    /**
-     * Add the in-book table of contents page as its own root-level nav entry (Acts with
-     * their Chapters nested underneath — the same shape {@see addBody()} wires into the
-     * EPUB 3 nav).
-     *
-     * @param  Collection<int, Act>  $tree
-     */
+    /** @param Collection<int, Act> $tree */
     private function addTocSection(EPub $epub, Book $book, Collection $tree, PublicationSetting $settings, StoryNumbering $numbering): void
     {
         $tocXhtml = $this->renderToc($book, $tree, $settings, $numbering);
@@ -667,12 +438,7 @@ class EpubExporter
         $epub->addChapter('Table of Contents', self::TOC_FILE, $tocXhtml);
     }
 
-    /**
-     * Add one front/back-matter Markdown page (dedication/acknowledgements/preface/postface)
-     * as its own root-level nav entry, gated by BOTH its `include_*` toggle AND non-empty
-     * content — a disabled toggle or an empty field renders nothing at all. Unknown keys
-     * (defensive only — {@see MATTER_SECTIONS} is the closed set) also render nothing.
-     */
+    /** Adds enabled, non-empty Markdown matter as a root navigation entry. */
     private function addMatterSection(EPub $epub, Book $book, PublicationSetting $settings, string $key): void
     {
         $config = self::MATTER_SECTIONS[$key] ?? null;
@@ -694,13 +460,7 @@ class EpubExporter
         $epub->addChapter($config['heading'], $config['file'], $xhtml);
     }
 
-    /**
-     * Render one front/back-matter page: a heading plus the given Markdown compiled through
-     * this service's own private SmartPunct converter — the SAME converter scene bodies use,
-     * never {@see Scene::renderedContents} and never the rich-HTML sanitizer
-     * (these Book columns are Markdown, like Scene.contents, not rich HTML like
-     * descriptions/codex entries).
-     */
+    /** Renders book matter with the same private Markdown converter as scenes. */
     public function renderMatterPage(string $heading, string $markdown, Book $book): string
     {
         return view('exports.epub.matter', [
@@ -710,10 +470,7 @@ class EpubExporter
         ])->render();
     }
 
-    /**
-     * Render the codex appendix section heading/cover page: a single "Appendix" heading, the
-     * root nav entry the individual entry pages nest beneath ({@see addAppendixSection()}).
-     */
+    /** Renders the root page for appendix entries. */
     public function renderAppendixHeading(Book $book): string
     {
         return view('exports.epub.appendix', [
@@ -723,13 +480,9 @@ class EpubExporter
     }
 
     /**
-     * Render one codex appendix entry page: the entry's name as a heading plus its stored
-     * rich-HTML `description` normalised to well-formed XHTML via {@see RichText::toXhtmlFragment()}
-     * (the codex description is sanitized rich HTML, NOT Markdown — embedding it raw would break
-     * {@see validatePackage()}). When `appendix_include_images` is on, the entry's FIRST media
-     * image is embedded above the description; `$imagePath` is its in-book path
-     * (already packaged by {@see addAppendixEntryImage()}), or null when there is no image or the
-     * backing file was missing off disk — in which case the page renders text only.
+     * Renders one appendix entry as XHTML, with its optional packaged image.
+     *
+     * Codex descriptions are rich HTML, not Markdown.
      */
     public function renderAppendixEntry(CodexEntry $entry, Book $book, ?string $imagePath = null): string
     {
@@ -742,25 +495,12 @@ class EpubExporter
     }
 
     /**
-     * Add the codex appendix at the `appendix` slot of the `section_order` walk: a
-     * heading/cover page as its own root-level nav entry, then one page per codex entry nested
-     * one level beneath it — the same "section owns its children" nesting an Act uses for its
-     * Chapters, and the right depth for the Act/Chapter/Scene nav structure.
+     * Adds a root appendix page and one child page per selected codex entry.
      *
-     * When a guard below rejects the appendix this is a true no-op — nothing added, no nav
-     * levels disturbed. The guards apply the general rule: a section renders only when it is
-     * enabled AND has non-empty content. `include_codex_appendix` is off by default. With the
-     * toggle on and types chosen but no matching entries THIS BOOK's scenes reference, a lone
-     * heading page would be pointless, so the whole section is skipped.
-     *
-     * The codex is shared project-wide, but the appendix is not: entries are restricted to
-     * ones {@see CodexEntry::referencingScenes()} this book's own scenes ({@see
-     * Book::sceneQuery()}) reference, before the `appendix_entry_types` filter. Unfiltered,
-     * one book's appendix would list another book's characters — a spoiler in a published
-     * file. Entries are ordered by (`type`, `name`) — the spec's ordering. When
-     * `appendix_include_images` is on, each entry's `media` is eager-loaded and its FIRST
-     * image is embedded on the entry page via {@see addAppendixEntryImage()}; the toggle
-     * stays off by default so no media is loaded.
+     * The appendix is absent when it is disabled or has no matching entries.
+     * Entries must have references from this book. This prevents content from
+     * another book from appearing as a spoiler. Entries sort by type and name.
+     * Media loads only when appendix images are enabled.
      */
     private function addAppendixSection(EPub $epub, Book $book, PublicationSetting $settings): void
     {
@@ -773,9 +513,6 @@ class EpubExporter
             return;
         }
 
-        // The stored appendix_entry_types are CodexEntryType backing values; the `type` column
-        // holds those same strings, so a plain whereIn filters to the selected types. Ordered by
-        // (type, name) at the database — both are plain string columns.
         $query = $book->project->codexEntries()
             ->whereIn('type', $types)
             ->whereHas('referencingScenes', fn (Builder $query) => $query->whereIn(
@@ -784,10 +521,7 @@ class EpubExporter
             ->orderBy('type')
             ->orderBy('name');
 
-        // Only pay for the entries' media when images are actually wanted. The
-        // relation is ordered (collection, position) so `first image` resolution below is
-        // deterministic and matches how the archive exporter orders the same rows. When
-        // `appendix_include_images` is off, `media` is never loaded — no wasted query.
+        // Ordered media makes the selected first image stable.
         if ($settings->appendix_include_images) {
             $query->with(['media' => fn ($relation) => $relation->orderBy('collection')->orderBy('position')]);
         }
@@ -798,18 +532,13 @@ class EpubExporter
             return;
         }
 
-        // The appendix heading/cover page — a root-level nav entry.
         $headingXhtml = $this->renderAppendixHeading($book);
         $this->assertXmlWellFormed($headingXhtml, self::APPENDIX_FILE);
         $epub->addChapter(self::APPENDIX_HEADING, self::APPENDIX_FILE, $headingXhtml);
 
-        // Each entry nests one nav level under the appendix heading.
         $epub->subLevel();
 
         foreach ($entries as $entry) {
-            // The first media image, packaged and its in-book path resolved — or null when
-            // images are off, the entry has no image, or the file is missing off disk. Passed
-            // into the view so the entry page renders with or without an illustration.
             $imagePath = $settings->appendix_include_images
                 ? $this->addAppendixEntryImage($epub, $entry)
                 : null;
@@ -824,23 +553,10 @@ class EpubExporter
     }
 
     /**
-     * Embed a codex entry's FIRST media image into the package and return its
-     * in-book path for the entry page's `<img>`, or null when there is nothing to embed.
+     * Packages the first available image and returns its unique package path.
      *
-     * "First image" is the first media row (in the eager-loaded (collection, position) order) that
-     * both carries an `image/*` MIME type AND has bytes on disk — so a metadata-only imported row
-     * (null path) or a non-image reference file (e.g. a PDF) is skipped over, not embedded. This is
-     * a deliberate V1 scope limit: exactly one image per entry, never the whole gallery.
-     *
-     * A row whose file is missing off the `public` disk is skipped SILENTLY — the entry page still
-     * renders (text only) and the export never fails, mirroring {@see applyCover()} /
-     * {@see addChapterCoverPage()}'s missing-file behaviour. Bytes are read
-     * through {@see CoverImageService::bytes()} (same `public` disk the codex media lives on), whose
-     * null return is the missing-file signal.
-     *
-     * The image is added with the library's generic addFile() (manifest-only, no spine/nav entry)
-     * and its path is namespaced by the entry's stable id so it can never collide with the book
-     * cover, a chapter cover, or another entry's image.
+     * It skips non-images, missing metadata, and missing files. A missing image
+     * does not fail the export. The image has no spine or navigation entry.
      */
     private function addAppendixEntryImage(EPub $epub, CodexEntry $entry): ?string
     {
@@ -867,11 +583,7 @@ class EpubExporter
     }
 
     /**
-     * Add every Act divider page and Chapter page as an EPUB chapter, wiring the two-level
-     * nav as it goes: each Act is a root-level nav entry, and its Chapters are nested one
-     * level below it (subLevel/backLevel bracket the Act's children). Both levels are walked
-     * in `position` order because {@see actTree()} already returns them ordered. This is the
-     * `body` entry in `section_order` ({@see addSections()}).
+     * Adds the ordered story pages and their configured navigation levels.
      *
      * @param  Collection<int, Act>  $tree
      */
@@ -883,16 +595,7 @@ class EpubExporter
         foreach ($tree as $act) {
             $actFile = $this->actFileName($act);
 
-            // "Acts" depth: one combined spine page per act (the act divider + all its
-            // chapters), so the nav/TOC carries a single entry per act while every chapter's
-            // prose stays in the reading order. The rampmaster/phpepub library couples spine
-            // placement and nav entries in addChapter() (setNavHidden() is honoured by the
-            // NCX but NOT the EPUB 3 nav — confirmed by spike), so a page-per-act is the only
-            // way to keep chapters readable without giving each one its own nav entry. There
-            // is no standalone "chapter's content page" at this depth, so each chapter's
-            // cover page is added as a root-level nav entry immediately before the
-            // combined act page holding that chapter's content — the closest this depth can
-            // get to "immediately before that chapter's content".
+            // The library cannot hide spine pages from EPUB 3 navigation. Combine each act.
             if (! $depth->includesChapters()) {
                 foreach ($act->chapters as $chapter) {
                     $this->addChapterCoverPage($epub, $chapter, $book, $settings);
@@ -905,21 +608,15 @@ class EpubExporter
                 continue;
             }
 
-            // "Chapters" (default) and "Scenes": the act divider is its own page and each
-            // chapter a nested page. Well-formedness gate BEFORE the document is buried in
-            // the package, so a malformed page (a generator bug) is caught at its source.
+            // Validate each act page before it enters the package.
             $actXhtml = $this->renderAct($act, $book, $settings, $numbering);
             $this->assertXmlWellFormed($actXhtml, $actFile);
             $epub->addChapter($this->actNavTitle($act, $numbering), $actFile, $actXhtml);
 
-            // Descend into the Act's nav entry so its Chapters nest underneath it.
             $epub->subLevel();
 
             foreach ($act->chapters as $chapter) {
-                // The chapter's cover page, if any, is a nav SIBLING of the
-                // chapter — nested at the same level under the Act, immediately before the
-                // chapter's own entry — rather than a child of it, so it never disturbs the
-                // "Scenes" depth's own subLevel() of per-scene anchors below.
+                // A cover is the chapter's sibling so scene links remain its children.
                 $this->addChapterCoverPage($epub, $chapter, $book, $settings);
 
                 $chapterFile = $this->chapterFileName($chapter);
@@ -927,11 +624,7 @@ class EpubExporter
                 $this->assertXmlWellFormed($chapterXhtml, $chapterFile);
                 $epub->addChapter($this->chapterNavTitle($chapter, $format, $numbering), $chapterFile, $chapterXhtml);
 
-                // "Scenes" depth: hang a third nav level of per-scene entries under the
-                // chapter. Each is added with NULL content and a "#"-bearing filename, which
-                // the library registers as a nav entry pointing at an in-page anchor without
-                // adding a new spine page — the scene lives inside its chapter document,
-                // anchored by the id="scene-{id}" that chapter-body.blade.php emits.
+                // Null content adds an anchor link without another spine page.
                 if ($depth->includesScenes()) {
                     $epub->subLevel();
 
@@ -947,27 +640,15 @@ class EpubExporter
                 }
             }
 
-            // Back to the root level before the next Act.
             $epub->backLevel();
         }
     }
 
     /**
-     * Add one Chapter's full-page cover image as its own spine page + nav entry,
-     * immediately preceding wherever the caller is about to add that chapter's own content
-     * (see the two call sites in {@see addBody()} for how "preceding" plays out at each
-     * {@see TableOfContentsDepth}). A true no-op — added or not, this never disturbs the
-     * caller's own subLevel()/backLevel() bracketing — when:
-     *   - `include_chapter_covers` is off (the default), or
-     *   - the Chapter has no `cover_image`, or
-     *   - the cover file no longer exists on the `public` disk (mirrors {@see applyCover()}'s
-     *     silent skip of a missing book cover — never fatal).
+     * Adds a chapter cover page before its content.
      *
-     * The image bytes are embedded via the library's generic addFile() (manifest-only, no
-     * spine/nav entry of its own) rather than setCoverImage(), which is reserved for the ONE
-     * package-level cover {@see applyCover()} already owns. The image path is namespaced by
-     * the chapter's stable id so it can never collide with the book cover's own "images/"
-     * entry or another chapter's.
+     * A disabled, absent, or missing cover is a no-op. The package path includes
+     * the chapter ID to prevent collisions. The book cover remains the package cover.
      */
     private function addChapterCoverPage(EPub $epub, Chapter $chapter, Book $book, PublicationSetting $settings): void
     {
@@ -996,24 +677,11 @@ class EpubExporter
     }
 
     /**
-     * Rewrite two OPF metadata values the library gets wrong, in a single reopen of the
-     * finalized package:
+     * Corrects language and source metadata after the library finalizes the OPF.
      *
-     *  - `dc:language` — rampmaster/phpepub's `setLanguage()` silently rejects any code that
-     *    is not exactly two characters (its guard is `mb_strlen($language) != 2`), so
-     *    region-tagged codes like `fr-CA`/`en-US` fall back to the library default `en` in
-     *    the OPF (the content documents already carry the correct code — this service renders
-     *    their `lang` attributes itself). Idempotent for plain two-letter codes.
-     *
-     *  - `dc:source` — the library derives this from the request environment during
-     *    finalize() (`getCurrentServerURL()`), which yields the real server URL under an HTTP
-     *    request but the malformed `http://:/` under CLI/queue. Worse, its `setSourceURL()`
-     *    API is unusable here: finalize() unconditionally overwrites `sourceURL` whenever the
-     *    publisher URL is empty (a library bug — it tests `publisherURL` but assigns
-     *    `sourceURL`), and this service always passes an empty publisher URL. So the only way
-     *    to get a deterministic, meaningful value is to rewrite the finalized OPF. It is
-     *    normalized to the app URL so an export is byte-identical regardless of whether it
-     *    ran under HTTP or the CLI. The value stays schema-valid (`dc:source` is free text).
+     * The library rejects region-tagged languages. It also derives the source from
+     * the request and can create an invalid CLI URL. Use the book language and the
+     * configured app URL so HTTP and queue exports match.
      */
     private function normalizeOpf(string $epubPath, Book $book): void
     {
@@ -1049,19 +717,10 @@ class EpubExporter
     }
 
     /**
-     * Structurally validate the finalized package before it is returned. Two PHP-native
-     * checks, no JVM/epubcheck dependency (the export page links authors to the real
-     * epubcheck for full conformance). A failure here means the generator produced
-     * non-conformant output — a server-side BUG — so this throws loudly rather than
-     * degrading; it never throws {@see EpubExportException} (that is reserved for the
-     * user-facing empty-book case).
+     * Validates all XHTML for well-formed XML and the OPF against EPUB 3 RelaxNG.
      *
-     *  1. Well-formedness — every shipped `.xhtml` document (our Act/Chapter pages AND the
-     *     library-generated nav / cover page) must parse with {@see DOMDocument::loadXML()}.
-     *  2. Schema — the OPF package document must validate against the vendored EPUB 3
-     *     RelaxNG grammar. (The nav's official grammar is the entire XHTML5+MathML3+SVG
-     *     RelaxNG tree, which libxml cannot process, so the nav is covered by the
-     *     well-formedness check only — see resources/epub-schemas/README.md.)
+     * Libxml cannot process the full navigation grammar. The navigation document
+     * therefore receives only the XML check. Any failure is a generator error.
      */
     private function validatePackage(string $epubPath): void
     {
@@ -1084,11 +743,7 @@ class EpubExporter
         }
     }
 
-    /**
-     * Assert an XML string is well-formed, capturing libxml's own errors (never suppressing
-     * them). Throws with the offending document's name and the parser diagnostics so a
-     * generator regression is immediately traceable.
-     */
+    /** Throws parser details when an XML document is not well-formed. */
     private function assertXmlWellFormed(string $xml, string $context): void
     {
         $previous = libxml_use_internal_errors(true);
@@ -1108,10 +763,7 @@ class EpubExporter
         }
     }
 
-    /**
-     * Assert the OPF validates against the vendored EPUB 3 RelaxNG schema, capturing libxml's
-     * validation errors. Throws (a generator bug) on any schema violation.
-     */
+    /** Throws validation details when the OPF violates the EPUB 3 schema. */
     private function assertOpfMatchesSchema(string $opf): void
     {
         $previous = libxml_use_internal_errors(true);
@@ -1132,11 +784,7 @@ class EpubExporter
         }
     }
 
-    /**
-     * Flatten libxml error structs into a single readable diagnostic line.
-     *
-     * @param  array<int, \LibXMLError>  $errors
-     */
+    /** @param array<int, \LibXMLError> $errors */
     private function formatLibxmlErrors(array $errors): string
     {
         if ($errors === []) {
@@ -1149,19 +797,13 @@ class EpubExporter
         ));
     }
 
-    /**
-     * Escape a text value for safe insertion between XML element tags.
-     */
+    /** Escapes text for XML element content. */
     private function escapeXmlText(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES | ENT_XML1);
     }
 
-    /**
-     * The nav label for an Act: "Act {number}", with ": {name}" appended when the Act has
-     * a name (mirroring the page heading + name shape). `number` is the book-wide,
-     * gap-free rank from {@see StoryNumbering} — see {@see actViewData()}.
-     */
+    /** Builds an act label with its gap-free story number and optional name. */
     private function actNavTitle(Act $act, StoryNumbering $numbering): string
     {
         $number = $numbering->act($act);
@@ -1172,22 +814,10 @@ class EpubExporter
     }
 
     /**
-     * The nav label for a Chapter, formatted by the configured {@see ChapterTitleFormat}
-     * — the single source of truth shared with the chapter page heading, so the two can
-     * never drift.
+     * Builds a chapter label with its gap-free story number.
      *
-     * With one addition a label needs and a heading does not: the `Title` format returns
-     * an empty string for a chapter with no name, which is right on the page (the writer
-     * asked for the title alone, and there isn't one) and useless in a contents listing,
-     * where it renders as a blank row. `validatePackage()` schema-checks the OPF, not the
-     * nav, so such a book exports clean and only looks broken in the reader.
-     *
-     * The fallback lives here rather than in `format()` on purpose: it is the *listing*
-     * that cannot cope with an empty label, and it matches what {@see sceneNavTitle()} and
-     * {@see actNavTitle()} already do with a nameless scene or act.
-     *
-     * `number` is the book-wide, gap-free rank from {@see StoryNumbering} — see
-     * {@see chapterViewData()}.
+     * A contents listing cannot use the empty label that Title format can return.
+     * Use a numbered fallback only in navigation.
      */
     private function chapterNavTitle(Chapter $chapter, ChapterTitleFormat $format, StoryNumbering $numbering): string
     {
@@ -1197,10 +827,7 @@ class EpubExporter
         return $label !== '' ? $label : "Chapter {$number}";
     }
 
-    /**
-     * The nav/TOC label for a Scene at "Scenes" depth: the Scene's name, falling back to
-     * "Scene {position}" when it has none (blank/whitespace-only counts as none).
-     */
+    /** Uses the scene name or a numbered fallback. */
     private function sceneNavTitle(Scene $scene): string
     {
         return filled($scene->name)
@@ -1208,69 +835,43 @@ class EpubExporter
             : "Scene {$scene->position}";
     }
 
-    /**
-     * The in-package fragment href a "Scenes"-depth nav/TOC entry points at: the scene's own
-     * chapter page plus the `#scene-{id}` anchor that chapter-body.blade.php emits. Single
-     * source of truth shared by {@see renderToc()} and {@see addBody()} so the two can
-     * never point at a different anchor than the chapter page actually carries.
-     */
+    /** Builds the shared scene anchor link for the contents page and EPUB navigation. */
     private function sceneAnchorHref(Chapter $chapter, Scene $scene): string
     {
         return $this->chapterFileName($chapter).'#scene-'.$scene->id;
     }
 
-    /**
-     * The in-package filename for an Act's page. Keyed off the stable database id (not
-     * position) so two same-positioned entries in different parents can never collide.
-     * Single source of truth shared by {@see addBody()} and {@see renderToc()} so
-     * the TOC page's links can never drift from the files actually packaged.
-     */
+    /** Uses the stable act ID to prevent filename collisions. */
     private function actFileName(Act $act): string
     {
         return "act-{$act->id}.xhtml";
     }
 
-    /**
-     * The in-package filename for a Chapter's page. See {@see actFileName()}.
-     */
+    /** Uses the stable chapter ID to prevent filename collisions. */
     private function chapterFileName(Chapter $chapter): string
     {
         return "chapter-{$chapter->id}.xhtml";
     }
 
-    /**
-     * The in-package filename for a Chapter's cover page. Distinct from
-     * {@see chapterFileName()} — the cover is a separate spine document, added only when
-     * {@see addChapterCoverPage()} decides the chapter actually has one.
-     */
+    /** Returns the separate filename for a chapter cover page. */
     private function chapterCoverFileName(Chapter $chapter): string
     {
         return "chapter-cover-{$chapter->id}.xhtml";
     }
 
-    /**
-     * The in-package filename for one codex appendix entry page. Keyed off the
-     * entry's stable database id so two entries can never collide. See {@see actFileName()}.
-     */
+    /** Uses the stable entry ID to prevent filename collisions. */
     private function appendixEntryFileName(CodexEntry $entry): string
     {
         return "appendix-entry-{$entry->id}.xhtml";
     }
 
-    /**
-     * The always-present primary identifier: a stable URN derived from the book id.
-     */
+    /** Returns the stable primary identifier for a book. */
     private function primaryIdentifier(Book $book): string
     {
         return "urn:imagoldfish:book:{$book->id}";
     }
 
-    /**
-     * A fresh, collision-free temp path for the generated epub in the `exports.temp_path`
-     * directory (created on demand) — the same lifecycle as {@see StaticSiteExporter}'s temp
-     * zips, so concurrent exports never clobber one another and the controller can
-     * delete-after-send.
-     */
+    /** Creates a unique path so concurrent exports cannot overwrite each other. */
     private function freshTempEpubPath(): string
     {
         $directory = config('exports.temp_path');
@@ -1281,33 +882,20 @@ class EpubExporter
         return $directory.DIRECTORY_SEPARATOR.Str::uuid().'.epub';
     }
 
-    /**
-     * Compile a scene's Markdown `contents` to HTML through the epub-only SmartPunct
-     * converter. Null contents render to an empty string, mirroring the null-guard in
-     * Scene::renderedContents — WITHOUT going through that accessor, so the app's shared
-     * render path stays untouched.
-     */
+    /** Converts scene Markdown with the EPUB-only SmartPunct converter. */
     private function renderSceneContents(Scene $scene): string
     {
         return (string) $this->converter()->convert($scene->contents ?? '');
     }
 
-    /**
-     * The lazily-built, SmartPunct-configured CommonMark converter. Reused within one
-     * export so a chapter's scenes share a single converter instance.
-     */
+    /** Builds one isolated CommonMark converter per export. */
     private function converter(): CommonMarkConverter
     {
         if ($this->converter === null) {
             $converter = new CommonMarkConverter;
-            // SmartPunctExtension does dashes, ellipses and smart quotes together. It
-            // lives ONLY on this instance — never on Str::markdown or
-            // Scene::renderedContents.
+            // Smart punctuation must remain isolated from the shared scene renderer.
             $converter->getEnvironment()->addExtension(new SmartPunctExtension);
-            // Strikethrough/TaskList keep this isolated converter in agreement with the
-            // GFM grammar Scene::renderedContents() and ValidMarkdown already use — added
-            // individually (not via GithubFlavoredMarkdownConverter) so the SmartPunct
-            // isolation rationale above stays intact: this instance never becomes shared.
+            // Add the GFM features that scene validation and shared rendering support.
             $converter->getEnvironment()->addExtension(new StrikethroughExtension);
             $converter->getEnvironment()->addExtension(new TaskListExtension);
 
@@ -1317,12 +905,7 @@ class EpubExporter
         return $this->converter;
     }
 
-    /**
-     * The Book's BCP-47 language code, falling back to 'en' if it is somehow empty. Drives
-     * every content document's `lang`/`xml:lang`. `language` is a BookLanguage enum (a closed
-     * dropdown, not free text), so this unwraps it to the plain code the epub-building APIs
-     * expect.
-     */
+    /** Returns the book's BCP-47 code or the fallback language. */
     private function language(Book $book): string
     {
         return $book->language?->value ?? self::DEFAULT_LANGUAGE;
