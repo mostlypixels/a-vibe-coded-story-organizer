@@ -4,10 +4,7 @@ namespace Tests\Unit;
 
 use Tests\TestCase;
 
-/**
- * `config/fonts.php` is authored data, so its invariants are guarded here the
- * way a model's `saving` hook would guard a database row.
- */
+/** Guard font configuration invariants. */
 class FontConfigTest extends TestCase
 {
     public function test_every_family_declares_the_full_shape(): void
@@ -21,8 +18,7 @@ class FontConfigTest extends TestCase
             $this->assertIsBool($family['bundled'], "Family [{$slug}]'s bundled flag must be boolean.");
             $this->assertIsBool($family['accessible'], "Family [{$slug}]'s accessible flag must be boolean.");
 
-            // The note is the eye icon's label, so an accessible family cannot
-            // ship a blank one.
+            // The note labels the accessibility icon.
             if ($family['accessible']) {
                 $this->assertNotEmpty($family['note'], "Accessible family [{$slug}] needs a note — it labels the eye icon.");
             }
@@ -51,16 +47,7 @@ class FontConfigTest extends TestCase
         );
     }
 
-    /**
-     * Every bundled family must have at least one matching `@font-face` block
-     * in app.css, and every `@font-face` family name must be a bundled
-     * family — the two-copies-cannot-drift guard, same shape as
-     * ThemePresetTest's config-vs-CSS comparison.
-     *
-     * Compared against `stack`'s primary family, not `name`: `name` is the
-     * picker's display label and may read differently (Atkinson's display
-     * name drops the "Next" suffix its actual bundled font carries).
-     */
+    /** Match CSS font faces to the primary family in each bundled stack. */
     public function test_every_bundled_family_has_a_matching_font_face_block(): void
     {
         $css = file_get_contents(base_path('resources/css/app.css'));

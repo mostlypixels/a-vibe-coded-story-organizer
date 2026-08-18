@@ -5,38 +5,12 @@ namespace Tests\Feature;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
-/**
- * `<x-text-input>`, `<x-select>` and `<x-textarea>` — the three components that own
- * the app's form-control styling.
- *
- * Rendered standalone via `Blade::render()`, following {@see IconButtonComponentTest}'s
- * precedent, and for the same reason: 37 call sites used to re-type
- * `border-border-strong focus:border-focus focus:ring-focus rounded-md shadow-xs`
- * by hand. A page test that asserts a 200 cannot tell a styled control from an
- * unstyled one, and a control that silently loses `focus:ring-focus` is invisible
- * until someone tabs into it and no focus ring appears.
- *
- * What is load-bearing here:
- *
- *   - **The base string reaches the rendered element** on all three, and survives a
- *     call site adding its own layout classes (`$attributes->merge` must append, not
- *     replace).
- *   - **`<textarea>` content stays byte-exact.** Its content is literal: a stray
- *     newline introduced by "tidying" the component's markup becomes part of the
- *     submitted value, and leading whitespace in a saved draft is the kind of bug
- *     that survives review.
- */
+/** Guard shared form styles and byte-exact textarea content. */
 class FormControlComponentTest extends TestCase
 {
-    /**
-     * The styling every form control shares. Written out per class rather than as
-     * one string because `$attributes->merge` controls the order, and order is
-     * exactly what a test should not depend on.
-     */
     private const BASE_CLASSES = [
         'bg-surface-raised',
-        // A form control does not inherit the page's `color` — without this it keeps the
-        // browser's near-black and a dark preset renders dark text on a dark box.
+        // Prevent the browser's dark default text on dark presets.
         'text-content',
         'border-border-strong',
         'focus:border-focus',
@@ -45,14 +19,7 @@ class FormControlComponentTest extends TestCase
         'shadow-xs',
     ];
 
-    /**
-     * Render a template, asserting the component tag actually compiled.
-     *
-     * An unmatched `<x-…>` tag is not an error — Blade leaves it on the page as
-     * literal text, and every "does the output contain …" assertion below would
-     * then pass against unrendered source. Asserting the tag is gone is what makes
-     * the rest mean anything.
-     */
+    /** Render a component and reject literal `<x-…>` output. */
     private function render(string $template, array $data = []): string
     {
         $rendered = Blade::render($template, $data);

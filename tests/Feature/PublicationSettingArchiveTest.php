@@ -21,28 +21,12 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 use ZipArchive;
 
-/**
- * The book's PublicationSetting travels in the export .zip and is restored
- * on import — validated as UNTRUSTED input, so a malformed config falls back
- * to defaults and the content still imports.
- *
- * Exercises the real stack end-to-end: the config is serialized by the real
- * {@see StaticSiteExporter} and restored through the real HTTP import route
- * (ImportController → ProjectImporter → ProjectGraphImporter), with the security
- * gate and content sanitizer running for real. Hand-built malformed configs are
- * injected into a genuine exported archive so ArchiveValidator still passes them
- * (the file is allow-listed; only the importer judges its content).
- */
+/** Round-trip trusted settings and reject invalid imported configuration. */
 class PublicationSettingArchiveTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Temp export zips the exporter writes under storage/app/exports (outside
-     * Storage::fake), removed in tearDown.
-     *
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     private array $tempFiles = [];
 
     protected function setUp(): void

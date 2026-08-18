@@ -11,16 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
 use Tests\TestCase;
 
-/**
- * The RevisionSetting singleton, the daily model:prune scheduling,
- * RevisionPurger, and the `revisions:purge` command.
- *
- * Revision::prunable() reads RevisionSetting::current()->retention_days, not
- * the raw config. The prune-vs-purge distinction is the central safety claim:
- * prune (model:prune) never touches a labeled or non-automatic row, while purge
- * (RevisionPurger / revisions:purge) may, when the caller targets that category
- * directly.
- */
+/** Keep automatic pruning narrower than an explicit purge. */
 class RevisionRetentionAndPurgeTest extends TestCase
 {
     use RefreshDatabase;
@@ -88,17 +79,7 @@ class RevisionRetentionAndPurgeTest extends TestCase
         $this->assertSame([$revision->id], (new Revision)->prunable()->pluck('id')->all());
     }
 
-    /**
-     * The prune protects "the newest revision for this field" — that is the
-     * promise that makes deleting old rows safe at all. Every other query in the
-     * feature decides "newest" by `(created_at, id)`.
-     *
-     * This pins the promise against rows whose timestamp order and insertion
-     * order disagree: the surviving row must be the newest one a *reader* would
-     * see in the history, not merely the last one written. Baselines are
-     * deliberately back-dated to the entity's `updated_at`, so out-of-order
-     * timestamps are a shape this table genuinely holds.
-     */
+    /** Keep the newest `(created_at, id)` row, not the last inserted row. */
     public function test_the_prune_keeps_the_newest_revision_even_when_it_was_inserted_first(): void
     {
         RevisionSetting::current()->update(['retention_days' => 90]);

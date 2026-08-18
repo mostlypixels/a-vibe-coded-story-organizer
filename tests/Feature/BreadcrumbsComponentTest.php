@@ -6,23 +6,10 @@ use App\Support\Crumb;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
-/**
- * `<x-breadcrumbs>` rendered standalone over a fixture Crumb[], in the manner
- * of {@see WordCountComponentTest}. A fixture reaches trail shapes a real route
- * cannot produce — {@see BreadcrumbsTest} drives the band through a dispatched
- * request instead.
- *
- * Guards the W3C breadcrumb pattern this component implements: one labelled
- * landmark, one current crumb, separators a screen reader never hears, and links
- * only where a crumb has somewhere to go.
- */
+/** Guard breadcrumb links, current state, and accessible separators. */
 class BreadcrumbsComponentTest extends TestCase
 {
-    /**
-     * Render a template, asserting the component tag actually compiled — see
-     * {@see IconButtonComponentTest::render()} for why an uncompiled tag would let every
-     * other assertion here pass against literal source text.
-     */
+    /** Render a component and reject literal `<x-…>` output. */
     private function render(string $template, array $data = []): string
     {
         $rendered = Blade::render($template, $data);

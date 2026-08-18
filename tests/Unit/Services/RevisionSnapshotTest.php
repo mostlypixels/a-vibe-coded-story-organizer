@@ -14,15 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/**
- * App\Services\RevisionSnapshot: what every field of an entity held
- * at one moment.
- *
- * The idea being tested is that **a save point is a moment, not a set of
- * values**. A save that touched only the dedication still implies a state for
- * the description, and that implied state is what makes entity-level compare
- * truthful.
- */
+/** Resolve a complete entity state at one save point. */
 class RevisionSnapshotTest extends TestCase
 {
     use RefreshDatabase;

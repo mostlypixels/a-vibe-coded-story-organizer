@@ -7,20 +7,9 @@ use App\Support\ThemeTokens;
 use InvalidArgumentException;
 use Tests\TestCase;
 
-/**
- * Presets are config, so the invariants a model's `saving` hook would have guarded are
- * guarded here instead — cheaper and earlier.
- *
- * Extends Tests\TestCase, unlike its plain-PHPUnit neighbours, because every assertion
- * reads `config('themes.*')`. No database is touched.
- */
+/** Guard theme configuration invariants. */
 class ThemePresetTest extends TestCase
 {
-    /**
-     * A missing key renders no custom property at all, so the token silently keeps the
-     * previous theme's colour; an unknown key is a typo that never reaches the page and
-     * would otherwise look like it worked.
-     */
     public function test_every_configured_preset_defines_exactly_the_token_vocabulary(): void
     {
         foreach (ThemePreset::all() as $slug => $preset) {
@@ -72,19 +61,7 @@ class ThemePresetTest extends TestCase
         ThemePreset::fromSlug('no-such-preset');
     }
 
-    /**
-     * `resources/css/app.css`'s `@theme static` block is the compiled fallback every
-     * utility resolves against before `<x-theme-style />` overrides it, and it holds
-     * Daylight's values.
-     *
-     * Until the hue ramps were deleted those values were `var()` references to them,
-     * so there was exactly one copy of each colour. Deleting the ramps duplicated
-     * them, and this is what stops the copies drifting: change a Daylight colour in
-     * `config/themes.php` without mirroring it into the stylesheet and every page
-     * still renders correctly (the runtime block wins) right up until someone loads a
-     * page before the CSS-in-HTML block applies, or reads the stylesheet to learn what
-     * the app's colours are. A silent divergence, so it gets a loud test.
-     */
+    /** Keep the compiled CSS fallback equal to the Daylight preset. */
     public function test_the_compiled_theme_block_matches_the_daylight_preset(): void
     {
         $stylesheet = (string) file_get_contents(dirname(__DIR__, 2).'/resources/css/app.css');

@@ -5,39 +5,10 @@ namespace Tests\Feature;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
-/**
- * `<x-icon-button>` — the one place the app's icon-only control styling lives —
- * and the `icon-*` wrappers that compose it.
- *
- * Rendered standalone via `Blade::render()`, following {@see DiffComponentTest}'s
- * precedent. These assertions exist because the wrappers previously each
- * re-typed the same Tailwind string: a feature test that only checks a page
- * returns 200 cannot tell a correctly-styled button from a differently-red one,
- * and nothing else in the suite renders these components at all.
- *
- * Two things are load-bearing enough to pin down here:
- *
- *   - **Every icon button has an accessible name.** A bare glyph is not a label,
- *     so each one must carry both a `title` and an `sr-only` span.
- *   - **Blade directives survive inside a component tag.** The wrappers pass
- *     `@disabled(...)` and conditional `href`/`download` attributes *through*
- *     `<x-icon-button ...>`, which the component-tag compiler handles differently
- *     from a plain element. If that ever stops working the buttons still render —
- *     they just quietly stop being disabled, which is precisely the kind of
- *     regression only an assertion catches.
- */
+/** Guard icon-button styles, accessible names, and wrapper attributes. */
 class IconButtonComponentTest extends TestCase
 {
-    /**
-     * Render a template, asserting the component tags in it actually compiled.
-     *
-     * That guard is the whole reason this helper exists. When the tag compiler
-     * fails to match an `<x-…>` tag it does not error — it leaves the tag on the
-     * page as text, attributes and all. Every "does the output contain
-     * href=…/title=…" assertion below would then pass against literal source,
-     * testing nothing. Asserting the tag is *gone* is what makes the rest mean
-     * something.
-     */
+    /** Render a component and reject literal `<x-…>` output. */
     private function render(string $template, array $data = []): string
     {
         $rendered = Blade::render($template, $data);

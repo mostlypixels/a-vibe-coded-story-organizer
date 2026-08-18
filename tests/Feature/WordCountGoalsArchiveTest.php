@@ -11,13 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/**
- * A project's two word goals and its `word_count_snapshots` rows travel in the
- * export .zip and are restored on import (word-count-goals spec, task 11).
- *
- * Exercises the real stack: the archive is built by the real
- * {@see StaticSiteExporter} and restored through the real HTTP import route.
- */
+/** Round-trip word goals and snapshots through the real archive flow. */
 class WordCountGoalsArchiveTest extends TestCase
 {
     use RefreshDatabase;

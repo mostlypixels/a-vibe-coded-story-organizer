@@ -11,26 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-/**
- * The schema migration adds `scenes.word_count` and backfills it for every
- * scene that exists when the migration runs.
- *
- * RefreshDatabase already runs this migration once per test, before any
- * scenes exist — so the column is present with every test starting fresh,
- * but the automatic run backfills nothing. To exercise the backfill itself,
- * each test calls the migration's own down()/up() directly against rows it
- * has just created, exactly as the migration would run against an existing
- * install's data.
- *
- * Scenes below use a raw `DB::table('scenes')->insertGetId()`, never
- * `Scene::factory()->create()`. A `Scene::booted()` hook writes `word_count`
- * on every save, and that hook needs the column that `$migration->down()`
- * removes.
- *
- * Eloquent here fails with "no column named word_count". A real install never
- * hits that, because the migration runs before any model code. Only the raw
- * insert reproduces "a row written before this feature shipped".
- */
+/** Run the word-count migration against rows that predate its column. */
 class AddWordCountToScenesMigrationTest extends TestCase
 {
     use RefreshDatabase;
@@ -43,10 +24,7 @@ class AddWordCountToScenesMigrationTest extends TestCase
         return $migration;
     }
 
-    /**
-     * Insert a scene row directly, bypassing Eloquent (and so Scene::booted()'s
-     * word_count hook) entirely — see the class docblock.
-     */
+    /** Insert a scene without the model's word-count hook. */
     private function insertScene(?string $contents): Scene
     {
         $chapter = Chapter::factory()->create();

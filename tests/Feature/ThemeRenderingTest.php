@@ -8,16 +8,7 @@ use App\Support\ThemeTokens;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * Every layout paints from the token block, so no page can drift back onto the
- * compiled defaults.
- *
- * > [!NOTE]
- * > Deliberately no assertion about the block's position relative to the @vite tag. An
- * > unlayered `:root` rule outranks Tailwind's `@layer theme` at any source order, so a
- * > position assertion would pass for a reason that is not the mechanism — and would
- * > keep passing after someone wrapped the block in `@layer` and broke it.
- */
+/** Require every themed layout to emit all theme tokens. */
 class ThemeRenderingTest extends TestCase
 {
     use RefreshDatabase;

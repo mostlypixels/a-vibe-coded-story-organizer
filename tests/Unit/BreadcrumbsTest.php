@@ -19,17 +19,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/**
- * Builds {@see Breadcrumbs} straight from a dispatched request — no view,
- * no rendered HTML. This pins down the trail-building logic in isolation;
- * {@see \Tests\Feature\BreadcrumbsTest} covers the rendered band.
- *
- * "Dispatched" rather than hand-assembled: `$this->get(...)` runs the real
- * route, auth and (implicit) model-binding pipeline, then this test reads
- * the resulting Request straight out of the container. That is the same
- * Request a real page's view composer sees, and no page must render
- * breadcrumbs for this test to run.
- */
+/** Build breadcrumb trails from dispatched requests. */
 class BreadcrumbsTest extends TestCase
 {
     use RefreshDatabase;
@@ -204,7 +194,6 @@ class BreadcrumbsTest extends TestCase
             [__('Edit :thing :id', ['thing' => __('chapter'), 'id' => $chapter->id]), null, true],
             end($rows),
         );
-        // The model's name must not leak into the leaf — id only, for now.
         $this->assertStringNotContainsString('A Chapter Name', end($rows)[0]);
     }
 

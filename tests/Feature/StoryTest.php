@@ -175,17 +175,7 @@ class StoryTest extends TestCase
         $this->assertSame(4, substr_count($response->getContent(), '0 words'));
     }
 
-    /**
-     * A heading's own text is its accessible name. With the total nested inside
-     * the `<h2>`/`<h3>`, screen-reader heading navigation announced "Act 1 —
-     * Melusine's Youth 490 words", and the act was silently renamed every time
-     * the writer added a sentence — so the count sits *beside* the heading, in
-     * the same flex row.
-     *
-     * Asserted against each heading's own inner HTML rather than the page as a
-     * whole: on the whole page "613 words" is present either way, which is the
-     * shape of assertion that would pass with the count moved back inside.
-     */
+    /** Keep changing totals outside each heading's accessible name. */
     public function test_totals_render_beside_the_act_and_chapter_headings_not_inside_them(): void
     {
         $user = User::factory()->create();
@@ -216,16 +206,7 @@ class StoryTest extends TestCase
         }
     }
 
-    /**
-     * The story overview already eager-loads every scene
-     * (`StoryController::index()`'s `with('chapters.scenes.event')`), so the
-     * chapter/act/project totals must not add a single query, whatever the
-     * number of acts, chapters or scenes.
-     *
-     * This counts queries against the "scenes" table alone. The whole request's
-     * query count also includes session and auth queries, which makes it a
-     * flaky number to pin.
-     */
+    /** Count scene queries only; request-level query totals are unstable. */
     public function test_totals_add_no_queries_against_the_scenes_table(): void
     {
         $user = User::factory()->create();

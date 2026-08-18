@@ -25,17 +25,10 @@ describe('built CSS custom property resolution', () => {
     it('declares every custom property it references via var(--…)', () => {
         const css = cssFiles.map((file) => readFileSync(file, 'utf8')).join('\n');
 
-        // Only `var(--foo)` with NO fallback is at risk of silently dropping — that is the
-        // exact failure mode this guard exists for. `var(--foo, fallback)` is a deliberate,
-        // working extension point (Tailwind's own preflight ships several, e.g.
-        // `var(--default-font-feature-settings, normal)`, always undeclared unless a project
-        // opts in): the browser uses the fallback, nothing is dropped, so it is not "dangling"
-        // in the sense that matters here.
+        // A reference with a fallback remains valid without a declaration.
         const referenced = new Set([...css.matchAll(/var\(\s*(--[a-zA-Z0-9-_]+)\s*\)/g)].map((match) => match[1]));
 
-        // `--foo:` as a declaration, plus `@property --foo` (Tailwind emits its own `--tw-*`
-        // internals this way, e.g. `@property --tw-blur { syntax: "*"; ... }`, with no `:`
-        // directly after the name).
+        // Tailwind can declare internal properties with `@property`.
         const declared = new Set([
             ...[...css.matchAll(/(--[a-zA-Z0-9-_]+)\s*:/g)].map((match) => match[1]),
             ...[...css.matchAll(/@property\s+(--[a-zA-Z0-9-_]+)/g)].map((match) => match[1]),

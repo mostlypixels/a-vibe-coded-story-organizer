@@ -17,24 +17,11 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use ZipArchive;
 
-/**
- * HTTP-layer tests for the import feature: the four admin routes
- * (store / resume / destroy / import-settings), their Form Requests, and the
- * two intentional authorization postures (any-authenticated-user for the initial
- * upload, real ImportPolicy ownership for resume/discard).
- *
- * Deep zip-structure edge cases live in the unit suite
- * (tests/Unit/Import/ArchiveValidatorTest.php etc.); here we assert only that a
- * service rejection surfaces as an `archive` field error rather than a 500, and
- * that the happy path creates a user-owned project.
- */
+/** Test import routes, validation errors, and authorization boundaries. */
 class ImportTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * A minimal valid 1x1 PNG for the fixture's cover media bytes.
-     */
     private const TINY_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
     /**

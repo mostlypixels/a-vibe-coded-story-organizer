@@ -4,23 +4,11 @@ namespace Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 
-/**
- * Tailwind 4 reads its theme from `@theme` in `resources/css/app.css`.
- * `tailwind.config.js` and `postcss.config.js` are deleted, so the theme has one
- * source of truth — the one the theme-switcher builds runtime overrides on.
- *
- * > [!WARNING]
- * > If either file comes back (a future `npx tailwindcss init`, a merge that
- * > resurrects an old branch), the theme silently gets a second, unread source.
- *
- * Plain filesystem assertions, no database — a Unit test that runs under `composer test`
- * with no extra wiring, in the spirit of `tests/Unit/SpecsStatusConsistencyTest`.
- */
+/** Keep Tailwind configuration in the CSS source only. */
 class TailwindConfigFilesGoneTest extends TestCase
 {
     private function repoRoot(): string
     {
-        // tests/Unit → repo root is two levels up.
         return dirname(__DIR__, 2);
     }
 

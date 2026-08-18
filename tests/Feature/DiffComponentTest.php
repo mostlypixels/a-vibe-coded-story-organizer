@@ -8,19 +8,7 @@ use App\Services\RevisionSummarizer;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
-/**
- * The `<x-diff>` component, the one place diff output is styled.
- *
- * Rendered standalone via `Blade::render()`, following
- * {@see AutosaveFieldComponentTest}'s precedent. The component is fed real
- * differ output rather than hand-written fixtures: what it has to cope with is
- * exactly what App\Services\Diff\DiffHtmlRenderer produces, and a fixture that
- * drifts from that would test nothing.
- *
- * The CSS itself lives in `resources/css/app.css`; what is asserted here is the
- * contract between the two — that the component applies the classes those rules
- * hang off, and that the markup carries all three change channels.
- */
+/** Render real diff output through the shared component. */
 class DiffComponentTest extends TestCase
 {
     private function render(string $html, string $extra = ''): string
@@ -41,13 +29,10 @@ class DiffComponentTest extends TestCase
         $diff = $this->richDiff('<p>The ferry left at dawn.</p>', '<p>The ferry slipped at dawn.</p>');
         $rendered = $this->render($diff, ':kind="$kind"');
 
-        // 1. The class the tint and the gutter glyph both hang off…
         $this->assertStringContainsString('revision-diff', $rendered);
         $this->assertStringContainsString('class="diff-ins"', $rendered);
         $this->assertStringContainsString('class="diff-del"', $rendered);
 
-        // 2. …and the visually-hidden label, so the change is announced rather
-        //    than conveyed by colour alone.
         $this->assertStringContainsString('<span class="sr-only">inserted </span>', $rendered);
         $this->assertStringContainsString('<span class="sr-only">removed </span>', $rendered);
     }

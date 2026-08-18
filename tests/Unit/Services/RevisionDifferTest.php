@@ -6,17 +6,7 @@ use App\Enums\FieldKind;
 use App\Services\RevisionDiffer;
 use Tests\TestCase;
 
-/**
- * App\Services\RevisionDiffer — the router that picks a diff strategy from the
- * field's kind (expanded/diffing.md, *Two diff strategies, chosen by
- * `FieldKind`*).
- *
- * These tests are about *which* differ ran, not about how well it diffs: the
- * visual differ and its renderer have their own suites
- * (VisualHtmlDifferTest, DiffHtmlRendererTest), as does jfcherng upstream. So
- * each case here asserts on the output *shape* — rendered blocks versus a
- * side-by-side table — which is the thing routing decides.
- */
+/** Select the correct diff strategy for each field kind. */
 class RevisionDifferTest extends TestCase
 {
     private RevisionDiffer $differ;
@@ -36,7 +26,6 @@ class RevisionDifferTest extends TestCase
             '<p>The cat sat quietly.</p>',
         );
 
-        // Block markup with the change marked in place — the visual differ ran.
         $this->assertStringContainsString('<p', $result->html);
         $this->assertStringContainsString('<ins', $result->html);
         $this->assertStringContainsString('quietly', $result->html);

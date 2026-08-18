@@ -11,18 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/**
- * The data migration deletes every revision an import replayed, because
- * `RevisionOrigin` no longer has an `import` case and a surviving `'import'`
- * row throws when the model hydrates it.
- *
- * RefreshDatabase runs the migration before any factory row exists, so each
- * test re-runs `up()` directly against rows it just made — the same thing the
- * migration meets on an existing install.
- *
- * The rows go in through the query builder: the enum case is gone, so the
- * model can no longer make one.
- */
+/** Run the cleanup migration against raw rows with the removed import origin. */
 class DropImportedRevisionsMigrationTest extends TestCase
 {
     use RefreshDatabase;

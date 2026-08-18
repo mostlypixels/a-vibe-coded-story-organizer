@@ -17,16 +17,7 @@ use Illuminate\Support\Str;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
-/**
- * App\Services\RevisionComparison: everything that differs about an
- * entity between two save points.
- *
- * Two properties carry the design. Unchanged fields are never diffed, which is
- * what keeps comparing two save points of a long scene cheap. And a field that
- * *neither* save touched can still appear as changed, when some save in between
- * changed it — a compare page is about two states of the entity, not about two
- * lists of edits.
- */
+/** Compare complete entity states and skip unchanged fields. */
 class RevisionComparisonTest extends TestCase
 {
     use RefreshDatabase;

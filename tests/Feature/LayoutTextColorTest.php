@@ -5,27 +5,7 @@ namespace Tests\Feature;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Every themed layout's <body> must name a default text colour.
- *
- * Without one the body falls back to the browser's black. That is invisible in
- * Daylight — black on white is what a reader expects — and it stays invisible to
- * every test we have: the contrast matrix only measures pairs the vocabulary
- * declares, and a UA default is not a token. Under a dark preset it is black text
- * on a dark surface.
- *
- * The bug this guards against is not the layout itself but everything below it: a
- * component that forgets to name a colour inherits whatever the body set, so the
- * body is the one place that decides whether "forgot" means "themed anyway" or
- * "unreadable". `.revision-diff` is the one that surfaced it, after two layouts had
- * already shipped without the class.
- *
- * The EPUB and print-book layouts are deliberately excluded — they render to a file
- * with its own stylesheet and never see a preset.
- *
- * Plain PHPUnit\Framework\TestCase, not Tests\TestCase: this reads files off disk
- * and boots nothing.
- */
+/** Require a default text token on each themed HTML layout. */
 class LayoutTextColorTest extends TestCase
 {
     /**

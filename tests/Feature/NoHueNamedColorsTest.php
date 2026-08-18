@@ -2,52 +2,15 @@
 
 namespace Tests\Feature;
 
-use App\Support\SearchSnippet;
-use App\Support\ThemeTokens;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
 
-/**
- * A class may name what a colour is *for*, never which hue it happens to be.
- *
- * `bg-ocean-600` says a thing is blue. It does not say where it may be used, so
- * it becomes a lie the moment a theme flips — and the whole point of the theme
- * switcher is that a preset can flip. `bg-primary` cannot lie: the preset owns
- * the value. The vocabulary lives in {@see ThemeTokens}.
- *
- * The sweep is complete: every scanned file was checked against an allow-list of
- * still-to-sweep paths while the ~900-usage rename was in flight, and that
- * mechanism is gone now the list is empty. Do not re-add it for a one-off
- * exception — fix the offending file instead.
- *
- * ## What is scanned
- *
- * The five hand-authored ramps (`ocean`, `aqua`, `navy`, `sun`, `flame`), every
- * built-in Tailwind hue a template might reach for instead (`gray`, `slate`, `red`,
- * `blue`, `emerald`, `indigo`, …), and the two literal colours that have role tokens
- * (`text-white`, `bg-white`).
- *
- * Comments are stripped from plain PHP files before scanning: `ThemeTokens` and
- * `theme:ramp` both have to *say* `bg-ocean-600` to explain themselves, and a
- * documentation sentence is not a painted pixel. Blade, CSS and JS are scanned
- * whole — their comments are ours to keep in step.
- *
- * Plain PHPUnit\Framework\TestCase, not Tests\TestCase: this reads files off disk
- * and boots nothing.
- */
+/** Prevent hue-specific classes from bypassing the theme tokens. */
 class NoHueNamedColorsTest extends TestCase
 {
-    /**
-     * Directories scanned, relative to the project root.
-     *
-     * `app/` is in the list because Blade is not the only thing that writes a
-     * class name — {@see SearchSnippet} builds the search `<mark>`
-     * itself, and a Blade-only sweep would leave it dangling.
-     *
-     * @var list<string>
-     */
+    /** @var list<string> */
     private const SCANNED = ['resources/views', 'resources/js', 'resources/css', 'app'];
 
     /**
@@ -55,19 +18,7 @@ class NoHueNamedColorsTest extends TestCase
      */
     private const EXTENSIONS = ['php', 'js', 'css'];
 
-    /**
-     * A ramp reference (`bg-ocean-600`, `--color-gray-200`, `divide-gray-200`), a
-     * built-in Tailwind hue (`bg-red-600`, `border-emerald-300`) or one of the two
-     * literals that have role tokens.
-     *
-     * The pattern covers every built-in Tailwind hue, not only the five
-     * hand-authored ramps and the two neutral ones. Status colors (`red`,
-     * `green`, `blue`, `yellow`, `amber`, …) are where the sweep is subtlest.
-     *
-     * The shade-digit suffix is mandatory: `neutral` is both a Tailwind ramp and
-     * one of our own token names. `bg-neutral` is our token and passes;
-     * `bg-neutral-600` is a hue reference and fails.
-     */
+    /** Match hue shades without rejecting the semantic `neutral` token. */
     private const PATTERN = '/\b(?:ocean|aqua|navy|sun|flame|gray|slate|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|zinc|neutral|stone)-(?:50|[1-9]00|950)\b|\b(?:text|bg)-white\b/';
 
     public function test_no_file_names_a_hue(): void

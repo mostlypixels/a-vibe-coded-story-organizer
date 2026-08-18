@@ -7,7 +7,6 @@ use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
 use App\Enums\ImportPhase;
 use App\Enums\SceneStatus;
-use App\Http\Controllers\ImportController;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
@@ -32,28 +31,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/**
- * The import feature's acceptance test: a full export -> import
- * round-trip exercising the WHOLE stack with nothing mocked. A non-trivial
- * project is seeded with factories, exported through the real
- * {@see StaticSiteExporter}, and the resulting zip is imported through the real
- * HTTP route ({@see ImportController}) — the security gate,
- * the content sanitizer, the graph importer, the checkpoint record, and the
- * queued/synchronous dispatch all run for real.
- *
- * The seeded project deliberately hits every axis the round-trip must preserve
- * (overview.md -> Acceptance criteria; testing.md -> Round-trip):
- *   - acts/chapters/scenes whose authoring order disagrees with their position
- *     (proving position is replayed, never re-derived from insertion order);
- *   - a renamed main plotline + a custom plotline + a non-fixed event;
- *   - a codex entry with aliases, tags, attribute values anchored to DIFFERENT
- *     events, and cover + reference media.
- *
- * It also proves the two intentional postures: the import is owned by the
- * importing user (never the archive's original owner), and re-importing the same
- * zip a second time produces a second, name-disambiguated project rather than a
- * collision or an overwrite.
- */
+/** Exercise the complete export and import path without mocks. */
 class ImportRoundTripTest extends TestCase
 {
     use RefreshDatabase;

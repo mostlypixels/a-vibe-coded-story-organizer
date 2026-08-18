@@ -12,30 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * Every server-rendered page compiles all of its Blade components.
- *
- * ## Why a whole test for one assertion
- *
- * When Blade's component-tag compiler cannot match an `<x-…>` tag, it does not
- * raise anything — it leaves the tag on the page as **literal text**, attributes
- * and all. So the page still returns 200, every `assertSee` for the surrounding
- * copy still passes, and the writer gets `<x-icon-button type="submit" …/>` printed
- * where a button should be. Nothing else in the suite can see that.
- *
- * The known cause is a Blade **directive** used as an attribute inside a component
- * tag — `@disabled($loop->first)`, `@if ($href) href="…" @endif` — which reads
- * perfectly naturally and works fine on a plain `<button>`. Bound attributes
- * (`:disabled="$loop->first"`) are the equivalent that compiles; the attribute bag
- * already drops `false`/`null` and expands `true` to `key="key"`.
- *
- * {@see IconButtonComponentTest} guards the components themselves. This guards the
- * ~20 pages that *call* them, which is where the next instance will be written.
- *
- * Add a URL here when adding a server-rendered page. Fixtures exist only so index
- * pages have rows: an empty table renders none of the per-row controls, which are
- * exactly the components most likely to carry a directive.
- */
+/** Fail when Blade emits an uncompiled component tag as literal text. */
 class BladeComponentCompilationTest extends TestCase
 {
     use RefreshDatabase;
@@ -45,15 +22,11 @@ class BladeComponentCompilationTest extends TestCase
         $user = User::factory()->create();
         [$project, $book] = $this->projectWithBook($user);
 
-        // A second book, with acts of its own, so the books index/edit "move or
-        // delete" dialogs have a destination to offer, and their reorder buttons
-        // render both enabled and disabled (first/last row).
+        // Render both enabled and disabled book controls.
         $secondBook = Book::factory()->for($project)->create();
         Act::factory()->for($secondBook)->create();
 
-        // Two acts and two chapters so the "move or delete" dialog has a
-        // destination to offer, and the reorder buttons render both enabled and
-        // disabled (first/last row).
+        // Render both enabled and disabled manuscript controls.
         $act = Act::factory()->for($book)->create();
         $secondAct = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();

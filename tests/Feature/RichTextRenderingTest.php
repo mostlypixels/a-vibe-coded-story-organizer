@@ -11,15 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * Safe rendering. Content is sanitized on write, so the read views render it with
- * {!! !!} exclusively through x-rich-text, while index tables show an escaped,
- * tag-stripped text excerpt via x-rich-text-excerpt.
- *
- * These HTTP-level tests prove that allowed formatting reaches the page, that
- * nothing executable leaks when someone posts a script, and that the read routes
- * stay behind ProjectPolicy.
- */
+/** Guard rich-text rendering, sanitization, and authorization. */
 class RichTextRenderingTest extends TestCase
 {
     use RefreshDatabase;
@@ -43,7 +35,6 @@ class RichTextRenderingTest extends TestCase
 
         $this->get(route('shared.scenes.show', 'rich-text-token'))
             ->assertOk()
-            // Allowed markup rendered as real HTML through x-rich-text.
             ->assertSee('<strong>bold text</strong>', false)
             ->assertSee('<li>a list item</li>', false)
             // The <script> posted pre-sanitization never reaches the page.

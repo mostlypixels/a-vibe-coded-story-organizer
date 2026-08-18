@@ -15,15 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use ZipArchive;
 
-/**
- * Unit-level tests for ContentSanitizer: the reject-on-violation
- * policy over the app's existing HtmlSanitizer/RichTextFields allow-list, for both
- * raw HTML fragments (description.html / notes.html) and Markdown (contents.md,
- * checked on its RENDERED output to close CommonMark's raw-HTML passthrough hole).
- *
- * RefreshDatabase is only needed by the real-export false-positive check at the
- * bottom; the string-level tests never touch the database.
- */
+/** Reject unsafe HTML in rich text and rendered Markdown. */
 class ContentSanitizerTest extends TestCase
 {
     use RefreshDatabase;

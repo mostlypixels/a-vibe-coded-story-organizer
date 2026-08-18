@@ -8,21 +8,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
-/**
- * The four top-level section landing pages (Story/Timeline/Codex/Tools): every
- * one authorizes via ProjectPolicy and lights up its own top-level menu item.
- * Their breadcrumb trails are pinned in Tests\Unit\BreadcrumbsTest.
- *
- * Story/Timeline/Codex render "recently edited" content, covered by
- * Tests\Feature\RecentlyEditedTest. Tools links to the other tools instead —
- * it owns no user-authored entity of its own, so there is nothing recent to
- * list there. Its cards are covered below.
- */
 class SectionStubTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Every section route, for the auth cases that don't need the heading. */
     public static function stubRouteNames(): array
     {
         return [

@@ -66,12 +66,6 @@ describe('shouldIntercept', () => {
     });
 });
 
-/**
- * Tests for `isGuardedSaveSubmit()` — the predicate that keeps the native `beforeunload`
- * unsaved-changes prompt silent for the entity edit page's Save / Save and stay submit,
- * and only that submit. A `submitter`-shaped stand-in whose `closest()` reports whether
- * the button (or an ancestor) carries `data-guard-save` is all the predicate reads.
- */
 function makeSaveSubmitter() {
     return { closest: (selector) => (selector === '[data-guard-save]' ? {} : null) };
 }

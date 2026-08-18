@@ -18,17 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/**
- * The feature's one invariant: `scenes.word_count` always equals
- * `WordCounter::count($scene->contents, FieldKind::Markdown)` for the stored
- * value, on **every** write path (expanded/architecture.md "The write path").
- *
- * Held by a `saving` hook in `Scene::booted()`, not by any controller — the
- * whole reason it lives there is that `RevisionReverter` writes through
- * `$entity->save()` and never touches `FieldAutosaveController`, so a
- * controller-level implementation would leave the count stale the moment
- * someone uses Undo. One test per write path below proves that.
- */
+/** Keep each stored word count equal to the stored scene contents. */
 class WordCountTest extends TestCase
 {
     use RefreshDatabase;
@@ -41,7 +31,6 @@ class WordCountTest extends TestCase
         return Chapter::factory()->for($act)->create();
     }
 
-    /** Build a full project -> act -> chapter -> scene chain owned by the given user. */
     private function sceneFor(User $user, array $overrides = []): Scene
     {
         return Scene::factory()->for($this->chapterFor($user))->create($overrides);

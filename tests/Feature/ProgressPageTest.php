@@ -13,11 +13,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * Tools ▸ Progress (ProgressController): the status strip that always shows
- * *now* — today's words and the running total against the project's two
- * goals. The chart and its range picker join this page in a later task.
- */
 class ProgressPageTest extends TestCase
 {
     use RefreshDatabase;

@@ -14,25 +14,12 @@ use App\Services\RevisionRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * The *save point*: every revision row written for one entity by one
- * request shares a `save_id`, which is the unit the history, compare and revert
- * screens address.
- *
- * The grouping rests on two things, both covered here: RevisionRecorder's
- * per-entity memo, and the `scoped()` binding in AppServiceProvider that makes
- * one request share one recorder instance.
- */
+/** Group revisions from one entity and request under one save identifier. */
 class RevisionSaveGroupingTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * In production every HTTP request boots its own container, so a `scoped()`
-     * binding is naturally per request. A test, by contrast, keeps one
-     * container alive across all the requests it makes — so a test that means
-     * "and now the user saves *again*" has to draw that boundary itself.
-     */
+    /** Reset scoped services to simulate another request. */
     private function simulateNewRequest(): void
     {
         $this->app->forgetScopedInstances();
