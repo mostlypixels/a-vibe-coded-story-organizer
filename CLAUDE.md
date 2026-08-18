@@ -18,7 +18,7 @@ The canonical commands for this project (referenced by the skills and agents in 
 
 These are the same commands whether run against a local PHP/Node install or inside
 Docker (`make test`, `make lint`, `make shell` then `npm run build`, `make up`) — see
-`documentation/docker.md`. Docker is available for anyone without a local PHP/Node
+`documentation/development/docker.md`. Docker is available for anyone without a local PHP/Node
 setup; it isn't required, and it doesn't replace the commands above.
 
 `master` is protected: direct pushes are rejected. All changes ship as branch → PR →
@@ -92,7 +92,7 @@ dynamic public `/robots.txt` route (`RobotsTxtController` + `RobotsTxtGenerator`
 `auth` group) renders it live — the **static `public/robots.txt` was removed** so the route is
 reached; do not re-add it. The `x-robots-meta` component is the single source of the
 `noindex, nofollow` tag, wired into `app`/`guest`/`welcome` (toggle-governed) and `public`
-(forced). See `documentation/architecture.md` → *Hidden from crawlers* for the full rationale.
+(forced). See `documentation/architecture/README.md#rendering-and-public-access` for the rationale.
 
 ## Testing
 
@@ -121,6 +121,7 @@ reached; do not re-add it. The `x-robots-meta` component is the single source of
 
 Doc, spec and `.claude/` prose rules: `.claude/rules/documentation.md` (loads when you edit
 those paths). It also governs commit bodies and PR descriptions — read it before writing them.
+Start at `documentation/README.md`, then open only the guide for the feature you change.
 
 Code comments follow their own rules — ASD-STE100 Simplified Technical English, and never a
 citation to a temporary file: `.claude/rules/code-comments.md` (loads when you edit a PHP file).
@@ -159,4 +160,4 @@ preferences resolve through `ThemePreset::resolve()` / `FontChoice::resolve()` o
 both server-side (`x-theme-style`) and in `resources/js/font-preview.js`'s lookup map —
 so a slug that isn't in `config/themes.php` / `config/fonts.php` is a no-op everywhere,
 never a value read from `input.value` or interpolated raw. See
-`documentation/architecture.md` → *Font choice* and `documentation/fonts.md`.
+`documentation/interface/fonts.md`.

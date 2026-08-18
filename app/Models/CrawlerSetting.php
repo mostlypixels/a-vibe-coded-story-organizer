@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * Exactly one row ever exists: the whole site shares one robots.txt / noindex
  * policy. Unlike every other domain model this one is global (no owning Project
  * or User), so it is deliberately outside ProjectPolicy's authorization walk —
- * any authenticated user may edit it. See documentation/architecture.md.
+ * any authenticated user may edit it. See documentation/architecture/README.md.
  *
  * Always read the singleton through {@see self::current()}; never `new` a second
  * row.

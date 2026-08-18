@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
  * Needed the first time this feature ships against an existing database (pre-existing
  * scenes were never scanned) and as a manual escape hatch if the pivot is ever suspected
  * to have drifted. Normal operation never needs this — SceneReferenceMatcher keeps the
- * pivot in sync on every scene/codex entry save (see documentation/architecture.md →
+ * pivot in sync on every scene/codex entry save (see documentation/features/codex.md →
  * "Scene references").
  */
 class SyncCodexReferencesCommand extends Command

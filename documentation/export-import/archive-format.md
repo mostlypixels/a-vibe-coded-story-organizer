@@ -1,18 +1,12 @@
-# Export format — the `data/` contract
+# Archive format
 
-This page is the specification for a project **export**, and therefore the contract
-the **import** feature reads (built — see [`architecture.md` → Static site import](architecture.md#static-site-import)).
-A `.zip` produced from **Admin → Export & import → Export** holds the whole project — every
-book of it — as a top-level `README.md` plus two folders:
+[Documentation](../README.md) › [Export and import](README.md) › Archive format
 
-- **`README.md`** — the archive's front door: the project name, the export date, the
-  project description as plain text (the stored HTML stripped to prose), and a short note
-  sending humans to `books/` and machines to `data/`. Courtesy only; never a source of truth.
-- **`books/`** — a human reading version, one folder per book (TOC + compiled chapter pages).
-  Presentation only; never the source of truth. Specified in
-  [The `books/` reading layer](#the-books-reading-layer) below.
-- **`data/`** — a **lossless**, machine-readable copy of the project, built to be
-  reconstructed exactly by import. This document specifies `data/`.
+This is the compatibility contract for project export and import. An archive contains:
+
+- **`README.md`** — project information and directions for readers. It is not a source of truth.
+- **`books/`** — a human reading version. It is not a source of truth.
+- **`data/`** — the lossless machine-readable project.
 
 > [!IMPORTANT]
 > `data/` is **raw and lossless**. Every field file carries the **exact stored column
@@ -74,11 +68,7 @@ an importer must ignore keys it does not recognize.
 > number exists for. There is no migration path between versions: pre-V1, nobody holds an
 > archive they cannot simply re-export.
 
-Revision history is **never exported** — no `revisions/` sidecar has ever existed in this
-document, and none will. Two reasons: it would multiply archive size many times over for
-data nobody restores, and an imported row could never be pruned by the automatic sweep
-(`Revision::prunable()` only touches `origin: automatic`), so it would be dead weight
-forever.
+Revision history is not exported. It is large, is not restored, and imported rows would not qualify for automatic pruning.
 
 ## The field-file convention
 
@@ -185,7 +175,7 @@ data/books/<id>-slug/
 > [!WARNING]
 > **`name: null` must survive the round trip.** A null name means "this book has no name of
 > its own" and tracks the project's through every rename (see
-> [`architecture.md` → Books](architecture.md#books)). Coercing it to a string on export or on
+> [Architecture](../architecture/README.md)). Coercing it to a string on export or on
 > import materializes the value and permanently breaks that tracking. It is the one key here
 > that may legitimately be `null` rather than absent.
 
@@ -234,7 +224,7 @@ The scene share-link columns (`share_token`, `share_expires_at`) are **deliberat
 > [!NOTE]
 > **Codex references are excluded too, for a different reason.** `scene_codex_entry` (which
 > codex entries a scene's contents mention — see [`codex.md` → Scene
-> references](codex.md#scene-references--appservicesscenereferencematcher)) is a derived cache, not source-of-truth content: it is fully recomputed from
+> references](../features/codex.md#scene-references)) is a derived cache, not source-of-truth content: it is fully recomputed from
 > `contents` and the Codex branch's aliases/names, so the exporter never writes it, and an
 > archive predating this feature imports and re-derives references identically to a newer one.
 > Do not add `codex_entry_ids` to `scene.json` — see `ProjectImporter::run()`, which calls
@@ -550,7 +540,7 @@ Every project holds at least one book, so this list is never empty.
 - Act and chapter titles are **plain text and HTML-escaped** — the title columns are not rich
   fields. Chapter headings are formatted through the book's own
   `PublicationSetting::chapter_title_format`, the same setting the EPUB obeys, and carry the
-  book-wide number from [`StoryNumbering`](architecture.md#continuous-numbering).
+  book-wide number from `StoryNumbering` as described in [Architecture](../architecture/README.md#manuscript-ordering-and-numbering).
 - A book with no acts still emits a valid `index.html`, with no chapter links.
 
 ### `books/NN/NN/NN.html` — a compiled chapter page

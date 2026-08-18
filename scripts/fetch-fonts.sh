@@ -21,7 +21,7 @@
 #   1 — a download failed (curl's exit status is propagated)
 #   2 — bad arguments
 #
-# Callers: humans re-provisioning public/fonts/; documentation/fonts.md.
+# Callers: humans re-provisioning public/fonts/; documentation/interface/fonts.md.
 set -euo pipefail
 
 if [ $# -ne 0 ]; then

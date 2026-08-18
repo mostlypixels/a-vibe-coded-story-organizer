@@ -32,7 +32,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * `revisionable_type`/`revisionable_id` pair) because deleting a Project
  * cascades to its acts/chapters/scenes at the DB level without firing
  * Eloquent events — a `deleting` hook here would silently never run. See
- * documentation/architecture.md → "Revisions".
+ * documentation/features/revisions.md.
  */
 class Revision extends Model
 {

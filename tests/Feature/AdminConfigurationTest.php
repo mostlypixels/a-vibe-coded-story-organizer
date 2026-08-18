@@ -68,7 +68,7 @@ class AdminConfigurationTest extends TestCase
 
     /**
      * The /admin area deliberately continues the CrawlerSetting
-     * "any authenticated user" posture (documentation/architecture.md ->
+     * "any authenticated user" posture (documentation/architecture/README.md ->
      * Hidden from crawlers): there is no is_admin role. A SECOND, unrelated
      * authenticated user must also get 200 — this is intentional, NOT a missing
      * ownership check. Do not "fix" this into a ProjectPolicy walk.

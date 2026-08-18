@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  * {@see ImportSetting} this model is global (no owning Project or User), so
  * it is deliberately outside ProjectPolicy's authorization walk — any
  * authenticated user may edit it, behind the `access-admin` gate. See
- * documentation/architecture.md.
+ * documentation/features/revisions.md.
  *
  * Always read the singleton through {@see self::current()}; never `new` a
  * second row.

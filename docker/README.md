@@ -10,4 +10,4 @@ Config files consumed by the images defined in the root `Dockerfile` /
 - `php.ini` — upload limits, memory limits, logging.
 
 For everything else — quick start, `make` commands, services, troubleshooting,
-production deployment — see [`documentation/docker.md`](../documentation/docker.md).
+production deployment — see [Docker](../documentation/development/docker.md).

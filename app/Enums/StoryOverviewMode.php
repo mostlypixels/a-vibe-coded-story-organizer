@@ -7,7 +7,7 @@ namespace App\Enums;
  *
  * `Chapter` paginates one chapter per page and stays fast on a long story.
  * `Whole` renders every chapter's content in one page and stays as slow as
- * the story is long — see documentation/architecture.md → *Story overview*.
+ * the story is long — see documentation/architecture/README.md → *Rendering and public access*.
  */
 enum StoryOverviewMode: string
 {

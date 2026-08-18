@@ -640,7 +640,7 @@
 
 /*
  * Callout / alert blocks (`> [!TYPE]`) — the GitHub-flavoured
- * alert look already used in this repo's own documentation/*.md, rendered over the
+ * alert look already used in this repo's documentation/**/*.md, rendered over the
  * <blockquote> element via the data-callout-type attribute. A left border + a per-type
  * accent colour and icon (::before) distinguishes the five types from a plain quote.
  * Styled on `blockquote[data-callout-type]` (not scoped to `.tiptap`) so it looks the

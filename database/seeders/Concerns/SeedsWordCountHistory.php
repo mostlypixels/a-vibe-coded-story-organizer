@@ -15,7 +15,7 @@ use App\Support\WriterDay;
  * `Database\Seeders\Concerns\BackfillsSceneWordCounts`), so nothing recorded
  * a snapshot on the way in. `WordCountHistoryGenerator::plan()` invents one
  * instead, scaled to land exactly on the project's real total — see
- * `documentation/word-count.md`.
+ * `documentation/features/writing-progress.md`.
  */
 trait SeedsWordCountHistory
 {

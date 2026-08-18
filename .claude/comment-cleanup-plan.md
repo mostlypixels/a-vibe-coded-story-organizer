@@ -113,7 +113,7 @@ handoff §7, and an absence cannot document itself. Add a note near `REGISTRY` i
 Do this **before** anything is deleted.
 
 *Checked and not at risk: §8's import rules are stated in full in `ProjectGraphImporter`; §2.5's
-coarse-trigger rule in `SceneContentsChanged`; §4.2/§4.3/§5.2/§9.2 in `documentation/revisions.md`.*
+coarse-trigger rule in `SceneContentsChanged`; see `documentation/features/revisions.md`.*
 
 **→ Verify Stage A** (see Verification below), plus: open any PHP file and confirm the new rule
 loads.
@@ -277,4 +277,3 @@ warnings read correctly standalone.
 The breadcrumbs feature added **51 task refs on its own**, taking the total from 241 to 292. At that
 rate the cleanup is re-dirtied every two or three features. The rule is worth more than the sweep,
 which is why it goes first and not last.
-

@@ -17,7 +17,7 @@ Windows/PowerShell environment observed in this repo. PHP 8.5, Composer, and
 Node/npm must already be on PATH on the machine this skill runs from — verify with
 `php --version` / `node --version` (PHP 8.5 / Node v20+ expected).
 
-The project also has a Docker setup (`documentation/docker.md`) for humans who don't
+The project also has a Docker setup (`documentation/development/docker.md`) for humans who don't
 want a local PHP/Node install, but this skill's driver (`serve-app.sh` / `driver.mjs`)
 talks to a locally-run `php artisan serve`, not a container — the agent sandbox this
 skill runs in is the host machine itself, not inside Docker.
@@ -208,7 +208,7 @@ php artisan serve
 ```
 Visit `http://localhost:8000` in a real browser. Ctrl-C to stop.
 
-(Or `make up` for the Docker version — same URL, see `documentation/docker.md`.)
+(Or `make up` for the Docker version — same URL, see `documentation/development/docker.md`.)
 
 ## Test
 

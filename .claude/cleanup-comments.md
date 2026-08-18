@@ -49,7 +49,7 @@ Nothing is left but `ship-pr`.
 | `6c29786` | the 15 `resources/` defects `7acaec7` introduced |
 | `b10a4ea` | the last 12 citations, in `app`/`tests`/`database` |
 | `1fab9ce` | 2 false claims a cold review found in `resources/` |
-| `cdde3a5` | `documentation/rich-text.md` — same false claim, third copy |
+| `cdde3a5` | `documentation/features/rich-text.md` — same false claim, third copy |
 | `ae5473a` | what two cold reviews found: 5 defects in `b10a4ea`, 6 more sites, 2 false claims I introduced while fixing false ones |
 | `50f69a6` | Stage D — five over-long blocks, +29/−28 |
 
@@ -94,7 +94,7 @@ The plan does not record these. They override it.
 The numbered list it points at *does* survive (`codex/expanded/attribute-timeline.md`),
 so the pointer was not rot. It went for three better reasons:
 
-* The rule has a permanent home — `documentation/codex.md`'s *"Invariant — leading
+* The rule has a permanent home — `documentation/features/codex.md`'s *"Leading-anchor
   anchor at Start"* callout. A spec is history; `documentation/` is current.
 * A number depends on list order. Insert an invariant at the top, renumber, and five
   comments cite the wrong rule with nothing broken to notice — quieter than a dead path.
@@ -318,7 +318,7 @@ do not resolve without a content search, which is most of what a citation is for
 
 The sharpest case: `ContentSanitizer:32` cites *"the 'raw-HTML passthrough hole' in
 architecture.md"*. That phrase is in **two** different `expanded/architecture.md` files,
-and **not** in `documentation/architecture.md` — which is what a reader opens first.
+and **not** in `documentation/architecture/README.md` — which is what a reader opens first.
 
 ```bash
 rg -n --color=never -o "(see |in |per )[a-z][a-z0-9-]*\.md('s)?" \

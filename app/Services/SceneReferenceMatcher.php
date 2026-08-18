@@ -12,7 +12,7 @@ use Normalizer;
  * contents reference, by whole-word, case-SENSITIVE, Unicode-aware matching of each
  * entry's name and eligible aliases against `Scene::contents`.
  *
- * This is the single home of the matching rule (see documentation/architecture.md →
+ * This is the single home of the matching rule (see documentation/features/codex.md →
  * "Scene references"). It is a plain service — not a model booted() hook — because it is
  * application workflow: it compares before/after alias state at the call sites and, for a
  * project-wide rescan, touches many scenes at once. A hook cannot express that, and it

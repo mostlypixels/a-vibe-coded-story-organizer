@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * and default run mode. Like {@see CrawlerSetting} this model is global (no
  * owning Project or User), so it is deliberately outside ProjectPolicy's
  * authorization walk — any authenticated user may edit it (settings vs. the
- * per-attempt {@see Import} tracking record). See documentation/architecture.md.
+ * per-attempt {@see Import} tracking record). See documentation/export-import/archive-format.md.
  *
  * Always read the singleton through {@see self::current()}; never `new` a second
  * row.

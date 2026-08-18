@@ -16,7 +16,7 @@ use RuntimeException;
  * `position` is a per-parent, gappy sort key (the only thing move up/down
  * writes); `number` is its opposite — a book-wide, gap-free rank computed
  * at read time, never stored. This class is the single place that derivation
- * happens. See documentation/architecture.md -> "Continuous numbering".
+ * happens. See documentation/architecture/README.md -> "Ordering and numbering".
  *
  * Numbering restarts at each book: Act 1 of book 2 is Act 1, and its
  * chapters and scenes restart too — a reader of book 2 counts from one.

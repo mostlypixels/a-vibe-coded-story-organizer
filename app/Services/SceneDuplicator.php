@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Duplicates a scene into a new row in the same chapter, right after the
- * original. See documentation/architecture.md -> Duplicate entities.
+ * original. See documentation/architecture/README.md -> Duplicating entities.
  *
  * Copies `description`, `contents`, `notes`, `status`, `chapter_id`, `event_id`,
  * and the `event_scene` "mentions" pivot. Never copies `share_token` or
