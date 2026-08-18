@@ -1,17 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { chartConfig, registerWordCountChart, themeColors } from './word-count-chart';
 
-/**
- * Tests for `resources/js/word-count-chart.js`.
- *
- * The Alpine component is driven through a stub `Alpine` and a stub chart
- * factory: jsdom gives a `<canvas>` no 2D context, and Chart.js only logs when
- * it cannot acquire one — a real instance here would prove nothing about mount
- * and teardown.
- */
-
-/** The component object the Blade template's `x-data` produces, with the refs
- *  Alpine would have wired and an injected chart factory. */
 function mountComponent(config = {}, createChart) {
     const components = {};
     const Alpine = { data: (name, factory) => (components[name] = factory) };

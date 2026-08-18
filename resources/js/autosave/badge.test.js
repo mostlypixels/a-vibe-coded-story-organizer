@@ -2,15 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { STATES } from './store.js';
 import { classesFor, isNavigable, labelFor } from './badge.js';
 
-/**
- * Tests for `resources/js/autosave/badge.js` — the global lower-right autosave
- * badge's pure lookups. The Alpine.data() wrapper itself (reading
- * `Alpine.store('autosave')`, scrolling/focusing a real DOM element) is left to
- * the manual checklist, matching this feature's existing convention of unit-testing
- * only the DOM-free logic (see field.js/field.test.js for the
- * same split).
- */
-
 describe('labelFor', () => {
     it('gives every non-idle state its own dedicated copy', () => {
         expect(labelFor(STATES.SAVING)).toBe('Saving…');

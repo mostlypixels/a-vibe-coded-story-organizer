@@ -2,11 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerAutosaveField } from './autosave/field';
 import { countWords, DEBOUNCE_MS, formatCount, registerWordCount } from './word-count';
 
-/**
- * Minimal Alpine stand-in, matching resources/js/autosave/field.test.js's own
- * precedent for testing the DOM-free half of an Alpine adapter without pulling
- * in the real Alpine runtime.
- */
 function createAlpineStub() {
     const factories = {};
 
@@ -20,11 +15,6 @@ function createAlpineStub() {
     };
 }
 
-/**
- * Mounts a `wordCount` instance on `<div data-word-count><textarea /></div>`,
- * mirroring autosave-field.blade.php's real nesting (the word-count div wraps
- * the field's own textarea/editor).
- */
 function mountWordCount(Alpine, config) {
     const root = document.createElement('div');
     const textarea = document.createElement('textarea');

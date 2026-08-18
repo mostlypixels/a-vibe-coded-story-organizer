@@ -1,23 +1,4 @@
-/**
- * Global in-app navigation guard + native `beforeunload` fallback.
- *
- * Mirrors `resources/js/autosave/badge.js`'s shape: a pure/testable predicate
- * (`shouldIntercept`) plus an `Alpine.data()` wrapper for the impure DOM half. Both the
- * in-app guard and the `beforeunload` fallback read the single `Alpine.store('autosave')
- * .isDirty()` signal — no separate "is this page dirty" tracking here.
- *
- * V1 scope, a binding decision: only pages with `x-autosave-field`
- * instances are covered. A page with zero autosave fields never has `isDirty() ===
- * true`, so this guard is a correctly-behaving no-op there — no per-page opt-in needed.
- */
-
-/**
- * Pure predicate: should this click be intercepted for the unsaved-changes dialog?
- * Takes the real DOM `click` event plus the closest `<a href>` ancestor (or `null`).
- * Returns `false` for every case the browser's default handling must proceed
- * untouched (opening in a new tab, downloads, external/hash links, etc.) — deliberately
- * exhaustive rather than a blanket "intercept everything".
- */
+/** Return true only for a normal in-app navigation. */
 export function shouldIntercept(event, anchor) {
     if (!anchor || !anchor.href) return false;
     if (event.defaultPrevented) return false;
@@ -31,18 +12,6 @@ export function shouldIntercept(event, anchor) {
     return true;
 }
 
-/**
- * Pure predicate: is this `submit` event the entity edit page's **Save / Save and stay**
- * action — i.e. triggered by a button carrying `data-guard-save` (see
- * `resources/views/components/edit-actions.blade.php`)? Those are the deliberate,
- * data-persisting submits whose full-page navigation must not raise the unsaved-changes
- * prompt: the submit *is* the save.
- *
- * Every other form submit on the page (search, logout, delete, JS-only forms) is
- * deliberately left untouched, so it keeps warning/behaving exactly as before. Read in
- * the bubbling phase (see `registerNavigationGuard`) so a handler that already cancelled
- * the submit is honored via `event.defaultPrevented`.
- */
 export function isGuardedSaveSubmit(event) {
     if (event.defaultPrevented) return false; // handled in JS — the page won't unload
 
@@ -52,20 +21,14 @@ export function isGuardedSaveSubmit(event) {
 }
 
 export function registerNavigationGuard(Alpine) {
-    // Set once a Save / Save and stay submit is in flight (see edit-actions.blade.php's
-    // `data-guard-save`). The page is already committing to that navigation, so the
-    // native `beforeunload` fallback below must not second-guess it with an unsaved-
-    // changes prompt. Never reset — a full-page submit unloads this document, and
-    // "Save and stay" reloads a fresh module, so there is no later `beforeunload` on
-    // this same page instance to wrongly suppress.
+    // Do not warn during a form submission that saves the data.
     let savingViaForm = false;
 
     Alpine.data('navigationGuard', () => ({
         pendingHref: null,
 
         init() {
-            // Capturing phase so this runs before any per-component @click handler
-            // that might itself navigate.
+            // Run before component click handlers that can navigate.
             this._onClick = (event) => this.handleClick(event);
             document.addEventListener('click', this._onClick, true);
         },
@@ -90,20 +53,12 @@ export function registerNavigationGuard(Alpine) {
             this.$dispatch('open-modal', 'unsaved-changes-guard');
         },
 
-        /**
-         * Leave button: navigate to the pending href. Cancel/Esc/backdrop-click never
-         * call this — `<x-modal>`'s existing `close` handling covers that with no extra
-         * code (nothing here to explicitly reset `pendingHref` on cancel, it's simply
-         * never read).
-         */
         confirmLeave() {
             window.location.href = this.pendingHref;
         },
     }));
 
-    // The Save / Save and stay buttons persist the writer's data, so their submit must
-    // never raise the unsaved-changes prompt. Bubbling phase so a JS-only form that
-    // `preventDefault()`s its submit has already done so (and won't unload).
+    // Run after handlers that can cancel a JavaScript-only submission.
     document.addEventListener('submit', (event) => {
         if (!isGuardedSaveSubmit(event)) {
             return;
@@ -112,9 +67,7 @@ export function registerNavigationGuard(Alpine) {
         savingViaForm = true;
     });
 
-    // Native fallback for tab-close/hard navigation, where there is no in-app click to
-    // intercept. Deliberately dumb: no custom text (browsers
-    // ignore it). Stays silent once a Save / Save and stay submit is in flight.
+    // Cover tab close and navigation that does not start with an in-app click.
     window.addEventListener('beforeunload', (event) => {
         if (savingViaForm || !Alpine.store('autosave')?.isDirty()) {
             return;

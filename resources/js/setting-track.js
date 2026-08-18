@@ -1,26 +1,4 @@
-/**
- * Drag support for the tick tracks on the appearance form.
- *
- * The track is a group of native radios laid along a line. Dragging is pure
- * enhancement: with JS off, the radios are still clickable through their labels
- * and operable with arrow keys, and the form posts the same slug either way.
- * Nothing here touches CSS values — it only moves the checked radio and lets the
- * existing `change` listener do the painting.
- *
- * The handle snaps between steps rather than following the pointer: the control
- * has five positions and no in-between, so a handle sliding smoothly would
- * promise a precision that does not exist.
- */
-
-/**
- * Pure, exported for tests: which step contains `clientX`, given the track's
- * bounding rect and how many steps it holds.
- *
- * Each step owns an equal-width slice of the track and its tick sits at the
- * slice's centre, so the slice under the pointer is also the nearest tick.
- * Positions outside the track clamp to the end steps, which is what makes a
- * drag that runs off the edge settle on the last step instead of stopping.
- */
+/** Return the nearest step and clamp positions outside the track. */
 export function stepAt(clientX, rect, count) {
     if (!(count > 0) || !(rect?.width > 0)) {
         return null;
@@ -32,11 +10,6 @@ export function stepAt(clientX, rect, count) {
     return Math.min(Math.max(index, 0), count - 1);
 }
 
-/**
- * Checks the radio at `index` and fires `change` so the live preview hears it.
- * Returns true when something actually moved, so a drag across a single step
- * does not re-dispatch on every pointer event.
- */
 export function selectStep(radios, index) {
     const radio = radios[index];
 
@@ -54,17 +27,14 @@ export function registerSettingTrack(Alpine) {
     Alpine.data('settingTrack', () => ({
         dragging: false,
 
-        // Declared here, not just assigned in `init()`: an undeclared property
-        // is not part of each component's own data, so all four tracks on the
-        // page end up sharing one list and every track drives the last one.
+        // Each track must own its radio list.
         radios: [],
 
         init() {
             this.radios = [...this.$el.querySelectorAll('input[type="radio"]')];
         },
 
-        // Pointer capture keeps the events coming to this element once the drag
-        // starts, so the pointer may leave the track without dropping it.
+        // Continue the drag when the pointer leaves the track.
         start(event) {
             this.dragging = true;
             this.$el.setPointerCapture?.(event.pointerId);
@@ -91,12 +61,7 @@ export function registerSettingTrack(Alpine) {
             }
         },
 
-        // `pointerdown.prevent` stops the label focusing its radio, which would
-        // leave the track unfocused after a drag — so arrow keys could not
-        // continue where the pointer left off without tabbing back in.
-        // `preventScroll`: focusing the visually-hidden radio otherwise scrolls
-        // it into view and the page lurches under the cursor. The user just
-        // dragged this track, so it is on screen already.
+        // Restore keyboard control without scrolling to the hidden radio.
         focusChecked() {
             this.radios.find((radio) => radio.checked)?.focus({ preventScroll: true });
         },

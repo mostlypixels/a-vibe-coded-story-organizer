@@ -2,35 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { buildExtensions, buildSlashItems, registerWysiwyg } from './wysiwyg.js';
 
-/**
- * Round-trip tests for the Tiptap extension configuration `wysiwyg.js` builds
- * (`buildExtensions()`), covering the constructs added by the expand-tip-tap
- * feature (tables, images, task lists) plus regression guards for constructs that
- * were already safe. See `.specs/shipped/2026-07/expand-tip-tap/spec.md`
- * ("The pivotal unknown — verified") for why these round-trip without a
- * hand-written serializer, and its "Two round-trip gaps" bullets for the two
- * accepted losses this file pins deliberately (not accidentally).
- *
- * `environment: 'jsdom'` (vitest.config.js) is required: `Editor.getHTML()` calls
- * ProseMirror's `DOMSerializer`, which needs a real `window.document` — plain Node
- * has none. `getMarkdown()` alone would not need it, but this file exercises both.
- *
- * No DOM `element` is mounted (headless): these tests operate purely on content —
- * `getMarkdown()`/`getHTML()` — not on user interaction, so a detached `Editor`
- * instance is enough and needs no cleanup between tests.
- */
-
-/** A markdown-format editor (Scene.contents), matching wysiwyg.js's isMarkdown branch. */
 function markdownEditor(content) {
     return new Editor({ extensions: buildExtensions('markdown'), content, contentType: 'markdown' });
 }
 
-/** An html-format editor (the 8 RichTextFields fields), matching wysiwyg.js's default branch. */
 function htmlEditor(content) {
     return new Editor({ extensions: buildExtensions('html'), content });
 }
 
-/** The position just inside the first table cell's text, for placing a selection there. */
 function firstCellTextPosition(editor) {
     let position = null;
     editor.state.doc.descendants((node, pos) => {
@@ -72,7 +51,7 @@ describe('table round-trip', () => {
 
         const markdownOut = markdownEditor(merged).getMarkdown();
         expect(markdownOut).not.toContain('colspan');
-        // The cell text survives; only the merge/structure is lost, per spec.md.
+        // The cell text survives. Only the merged structure is lost.
         expect(markdownOut).toContain('merged');
     });
 });

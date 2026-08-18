@@ -1,27 +1,5 @@
-/**
- * The global lower-right autosave badge (`expanded/ui.md` "Global indicator").
- * A single, page-wide indicator reflecting the worst-state-wins outcome across every
- * `x-autosave-field` instance currently mounted on the page, via the shared
- * `Alpine.store('autosave')` that `registerAutosaveField()` (./field.js) populates.
- *
- * Deliberately additive, not a replacement. The per-field inline indicator keeps
- * showing each field's own precise state — both indicators, always.
- * `resources/views/projects/edit.blade.php` alone has 6 autosaving fields, so a
- * global-only badge could never say which one needs attention. This badge only
- * answers "is anything on this page not idle right now".
- *
- * No new state or precedence logic lives here. `worstState()` and the `STATES` enum
- * both come from ./store.js, the one place that decides per-state precedence.
- */
 import { STATES } from './store';
 
-/**
- * User-facing copy per state. `session-expired` and `forbidden-after-replay` carry
- * their own dedicated copy. Neither
- * ever clears the writer's typed text (see field.js's `save()`, which never touches
- * the editor DOM on a failed save), so "your work is safe" is literally true: the text
- * is still sitting right there in the field, selectable/copyable at any time.
- */
 const BADGE_COPY = {
     [STATES.SAVING]: 'Saving…',
     [STATES.SAVED]: 'Saved',
@@ -32,11 +10,6 @@ const BADGE_COPY = {
     [STATES.ERROR]: "Couldn't save — check your connection.",
 };
 
-/** Role tokens per state: `danger`/`warning` for anything needing a human decision or
- *  a soft retry, `success` for a fresh save, neutral (surface/border/content-muted)
- *  while a save is in flight — the same four-token status shape every badge and
- *  alert in the app uses (see App\Support\ThemeTokens), so this badge repaints with
- *  the rest of the app under any theme instead of staying hard-coded red/green/gray. */
 const BADGE_STYLES = {
     [STATES.SESSION_EXPIRED]: 'border-warning bg-warning-surface text-warning-surface-content',
     [STATES.CONFLICT]: 'border-danger bg-danger-surface text-danger-surface-content',
@@ -49,13 +22,9 @@ const BADGE_STYLES = {
 
 const DEFAULT_BADGE_STYLE = 'border-border-strong bg-surface-raised text-content-muted';
 
-/** States a click should never try to "jump to a field" for — the fix there is the
- *  Sign in link (session-expired) or manually copying text before switching accounts
- *  back (forbidden-after-replay), not scrolling to a field. */
+/** These states need account action instead of field action. */
 const NON_NAVIGABLE_STATES = [STATES.SESSION_EXPIRED, STATES.FORBIDDEN_AFTER_REPLAY];
 
-/** Pure lookups, exported separately so vitest can cover the copy/style/navigability
- *  tables without going through Alpine.data()'s reactive wrapper. */
 export function labelFor(state) {
     return BADGE_COPY[state] ?? '';
 }
@@ -74,7 +43,6 @@ export function registerAutosaveBadge(Alpine) {
             return Alpine.store('autosave').worstState();
         },
 
-        /** Invisible at idle — no persistent chrome when nothing is happening. */
         get visible() {
             return this.state !== STATES.IDLE;
         },
@@ -91,11 +59,6 @@ export function registerAutosaveBadge(Alpine) {
             return this.state === STATES.SESSION_EXPIRED;
         },
 
-        /**
-         * Scrolls to and focuses the first field currently sitting in the badge's own
-         * (worst) state. `store.elements` is populated by `registerAutosaveField()`'s
-         * `init()`/`destroy()` alongside `store.fields`, so the two stay in sync.
-         */
         focusField() {
             if (!isNavigable(this.state)) {
                 return;

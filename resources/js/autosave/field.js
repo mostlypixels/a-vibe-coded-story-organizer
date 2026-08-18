@@ -1,85 +1,32 @@
-/**
- * The Alpine adapter for a single `<x-autosave-field>` instance. Thin by
- * design: every *decision* (state transitions, retry timing) lives in
- * `./store.js`; this file only wires DOM events and calls
- * `window.axios` — the same `window.axios` global `bootstrap.js` configures (no
- * separate axios import, so this shares the one instance's interceptors/defaults).
- *
- * The server is the only store. Nothing here writes to `localStorage`: unsaved text
- * lives in the DOM until a PATCH lands, and the navigation guard
- * (`resources/js/navigation-guard.js`) is what stops the writer leaving with it.
- *
- * Dirty-only, a binding rule: nothing here
- * fires a PATCH, not even a debounce tick, until a real edit event has been seen —
- * `input` from a plain field, `wysiwyg:text-changed` from an editor (see `init()`).
- * Opening a record to read it writes nothing.
- *
- * The underlying value is always read via `this.$root.querySelector('textarea')`,
- * never Alpine's `$refs` — `<x-wysiwyg>` mounts its own nested `x-data` scope, and
- * Alpine's `$refs` only resolves refs declared in the *current* component's scope, so
- * a parent component cannot reach a nested component's `x-ref="textarea"` that way.
- * The progressive-enhancement `<textarea>` (see wysiwyg.blade.php) is always a plain
- * DOM node underneath, kept in sync by wysiwyg.js's own `syncTextarea()` on every
- * edit, so a native `querySelector` reaches it regardless of which kind (`plain` or
- * wysiwyg-wrapped) this field is.
- */
+/** Connect an autosave field to the state machine and server. */
 
 import { mapResponse, retryDelayMs, scheduleRetry, worstState, STATES } from './store';
 
-/**
- * How long to wait after the last keystroke before an automatic autosave PATCH
- * fires. Matches the "2-second debounce" rate-limit rationale already written into
- * `routes/web.php`'s `throttle:120,1` comment for this endpoint.
- */
 export const DEBOUNCE_MS = 2000;
 
-/**
- * How long a `saved` state lingers before fading back to `idle` (ui.md: "fades
- * after saved").
- */
 export const SAVED_FADE_MS = 2000;
 
-/**
- * The identity key for a field, `entity:id:field`. It names nothing stored
- * anywhere — it is the map key under which the store tracks this field's state,
- * element and dirty flag.
- */
 export function fieldKeyFor({ entity, id, field }) {
     return `${entity}:${id}:${field}`;
 }
 
-/**
- * The dirty-only gate, applied identically to the debounce tick, blur, and Ctrl-S:
- * a save is only ever attempted once the writer has produced a real edit event in
- * this field (`dirty`) — and only against an existing entity (`id` set). A create
- * form has no id to PATCH against yet, so nothing autosaves until the entity exists.
- */
+/** Do not autosave an unchanged field or an entity that does not exist. */
 export function shouldAutosave(dirty, id) {
     return dirty === true && id !== null && id !== undefined;
 }
 
 export function registerAutosaveField(Alpine) {
-    // The shared cross-field store the global lower-right badge reads.
-    // Guarded so re-registering (e.g. in tests) doesn't clobber live field state.
+    // Do not replace live state when Alpine registers this component again.
     if (!Alpine.store('autosave')) {
         Alpine.store('autosave', {
             fields: {},
             elements: {},
-            // key => boolean, mirrors each field's own `dirty` flag. Distinct from
-            // `fields` (the STATES machine value): a field is dirty from the first
-            // keystroke until a successful save/flush, including the ~2s debounce
-            // window where `state` is still `idle` — exactly the window the
-            // data-loss-warnings navigation guard and beforeunload fallback exist
-            // to protect.
             dirty: {},
 
-            /** Worst-state-wins across every field currently on the page (ui.md). */
             worstState() {
                 return worstState(Object.values(this.fields));
             },
 
-            /** Is anything on this page unsaved right now? The one signal the
-             *  navigation guard and its beforeunload fallback both read. */
             isDirty() {
                 return Object.values(this.dirty).some(Boolean);
             },
@@ -105,13 +52,7 @@ export function registerAutosaveField(Alpine) {
             this._onKeydown = (event) => this.onKeydown(event);
             this._onWindowFocus = () => this.replayIfQueued();
 
-            // Two edit signals, because a wysiwyg field gives no `input` event of its
-            // own. `syncTextarea()` assigns `textarea.value` directly, and an assignment
-            // fires nothing. ProseMirror also applies Delete, Backspace, the toolbar and
-            // undo as transactions, which the browser does not report as input either.
-            // Typed characters are the one case that does bubble a native `input` here.
-            // `wysiwyg:text-changed` covers all of the others — word-count.js reads the
-            // same event for the same reason.
+            // ProseMirror changes do not always emit a native input event.
             this.$root.addEventListener('input', this._onInput);
             this.$root.addEventListener('wysiwyg:text-changed', this._onInput);
             this.$root.addEventListener('focusout', this._onFocusOut);
@@ -139,26 +80,13 @@ export function registerAutosaveField(Alpine) {
             Alpine.store('autosave').fields[this.key] = next;
         },
 
-        /** The current value of the always-present real `<textarea>` (see file docblock). */
         fieldValue() {
+            // Alpine refs cannot cross the nested WYSIWYG component boundary.
             const textarea = this.$root.querySelector('textarea');
 
             return textarea ? textarea.value : '';
         },
 
-        /**
-         * Snap the live in-field counter (resources/js/word-count.js) to the
-         * authoritative number the server just persisted.
-         * That component lives in its own nested Alpine scope on a
-         * `[data-word-count]` element inside this field, reached the same
-         * DOM-querying way `fieldValue()` reaches the textarea rather than via
-         * Alpine internals — the file docblock explains why `$refs` can't cross
-         * a nested `x-data` boundary here. Dispatched unconditionally: even if
-         * the writer has kept typing since this save left, `word_count`
-         * describes what this request actually wrote, and the counter must
-         * reflect the true stored count rather than sit on a stale estimate.
-         * A field rendered without a counter (only ever in a test) is a no-op.
-         */
         notifyWordCount(wordCount) {
             const counter = this.$root.querySelector('[data-word-count]');
 
@@ -167,12 +95,6 @@ export function registerAutosaveField(Alpine) {
             }
         },
 
-        /**
-         * The dirty-only gate: the very first real edit event flips `dirty`, and every
-         * edit (re)starts the debounce timer. A create form (no `config.id` yet) still
-         * goes dirty — the navigation guard must warn about text it cannot yet PATCH —
-         * but nothing is scheduled for it.
-         */
         onInput() {
             this.dirty = true;
             Alpine.store('autosave').dirty[this.key] = true;
@@ -185,13 +107,7 @@ export function registerAutosaveField(Alpine) {
             this.pendingTimer = setTimeout(() => this.save({}), DEBOUNCE_MS);
         },
 
-        /**
-         * Ctrl-S is a flush, not a permanent checkpoint: it sends
-         * `run_matcher: true` (a coarse trigger) so the autosave lands immediately and
-         * closes the coalescing window. It never creates a manual revision — the
-         * permanent, labeled manual checkpoint is the full-form Save button's job, and
-         * that is recorded server-side by the entity controllers, not by this endpoint.
-         */
+        /** Ctrl-S flushes autosave. It does not create a manual revision. */
         onKeydown(event) {
             const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's';
 
@@ -204,7 +120,6 @@ export function registerAutosaveField(Alpine) {
             this.flush({ runMatcher: true });
         },
 
-        /** Blur/Ctrl-S: send immediately, cancelling any pending debounce tick. Never fires on a clean (non-dirty) field. */
         flush(options = {}) {
             clearTimeout(this.pendingTimer);
 
@@ -243,18 +158,11 @@ export function registerAutosaveField(Alpine) {
 
             const { state, retryAfterMs } = mapResponse(status, { headers, wasReplay: this.wasReplay });
 
-            // Only a 403 immediately following a session-expired attempt is a
-            // "replay" — every other outcome resets the flag (store.js's own docblock).
+            // Only a save after session expiry is a replay.
             this.wasReplay = state === STATES.SESSION_EXPIRED;
 
             if (state === STATES.SAVED) {
-                // This response is about `value`, the text as it was when the PATCH
-                // left. If the writer kept typing while it was in flight, the field
-                // has moved on and is still unsaved: `onInput()` already scheduled a
-                // debounce tick that will send the newer text a couple of seconds
-                // later. Clearing `dirty` here would tell the navigation guard and the
-                // beforeunload fallback that everything is saved during exactly the
-                // window they exist to cover — the tab would close without a word.
+                // Do not clear dirty when the user typed during the request.
                 const settled = this.fieldValue() === value;
 
                 if (settled) {
@@ -263,10 +171,7 @@ export function registerAutosaveField(Alpine) {
                 }
 
                 this.attempt = 0;
-                // Adopt the server's hash, never write `data.value` back into
-                // the editor DOM (would yank the caret mid-sentence). Adopted even
-                // when the field has moved on: the server stored what this request
-                // sent, so the pending save must build on that hash or it 409s.
+                // Use the stored hash for the next save. Do not replace editor text.
                 this.baseHash = data.hash;
                 this.notifyWordCount(data.word_count);
                 this.setState(state);
@@ -287,7 +192,6 @@ export function registerAutosaveField(Alpine) {
             }
         },
 
-        /** Auto-replay a stuck session-expired save on tab focus or visibility. */
         replayIfQueued() {
             if (this.state === STATES.SESSION_EXPIRED && this.dirty && document.visibilityState !== 'hidden') {
                 this.save({});

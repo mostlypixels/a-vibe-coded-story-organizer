@@ -3,25 +3,7 @@ import { existsSync, globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/**
- * Guard for the Tailwind 4 migration.
- *
- * Tailwind 4 still resolves old `theme()` dot-path calls that were never rewritten to
- * `var(--…)`, and it still emits any custom property that hand-written CSS references via
- * `var()` — but a `theme()` call rewritten to a *misspelled* variable name compiles clean and
- * silent. The browser drops the declaration at compute time; nothing in `composer test` or
- * `npm run build` notices. This test is the only mechanical check for that failure mode: it
- * builds the set of every `var(--x)` reference in the emitted stylesheet and the set of every
- * `--x:` declaration, and fails if a reference has no matching declaration.
- *
- * KNOWN LIMITATION — read before trusting this test as complete coverage: it only catches
- * *dangling* references (a variable that is never declared anywhere). It does NOT catch a
- * `theme()` call rewritten to a variable that exists but is the WRONG one (e.g.
- * `theme('spacing.2')` becoming `var(--text-sm)` instead of `var(--spacing-2)`) — that
- * resolves fine and passes this test silently. That class of error is caught only by the
- * manual `theme()` rewrite audit and the browser pass. Treat this test as
- * a floor, not a ceiling.
- */
+/** Detect CSS variable references that have no declaration. */
 
 const buildAssetsDir = path.join(
     path.dirname(fileURLToPath(import.meta.url)),

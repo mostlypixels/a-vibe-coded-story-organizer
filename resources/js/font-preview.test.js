@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PREVIEW_PROPERTIES, registerFontPreview, resolvePreview } from './font-preview';
 
-/** Same Alpine stand-in as resources/js/word-count.test.js. */
 function createAlpineStub() {
     const factories = {};
 
@@ -15,7 +14,6 @@ function createAlpineStub() {
     };
 }
 
-/** The lists admin/appearance/edit.blade.php renders into `x-data`, trimmed. */
 const maps = {
     ui_font: { inter: 'Inter, sans-serif', georgia: 'Georgia, Times, serif' },
     manuscript_font: { inter: 'Inter, sans-serif', literata: 'Literata, serif' },
