@@ -6,27 +6,6 @@
     'mode',
 ])
 
-{{--
-    One domain's search results: an <h3> heading over a full-width x-table (same
-    chrome as the entity list pages) with ONE row per matched entity. Columns:
-    Name (linked) | Matched in (the fields the terms appeared in) | Preview
-    (highlighted snippet) | trailing row-actions (view button).
-
-    A domain with no matches renders NOTHING (no empty-state table) — only
-    domains that actually matched appear. The parent view hides a whole section
-    when all of its tables are empty (see SearchResults::has*Matches()).
-
-    The column is capped at config('search.cap') rows. A column with more
-    matches than the cap gets a "See all N results" link to that domain's own
-    paginated page instead of showing every row.
-
-    Props:
-      • domain  — the SearchDomain this table renders. Owns the heading text, the
-                  edit route, the display-name field, and which rows to pull off
-                  $results (see App\Enums\SearchDomain).
-      • results — the full SearchResults set the current search produced.
-      • project, query, mode — needed to build the "See all" link.
---}}
 @php($rows = $domain->rowsFrom($results))
 @if ($rows->isNotEmpty())
     <div class="space-y-2">
@@ -49,8 +28,6 @@
                 />
             @endforeach
 
-            {{-- More matches than the cap: a right-aligned footer link to this
-                 domain's own paginated page, carrying the current query and mode. --}}
             @if ($rows->count() > config('search.cap'))
                 <x-slot:foot>
                     <td colspan="4" class="px-4 py-3 text-right text-sm">

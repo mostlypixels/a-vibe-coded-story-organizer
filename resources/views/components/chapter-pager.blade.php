@@ -1,8 +1,5 @@
 @props(['book', 'previous', 'next', 'numbering'])
 
-{{-- Real <a> links so the pager stays keyboard-navigable; an end with no
-     neighbour renders a disabled <span> instead of a href-less <a>, which
-     browsers still treat as focusable and clickable. --}}
 <nav aria-label="{{ __('Chapter navigation') }}" class="flex items-center justify-between gap-4 text-sm font-medium">
     @if ($previous)
         <a

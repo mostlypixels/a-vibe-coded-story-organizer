@@ -7,19 +7,6 @@
     'showCovers' => false,
 ])
 
-{{--
-    A "Recently edited" card for the section landing pages: the last few
-    App\Support\RecentItem rows, newest first, then a link to the full index.
-    Rows carry the edge-to-edge dividers of the index tables.
-
-    `show-covers` is a property of the ENTITY, not of the data: turn it on for a
-    list whose entity has a cover field (codex entries, chapters) and every row
-    gets a thumbnail box, empty when no image is saved. Lists with no cover
-    field (acts, scenes, events) leave it off and stay flush left.
-
-    Times render twice on purpose — a relative <time> for scanning ("2 hours
-    ago") with the exact timestamp in its title for anyone who needs it.
---}}
 <x-card :title="$title" stretch flush-footer :padded="false">
     @if (count($items) === 0)
         <p class="px-6 py-4 text-sm text-content-muted">

@@ -5,9 +5,6 @@
 ])
 
 @php
-    // The chart config lives in resources/js/word-count-chart.js; this template
-    // only serialises the series. Dates are formatted server-side so the chart
-    // never has to know the locale.
     $days = $series->days
         ->map(fn ($day) => [
             'label' => $day->date->translatedFormat('j M'),
@@ -32,8 +29,6 @@
     data-variant="{{ $variant }}"
     {{ $attributes->merge(['class' => $compact ? 'h-24' : 'h-64 sm:h-80']) }}
 >
-    {{-- A canvas holds no text, so it needs the label a screen reader reads
-         instead. The figures themselves stay available in the page around it. --}}
     <canvas
         x-ref="canvas"
         role="img"

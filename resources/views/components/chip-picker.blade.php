@@ -7,15 +7,6 @@
 ])
 
 @php
-    // Generic searchable chip multi-select. Options are embedded as JSON and filtered
-    // client-side by Alpine (fine for hundreds of rows; a server-side search would be the
-    // next step at thousands — the same tradeoff documented for x-event-picker, which this
-    // component generalizes). Each selected value submits as a hidden {{ $name }}[] input,
-    // matching the plain array the controller/validation already expect.
-    //
-    // Each option is normalized to ['value' => string, 'label' => string, 'sublabel' => ?string,
-    // 'search' => string]. When $allowFreeText is true the user can also add arbitrary values not
-    // present in $options (used for new tag names, which the controller firstOrCreate's).
     $normalizedOptions = collect($options)->map(fn ($option) => [
         'value' => (string) $option['value'],
         'label' => (string) $option['label'],

@@ -1,45 +1,18 @@
-{{-- $navigation is a ProjectNavigation, supplied by the view composer in
-     AppServiceProvider. It owns the "which project / which active section"
-     logic that used to be inline @php in this file. --}}
 <nav x-data="{ open: false }" class="bg-nav">
-    {{-- Primary Navigation Menu. Deliberately NOT inside the max-w-7xl container
-         that <header> and <main> use: the logo anchors the left corner and the
-         account menu the right, so the bar spans the viewport. The consequence is
-         that on screens wider than 1280px the nav no longer lines up with the page
-         content below it.
-
-         The bar itself carries NO horizontal padding: the gutter lives inside the
-         edge elements instead (logo on the left, account menu on the right), so the
-         logo's yellow reaches the viewport edge while its mark still sits a
-         comfortable distance in. --}}
     <div>
         <div class="flex justify-between h-12">
             <div class="flex">
-                {{-- Logo. Shares the picker's nav-raised fill so the two read as one
-                     block in the corner. --}}
                 <div class="shrink-0 flex items-center bg-nav-raised px-2">
                     <a href="{{ route('dashboard') }}">
                         <x-application-logo class="block h-6 w-auto fill-current text-nav-content" />
                     </a>
                 </div>
 
-                {{-- The project picker. Its list is capped — see
-                     ProjectNavigation::otherProjects() for why, and why "All
-                     projects" is not optional decoration. --}}
                 <div class="hidden sm:flex">
-                    {{-- width takes a raw class, not a number: the component maps
-                         only the legacy '48'. `56` would render as a junk class and
-                         leave the panel unsized. --}}
                     <x-dropdown align="left" width="w-56" offset-classes="mt-0">
                         <x-slot name="trigger">
-                            {{-- Square corners, full bar height: the block reads as part of the
-                                 bar's structure rather than a control floating on it. Guarded on
-                                 hasBook(), not hasProject() — see ProjectNavigation::$book. --}}
                             @if ($navigation->hasBook())
                                 <button type="button" class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
-                                    {{-- The project sub-line only when the book has a name of its
-                                         own: a sole unnamed book (almost every project) shows one
-                                         line, not "Melusine" over "Melusine". --}}
                                     <span class="flex flex-col items-start leading-tight">
                                         <span>{{ $navigation->book->displayName() }}</span>
                                         @if ($navigation->book->hasOwnName())
@@ -49,9 +22,6 @@
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
                                 </button>
                             @else
-                                {{-- Nothing chosen yet: same block and fill — the flat
-                                     vocabulary has no second nav-raised shade to dim the
-                                     label with, so both states share nav-content. --}}
                                 <button type="button" class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
                                     {{ __('Choose a project') }}
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -60,16 +30,6 @@
                         </x-slot>
 
                         <x-slot name="content">
-                            {{-- Two levels: the open project's own books first — the open one
-                                 stays listed and marked active, unlike the open project itself
-                                 (the trigger already names it) — a book list with a hole reads
-                                 as broken. Then every other project as an unlinked heading with
-                                 its (capped) books indented beneath.
-
-                                 "Active" here matches routeBook, not the fallback-including
-                                 book: on the dashboard, $navigation->book still names a book (it
-                                 has to, to build the Story links), but no book page is open, so
-                                 nothing in this list may claim to be current. --}}
                             @if ($navigation->hasBook())
                                 @foreach ($navigation->projectBooks() as $projectBook)
                                     <x-dropdown-link :href="route('books.show', $projectBook)" :active="$projectBook->is($navigation->routeBook)">
@@ -103,7 +63,6 @@
                     </x-dropdown>
                 </div>
 
-                <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-6 sm:flex">
                     @if ($navigation->hasProject())
                         <x-navigation.project-menu :navigation="$navigation" />
@@ -111,7 +70,6 @@
                 </div>
             </div>
 
-            <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6 sm:pe-2">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
@@ -133,7 +91,6 @@
                             {{ __('Configuration') }}
                         </x-dropdown-link>
 
-                        <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
 
@@ -147,9 +104,6 @@
                 </x-dropdown>
             </div>
 
-            <!-- Hamburger -->
-            {{-- pe-2, not the old -me-2: that negative margin existed to cancel the
-                 bar's px-2, which is gone — it would now push the button off-screen. --}}
             <div class="pe-2 flex items-center sm:hidden">
                 <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-nav-content hover:bg-nav-raised focus:outline-hidden focus:bg-nav-raised transition duration-150 ease-in-out">
                     <x-tabler-menu-2 class="h-6 w-6" x-bind:class="{ 'hidden': open }" />
@@ -159,11 +113,7 @@
         </div>
     </div>
 
-    <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        {{-- Mobile half of the picker: the same two levels, laid out as rows
-             rather than a panel. The open book stays visible here (marked
-             active) because there is no trigger naming it. --}}
         <div class="px-4 py-3 border-b border-nav-raised">
             <div class="text-xs uppercase tracking-wide text-nav-content-muted mb-2">{{ __('Project') }}</div>
 
@@ -200,7 +150,6 @@
             @endif
         </div>
 
-        <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-nav-raised">
             <div class="px-4">
                 <div class="font-medium text-base text-nav-content">{{ Auth::user()->name }}</div>
@@ -216,7 +165,6 @@
                     {{ __('Configuration') }}
                 </x-responsive-nav-link>
 
-                <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
 

@@ -1,21 +1,4 @@
-{{-- Shared XHTML shell for every epub content document (act divider + chapter page).
-
-     EPUB 3 content documents are XHTML5, so this shell is XML-well-formed on purpose
-     (validatePackage() parses every rendered fragment with DOMDocument::loadXML()): the XML
-     declaration comes first, void elements self-close, and the root <html> carries the
-     Project's language on both `lang` and `xml:lang` (the epub accessibility requirement).
-
-     The XML declaration is built by concatenating '<' and '?xml ... ?>' separately rather
-     than as one literal string, because Blade tokenizes the raw template with PHP's own
-     lexer before {!! !!} is compiled into a real echo statement: if `<?xml` appears adjacent
-     in the source, PHP's lexer reads it as a short-open tag during that pre-compilation
-     pass and the build fails with `unexpected identifier "version"`, regardless of the
-     {!! !!} wrapping.
-
-     Only styles.css is linked — one stylesheet holding nothing but the act/chapter
-     page-break rules. The export stays semantic HTML with minimal page-break CSS.
-     The href is the flat filename because styles.css is placed beside the content
-     documents inside the epub package. --}}
+{{-- Split the XML declaration so Blade does not parse it as a PHP open tag. --}}
 {!! '<' . '?xml version="1.0" encoding="UTF-8"?>' !!}
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="{{ $language }}" xml:lang="{{ $language }}">

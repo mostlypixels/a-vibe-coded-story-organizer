@@ -1,8 +1,6 @@
 @php
     use App\Support\CodexMediaRules;
 
-    // The cover is a plain path column on the public disk; resolve its public URL for
-    // the preview (no codex_media row, so no ->url() helper as on CodexMedia).
     $coverUrl = $project->cover_image
         ? \Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image)
         : null;

@@ -1,15 +1,9 @@
 @props(['navigation'])
 
-{{-- Desktop primary menu: top-level links plus one dropdown per section.
-     All active-state decisions come from the ProjectNavigation view model, so
-     this and navigation.responsive-project-menu can never drift apart. --}}
 <x-nav-link :href="route('projects.show', $navigation->project)" :active="$navigation->homeActive">
     {{ __('Dashboard') }}
 </x-nav-link>
 
-{{-- Guarded on hasBook(), not hasProject(): a project always has a book, but
-     $navigation->book can still be null (a guest/error render), and every
-     route() call below needs one. --}}
 @if ($navigation->hasBook())
     <div class="flex items-center">
         <x-dropdown align="left" width="48">

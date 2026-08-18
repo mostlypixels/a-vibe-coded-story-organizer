@@ -1,6 +1,3 @@
-{{-- Ordinary navigation links to distinct URLs — NOT JS tabs: each is its own
-     controller action. Links and matchers come from AdminNavigation, shared with
-     the Configuration sidebar. --}}
 <nav aria-label="{{ __('Export and import') }}" class="border-b border-border mb-6">
     <ul class="-mb-px flex gap-2">
         @foreach ($adminNavigation->dataSubnav() as $link)

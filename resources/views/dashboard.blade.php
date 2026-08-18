@@ -5,14 +5,6 @@
         </x-heading>
     </x-slot>
 
-    {{--
-        The list/grid choice is a pure display preference, so it's kept client-side
-        (Alpine + localStorage) rather than a query param — switching views never
-        needs to hit the server or be linkable. Default is 'list'; the list markup
-        below has no style="display:none" because it matches that default, while
-        the grid markup does (mirrors the no-x-cloak convention documented in
-        resources/views/components/wysiwyg.blade.php).
-    --}}
     <div class="space-y-6" x-data="{ view: localStorage.getItem('dashboardProjectView') || 'list' }" x-effect="localStorage.setItem('dashboardProjectView', view)">
             <div class="flex items-center justify-between">
                 <div class="inline-flex rounded-md shadow-xs" role="group" aria-label="{{ __('View') }}">
@@ -96,9 +88,6 @@
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-4">
                     @endif
 
-                    {{-- The card is a <div>, not one big <a>: the row actions are a link and a
-                         form, and neither may nest inside an anchor. The cover and the name
-                         stay linked, so the whole card still opens the project. --}}
                     <div class="overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xs hover:shadow-md transition-shadow">
                         <a href="{{ route('projects.edit', $project) }}" class="block">
                             @if ($project->cover_image)

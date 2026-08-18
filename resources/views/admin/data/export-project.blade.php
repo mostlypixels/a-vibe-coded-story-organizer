@@ -17,7 +17,6 @@
         </p>
 
         @if ($projects->isEmpty())
-            {{-- Empty state: nothing to export until the user owns a project. --}}
             <p class="mt-4 text-sm text-content-muted">
                 {{ __('Create a project first to export it.') }}
                 <a href="{{ route('projects.create') }}" class="text-link underline hover:text-link-hover">

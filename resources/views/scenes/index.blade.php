@@ -82,7 +82,6 @@
                     />
                 @endforelse
 
-                {{-- Totals of the rows shown (the filtered set when a search or chapter filter is active). --}}
                 @if ($scenes->isNotEmpty())
                     <x-slot:foot>
                         <td colspan="6" class="px-4 py-3 text-sm font-semibold text-table-header-content">{{ __('Total') }}</td>
@@ -94,8 +93,6 @@
                 @endif
             </x-table>
 
-            {{-- Duplicate-name dialogs live outside the table (a modal <div> is not
-                 valid inside a <tbody>); each is opened by its row's copy button. --}}
             @foreach ($scenes as $scene)
                 <x-duplicate-dialog
                     name="duplicate-scene-{{ $scene->id }}"

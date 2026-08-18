@@ -1,8 +1,6 @@
 @php
     use App\Support\CodexMediaRules;
 
-    // The cover is a plain path column on the public disk; resolve its public URL for
-    // the preview (no codex_media row, so no ->url() helper as on CodexMedia).
     $coverUrl = $chapter->cover_image
         ? \Illuminate\Support\Facades\Storage::disk('public')->url($chapter->cover_image)
         : null;
@@ -50,7 +48,6 @@
 
         <x-slot:sidebar>
             @if ($chapter->scenes_count > 0)
-                {{-- Chapter has scenes: offer "move them elsewhere, then delete" or a full cascade. --}}
                 <x-edit-actions form="chapter-edit-form" :history-model="$chapter">
                     <x-slot:delete>
                         <x-button
@@ -77,7 +74,6 @@
                     :destinations="$destinations"
                 />
             @else
-                {{-- No scenes: nothing to move or count — keep the original plain confirm(). --}}
                 <x-edit-actions
                     form="chapter-edit-form"
                     :history-model="$chapter"

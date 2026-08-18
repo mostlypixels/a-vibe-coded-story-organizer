@@ -1,14 +1,5 @@
 @props(['book', 'mode', 'chapterId' => null])
 
-{{--
-    Owner-only control that PATCHes `books.story.overview.mode`. A labelled
-    <select> submitting on change, rather than a link per option, so the
-    choice is one accessible form control instead of two buttons that must be
-    kept in sync with the current value.
-
-    The option list comes from StoryOverviewMode::cases()/label() — never
-    hard-coded strings here — so a third mode needs no Blade change.
---}}
 <form method="POST" action="{{ route('books.story.overview.mode', array_filter(['book' => $book, 'chapter' => $chapterId])) }}">
     @csrf
     @method('PATCH')

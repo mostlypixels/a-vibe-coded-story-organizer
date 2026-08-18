@@ -3,18 +3,12 @@
 @endphp
 
 <x-revisions-layout :project="$project" :entity="$entity" :id="$id" :field="$field">
-    {{-- Breadcrumb-band exception (RevisionController class docblock): this
-         route binds {entity}+{id}, not {project}, so the central builder
-         yields an empty trail and the controller hands us a finished one. --}}
     <x-slot name="header">
         <div class="min-w-0">
             <x-breadcrumbs :items="$breadcrumbTrail" />
         </div>
     </x-slot>
 
-    {{-- x-page-heading has no actions affordance, so
-         — same as projects/show.blade.php's dashboard heading row — this uses
-         x-heading directly in a flex row rather than double up on margin. --}}
     <div class="mb-6 flex items-center justify-between gap-4">
         <x-heading level="1">{{ $heading }}</x-heading>
         <a href="{{ route('revisions.index', ['entity' => $entity, 'id' => $id, 'field' => $field]) }}" class="text-sm text-content-muted hover:text-content shrink-0">
@@ -24,33 +18,17 @@
 
     <div class="space-y-6">
         @if ($from === null || $to === null)
-            {{-- Fewer than two save points: there is no pair to be had yet. --}}
             <div class="bg-surface-raised shadow-xs rounded-lg px-6 py-10 text-center text-content-muted">
                 <p class="font-medium text-content-muted">{{ __('Nothing to compare yet.') }}</p>
                 <p class="mt-1 text-sm">{{ __('This entity needs at least two saves before they can be compared.') }}</p>
             </div>
         @else
-            {{-- Left is always the older side, right the newer. The invalid
-                 pairing is made *unreachable* — x-revision-picker disables every
-                 option not strictly newer than the older selection, server-side,
-                 so it holds with JS off too. There is no backwards diff and no
-                 error state to design.
-
-                 Each picker is a native <select> that the Alpine combobox
-                 replaces once it mounts; the surrounding form is what makes the
-                 no-JS baseline work. --}}
             <form method="GET" class="bg-surface-raised shadow-xs rounded-lg px-6 py-4">
                 @if ($field !== null)
                     <input type="hidden" name="field" value="{{ $field }}">
                 @endif
 
                 @php
-                    // The pair the page is currently showing. Each picker writes
-                    // *both* halves when it navigates: a reader who arrived with
-                    // no explicit pair is looking at the defaulted two most
-                    // recent points, and writing only the chosen side would let
-                    // the other default straight back — the selection would
-                    // appear to do nothing.
                     $pair = ['from' => $from->saveId, 'to' => $to->saveId];
                 @endphp
 
@@ -80,16 +58,9 @@
             @endif
 
             @forelse ($comparisons as $comparison)
-                {{-- One section per changed field, in registry order. An <article>
-                     with its own heading, so the page reads as a list of things
-                     that changed rather than as one undifferentiated diff. --}}
                 <article aria-labelledby="diff-{{ $comparison->field }}">
                     <x-card>
                         <x-slot name="header">
-                            {{-- Names the whole comparison, not just the field:
-                                 a bare "Description" left the reader to work out
-                                 what they were looking at, and which of the
-                                 seven entity types it belonged to. --}}
                             <x-heading level="3" id="diff-{{ $comparison->field }}">
                                 {{ __("Comparing changes to :entity field ':field'", [
                                     'entity' => Str::headline($entity),
@@ -101,15 +72,6 @@
                             </x-heading>
                         </x-slot>
 
-                        {{-- Three panes, one shell: what moved, what it was,
-                             what it became. The diff is labelled like the two
-                             columns are, so it reads as one of the three things
-                             being shown rather than as loose text above them.
-
-                             "Revert to this" lives under the version it restores
-                             — in the card header it pointed at neither side,
-                             which is what made it unreadable next to an inline
-                             diff. --}}
                         <x-revision-panel :title="__('What changed')">
                             <x-diff :html="$comparison->result->html" :kind="$comparison->kind" />
                         </x-revision-panel>

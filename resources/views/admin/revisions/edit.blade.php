@@ -5,13 +5,6 @@
         </x-heading>
     </x-slot>
 
-    {{--
-        The dedicated admin "Revisions" page — the RevisionSetting
-        retention form (confirm-gated on lowering, RevisionSettingController::
-        update()) and the "Revision storage" panel (bulk-delete actions calling
-        RevisionPurger, the second of its two call sites alongside the
-        `revisions:purge` command).
-    --}}
 
     @if (session('status') === 'revision-settings-updated')
         <div
@@ -67,12 +60,6 @@
         </form>
     </x-card>
 
-    {{--
-        "Revision storage" panel: counts + SUM(size_bytes) per category, never
-        hydrating `value` — RevisionSettingController
-        computes this via RevisionPurger's own dry-run query, so the figures can
-        never drift from what a bulk-delete button actually removes.
-    --}}
     <x-card>
         <x-slot name="header">
             <x-heading level="3">{{ __('Revision storage') }}</x-heading>
@@ -134,11 +121,6 @@
             @endforeach
         </x-table>
 
-        {{--
-            Age-based bulk-delete example: automatic
-            revisions older than a year, even the newest one for a field (purge
-            is explicitly allowed to do what prune never does).
-        --}}
         <div class="mt-6 flex items-center justify-between rounded-md border border-border p-4">
             <div>
                 <p class="text-sm font-medium text-content">{{ __('Automatic revisions older than 1 year') }}</p>

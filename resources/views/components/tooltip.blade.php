@@ -1,8 +1,6 @@
 @props(['text', 'position' => 'top'])
 
 @php
-    // Wrap any trigger (icon button, link, …) in the default slot and it shows a
-    // small tooltip on hover/focus. Keyboard-accessible via focusin/focusout.
     $positions = [
         'top'    => 'bottom-full left-1/2 -translate-x-1/2 mb-2',
         'bottom' => 'top-full left-1/2 -translate-x-1/2 mt-2',

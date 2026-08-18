@@ -4,19 +4,6 @@
     'maxWidth' => '2xl',
 ])
 
-{{--
-    Higher-level modal with a header (title + close button), body, and optional
-    footer, built on top of the low-level x-modal shell. Open/close it by
-    dispatching browser events, e.g.:
-        <x-button x-on:click.prevent="$dispatch('open-modal', 'confirm-delete')">…</x-button>
-        <x-dialog name="confirm-delete" :title="__('Delete act?')">
-            {{ __('This cannot be undone.') }}
-            <x-slot name="footer">
-                <x-button variant="secondary" x-on:click="$dispatch('close')">Cancel</x-button>
-                <x-button variant="danger">Delete</x-button>
-            </x-slot>
-        </x-dialog>
---}}
 <x-modal :name="$name" :max-width="$maxWidth" focusable>
     @if ($title)
         <div class="flex items-center justify-between border-b border-border px-6 py-4">

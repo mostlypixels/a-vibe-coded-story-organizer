@@ -15,9 +15,6 @@
             </div>
         </form>
 
-        {{-- Delete and Duplicate each need their own <form>, so they stay outside the edit
-             form — its fields partial fills both columns, and a nested form is invalid HTML.
-             The buttons that submit these live in the sidebar and point here by id. --}}
         <form
             id="codex-entry-delete-form"
             method="POST"
@@ -35,13 +32,8 @@
             :suggestion="$duplicateSuggestion"
         />
 
-        {{-- Timeline editor lives outside the main form: its per-period forms post to the
-             upsert/destroy routes independently (nested forms are invalid HTML). --}}
         @include('codex.partials.attribute-timeline')
 
-        {{-- Referenced in scenes: read-only view of the derived scene_codex_entry cache, in
-             timeline (event) order. Scenes with no assigned event are labelled distinctly, not
-             hidden. Full-width, below the timeline rather than in the sidebar. --}}
         <x-card :title="__('Referenced in scenes')">
             @if ($referencingScenes->isEmpty())
                 <p class="text-sm text-content-muted">{{ __('No scenes reference this entry yet.') }}</p>

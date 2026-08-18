@@ -1,8 +1,3 @@
-{{-- books/NN/index.html — one book's own table of contents. Lists each act
-     (title) with its chapters (titles) as links to the compiled chapter pages,
-     in position order. $toc is a plain data structure built by
-     StaticSiteExporter (presentation logic stays out of Blade); titles are
-     auto-escaped by {{ }}. --}}
 @extends('exports.books.layout', ['title' => $bookName])
 
 @section('content')

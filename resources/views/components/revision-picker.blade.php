@@ -10,9 +10,6 @@
 @php
     use Illuminate\Support\Str;
 
-    // The option list is serialised once, server-side, and both halves of the
-    // component read it: the <select> baseline and the combobox that enhances
-    // it. One source, so the two can never label the same save differently.
     $cutoff = $disabledBefore === null
         ? null
         : $points->search(fn ($point) => $point->saveId === $disabledBefore->saveId);
@@ -36,8 +33,6 @@
             'origin' => $point->origin->value,
             'savedAt' => $point->savedAt->format('Y-m-d'),
             'isCurrent' => $point->isCurrent,
-            // Decided here, not in the browser: the invalid pairing has to be
-            // unreachable with JS off too.
             'disabled' => $cutoff !== false && $cutoff !== null && $index >= $cutoff,
         ];
     })->all();
@@ -46,23 +41,6 @@
     $labelId = "{$side}-label";
 @endphp
 
-{{--
-    One side of the compare pair.
-
-    Progressive enhancement, in the shape x-wysiwyg already uses: the native
-    <select> is what the server renders and what a browser with no JS keeps
-    using, and the combobox below it appears only once Alpine has mounted
-    (`x-show="ready"` + an inline display:none, so there is no flash of both).
-
-    Why a combobox rather than the <select> everywhere: the panel carries
-    filters — manual-only and a date range — and a <select> cannot hold them.
-    They are per side and deliberately not synced, because finding the save that
-    broke something means comparing one manual checkpoint against the autosaves
-    around it.
-
-    Built to the W3C APG select-only combobox pattern; the roles and states are
-    the contract, not decoration. See resources/js/revision-picker.js.
---}}
 <div
     x-data="revisionPicker({
         side: @js($side),
@@ -75,8 +53,6 @@
 >
     <span id="{{ $labelId }}" class="block font-medium text-sm text-content-muted">{{ $label }}</span>
 
-    {{-- The baseline. Alpine hides it on mount; without Alpine it is the whole
-         control, and the form's Compare button submits it. --}}
     <div x-show="! ready">
         <x-select name="{{ $side }}" aria-labelledby="{{ $labelId }}" class="mt-1 block w-full text-sm">
             @foreach ($options as $option)
@@ -119,7 +95,6 @@
             style="display: none;"
             class="absolute z-20 mt-1 w-full rounded-md border border-border bg-surface-overlay shadow-lg"
         >
-            {{-- The filters that a <select> could not have held. --}}
             <div class="space-y-2 border-b border-border p-3">
                 <label class="block">
                     <span class="sr-only">{{ __('Filter saves') }}</span>

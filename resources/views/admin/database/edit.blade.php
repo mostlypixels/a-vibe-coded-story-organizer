@@ -5,8 +5,6 @@
         </x-heading>
     </x-slot>
 
-    {{-- Read-only view of the active database connection. The controller passes a
-         whitelisted subset (driver / database / host) — never the password. --}}
     <x-card>
         <x-slot name="header">
             <x-heading level="3">{{ __('Database configuration') }}</x-heading>

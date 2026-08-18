@@ -58,7 +58,6 @@
                                 @endif
                                 <x-icon-edit-link :href="route('chapters.edit', $chapter)" />
                                 @if ($chapter->scenes_count > 0)
-                                    {{-- Chapter has scenes: open the "move or delete" dialog instead of a plain confirm(). --}}
                                     <x-icon-dialog-button :modal="'delete-chapter-'.$chapter->id" />
                                 @else
                                     <x-icon-delete-button :action="route('chapters.destroy', $chapter)" :confirm="__('Are you sure you want to delete this chapter?')" />
@@ -76,7 +75,6 @@
                     />
                 @endforelse
 
-                {{-- Totals of the rows shown (the filtered set when a search or act filter is active). --}}
                 @if ($chapters->isNotEmpty())
                     <x-slot:foot>
                         <td colspan="3" class="px-4 py-3 text-sm font-semibold text-table-header-content">{{ __('Total') }}</td>
@@ -89,8 +87,6 @@
                 @endif
             </x-table>
 
-            {{-- Delete-with-move dialogs live outside the table (a modal <div> is not
-                 valid inside a <tbody>); each is opened by its row's trash button. --}}
             @foreach ($chapters as $chapter)
                 @if ($chapter->scenes_count > 0)
                     <x-delete-with-move-dialog

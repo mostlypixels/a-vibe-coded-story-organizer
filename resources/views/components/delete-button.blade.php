@@ -1,10 +1,5 @@
 @props(['action', 'confirm', 'buttonClass' => null])
 
-{{--
-    Labelled delete-with-confirm form: the full-size sibling of x-icon-delete-button.
-    Used on entity edit pages (Save/Delete at the bottom of a form) rather than in index
-    table rows, where the icon-only version is used instead.
---}}
 <form method="POST" action="{{ $action }}" onsubmit="return confirm('{{ $confirm }}')" {{ $attributes }}>
     @csrf
     @method('DELETE')

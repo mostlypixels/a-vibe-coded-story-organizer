@@ -1,6 +1,3 @@
-{{-- $adminNavigation is an App\Support\AdminNavigation, supplied by the view
-     composer in AppServiceProvider — it owns the section list and the route
-     matching that used to be inline @php here. --}}
 <nav aria-label="Configuration">
     <ul class="space-y-1">
         @foreach ($adminNavigation->sections() as $section)

@@ -7,13 +7,6 @@
 
     @include('admin.data.partials.subnav')
 
-    {{--
-        Flash feedback for the import flows that redirect back here (queued,
-        discarded, mid-run failure) and for the "Import settings" save. Synchronous
-        success redirects to the new project instead, so it is not shown here.
-        'import-settings-updated' is a marker (mirroring the crawler-settings form);
-        any other status is a ready-to-display human message from ImportController.
-    --}}
     @if (session('status'))
         <div
             x-data="{ show: true }"
@@ -27,12 +20,6 @@
         </div>
     @endif
 
-    {{--
-        Import settings: the global ImportSetting singleton — archive
-        size cap (edited in human-friendly MB, persisted as KB by the Form Request)
-        and the background-processing toggle. Any authenticated user may edit it
-        (like CrawlerSetting).
-    --}}
     <x-card class="max-w-md mb-8">
         <x-slot name="header">
             <x-heading level="4">{{ __('Import settings') }}</x-heading>
@@ -104,14 +91,6 @@
             <x-button variant="primary">{{ __('Import') }}</x-button>
         </form>
 
-        {{--
-            In-progress / stalled imports. A crash in any phase after
-            `project` leaves an actionable Import row; list them so a stalled
-            import is never silently invisible. Resume re-runs from the last
-            checkpoint (idempotent); Discard deletes the partial project and the
-            row via the shared <x-delete-button> confirm form. The list is empty
-            (and hidden) on the common path where nothing is mid-flight.
-        --}}
         @if ($imports->isNotEmpty())
             <div class="mt-8 space-y-3" aria-labelledby="imports-heading">
                 <x-heading level="4" id="imports-heading">{{ __('In-progress imports') }}</x-heading>

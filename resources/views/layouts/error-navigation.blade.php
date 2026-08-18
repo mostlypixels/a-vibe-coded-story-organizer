@@ -1,10 +1,3 @@
-{{-- The reduced bar the error pages carry: logo, project picker, Configuration.
-     `layouts/navigation` cannot serve here — it highlights the active section
-     off the route, and on an error page the route is the one that just failed.
-     $navigation comes from the view composer in AppServiceProvider, built with
-     ProjectNavigation::offRoute() so no route parameter reaches the picker.
-
-     Guests see the bare bar: the links below all sit behind `auth`. --}}
 <nav class="bg-nav">
     <div class="flex justify-between h-12">
         <div class="flex">
@@ -15,8 +8,6 @@
             </div>
 
             @auth
-                {{-- Same picker as the main bar, and the same cap: a shortcut to
-                     five projects, with "All projects" as the complete answer. --}}
                 <x-dropdown align="left" width="w-56" offset-classes="mt-0">
                     <x-slot name="trigger">
                         <button type="button" class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">

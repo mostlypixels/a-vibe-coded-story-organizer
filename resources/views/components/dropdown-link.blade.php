@@ -1,14 +1,6 @@
 @props(['active' => false])
 
 @php
-// The active item is tinted with `accent-surface`, the same family the active-nav
-// indicator uses, so "this is the one you are on" is one colour idea across the
-// whole app.
-//
-// Both states take a real focus ring rather than a background tint. The tint the
-// active item used to get on focus was a second shade of its own active tint, and
-// the flat vocabulary has no such shade — a ring on the `focus` token is both
-// expressible and a stronger affordance.
 $focus = 'focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus';
 
 $classes = $active

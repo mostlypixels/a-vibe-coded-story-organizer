@@ -5,9 +5,6 @@
 ])
 
 @php
-    // Thin wrapper over x-chip-picker for the project's tags. Chips carry tag *names*
-    // (not ids): the controller's resolveTags() firstOrCreate's each name within the
-    // project, so free text is allowed and new names create fresh project-scoped tags.
     $options = collect($tags)->map(fn ($tag) => [
         'value' => $tag->name,
         'label' => $tag->name,

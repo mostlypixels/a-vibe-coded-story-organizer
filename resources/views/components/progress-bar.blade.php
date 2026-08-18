@@ -1,17 +1,5 @@
 @props(['value', 'goal', 'label'])
 
-{{--
-    One goal row: a label, "value of goal words", and a bar. Shared by the
-    Progress page's status strip and the dashboard card, so the two can never
-    disagree on how a goal reads.
-
-    A null $goal renders nothing — the caller checks first (see
-    expanded/ui.md, "A null goal drops its row entirely"). Both numbers go
-    through x-word-count, the one place "1,234" vs "1234" is decided.
-
-    The bar caps at 100%: a total goal already met keeps reading as "done",
-    not as a bar overflowing its track.
---}}
 @php
     $percent = $goal > 0 ? min(100, (int) round($value / $goal * 100)) : 0;
 @endphp

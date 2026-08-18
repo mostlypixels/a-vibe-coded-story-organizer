@@ -1,8 +1,6 @@
 @php
     use App\Support\CodexMediaRules;
 
-    // The cover is a plain path column on the public disk; resolve its public URL for
-    // the preview (no codex_media row, so no ->url() helper as on CodexMedia).
     $coverUrl = $book->cover_image
         ? \Illuminate\Support\Facades\Storage::disk('public')->url($book->cover_image)
         : null;
@@ -97,11 +95,8 @@
 
         <x-slot:sidebar>
             @if ($isLastBook)
-                {{-- The last book cannot be deleted (BookController::destroy aborts 403),
-                     so it gets no Delete button — the same rule the index list follows. --}}
                 <x-edit-actions form="book-edit-form" :history-model="$book" />
             @elseif ($book->acts_count > 0)
-                {{-- Book has acts: offer "move them elsewhere, then delete" or a full cascade. --}}
                 <x-edit-actions form="book-edit-form" :history-model="$book">
                     <x-slot:delete>
                         <x-button
@@ -134,7 +129,6 @@
                     :destinations="$destinations"
                 />
             @else
-                {{-- No acts: nothing to move or count — keep the original plain confirm(). --}}
                 <x-edit-actions
                     form="book-edit-form"
                     :history-model="$book"

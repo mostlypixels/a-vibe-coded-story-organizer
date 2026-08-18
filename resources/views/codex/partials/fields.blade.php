@@ -2,15 +2,12 @@
     use App\Enums\CodexMediaCollection;
     use App\Support\CodexMediaRules;
 
-    // Shared body for the create and edit entry forms. $entry is null on create.
     $entry = $entry ?? null;
     $attributes = $attributes ?? collect();
     $projectTags = $projectTags ?? collect();
     $aliasValues = old('aliases', $entry?->aliases->pluck('alias')->values()->all() ?? []);
     $tagValues = old('tags', $entry?->tags->pluck('name')->values()->all() ?? []);
 
-    // Media is loaded via the `media` relation on edit; derive each collection from it
-    // (no extra queries) so the view stays dumb. All empty on create.
     $mediaItems = $entry?->media ?? collect();
     $cover = $mediaItems->firstWhere('collection', CodexMediaCollection::Cover);
     $referenceImages = $mediaItems->where('collection', CodexMediaCollection::ReferenceImage)->sortBy('position')->values();
@@ -27,10 +24,6 @@
             </div>
 
             <div>
-                {{-- Autosave only applies once the entry exists: the
-                     autosave endpoint PATCHes an existing row, so the create form (no id
-                     yet) keeps the plain x-wysiwyg it always had, submitted with the rest
-                     of the form on "Create". --}}
                 @if ($entry !== null)
                     <x-autosave-field entity="codex" :model="$entry" field="description" :label="__('Description')" :rows="10" />
                 @else
@@ -40,7 +33,6 @@
                 @endif
             </div>
 
-            {{-- Aliases: a small add/remove-row repeater of free-text inputs (x-string-list). --}}
             <div>
                 <x-input-label :value="__('Aliases')" />
                 <p class="text-sm text-content-muted">{{ __('Other names this entry is known by (optional).') }}</p>
@@ -58,8 +50,6 @@
         </div>
     </x-card>
 
-    {{-- Attribute baselines: create only. Each applicable attribute captures its Start value;
-         later periods are added on the edit page once the entry (and its id) exist. --}}
     @if ($entry === null && $attributes->isNotEmpty())
         <x-card :title="__('Attributes')">
             <p class="text-sm text-content-muted">{{ __('Starting value for each attribute (from the Start of the timeline). You can add later changes after saving.') }}</p>
@@ -91,11 +81,6 @@
                 {{ __('Create :label', ['label' => $type->label()]) }}
             </x-create-actions>
         @else
-            {{-- The delete button submits a form that codex/edit.blade.php renders after the
-                 edit form, and reaches it with the `form` attribute. This whole partial is
-                 inside the edit form, and a form inside a form is invalid HTML: the browser
-                 discards the inner tag and ends the edit form at the first </form>. The
-                 delete route's `_method=DELETE` then rode along with Save. --}}
             <x-edit-actions
                 form="codex-entry-edit-form"
                 :history-model="$entry"
@@ -128,30 +113,12 @@
         </x-card>
 
         <x-card :title="__('Tags')">
-            {{-- Autocomplete chip picker: existing project tags plus free-text new names. --}}
             <x-tag-picker name="tags" :tags="$projectTags" :selected="$tagValues" />
             <x-input-error :messages="$errors->get('tags')" class="mt-2" />
         </x-card>
     </x-slot:sidebar>
 </x-edit-layout>
 
-{{--
-    Reference media: full-width block below the two columns, above the Save button.
-    One shared multipart form saves reference uploads and any per-item removals
-    (checkboxes feeding remove_media[]) alongside everything else in a single Save.
-
-    Tabs are inline Alpine (no reusable x-tabs component until a second screen
-    needs one) and follow the
-    WAI-ARIA tabs pattern: role="tablist"/tab/tabpanel, aria-selected on the active
-    tab, aria-controls wiring tab -> panel, a roving tabindex (only the active tab
-    is in the tab order), and Left/Right arrow keys move between tabs. `activeTab`
-    is the single source of truth for which tab/panel shows.
-
-    The lightbox reuses the same x-data scope: clicking a reference image sets
-    `lightbox` to its url/alt and an overlay shows it full-size. Pre-mount state is
-    hidden with style="display:none" (no x-cloak), matching the other interactive
-    components (see resources/views/components/wysiwyg.blade.php).
---}}
 <div class="mt-6" x-data="{ activeTab: 'images', lightbox: null, filePreview: null }">
     <x-card>
         <div class="border-b border-border">
@@ -275,9 +242,6 @@
         </div>
     </x-card>
 
-    {{-- Lightbox: shows the clicked reference image full-size. Local Alpine state
-         (`lightbox`), not the global x-modal component, since it needs to carry
-         per-image data (url/alt) rather than just an open/closed name. --}}
     <div
         x-show="lightbox"
         style="display: none"
@@ -286,7 +250,6 @@
         role="dialog"
         aria-modal="true"
     >
-        {{-- Own token, not `content-muted` — see <x-modal>'s identical comment. --}}
         <div class="fixed inset-0 bg-scrim opacity-75" @click="lightbox = null"></div>
 
         <div class="relative mx-auto max-w-3xl">
@@ -295,11 +258,6 @@
         </div>
     </div>
 
-    {{-- File preview: shows the clicked reference file in an iframe. Same local-state
-         pattern as the image lightbox; PDFs and text/markdown files render inline via
-         the browser's built-in viewer, other allowed types (doc/docx) fall back to
-         their native "download this" prompt inside the frame — the Download link next
-         to the filename is still the reliable path for those. --}}
     <div
         x-show="filePreview"
         style="display: none"

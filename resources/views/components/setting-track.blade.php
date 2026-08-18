@@ -1,22 +1,6 @@
 @props(['name', 'legend', 'options', 'selected', 'format' => 'ratio', 'hint' => null])
 
 @php
-    /**
-     * A radio group laid out as a tick track: one tick per step, the active one
-     * marked and its label highlighted.
-     *
-     * It only looks like a slider. The controls are the same native radios the
-     * rest of this form uses, so arrow keys work, the form submits without
-     * JavaScript, and what posts is a config slug — never a numeric index that
-     * would make the order of `config/fonts.php` part of the wire format.
-     *
-     * Tick labels are derived from the authored value, so there is no second
-     * list of numbers to drift out of step:
-     *   `px`    — a percentage against the 16px root ("14px")
-     *   `times` — a multiplier ("1.15×"), written either as a percentage
-     *             (manuscript scale) or as a bare number (line spacing)
-     *   `ratio` — the value as authored
-     */
     $tickLabel = function (string $value) use ($format): string {
         $isPercentage = str_ends_with($value, '%');
         $number = (float) rtrim($value, '%');
@@ -39,8 +23,6 @@
         @endif
     </legend>
 
-    {{-- Dragging is enhancement: the handlers only move the checked radio, so
-         with JS off the labels still click and the arrow keys still work. --}}
     <div
         class="mt-3 flex touch-none items-stretch"
         x-data="settingTrack"
@@ -63,8 +45,6 @@
                     @checked($selected === $slug)
                 >
 
-                {{-- The radio is visually hidden, so focus has to show somewhere:
-                     it rings the step's own label. --}}
                 <span
                     class="rounded-xs px-1 text-xs text-content-muted
                            peer-checked:font-medium peer-checked:text-link
@@ -74,10 +54,6 @@
                     {{ $tickLabel($value) }}
                 </span>
 
-                {{-- The rail is drawn per step rather than as one line behind the
-                     ticks, so it needs no absolute positioning and no width
-                     maths: each step owns its own segment. The first and last
-                     segments stop at the tick so the rail does not overhang. --}}
                 <span class="flex h-4 w-full items-center peer-checked:[&>.tick]:hidden peer-checked:[&>.dot]:block">
                     <span @class([
                         'h-0.5 flex-1 rounded-full bg-border-strong',

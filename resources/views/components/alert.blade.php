@@ -5,22 +5,7 @@
 ])
 
 @php
-    // Contextual feedback banner. Each variant carries its container colours,
-    // icon tint, and a Tabler icon name. Class strings are written in full,
-    // because Tailwind only finds class names that appear complete in the source.
-    //
-    // Four tokens per status, and each does one job: `<status>-surface` is the
-    // tinted panel, `<status>-surface-content` the text *and the icon* on it, and
-    // `<status>` itself the solid fill — kept here only for the border.
-    //
-    // The icon used to be `<status>`, which reads as the status colour but is the
-    // value chosen to carry white: on its own tint it measures 4.47/4.78/4.82 for
-    // danger/success/info and **1.85 for warning** (1.34 on Dusk) — an invisible
-    // glyph on the one variant that most needs to be noticed. A glyph is not
-    // decoration here; it is what distinguishes the four variants for a reader who
-    // does not parse the tint. So the icon takes the same foreground the text does.
-    // The border stays `<status>`: it carries no information the icon and tint do
-    // not already, and borders are exempt from the floors by design.
+    // Keep class names complete so Tailwind can discover them.
     $variants = [
         'info' => [
             'container' => 'bg-info-surface text-info-surface-content border-info',

@@ -1,16 +1,10 @@
 <x-revisions-layout :project="$project" :entity="$entity" :id="$id" :field="$field">
-    {{-- Breadcrumb-band exception (RevisionController class docblock): this
-         route binds {entity}+{id}, not {project}, so the central builder
-         yields an empty trail and the controller hands us a finished one. --}}
     <x-slot name="header">
         <div class="min-w-0">
             <x-breadcrumbs :items="$breadcrumbTrail" />
         </div>
     </x-slot>
 
-    {{-- x-page-heading has no actions affordance, so
-         — same as projects/show.blade.php's dashboard heading row — this uses
-         x-heading directly in a flex row rather than double up on margin. --}}
     <div class="mb-6 flex items-center justify-between gap-4">
         <x-heading level="1">{{ $heading }}</x-heading>
         <a href="{{ $editUrl }}" class="text-sm text-content-muted hover:text-content shrink-0">
@@ -19,10 +13,6 @@
     </div>
 
     <div class="space-y-6">
-        {{-- Every filter is a GET parameter, so the page stays bookmarkable and
-             the Back button means what it looks like it means. A native <select>
-             is right here: a handful of options, no search, and it is
-             keyboard-operable and screen-reader-announced for free. --}}
         <form method="GET" class="bg-surface-raised shadow-xs rounded-lg px-6 py-4 flex flex-wrap items-end gap-4">
             @if ($fieldOptions !== [])
                 <div>
@@ -82,9 +72,6 @@
                 @endif
             </div>
         @else
-            {{-- A <ul>, not x-table: a save point is two-level (the save, then
-                 the fields it touched) and a table row cannot hold that without
-                 lying about its structure to a screen reader. --}}
             <ul class="space-y-4">
                 @foreach ($savePoints as $point)
                     <li>
