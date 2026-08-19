@@ -36,7 +36,7 @@ class HtmlTokenizer
      *
      * @var list<string>
      */
-    public const MARK_TAGS = ['strong', 'em', 'u', 's', 'code', 'a', 'span'];
+    public const MARK_TAGS = ['strong', 'em', 'u', 's', 'sub', 'sup', 'code', 'a', 'span'];
 
     /** Prefix of the mark a coloured span contributes. */
     public const COLOR_MARK_PREFIX = 'color:';
@@ -49,6 +49,13 @@ class HtmlTokenizer
 
     /** Prefix of the pseudo-mark a block's alignment contributes to a diff. */
     public const ALIGN_MARK_PREFIX = 'align:';
+
+    /**
+     * The pseudo-mark a ticked task item contributes to a diff. Unticking is
+     * the mark's removal, so an unticked item contributes nothing — the same
+     * shape as an unaligned paragraph.
+     */
+    public const CHECKED_MARK = 'checked';
 
     /** @var list<string> */
     private const LIST_TAGS = ['ul', 'ol'];
@@ -359,28 +366,50 @@ class HtmlTokenizer
     /**
      * Collect the word tokens under `$node`, carrying the mark stack down.
      *
-     * `br` and the task-list checkbox `input` produce nothing: the first is
-     * already a word boundary, and the second is rendered from the item's
-     * `data-checked` attribute instead. Unknown elements are transparent — we
-     * keep their text and drop the tag, which is what "ignored, not emitted"
-     * means for something outside the vocabulary.
+     * Done in two passes, and the reason is the whole point of this method. A
+     * mark inside a word — `mc<sup>2</sup>`, or a bolded stem — puts the word's
+     * halves in two different text nodes. Tokenising each node on its own made
+     * them two words, so `E = mc2` and `E = mc<sup>2</sup>` had different
+     * {@see HtmlBlock::$text}, different {@see HtmlBlock::matchKey()}, and the
+     * differ reported a delete plus an insert instead of a formatting change.
+     *
+     * So the first pass flattens the tree to marked *segments* of raw text, and
+     * the second splits that stream on whitespace alone. A word that spans marks
+     * carries the union of them: half-bold reads as bold, which is the right
+     * altitude for a change summary.
      *
      * @param  list<string>  $marks
      * @return list<InlineToken>
      */
     private function tokensFrom(DOMNode $node, array $marks, bool $skipLists): array
     {
+        return $this->assembleWords($this->segmentsFrom($node, $marks, $skipLists));
+    }
+
+    /**
+     * Flatten `$node` to `{text, marks}` segments in document order, text kept
+     * exactly as written so the second pass can tell a word boundary from a
+     * mere tag boundary.
+     *
+     * `input` produces nothing — the task-list checkbox is rendered from the
+     * item's `data-checked` attribute instead. `br` produces a space, because it
+     * *is* a word boundary and dropping it would glue two words together.
+     * Unknown elements are transparent: we keep their text and drop the tag.
+     *
+     * @param  list<string>  $marks
+     * @return list<array{text: string, marks: list<string>}>
+     */
+    private function segmentsFrom(DOMNode $node, array $marks, bool $skipLists): array
+    {
         if ($node instanceof DOMText) {
-            return array_map(fn (string $word): InlineToken => new InlineToken($word, $marks), $this->words($node->textContent));
+            return [['text' => $node->textContent, 'marks' => $marks]];
         }
 
-        $tokens = [];
+        $segments = [];
 
         foreach ($node->childNodes ?? [] as $child) {
             if ($child instanceof DOMText) {
-                foreach ($this->words($child->textContent) as $word) {
-                    $tokens[] = new InlineToken($word, $marks);
-                }
+                $segments[] = ['text' => $child->textContent, 'marks' => $marks];
 
                 continue;
             }
@@ -391,7 +420,13 @@ class HtmlTokenizer
 
             $tag = strtolower($child->nodeName);
 
-            if ($tag === 'br' || $tag === 'input') {
+            if ($tag === 'input') {
+                continue;
+            }
+
+            if ($tag === 'br') {
+                $segments[] = ['text' => ' ', 'marks' => []];
+
                 continue;
             }
 
@@ -406,8 +441,60 @@ class HtmlTokenizer
                 $childMarks[] = $mark;
             }
 
-            $tokens = array_merge($tokens, $this->tokensFrom($child, $childMarks, $skipLists));
+            $segments = array_merge($segments, $this->segmentsFrom($child, $childMarks, $skipLists));
         }
+
+        return $segments;
+    }
+
+    /**
+     * Split a segment stream into words, breaking on whitespace and never on a
+     * segment boundary.
+     *
+     * @param  list<array{text: string, marks: list<string>}>  $segments
+     * @return list<InlineToken>
+     */
+    private function assembleWords(array $segments): array
+    {
+        $tokens = [];
+        $word = '';
+        $marks = [];
+
+        $flush = function () use (&$tokens, &$word, &$marks): void {
+            if ($word === '') {
+                return;
+            }
+
+            $tokens[] = new InlineToken($word, array_values(array_unique($marks)));
+            $word = '';
+            $marks = [];
+        };
+
+        foreach ($segments as $segment) {
+            // DELIM_CAPTURE keeps the separators, so a whitespace run inside a
+            // segment still ends the word it follows.
+            $pieces = preg_split('/([\s\x{00A0}]+)/u', $segment['text'], -1, PREG_SPLIT_DELIM_CAPTURE) ?: [];
+
+            foreach ($pieces as $piece) {
+                if ($piece === '') {
+                    continue;
+                }
+
+                if (preg_match('/^[\s\x{00A0}]+$/u', $piece) === 1) {
+                    $flush();
+
+                    continue;
+                }
+
+                $word .= $piece;
+
+                foreach ($segment['marks'] as $mark) {
+                    $marks[] = $mark;
+                }
+            }
+        }
+
+        $flush();
 
         return $tokens;
     }
@@ -479,6 +566,13 @@ class HtmlTokenizer
     {
         $align = $attributes[self::ALIGN_ATTRIBUTE] ?? null;
         $prefix = $align === null ? '' : self::ALIGN_MARK_PREFIX.$align.'|';
+
+        // A ticked box is formatting the words don't carry, exactly like an
+        // alignment: without it here the differ's signature comparison short-
+        // circuits to "unchanged" and ticking an item reports nothing.
+        if (($attributes['data-checked'] ?? null) === 'true') {
+            $prefix .= self::CHECKED_MARK.'|';
+        }
         $transitions = [];
         $previous = null;
 

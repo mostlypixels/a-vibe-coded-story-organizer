@@ -323,4 +323,76 @@ class HtmlTokenizerTest extends TestCase
         $this->assertSame('p', $blocks[0]->tag);
         $this->assertSame('Kept', $blocks[0]->text);
     }
+
+    // ------------------------------------------------------------------
+    // Marks inside a word
+    // ------------------------------------------------------------------
+
+    /**
+     * A mark that starts mid-word must not split the word. Before this, the
+     * halves landed in two text nodes and became two words, so the block's text
+     * and matchKey both differed from the unmarked version and the differ
+     * reported a delete plus an insert instead of a formatting change.
+     */
+    public function test_a_mark_inside_a_word_keeps_the_word_whole(): void
+    {
+        $marked = $this->tokenizer->tokenize('<p>E = mc<sup>2</sup></p>')[0];
+        $plain = $this->tokenizer->tokenize('<p>E = mc2</p>')[0];
+
+        $this->assertSame(['E', '=', 'mc2'], $this->words($marked));
+        $this->assertSame($plain->text, $marked->text);
+        $this->assertSame($plain->matchKey(), $marked->matchKey());
+        $this->assertNotSame($plain->signature, $marked->signature);
+    }
+
+    public function test_a_word_spanning_a_mark_carries_that_mark(): void
+    {
+        $block = $this->tokenizer->tokenize('<p>un<strong>believ</strong>able</p>')[0];
+
+        $this->assertSame(['unbelievable'], $this->words($block));
+        $this->assertSame(['strong'], $block->tokens[0]->marks);
+    }
+
+    public function test_subscript_and_superscript_are_marks(): void
+    {
+        $this->assertContains('sub', HtmlTokenizer::MARK_TAGS);
+        $this->assertContains('sup', HtmlTokenizer::MARK_TAGS);
+    }
+
+    /** A `br` is a real word boundary, so it must survive the segment pass. */
+    public function test_a_line_break_still_separates_words(): void
+    {
+        $block = $this->tokenizer->tokenize('<p>one<br>two</p>')[0];
+
+        $this->assertSame(['one', 'two'], $this->words($block));
+    }
+
+    public function test_a_table_row_does_not_glue_adjoining_cells_into_one_word(): void
+    {
+        $block = $this->tokenizer->tokenize('<table><tbody><tr><td>alpha</td><td>beta</td></tr></tbody></table>')[0];
+
+        $this->assertStringContainsString('alpha', $block->text);
+        $this->assertStringContainsString('beta', $block->text);
+        $this->assertStringNotContainsString('alphabeta', $block->text);
+    }
+
+    // ------------------------------------------------------------------
+    // A ticked task item
+    // ------------------------------------------------------------------
+
+    /**
+     * The tick has to reach the signature, not just the attribute map: the
+     * differ decides "unchanged" on the signature alone, so an attribute it
+     * never compares reports nothing.
+     */
+    public function test_ticking_a_task_item_changes_its_signature_but_not_its_match_key(): void
+    {
+        $list = '<ul data-type="taskList"><li data-type="taskItem" data-checked="%s">buy milk</li></ul>';
+
+        $unticked = $this->tokenizer->tokenize(sprintf($list, 'false'))[0];
+        $ticked = $this->tokenizer->tokenize(sprintf($list, 'true'))[0];
+
+        $this->assertNotSame($unticked->signature, $ticked->signature);
+        $this->assertSame($unticked->matchKey(), $ticked->matchKey());
+    }
 }

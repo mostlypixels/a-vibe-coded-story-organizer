@@ -64,12 +64,29 @@ Newest means the greatest `(created_at, id)`. `Revision::prunable()` uses a newe
 A rich field's block alignment and span colour (see
 [Rich text](rich-text.md#decorative-classes)) are formatting, not text, so a change to only
 one of them is reported the same way a bold or link change is: as a `FormattingChanged`
-span rather than a delete-and-insert of the same words.
+span rather than a delete-and-insert of the same words. Subscript, superscript and a task
+item's tick are reported the same way.
+
+> [!NOTE]
+> `HtmlTokenizer` splits words on whitespace only, never at a tag boundary. A mark that
+> starts mid-word — `mc<sup>2</sup>`, a bolded stem — would otherwise put the halves in two
+> text nodes and make them two words, changing the block's text and `matchKey()` so the
+> differ reported a delete plus an insert. A word spanning marks carries the union of them:
+> half-bold reads as bold, which is the right altitude for a change summary.
 
 - Alignment belongs to the block, not to any word inside it, so
   `App\Services\Diff\HtmlTokenizer` folds it into the block's signature as a pseudo-mark
   (`align:center`) instead of a per-word mark. Without this, a re-aligned paragraph would
   pair with itself and read as unchanged instead of reporting the change.
+- A task item's tick is block-level in the same way, and folds into the signature as the
+  pseudo-mark `checked`. The signature is what `VisualHtmlDiffer` compares to decide
+  "unchanged", so an attribute it never reads reports nothing — which is why collecting
+  `data-checked` in the tokenizer was not by itself enough.
+
+> [!WARNING]
+> Anything the differ should notice must reach the **signature**. `data-callout-type` and an
+> image's `width`/`height` are still collected but never compared, so changing a callout's
+> type or resizing an image reports no change.
 - Colour is a per-word mark (`color:red`) like any other inline mark, because a span can
   colour part of a block.
 

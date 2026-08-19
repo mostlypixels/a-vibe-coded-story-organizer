@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-19 — The compare screen sees more formatting (#121)
+
+### Fixed
+
+- Ticking or unticking a task-list item is reported as a change. It previously saved a
+  revision that the compare screen showed as unchanged.
+- Adding subscript or superscript is reported as formatting. It previously read as the
+  text having been deleted and retyped.
+- The same applies to any formatting that starts in the middle of a word, such as bolding
+  part of it.
+
 ## 2026-08-19 — Block alignment and named text colour for HTML fields (#120)
 
 ### Added
