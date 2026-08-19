@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-19 — Block alignment and named text colour for HTML fields
+
+### Added
+
+- Rich HTML fields (descriptions, scene notes, codex) support block alignment and five
+  named text colours, styled in the app and in exported EPUBs.
+- The revision compare screen reports an alignment or colour change as formatting, not as
+  deleted and re-typed text.
+- Scene contents stay structural: neither control appears on a Markdown field, and the
+  classes are stripped if they reach one by another route.
+
 ## 2026-08-19 — Sanitize rendered scene Markdown
 
 ### Fixed

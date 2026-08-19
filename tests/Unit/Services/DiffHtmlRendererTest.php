@@ -76,6 +76,48 @@ class DiffHtmlRendererTest extends TestCase
         $this->assertStringContainsString('data-marks-added="strong"', $html);
     }
 
+    public function test_a_colour_change_is_named_in_the_writers_words(): void
+    {
+        $html = $this->render('<p>The cat sat</p>', '<p>The <span class="rt-color-red">cat</span> sat</p>');
+
+        $this->assertStringContainsString('class="diff-formatting-changed"', $html);
+        $this->assertStringContainsString('data-marks-added="color:red"', $html);
+        $this->assertStringContainsString('formatting changed: red text added', $html);
+    }
+
+    public function test_the_authors_own_colour_survives_in_full_mode(): void
+    {
+        $html = $this->render(
+            '<p>The <span class="rt-color-blue">cat</span> sat</p>',
+            '<p>The <span class="rt-color-blue">cat</span> ran</p>',
+        );
+
+        $this->assertStringContainsString('<span class="rt-color-blue">cat</span>', $html);
+    }
+
+    public function test_the_rendered_block_carries_its_alignment(): void
+    {
+        $html = $this->render('<p>The cat sat</p>', '<p class="rt-align-center">The cat ran</p>');
+
+        $this->assertStringContainsString('class="diff-replaced rt-align-center"', $html);
+    }
+
+    public function test_an_unchanged_block_still_carries_its_alignment(): void
+    {
+        $html = $this->render('<p class="rt-align-right">The cat sat</p>', '<p class="rt-align-right">The cat sat</p>');
+
+        $this->assertStringContainsString('class="rt-align-right"', $html);
+    }
+
+    public function test_an_alignment_change_is_named_in_the_writers_words(): void
+    {
+        $html = $this->render('<p>The cat sat</p>', '<p class="rt-align-justify">The cat sat</p>');
+
+        $this->assertStringContainsString('class="diff-formatting-changed rt-align-justify"', $html);
+        $this->assertStringContainsString('data-marks-added="align:justify"', $html);
+        $this->assertStringContainsString('formatting changed: justified alignment added', $html);
+    }
+
     public function test_the_authors_own_formatting_survives_in_full_mode(): void
     {
         $html = $this->render('<p>The <strong>cat</strong> sat</p>', '<p>The <strong>cat</strong> ran</p>');

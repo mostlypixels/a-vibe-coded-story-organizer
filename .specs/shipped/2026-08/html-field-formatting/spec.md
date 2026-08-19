@@ -1,5 +1,6 @@
 ---
-status: planned
+status: shipped
+shipped: 2026-08-19
 planned: 2026-08-19
 expanded: 2026-08-19
 ---

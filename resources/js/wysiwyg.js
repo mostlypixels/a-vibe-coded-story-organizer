@@ -1,4 +1,4 @@
-import { Editor, Extension, Node, mergeAttributes } from '@tiptap/core';
+import { Editor, Extension, Mark, Node, mergeAttributes } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Placeholder } from '@tiptap/extensions';
 import { Markdown } from '@tiptap/markdown';
@@ -152,6 +152,126 @@ const Callout = Node.create({
     },
 });
 
+/**
+ * Decorative class values. Keep in step with RichTextFields::ALIGNMENTS and
+ * ::TEXT_COLORS — the sanitizer drops any class these lists do not agree on.
+ * `left` is the default alignment and writes no class, so it is not a value here.
+ */
+const ALIGNMENTS = ['center', 'right', 'justify'];
+const TEXT_COLORS = ['red', 'green', 'amber', 'blue', 'grey'];
+
+/** Node types that RichTextFields::ALIGNABLE_TAGS permits an alignment class on. */
+const ALIGNABLE_NODES = ['paragraph', 'heading'];
+
+/** Read one prefixed class off an element, but only a value the registry lists. */
+function classValue(element, prefix, allowed) {
+    return (
+        (element.getAttribute('class') || '')
+            .split(/\s+/)
+            .filter((token) => token.startsWith(prefix))
+            .map((token) => token.slice(prefix.length))
+            .find((candidate) => allowed.includes(candidate)) || null
+    );
+}
+
+/**
+ * Block alignment as a class, not an inline style.
+ *
+ * The stock @tiptap/extension-text-align emits `style="text-align:…"`, which the
+ * sanitizer strips, so the dependency would silently do nothing.
+ */
+const TextAlign = Extension.create({
+    name: 'textAlign',
+
+    addGlobalAttributes() {
+        return [
+            {
+                types: ALIGNABLE_NODES,
+                attributes: {
+                    textAlign: {
+                        default: 'left',
+                        parseHTML: (element) => classValue(element, 'rt-align-', ALIGNMENTS) || 'left',
+                        renderHTML: (attributes) =>
+                            ALIGNMENTS.includes(attributes.textAlign)
+                                ? { class: `rt-align-${attributes.textAlign}` }
+                                : {},
+                    },
+                },
+            },
+        ];
+    },
+
+    addCommands() {
+        return {
+            setTextAlign:
+                (attributes = {}) =>
+                ({ commands }) => {
+                    const align = ALIGNMENTS.includes(attributes?.align) ? attributes.align : 'left';
+
+                    return ALIGNABLE_NODES.every((type) => commands.updateAttributes(type, { textAlign: align }));
+                },
+            unsetTextAlign:
+                () =>
+                ({ commands }) =>
+                    ALIGNABLE_NODES.every((type) => commands.resetAttributes(type, 'textAlign')),
+        };
+    },
+});
+
+/**
+ * Named text colour as a class on a span.
+ *
+ * The TextStyle colour mark emits `style="color:…"`, which the sanitizer strips.
+ * A name outside TEXT_COLORS never parses, so pasted markup cannot smuggle a class.
+ */
+const TextColor = Mark.create({
+    name: 'textColor',
+
+    addAttributes() {
+        return {
+            color: {
+                default: null,
+                parseHTML: (element) => classValue(element, 'rt-color-', TEXT_COLORS),
+                renderHTML: (attributes) =>
+                    TEXT_COLORS.includes(attributes.color) ? { class: `rt-color-${attributes.color}` } : {},
+            },
+        };
+    },
+
+    parseHTML() {
+        return [
+            {
+                tag: 'span[class*="rt-color-"]',
+                // Reject a colour outside the list rather than round-tripping it.
+                getAttrs: (element) => {
+                    const name = classValue(element, 'rt-color-', TEXT_COLORS);
+
+                    return name ? { color: name } : false;
+                },
+            },
+        ];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ['span', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0];
+    },
+
+    addCommands() {
+        return {
+            setTextColor:
+                (attributes = {}) =>
+                ({ commands }) =>
+                    TEXT_COLORS.includes(attributes?.color)
+                        ? commands.setMark(this.name, { color: attributes.color })
+                        : commands.unsetMark(this.name),
+            unsetTextColor:
+                () =>
+                ({ commands }) =>
+                    commands.unsetMark(this.name),
+        };
+    },
+});
+
 /** Build commands that both editor formats can serialize without loss. */
 export function buildSlashItems(format, onLink, onImage) {
     const at = (editor, range) => editor.chain().focus().deleteRange(range);
@@ -180,6 +300,25 @@ export function buildSlashItems(format, onLink, onImage) {
         { title: 'Task list', keywords: ['todo', 'checklist', 'checkbox'], run: ({ editor, range }) => at(editor, range).toggleTaskList().run() },
         { title: 'Callout', keywords: ['note', 'tip', 'warning', 'alert', 'callout'], run: ({ editor, range }) => at(editor, range).setCallout({ type: 'note' }).run() },
     ];
+
+    // Decoration is HTML-only: Markdown scene text stays structural.
+    if (format !== 'markdown') {
+        for (const align of ALIGNMENTS) {
+            items.push({
+                title: `Align ${align}`,
+                keywords: ['align', align],
+                run: ({ editor, range }) => at(editor, range).setTextAlign({ align }).run(),
+            });
+        }
+
+        for (const color of TEXT_COLORS) {
+            items.push({
+                title: `Colour ${color}`,
+                keywords: ['colour', 'color', color],
+                run: ({ editor, range }) => at(editor, range).setTextColor({ color }).run(),
+            });
+        }
+    }
 
     return items;
 }
@@ -336,6 +475,10 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
         Callout,
         slashExtension(format, onLink, onImage),
     ];
+
+    if (!isMarkdown) {
+        extensions.push(TextAlign, TextColor);
+    }
 
     if (isMarkdown) {
         extensions.push(Markdown);

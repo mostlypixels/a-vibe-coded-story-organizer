@@ -550,6 +550,22 @@ blockquote[data-callout-type='caution']::before {
 }
 
 /*
+ * Decorative classes from RichTextFields::decorativeClasses(). Bare class selectors so the
+ * same rule reaches the editor and `x-rich-text` (both inside `.prose`) and
+ * `.revision-diff--visual`, which opts out of `.prose`. Colours are theme tokens, never
+ * literals, so they contrast-check and follow dark mode for free.
+ */
+.rt-align-center { text-align: center; }
+.rt-align-right { text-align: right; }
+.rt-align-justify { text-align: justify; }
+
+.rt-color-red { color: var(--color-danger-surface-content); }
+.rt-color-green { color: var(--color-success-surface-content); }
+.rt-color-amber { color: var(--color-warning-surface-content); }
+.rt-color-blue { color: var(--color-info-surface-content); }
+.rt-color-grey { color: var(--color-content-subtle); }
+
+/*
  * `x-diff` signals changes with tint, a gutter glyph, and hidden text.
  * Clear marker decoration so author-supplied `<s>` and `<u>` keep their meaning.
  */

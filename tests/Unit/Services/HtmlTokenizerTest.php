@@ -209,6 +209,81 @@ class HtmlTokenizerTest extends TestCase
         $this->assertNotSame($first[0]->signature, $second[0]->signature);
     }
 
+    public function test_a_coloured_word_shares_text_and_match_key_but_not_signature(): void
+    {
+        $plain = $this->tokenizer->tokenize('<p>The cat sat</p>');
+        $coloured = $this->tokenizer->tokenize('<p>The <span class="rt-color-red">cat</span> sat</p>');
+
+        $this->assertSame(['color:red'], $coloured[0]->tokens[1]->marks);
+        $this->assertSame($plain[0]->text, $coloured[0]->text);
+        $this->assertNotSame($plain[0]->signature, $coloured[0]->signature);
+
+        // The trap: colour must stay out of matchKey(), or a recolour reads as
+        // a delete plus an insert instead of a formatting change.
+        $this->assertSame($plain[0]->matchKey(), $coloured[0]->matchKey());
+    }
+
+    public function test_a_recoloured_word_changes_its_signature(): void
+    {
+        $red = $this->tokenizer->tokenize('<p><span class="rt-color-red">cat</span></p>');
+        $blue = $this->tokenizer->tokenize('<p><span class="rt-color-blue">cat</span></p>');
+
+        $this->assertNotSame($red[0]->signature, $blue[0]->signature);
+        $this->assertSame($red[0]->matchKey(), $blue[0]->matchKey());
+    }
+
+    public function test_a_span_without_a_known_colour_contributes_no_mark(): void
+    {
+        $blocks = $this->tokenizer->tokenize('<p><span class="rt-color-chartreuse">cat</span> <span>sat</span></p>');
+
+        $this->assertSame([[], []], array_map(fn (InlineToken $token): array => $token->marks, $blocks[0]->tokens));
+        $this->assertSame('cat sat', $blocks[0]->text);
+    }
+
+    // ---------------------------------------------------------------------
+    // Alignment
+    // ---------------------------------------------------------------------
+
+    public function test_a_realigned_paragraph_differs_in_attributes_and_signature_but_not_in_match_key(): void
+    {
+        $left = $this->tokenizer->tokenize('<p>The cat sat</p>');
+        $centred = $this->tokenizer->tokenize('<p class="rt-align-center">The cat sat</p>');
+
+        $this->assertSame([], $left[0]->attributes);
+        $this->assertSame(['align' => 'center'], $centred[0]->attributes);
+
+        // Alignment is "how it says it", so it belongs to the signature — an
+        // alignment-only edit is a change a reader sees.
+        $this->assertSame($left[0]->text, $centred[0]->text);
+        $this->assertNotSame($left[0]->signature, $centred[0]->signature);
+
+        // …and not to matchKey(), or the paragraph stops matching its old self.
+        $this->assertSame($left[0]->matchKey(), $centred[0]->matchKey());
+    }
+
+    public function test_two_alignments_differ_from_each_other(): void
+    {
+        $centred = $this->tokenizer->tokenize('<p class="rt-align-center">The cat sat</p>');
+        $justified = $this->tokenizer->tokenize('<p class="rt-align-justify">The cat sat</p>');
+
+        $this->assertNotSame($centred[0]->signature, $justified[0]->signature);
+        $this->assertSame($centred[0]->matchKey(), $justified[0]->matchKey());
+    }
+
+    public function test_a_heading_carries_its_alignment(): void
+    {
+        $blocks = $this->tokenizer->tokenize('<h2 class="rt-align-right">Title</h2>');
+
+        $this->assertSame(['align' => 'right'], $blocks[0]->attributes);
+    }
+
+    public function test_an_unknown_alignment_class_is_ignored(): void
+    {
+        $blocks = $this->tokenizer->tokenize('<p class="rt-align-sideways prose">The cat sat</p>');
+
+        $this->assertSame([], $blocks[0]->attributes);
+    }
+
     // ---------------------------------------------------------------------
     // Robustness
     // ---------------------------------------------------------------------

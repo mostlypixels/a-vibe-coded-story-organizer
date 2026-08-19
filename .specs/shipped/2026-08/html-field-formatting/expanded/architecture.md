@@ -11,8 +11,8 @@ Add the closed value sets and derive everything else from them.
 /** Block alignment. `left` is the default and is never written as a class. */
 public const ALIGNMENTS = ['center', 'right', 'justify'];
 
-/** Named text colours. Values resolve in CSS, never here. */
-public const TEXT_COLORS = ['red', 'orange', 'green', 'blue', 'purple', 'grey'];
+/** Named text colours. Values resolve in CSS from theme tokens, never here. */
+public const TEXT_COLORS = ['red', 'green', 'amber', 'blue', 'grey'];
 
 /** Tags that may carry an alignment class. */
 public const ALIGNABLE_TAGS = ['p', 'h1', 'h2', 'h3', 'h4'];

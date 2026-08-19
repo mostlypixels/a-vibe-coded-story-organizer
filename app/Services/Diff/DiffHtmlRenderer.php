@@ -47,8 +47,19 @@ class DiffHtmlRenderer
     private const FORMATTING_NOTE_CLASS = 'diff-note';
 
     /**
+     * Alignments in the writer's vocabulary, matching the toolbar's own labels.
+     *
+     * @var array<string, string>
+     */
+    private const ALIGNMENT_NAMES = [
+        'center' => 'center',
+        'right' => 'right',
+        'justify' => 'justified',
+    ];
+
+    /**
      * Inline marks in the writer's vocabulary, for {@see self::formattingNote()}.
-     * Links are handled separately — their mark carries the target.
+     * Links and colours are handled separately — their marks carry a value.
      *
      * @var array<string, string>
      */
@@ -239,16 +250,63 @@ class DiffHtmlRenderer
     /**
      * A mark's name in the writer's words. She applied "bold", not `<strong>`.
      *
-     * A link mark carries its target (`a:https://…`), which is why this matches
-     * on the prefix rather than looking the whole thing up.
+     * A link mark carries its target (`a:https://…`), a colour mark its name
+     * (`color:red`) and an alignment mark its own (`align:center`), which is why
+     * this matches on the prefix rather than looking the whole thing up.
      */
     private function markName(string $mark): string
     {
-        if (str_starts_with($mark, 'a:')) {
+        if (str_starts_with($mark, HtmlTokenizer::LINK_MARK_PREFIX)) {
             return __('link');
         }
 
+        $color = $this->colorOf($mark);
+
+        if ($color !== null) {
+            return __(':color text', ['color' => $color]);
+        }
+
+        $alignment = $this->alignmentOf($mark);
+
+        if ($alignment !== null) {
+            return __(':alignment alignment', ['alignment' => self::ALIGNMENT_NAMES[$alignment]]);
+        }
+
         return self::MARK_NAMES[$mark] ?? $mark;
+    }
+
+    /**
+     * The colour name a mark carries, or null when it carries none.
+     *
+     * The name is re-checked against the registry here, not trusted from the
+     * stored value: this renderer must hold on its own for content that reached
+     * the database by some other route than the sanitizer.
+     */
+    private function colorOf(string $mark): ?string
+    {
+        if (! str_starts_with($mark, HtmlTokenizer::COLOR_MARK_PREFIX)) {
+            return null;
+        }
+
+        $name = substr($mark, strlen(HtmlTokenizer::COLOR_MARK_PREFIX));
+
+        return in_array($name, RichTextFields::TEXT_COLORS, true) ? $name : null;
+    }
+
+    /**
+     * The alignment a pseudo-mark carries, or null when it carries none.
+     *
+     * Re-checked against the registry for the same reason a colour name is.
+     */
+    private function alignmentOf(string $mark): ?string
+    {
+        if (! str_starts_with($mark, HtmlTokenizer::ALIGN_MARK_PREFIX)) {
+            return null;
+        }
+
+        $name = substr($mark, strlen(HtmlTokenizer::ALIGN_MARK_PREFIX));
+
+        return in_array($name, RichTextFields::ALIGNMENTS, true) ? $name : null;
     }
 
     /**
@@ -396,8 +454,16 @@ class DiffHtmlRenderer
     private function wrapInMarks(string $text, array $marks): string
     {
         foreach (array_reverse($marks) as $mark) {
-            if (str_starts_with($mark, 'a:')) {
-                $text = $this->renderLink(substr($mark, 2), $text);
+            if (str_starts_with($mark, HtmlTokenizer::LINK_MARK_PREFIX)) {
+                $text = $this->renderLink(substr($mark, strlen(HtmlTokenizer::LINK_MARK_PREFIX)), $text);
+
+                continue;
+            }
+
+            $color = $this->colorOf($mark);
+
+            if ($color !== null) {
+                $text = '<span class="'.RichTextFields::colorClass($color).'">'.$text.'</span>';
 
                 continue;
             }
@@ -446,9 +512,10 @@ class DiffHtmlRenderer
     }
 
     /**
-     * The attributes a block element carries: the change class, whatever the
-     * block itself declared, and (for a formatting-only change) which marks
-     * moved, so the view can name them in its badge.
+     * The attributes a block element carries: the change class, the author's own
+     * alignment class, whatever the block itself declared, and (for a
+     * formatting-only change) which marks moved, so the view can name them in
+     * its badge.
      *
      * @return array<string, string>
      */
@@ -456,9 +523,21 @@ class DiffHtmlRenderer
     {
         $attributes = [];
         $block = $diffBlock->block;
+        $classes = [];
 
         if ($diffBlock->change->isChange()) {
-            $attributes['class'] = 'diff-'.$diffBlock->change->value;
+            $classes[] = 'diff-'.$diffBlock->change->value;
+        }
+
+        $align = $block->attributes[HtmlTokenizer::ALIGN_ATTRIBUTE] ?? null;
+
+        // Re-checked against the registry for the same reason a link's scheme is.
+        if (is_string($align) && in_array($align, RichTextFields::ALIGNMENTS, true)) {
+            $classes[] = RichTextFields::alignClass($align);
+        }
+
+        if ($classes !== []) {
+            $attributes['class'] = implode(' ', $classes);
         }
 
         foreach (['data-callout-type', 'data-checked'] as $passthrough) {

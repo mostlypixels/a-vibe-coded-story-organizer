@@ -59,6 +59,27 @@ class RichTextRenderingTest extends TestCase
             ->assertSee('class="prose prose-sm font-manuscript max-w-none text-content-muted"', false);
     }
 
+    public function test_a_shared_scene_renders_decorative_alignment_and_colour_classes(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create([
+            'description' => '<p class="rt-align-center">centred</p>'
+                .'<p><span class="rt-color-red">red text</span></p>',
+        ]);
+        $scene->forceFill([
+            'share_token' => 'rich-text-decorative-token',
+            'share_expires_at' => now()->addDay(),
+        ])->save();
+
+        $this->get(route('shared.scenes.show', 'rich-text-decorative-token'))
+            ->assertOk()
+            ->assertSee('<p class="rt-align-center">centred</p>', false)
+            ->assertSee('<span class="rt-color-red">red text</span>', false);
+    }
+
     public function test_acts_index_renders_an_escaped_text_excerpt_not_raw_html(): void
     {
         $user = User::factory()->create();

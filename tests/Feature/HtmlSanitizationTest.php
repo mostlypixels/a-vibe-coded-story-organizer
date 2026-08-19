@@ -3,14 +3,18 @@
 namespace Tests\Feature;
 
 use App\Enums\SceneStatus;
+use App\Exceptions\ImportValidationException;
 use App\Models\Act;
 use App\Models\Chapter;
+use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use App\Rules\ValidMarkdown;
+use App\Services\Import\ContentSanitizer;
+use App\Support\AuthorMarkdown;
 use App\Support\PlotlineColors;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
@@ -287,5 +291,45 @@ Some **markdown** with a [link](https://example.com).';
             ])
             ->assertForbidden();
         $this->assertSame('Renamed', $event->fresh()->title);
+    }
+
+    // ---------------------------------------------------------------------
+    // The Markdown lock: decorative classes are a rich-HTML privilege
+    // ---------------------------------------------------------------------
+
+    private const COLORED_SPAN = '<span class="rt-color-red">danger</span>';
+
+    public function test_a_decorative_class_typed_into_scene_contents_does_not_survive_rendering(): void
+    {
+        $rendered = AuthorMarkdown::render('Melusine felt '.self::COLORED_SPAN.'.');
+
+        $this->assertStringNotContainsString('class=', $rendered);
+        $this->assertStringNotContainsString('rt-color-red', $rendered);
+        $this->assertStringContainsString('danger', $rendered);
+    }
+
+    public function test_an_import_carrying_a_decorative_class_in_scene_markdown_is_rejected(): void
+    {
+        $this->expectException(ImportValidationException::class);
+
+        app(ContentSanitizer::class)->assertMarkdownAllowed('Melusine felt '.self::COLORED_SPAN.'.');
+    }
+
+    public function test_a_codex_description_keeps_a_decorative_class(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->post(route('projects.codex.store', [$project, 'characters']), [
+                'name' => 'Melusine',
+                'description' => '<p class="rt-align-center">'.self::COLORED_SPAN.'</p>',
+            ])
+            ->assertRedirect();
+
+        $description = CodexEntry::where('name', 'Melusine')->firstOrFail()->description;
+
+        $this->assertStringContainsString('class="rt-align-center"', $description);
+        $this->assertStringContainsString('class="rt-color-red"', $description);
     }
 }

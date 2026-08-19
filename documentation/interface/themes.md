@@ -47,6 +47,27 @@ Floors are correctness requirements. A ceiling is a design warning for excessive
 
 Use `php artisan theme:ramp` to generate OKLCH candidates and sRGB-fit results.
 
+## Coupling with stored content colour
+
+Rich-text fields let an author mark a span with a named colour (`red`, `green`, `amber`,
+`blue`, `grey`) — see [Rich text](../features/rich-text.md#decorative-classes). Each name's
+CSS value is an existing `PAIRS` token, not a new literal:
+
+| Name | Token |
+| --- | --- |
+| `red` | `--color-danger-surface-content` |
+| `green` | `--color-success-surface-content` |
+| `amber` | `--color-warning-surface-content` |
+| `blue` | `--color-info-surface-content` |
+| `grey` | `--color-content-subtle` |
+
+This is what buys the feature free dark mode and free per-theme correctness: `PAIRS`
+already contrast-checks these five tokens against `surface`, `surface-raised` and
+`surface-sunken` in every preset, and every preset keeps the same hue. The trade-off is
+coupling in the other direction — changing one of these five tokens' hue changes how an
+author's stored "red" or "green" looks everywhere it was used, not just the application
+chrome. Weigh that before retuning them.
+
 ## Adding a token
 
 1. Add it to `ThemeTokens`.

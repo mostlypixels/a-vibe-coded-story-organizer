@@ -93,6 +93,51 @@ class VisualHtmlDifferTest extends TestCase
         $this->assertSame(['em'], $diff->blocks[0]->marksRemoved);
     }
 
+    public function test_colouring_a_word_reports_a_formatting_change_not_a_rewrite(): void
+    {
+        $diff = $this->differ->diff('<p>The cat sat</p>', '<p>The <span class="rt-color-red">cat</span> sat</p>');
+
+        $this->assertSame([DiffChange::FormattingChanged], $this->changes($diff));
+        $this->assertSame(['color:red'], $diff->blocks[0]->marksAdded);
+        $this->assertSame(1, $diff->changeCount);
+    }
+
+    public function test_recolouring_a_word_names_both_colours(): void
+    {
+        $diff = $this->differ->diff(
+            '<p><span class="rt-color-red">cat</span></p>',
+            '<p><span class="rt-color-blue">cat</span></p>',
+        );
+
+        $this->assertSame([DiffChange::FormattingChanged], $this->changes($diff));
+        $this->assertSame(['color:blue'], $diff->blocks[0]->marksAdded);
+        $this->assertSame(['color:red'], $diff->blocks[0]->marksRemoved);
+    }
+
+    public function test_realigning_a_paragraph_reports_a_formatting_change(): void
+    {
+        $diff = $this->differ->diff('<p>The cat sat</p>', '<p class="rt-align-center">The cat sat</p>');
+
+        // One block, not a delete plus an insert: the words did not move.
+        $this->assertCount(1, $diff->blocks);
+        $this->assertSame([DiffChange::FormattingChanged], $this->changes($diff));
+        $this->assertSame(['align:center'], $diff->blocks[0]->marksAdded);
+        $this->assertSame('center', $diff->blocks[0]->block->attributes['align']);
+
+        // The whole point of the task: a save that only centred a paragraph
+        // must not display as "no change".
+        $this->assertSame(1, $diff->changeCount);
+    }
+
+    public function test_returning_a_paragraph_to_the_default_alignment_is_a_removed_alignment(): void
+    {
+        $diff = $this->differ->diff('<p class="rt-align-right">The cat sat</p>', '<p>The cat sat</p>');
+
+        $this->assertSame([DiffChange::FormattingChanged], $this->changes($diff));
+        $this->assertSame(['align:right'], $diff->blocks[0]->marksRemoved);
+        $this->assertSame([], $diff->blocks[0]->marksAdded);
+    }
+
     // ---------------------------------------------------------------------
     // Whole blocks
     // ---------------------------------------------------------------------

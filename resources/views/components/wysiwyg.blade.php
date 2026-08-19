@@ -93,6 +93,20 @@
                         active-expression="isOn('code') || isOn('codeBlock')"
                     />
 
+                    <x-wysiwyg.toolbar-dropdown
+                        :items="$toolbar->alignment()"
+                        trigger-icon="align-left"
+                        :title="__('Align')"
+                        :active-expression="$toolbar->alignmentActiveExpression()"
+                    />
+
+                    <x-wysiwyg.toolbar-dropdown
+                        :items="$toolbar->textColor()"
+                        trigger-icon="palette"
+                        :title="__('Colour')"
+                        :active-expression="$toolbar->textColorActiveExpression()"
+                    />
+
                     <span class="mx-1 h-5 w-px bg-border"></span>
 
                     <x-wysiwyg.toolbar-button

@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 /**
@@ -99,6 +100,42 @@ class WysiwygFormTest extends TestCase
                 ->assertSee('name="contents"', false)
                 ->assertSee('data-format="markdown"', false);
         }
+    }
+
+    /**
+     * Decoration is HTML-only: a Markdown field's toolbar must not offer the
+     * Align or Colour dropdown, since neither command survives a Markdown
+     * round-trip. `description` on the same page is HTML and does carry both
+     * commands, so the assertion is scoped to the `contents` field's own markup
+     * — between its `name="contents"` and the next field's `name="notes"`.
+     */
+    public function test_a_markdown_fields_toolbar_omits_align_and_color(): void
+    {
+        [$user, $project, $book, , , $scene] = $this->fixture();
+
+        foreach ([route('books.scenes.create', $book), route('scenes.edit', $scene)] as $url) {
+            $content = $this->actingAs($user)->get($url)->assertOk()->getContent();
+
+            $start = strpos($content, 'name="contents"');
+            $end = strpos($content, 'name="notes"', $start);
+            $this->assertIsInt($start);
+            $this->assertIsInt($end);
+
+            $contentsField = substr($content, $start, $end - $start);
+
+            $this->assertStringNotContainsString('setTextAlign', $contentsField);
+            $this->assertStringNotContainsString('setTextColor', $contentsField);
+        }
+    }
+
+    /** An empty item list is what a Markdown field's dropdowns pass; it must render nothing rather than error. */
+    public function test_toolbar_dropdown_with_no_items_renders_nothing(): void
+    {
+        $rendered = Blade::render(
+            '<x-wysiwyg.toolbar-dropdown :items="[]" trigger-icon="align-left" title="Align" />'
+        );
+
+        $this->assertSame('', trim($rendered));
     }
 
     public function test_scene_contents_is_stored_as_markdown_not_sanitized_html(): void

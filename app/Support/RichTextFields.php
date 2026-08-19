@@ -56,7 +56,39 @@ class RichTextFields
         'th' => ['colspan', 'rowspan'],
         // Callouts use a blockquote with a data-callout attribute.
         'blockquote' => ['data-callout-type'],
+        // Decorative classes: alignment on ALIGNABLE_TAGS, colour on span.
+        // Attr.AllowedClasses limits the values; see HtmlSanitizer.
+        'p' => ['class'],
+        'h1' => ['class'],
+        'h2' => ['class'],
+        'h3' => ['class'],
+        'h4' => ['class'],
+        'span' => ['class'],
     ];
+
+    /**
+     * Block alignment names. `left` is the default and never becomes a class,
+     * so existing content needs no migration.
+     *
+     * @var list<string>
+     */
+    public const ALIGNMENTS = ['center', 'right', 'justify'];
+
+    /**
+     * Named text colours. Each name resolves to a theme token in CSS, never here.
+     *
+     * @var list<string>
+     */
+    public const TEXT_COLORS = ['red', 'green', 'amber', 'blue', 'grey'];
+
+    /** @var list<string> Tags that can carry an alignment class. */
+    public const ALIGNABLE_TAGS = ['p', 'h1', 'h2', 'h3', 'h4'];
+
+    /** Prefix of an alignment class. The name after it is one of {@see self::ALIGNMENTS}. */
+    public const ALIGN_CLASS_PREFIX = 'rt-align-';
+
+    /** Prefix of a colour class. The name after it is one of {@see self::TEXT_COLORS}. */
+    public const COLOR_CLASS_PREFIX = 'rt-color-';
 
     /** @var list<string> Relative URLs remain valid without an entry here. */
     public const ALLOWED_SCHEMES = ['http', 'https'];
@@ -90,6 +122,31 @@ class RichTextFields
     public static function isRich(string $model, string $field): bool
     {
         return in_array($field, self::forModel($model), true);
+    }
+
+    /**
+     * Every class name the Rich sanitizer profile permits.
+     *
+     * @return list<string>
+     */
+    public static function decorativeClasses(): array
+    {
+        return [
+            ...array_map(self::alignClass(...), self::ALIGNMENTS),
+            ...array_map(self::colorClass(...), self::TEXT_COLORS),
+        ];
+    }
+
+    /** @param string $name One of {@see self::ALIGNMENTS}. */
+    public static function alignClass(string $name): string
+    {
+        return self::ALIGN_CLASS_PREFIX.$name;
+    }
+
+    /** @param string $name One of {@see self::TEXT_COLORS}. */
+    public static function colorClass(string $name): string
+    {
+        return self::COLOR_CLASS_PREFIX.$name;
     }
 
     /** Builds the HTMLPurifier allow-list directive. */

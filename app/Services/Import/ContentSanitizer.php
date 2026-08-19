@@ -2,6 +2,7 @@
 
 namespace App\Services\Import;
 
+use App\Enums\RichTextProfile;
 use App\Exceptions\ImportValidationException;
 use App\Rules\ValidMarkdown;
 use App\Services\HtmlSanitizer;
@@ -20,9 +21,9 @@ class ContentSanitizer
     public function __construct(private HtmlSanitizer $htmlSanitizer) {}
 
     /** @throws ImportValidationException When cleaning changes the fragment. */
-    public function assertHtmlAllowed(string $html): void
+    public function assertHtmlAllowed(string $html, RichTextProfile $profile = RichTextProfile::Rich): void
     {
-        $cleaned = $this->htmlSanitizer->clean($html);
+        $cleaned = $this->htmlSanitizer->clean($html, $profile);
 
         if ($this->canonicalize($cleaned) !== $this->canonicalize($html)) {
             throw ImportValidationException::disallowedHtmlContent();
@@ -50,7 +51,10 @@ class ContentSanitizer
             throw ImportValidationException::invalidMarkdown();
         }
 
-        $this->assertHtmlAllowed($rendered);
+        // Rendered Markdown must clear the same Structural bar that
+        // AuthorMarkdown::render() applies, so an import carrying a decorative
+        // class is rejected instead of silently stripped later.
+        $this->assertHtmlAllowed($rendered, RichTextProfile::Structural);
     }
 
     /**

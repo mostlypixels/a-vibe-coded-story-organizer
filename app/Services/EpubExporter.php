@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ChapterTitleFormat;
+use App\Enums\RichTextProfile;
 use App\Exceptions\EpubExportException;
 use App\Models\Act;
 use App\Models\Book;
@@ -895,7 +896,10 @@ class EpubExporter
      */
     private function renderSceneContents(Scene $scene): string
     {
-        return app(HtmlSanitizer::class)->clean((string) $this->converter()->convert($scene->contents ?? ''));
+        return app(HtmlSanitizer::class)->clean(
+            (string) $this->converter()->convert($scene->contents ?? ''),
+            RichTextProfile::Structural,
+        );
     }
 
     /** Builds one isolated CommonMark converter per export. */
