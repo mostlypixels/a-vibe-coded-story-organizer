@@ -1,5 +1,6 @@
 ---
-status: draft
+status: expanded
+expanded: 2026-08-19
 ---
 
 # Html Field Formatting
@@ -38,10 +39,8 @@ cells diverge. Adding colors/alignment risks leaking into the restricted narrati
 
 ## Accessibility guardrails (load-bearing)
 
-- Every palette pairing meets 4.5:1 contrast.
 - Classes overridable by user EPUB stylesheet.
 - Color/align never the only signal.
-- Justified alignment discouraged or omitted.
 
 ## Open questions
 
