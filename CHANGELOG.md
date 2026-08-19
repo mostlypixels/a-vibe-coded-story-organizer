@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-19 — Block alignment and named text colour for HTML fields
+## 2026-08-19 — Block alignment and named text colour for HTML fields (#120)
 
 ### Added
 
