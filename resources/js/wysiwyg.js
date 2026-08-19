@@ -1,4 +1,4 @@
-import { Editor, Extension, Mark, Node, mergeAttributes } from '@tiptap/core';
+import { Editor, Extension, Mark, Node, mergeAttributes, textInputRule } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Placeholder } from '@tiptap/extensions';
 import { Markdown } from '@tiptap/markdown';
@@ -9,6 +9,7 @@ import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Underline } from '@tiptap/extension-underline';
 import { Subscript } from '@tiptap/extension-subscript';
 import { Superscript } from '@tiptap/extension-superscript';
+import { Typography } from '@tiptap/extension-typography';
 
 /** Remove unsupported presentation markup from serialized tables. */
 const PlainTable = Table.extend({
@@ -36,6 +37,68 @@ const MarkdownSuperscript = Superscript.extend({
         return `<sup>${helpers.renderChildren(node)}</sup>`;
     },
 });
+
+/** CommonMark's dash convention, which the EPUB exporter's SmartPunct pass already uses. */
+const EN_DASH = '\u2013';
+const EM_DASH = '\u2014';
+
+/**
+ * Upgrades the en dash a second hyphen produced into an em dash when a third
+ * arrives, giving `--` → – and `---` → —.
+ *
+ * Typography has no rule for three hyphens: its own `emDash` fires on the second
+ * one, so `---` came out as an em dash followed by a stray hyphen. Overriding
+ * that rule to write an en dash and adding this one is what makes the editor
+ * agree with the exporter, which follows CommonMark — where `--` is an en dash
+ * and `---` an em dash. Without the agreement, a hyphen pair typed today and one
+ * imported yesterday would end up as different characters in the same book.
+ */
+const EmDashFromThreeHyphens = Extension.create({
+    name: 'emDashFromThreeHyphens',
+
+    addInputRules() {
+        return [textInputRule({ find: new RegExp(`${EN_DASH}-$`), replace: EM_DASH })];
+    },
+});
+
+/**
+ * Typography ships 22 input rules. Most are wrong in a novel: `->` becoming an
+ * arrow, `(c)` a copyright sign, `1/2` a fraction. Only these fire, and every
+ * other rule is switched off by name so a Tiptap upgrade that adds another one
+ * cannot switch it on for us.
+ *
+ * `emDash` turns `--` into an em dash the moment it is typed, which is what puts
+ * the editor and the exported EPUB in step: the character is already real by the
+ * time the exporter sees it, so its own SmartPunct pass has nothing left to do.
+ *
+ * Quotes are on because scenes already ship curly quotes in the EPUB — leaving
+ * them off here would keep the editor showing something the book does not.
+ */
+const TYPOGRAPHY_RULES = {
+    // CommonMark's meaning, not Typography's default em dash.
+    emDash: EN_DASH,
+    ellipsis: undefined,
+    openDoubleQuote: undefined,
+    closeDoubleQuote: undefined,
+    openSingleQuote: undefined,
+    closeSingleQuote: undefined,
+    leftArrow: false,
+    rightArrow: false,
+    copyright: false,
+    trademark: false,
+    servicemark: false,
+    registeredTrademark: false,
+    oneHalf: false,
+    oneQuarter: false,
+    threeQuarters: false,
+    plusMinus: false,
+    notEqual: false,
+    laquo: false,
+    raquo: false,
+    multiplication: false,
+    superscriptTwo: false,
+    superscriptThree: false,
+};
 
 const CALLOUT_TYPES = ['note', 'tip', 'important', 'warning', 'caution'];
 
@@ -461,6 +524,8 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
             underline: false,
         }),
         Placeholder.configure({ placeholder }),
+        Typography.configure(TYPOGRAPHY_RULES),
+        EmDashFromThreeHyphens,
         MarkdownUnderline,
         MarkdownSubscript,
         MarkdownSuperscript,

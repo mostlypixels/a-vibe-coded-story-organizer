@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-19 — Smart punctuation while typing (#122)
+
+### Added
+
+- The editor converts punctuation as you type: `--` becomes an en dash, `---` an em dash,
+  `...` an ellipsis, and quotes and apostrophes curl. Hyphenated words are left alone.
+- This matches what scene text already became in an exported EPUB, so the editor now shows
+  what the book will show.
+
+### Notes
+
+- Conversion happens on typing only. Text that arrived by import keeps whatever it had.
+
 ## 2026-08-19 — The compare screen sees more formatting (#121)
 
 ### Fixed

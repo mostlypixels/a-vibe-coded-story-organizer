@@ -110,6 +110,33 @@ longer tell an author's strike from a deleted word.
 - Callouts serialize as GitHub-style blockquotes.
 - Link and image URLs accept HTTP(S) only.
 
+### Smart punctuation
+
+`@tiptap/extension-typography` converts as the writer types, in both formats:
+
+| Typed | Becomes |
+| --- | --- |
+| `--` | en dash |
+| `---` | em dash |
+| `...` | ellipsis |
+| `"` `'` | curly quotes |
+
+It follows **CommonMark's** dash convention, not Typography's own — Typography's `emDash`
+rule fires on two hyphens. It is overridden to write an en dash, and the local
+`EmDashFromThreeHyphens` rule upgrades it when a third arrives. The convention has to match
+`EpubExporter`'s SmartPunct pass, or a hyphen pair typed today and one imported yesterday
+end up as different characters in the same book.
+
+The other 16 Typography rules are disabled by name — arrows, fractions, `(c)`, guillemets
+and the rest are wrong in a novel. Naming them individually means a Tiptap upgrade that
+adds a rule cannot switch it on for us.
+
+> [!NOTE]
+> Input rules fire on keystrokes only. Imported and previously stored text is never
+> rewritten, which is why `EpubExporter` keeps its own SmartPunct pass for scene Markdown.
+> Rich HTML fields have no such pass, so an imported `--` in a codex description stays a
+> hyphen pair in the appendix.
+
 > [!CAUTION]
 > Keep the Tiptap `Editor` in a closure. Alpine proxies reactive values, and a proxied ProseMirror editor does not work reliably.
 
