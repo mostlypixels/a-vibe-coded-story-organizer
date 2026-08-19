@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Enums\FieldKind;
-use Illuminate\Support\Str;
 
 /**
  * The one definition of "a word" in this app (word-count spec,
@@ -55,7 +54,7 @@ class WordCounter
 
         // A malformed byte sequence can reach a stored field (Scene.contents has
         // no sanitizing mutator — see Scene::renderedContents()'s docblock) from
-        // a writer's paste or an old import. Str::markdown() throws on anything
+        // a writer's paste or an old import. The Markdown renderer throws on anything
         // that is not valid UTF-8/ASCII; degrading to zero rather than letting
         // that propagate into a 500 on save matches how SceneReferenceMatcher
         // already treats the same failure mode for the same column.
@@ -65,10 +64,10 @@ class WordCounter
 
         $text = match ($kind) {
             FieldKind::Rich => RichText::toPlainText($value),
-            // Str::markdown() is what stops "**bold**" counting as one word and
+            // Rendering is what stops "**bold**" counting as one word and
             // "# " as another — render first, then reduce to plain text exactly
             // as RichText does for the Rich kind.
-            FieldKind::Markdown => RichText::toPlainText(Str::markdown(self::stripFencedCodeBlocks($value))),
+            FieldKind::Markdown => RichText::toPlainText(AuthorMarkdown::render(self::stripFencedCodeBlocks($value))),
             FieldKind::Plain => $value,
         };
 

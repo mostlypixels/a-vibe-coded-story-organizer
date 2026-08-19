@@ -417,8 +417,10 @@ class EpubExporterTest extends TestCase
         $tree = $this->exporter()->actTree($book);
         $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $book);
 
-        $this->assertStringContainsString('<del>struck</del>', $html, 'strikethrough must render as <del>, not literal tildes');
+        $this->assertStringContainsString('<s>struck</s>', $html, 'strikethrough must render as <s>, not literal tildes');
         $this->assertStringNotContainsString('~~', $html);
+        // `<del>` belongs to generated revision diffs and is not an author tag.
+        $this->assertStringNotContainsString('<del>', $html);
 
         $this->assertStringContainsString('type="checkbox"', $html, 'task list items must render as real checkboxes');
         $this->assertStringContainsString('checked', $html, 'the checked item must render its checked state');

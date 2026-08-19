@@ -8,13 +8,13 @@ use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\WordCountSnapshotRecorder;
+use App\Support\AuthorMarkdown;
 use App\Support\WordCounter;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Support\Str;
 
 class Scene extends Model
 {
@@ -79,7 +79,7 @@ class Scene extends Model
 
     /**
      * Sanitize the `notes` rich-HTML field on write. `contents` deliberately has no
-     * mutator: it stays Markdown-only (ValidMarkdown + Str::markdown() rendering).
+     * mutator: it stays Markdown-only (ValidMarkdown + AuthorMarkdown rendering).
      */
     protected function notes(): Attribute
     {
@@ -99,7 +99,7 @@ class Scene extends Model
     protected function renderedContents(): Attribute
     {
         return Attribute::make(
-            get: fn (): string => Str::markdown($this->contents ?? ''),
+            get: fn (): string => AuthorMarkdown::render($this->contents),
         );
     }
 

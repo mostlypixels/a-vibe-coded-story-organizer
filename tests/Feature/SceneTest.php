@@ -572,6 +572,15 @@ class SceneTest extends TestCase
         $this->assertStringContainsString('<strong>bold</strong>', $scene->renderedContents);
     }
 
+    public function test_rendered_contents_accessor_renders_strikethrough_as_s(): void
+    {
+        $scene = new Scene(['contents' => '~~Dear~~ friend']);
+
+        // `<del>` is reserved for revision diffs, so the sanitizer strips it.
+        $this->assertStringContainsString('<s>Dear</s>', $scene->renderedContents);
+        $this->assertStringNotContainsString('<del>', $scene->renderedContents);
+    }
+
     public function test_rendered_contents_accessor_is_empty_for_null_contents(): void
     {
         $scene = new Scene(['contents' => null]);

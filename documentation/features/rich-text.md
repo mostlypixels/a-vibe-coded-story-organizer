@@ -39,7 +39,20 @@ Keep these surfaces aligned:
 
 - Validate it with `ValidMarkdown`.
 - Render it through `Scene::renderedContents` for normal application consumers.
-- EPUB uses its own SmartPunct path and must not change the shared accessor.
+- `App\Support\AuthorMarkdown` holds the renderer choice. Use it for any author-written
+  Markdown, never `Str::markdown()` directly.
+- EPUB uses its own SmartPunct path and must not change the shared accessor. It registers
+  the same strikethrough extension so both paths emit the same tag.
+
+### Strikethrough renders as `<s>`
+
+CommonMark renders `~~text~~` as `<del>`. This app reserves `<del>` and `<ins>` for
+generated revision diffs, so they are not in the allow-list and the sanitizer strips
+them. `App\Support\Markdown\StrikethroughSExtension` replaces the renderer with one
+that emits `<s>` — the tag the editor already writes for the same author intent.
+
+Widening the allow-list to admit `<del>` is the wrong fix: the diff viewer could then no
+longer tell an author's strike from a deleted word.
 
 ## Editor
 
@@ -77,6 +90,7 @@ The checks use document structure, not text diffs, so harmless Markdown serializ
 | Model mutators | `app/Models/Concerns/SanitizesRichHtml.php` |
 | Request rule | `app/Rules/SanitizeHtml.php` |
 | Plain text and XHTML conversion | `app/Support/RichText.php` |
+| Author Markdown rendering | `app/Support/AuthorMarkdown.php`, `app/Support/Markdown/` |
 | Blade components | `resources/views/components/rich-text*.blade.php` |
 | Editor | `resources/views/components/wysiwyg.blade.php`, `resources/js/wysiwyg.js` |
 

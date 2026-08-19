@@ -27,7 +27,7 @@
     @elseif ($kind === \App\Enums\FieldKind::Rich)
         <x-rich-text :html="$revision->value" />
     @elseif ($kind === \App\Enums\FieldKind::Markdown)
-        <div class="prose prose-sm max-w-none text-content-muted">{!! \Illuminate\Support\Str::markdown($revision->value) !!}</div>
+        <div class="prose prose-sm max-w-none text-content-muted">{!! \App\Support\AuthorMarkdown::render($revision->value) !!}</div>
     @else
         <p class="whitespace-pre-wrap text-sm text-content-muted">{{ $revision->value }}</p>
     @endif

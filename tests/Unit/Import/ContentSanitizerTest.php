@@ -29,6 +29,14 @@ class ContentSanitizerTest extends TestCase
         $this->sanitizer = app(ContentSanitizer::class);
     }
 
+    /** Regression: `~~x~~` rendered to `<del>`, which the allow-list strips. */
+    public function test_markdown_strikethrough_is_allowed(): void
+    {
+        $this->sanitizer->assertMarkdownAllowed('~~Dear~~ friend');
+
+        $this->expectNotToPerformAssertions();
+    }
+
     // ------------------------------------------------------------------
     // assertHtmlAllowed — happy path
     // ------------------------------------------------------------------
