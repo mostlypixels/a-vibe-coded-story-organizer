@@ -11,6 +11,7 @@ use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\PublicationSetting;
 use App\Models\Scene;
+use App\Support\Markdown\StrikethroughSExtension;
 use App\Support\RichText;
 use App\Support\StoryNumbering;
 use DOMDocument;
@@ -897,6 +898,8 @@ class EpubExporter
             $converter->getEnvironment()->addExtension(new SmartPunctExtension);
             // Add the GFM features that scene validation and shared rendering support.
             $converter->getEnvironment()->addExtension(new StrikethroughExtension);
+            // Same `<s>` tag as the shared AuthorMarkdown renderer, not `<del>`.
+            $converter->getEnvironment()->addExtension(new StrikethroughSExtension);
             $converter->getEnvironment()->addExtension(new TaskListExtension);
 
             $this->converter = $converter;

@@ -5,7 +5,7 @@ namespace App\Services\Import;
 use App\Exceptions\ImportValidationException;
 use App\Rules\ValidMarkdown;
 use App\Services\HtmlSanitizer;
-use Illuminate\Support\Str;
+use App\Support\AuthorMarkdown;
 use Throwable;
 
 /**
@@ -45,7 +45,7 @@ class ContentSanitizer
 
         // Validate the exact rendered form that the app later displays.
         try {
-            $rendered = Str::markdown($markdown);
+            $rendered = AuthorMarkdown::render($markdown);
         } catch (Throwable) {
             throw ImportValidationException::invalidMarkdown();
         }

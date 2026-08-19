@@ -17,6 +17,21 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-19 — Markdown strikethrough renders as `<s>`
+
+### Fixed
+
+- Markdown strikethrough (`~~text~~`) renders as `<s>` instead of `<del>`. `<del>` is
+  reserved for generated revision diffs and is not in the rich-text allow-list, so the
+  sanitizer stripped it: on import, every paragraph holding a strikethrough failed the
+  allow-list check and was replaced with `[INVALID CONTENT REMOVED]`, and on screen the
+  strike simply vanished. `<s>` is what the WYSIWYG editor already writes.
+
+### Added
+
+- `App\Support\AuthorMarkdown` is the one renderer for author-written Markdown, so the
+  scene view, revision view, word counter, and import check cannot drift apart.
+
 ## 2026-08-19 — Comment and documentation cleanup (#115)
 
 ### Changed
