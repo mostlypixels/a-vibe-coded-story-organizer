@@ -43,32 +43,31 @@ The same class list must be styled in three places. State this in
 
 ## Palette definition
 
-Each colour is one custom property with a light and a dark value; the class reads the
-property. Alignment needs no property.
+**Superseded by the grill — see `plan/00-overview.md` → Binding decisions.** Five colours,
+each taking its value from a theme token that `ThemeTokens::PAIRS` already contrast-checks
+against every page surface in every preset:
+
+| Class | Token |
+| --- | --- |
+| `rt-color-red` | `--color-danger-surface-content` |
+| `rt-color-green` | `--color-success-surface-content` |
+| `rt-color-amber` | `--color-warning-surface-content` |
+| `rt-color-blue` | `--color-info-surface-content` |
+| `rt-color-grey` | `--color-content-subtle` |
 
 ```css
-:root {
-    --rt-color-red: oklch(52% 0.19 27);
-    /* … one per RichTextFields::TEXT_COLORS entry … */
-}
-
-@media (prefers-color-scheme: dark) {
-    :root { --rt-color-red: oklch(75% 0.14 27); }
-}
-
-.rt-color-red { color: var(--rt-color-red); }
+.rt-color-red { color: var(--color-danger-surface-content); }
 ```
 
-- The app's own dark themes are token-driven, not `prefers-color-scheme` — mirror whatever
-  `ThemeTokens` does for its dark presets rather than inventing a second mechanism. If the
-  palette must vary per theme preset, the colours become theme tokens, which is a larger
-  change; see `open-questions.md`.
-- The EPUB copy uses `prefers-color-scheme` because a reader engine has no theme tokens.
-  An engine that ignores it falls back to the light value on white paper, which is the
-  correct default.
-- Six entries, one per hue family, taken from `PlotlineColors` darker shades so the app
-  keeps one colour vocabulary. Do not offer both shades — the author is choosing a
-  meaning, not a tint.
+- **No `--rt-color-*` custom properties, and no `prefers-color-scheme` in `app.css`.** The
+  theme system already swaps these tokens per preset, dark presets included. A second
+  mechanism beside it is the thing to avoid.
+- Every preset keeps the same hue and moves only lightness/chroma, so the colour *names*
+  stay honest across all four.
+- The EPUB stylesheet is the exception and does use literals plus `prefers-color-scheme`,
+  because a reading system has no tokens. See task 03.
+- The earlier draft of this section proposed six new hues copied from `PlotlineColors` with
+  hand-written dark values. Rejected: it discards free contrast-checking and free dark mode.
 
 ## Accessibility
 

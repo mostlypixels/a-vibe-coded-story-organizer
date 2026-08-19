@@ -1,6 +1,30 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Editor } from '@tiptap/core';
 import { buildExtensions, buildSlashItems, registerWysiwyg } from './wysiwyg.js';
+
+const projectRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+function readSource(relative) {
+    return readFileSync(path.join(projectRoot, relative), 'utf8');
+}
+
+/** Read a flat list of quoted lower-case names out of a PHP or JS constant. */
+function sourceList(source, constant) {
+    const after = source.split(`${constant} = [`)[1];
+
+    if (after === undefined) {
+        throw new Error(`could not find ${constant}`);
+    }
+
+    return [...after.split(']')[0].matchAll(/'([a-z]+)'/g)].map((found) => found[1]);
+}
+
+function registryList(constant) {
+    return sourceList(readSource('app/Support/RichTextFields.php'), constant);
+}
 
 function markdownEditor(content) {
     return new Editor({ extensions: buildExtensions('markdown'), content, contentType: 'markdown' });
@@ -458,5 +482,109 @@ describe('wysiwyg:text-changed CustomEvent', () => {
         expect(handler.mock.calls[1][0].detail.text).toBe('hello world');
 
         component.destroy();
+    });
+});
+
+describe('block alignment — HTML-mode only', () => {
+    const extensionNames = (format) =>
+        new Editor({ extensions: buildExtensions(format), content: '<p></p>' }).extensionManager.extensions.map(
+            (extension) => extension.name
+        );
+
+    it('setTextAlign writes a class, never an inline style', () => {
+        const editor = htmlEditor('<p>text</p>');
+        editor.commands.setTextAlign({ align: 'center' });
+        const html = editor.getHTML();
+
+        expect(html).toContain('class="rt-align-center"');
+        expect(html).not.toContain('style');
+    });
+
+    it('left writes no class, so existing content needs no migration', () => {
+        const editor = htmlEditor('<p class="rt-align-center">text</p>');
+        editor.commands.setTextAlign({ align: 'left' });
+
+        expect(editor.getHTML()).not.toContain('rt-align');
+    });
+
+    it('an alignment class round-trips through getHTML unchanged', () => {
+        const first = htmlEditor('<h2 class="rt-align-right">text</h2>').getHTML();
+        const second = htmlEditor(first).getHTML();
+
+        expect(first).toContain('rt-align-right');
+        expect(second).toBe(first);
+    });
+
+    it('drops an alignment name outside the registry', () => {
+        expect(htmlEditor('<p class="rt-align-sideways">text</p>').getHTML()).not.toContain('rt-align');
+    });
+
+    it('neither decorative extension is registered in markdown format', () => {
+        expect(extensionNames('html')).toEqual(expect.arrayContaining(['textAlign', 'textColor']));
+        expect(extensionNames('markdown')).not.toContain('textAlign');
+        expect(extensionNames('markdown')).not.toContain('textColor');
+    });
+});
+
+describe('named text colour — HTML-mode only', () => {
+    it('setTextColor writes a span class, never an inline style', () => {
+        const editor = htmlEditor('<p>text</p>');
+        editor.commands.selectAll();
+        editor.commands.setTextColor({ color: 'blue' });
+        const html = editor.getHTML();
+
+        expect(html).toContain('class="rt-color-blue"');
+        expect(html).not.toContain('style');
+    });
+
+    it('a colour mark round-trips through getHTML unchanged', () => {
+        const first = htmlEditor('<p><span class="rt-color-amber">text</span></p>').getHTML();
+        const second = htmlEditor(first).getHTML();
+
+        expect(first).toContain('rt-color-amber');
+        expect(second).toBe(first);
+    });
+
+    it('parseHTML drops a colour outside the registry', () => {
+        const html = htmlEditor('<p><span class="rt-color-chartreuse">text</span></p>').getHTML();
+
+        expect(html).not.toContain('rt-color');
+        expect(html).toContain('text');
+    });
+
+    it('unsetTextColor removes the mark', () => {
+        const editor = htmlEditor('<p><span class="rt-color-red">text</span></p>');
+        editor.commands.selectAll();
+        editor.commands.unsetTextColor();
+
+        expect(editor.getHTML()).not.toContain('rt-color');
+    });
+});
+
+describe('slash menu — decoration is gated by format, like the toolbar', () => {
+    const titles = (format) => buildSlashItems(format, () => {}, () => {}).map((item) => item.title);
+
+    it('markdown format offers no align or colour entry', () => {
+        const markdown = titles('markdown').map((title) => title.toLowerCase());
+
+        expect(markdown.some((title) => title.startsWith('align'))).toBe(false);
+        expect(markdown.some((title) => title.startsWith('colour'))).toBe(false);
+    });
+
+    it('html format offers one entry per registry value', () => {
+        const html = titles('html');
+
+        for (const align of registryList('ALIGNMENTS')) {
+            expect(html).toContain(`Align ${align}`);
+        }
+        for (const color of registryList('TEXT_COLORS')) {
+            expect(html).toContain(`Colour ${color}`);
+        }
+    });
+});
+
+describe('registry parity — the JS literals match the PHP constants', () => {
+    it.each(['ALIGNMENTS', 'TEXT_COLORS'])('%s agrees with RichTextFields.php', (constant) => {
+        expect(sourceList(readSource('resources/js/wysiwyg.js'), constant)).toEqual(registryList(constant));
     });
 });

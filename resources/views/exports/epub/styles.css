@@ -79,3 +79,32 @@ p.divider {
     text-align: center;
     margin: 1.5em 0;
 }
+
+/*
+ * Block alignment and named text colour, applied by the rich-text editor
+ * (see RichTextFields::decorativeClasses()). Only codex descriptions reach an
+ * appendix; a reading system has no theme tokens, so the colour values are
+ * fixed literals here, unlike the app's CSS variables. Single-class selectors
+ * and no `!important` so a reader's own stylesheet can still win.
+ */
+.rt-align-center { text-align: center; }
+.rt-align-right { text-align: right; }
+.rt-align-justify { text-align: justify; }
+
+/* Daylight preset, config/themes.php: danger/success/warning/info-surface-content, content-subtle. */
+.rt-color-red { color: oklch(44.4% 0.177 26.899); }
+.rt-color-green { color: oklch(44.8% 0.119 151.328); }
+.rt-color-amber { color: oklch(47.6% 0.114 61.907); }
+.rt-color-blue { color: oklch(42.4% 0.199 265.638); }
+.rt-color-grey { color: oklch(53% 0.027 264.364); }
+
+/* Dusk preset, config/themes.php: same five tokens. Ignored by a reader that
+ * does not evaluate prefers-color-scheme, which falls back to the light
+ * values above on white paper. */
+@media (prefers-color-scheme: dark) {
+    .rt-color-red { color: oklch(0.396 0.14 27); }
+    .rt-color-green { color: oklch(0.396 0.1091 150); }
+    .rt-color-amber { color: oklch(0.396 0.0811 86); }
+    .rt-color-blue { color: oklch(0.396 0.14 263); }
+    .rt-color-grey { color: oklch(0.44 0.012 255); }
+}

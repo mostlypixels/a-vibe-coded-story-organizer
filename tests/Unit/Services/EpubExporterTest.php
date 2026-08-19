@@ -13,6 +13,7 @@ use App\Models\PublicationSetting;
 use App\Models\Scene;
 use App\Services\CoverImageService;
 use App\Services\EpubExporter;
+use App\Support\RichTextFields;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -2001,5 +2002,72 @@ class EpubExporterTest extends TestCase
         $this->assertStringNotContainsString('<img', $entryXhtml);
 
         @unlink($path);
+    }
+
+    // --- Decorative classes (alignment, colour) ---
+
+    public function test_stylesheet_defines_a_rule_for_every_decorative_class(): void
+    {
+        $stylesheet = $this->exporter()->stylesheet();
+
+        foreach (RichTextFields::decorativeClasses() as $class) {
+            $this->assertMatchesRegularExpression(
+                '/\.'.preg_quote($class, '/').'\s*\{/',
+                $stylesheet,
+                "the stylesheet must define a rule for .{$class}"
+            );
+        }
+    }
+
+    public function test_codex_appendix_entry_description_keeps_decorative_classes(): void
+    {
+        $project = Project::factory()->create();
+        [, $scene] = $this->seedMinimalStory($project);
+
+        $entry = CodexEntry::factory()->for($project)->character()->create([
+            'name' => 'Aragorn',
+            'description' => '<p class="rt-align-center">A <span class="rt-color-red">ranger</span>.</p>',
+        ]);
+        $scene->codexReferences()->attach($entry->id);
+
+        $book = $scene->chapter->act->book;
+        PublicationSetting::factory()->for($book)->create([
+            'include_codex_appendix' => true,
+            'appendix_entry_types' => ['character'],
+        ]);
+
+        $path = $this->exporter()->export($book);
+
+        $entryXhtml = (string) $this->entryOf($path, "OEBPS/appendix-entry-{$entry->id}.xhtml");
+        $this->assertStringContainsString('class="rt-align-center"', $entryXhtml);
+        $this->assertStringContainsString('class="rt-color-red"', $entryXhtml);
+
+        @unlink($path);
+    }
+
+    /**
+     * The counterpart to the appendix test above, and the acceptance criterion
+     * that matters most: decoration reaches an appendix but never the narrative.
+     * Scene text is Markdown rendered through {@see RichTextProfile::Structural},
+     * which strips every class, so raw HTML with a decorative class in the scene
+     * body loses that class in the shipped chapter page.
+     */
+    public function test_scene_body_strips_decorative_classes(): void
+    {
+        [, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        Scene::factory()->for($chapter)->create([
+            'contents' => '<p class="rt-align-center rt-color-red">Centered and red.</p>',
+        ]);
+
+        $tree = $this->exporter()->actTree($book);
+        $renderedChapter = $tree->first()->chapters->first();
+
+        $html = $this->exporter()->renderChapter($renderedChapter, $book);
+
+        $this->assertStringContainsString('<p>Centered and red.</p>', $html);
+        $this->assertStringNotContainsString('rt-align-center', $html);
+        $this->assertStringNotContainsString('rt-color-red', $html);
     }
 }

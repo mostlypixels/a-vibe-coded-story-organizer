@@ -98,8 +98,8 @@ class VisualHtmlDiffer
                 continue;
             }
 
-            $oldMarks = $this->marksOf($oldBlock);
-            $newMarks = $this->marksOf($newBlock);
+            $oldMarks = $this->formattingOf($oldBlock);
+            $newMarks = $this->formattingOf($newBlock);
 
             $blocks[] = new DiffBlock(
                 DiffChange::FormattingChanged,
@@ -209,14 +209,23 @@ class VisualHtmlDiffer
     }
 
     /**
-     * Every distinct mark in force anywhere in the block, so two blocks can be
-     * asked which formatting arrived and which left.
+     * Every distinct piece of formatting in force on the block, so two blocks
+     * can be asked which arrived and which left.
+     *
+     * That is the block's own alignment (as the pseudo-mark `align:center`,
+     * because it belongs to the block rather than to any word) plus every mark
+     * in force anywhere inside it.
      *
      * @return list<string>
      */
-    private function marksOf(HtmlBlock $block): array
+    private function formattingOf(HtmlBlock $block): array
     {
         $marks = [];
+        $align = $block->attributes[HtmlTokenizer::ALIGN_ATTRIBUTE] ?? null;
+
+        if ($align !== null) {
+            $marks[HtmlTokenizer::ALIGN_MARK_PREFIX.$align] = true;
+        }
 
         foreach ($block->tokens as $token) {
             foreach ($token->marks as $mark) {

@@ -126,6 +126,36 @@ class EpubExportTest extends TestCase
         }
     }
 
+    /**
+     * Scene bodies are narrative, so the exporter cleans them with the Structural
+     * profile. Decoration in a book comes from codex descriptions only.
+     */
+    public function test_a_decorative_class_typed_into_a_scene_does_not_reach_the_book_body(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $act = Act::factory()->for($book)->create(['position' => 1]);
+        $chapter = Chapter::factory()->for($act)->create(['position' => 1]);
+        Scene::factory()->for($chapter)->create([
+            'position' => 1,
+            'contents' => 'Melusine felt <span class="rt-color-red">danger</span>.',
+        ]);
+
+        $response = $this->actingAs($user)->post(route('admin.data.export.epub'), [
+            'book_id' => $book->id,
+        ])->assertOk();
+
+        $chapterPages = $this->packagedFiles($response, '#chapter-\d+\.xhtml$#');
+
+        $this->assertNotEmpty($chapterPages);
+
+        foreach ($chapterPages as $name => $contents) {
+            $this->assertStringNotContainsString('rt-color-red', $contents, $name);
+            $this->assertStringContainsString('danger', $contents, $name);
+        }
+    }
+
     // ---------------------------------------------------------------------
     // Authorization (ownership, not just the admin gate)
     // ---------------------------------------------------------------------

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\RichTextProfile;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
@@ -18,6 +19,11 @@ class HtmlSanitizerTest extends TestCase
     private function clean(string $html): string
     {
         return app(HtmlSanitizer::class)->clean($html);
+    }
+
+    private function cleanStructural(string $html): string
+    {
+        return app(HtmlSanitizer::class)->clean($html, RichTextProfile::Structural);
     }
 
     public function test_it_strips_script_tags(): void
@@ -183,6 +189,81 @@ class HtmlSanitizerTest extends TestCase
         $this->assertStringContainsString('Heads up.', $output);
     }
 
+    public function test_decorative_classes_derive_from_the_registry(): void
+    {
+        $classes = RichTextFields::decorativeClasses();
+
+        $this->assertContains('rt-align-center', $classes);
+        $this->assertContains('rt-color-red', $classes);
+        $this->assertNotContains('rt-align-left', $classes, 'Left is the default and writes no class.');
+        $this->assertCount(
+            count(RichTextFields::ALIGNMENTS) + count(RichTextFields::TEXT_COLORS),
+            $classes,
+        );
+    }
+
+    public function test_every_alignable_tag_may_carry_a_class(): void
+    {
+        foreach (RichTextFields::ALIGNABLE_TAGS as $tag) {
+            $this->assertContains('class', RichTextFields::ALLOWED_ATTRIBUTES[$tag] ?? [], $tag);
+        }
+
+        $this->assertContains('class', RichTextFields::ALLOWED_ATTRIBUTES['span']);
+    }
+
+    /**
+     * Looping the registry is the point: a colour added later cannot escape this
+     * test by being absent from a literal list.
+     */
+    public function test_the_rich_profile_keeps_every_decorative_class(): void
+    {
+        foreach (RichTextFields::ALIGNMENTS as $alignment) {
+            $output = $this->clean('<p class="rt-align-'.$alignment.'">text</p>');
+            $this->assertStringContainsString('class="rt-align-'.$alignment.'"', $output);
+
+            $output = $this->clean('<h2 class="rt-align-'.$alignment.'">head</h2>');
+            $this->assertStringContainsString('class="rt-align-'.$alignment.'"', $output);
+        }
+
+        foreach (RichTextFields::TEXT_COLORS as $color) {
+            $output = $this->clean('<p><span class="rt-color-'.$color.'">text</span></p>');
+            $this->assertStringContainsString('class="rt-color-'.$color.'"', $output);
+        }
+    }
+
+    public function test_the_structural_profile_strips_every_decorative_class(): void
+    {
+        foreach (RichTextFields::decorativeClasses() as $class) {
+            $output = $this->cleanStructural('<p class="'.$class.'"><span class="'.$class.'">text</span></p>');
+
+            $this->assertStringNotContainsString('class=', $output, $class);
+            $this->assertStringContainsString('text', $output);
+        }
+    }
+
+    public function test_it_strips_an_unregistered_decorative_class_but_keeps_the_element(): void
+    {
+        foreach ([$this->clean(...), $this->cleanStructural(...)] as $clean) {
+            $output = $clean('<p class="rt-color-chartreuse">text</p><span class="prose">more</span>');
+
+            $this->assertStringNotContainsString('chartreuse', $output);
+            $this->assertStringNotContainsString('prose', $output);
+            $this->assertStringContainsString('<p>', $output);
+            $this->assertStringContainsString('text', $output);
+            $this->assertStringContainsString('more', $output);
+        }
+    }
+
+    public function test_it_strips_presentational_styles_under_both_profiles(): void
+    {
+        foreach ([$this->clean(...), $this->cleanStructural(...)] as $clean) {
+            $output = $clean('<p style="text-align: center"><span style="color: red">text</span></p>');
+
+            $this->assertStringNotContainsString('style=', $output);
+            $this->assertStringContainsString('text', $output);
+        }
+    }
+
     public function test_purifier_allowed_html_lists_the_new_tags_and_attributes(): void
     {
         $allowed = RichTextFields::purifierAllowedHtml();
@@ -194,6 +275,8 @@ class HtmlSanitizerTest extends TestCase
         $this->assertStringContainsString('blockquote[data-callout-type]', $allowed);
         $this->assertStringContainsString('td[colspan|rowspan]', $allowed);
         $this->assertStringContainsString('th[colspan|rowspan]', $allowed);
+        $this->assertStringContainsString('p[class]', $allowed);
+        $this->assertStringContainsString('span[class]', $allowed);
     }
 
     public function test_rich_text_fields_exposes_the_expected_field_list(): void

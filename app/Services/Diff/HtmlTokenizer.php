@@ -4,6 +4,7 @@ namespace App\Services\Diff;
 
 use App\Support\HtmlBlock;
 use App\Support\InlineToken;
+use App\Support\RichTextFields;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
@@ -30,11 +31,24 @@ class HtmlTokenizer
 
     /**
      * Inline elements recorded as marks on the words they wrap. A link is
-     * recorded as `a:<href>` so re-pointing it counts as a change.
+     * recorded as `a:<href>` so re-pointing it counts as a change, and a
+     * coloured span as `color:<name>` for the same reason.
      *
      * @var list<string>
      */
-    public const MARK_TAGS = ['strong', 'em', 'u', 's', 'code', 'a'];
+    public const MARK_TAGS = ['strong', 'em', 'u', 's', 'code', 'a', 'span'];
+
+    /** Prefix of the mark a coloured span contributes. */
+    public const COLOR_MARK_PREFIX = 'color:';
+
+    /** Prefix of the mark a link contributes. The href follows it. */
+    public const LINK_MARK_PREFIX = 'a:';
+
+    /** Key of the alignment in a block's attribute map. */
+    public const ALIGN_ATTRIBUTE = 'align';
+
+    /** Prefix of the pseudo-mark a block's alignment contributes to a diff. */
+    public const ALIGN_MARK_PREFIX = 'align:';
 
     /** @var list<string> */
     private const LIST_TAGS = ['ul', 'ol'];
@@ -225,11 +239,25 @@ class HtmlTokenizer
         }
     }
 
+    /**
+     * A paragraph or heading keeps its alignment: it is a visible change that
+     * leaves every word alone, so it has to travel as an attribute rather than
+     * be found in the text. It stays out of {@see HtmlBlock::matchKey()}, or a
+     * re-aligned paragraph would read as a delete plus an insert.
+     */
     private function simpleBlock(DOMElement $element, string $tag): HtmlBlock
     {
         $tokens = $this->tokensFrom($element, marks: [], skipLists: false);
+        $attributes = [];
+        $align = in_array($tag, RichTextFields::ALIGNABLE_TAGS, true)
+            ? $this->decorativeValue($element, RichTextFields::ALIGN_CLASS_PREFIX, RichTextFields::ALIGNMENTS)
+            : null;
 
-        return $this->buildBlock($tag, [], $tokens, $this->textOf($tokens));
+        if ($align !== null) {
+            $attributes[self::ALIGN_ATTRIBUTE] = $align;
+        }
+
+        return $this->buildBlock($tag, $attributes, $tokens, $this->textOf($tokens));
     }
 
     /**
@@ -325,7 +353,7 @@ class HtmlTokenizer
      */
     private function buildBlock(string $tag, array $attributes, array $tokens, string $text): HtmlBlock
     {
-        return new HtmlBlock($tag, $attributes, $text, $tokens, $this->signatureOf($tokens));
+        return new HtmlBlock($tag, $attributes, $text, $tokens, $this->signatureOf($tokens, $attributes));
     }
 
     /**
@@ -372,11 +400,10 @@ class HtmlTokenizer
             }
 
             $childMarks = $marks;
+            $mark = $this->markFor($child, $tag);
 
-            if (in_array($tag, self::MARK_TAGS, true)) {
-                $childMarks[] = $tag === 'a'
-                    ? 'a:'.trim($child->getAttribute('href'))
-                    : $tag;
+            if ($mark !== null) {
+                $childMarks[] = $mark;
             }
 
             $tokens = array_merge($tokens, $this->tokensFrom($child, $childMarks, $skipLists));
@@ -386,17 +413,72 @@ class HtmlTokenizer
     }
 
     /**
-     * A fingerprint of where the marks change along the block.
+     * The mark an inline element contributes, or null when it contributes none.
      *
-     * Recorded as transitions (position + new mark stack) rather than one entry
-     * per word, so it stays short on long paragraphs while still differing
-     * whenever the *same* words are formatted differently — which is exactly
-     * the "formatting changed" signal the differ looks for.
+     * A link and a coloured span both carry a value, so the mark carries it too:
+     * re-pointing a link and recolouring a word are changes a reader sees. An
+     * uncoloured span is transparent, like any other unknown element.
+     */
+    private function markFor(DOMElement $element, string $tag): ?string
+    {
+        if (! in_array($tag, self::MARK_TAGS, true)) {
+            return null;
+        }
+
+        if ($tag === 'a') {
+            return self::LINK_MARK_PREFIX.trim($element->getAttribute('href'));
+        }
+
+        if ($tag === 'span') {
+            $color = $this->decorativeValue($element, RichTextFields::COLOR_CLASS_PREFIX, RichTextFields::TEXT_COLORS);
+
+            return $color === null ? null : self::COLOR_MARK_PREFIX.$color;
+        }
+
+        return $tag;
+    }
+
+    /**
+     * The value of a decorative class on `$element` — `center` from
+     * `rt-align-center` — or null when it carries none the registry knows.
+     *
+     * @param  list<string>  $allowed
+     */
+    private function decorativeValue(DOMElement $element, string $prefix, array $allowed): ?string
+    {
+        foreach ($this->words($element->getAttribute('class')) as $class) {
+            $name = str_starts_with($class, $prefix) ? substr($class, strlen($prefix)) : null;
+
+            if ($name !== null && in_array($name, $allowed, true)) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A fingerprint of how the block says what it says.
+     *
+     * The marks are recorded as transitions (position + new mark stack) rather
+     * than one entry per word, so it stays short on long paragraphs while still
+     * differing whenever the *same* words are formatted differently — which is
+     * exactly the "formatting changed" signal the differ looks for.
+     *
+     * The alignment leads the string because it is the same kind of fact: a
+     * centred paragraph says its words differently from a flush-left one, and
+     * an alignment-only edit must reach the reader as a formatting change
+     * rather than as no change at all. It stays out of
+     * {@see HtmlBlock::matchKey()}, which is what keeps the re-aligned
+     * paragraph paired with its old self.
      *
      * @param  list<InlineToken>  $tokens
+     * @param  array<string, string|int>  $attributes
      */
-    private function signatureOf(array $tokens): string
+    private function signatureOf(array $tokens, array $attributes = []): string
     {
+        $align = $attributes[self::ALIGN_ATTRIBUTE] ?? null;
+        $prefix = $align === null ? '' : self::ALIGN_MARK_PREFIX.$align.'|';
         $transitions = [];
         $previous = null;
 
@@ -409,7 +491,7 @@ class HtmlTokenizer
             }
         }
 
-        return implode('|', $transitions);
+        return $prefix.implode('|', $transitions);
     }
 
     /**

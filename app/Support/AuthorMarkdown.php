@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\RichTextProfile;
 use App\Services\HtmlSanitizer;
 use App\Support\Markdown\StrikethroughSExtension;
 use Illuminate\Support\Str;
@@ -32,10 +33,19 @@ use Illuminate\Support\Str;
  */
 class AuthorMarkdown
 {
-    /** Render for display. Safe to echo with `{!! !!}`. */
+    /**
+     * Render for display. Safe to echo with `{!! !!}`.
+     *
+     * The Structural profile is the Markdown lock: scene text becomes EPUB body
+     * and is read aloud, so it gets no decorative class even if the author types
+     * the raw HTML.
+     */
     public static function render(?string $markdown): string
     {
-        return app(HtmlSanitizer::class)->clean(self::renderUnsanitized($markdown));
+        return app(HtmlSanitizer::class)->clean(
+            self::renderUnsanitized($markdown),
+            RichTextProfile::Structural,
+        );
     }
 
     /**

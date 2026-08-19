@@ -140,4 +140,103 @@ class WysiwygToolbar
             'title' => $labels[$type],
         ], self::CALLOUT_TYPES);
     }
+
+    /**
+     * Block alignment. Markdown scene text stays structural, so this list is
+     * empty for it; the empty array is what keeps `wysiwyg.blade.php` free of
+     * a `@unless ($markdown)` conditional.
+     *
+     * `left` is a reset item, not a registry value: it clears the class rather
+     * than writing one, so it stays out of `RichTextFields::ALIGNMENTS`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function alignment(): array
+    {
+        if ($this->markdown) {
+            return [];
+        }
+
+        $icons = [
+            'left' => 'align-left',
+            'center' => 'align-center',
+            'right' => 'align-right',
+            'justify' => 'align-justified',
+        ];
+
+        $labels = [
+            'left' => __('Align left'),
+            'center' => __('Align center'),
+            'right' => __('Align right'),
+            'justify' => __('Justify'),
+        ];
+
+        return array_map(fn (string $align) => [
+            'command' => 'setTextAlign',
+            'args' => ['align' => $align],
+            'active' => ['textAlign', ['align' => $align]],
+            'icon' => $icons[$align],
+            'label' => $labels[$align],
+            'title' => $labels[$align],
+        ], ['left', ...RichTextFields::ALIGNMENTS]);
+    }
+
+    /**
+     * Named text colour. Empty for Markdown, like {@see alignment()}.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function textColor(): array
+    {
+        if ($this->markdown) {
+            return [];
+        }
+
+        $labels = [
+            'red' => __('Red'),
+            'green' => __('Green'),
+            'amber' => __('Amber'),
+            'blue' => __('Blue'),
+            'grey' => __('Grey'),
+        ];
+
+        $items = array_map(fn (string $color) => [
+            'command' => 'setTextColor',
+            'args' => ['color' => $color],
+            'active' => ['textColor', ['color' => $color]],
+            'icon' => 'circle-filled',
+            // A swatch, not the token: the same class the mark writes into content.
+            'iconClass' => RichTextFields::colorClass($color),
+            'label' => $labels[$color],
+            'title' => $labels[$color],
+        ], RichTextFields::TEXT_COLORS);
+
+        $items[] = [
+            'command' => 'unsetTextColor',
+            'icon' => 'palette-off',
+            'label' => __('Remove colour'),
+            'title' => __('Remove colour'),
+        ];
+
+        return $items;
+    }
+
+    /**
+     * The Align dropdown trigger highlights for any non-default alignment.
+     * Built here, not as an `isOn('a') || isOn('b')` chain in Blade, because
+     * the chain would need one term per `RichTextFields::ALIGNMENTS` entry.
+     */
+    public function alignmentActiveExpression(): string
+    {
+        return implode(' || ', array_map(
+            fn (string $align) => "isOn('textAlign', ".Js::from(['align' => $align]).')',
+            RichTextFields::ALIGNMENTS,
+        ));
+    }
+
+    /** The Colour dropdown trigger highlights whenever the mark is set, any name. */
+    public function textColorActiveExpression(): string
+    {
+        return "isOn('textColor')";
+    }
 }

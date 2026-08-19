@@ -33,6 +33,46 @@ Keep these surfaces aligned:
 3. Toolbar and slash-menu commands.
 4. Sanitizer tests and round-trip tests.
 
+### Two sanitizer profiles
+
+`App\Enums\RichTextProfile` selects the allow-list `App\Services\HtmlSanitizer` applies. Not per-field: no caller needs a third variant.
+
+- `Rich` permits the decorative classes below, on top of the structural allow-list.
+- `Structural` permits none. Every seam that renders author Markdown passes it —
+  `AuthorMarkdown::render()`, `ContentSanitizer::assertHtmlAllowed()`, and
+  `EpubExporter::renderSceneContents()`. Scene text becomes EPUB body and is read aloud by
+  TTS, so it stays structural; a new Markdown-rendering path must pass `Structural` too,
+  proven by a test.
+
+### Decorative classes
+
+Rich HTML fields — descriptions, `Scene.notes`, codex — accept block alignment and named
+text colour, closed class sets defined once in `App\Support\RichTextFields`:
+
+- Alignment: `ALIGNMENTS` (`center`, `right`, `justify`), written as `rt-align-<name>` on
+  an `ALIGNABLE_TAGS` block (`p`, `h1`–`h4`). `left` is the default and never becomes a
+  class, so existing content needs no migration.
+- Colour: `TEXT_COLORS` (`red`, `green`, `amber`, `blue`, `grey`), written as
+  `rt-color-<name>` on a `span`. The class carries the colour name the author chose, not
+  the theme token that renders it — see [Themes](../interface/themes.md) for that mapping.
+
+No inline `style`, ever — both `@tiptap/extension-text-align` and the colour mark are
+written locally to emit these classes instead of the stock inline styles, which the
+sanitizer would strip anyway.
+
+Three surfaces style these classes and must be kept in step when a class is added, renamed,
+or removed:
+
+1. `resources/css/app.css` — the application theme, one declaration per class using theme
+   tokens, so it repaints with the active preset.
+2. `resources/views/exports/epub/styles.css` — the EPUB stylesheet, fixed OKLCH values with
+   a `prefers-color-scheme: dark` variant, because a reading app has no theme system.
+3. Nothing else. A reader's own EPUB stylesheet can still win: single-class selectors, no
+   `!important`.
+
+Colour and alignment never carry meaning alone — nothing in the app reads a `rt-` class
+back to drive behaviour.
+
 ### Render through components
 
 - Use `x-rich-text` for complete rich HTML.
