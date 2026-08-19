@@ -45,7 +45,7 @@ class ContentSanitizer
 
         // Validate the exact rendered form that the app later displays.
         try {
-            $rendered = AuthorMarkdown::render($markdown);
+            $rendered = AuthorMarkdown::renderUnsanitized($markdown);
         } catch (Throwable) {
             throw ImportValidationException::invalidMarkdown();
         }

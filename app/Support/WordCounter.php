@@ -67,7 +67,7 @@ class WordCounter
             // Rendering is what stops "**bold**" counting as one word and
             // "# " as another — render first, then reduce to plain text exactly
             // as RichText does for the Rich kind.
-            FieldKind::Markdown => RichText::toPlainText(AuthorMarkdown::render(self::stripFencedCodeBlocks($value))),
+            FieldKind::Markdown => RichText::toPlainText(AuthorMarkdown::renderUnsanitized(self::stripFencedCodeBlocks($value))),
             FieldKind::Plain => $value,
         };
 

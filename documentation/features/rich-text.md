@@ -16,6 +16,12 @@
 
 `App\Services\HtmlSanitizer` uses HTMLPurifier. Model mutators and `SanitizeHtml` apply it before persistence, including writes without model events.
 
+### Sanitize on read, for Markdown only
+
+`Scene.contents` cannot be sanitized on write: the stored value must stay Markdown source so the editor can reload it. Markdown also carries raw HTML through, and `ValidMarkdown` only proves the source parses — it rejects nothing. So the *rendered* output is untrusted and is sanitized instead, by `App\Support\AuthorMarkdown::render()`.
+
+Render author Markdown only through that method. `AuthorMarkdown::renderUnsanitized()` exists for the import allow-list check and the word counter; never echo its result.
+
 ### Allow-list
 
 The allow-list contains supported structural and formatting markup, including headings through `h4`, links with HTTP(S), tables, task lists, images, and callout attributes.
@@ -39,8 +45,8 @@ Keep these surfaces aligned:
 
 - Validate it with `ValidMarkdown`.
 - Render it through `Scene::renderedContents` for normal application consumers.
-- `App\Support\AuthorMarkdown` holds the renderer choice. Use it for any author-written
-  Markdown, never `Str::markdown()` directly.
+- `App\Support\AuthorMarkdown` holds the renderer choice and the sanitizing step. Use it
+  for any author-written Markdown, never `Str::markdown()` directly.
 - EPUB uses its own SmartPunct path and must not change the shared accessor. It registers
   the same strikethrough extension so both paths emit the same tag.
 

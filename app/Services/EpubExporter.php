@@ -11,6 +11,7 @@ use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\PublicationSetting;
 use App\Models\Scene;
+use App\Support\AuthorMarkdown;
 use App\Support\Markdown\StrikethroughSExtension;
 use App\Support\RichText;
 use App\Support\StoryNumbering;
@@ -883,10 +884,18 @@ class EpubExporter
         return $directory.DIRECTORY_SEPARATOR.Str::uuid().'.epub';
     }
 
-    /** Converts scene Markdown with the EPUB-only SmartPunct converter. */
+    /**
+     * Converts scene Markdown with the EPUB-only SmartPunct converter, then
+     * sanitizes it.
+     *
+     * Markdown carries raw HTML through, and a reading system may run scripts,
+     * so the shipped body needs the same allow-list as every on-screen render
+     * ({@see AuthorMarkdown::render()}). The sanitizer's XHTML-style output also
+     * helps the well-formedness gate in {@see validatePackage()}.
+     */
     private function renderSceneContents(Scene $scene): string
     {
-        return (string) $this->converter()->convert($scene->contents ?? '');
+        return app(HtmlSanitizer::class)->clean((string) $this->converter()->convert($scene->contents ?? ''));
     }
 
     /** Builds one isolated CommonMark converter per export. */
