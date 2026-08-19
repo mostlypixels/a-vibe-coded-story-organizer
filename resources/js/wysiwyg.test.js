@@ -588,3 +588,82 @@ describe('registry parity — the JS literals match the PHP constants', () => {
         expect(sourceList(readSource('resources/js/wysiwyg.js'), constant)).toEqual(registryList(constant));
     });
 });
+
+describe('smart punctuation', () => {
+    /**
+     * Drive the real input-rule path. `insertContent()` does not fire input
+     * rules — it inserts a node — so a test written with it passes while the
+     * editor does nothing. This mirrors what ProseMirror does on a keystroke.
+     */
+    function typeText(editor, text) {
+        for (const ch of text) {
+            const { from, to } = editor.state.selection;
+            const handled = editor.view.someProp('handleTextInput', (f) => f(editor.view, from, to, ch));
+
+            if (!handled) {
+                editor.view.dispatch(editor.state.tr.insertText(ch, from, to));
+            }
+        }
+
+        return editor.getText();
+    }
+
+    function typedInto(text, format = 'html') {
+        const editor = new Editor({ extensions: buildExtensions(format), content: '<p></p>' });
+        editor.commands.focus();
+
+        return typeText(editor, text);
+    }
+
+    // CommonMark's convention, which the EPUB exporter's SmartPunct pass uses.
+    // Typography's own emDash rule fires on two hyphens and would disagree.
+    it('turns two hyphens into an en dash and three into an em dash', () => {
+        expect(typedInto('1914--1918')).toBe('1914\u20131918');
+        expect(typedInto('a --- b')).toBe('a \u2014 b');
+    });
+
+    it('leaves a single hyphen alone', () => {
+        expect(typedInto('mother-in-law')).toBe('mother-in-law');
+    });
+
+    it('turns three dots into an ellipsis', () => {
+        expect(typedInto('wait...')).toBe('wait\u2026');
+    });
+
+    it('curls quotes and apostrophes', () => {
+        expect(typedInto('he said "hi"')).toBe('he said \u201chi\u201d');
+        expect(typedInto("don't")).toBe('don\u2019t');
+    });
+
+    // The rules a novel does not want. Typography ships 22; we enable six.
+    it.each([
+        ['an arrow', 'x -> y', 'x -> y'],
+        ['a copyright sign', '(c) 2026', '(c) 2026'],
+        ['a fraction', '1/2 of it', '1/2 of it'],
+        ['a not-equal sign', 'a != b', 'a != b'],
+        ['guillemets', 'a << b', 'a << b'],
+    ])('does not produce %s', (_label, typed, expected) => {
+        expect(typedInto(typed)).toBe(expected);
+    });
+
+    it('applies to markdown fields too, so scene prose matches the exported book', () => {
+        expect(typedInto('a --- b', 'markdown')).toBe('a \u2014 b');
+    });
+
+    /**
+     * Input rules fire on keystrokes only. Imported or previously stored text is
+     * never rewritten, which is why the EPUB exporter keeps its own SmartPunct
+     * pass for scene Markdown.
+     */
+    it('leaves loaded content untouched', () => {
+        const editor = new Editor({ extensions: buildExtensions('html'), content: '<p>a -- b and c... d</p>' });
+
+        expect(editor.getText()).toBe('a -- b and c... d');
+    });
+
+    it('keeps a real em dash that arrived with imported content', () => {
+        const editor = new Editor({ extensions: buildExtensions('html'), content: '<p>a \u2014 b</p>' });
+
+        expect(editor.getText()).toBe('a \u2014 b');
+    });
+});
