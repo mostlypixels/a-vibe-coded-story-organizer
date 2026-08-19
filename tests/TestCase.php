@@ -10,24 +10,9 @@ use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
 {
-    /**
-     * The per-test export directory (see {@see setUp()}).
-     */
     private string $exportTempPath;
 
-    /**
-     * Point the exporters at a directory this test owns.
-     *
-     * An export writes a real file, and only a streamed download deletes it
-     * (BinaryFileResponse::deleteFileAfterSend). A test asserts on the response
-     * instead of sending it, so the file stays behind. Cleanup here is
-     * automatic on purpose: the same cleanup was once each test's job to
-     * remember, and the shared directory grew to thousands of files.
-     *
-     * Each test gets its OWN directory because the suite runs in parallel —
-     * processes that shared one directory could delete an export another
-     * process was still writing.
-     */
+    /** Give each parallel test an isolated export directory. */
     protected function setUp(): void
     {
         parent::setUp();

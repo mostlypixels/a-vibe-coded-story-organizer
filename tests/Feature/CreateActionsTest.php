@@ -9,15 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * Every create page carries the same sidebar Actions card as its edit page, so the
- * primary action sits in one place across the app.
- *
- * The card renders outside the <form> tag (it is in the sidebar column) and reaches
- * the form through the HTML `form` attribute. That attribute is silent when it points
- * at an id no form has: the button then belongs to no form and does nothing. This
- * pins both ends of the wiring for every create page at once.
- */
+/** Bind each sidebar create action to its page form. */
 class CreateActionsTest extends TestCase
 {
     use RefreshDatabase;

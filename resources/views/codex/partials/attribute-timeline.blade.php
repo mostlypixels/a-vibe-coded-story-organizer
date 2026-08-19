@@ -1,15 +1,3 @@
-{{--
-    Attribute timeline editor (edit page only). Rendered OUTSIDE the main entry form: each
-    period is its own small form posting to the upsert/destroy routes, and HTML forbids nested
-    forms. All ordering / period math is pre-computed by AttributeTimeline in the controller
-    ($sheets); this template only renders it.
-
-    $sheets: collection of ['attribute' => CodexAttribute, 'baseline' => ?CodexAttributeValue, 'periods' => Collection]
-    $startEvent: the locked Start anchor.  $events: anchor choices for "Add period".
-
-    The outer border-t + pt-10 mark this as its own section, separate from the entry
-    form above (which sits directly on the page, not inside a card).
---}}
 @if ($sheets->isNotEmpty())
     <div class="border-t border-border pt-10">
         <x-card :title="__('Attribute timeline')">
@@ -17,9 +5,6 @@
             {{ __('Each attribute\'s value over time. A period runs from its event until the next change. Editing a value and pressing Save updates it in place.') }}
         </p>
 
-        {{-- Store failures land under these keys; the destroy guard is now a 403, so the old
-             'attribute_value' bag no longer feeds this card. Errors share the default bag
-             across the card's small forms, accepted at this scale. --}}
         <x-input-error :messages="$errors->get('value')" class="mt-2" />
         <x-input-error :messages="$errors->get('start_event_id')" class="mt-2" />
 
@@ -32,8 +17,6 @@
                     <h3 class="font-semibold text-content">{{ $attribute->name }}</h3>
 
                     <div class="mt-2 space-y-2">
-                        {{-- Start baseline: event locked, value editable via upsert, no remove
-                             (parallels how is_fixed events / the main plotline hide delete). --}}
                         <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-wrap items-center gap-2">
                             @csrf
                             <input type="hidden" name="start_event_id" value="{{ $startEvent->id }}">
@@ -53,7 +36,6 @@
                             <x-icon-save-button />
                         </form>
 
-                        {{-- Later periods: each editable (upsert) with a separate remove form. --}}
                         @foreach ($sheet['periods'] as $period)
                             <div class="flex flex-wrap items-center gap-2">
                                 <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-1 flex-wrap items-center gap-2">
@@ -77,8 +59,6 @@
                             </div>
                         @endforeach
 
-                        {{-- Add a period at another event. Posting an event that already has a
-                             value simply updates it (the store route is an upsert). --}}
                         <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-wrap items-center gap-2 border-t border-border pt-2">
                             @csrf
                             <label class="sr-only" for="add_event_{{ $attribute->id }}">{{ __('Add period at event') }}</label>

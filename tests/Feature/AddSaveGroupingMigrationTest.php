@@ -13,17 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-/**
- * The migration that adds the save-point grouping key and the pre-computed
- * summary columns to `revisions` — and, on the way, deletes every row that
- * predates the new write path.
- *
- * RefreshDatabase has already run this migration by the time a test body
- * starts, so a test cannot simply call up() again (the columns would already
- * exist). Instead each test that needs the "before" state calls down() first,
- * which puts the table back in its pre-save-point shape with its rows intact —
- * exactly the state a real install is in when this migration runs.
- */
+/** Recreate the pre-migration table before each save-grouping assertion. */
 class AddSaveGroupingMigrationTest extends TestCase
 {
     use RefreshDatabase;

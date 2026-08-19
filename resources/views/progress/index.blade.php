@@ -4,8 +4,6 @@
     </x-page-heading>
 
     <x-card>
-        {{-- Always *now*, whatever range a later chart is showing — see
-             expanded/ui.md, "The status strip always shows now". --}}
         <div class="space-y-4">
             @if ($project->daily_word_goal !== null)
                 <x-progress-bar :label="__('Today')" :value="$writtenToday" :goal="$project->daily_word_goal" />
@@ -24,10 +22,6 @@
     </x-card>
 
     <x-card class="mt-6">
-        {{-- Plain GET: the range lives in the URL, so it is shareable and
-             survives a refresh. The two date inputs plus Apply work with no
-             JS at all; the month select is a convenience Alpine fills them
-             from. --}}
         <form
             method="GET"
             action="{{ route('projects.progress', $project) }}"
@@ -73,9 +67,6 @@
 
         <div class="mt-6">
             @if (! $hasSnapshots)
-                {{-- A flat line at zero would claim "you wrote nothing", which
-                     is a different and wrong statement from "nothing is
-                     recorded" — see expanded/ui.md, "Empty state". --}}
                 <div class="rounded-lg bg-surface-raised px-6 py-10 text-center text-content-muted">
                     <p class="font-medium text-content-muted">{{ __('No writing recorded yet.') }}</p>
                     <p class="mt-1 text-sm">{{ __('Save a scene and today’s words appear here.') }}</p>

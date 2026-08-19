@@ -7,23 +7,13 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateCrawlerSettingRequest extends FormRequest
 {
-    /**
-     * The crawler settings are GLOBAL — not owned by a Project or User — so this
-     * is the one place that departs from the ProjectPolicy walk: any authenticated
-     * user may edit them. The `auth` middleware already blocks guests; this simply
-     * confirms a user is present. See documentation/architecture.md.
-     */
+    /** Crawler settings have no owning project. */
     public function authorize(): bool
     {
         return $this->user() !== null;
     }
 
-    /**
-     * Normalise the raw form input before validation:
-     * - `enabled` is a checkbox, so absent means false.
-     * - the whitelist arrives as a textarea (one term per line); split it into a
-     *   trimmed, blank-dropped, de-duplicated array so the DB stores clean terms.
-     */
+    /** Converts the checkbox and whitelist textarea to stored values. */
     protected function prepareForValidation(): void
     {
         $raw = (string) $this->input('user_agent_whitelist', '');
@@ -49,9 +39,7 @@ class UpdateCrawlerSettingRequest extends FormRequest
         return [
             'enabled' => ['boolean'],
             'user_agent_whitelist' => ['array'],
-            // Line-safe: no CR/LF, ':' (directive separator) or '#' (comment) so a
-            // term cannot forge robots.txt directives. This regex is the single
-            // guard the RobotsTxtGenerator trusts.
+            // Block characters that can create another robots.txt directive.
             'user_agent_whitelist.*' => ['string', 'max:255', 'regex:/^[^\r\n:#]+$/'],
         ];
     }

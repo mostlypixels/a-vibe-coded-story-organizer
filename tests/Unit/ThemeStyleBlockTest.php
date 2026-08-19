@@ -7,14 +7,7 @@ use App\Support\ThemePreset;
 use App\Support\ThemeTokens;
 use Tests\TestCase;
 
-/**
- * The renderer emits unescaped CSS into `{!! !!}`, so value validation is the whole
- * point of this suite — not a nice-to-have.
- *
- * Extends Tests\TestCase rather than PHPUnit's, unlike its neighbours here, because
- * the "every configured preset renders" case reads `config('themes.presets')`. No
- * database is touched.
- */
+/** Reject unsafe values before theme CSS reaches unescaped output. */
 class ThemeStyleBlockTest extends TestCase
 {
     public function test_it_renders_one_root_rule_with_every_token(): void

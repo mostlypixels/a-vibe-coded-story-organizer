@@ -23,15 +23,12 @@ class UpdateChapterRequest extends FormRequest
             'act_id' => [
                 'required',
                 'integer',
-                // A chapter moves between the acts of its own book. Moving a whole
-                // act to another book is the act edit page's job.
+                // A chapter cannot move outside its current book.
                 Rule::exists('acts', 'id')->where('book_id', $this->route('chapter')->act->book_id),
             ],
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('chapter', 'description'),
 
-            // The chapter cover image. Reuses the same mime/size list as the
-            // project cover and Codex covers rather than duplicating the constraints.
             'cover_image' => CodexMediaRules::coverRules(),
         ];
     }

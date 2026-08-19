@@ -23,23 +23,11 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use ZipArchive;
 
-/**
- * Unit-level tests for ArchiveValidator: one test per failure mode from the
- * import spec's "Validation failures" list, each against a small fixture zip
- * built inline, plus the first export → import touchpoint — a real
- * StaticSiteExporter archive must validate cleanly.
- *
- * RefreshDatabase is only needed by the real-export happy paths; the fixture
- * tests never touch the database or the HTTP layer.
- */
+/** Validate fixture archives and real exporter output. */
 class ArchiveValidatorTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * A minimal valid 1x1 PNG, used wherever a media file's bytes must
-     * genuinely BE an image.
-     */
     private const TINY_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
     /**

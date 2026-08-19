@@ -6,14 +6,7 @@ use App\Enums\FieldKind;
 use App\Services\RevisionSummarizer;
 use Tests\TestCase;
 
-/**
- * App\Services\RevisionSummarizer — the one-line "what changed" a history row
- * shows, computed at write time (expanded/diffing.md, *Summaries*).
- *
- * The tests that matter here are about the *bound*: a summary has to stay
- * readable no matter how large the change was, without ever cutting the change
- * itself out of the picture or leaving a marker element hanging open.
- */
+/** Keep revision summaries bounded, readable, and valid. */
 class RevisionSummarizerTest extends TestCase
 {
     private RevisionSummarizer $summarizer;

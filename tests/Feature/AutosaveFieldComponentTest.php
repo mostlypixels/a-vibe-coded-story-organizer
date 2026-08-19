@@ -178,18 +178,7 @@ class AutosaveFieldComponentTest extends TestCase
         $this->assertStringContainsString('aria-live="off"', $html);
     }
 
-    /**
-     * `WordCounter::count()` for `Scene.contents` should not be re-derived
-     * here: `Scene::booted()`'s saving hook already keeps
-     * `word_count` current, and this component reuses that stored number
-     * rather than re-rendering the Markdown a second time.
-     *
-     * The stored count is planted *wrong* on purpose. Asserting against a
-     * correct one would pass whether the component reads the column or
-     * recounts the contents — both return the same number — which is the same
-     * hole WordCountTest's own rename test documents. Only a wrong stored
-     * value reaching the page distinguishes the two.
-     */
+    /** Use the stored scene count without reprocessing Markdown. */
     public function test_the_live_word_count_for_scene_contents_reuses_the_stored_column(): void
     {
         $user = User::factory()->create();

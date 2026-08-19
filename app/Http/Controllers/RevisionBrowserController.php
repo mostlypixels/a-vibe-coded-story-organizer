@@ -11,8 +11,7 @@ use Illuminate\View\View;
  *
  * The sidebar tree itself is built by the shared <x-revisions-layout> shell (via
  * App\Services\ProjectRevisionsBrowser), which the per-field history and compare
- * views (RevisionController) reuse — so this controller only resolves and
- * authorizes the project, then renders the landing pane. Thin, per CLAUDE.md.
+ * views (RevisionController) reuse. This controller renders the landing pane.
  */
 class RevisionBrowserController extends Controller
 {

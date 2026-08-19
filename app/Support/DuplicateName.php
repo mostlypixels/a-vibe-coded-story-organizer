@@ -7,7 +7,7 @@ use App\Services\Import\ProjectGraphImporter;
 /**
  * Suggests a free name for a duplicated entity, e.g. "Arrival" -> "Arrival (2)".
  * The suggestion is advisory: the caller still validates and saves the name the
- * user submits, collision or not. See documentation/architecture.md -> Duplicate
+ * user submits, collision or not. See documentation/architecture/README.md -> Duplicating
  * entities.
  *
  * > [!NOTE]

@@ -16,23 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/**
- * "Undo this save": every field one save point touched goes back to the value
- * it held *before* that save, in one action.
- *
- * The promise is narrow on purpose: **only** the fields that
- * save touched. It is never a whole-entity rollback to that moment, which would
- * silently discard unrelated later edits to other fields — the third test below
- * is what pins that.
- *
- * The scene these tests build has three save points, oldest first:
- *
- *   A — description "<p>D1</p>", notes "<p>N1</p>"
- *   B — description "<p>D2</p>", notes "<p>N2</p>"   ← the one being undone
- *   C — contents "C1"                                ← newest, so B is not current
- *
- * Undoing B must restore D1/N1 and leave C1 alone.
- */
+/** Undo only the fields touched by the selected save point. */
 class RevertSaveTest extends TestCase
 {
     use RefreshDatabase;

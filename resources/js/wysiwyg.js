@@ -10,44 +10,14 @@ import { Underline } from '@tiptap/extension-underline';
 import { Subscript } from '@tiptap/extension-subscript';
 import { Superscript } from '@tiptap/extension-superscript';
 
-/**
- * Table's stock renderHTML() always emits a `style="width: …"/"min-width: …"`
- * attribute on <table> plus a <colgroup>/<col> pair for column-width bookkeeping —
- * both purely presentational. This app never enables table column-resize (only
- * merge/split, an HTML-mode-only toolbar affordance — see buildExtensions() below),
- * and RichTextFields deliberately allows no presentational attributes anywhere
- * (style/class) on any tag. Rather than widen the server-side allow-list to accept
- * `style`/`colgroup`/`col` for a feature this app doesn't offer, this override drops
- * them from the *serialized* output, keeping only what merge/split actually needs to
- * round-trip: `colspan`/`rowspan` on <td>/<th> (untouched — TableCell/TableHeader's
- * own renderHTML, not overridden here). This only changes getHTML()/save output — the
- * interactive editor still shows Table's own column-width node view (TableView) while
- * editing, since that's a separate DOM path (addNodeView) from renderHTML/toDOM.
- */
+/** Remove unsupported presentation markup from serialized tables. */
 const PlainTable = Table.extend({
     renderHTML({ HTMLAttributes }) {
         return ['table', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), ['tbody', 0]];
     },
 });
 
-/**
- * Underline, Subscript and Superscript have no clean CommonMark equivalent, so this
- * app renders each through raw inline HTML passthrough (`<u>`, `<sub>`, `<sup>`) — an
- * otherwise fully-tokenized Markdown field's one sanctioned HTML exception, now
- * extended past Underline alone (the original "Underline"
- * decision) to the same shape for sub/sup. Reading each tag back needs no override:
- * every mark's inherited `parseHTML()` (`{ tag: 'u'|'sub'|'sup' }`, unmodified)
- * already fires whenever @tiptap/markdown's parser hits raw inline HTML, via
- * CommonMark's own raw-HTML passthrough — the same mechanism that already renders
- * `> [!TYPE]` callouts as plain blockquotes today.
- *
- * Underline needs `markdownTokenizer: null` because `@tiptap/extension-underline`
- * ships its own `++text++` dialect that would otherwise compete with `<u>` as a second,
- * undecided-upon spelling. Subscript/Superscript ship no default Markdown handling at
- * all (no tokenizer, no renderMarkdown) — without the renderMarkdown override below,
- * `@tiptap/markdown` silently drops the mark on save instead of erroring, so the
- * override isn't optional polish here, it's what makes the mark survive a save.
- */
+/** Preserve marks with raw HTML because CommonMark has no equivalent syntax. */
 const MarkdownUnderline = Underline.extend({
     markdownTokenizer: null,
     renderMarkdown(node, helpers) {
@@ -67,48 +37,16 @@ const MarkdownSuperscript = Superscript.extend({
     },
 });
 
-/**
- * The five GitHub-flavoured alert/callout types (`> [!NOTE]` etc.), already used in
- * this repo's own documentation/*.md (per CLAUDE.md). Lower-case is the canonical
- * attribute value; the Markdown marker is spelled upper-case (`[!NOTE]`).
- */
 const CALLOUT_TYPES = ['note', 'tip', 'important', 'warning', 'caution'];
 
-/**
- * Matches a blockquote's first line when it is exactly a callout marker — the marker
- * alone on its line (trailing spaces allowed), nothing else. `[!NOTE] text` on the
- * same line is deliberately NOT a callout (matching GitHub), so it falls through to
- * the plain Blockquote handler. Capture group 1 is the upper-case type.
- */
+/** Require the marker on its own first line. */
 const CALLOUT_MARKER = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\n|$)/;
 
-/**
- * Custom node for GitHub's `> [!TYPE]` alert/callout convention. It is a *sibling* of
- * StarterKit's Blockquote — NOT a modification of it — so a plain blockquote with no
- * `[!TYPE]` marker is entirely unaffected (parses/renders exactly as before).
- *
- * Markdown side (`markdownTokenName: 'blockquote'`): this node's parseMarkdown is tried
- * on every blockquote token before Blockquote's own handler (higher `priority`), and
- * returns null for any blockquote whose first line is not exactly `[!TYPE]` — so only
- * real callouts become Callout nodes; everything else falls through to Blockquote.
- * renderMarkdown re-emits `> [!TYPE]` + `> `-prefixed content, byte-for-byte matching
- * the input convention. That exactness is a correctness requirement, not cosmetics:
- * it is what lets a plain-CommonMark reader (Scene::renderedContents, EPUB export, the
- * share page — none of which know about callouts) keep degrading a callout gracefully
- * into an ordinary blockquote, exactly as it does today with zero code changes.
- *
- * HTML side (the 8 RichTextFields fields): presentational only — a `data-callout-type`
- * attribute on the existing <blockquote> element (allow-listed, no new tag),
- * styled into a coloured box by resources/css/app.css. The parseHTML rule carries an
- * explicit priority so an attributed <blockquote data-callout-type> resolves to this
- * node rather than the plain Blockquote (whose rule matches any <blockquote>).
- */
+/** Preserve GitHub-style callouts while plain readers see a blockquote. */
 const Callout = Node.create({
     name: 'callout',
 
-    // Above Blockquote's default (100) so, when parsing Markdown, this node's
-    // parseMarkdown handler is registered — and therefore tried — before Blockquote's
-    // for the shared `blockquote` token type.
+    // Parse callouts before ordinary blockquotes.
     priority: 200,
 
     group: 'block',
@@ -130,9 +68,6 @@ const Callout = Node.create({
     },
 
     parseHTML() {
-        // Attribute selector + explicit priority so this wins over Blockquote's plain
-        // `blockquote` rule (default priority 50) for an attributed blockquote, while a
-        // bare <blockquote> never matches here and stays an ordinary Blockquote.
         return [{ tag: 'blockquote[data-callout-type]', priority: 60 }];
     },
 
@@ -146,17 +81,14 @@ const Callout = Node.create({
         });
 
         return {
-            // Wrap the current block(s) in a callout of the given `{ type }` (default note).
             setCallout:
                 (attributes = {}) =>
                 ({ commands }) =>
                     commands.wrapIn(this.name, normalize(attributes)),
-            // Change the type of the callout the cursor is in without re-wrapping.
             updateCalloutType:
                 (attributes = {}) =>
                 ({ commands }) =>
                     commands.updateAttributes(this.name, normalize(attributes)),
-            // Lift the current block(s) back out of the callout (plain paragraph/blockquote).
             unsetCallout:
                 () =>
                 ({ commands }) =>
@@ -164,18 +96,13 @@ const Callout = Node.create({
         };
     },
 
-    /**
-     * `markdownTokenName: 'blockquote'` registers this node's parseMarkdown against the
-     * `blockquote` token marked emits, so it can intercept callout-shaped blockquotes.
-     */
     markdownTokenName: 'blockquote',
 
     parseMarkdown(token, helpers) {
         const blockTokens = token.tokens || [];
         const firstBlock = blockTokens[0];
 
-        // Only a blockquote whose first block is a paragraph starting with a lone
-        // `[!TYPE]` marker line is a callout; anything else → null → Blockquote handles it.
+        // Let the ordinary blockquote parser handle all other shapes.
         if (!firstBlock || firstBlock.type !== 'paragraph') {
             return null;
         }
@@ -189,8 +116,7 @@ const Callout = Node.create({
         const calloutType = match[1].toLowerCase();
         const remainder = (firstBlock.text || '').slice(match[0].length);
 
-        // Rebuild the child token list: drop the marker line, keep any content that
-        // shared the first paragraph (lazy/soft-break continuation), then the rest.
+        // Remove the marker and keep content from the same paragraph.
         const restTokens = blockTokens.slice(1).filter((child) => child.type !== 'space');
         const childTokens = remainder.trim() !== ''
             ? [{ type: 'paragraph', text: remainder, tokens: helpers.tokenizeInline(remainder) }, ...restTokens]
@@ -201,7 +127,7 @@ const Callout = Node.create({
         return helpers.createNode(
             'callout',
             { calloutType },
-            // content is `block+`: guarantee at least one block even for an empty callout.
+            // The schema requires at least one block.
             content.length > 0 ? content : [{ type: 'paragraph' }],
         );
     },
@@ -226,55 +152,7 @@ const Callout = Node.create({
     },
 });
 
-/**
- * The single, library-agnostic integration point for the WYSIWYG editor (Tiptap).
- * Everything else in the app talks to the editor only through the `x-wysiwyg` Blade
- * component and this Alpine component, so swapping libraries never touches a view.
- *
- * Progressive enhancement: the Blade component renders a real <textarea> holding the
- * value. This component mounts the editor over it, hydrates from the textarea, and
- * syncs edits back into the textarea (on every change and again on submit) so the
- * ordinary, no-JS form submit carries the value and old() repopulates on failure.
- *
- * Two field formats share this one component:
- *   - `html` (default): the value is sanitized HTML. Output MUST stay within the
- *     allow-list in App\Support\RichTextFields (p, h1–h4, strong, em, u, s, sub, sup,
- *     ul, ol, li, blockquote, code, pre, a, br, hr, plus table/img/task-list markup;
- *     http/https schemes). StarterKit v3 bundles the base nodes/marks; headings are
- *     capped 1–4 and links restricted to http/https to keep the two lists in sync.
- *     The server-side HtmlSanitizer is the real gate — this is belt-and-braces.
- *   - `markdown`: the value is clean CommonMark (Scene contents). Serialized via the
- *     official @tiptap/markdown extension (getMarkdown / contentType: 'markdown').
- *     Strikethrough is standard GFM (`~~text~~`), no custom handler needed. Underline,
- *     Subscript and Superscript have no CommonMark equivalent, so each round-trips via
- *     raw-HTML passthrough (`<u>`, `<sub>`, `<sup>`) — the sanctioned HTML exceptions
- *     in this field (see MarkdownUnderline/MarkdownSubscript/MarkdownSuperscript
- *     above). The server-side ValidMarkdown rule + Str::markdown() render stay the
- *     real gate.
- *   - Table, Image, and TaskItem/TaskList apply unconditionally
- *     to both formats — all three ship real parseMarkdown/renderMarkdown handlers
- *     (@tiptap/extension-table, @tiptap/extension-image, @tiptap/extension-list), so
- *     no hand-written serializer is needed. Image resize and table merge/split
- *     are HTML-mode-only: both are lossless there but lossy in
- *     Markdown, so `Image.configure({ resize: … })` and the merge/split toolbar entries
- *     only turn on when `! isMarkdown`.
- *
- * The slash (`/`) command menu and the toolbar produce the same commands, so neither
- * can introduce a node/mark outside the format's allowed set.
- */
-
-/**
- * Command descriptors for the `/` slash menu. Each one reuses the exact StarterKit
- * command the toolbar already calls, so the slash menu adds no new node/mark surface.
- * Underline and Strikethrough round-trip in both formats, so
- * neither carries an `mdHide` flag any more.
- */
-/**
- * Exported (in addition to `buildExtensions`) so the vitest suite can assert on the
- * per-format item list directly — e.g. confirming no merge/split-cell entry exists in
- * either format's slash menu (ui.md: merging is a post-insertion table operation, not
- * something a slash command inserts fresh) — without re-deriving it from a live editor.
- */
+/** Build commands that both editor formats can serialize without loss. */
 export function buildSlashItems(format, onLink, onImage) {
     const at = (editor, range) => editor.chain().focus().deleteRange(range);
 
@@ -295,36 +173,17 @@ export function buildSlashItems(format, onLink, onImage) {
         { title: 'Blockquote', keywords: ['quote', 'citation'], run: ({ editor, range }) => at(editor, range).toggleBlockquote().run() },
         { title: 'Inline code', keywords: ['code', 'mono'], run: ({ editor, range }) => at(editor, range).toggleCode().run() },
         { title: 'Code block', keywords: ['codeblock', 'pre', 'fenced'], run: ({ editor, range }) => at(editor, range).toggleCodeBlock().run() },
-        // Link reuses the component's setLink() prompt so the http/https guard is shared.
         { title: 'Link', keywords: ['url', 'href', 'a'], run: ({ editor, range }) => { at(editor, range).run(); onLink(); } },
         { title: 'Horizontal rule', keywords: ['hr', 'divider', 'rule'], run: ({ editor, range }) => at(editor, range).setHorizontalRule().run() },
-        // Table/Image/Task list apply unconditionally to both formats — no mdHide
-        // here. Resize and merge/split are HTML-mode-only, but
-        // that's a toolbar-only concern (see wysiwyg.blade.php): merging is a
-        // post-insertion operation on an existing table, not something a slash command
-        // inserts fresh, so there is no merge/split slash entry in either format.
         { title: 'Table', keywords: ['table', 'grid'], run: ({ editor, range }) => at(editor, range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
         { title: 'Image', keywords: ['image', 'img', 'picture'], run: ({ editor, range }) => { at(editor, range).run(); onImage(); } },
         { title: 'Task list', keywords: ['todo', 'checklist', 'checkbox'], run: ({ editor, range }) => at(editor, range).toggleTaskList().run() },
-        // Callout (`> [!TYPE]`) applies to both formats — not format-gated.
-        // Inserts a `note` callout; the type is then set from the toolbar's Callout
-        // dropdown (setCalloutType), which updates the callout the cursor is in.
         { title: 'Callout', keywords: ['note', 'tip', 'warning', 'alert', 'callout'], run: ({ editor, range }) => at(editor, range).setCallout({ type: 'note' }).run() },
     ];
 
-    // No item is format-gated any more: every command here round-trips in both
-    // formats (Underline and Strike). Table, Image and Task list need no gate —
-    // only merge/split (an existing
-    // table's post-insertion operation, not something a slash command inserts
-    // fresh) has no slash entry in either format.
     return items;
 }
 
-/**
- * The `/` slash-menu popup renderer. Uses the suggestion plugin's managed positioning
- * (props.mount → floating-ui, already bundled by @tiptap/suggestion) so there is no
- * new positioning dependency and no manual caret-coordinate math.
- */
 function slashRenderer() {
     let el = null;
     let unmount = null;
@@ -419,7 +278,6 @@ function slashRenderer() {
     };
 }
 
-/** Build the slash-command extension for a given field format. */
 function slashExtension(format, onLink, onImage) {
     const menuItems = buildSlashItems(format, onLink, onImage);
 
@@ -428,8 +286,6 @@ function slashExtension(format, onLink, onImage) {
         addProseMirrorPlugins() {
             return [
                 Suggestion({
-                    // `this` is the Tiptap extension instance here, not the Alpine
-                    // component — so this is the extension's editor, not the closure var.
                     editor: this.editor,
                     char: '/',
                     command: ({ editor, range, props }) => props.run({ editor, range }),
@@ -450,12 +306,6 @@ function slashExtension(format, onLink, onImage) {
     });
 }
 
-/**
- * Build the shared `extensions` array for a given field format. Exported (in
- * addition to being used by `registerWysiwyg`'s `init()`) so the vitest round-trip
- * suite (`wysiwyg.test.js`) exercises the exact same extension configuration the
- * live editor uses, rather than a hand-maintained copy that could drift.
- */
 export function buildExtensions(format, { placeholder = '', onLink = () => {}, onImage = () => {} } = {}) {
     const isMarkdown = format === 'markdown';
 
@@ -468,21 +318,14 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
                 protocols: ['http', 'https'],
                 HTMLAttributes: { rel: null, target: null },
             },
-            // StarterKit's stock Underline is replaced by MarkdownUnderline below
-            // (same mark, `<u>` passthrough on the Markdown side) in both formats,
-            // so the two extensions never both register the 'underline' mark name.
-            // Strike needs no such swap: `~~text~~` is standard GFM and already
-            // round-trips via StarterKit's stock Strike, unconditionally.
+            // MarkdownUnderline replaces the stock extension in both formats.
             underline: false,
         }),
         Placeholder.configure({ placeholder }),
         MarkdownUnderline,
         MarkdownSubscript,
         MarkdownSuperscript,
-        // Table/Image/TaskItem/TaskList apply unconditionally to both formats —
-        // round-trip support is symmetric. Resize (image) and merge/split
-        // (table) are HTML-mode-only: both are
-        // lossy for Markdown-mode fields, so they stay off there.
+        // Image resize is lossy in Markdown.
         PlainTable,
         TableRow,
         TableHeader,
@@ -490,9 +333,6 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
         Image.configure({ inline: false, resize: isMarkdown ? false : { enabled: true } }),
         TaskItem,
         TaskList,
-        // Callout (`> [!TYPE]`) applies to both formats: in
-        // Markdown it serializes back to the exact `> [!TYPE]` convention; in HTML it
-        // presents over <blockquote> via the data-callout-type attribute.
         Callout,
         slashExtension(format, onLink, onImage),
     ];
@@ -506,17 +346,12 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
 
 export function registerWysiwyg(Alpine) {
     Alpine.data('wysiwyg', (config = {}) => {
-        // The Tiptap Editor is kept in a plain closure variable, NOT on the reactive
-        // `this`: Alpine wraps reactive properties in a Proxy, and ProseMirror's
-        // view/state do not survive being proxied — toolbar commands would silently
-        // no-op (the slash menu worked only because it uses the raw editor the
-        // suggestion plugin hands it). Only `ready`/`tick` need reactivity.
+        // Alpine proxies break ProseMirror state. Keep the editor outside reactive data.
         let editor = null;
 
         return {
             ready: false,
-            // A monotonic counter bumped on every editor transaction. Toolbar bindings
-            // read it (via isOn) so Alpine recomputes active states as the selection moves.
+            // Make toolbar active states reactive.
             tick: 0,
 
             init() {
@@ -525,8 +360,7 @@ export function registerWysiwyg(Alpine) {
                 const isMarkdown = config.format === 'markdown';
 
                 const syncTextarea = (instance) => {
-                    // Keep "empty" empty: getHTML() returns "<p></p>" for a blank doc,
-                    // which would defeat the nullable/empty handling on the server.
+                    // Preserve null and empty values.
                     if (instance.isEmpty) {
                         textarea.value = '';
                         return;
@@ -534,16 +368,6 @@ export function registerWysiwyg(Alpine) {
                     textarea.value = isMarkdown ? instance.getMarkdown() : instance.getHTML();
                 };
 
-                // The live word counter (resources/js/word-count.js) needs this
-                // editor's text but cannot reach `editor` directly — it is a
-                // closure variable for the same ProseMirror-proxy reason described
-                // above, and lives in its own, separately-mounted Alpine scope.
-                // A bubbling CustomEvent is the arm's
-                // -length channel between the two, the same pattern word-count.js
-                // uses to talk back via `word-count:reconcile`.
-                // `getText()` is already *rendered* text in both formats (see this
-                // file's own docblock on Markdown mode), so the counter never has
-                // to know it's reading a ProseMirror document.
                 const notifyWordCount = (instance) => {
                     this.$el.dispatchEvent(new CustomEvent('wysiwyg:text-changed', {
                         detail: { text: instance.getText() },
@@ -578,7 +402,7 @@ export function registerWysiwyg(Alpine) {
                     },
                 });
 
-                // Belt-and-braces: sync once more on submit in case a change is mid-flight.
+                // Include the latest editor transaction in the submitted value.
                 const form = this.$el.closest('form');
                 if (form) {
                     form.addEventListener('submit', () => syncTextarea(editor));
@@ -591,13 +415,11 @@ export function registerWysiwyg(Alpine) {
                 editor?.destroy();
             },
 
-            /** Run a Tiptap chain command (e.g. 'toggleBold', 'toggleHeading') focused. */
             cmd(name, arg) {
                 if (!editor) return;
                 editor.chain().focus()[name](arg).run();
             },
 
-            /** Toggle a link, prompting for an http/https URL (allow-list schemes only). */
             setLink() {
                 if (!editor) return;
 
@@ -619,10 +441,6 @@ export function registerWysiwyg(Alpine) {
                 editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
             },
 
-            /**
-             * Insert an image, prompting for an http/https URL (allow-list schemes
-             * only, mirroring setLink()'s guard) and optional alt text.
-             */
             setImage() {
                 if (!editor) return;
 
@@ -636,12 +454,6 @@ export function registerWysiwyg(Alpine) {
                 editor.chain().focus().setImage({ src: url, alt }).run();
             },
 
-            /**
-             * Callout dropdown item: set the given type. Inserts a new callout when
-             * the cursor is not already in one, otherwise changes the existing
-             * callout's type in place (without re-wrapping, so nested content and
-             * the cursor position survive).
-             */
             setCalloutType(type) {
                 if (!editor) return;
 
@@ -653,7 +465,6 @@ export function registerWysiwyg(Alpine) {
                 editor.chain().focus().setCallout({ type }).run();
             },
 
-            /** Whether a mark/node is active at the cursor (reactive via `tick`). */
             isOn(name, arg) {
                 return this.tick >= 0 && !!editor && editor.isActive(name, arg);
             },

@@ -17,8 +17,6 @@
             @csrf
             @method('patch')
 
-            {{-- Hidden mode toggle. A plain semantic checkbox: there is no
-                 x-checkbox component in this project. --}}
             <div class="flex items-start gap-3">
                 <input
                     type="checkbox"
@@ -36,9 +34,6 @@
                 </div>
             </div>
 
-            {{-- Whitelist textarea (one term per line). The value must survive
-                 both a fresh load (array from the DB) and a validation redirect
-                 (array from old()). --}}
             @php
                 $whitelistOld = old('user_agent_whitelist');
                 $whitelistText = is_array($whitelistOld)

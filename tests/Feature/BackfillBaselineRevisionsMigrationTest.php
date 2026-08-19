@@ -17,19 +17,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * The data migration seeds a `baseline` revision for every existing row of
- * every App\Support\AutosavableFields-registered model, via
- * the identical App\Services\RevisionRecorder::ensureBaseline() code path the
- * live autosave write uses. The migration must never seed a baseline any other
- * way.
- *
- * RefreshDatabase already runs this migration once per test, before any
- * factory rows exist — so by the time a test seeds rows, the automatic run
- * had nothing to backfill. Every test here re-runs the migration's up()
- * directly (`include` + `->up()`) against rows it has just created, exactly
- * as the migration would be re-run against an existing install's data.
- */
+/** Run the baseline migration against rows that predate revision history. */
 class BackfillBaselineRevisionsMigrationTest extends TestCase
 {
     use RefreshDatabase;

@@ -8,14 +8,6 @@ import {
     visibleOptions,
 } from './revision-picker';
 
-/**
- * Tests for the pure half of `resources/js/revision-picker.js` — the decisions
- * the save-point combobox makes, below the DOM. The `Alpine.data()` wrapper
- * (focus movement, `window.location.assign`) is left to the manual checklist,
- * matching this codebase's existing pure-logic-vs-checklist split (see
- * navigation-guard.test.js and badge.js).
- */
-
 function option(overrides = {}) {
     return {
         id: '01ABC',
@@ -28,10 +20,6 @@ function option(overrides = {}) {
     };
 }
 
-/**
- * A list where the middle option is disabled — the shape the *newer* picker has
- * once an older save is chosen.
- */
 function listWithGap() {
     return [
         option({ id: 'a', label: 'newest', savedAt: '2026-07-25' }),

@@ -13,15 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/**
- * The entity compare page: two save points, every field that differs.
- *
- * The property most of these tests exist to pin is that comparison is about two
- * *moments*, not two edits. A save that touched only the dedication still
- * implies a state for the description, so a field neither chosen save wrote can
- * legitimately appear as changed — and a field both moments agree on never
- * appears at all.
- */
+/** Compare complete entity states at two save points. */
 class RevisionCompareTest extends TestCase
 {
     use RefreshDatabase;
@@ -36,9 +28,6 @@ class RevisionCompareTest extends TestCase
         return Scene::factory()->for(Chapter::factory()->for($this->actFor($user))->create())->create();
     }
 
-    /**
-     * One revision in a save point of its own, unless `save_id` is passed.
-     */
     private function revisionFor(Act $act, array $overrides = []): Revision
     {
         return Revision::factory()->create([

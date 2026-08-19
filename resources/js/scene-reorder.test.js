@@ -1,25 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { moveScene, updateSceneMoveButtons } from './scene-reorder';
 
-/**
- * Tests for `resources/js/scene-reorder.js`. Builds the same shape
- * story/index.blade.php renders for a chapter's
- * scenes — sibling `<section>`s in a plain wrapper, each carrying its own
- * `data-scene-number` span and up/down move buttons — directly in jsdom,
- * bypassing Alpine and axios entirely (matching this codebase's existing
- * split of DOM-free/adapter logic from the framework glue, e.g.
- * navigation-guard.test.js).
- *
- * > [!WARNING]
- * > The wrapper is a `<div>` nested in a `<details>`, because that is what
- * > `x-collapsible-card` renders around the scenes. A fixture that puts the
- * > sections at an easier depth, or in a tag the template does not use, hides
- * > the bug where the code looks the container up by name and finds nothing.
- */
-
-/** One chapter's worth of scenes. `numbers` gives each section's starting
- *  `data-scene-number` text, in DOM order. Returns the direct parent of the
- *  sections, which is what the module operates on. */
+/** Match the nested structure that the collapsible card renders. */
 function buildChapter(numbers) {
     const card = document.createElement('details');
     const container = document.createElement('div');

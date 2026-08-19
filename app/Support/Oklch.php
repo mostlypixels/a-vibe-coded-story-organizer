@@ -6,29 +6,10 @@ use InvalidArgumentException;
 use Stringable;
 
 /**
- * A color in the OKLCH space: perceptual lightness (`l`, 0–1), chroma (`c`, 0 ≈ gray,
- * ~0.37 is as saturated as sRGB ever gets) and hue (`h`, degrees 0–360).
+ * Represents a color with perceptual lightness, chroma, and hue.
  *
- * Why not hex: OKLCH is perceptually uniform, so "same color, one step lighter" is a
- * change to a single number, and two colors with the same `l` look equally light. That
- * is what makes generated theme ramps even instead of eyeballed.
- *
- * ## Gamut clipping strategy
- *
- * Many OKLCH triples have no sRGB equivalent (`oklch(0.6 0.4 220)` is a color your
- * monitor cannot make). Before converting, this class **reduces chroma** — by binary
- * search — until the color fits sRGB, leaving lightness and hue untouched. The naive
- * alternative, clamping each RGB channel into 0–255 afterwards, shifts the hue: it eats
- * the channels unevenly, so a clipped blue drifts towards cyan.
- *
- * ## Luminance is not lightness
- *
- * `relativeLuminance()` is the WCAG quantity, which is defined on sRGB — so it converts
- * all the way to linear sRGB rather than reusing `l`. The two agree at black and white
- * and diverge badly in the midtones (mid gray is `l` ≈ 0.60 but luminance ≈ 0.22), which
- * is exactly where contrast ratios are decided.
- *
- * Conversion matrices are Björn Ottosson's reference OKLab implementation.
+ * Conversion to sRGB reduces chroma by binary search when needed. This preserves
+ * lightness and hue. WCAG luminance uses linear sRGB, not OKLCH lightness.
  */
 final readonly class Oklch implements Stringable
 {
@@ -38,38 +19,22 @@ final readonly class Oklch implements Stringable
     /** An unsigned decimal — no exponent, no sign, no leading dot. */
     private const NUMBER = '\d+(?:\.\d+)?';
 
-    /**
-     * `oklch(0.62 0.11 220)` or `oklch(96.7% 0.003 264.542)`. No alpha channel, and
-     * only lightness may carry a `%`.
-     */
+    /** Matches OKLCH without alpha. Only lightness can use a percentage. */
     private const OKLCH = 'oklch\(\s*('.self::NUMBER.')(%?)\s+('.self::NUMBER.')\s+('.self::NUMBER.')\s*\)';
 
     /**
-     * The one definition of "a color value this project accepts", anchored with `\z`
-     * rather than `$` so a trailing newline — and with it the start of an injected
-     * line — is rejected.
-     *
-     * Public because ThemeStyleBlock whitelists against it before printing values
-     * unescaped: the notation this class can *parse* and the notation the style block
-     * may *emit* have to be the same set, or a value would sail past one and be
-     * unreadable to the other.
+     * Matches every color value that theme CSS can emit.
+     * The `\z` anchor rejects a trailing injected line.
      */
     public const CSS_VALUE_PATTERN = '/\A(?:'.self::HEX.'|'.self::OKLCH.')\z/i';
 
     /** CSS_VALUE_PATTERN's oklch half, on its own, so fromCss() can read the components. */
     private const OKLCH_PATTERN = '/\A'.self::OKLCH.'\z/i';
 
-    /**
-     * Tolerance when asking "is this linear sRGB channel inside 0–1?". Absorbs the
-     * floating-point dust of the matrix multiplications so pure white and pure black
-     * are not judged out of gamut.
-     */
+    /** Floating-point tolerance for an sRGB channel. */
     private const GAMUT_EPSILON = 1e-6;
 
-    /**
-     * Binary-search steps used to find the largest in-gamut chroma. 24 halvings of a
-     * 0–0.4 range land far below the precision an 8-bit channel can show.
-     */
+    /** Binary-search depth below 8-bit channel precision. */
     private const GAMUT_SEARCH_STEPS = 24;
 
     public function __construct(
@@ -104,23 +69,9 @@ final readonly class Oklch implements Stringable
     }
 
     /**
-     * Parse any color value this project stores — `#rrggbb` **or** `oklch(l c h)`.
+     * Parses the exact hex or OKLCH syntax that theme CSS can emit.
      *
-     * The presets are written in both notations (Tailwind's own palette is oklch in
-     * v4, the hand-authored ramps are hex), so anything reading `config/themes.php`
-     * — the contrast matrix, the ramp command's verdicts — must go through here
-     * rather than assuming hex.
-     *
-     * Lightness is accepted as a fraction (`0.62`) or a percentage (`62%`); chroma
-     * and hue are plain numbers.
-     *
-     * Strict, and deliberately stricter than fromHex(): it accepts exactly
-     * CSS_VALUE_PATTERN — `#` required, no surrounding whitespace — so "a value the
-     * style block will print" and "a value this class can measure" are the same set.
-     * Loosening one of them without the other is how a token ends up on the page with
-     * no contrast figure behind it.
-     *
-     * @throws InvalidArgumentException when the string is neither notation
+     * @throws InvalidArgumentException When the value uses neither notation.
      */
     public static function fromCss(string $value): self
     {

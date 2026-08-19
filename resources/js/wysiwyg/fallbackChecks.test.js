@@ -8,18 +8,10 @@ import {
     hasUnmatchedHtmlWrapperTag,
 } from './fallbackChecks.js';
 
-/**
- * Tests for the three structural fallback-warning checks. See
- * `.specs/shipped/2026-07/expand-tip-tap/spec.md`'s "Fallback policy" section
- * for the full enumeration.
- */
-
-/** An html-format editor (the 8 RichTextFields fields), matching wysiwyg.js's default branch. */
 function htmlEditor(content) {
     return new Editor({ extensions: buildExtensions('html'), content });
 }
 
-/** A markdown-format editor (Scene.contents), matching wysiwyg.js's isMarkdown branch. */
 function markdownEditor(content) {
     return new Editor({ extensions: buildExtensions('markdown'), content, contentType: 'markdown' });
 }

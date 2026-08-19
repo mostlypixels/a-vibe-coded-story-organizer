@@ -1,35 +1,3 @@
-{{--
-    The revisions-browser sidebar: every entity in this project that has
-    revisions, grouped by type, with its revised fields (and their counts)
-    beneath it. Built by App\Services\ProjectRevisionsBrowser — only entities
-    and fields that actually have history appear here.
-
-    Both levels are links, and both go to the same page: the entity name opens
-    its whole history, a field leaf opens it filtered to that field (`?field=`).
-    Every URL comes from the tree, never assembled in this template.
-
-    Acts, chapters and scenes are further grouped under a book heading
-    ($group->books, one entry per book, entities in book position order).
-    Every other type comes back as a single bucket with `name: null`, so no
-    heading renders and the entity list looks exactly as it did before — one
-    shape, walked the same way regardless of whether the type is book-scoped.
-
-    Expects: $tree, $project, and the active $activeEntity / $activeId /
-    $activeField (any may be null on the landing page).
-
-    Sizing: a heavily-revised project can list hundreds of
-    entities, so the sidebar is bounded three ways —
-      1. each group heading carries a count badge of the revised entities it
-         holds, so its size reads at a glance while collapsed;
-      2. groups start collapsed by default; only the group holding the entity
-         currently being viewed ($activeEntity) starts open;
-      3. a client-side (Alpine) filter box narrows the list by entity name as
-         you type — matching groups auto-expand, non-matching ones hide.
-    The single `filter` state lives on the root <nav>; each group keeps its own
-    `open` state and its lower-cased entity names for the match test. All match
-    logic is plain Alpine expressions (never a method), so a child element can
-    read the ancestor `filter` without the `this`-binding pitfall.
---}}
 <nav aria-label="{{ __('Revision history') }}" class="text-sm" x-data="{ filter: '' }">
     <a
         href="{{ route('projects.show', $project) }}"
@@ -55,13 +23,8 @@
 
     @forelse ($tree as $group)
         @php
-            // Lower-cased entity names for this group (every book combined),
-            // handed to the client-side filter so typing narrows the list
-            // without a round-trip.
             $groupEntities = $group->books->flatMap(fn ($bookGroup) => $bookGroup->entities);
             $entityNames = $groupEntities->map(fn ($entity) => \Illuminate\Support\Str::lower($entity->name))->values()->all();
-            // Only the group holding the entity currently being viewed starts
-            // open; every other group starts collapsed.
             $startOpen = $activeEntity === $group->type;
         @endphp
         <div
@@ -82,19 +45,11 @@
                 <x-tabler-chevron-down class="h-4 w-4 transition-transform" x-bind:class="{ '-rotate-90': ! (filter.trim() !== '' || open) }" />
             </button>
 
-            {{-- Force-open while filtering so matches are always visible. --}}
             <ul x-show="filter.trim() !== '' || open" class="mt-1 space-y-3">
                 @foreach ($group->books as $bookGroup)
                     @php
                         $bookEntityNames = $bookGroup->entities->map(fn ($entity) => \Illuminate\Support\Str::lower($entity->name))->values()->all();
                     @endphp
-                    {{-- The book heading is a list item of its own, holding the
-                         nested <ul> of entities — the same shape an entity's own
-                         field leaves already nest under it. A book with no name
-                         of its own (books.name only) is still labelled: it comes
-                         from ProjectRevisionsBrowser already resolved through
-                         Book::displayName(). Ungrouped types (name === null)
-                         render no heading, so the list looks unchanged. --}}
                     <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from($bookEntityNames) }}.some(name => name.includes(filter.trim().toLowerCase()))">
                         @if ($bookGroup->name !== null)
                             <p class="px-2 text-xs font-medium text-content-muted truncate">{{ $bookGroup->name }}</p>
@@ -104,10 +59,6 @@
                             @foreach ($bookGroup->entities as $treeEntity)
                                 <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from(\Illuminate\Support\Str::lower($treeEntity->name)) }}.includes(filter.trim().toLowerCase())">
                                     @php
-                                        // The entity name links to its whole history; a field
-                                        // leaf below is the same page with `?field=` set. So
-                                        // the name is the active row exactly when this entity
-                                        // is being viewed with no field filter.
                                         $entityIsActive = $activeEntity === $group->type
                                             && $activeId === $treeEntity->id
                                             && $activeField === null;

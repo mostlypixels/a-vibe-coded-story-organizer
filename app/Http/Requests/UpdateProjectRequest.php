@@ -6,11 +6,7 @@ use App\Support\AutosavableFields;
 use App\Support\CodexMediaRules;
 use Illuminate\Foundation\Http\FormRequest;
 
-/**
- * This form's `description` is also autosaved, so its rule comes from
- * AutosavableFields::validationRule() rather than being spelled out here — see
- * that class's docblock for why the two paths must never disagree.
- */
+/** Uses the same description rule as the autosave endpoint. */
 class UpdateProjectRequest extends FormRequest
 {
     public function authorize(): bool
@@ -18,12 +14,7 @@ class UpdateProjectRequest extends FormRequest
         return $this->user()->can('update', $this->route('project'));
     }
 
-    /**
-     * The goal fields are plain number inputs left empty for "no goal" — an
-     * empty string would otherwise fail the `integer` rule instead of clearing
-     * the column, the same nudge UpdatePublicationSettingRequest applies to
-     * its checkboxes.
-     */
+    /** Converts empty goal fields to null before integer validation. */
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -41,15 +32,9 @@ class UpdateProjectRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'description' => AutosavableFields::validationRule('project', 'description'),
 
-            // The dashboard card image. It reuses the Codex cover file rules
-            // (same mime/size list) rather than duplicating them here. The EPUB
-            // metadata and the EPUB cover belong to a Book — see
-            // UpdateBookRequest.
             'cover_image' => CodexMediaRules::coverRules(),
 
-            // Open-ended writing targets. No cross-validation against each
-            // other — a daily goal that does not multiply out to the total
-            // goal is a reasonable intent, not a mistake to reject.
+            // The daily and total goals are independent targets.
             'daily_word_goal' => ['nullable', 'integer', 'min:0'],
             'total_word_goal' => ['nullable', 'integer', 'min:0'],
         ];

@@ -2,11 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerAutosaveField } from './autosave/field';
 import { countWords, DEBOUNCE_MS, formatCount, registerWordCount } from './word-count';
 
-/**
- * Minimal Alpine stand-in, matching resources/js/autosave/field.test.js's own
- * precedent for testing the DOM-free half of an Alpine adapter without pulling
- * in the real Alpine runtime.
- */
 function createAlpineStub() {
     const factories = {};
 
@@ -20,11 +15,6 @@ function createAlpineStub() {
     };
 }
 
-/**
- * Mounts a `wordCount` instance on `<div data-word-count><textarea /></div>`,
- * mirroring autosave-field.blade.php's real nesting (the word-count div wraps
- * the field's own textarea/editor).
- */
 function mountWordCount(Alpine, config) {
     const root = document.createElement('div');
     const textarea = document.createElement('textarea');
@@ -108,16 +98,6 @@ describe('registerWordCount', () => {
         expect(component.count).toBe(3);
     });
 
-    /**
-     * The debounce itself, not just the eventual number: the final number is
-     * identical with or without the debounce, so it proves nothing on its own.
-     * Proven here by spying on the named `recount()` method (see its
-     * docblock) and asserting it fires exactly once, only after the last of
-     * five rapid keystrokes. Breaking the debounce (e.g. calling `recount()`
-     * synchronously from `scheduleRecount()` instead of via `setTimeout`)
-     * makes `recountSpy` fire 5 times, immediately — this test would fail at
-     * the very first assertion.
-     */
     it('debounces N rapid inputs into a single recount', () => {
         vi.useFakeTimers();
         const { component, textarea } = mountWordCount(Alpine, { initialCount: 0 });
@@ -151,12 +131,6 @@ describe('registerWordCount', () => {
         expect(component.count).toBe(4);
     });
 
-    /**
-     * Reconciliation — the test that makes "indicative" safe. The server number
-     * must win even when it disagrees with what the typed text would estimate;
-     * if it only matched, this test would prove nothing. "one two three"
-     * estimates to 3; the reconciled count is a deliberately different 999.
-     */
     it('reconciliation replaces the displayed number, including when it disagrees with the typed estimate', () => {
         vi.useFakeTimers();
         const { component, root, textarea } = mountWordCount(Alpine, { initialCount: 0 });
@@ -196,21 +170,10 @@ describe('registerWordCount', () => {
     });
 });
 
-/**
- * End-to-end with resources/js/autosave/field.js: proves the actual wiring
- * that ships (field.js's `notifyWordCount()` finding and dispatching on this
- * component's root), not just that word-count.js reacts to a hand-fired
- * event of the right shape. Mirrors autosave-field.blade.php's real DOM
- * nesting: the autosaveField root wraps the word-count root (`data-word-count`),
- * which wraps the textarea.
- */
 describe('reconciliation end-to-end through a real autosave save()', () => {
     let Alpine;
 
     beforeEach(() => {
-        // registerAutosaveField() also needs Alpine.store() (the cross-field
-        // autosave store) — the plain data()/factory() stub above is enough
-        // for word-count.js alone, but not for field.js too.
         const stores = {};
         Alpine = {
             ...createAlpineStub(),

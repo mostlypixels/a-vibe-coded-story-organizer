@@ -8,15 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
-/**
- * The `<x-word-count-chart>` component, rendered standalone via
- * `Blade::render()` following {@see DiffComponentTest}'s precedent.
- *
- * The chart itself is drawn by `resources/js/word-count-chart.js` and tested in
- * `resources/js/word-count-chart.test.js`. What this asserts is the contract
- * between the two: the canvas the module mounts on, and the series the module
- * reads out of `x-data`.
- */
+/** Guard the server markup consumed by the word-count chart module. */
 class WordCountChartComponentTest extends TestCase
 {
     private function series(int ...$written): WordCountSeries

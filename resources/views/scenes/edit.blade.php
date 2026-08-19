@@ -151,11 +151,6 @@
                                     x-ref="shareUrl"
                                     @focus="$el.select()"
                                 />
-                                {{-- `w-9` rather than `aspect-square`: height comes for free from the row's
-                                     default flex stretch matching the input, but `aspect-square` does not
-                                     reliably derive width from a stretched (not explicitly set) height on a
-                                     row-direction flex item — it left this button ~18px wide against a 38px
-                                     tall input. --}}
                                 <button
                                     type="button"
                                     class="inline-flex w-9 shrink-0 items-center justify-center rounded-md border border-link bg-transparent text-link hover:bg-info-surface"

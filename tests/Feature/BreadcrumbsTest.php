@@ -12,15 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/**
- * The rendered breadcrumb band, end to end: the view composer builds a trail,
- * the layout swaps its old header band for the two-column breadcrumb band, and
- * off-project routes fall back to their own header slot.
- *
- * The exact trail ordering per route is pinned in {@see \Tests\Unit\BreadcrumbsTest};
- * this asserts the *integration* — that the band renders (or doesn't), keeps the
- * W3C a11y contract, reads the live model, and never leaks a label past a 403.
- */
+/** Test rendered breadcrumb integration and authorization. */
 class BreadcrumbsTest extends TestCase
 {
     use RefreshDatabase;
@@ -76,9 +68,7 @@ class BreadcrumbsTest extends TestCase
             __('Edit :thing :id', ['thing' => Str::lower(CodexEntryType::Organization->label()), 'id' => $entry->id]),
             $nav,
         );
-        // The entry name must not appear in the leaf — id only, for now.
         $this->assertStringNotContainsString('The Silver Table', $nav);
-        // Sub-index becomes a link now that it is an ancestor.
         $this->assertStringContainsString(
             'href="'.e(route('projects.codex.index', [$project, 'organizations'])).'"',
             $nav,

@@ -18,10 +18,8 @@ $maxWidth = [
     x-data="{
         show: @js($show),
         focusables() {
-            // All focusable element types...
             let selector = 'a, button, input:not([type=\'hidden\']), textarea, select, details, [tabindex]:not([tabindex=\'-1\'])'
             return [...$el.querySelectorAll(selector)]
-                // All non-disabled elements...
                 .filter(el => ! el.hasAttribute('disabled'))
         },
         firstFocusable() { return this.focusables()[0] },
@@ -60,20 +58,10 @@ $maxWidth = [
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
     >
-        {{-- The scrim. Its own token, not `content-muted` — that token is body
-             text, which a dark preset must make *light*, so painting the backdrop
-             with it would wash the page out instead of dimming it. --}}
         <div class="absolute inset-0 bg-scrim opacity-75"></div>
     </div>
 
-    {{--
-        `relative` is load-bearing, not cosmetic. The scrim above is `fixed`, so it
-        paints in the positioned layer; a static panel paints below it whatever the
-        DOM order, and the dialog renders *under* the grey. The `transform` class
-        used to make the panel its own stacking context, but Tailwind 4 resolves it
-        to `transform: none` unless a translate/scale/rotate utility is also set —
-        so the panel must position itself. Do not remove it.
-    --}}
+    {{-- The positioned panel must paint above the fixed scrim. --}}
     <div
         x-show="show"
         class="relative mb-6 bg-surface-overlay rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"

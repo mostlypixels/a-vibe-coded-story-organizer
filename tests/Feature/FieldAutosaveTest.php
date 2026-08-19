@@ -50,16 +50,7 @@ class FieldAutosaveTest extends TestCase
     // Happy path
     // ---------------------------------------------------------------------
 
-    /**
-     * The server is the sole hash authority: what it reports must be what
-     * it stored, *after* the sanitizer rewrote it. If it ever reported the value
-     * the client sent, the next autosave would arrive with a base hash that can
-     * never match the stored value and 409 forever.
-     *
-     * This is also what makes reading the value back from the model — rather than
-     * with a `fresh()` re-SELECT of every column — correct: `SanitizesRichHtml` is
-     * a set-mutator, so it has already rewritten the in-memory attribute.
-     */
+    /** Return the hash of the sanitized stored value. */
     public function test_the_response_reports_the_sanitized_value_so_the_next_autosave_does_not_conflict(): void
     {
         $user = User::factory()->create();
@@ -432,20 +423,7 @@ class FieldAutosaveTest extends TestCase
         $this->assertSame(6, $response->json('word_count'));
     }
 
-    /**
-     * The reconciliation contract this feature exists for. The JS counter is
-     * indicative and keeps the words inside a fenced code block. The response is
-     * what tells it "6, not 11".
-     *
-     * 11 is what the live counter reports for this fixture. `contents` is a
-     * Markdown field, so it renders as `<x-wysiwyg>` and the counter reads
-     * Tiptap's `getText()` — the `` ``` `` markers are gone, the five code words
-     * are not.
-     *
-     * The expected 6 is hand-counted from the prose alone. A controller that
-     * stopped reading the fence-stripped, rendered count would fail this
-     * assertion, not merely satisfy a looser one.
-     */
+    /** Return the server count when the editor includes fenced code words. */
     public function test_a_fenced_code_block_is_excluded_from_the_response_word_count(): void
     {
         $user = User::factory()->create();

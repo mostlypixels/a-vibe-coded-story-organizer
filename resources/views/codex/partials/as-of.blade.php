@@ -1,16 +1,5 @@
-{{--
-    Read-only "as of" panel: every codex entry's attribute values resolved at one moment.
-    Shared by scenes/edit and events/edit. All resolution is pre-computed by
-    CodexAsOfResolver in the controller — this template only renders it.
-
-    $title:  card heading (e.g. "Codex as of this scene" / "Values as of this event").
-    $moment: the Event the values are resolved at, or null (an unassigned scene).
-    $groups: collection of ['type' => CodexEntryType, 'entries' => [['entry' => CodexEntry,
-             'attributes' => [['name' => string, 'value' => ?string]]]]].
---}}
 <x-collapsible-card :title="$title">
     @if ($moment === null)
-        {{-- Mirrors the red-border unassigned-scene affordance: no event, no values. --}}
         <p class="text-sm text-content-muted">&mdash; {{ __('Assign an event to this scene to see codex values.') }}</p>
     @elseif ($groups->isEmpty())
         <p class="text-sm text-content-muted">{{ __('No codex entries yet.') }}</p>

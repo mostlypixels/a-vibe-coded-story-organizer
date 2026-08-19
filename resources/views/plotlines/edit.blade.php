@@ -28,8 +28,6 @@
         </x-card>
 
         <x-slot:sidebar>
-            {{-- The main plotline cannot be deleted (PlotlineController::destroy aborts 403),
-                 so it gets no Delete button — the same rule the index list follows. --}}
             <x-edit-actions
                 form="plotline-edit-form"
                 :history-model="$plotline"

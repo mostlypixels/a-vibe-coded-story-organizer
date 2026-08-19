@@ -1,10 +1,6 @@
 @php
     use Illuminate\Support\Str;
 
-    // "Compare with previous" and every per-field "and N more changes" link
-    // resolve to the same pair, so the URL is built once here. The previous
-    // save point comes from the boundary group RevisionHistory fetches beyond
-    // the page, which is why the last row of a page still has a working link.
     $compareWithPrevious = $point->hasPrevious()
         ? route('revisions.compare', array_filter([
             'entity' => $entity,
@@ -16,13 +12,6 @@
         : null;
 @endphp
 
-{{--
-    One save point: everything one Save wrote, as the single event the writer
-    remembers making.
-
-    Two levels — the save itself, then the fields it touched — which is why the
-    history list is a <ul> of these rather than a table. See App\Support\SavePoint.
---}}
 <article class="bg-surface-raised shadow-xs rounded-lg overflow-hidden" aria-labelledby="save-{{ $point->saveId }}">
     <div class="border-b border-border px-6 py-3 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -46,12 +35,6 @@
                 </a>
             @endif
 
-            {{-- Offered on every save point *including the current one* —
-                 undoing the newest save is the most useful case, since undo
-                 restores what came before it. The exception is a baseline: it is
-                 the seeded pre-history value and has nothing before it to go
-                 back to. The endpoint refuses that too — a hidden button is not
-                 a check. --}}
             @if (! $point->isBaseline())
                 <x-undo-save-button :point="$point" :base-hashes="$baseHashes" />
             @endif
@@ -60,9 +43,6 @@
 
     <div class="px-6 py-3">
         @if ($point->isBaseline())
-            {{-- A baseline's created_at is borrowed from the entity's own
-                 updated_at at seeding time, so it must never be read as an edit
-                 someone made. --}}
             <p class="text-sm text-content-muted italic">
                 {{ __('Initial value — before revision history') }}
             </p>

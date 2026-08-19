@@ -1,7 +1,5 @@
 @props(['type' => 'submit'])
 
-{{-- Carries a focus ring the other icon buttons don't: this one is a form's primary
-     action, so its keyboard focus state has to be unmistakable. --}}
 <x-icon-button
     icon="device-floppy"
     :label="__('Save')"

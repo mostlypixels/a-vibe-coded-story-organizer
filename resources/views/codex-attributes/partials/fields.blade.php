@@ -1,10 +1,6 @@
 @php
-    // $attribute is null on create, the CodexAttribute model on edit.
     $attribute ??= null;
 
-    // Which types are currently ticked: old input on validation failure, otherwise
-    // the attribute's stored applies_to (empty on create). applies_to is an enum
-    // collection, so map to the raw string values the checkboxes submit.
     $selectedTypes = old('applies_to', $attribute
         ? $attribute->applies_to->map(fn ($type) => $type->value)->all()
         : []);

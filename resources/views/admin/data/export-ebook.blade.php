@@ -7,10 +7,6 @@
 
     @include('admin.data.partials.subnav')
 
-    {{--
-        Flash feedback for the config save and the section-order
-        move buttons, which all redirect back here.
-    --}}
     @if (session('status'))
         <div
             x-data="{ show: true }"
@@ -41,14 +37,6 @@
                 </a>
             </p>
         @else
-            {{--
-                Book picker: a plain GET reload (no JavaScript) — matches
-                the "ordinary navigation" posture of the sub-nav above. Every
-                book across every project, grouped into an optgroup per
-                project so a multi-book project's own volumes stay tellable
-                apart. Loads the selected book's saved settings, or an
-                unsaved default when it has never visited this form.
-            --}}
             <form method="GET" action="{{ route('admin.data.export-ebook') }}" class="mt-6 max-w-lg flex items-end gap-3">
                 <div class="flex-1">
                     <x-input-label for="epub_book_id" :value="__('Book')" />
@@ -73,13 +61,6 @@
                 <fieldset class="mt-8 border border-border rounded-md px-4 pb-4">
                     <legend class="px-2 text-sm font-semibold text-content">{{ $selectedBook->displayName() }}</legend>
 
-                {{--
-                    The config form: persists PublicationSetting. This only
-                    writes the settings. section_order round-trips via hidden
-                    inputs; it is reordered separately below via its own
-                    move-up/move-down actions (mirrors ActController::moveUp),
-                    not by editing this form.
-                --}}
                 <form method="POST" action="{{ route('admin.data.publication-settings.update', $selectedBook) }}" class="mt-8 space-y-8 max-w-2xl">
                     @csrf
                     @method('patch')
@@ -281,14 +262,6 @@
                     <x-button variant="primary">{{ __('Save configuration') }}</x-button>
                 </form>
 
-                {{--
-                    Section order: the fixed reading
-                    order the enabled sections render in. `title` is pinned
-                    first; every other entry moves independently of its
-                    include-toggle above. Each move is its own PATCH, exactly
-                    like Act/Chapter/Scene reordering — not part of the
-                    "Save configuration" form.
-                --}}
                 <div class="mt-8 max-w-2xl">
                     <x-heading level="4">{{ __('Section order') }}</x-heading>
                     <p class="mt-1 text-sm text-content-muted">
@@ -314,11 +287,6 @@
                     </ul>
                 </div>
 
-                {{--
-                    Download exports using the SAVED settings above, so it is a
-                    separate form/button and not part of the config form's own
-                    submit.
-                --}}
                 <form method="POST" action="{{ route('admin.data.export.epub') }}" class="mt-8 max-w-lg">
                     @csrf
                     <input type="hidden" name="book_id" value="{{ $selectedBook->id }}">

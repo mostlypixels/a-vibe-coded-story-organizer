@@ -15,24 +15,11 @@ use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 use ZipArchive;
 
-/**
- * Epub export: the POST /admin/data/export/epub endpoint that wires the
- * HTTP layer to EpubExporter.
- *
- * Mirrors ExportTest's posture (owner-succeeds / non-owner-403 / guest-login /
- * validation), plus the one epub-specific path: an empty-content book redirects
- * back with a session error (the EpubExportException → redirect translation)
- * instead of streaming a file.
- */
+/** Test the EPUB export HTTP boundary. */
 class EpubExportTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Give a project's book one act → chapter → scene so it clears the exporter's
-     * "no scenes anywhere" guard and actually produces a package. Returns the book
-     * so callers can post its id.
-     */
     private function seedExportableContent(Project $project): Book
     {
         $book = $project->books()->first();
@@ -106,20 +93,7 @@ class EpubExportTest extends TestCase
         $this->assertFileExists($path);
     }
 
-    /**
-     * A chapter whose name is blank, under the "Title only" format, used to produce an
-     * empty label in the packaged navigation and table of contents — a blank row in the
-     * reader's contents list. `validatePackage()` schema-checks the OPF, not the nav,
-     * so the broken book exported clean.
-     *
-     * The page heading is deliberately still empty (the writer asked for the title
-     * alone, and there is none); it is only the listing that gets the fallback.
-     *
-     * `chapters.name` is `NOT NULL` and `Store/UpdateChapterRequest` require it, so the
-     * form cannot produce this — an import, a seeder or a direct write can. That is
-     * exactly why the export must not depend on the form having been the door: the
-     * blank-name branch in `ChapterTitleFormat::format()` exists for the same reason.
-     */
+    /** Give imported blank chapter names a useful navigation fallback. */
     public function test_a_chapter_with_a_blank_name_still_gets_a_navigation_label(): void
     {
         $user = User::factory()->create();

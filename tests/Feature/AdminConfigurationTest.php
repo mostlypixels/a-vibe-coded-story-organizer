@@ -68,7 +68,7 @@ class AdminConfigurationTest extends TestCase
 
     /**
      * The /admin area deliberately continues the CrawlerSetting
-     * "any authenticated user" posture (documentation/architecture.md ->
+     * "any authenticated user" posture (documentation/architecture/README.md ->
      * Hidden from crawlers): there is no is_admin role. A SECOND, unrelated
      * authenticated user must also get 200 — this is intentional, NOT a missing
      * ownership check. Do not "fix" this into a ProjectPolicy walk.
@@ -177,16 +177,7 @@ class AdminConfigurationTest extends TestCase
         $response->assertSee('sqlite');
     }
 
-    /**
-     * The key guard: the DB password must NEVER reach the HTML.
-     *
-     * Inject a known password (and username) into the ACTIVE connection's config
-     * and assert the rendered page omits them. We do NOT switch the default
-     * connection — the app renders through it live (e.g. x-robots-meta reads
-     * CrawlerSetting), so pointing it at an unreachable fake host would fail the
-     * request itself rather than test the whitelist. The controller's whitelist
-     * (driver / database / host only) is what must drop these secrets.
-     */
+    /** Keep database credentials out of the configuration page. */
     public function test_database_page_never_renders_the_password(): void
     {
         $user = User::factory()->create();

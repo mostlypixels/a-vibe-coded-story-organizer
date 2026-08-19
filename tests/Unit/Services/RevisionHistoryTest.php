@@ -14,14 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/**
- * App\Services\RevisionHistory folds an entity's per-field revision rows back
- * into the *save points* every screen above storage addresses.
- *
- * These tests hit the database on purpose — the queries and their portability
- * are the subject. They take no HTTP route, so
- * {@see \Tests\Feature\RevisionHistoryTest} covers the page.
- */
+/** Group stored field revisions into save points. */
 class RevisionHistoryTest extends TestCase
 {
     use RefreshDatabase;

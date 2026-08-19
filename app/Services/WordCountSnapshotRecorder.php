@@ -16,7 +16,7 @@ use App\Support\WriterDay;
  * Model events call this, not controllers: `RevisionReverter` saves through
  * `$entity->save()` and never reaches a controller, so a controller-level call
  * would stop recording the moment somebody uses Undo. See
- * `documentation/word-count.md`.
+ * `documentation/features/writing-progress.md`.
  *
  * > [!WARNING]
  * > The day comes from the project owner's timezone, never `auth()->user()`.

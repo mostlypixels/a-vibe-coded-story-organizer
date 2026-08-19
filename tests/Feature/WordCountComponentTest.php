@@ -2,28 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Support\WordCounter;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
-/**
- * `<x-word-count>` — the one place a word count is formatted.
- *
- * Rendered standalone via `Blade::render()`, in the manner of
- * {@see IconButtonComponentTest}. The index and story tests assert the rendered
- * string on a real page; these cover zero, the singular, and the two variants,
- * which those pages never reach.
- *
- * The component takes a plain int, never a model — {@see WordCounter} on the
- * write side and this component on the read side agree only on that integer.
- */
+/** Guard word-count labels and variants. */
 class WordCountComponentTest extends TestCase
 {
-    /**
-     * Render a template, asserting the component tag actually compiled — see
-     * {@see IconButtonComponentTest::render()} for why an uncompiled tag would let every
-     * other assertion here pass against literal source text.
-     */
+    /** Render a component and reject literal `<x-…>` output. */
     private function render(string $template, array $data = []): string
     {
         $rendered = Blade::render($template, $data);

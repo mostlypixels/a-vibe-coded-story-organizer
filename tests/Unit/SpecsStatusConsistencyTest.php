@@ -4,34 +4,17 @@ namespace Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 
-/**
- * Guards the `.specs/` layout. `draft/` holds feature folders directly
- * (`.specs/draft/<name>/` — a draft has no lifecycle date yet); every other status
- * groups its features into month buckets named for the date the feature entered that
- * stage (`.specs/<status>/<YYYY-MM>/<name>/`), and the spec's frontmatter carries the
- * matching date stamp (`expanded:` / `planned:` / `shipped:`). The folder location and
- * the frontmatter encode the lifecycle stage redundantly, so they can drift — this test
- * is the reconciler that catches it (e.g. a feature implemented and moved to `shipped/`
- * but left stamped `planned`, or filed in a bucket that disagrees with its date stamp).
- * It also guards name uniqueness across the tree: locating a feature by name must
- * resolve to one folder, so no feature name may appear twice anywhere under `.specs/`.
- *
- * Plain filesystem assertions, no database — hence a Unit test that runs under
- * `composer test` (and therefore CI) with no extra wiring.
- */
+/** Keep specification paths, lifecycle dates, and names consistent. */
 class SpecsStatusConsistencyTest extends TestCase
 {
-    /** The four lifecycle stages, which are also the only allowed status subfolders. */
     private const KNOWN_STATUSES = ['draft', 'expanded', 'planned', 'shipped'];
 
-    /** Statuses whose features live inside a YYYY-MM month bucket (all but draft). */
     private const BUCKETED_STATUSES = ['expanded', 'planned', 'shipped'];
 
     private const BUCKET_PATTERN = '/^\d{4}-(0[1-9]|1[0-2])$/';
 
     private function specsRoot(): string
     {
-        // tests/Unit → repo root is two levels up.
         return dirname(__DIR__, 2).'/.specs';
     }
 

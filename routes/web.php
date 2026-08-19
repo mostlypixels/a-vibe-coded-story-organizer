@@ -45,79 +45,41 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// PUBLIC scene share view — deliberately OUTSIDE the auth group. The opaque
-// share_token is the only gate (no policy, no login); the controller resolves
-// the token manually so an unknown token 404s and an expired one renders a
-// friendly 410 page. This is the sole unauthenticated app route besides
-// `welcome` and the Breeze auth screens — do not widen the auth group below.
+// The share token is the only gate. Keep this route outside `auth`.
 Route::get('/shared/scenes/{token}', [SharedSceneController::class, 'show'])
     ->name('shared.scenes.show');
 
-// PUBLIC dynamic robots.txt — rendered live from the crawler settings singleton.
-// Deliberately OUTSIDE the auth group (crawlers are anonymous). The static
-// public/robots.txt was removed so this route is reached — a physical file in
-// public/ shadows the route under `artisan serve` and nginx `try_files`.
+// Crawlers are anonymous. A static public/robots.txt would shadow this route.
 Route::get('/robots.txt', RobotsTxtController::class)->name('robots.txt');
 
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-// TrackActiveProject rides along with `auth` so every project page inside this
-// group records itself on users.active_project_id after a successful response.
-// It is deliberately NOT in bootstrap/app.php's `web` group: guests have nothing
-// to track, and the public share/robots routes above sit outside `auth`.
+// Only authenticated project pages update users.active_project_id.
 Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Admin Configuration area. Every section sits behind `auth` (this group) AND
-    // the single `access-admin` Gate — the deliberate continuation of the
-    // CrawlerSetting any-authenticated-user posture, encoded once here so it can
-    // be tightened later without touching controllers. These routes are owned by
-    // no Project, so they do NOT use ProjectPolicy's walk.
+    // Global settings use one gate because they do not belong to a project.
     Route::middleware('can:access-admin')->prefix('admin')->name('admin.')->group(function () {
-        // Landing -> first section.
         Route::get('/', fn () => redirect()->route('admin.settings.edit'))->name('index');
 
-        // General settings = the relocated search-engine (crawler) form. The
-        // global crawler policy is a singleton owned by no Project; any
-        // authenticated user may edit it (the access-admin posture above),
-        // validated by UpdateCrawlerSettingRequest.
         Route::get('/settings', [GeneralSettingsController::class, 'edit'])->name('settings.edit');
         Route::patch('/settings', [GeneralSettingsController::class, 'update'])->name('settings.update');
 
-        // Per-user theme preset picker. Writes only to $request->user(), so
-        // (like appearance.edit) it needs no ProjectPolicy walk.
         Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance.edit');
         Route::patch('/appearance', [AppearanceController::class, 'update'])->name('appearance.update');
 
-        // The Export & import area is three server-rendered pages (not JS tabs),
-        // reached by ordinary <a> links in admin/data/partials/subnav.blade.php.
-        // /data itself only redirects to the first sub-page; the name is kept so
-        // existing route('admin.data.index') callers (the sidebar link, POST
-        // controllers that redirect back to "the area" generically) keep working.
         Route::get('/data', fn () => redirect()->route('admin.data.export-project'))->name('data.index');
         Route::get('/data/export/project', [DataTransferController::class, 'exportProject'])->name('data.export-project');
         Route::get('/data/export/ebook', [DataTransferController::class, 'exportEbook'])->name('data.export-ebook');
         Route::get('/data/import', [DataTransferController::class, 'import'])->name('data.import.index');
 
-        // Export a project to a downloadable .zip. POST (not GET): a non-idempotent,
-        // potentially expensive action that produces a download and carries CSRF +
-        // the include_images toggle. The admin gate is "any authenticated user"; the
-        // controller ALSO authorizes('view', $project) so a foreign project_id 403s.
         Route::post('/data/export', [ExportController::class, 'store'])->name('data.export');
-        // Export one book as a downloadable .epub. Same POST posture and ownership
-        // guard as the .zip export above (walked via the book's project); the
-        // EpubExporter owns tree filtering, rendering, packaging, and structural
-        // validation. A book with nothing to export redirects back with an error
-        // (EpubExportException), never a 500.
         Route::post('/data/export/epub', [EpubExportController::class, 'store'])->name('data.export.epub');
 
-        // Persists PublicationSetting (the Export-ebook config form) and reorders
-        // its section_order list. Ownership walks the {book} route binding to
-        // its project, mirrored in UpdatePublicationSettingRequest::authorize().
         Route::patch('/data/export/ebook/{book}/settings', [PublicationSettingController::class, 'update'])
             ->name('data.publication-settings.update');
         Route::patch('/data/export/ebook/{book}/settings/section-order/{section}/move-up', [PublicationSettingController::class, 'moveSectionUp'])
@@ -125,26 +87,14 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         Route::patch('/data/export/ebook/{book}/settings/section-order/{section}/move-down', [PublicationSettingController::class, 'moveSectionDown'])
             ->name('data.publication-settings.section-order.move-down');
 
-        // Import a project from an uploaded export .zip. Each import creates a
-        // BRAND-NEW project for the current user (never merges/updates), so store
-        // uses the any-authenticated-user gate (no existing project to walk up to,
-        // like CrawlerSetting). resume/destroy act on an existing Import row that
-        // DOES have an owner, so they use the real ImportPolicy — the two postures
-        // are intentional and must not be collapsed.
+        // Store creates a project. Resume and destroy authorize the existing import.
         Route::post('/data/import', [ImportController::class, 'store'])->name('data.import');
         Route::post('/data/imports/{import}/resume', [ImportController::class, 'resume'])->name('data.imports.resume');
         Route::delete('/data/imports/{import}', [ImportController::class, 'destroy'])->name('data.imports.destroy');
-        // Global import settings (archive size cap + background mode) — a singleton
-        // owned by no Project, edited the same any-authenticated-user way as the
-        // crawler settings (see ImportSettingController / UpdateImportSettingRequest).
         Route::patch('/data/import-settings', [ImportSettingController::class, 'update'])->name('data.import-settings');
 
         Route::get('/database', [DatabaseConfigurationController::class, 'edit'])->name('database.edit');
 
-        // The dedicated admin "Revisions" page — the RevisionSetting
-        // retention form (confirm-gated when lowering the window) and the
-        // "Revision storage" panel's bulk-delete actions. A new, standalone
-        // section rather than folded into General settings or Export & import.
         Route::get('/revisions', [RevisionSettingController::class, 'edit'])->name('revisions.edit');
         Route::patch('/revisions', [RevisionSettingController::class, 'update'])->name('revisions.update');
         Route::delete('/revisions/purge/{category}', [RevisionSettingController::class, 'purgeCategory'])
@@ -156,9 +106,6 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
     Route::resource('projects', ProjectController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
-    // Manual rebuild of the derived scene_codex_entry pivot for one project — a footer
-    // form on the edit page, separate from the main project-fields form (see
-    // ProjectController::syncCodexReferences).
     Route::post('/projects/{project}/codex-references/sync', [ProjectController::class, 'syncCodexReferences'])
         ->name('projects.codex-references.sync');
 
@@ -170,61 +117,36 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
 
-    // A project's books — the volume layer between Project and Act. `show` is
-    // the book home (books.show); its controller action lands in a later task,
-    // but the route is registered here alongside the rest of the resource.
-    // Shallow keeps edit/update/destroy (and the move actions below) flat on
-    // the child id, matching the acts/chapters/scenes convention below.
     Route::resource('projects.books', BookController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->shallow();
     Route::patch('/books/{book}/move-up', [BookController::class, 'moveUp'])->name('books.move-up');
     Route::patch('/books/{book}/move-down', [BookController::class, 'moveDown'])->name('books.move-down');
 
-    // Section landing pages. Each top-level nav section (Story, Timeline, Codex,
-    // Tools) has a `home` route that its breadcrumb section crumb and its first
-    // dropdown item link to. Placeholder stubs today — real section dashboards
-    // land here later.
-    // The manuscript lives in a book, so the Story section is book-scoped:
-    // /books/{book}/story. Timeline, Codex and Tools are shared across the
-    // project's books and keep {project}.
     Route::get('/books/{book}/story', [StoryController::class, 'home'])->name('books.story.home');
     Route::get('/projects/{project}/timeline', [TimelineController::class, 'home'])->name('projects.timeline.home');
     Route::get('/projects/{project}/codex', [CodexController::class, 'home'])->name('projects.codex.home');
     Route::get('/projects/{project}/tools', [ToolsController::class, 'home'])->name('projects.tools.home');
 
-    // Story Overview — one book's act/chapter/scene tree. Moved off the bare
-    // /story path (now the Story section stub) to /story/overview.
     Route::get('/books/{book}/story/overview', [StoryController::class, 'index'])->name('books.story.overview');
 
-    // Persists the overview's render mode (chapter/whole). Owner-only, mirroring
-    // PublicationSettingController's resolve -> authorize -> persist -> redirect shape.
     Route::patch('/books/{book}/story/overview/mode', [StoryController::class, 'updateMode'])
         ->name('books.story.overview.mode');
 
-    // Full-text-ish search across one project's six searchable entities. Single
-    // GET action (no AJAX): q/mode round-trip via the query string. Authorizes
-    // via ProjectPolicy::view (SearchController + SearchRequest).
     Route::get('/projects/{project}/search', [SearchController::class, 'index'])->name('projects.search.index');
 
-    // One domain's full, paginated result set ("see all N results" destination).
-    // The whereIn constraint (derived from SearchDomain) makes an unknown {domain}
-    // 404 before the controller runs, same pattern as the codex {type} routes.
+    // Reject unknown search domains before the controller runs.
     Route::whereIn('domain', SearchDomain::routeKeys())->group(function () {
         Route::get('/projects/{project}/search/{domain}', [SearchController::class, 'domain'])
             ->name('projects.search.domain');
     });
 
-    // The manuscript nests under {book}. Shallow keeps edit/update/destroy (and
-    // the move actions below) flat on the child id, so a link to one act never
-    // has to name the book that holds it.
+    // Manuscript resources nest for creation and use shallow member routes.
     Route::resource('books.acts', ActController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
     Route::patch('/acts/{act}/move-up', [ActController::class, 'moveUp'])->name('acts.move-up');
     Route::patch('/acts/{act}/move-down', [ActController::class, 'moveDown'])->name('acts.move-down');
-    // Reparents the whole act (with its chapters and scenes) onto another book
-    // in the same project — the act edit page's destination-book control.
     Route::patch('/acts/{act}/move-to-book', [ActController::class, 'moveToBook'])->name('acts.move-to-book');
 
     Route::resource('books.chapters', ChapterController::class)
@@ -240,17 +162,10 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::patch('/scenes/{scene}/move-down', [SceneController::class, 'moveDown'])->name('scenes.move-down');
     Route::post('/scenes/{scene}/duplicate', [SceneController::class, 'duplicate'])->name('scenes.duplicate');
 
-    // Owner-facing scene share link management. Flat on {scene} (implicit binding),
-    // matching the shallow scene routes. store generates/rotates the link; destroy
-    // revokes it. The public view route (shared.scenes.show) lives outside this
-    // auth group.
     Route::post('/scenes/{scene}/share', [SceneShareController::class, 'store'])->name('scenes.share.store');
     Route::delete('/scenes/{scene}/share', [SceneShareController::class, 'destroy'])->name('scenes.share.destroy');
 
-    // Codex entries — nested index/create/store carry the {type} segment; edit/update/destroy
-    // only need the entry, so they are flat (manual shallow nesting). The grouped whereIn
-    // constraint (derived from CodexEntryType) makes an unknown {type} 404 before the
-    // controller runs; keeping it local avoids binding {type} app-wide via a global pattern.
+    // Constrain nested routes locally; member routes use only the entry binding.
     Route::whereIn('type', CodexEntryType::routeKeys())->group(function () {
         Route::get('/projects/{project}/codex/{type}', [CodexEntryController::class, 'index'])
             ->name('projects.codex.index');
@@ -264,60 +179,35 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::delete('/codex/{codexEntry}', [CodexEntryController::class, 'destroy'])->name('codex.destroy');
     Route::post('/codex/{codexEntry}/duplicate', [CodexEntryController::class, 'duplicate'])->name('codex.duplicate');
 
-    // Attribute definitions — project-scoped resource, shallow (edit/update/destroy
-    // only need the attribute). The camelCase parameter matches the {codexEntry}
-    // convention so implicit binding resolves CodexAttribute $codexAttribute.
     Route::resource('projects.codex-attributes', CodexAttributeController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->parameters(['codex-attributes' => 'codexAttribute'])
         ->shallow();
 
-    // Attribute timeline periods. store is an upsert (posting an existing anchor updates
-    // its value — this is also how the Start baseline is edited, hence no update route);
-    // destroy removes a period. Both live in App\Services\AttributeTimeline.
+    // Store is an upsert, including for the Start baseline.
     Route::post('/codex/{codexEntry}/attributes/{codexAttribute}/values', [CodexAttributeValueController::class, 'store'])
         ->name('codex.attribute-values.store');
     Route::delete('/codex-attribute-values/{codexAttributeValue}', [CodexAttributeValueController::class, 'destroy'])
         ->name('codex.attribute-values.destroy');
 
-    // Autosave-with-revisions: the one generic PATCH every registered
-    // field autosaves through — see App\Support\AutosavableFields for the
-    // slug => model+field registry this route gates on. An unregistered
-    // {entity} slug 404s here, before FieldAutosaveController ever runs.
-    // throttle:120,1 comfortably covers a 2-second debounce across several
-    // fields at once.
+    // Gate autosave by its registry and allow concurrent two-second debounces.
     Route::whereIn('entity', AutosavableFields::slugs())->middleware('throttle:120,1')->group(function () {
         Route::patch('/autosave/{entity}/{id}/{field}', [FieldAutosaveController::class, 'update'])
             ->name('autosave.update');
     });
 
-    // Tools ▸ Revisions: the project-scoped browser landing page. Project-scoped
-    // (unlike the slug-gated per-field routes below) so the toolbar's project
-    // resolver picks it up and the Tools menu highlights; its sidebar links out
-    // to the per-field history routes that follow.
     Route::get('/projects/{project}/revisions', [RevisionBrowserController::class, 'index'])
         ->name('projects.revisions.index');
 
-    // Tools ▸ Progress: today's words and the running total against the
-    // project's two goals. The chart and its range picker join this same
-    // page in a later task.
     Route::get('/projects/{project}/progress', [ProgressController::class, 'index'])
         ->name('projects.progress');
 
-    // History + compare. Same slug-gated {entity} pattern as
-    // autosave.update above, but without the tight autosave throttle — these
-    // are ordinary page loads, not a debounce endpoint.
+    // Revision pages use the same entity registry as autosave.
     Route::whereIn('entity', AutosavableFields::slugs())->group(function () {
-        // History and compare are addressed per ENTITY: a save point is the
-        // unit, and a field is a `?field=` filter on top of it. The two
-        // field-scoped URLs that predate save points survive as redirects, so
-        // links already in the wild still land somewhere truthful.
         Route::get('/revisions/{entity}/{id}', [RevisionController::class, 'index'])
             ->name('revisions.index');
 
-        // Declared BEFORE the {field} routes below: both are three segments, so
-        // `/revisions/act/1/compare` would otherwise match the legacy history
-        // redirect with field="compare" and 404 as an unknown field.
+        // Keep this before `{field}` so `compare` is not bound as a field.
         Route::get('/revisions/{entity}/{id}/compare', [RevisionController::class, 'compare'])
             ->name('revisions.compare');
 
@@ -328,16 +218,10 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
             ->name('revisions.field');
     });
 
-    // Revert: resolves straight from the {revision} route-model
-    // binding, not the {entity} slug — a Revision's own revisionable_type is
-    // always a real, already-registered model, so no separate slug gate is
-    // needed here.
     Route::post('/revisions/{revision}/revert', [RevisionController::class, 'revert'])
         ->name('revisions.revert');
 
-    // Undo a whole save point. {save} is a save_id ULID, constrained
-    // to the ULID alphabet (Crockford base32, no I/L/O/U) so a malformed id
-    // 404s at the router rather than reaching a query.
+    // Reject malformed save ULIDs before the controller runs.
     Route::post('/revisions/saves/{save}/revert', [RevisionController::class, 'revertSave'])
         ->where('save', '[0-9A-HJKMNP-TV-Z]{26}')
         ->name('revisions.saves.revert');
@@ -345,15 +229,8 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
 require __DIR__.'/auth.php';
 
-// A router 404 is thrown BEFORE the `web` group runs, so the session never
-// starts and the error page renders as if the visitor were a guest — no project
-// picker, no Configuration link. This fallback matches instead, inside the
-// group, and aborts with the same 404 now that the user is known.
-// `Route::any(...)->fallback()`, not `Route::fallback()`: the helper answers GET
-// and HEAD only, so a POST to an unmatched URL would match its URI on the wrong
-// method and turn a 404 into a 405. `->fallback()` is what keeps the router
-// trying it last, so a real route — including one a test registers later —
-// always wins.
+// Start the web session before a 404 so the error page knows the user. `any` also
+// prevents unmatched non-GET requests from becoming 405 responses.
 Route::any('{unmatched}', fn () => abort(404))
     ->where('unmatched', '.*')
     ->fallback();

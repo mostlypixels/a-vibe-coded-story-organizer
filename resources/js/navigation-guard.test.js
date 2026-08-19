@@ -1,17 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isGuardedSaveSubmit, shouldIntercept } from './navigation-guard';
 
-/**
- * Tests for `resources/js/navigation-guard.js`'s pure predicate, `shouldIntercept()`.
- * The `Alpine.data()` wrapper itself (the real document-level click listener,
- * `beforeunload`, `window.location` navigation) is left to the manual checklist
- * documented in `testing.md`, matching this codebase's existing
- * pure-logic-vs-manual-checklist split (see badge.js/badge.test.js).
- *
- * A fake `Location`-shaped object stands in for `window.location`/anchor properties —
- * jsdom's real `window.location` can't be reassigned per test, and these assertions
- * only need `origin`/`href`, not a full navigation.
- */
 function makeAnchor(overrides = {}) {
     return {
         href: `${window.location.origin}/scenes/1`,
@@ -77,12 +66,6 @@ describe('shouldIntercept', () => {
     });
 });
 
-/**
- * Tests for `isGuardedSaveSubmit()` — the predicate that keeps the native `beforeunload`
- * unsaved-changes prompt silent for the entity edit page's Save / Save and stay submit,
- * and only that submit. A `submitter`-shaped stand-in whose `closest()` reports whether
- * the button (or an ancestor) carries `data-guard-save` is all the predicate reads.
- */
 function makeSaveSubmitter() {
     return { closest: (selector) => (selector === '[data-guard-save]' ? {} : null) };
 }

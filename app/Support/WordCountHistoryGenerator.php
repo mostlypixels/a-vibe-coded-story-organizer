@@ -16,7 +16,7 @@ use Closure;
  * > [!WARNING]
  * > Only ever generate history for a fictional project (Melusine). The rule
  * > against inventing a writer's history protects real ones — see
- * > `documentation/word-count.md`.
+ * > `documentation/features/writing-progress.md`.
  */
 final class WordCountHistoryGenerator
 {

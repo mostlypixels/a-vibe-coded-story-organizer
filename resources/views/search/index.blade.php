@@ -4,9 +4,6 @@
     </x-page-heading>
 
     <div class="space-y-6">
-        {{-- Search form. Plain GET (no AJAX): q/mode round-trip via the query string
-             so results are bookmarkable and survive a refresh. The mode control is a
-             <fieldset> radio group (keyboard-accessible, semantic) over SearchMode. --}}
         <form method="GET" action="{{ route('projects.search.index', $project) }}" class="bg-surface-raised shadow-xs rounded-lg p-6 space-y-4">
             <div class="space-y-1">
                 <x-input-label for="q" :value="__('Search this project')" />
@@ -43,9 +40,6 @@
             </fieldset>
         </form>
 
-        {{-- Results. Rendered only after a search ran ($results !== null). A search
-             that matched nothing anywhere shows ONE friendly page-level message, not
-             three empty per-section blocks. --}}
         @if ($results !== null)
             @if ($results->isEmpty())
                 <div class="bg-surface-raised shadow-xs rounded-lg px-6 py-10 text-center text-content-muted">
@@ -55,12 +49,7 @@
                     <p class="mt-1 text-sm">{{ __('Try a different word or switch the match mode.') }}</p>
                 </div>
             @else
-                {{-- Entity types with no matches are hidden (x-search.result-table
-                     renders nothing when its rows are empty), and a section whose
-                     tables are ALL empty is skipped entirely — no orphaned heading.
-                     SearchResults::has*Matches() owns that per-section check. --}}
                 <div class="space-y-8">
-                    {{-- Timeline — Plotlines, Events. --}}
                     @if ($results->hasTimelineMatches())
                         <x-search.section :title="__('Timeline')">
                             <x-search.result-table :domain="\App\Enums\SearchDomain::Plotlines" :results="$results" :project="$project" :query="$query" :mode="$mode" />
@@ -68,7 +57,6 @@
                         </x-search.section>
                     @endif
 
-                    {{-- Story — Acts, Chapters, Scenes. --}}
                     @if ($results->hasStoryMatches())
                         <x-search.section :title="__('Story')">
                             <x-search.result-table :domain="\App\Enums\SearchDomain::Acts" :results="$results" :project="$project" :query="$query" :mode="$mode" />
@@ -77,7 +65,6 @@
                         </x-search.section>
                     @endif
 
-                    {{-- Codex — one table per CodexEntryType. All share codex.edit. --}}
                     @if ($results->hasCodexMatches())
                         <x-search.section :title="__('Codex')">
                             <x-search.result-table :domain="\App\Enums\SearchDomain::Characters" :results="$results" :project="$project" :query="$query" :mode="$mode" />

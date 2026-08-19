@@ -10,12 +10,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
-/**
- * The revisions data model: the revisions table, the Revision model (and its
- * MassPrunable prunable() query), the RevisionOrigin enum, and
- * config/revisions.php. Model and config tests against factory-seeded rows only
- * — RevisionRecorderTest covers the write path.
- */
 class RevisionDataModelTest extends TestCase
 {
     use RefreshDatabase;
@@ -229,16 +223,7 @@ class RevisionDataModelTest extends TestCase
         $this->assertSame(100_000, $caps['default']);
     }
 
-    /**
-     * Both arrays are keyed by the registry's own slug — `scene.contents`, the word
-     * in the address bar — so there is one vocabulary for these fourteen fields
-     * rather than two with a translation step between them.
-     *
-     * This is the test the old two-scheme arrangement could not have: a mistyped key
-     * never raises, it falls through to `default` and silently applies the wrong
-     * window or cap. So rather than assert the keys are spelled right, assert that
-     * every key present is one the registry can actually reach.
-     */
+    /** Require each field-specific config key to exist in the registry. */
     public function test_every_per_field_config_key_names_a_registered_field(): void
     {
         $registered = [];

@@ -1,7 +1,3 @@
-{{-- Shared shell for the books/ reading layer. Self-contained: minimal INLINE CSS
-     only (no external assets), so a chapter page opens straight from the unzipped
-     archive. The books/ layer is the human reading version — the one place Markdown
-     is rendered to HTML (see documentation/export-format.md). --}}
 <!DOCTYPE html>
 <html lang="en">
 <head>

@@ -2,28 +2,13 @@
 
 namespace App\Http\Requests;
 
-use App\Models\ImportSetting;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-/**
- * Validates an update to the global {@see ImportSetting} singleton.
- *
- * The size limit is edited in MEGABYTES (friendlier for a human) but stored in
- * KILOBYTES (the column's unit, and what Laravel's file `max` rule expects), so
- * this request also owns the MB → KB conversion via {@see self::settings()} —
- * the controller just persists what it returns.
- *
- * Like {@see UpdateCrawlerSettingRequest}, the import settings are GLOBAL (owned
- * by no Project or User), so this uses the any-authenticated-user exception: the
- * `auth` + `access-admin` middleware blocks guests; this confirms a user is
- * present. See documentation/architecture.md.
- */
+/** Converts the displayed megabyte limit to the stored kilobyte limit. */
 class UpdateImportSettingRequest extends FormRequest
 {
-    /**
-     * How many kilobytes are in one megabyte — the MB → KB conversion factor.
-     */
+    /** Kilobytes in one megabyte. */
     private const KILOBYTES_PER_MEGABYTE = 1024;
 
     public function authorize(): bool
@@ -31,11 +16,7 @@ class UpdateImportSettingRequest extends FormRequest
         return $this->user() !== null;
     }
 
-    /**
-     * Normalise the raw form input before validation: `run_in_background` is a
-     * checkbox, so absent means false (mirrors UpdateCrawlerSettingRequest's
-     * `enabled` handling).
-     */
+    /** Converts an absent checkbox to false. */
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -54,12 +35,7 @@ class UpdateImportSettingRequest extends FormRequest
         ];
     }
 
-    /**
-     * The persistable attribute set for the ImportSetting singleton, with the
-     * user-facing megabytes converted to the stored kilobytes unit.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function settings(): array
     {
         return [

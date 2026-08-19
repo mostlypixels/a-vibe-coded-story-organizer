@@ -18,15 +18,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/**
- * Feature tests for the Project resource itself.
- *
- * The plotline and event controllers have their own dedicated test files
- * (PlotlineTest, EventTest). What stays here is project-scoped: the dashboard,
- * project CRUD/authorization, and the model invariants that project creation
- * seeds — the auto-created main plotline and the Start/End bookend events — plus
- * the Project::startEvent()/endEvent() bookend helpers.
- */
 class ProjectTest extends TestCase
 {
     use RefreshDatabase;

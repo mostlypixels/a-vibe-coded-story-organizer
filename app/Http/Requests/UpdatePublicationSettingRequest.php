@@ -10,21 +10,10 @@ use App\Rules\ValidSectionOrder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * Validates a save of the Export-ebook configuration form for one book's
- * PublicationSetting. Authorization mirrors PublicationSettingController@update
- * per CLAUDE.md: the write is ownership of the book's project, walked via the
- * route model binding.
- */
+/** Validates one book's EPUB publication settings. */
 class UpdatePublicationSettingRequest extends FormRequest
 {
-    /**
-     * Every `include_*` / `appendix_include_images` checkbox. Named once here
-     * so prepareForValidation() and rules() share the same list instead of
-     * repeating it (CLAUDE.md: no magic strings).
-     *
-     * @var array<int, string>
-     */
+    /** @var array<int, string> Every Boolean setting on the form. */
     private const BOOLEAN_FIELDS = [
         'include_book_cover',
         'include_chapter_covers',
@@ -49,13 +38,7 @@ class UpdatePublicationSettingRequest extends FormRequest
         return $this->user()->can('update', $this->route('book')->project);
     }
 
-    /**
-     * Checkboxes are simply absent from the request when unchecked, so every
-     * boolean toggle is normalized explicitly here — otherwise unchecking one
-     * would be silently ignored instead of persisting as false (the same
-     * pattern as UpdateImportSettingRequest). `appendix_entry_types` defaults
-     * to an empty array when no type checkbox is checked.
-     */
+    /** Converts absent checkboxes to false and absent appendix types to an empty array. */
     protected function prepareForValidation(): void
     {
         $normalized = [];
@@ -78,13 +61,7 @@ class UpdatePublicationSettingRequest extends FormRequest
     }
 
     /**
-     * The validation rules for one PublicationSetting payload, as a static
-     * method so they are the SINGLE source of truth for both this HTTP form
-     * request and the archive-import path (ProjectGraphImporter validates an
-     * untrusted imported config against exactly these rules — CLAUDE.md: never
-     * duplicate validation rules). No `$this`/route state is read here, so both
-     * callers get an identical rule set. (Not named `validationRules()` — that
-     * name is a non-static method on the FormRequest base class.)
+     * Shares one rule set with the archive importer.
      *
      * @return array<string, mixed>
      */

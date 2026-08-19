@@ -7,8 +7,6 @@
 ])
 
 @php
-    // Small Alpine add/remove-row repeater of free-text inputs submitting {{ $name }}[].
-    // Used for aliases; empty rows are dropped server-side by the controller.
     $rows = collect($values)->map(fn ($value) => (string) $value)->values()->all();
     $addLabel = $addLabel ?? __('+ Add row');
     $removeLabel = $removeLabel ?? __('Remove row');

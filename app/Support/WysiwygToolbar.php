@@ -4,42 +4,13 @@ namespace App\Support;
 
 use Illuminate\Support\Js;
 
-/**
- * The WYSIWYG toolbar's button definitions — reference data for
- * resources/views/components/wysiwyg.blade.php, which used to build these
- * arrays in an 80-line inline @php block.
- *
- * Each entry is the shape x-wysiwyg.toolbar-button consumes:
- *
- *   command  Tiptap chain method passed to the Alpine cmd() helper
- *   args     optional argument for that command
- *   action   ready-made JS call, for entries that need a bespoke wysiwyg.js
- *            helper (e.g. Callout's setCalloutType()) instead of a plain
- *            command — mutually exclusive with command/args
- *   active   [nodeOrMarkName, ?args] passed to isOn() for the highlight
- *   icon     Tabler component name without its prefix (e.g. `bold` for
- *             `<x-tabler-bold>`), for an entry with a real icon rather than a
- *             text glyph — the template renders it, this class never does
- *   label    button text: an HTML-entity glyph for a flat toolbar button
- *             with no `icon` (rendered raw via the `label` prop), or plain
- *             text alongside an `icon` for a dropdown item
- *   title    tooltip and aria-label
- *
- * Link and Image call bespoke no-arg helpers instead of cmd(), so they stay
- * hand-written in the template; they are not listed here.
- */
+/** Defines the button data consumed by the WYSIWYG toolbar components. */
 class WysiwygToolbar
 {
-    /**
-     * Heading levels offered in the Style dropdown.
-     */
+    /** Heading levels in the Style menu. */
     public const HEADING_LEVELS = [1, 2, 3, 4];
 
-    /**
-     * The five GitHub-flavoured alert/callout types, mirroring
-     * resources/js/wysiwyg.js's own CALLOUT_TYPES (kept in sync by hand, the
-     * same way HEADING_LEVELS crosses the PHP/JS boundary for headings).
-     */
+    /** Keep this list in step with CALLOUT_TYPES in resources/js/wysiwyg.js. */
     public const CALLOUT_TYPES = ['note', 'tip', 'important', 'warning', 'caution'];
 
     /**
@@ -49,14 +20,7 @@ class WysiwygToolbar
      */
     public function __construct(private readonly bool $markdown) {}
 
-    /**
-     * Block-level style: Paragraph, Blockquote, H1..H4, collapsed into the
-     * Style dropdown. Blockquote sits with Paragraph/Headings rather than
-     * with the other lists() entries because it's the same kind of choice —
-     * what is this block, not a toggleable inline/list affordance.
-     *
-     * @return array<int, array<string, mixed>>
-     */
+    /** @return array<int, array<string, mixed>> */
     public function styles(): array
     {
         $paragraph = [
@@ -87,16 +51,7 @@ class WysiwygToolbar
         return [$paragraph, $blockquote, ...$headings];
     }
 
-    /**
-     * Bold / Italic / Underline, the three flat text-format buttons. All
-     * three are common enough to earn a permanent toolbar slot rather than
-     * living in typography()'s dropdown. Underline has no clean CommonMark
-     * equivalent, so it round-trips via the sanctioned `<u>` raw-HTML
-     * passthrough (resources/js/wysiwyg.js's MarkdownUnderline) — unlike Bold
-     * and Italic, which are plain CommonMark (`**`/`_`).
-     *
-     * @return array<int, array<string, mixed>>
-     */
+    /** @return array<int, array<string, mixed>> */
     public function textFormat(): array
     {
         return [
@@ -106,19 +61,7 @@ class WysiwygToolbar
         ];
     }
 
-    /**
-     * Strikethrough / Subscript / Superscript, the less-common text
-     * decorations, collapsed into a dropdown under the typography icon.
-     * Strikethrough is standard GFM (`~~text~~`) and round-trips
-     * unconditionally; Subscript/Superscript have no CommonMark equivalent
-     * and round-trip via the same sanctioned raw-HTML-passthrough treatment
-     * as Underline (`<sub>`/`<sup>` — resources/js/wysiwyg.js's
-     * MarkdownSubscript/MarkdownSuperscript). Grouped together because all
-     * three are occasional-use text decorations, not because they share one
-     * serialization story.
-     *
-     * @return array<int, array<string, mixed>>
-     */
+    /** @return array<int, array<string, mixed>> */
     public function typography(): array
     {
         return [
@@ -128,12 +71,7 @@ class WysiwygToolbar
         ];
     }
 
-    /**
-     * Bulleted / Numbered / Task list, collapsed into a dropdown. Task lists
-     * round-trip in both formats, so no format gate is needed.
-     *
-     * @return array<int, array<string, mixed>>
-     */
+    /** @return array<int, array<string, mixed>> */
     public function lists(): array
     {
         return [
@@ -143,12 +81,7 @@ class WysiwygToolbar
         ];
     }
 
-    /**
-     * Inline code, Code block, collapsed into a dropdown. Blockquote lives in
-     * styles() instead, lists in lists() — see their docblocks.
-     *
-     * @return array<int, array<string, mixed>>
-     */
+    /** @return array<int, array<string, mixed>> */
     public function code(): array
     {
         return [
@@ -158,15 +91,7 @@ class WysiwygToolbar
     }
 
     /**
-     * Everything table-related, one dropdown: insert, then row/column ops,
-     * then merge/split for HTML-mode fields only. Previously split across two
-     * toolbar entries (an "insert" button plus a separate "structure"
-     * dropdown some distance away); merged so the concern lives in one place.
-     *
-     * Row/column ops keep the grid rectangular, so they are safe in both
-     * formats. A merged cell (colspan) is lossless in HTML but loses its
-     * structure in Markdown, so for a Markdown field the affordance is not
-     * rendered at all — prevent, don't warn.
+     * Markdown fields omit cell merge and split actions because Markdown loses spans.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -181,8 +106,6 @@ class WysiwygToolbar
         ];
 
         if (! $this->markdown) {
-            // No Tabler icon exists for "merge/split a table cell" specifically;
-            // the generic merge/split-arrows icons are the closest available match.
             $operations[] = ['icon' => 'arrow-merge', 'label' => __('Merge cells'), 'command' => 'mergeCells', 'title' => __('Merge cells')];
             $operations[] = ['icon' => 'arrows-split', 'label' => __('Split cell'), 'command' => 'splitCell', 'title' => __('Split cell')];
         }
@@ -190,19 +113,9 @@ class WysiwygToolbar
         return $operations;
     }
 
-    /**
-     * The Callout toolbar entry, collapsed into a dropdown of the five
-     * labeled types instead of one glyph button that cycled through them on
-     * repeated clicks. `action` is a ready-made JS call (built the same way
-     * toolbar-button.blade.php itself builds `cmd()` calls) because
-     * setCalloutType() is a bespoke wysiwyg.js helper, not a plain Tiptap
-     * chain command — see its docblock for why (insert vs. update-in-place).
-     *
-     * @return array<int, array<string, mixed>>
-     */
+    /** @return array<int, array<string, mixed>> */
     public function callouts(): array
     {
-        // Mirrors GitHub's own icon choice per alert type.
         $icons = [
             'note' => 'info-circle',
             'tip' => 'bulb',

@@ -13,23 +13,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
-/**
- * Covers the active-section highlighting in the primary navigation dropdowns.
- *
- * The nav renders on every authenticated page, so we exercise it through the
- * ordinary resource routes. We assert on the semantic `aria-current="page"`
- * marker (emitted only by the active desktop dropdown item) and on hrefs —
- * never on cosmetic Tailwind classes, which churn. The one exception is the
- * collapsed trigger, which has no better hook than its active class token.
- */
+/** Test navigation state through semantic markers and destination links. */
 class NavigationTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Build a project -> act -> chapter chain owned by the given user and
-     * return the leaf chapter (scenes hang off chapters).
-     */
     private function chapterFor(User $user): Chapter
     {
         [, $book] = $this->projectWithBook($user);

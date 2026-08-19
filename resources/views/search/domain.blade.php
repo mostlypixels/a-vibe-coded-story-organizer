@@ -17,9 +17,6 @@
         </div>
 
         @if ($paginator->isEmpty())
-            {{-- A stale ?page= past the last page — the link only ever points
-                 within range, so this guards a bookmarked/edited URL, not the
-                 normal flow. --}}
             <div class="bg-surface-raised shadow-xs rounded-lg px-6 py-10 text-center text-content-muted">
                 <p class="font-medium text-content-muted">{{ __('No more results.') }}</p>
             </div>

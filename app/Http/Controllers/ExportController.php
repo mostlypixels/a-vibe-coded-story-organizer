@@ -18,9 +18,7 @@ class ExportController extends Controller
 {
     public function store(ExportRequest $request, StaticSiteExporter $exporter): BinaryFileResponse
     {
-        // The admin gate is "any authenticated user"; authorize ownership too so a
-        // foreign project_id 403s (mirrors ExportRequest::authorize()). project_id
-        // is validated as an existing id, so findOrFail is a belt-and-braces guard.
+        // The global admin gate does not prove ownership of the selected project.
         $project = Project::findOrFail($request->integer('project_id'));
         $this->authorize('view', $project);
 

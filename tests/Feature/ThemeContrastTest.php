@@ -9,45 +9,16 @@ use App\Support\ThemeTokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
-/**
- * The guard that makes the token vocabulary worth having: every foreground a preset
- * may paint on a background is measured against that background, in every preset.
- *
- * `ThemeTokens::PAIRS` decides what "may" means, so a token added without a partner
- * is caught by ThemePresetTest, and a partner chosen badly is caught here. Between
- * them there is no way to ship a combination nobody looked at.
- *
- * ## Floors reject, and so does the ceiling — here
- *
- * The floors are WCAG minimums and global, unless a preset declares a `contrast_floor`
- * that replaces them — `no-halation` does, and `test_only_no_halation_leaves_the_wcag_floors`
- * below keeps that list at one. The ceiling is per preset and is documented
- * as "warn, don't reject" — but that governs *user* input in a later spec, where a
- * person picking their own colours should not be refused. These presets are ours, and
- * PHPUnit has no warning level, so a preset breaching the ceiling it declared for
- * itself is asserted as the bug it is.
- *
- * ## Why a raw `require` instead of `config()`
- *
- * PHPUnit calls a data provider before `setUp()`, so the application is not booted and
- * `config()` would fail. The provider reads `config/themes.php` off disk; the test body
- * then resolves the preset through `ThemePreset::fromSlug()`, so the ceiling still comes
- * from the same code path the application uses.
- */
+/** Check every declared background and foreground pair in each preset. */
 class ThemeContrastTest extends TestCase
 {
-    /**
-     * Preset slug + one background/foreground pair, for every combination of the two.
-     *
-     * @return iterable<string, array{string, string, string}>
-     */
+    /** @return iterable<string, array{string, string, string}> */
     public static function tokenPairProvider(): iterable
     {
         foreach (array_keys(self::presets()) as $slug) {
             foreach (ThemeTokens::PAIRS as $background => $foregrounds) {
                 foreach ($foregrounds as $foreground) {
-                    // A decorative token has no floor at either end of the pair, so
-                    // there is nothing here to assert about it. See DECORATIVE.
+                    // Decorative tokens have no contrast floor.
                     if (in_array($background, ThemeTokens::DECORATIVE, true)
                         || in_array($foreground, ThemeTokens::DECORATIVE, true)) {
                         continue;
@@ -107,16 +78,7 @@ class ThemeContrastTest extends TestCase
         $this->assertGreaterThan(40, iterator_count(self::tokenPairProvider()) / count($slugs));
     }
 
-    /**
-     * Two surfaces sharing a value is silent: nothing errors, a card simply disappears
-     * into the page behind it. Only a second theme makes it visible, which is why this
-     * is asserted on the generated presets.
-     *
-     * Daylight is excluded deliberately, not forgotten — `x-card`, `x-table`,
-     * `x-dropdown` and `x-modal`'s panel are all white in the original design, so
-     * `surface-raised` and `surface-overlay` are the same colour. Separating them is
-     * the "regularize Daylight" follow-up, not a contrast fix.
-     */
+    /** Require distinct elevations in presets designed with four surfaces. */
     public function test_the_generated_presets_use_four_distinct_surfaces(): void
     {
         $surfaces = ['surface', 'surface-raised', 'surface-sunken', 'surface-overlay'];

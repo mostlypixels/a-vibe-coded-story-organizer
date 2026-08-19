@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PREVIEW_PROPERTIES, registerFontPreview, resolvePreview } from './font-preview';
 
-/** Same Alpine stand-in as resources/js/word-count.test.js. */
 function createAlpineStub() {
     const factories = {};
 
@@ -15,7 +14,6 @@ function createAlpineStub() {
     };
 }
 
-/** The lists admin/appearance/edit.blade.php renders into `x-data`, trimmed. */
 const maps = {
     ui_font: { inter: 'Inter, sans-serif', georgia: 'Georgia, Times, serif' },
     manuscript_font: { inter: 'Inter, sans-serif', literata: 'Literata, serif' },
@@ -105,9 +103,6 @@ describe('registerFontPreview', () => {
         document.documentElement.removeAttribute('style');
     });
 
-    /** Each field writes its own property and only that one — a shared
-     *  handler that wrote the wrong property would still "work" visually for
-     *  one field, so every field is checked against a clean root. */
     it.each([
         ['ui_font', 'georgia', '--font-sans', 'Georgia, Times, serif'],
         ['manuscript_font', 'literata', '--font-manuscript', 'Literata, serif'],
@@ -137,7 +132,6 @@ describe('registerFontPreview', () => {
         expect(style.getPropertyValue('--color-content').trim()).toBe('#eeeef4');
     });
 
-    /** Picking a second theme must replace the first, not merge with it. */
     it('a second theme overwrites the properties of the first', () => {
         const { form } = mountFontPreview(Alpine);
 

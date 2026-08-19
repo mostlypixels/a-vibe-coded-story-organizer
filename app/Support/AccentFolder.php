@@ -18,7 +18,7 @@ use App\Services\ProjectSearch;
  *     every driver. The default (and production) database is SQLite, whose
  *     `LIKE`/`lower()` fold ASCII case only, never accents, with no `unaccent`/ICU
  *     collation; and a folding SQL expression (a deep nested-REPLACE chain)
- *     overflows SQLite's parser on some builds. See documentation/architecture.md
+ *     overflows SQLite's parser on some builds. See documentation/architecture/README.md
  *     → Project search.
  *   - A fixed, explicit map keeps folding deterministic and identical everywhere
  *     it is applied (gate, label, snippet).

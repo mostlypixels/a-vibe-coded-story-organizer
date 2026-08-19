@@ -8,17 +8,10 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Translation\PotentiallyTranslatedString;
 use Throwable;
 
-/**
- * Reusable rule attached to every rich-HTML field in the Form Requests, the way
- * `new ValidMarkdown` guards the Markdown fields. It validates that
- * the value is processable HTML; the actual cleaning/stripping is HtmlSanitizer's
- * job, run on the model write path so the stored value is always safe.
- */
+/** Checks that rich HTML can pass through the sanitizer used during model writes. */
 class SanitizeHtml implements ValidationRule
 {
     /**
-     * Run the validation rule.
-     *
      * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void

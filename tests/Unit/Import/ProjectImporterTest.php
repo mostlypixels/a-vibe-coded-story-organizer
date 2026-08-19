@@ -24,17 +24,7 @@ use RuntimeException;
 use Tests\TestCase;
 use ZipArchive;
 
-/**
- * Service-level tests for the ProjectImporter orchestrator: start()/run()/
- * discard() are called directly with an UploadedFile / Import model. No HTTP
- * route is involved — ImportTest covers that.
- *
- * The scenarios pin the checkpoint contract from data-model.md: a validation
- * failure creates no row at all, a completed run cleans up its working files,
- * a mid-run failure leaves a resumable checkpoint (phase + id_maps + a safe
- * failure_message), resuming replays ONLY the remaining phases, and discard
- * rolls everything back.
- */
+/** Guard import checkpoints, cleanup, resume, and discard behavior. */
 class ProjectImporterTest extends TestCase
 {
     use RefreshDatabase;

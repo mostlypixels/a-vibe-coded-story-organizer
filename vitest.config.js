@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 /**
  * Vitest configuration for the project's JS unit-test tier (introduced by the
- * expand-tip-tap feature, task 03 — see documentation/rich-text.md).
+ * expand-tip-tap feature, task 03 — see documentation/features/rich-text.md).
  *
  * `environment: 'jsdom'` is required, not optional: Tiptap's `Editor.getHTML()`
  * calls ProseMirror's `DOMSerializer`, which reaches for `window.document` to

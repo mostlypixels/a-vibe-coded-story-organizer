@@ -6,19 +6,9 @@ use App\Support\Oklch;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
-/**
- * Asserts the *properties* of a ramp, never a particular palette.
- *
- * The command exists so a human can choose colours, so pinning its output to a literal
- * list of values would only record today's taste and break the moment the curve is
- * retuned. What must not break is what makes a generated ramp better than an eyeballed
- * one: eleven shades, evenly spaced in perceived lightness, all of the same hue.
- *
- * No database is touched — the command reads config and prints.
- */
+/** Check ramp structure without fixing a specific palette. */
 class ThemeRampCommandTest extends TestCase
 {
-    /** How far apart two consecutive lightness steps may drift before the ramp is uneven. */
     private const EVENNESS_TOLERANCE = 0.005;
 
     public function test_it_prints_eleven_shades_keyed_50_to_950(): void

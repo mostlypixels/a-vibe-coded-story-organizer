@@ -6,11 +6,7 @@ use App\Enums\StoryOverviewMode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * Validates a save of a book's `overview_render_mode`. Authorization
- * mirrors StoryController::updateMode per CLAUDE.md: the write is ownership
- * of the book's project, walked via the route model binding.
- */
+/** Validates a book's story overview mode. */
 class UpdateStoryOverviewModeRequest extends FormRequest
 {
     public function authorize(): bool

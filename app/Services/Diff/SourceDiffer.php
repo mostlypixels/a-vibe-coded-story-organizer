@@ -3,7 +3,6 @@
 namespace App\Services\Diff;
 
 use App\Enums\DiffChange;
-use App\Services\RevisionDiffer;
 use App\Support\ChangeExcerpt;
 use App\Support\DiffSpan;
 use App\Support\InlineToken;
@@ -13,25 +12,10 @@ use Jfcherng\Diff\Factory\RendererFactory;
 use Jfcherng\Diff\SequenceMatcher;
 
 /**
- * The diff strategy for the fields whose markup the writer types herself:
- * `Scene.contents` and the project front/back matter (Markdown), and the rights
- * notice (plain). It compares the stored text verbatim, line by line and then
- * word by word, because there the `**`, `#` and `>` characters *are* the
- * content — see {@see RevisionDiffer} for the routing decision.
- *
- * This class is the only place `jfcherng/php-diff` is used. Its counterpart for
- * the rich-HTML fields is {@see VisualHtmlDiffer}, and the two answer the same
- * two questions in the same units, so a history row and a compare page can
- * never describe the same save differently:
- *
- * * {@see self::diff()} — the whole comparison, rendered side by side, for the
- *   compare page;
- * * {@see self::excerpt()} — the first changed hunk as a run of words, for the
- *   one-line summary on a history row.
+ * Diffs author-written Markdown and plain text by line and then by word.
  *
  * > [!WARNING]
- * > Never send a rich-HTML field here. It would diff the tags the writer never
- * > typed and drown the prose she did.
+ * > Do not send rich HTML here. Its tags are not author-written source text.
  */
 class SourceDiffer
 {

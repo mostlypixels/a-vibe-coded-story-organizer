@@ -18,8 +18,6 @@
             />
         </div>
 
-        {{-- A jump list, not a menu of its own: the top nav already reaches
-             these same four pages once the book is the active one (task 09). --}}
         <div class="lg:col-span-3">
             <x-card :title="__('Story')">
                 <div class="space-y-2">

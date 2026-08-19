@@ -19,31 +19,26 @@ class PublicationSettingTest extends TestCase
         $book = Book::factory()->create();
         $setting = PublicationSetting::factory()->create(['book_id' => $book->id]);
 
-        // Metadata toggles default to true
         $this->assertTrue($setting->include_book_cover);
         $this->assertTrue($setting->include_author);
         $this->assertTrue($setting->include_publisher);
         $this->assertTrue($setting->include_rights);
         $this->assertTrue($setting->include_isbn);
 
-        // New rendering toggles default to false
         $this->assertFalse($setting->include_scene_titles);
         $this->assertFalse($setting->include_act_descriptions);
         $this->assertFalse($setting->include_chapter_descriptions);
         $this->assertFalse($setting->include_scene_descriptions);
 
-        // Front/back matter toggles default to false
         $this->assertFalse($setting->include_dedication);
         $this->assertFalse($setting->include_acknowledgements);
         $this->assertFalse($setting->include_preface);
         $this->assertFalse($setting->include_postface);
 
-        // Format choices default to v1 behaviour
         $this->assertSame(ChapterTitleFormat::ChapterNumberTitle, $setting->chapter_title_format);
         $this->assertSame(TableOfContentsDepth::Chapters, $setting->table_of_contents_depth);
         $this->assertSame(DividerType::HorizontalRule, $setting->divider_type);
 
-        // Appendix options default to off/empty
         $this->assertFalse($setting->include_codex_appendix);
         $this->assertSame([], $setting->appendix_entry_types);
         $this->assertFalse($setting->appendix_include_images);

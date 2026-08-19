@@ -48,7 +48,7 @@ Never rely on the caller's prompt for what's already built.
 - Write the tests it lists, in this project's existing test style, covering the
   authorization/ownership edge case the way sibling resources do.
 - Give state-toggling UI a stable semantic hook (`aria-*`/`data-active`) rather than
-  asserting on Tailwind classes — `documentation/best-practices.md` → *Testing UI state*.
+  asserting on Tailwind classes — `documentation/development/best-practices.md` → *Testing*.
 
 ## Verifying (required before a task counts as done)
 

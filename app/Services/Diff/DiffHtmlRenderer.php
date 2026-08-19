@@ -11,32 +11,11 @@ use App\Support\InlineToken;
 use App\Support\RichTextFields;
 
 /**
- * Turns {@see VisualHtmlDiffer}'s structure into the HTML a diff is displayed
- * as — and is the *only* thing in the app that produces `<ins>`/`<del>`.
+ * Safely renders visual diff structures and is the only producer of ins/del tags.
  *
- * ## Why this class is the safety boundary
- *
- * The order is: already-purified content in → diff → wrap the changes → render.
- *
- * > [!WARNING]
- * > **Never** run the output through the sanitizer. The author allow-list
- * > ({@see RichTextFields::ALLOWED_TAGS}) has no `ins`/`del` in it — by design —
- * > so purifying afterwards would eat precisely the markers this class exists to
- * > add. Safety instead comes from *production*: this renderer builds every tag
- * > itself from {@see self::EMITTED_TAGS}, escapes every text node with `e()`,
- * > and re-emits attributes from parsed values rather than copying strings.
- * > Nothing from the stored value is ever concatenated raw, so a stored value
- * > containing a literal `<del>` renders as visible text, not as a marker.
- *
- * That is the same contract the `jfcherng/php-diff` output already has, for the
- * same reason: the producer escapes, so the result is safe to `{!! !!}`.
- *
- * ## `<s>` is not `<del>`
- *
- * The editor's strikethrough stays `<s>` ("no longer accurate"); `<del>` means
- * "removed between these two revisions" and belongs to this layer alone. They
- * are different statements, not synonyms — see RichTextFieldsDiffTagsTest,
- * which guards the allow-list that keeps them apart.
+ * It emits allow-listed tags and escapes every text node. Do not sanitize its
+ * output because the author allow-list correctly excludes diff markers.
+ * Editor strikethrough remains an `s` element and has a different meaning.
  */
 class DiffHtmlRenderer
 {

@@ -1,9 +1,6 @@
 @props(['name', 'events', 'selected' => []])
 
 @php
-    // Searchable multi-select for events, now a thin wrapper over the generic x-chip-picker.
-    // Chips carry event ids (no free text — events must already exist); the chosen ids submit
-    // as hidden {{ $name }}[] inputs, exactly as the scene controller/validation expect.
     $options = collect($events)->map(fn ($event) => [
         'value' => (int) $event->id,
         'label' => $event->title,

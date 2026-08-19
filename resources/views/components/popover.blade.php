@@ -5,9 +5,6 @@
 ])
 
 @php
-    // Click-toggled panel anchored to a trigger. Use the `trigger` slot for the
-    // clickable element and the `content` slot for the panel body (like
-    // x-dropdown). Closes on outside click or Escape.
     $positions = [
         'top'    => 'bottom-full left-1/2 -translate-x-1/2 mb-2',
         'bottom' => 'top-full left-1/2 -translate-x-1/2 mt-2',

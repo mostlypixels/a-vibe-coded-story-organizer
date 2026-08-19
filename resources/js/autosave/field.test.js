@@ -1,13 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEBOUNCE_MS, fieldKeyFor, registerAutosaveField, shouldAutosave } from './field';
 
-/**
- * Minimal Alpine stand-in for `registerAutosaveField()`'s `store()`/`data()` calls —
- * just enough of Alpine's public surface for the plain-object component methods to be
- * invoked directly in a test, without pulling in the real Alpine runtime (no
- * reactivity/DOM-diffing needed for these assertions; see badge.js/badge.test.js for
- * this codebase's precedent of testing the DOM-free half of an Alpine adapter).
- */
 function createAlpineStub() {
     const stores = {};
     const factories = {};
@@ -31,12 +24,6 @@ function createAlpineStub() {
     };
 }
 
-/**
- * The DOM-free logic: the store-map key builder and the dirty-only gating
- * function. Everything requiring a real Alpine mount (debounce timers wired to
- * DOM events, the axios round-trip) is left to the manual checklist, matching
- * wysiwyg.test.js's precedent of only unit-testing the DOM-free logic.
- */
 describe('fieldKeyFor', () => {
     it('keys a field as entity:id:field', () => {
         expect(fieldKeyFor({ entity: 'scene', id: 42, field: 'contents' })).toBe('scene:42:contents');
@@ -65,14 +52,6 @@ describe('shouldAutosave', () => {
     });
 });
 
-/**
- * The store-wide `dirty` map and
- * `isDirty()` alongside the existing per-field `state` machine. Mounts
- * `registerAutosaveField()`'s `autosaveField` component directly against a real
- * (jsdom) DOM node and a stub Alpine, bypassing the real Alpine runtime entirely —
- * matching this file's existing convention (see the top-of-file docblock) of
- * unit-testing the DOM-free/logic half of the adapter.
- */
 describe('registerAutosaveField store dirty tracking', () => {
     let Alpine;
 
@@ -88,9 +67,6 @@ describe('registerAutosaveField store dirty tracking', () => {
         delete window.axios;
     });
 
-    /** Mounts an `autosaveField` instance on a real `<div><textarea /></div>`, mirroring
-     *  the wrapper/inner-textarea shape `fieldValue()`'s `querySelector('textarea')`
-     *  assumes (see field.js's docblock). */
     function mountField(config) {
         const root = document.createElement('div');
         const textarea = document.createElement('textarea');
@@ -117,24 +93,15 @@ describe('registerAutosaveField store dirty tracking', () => {
         textarea.value = 'hello';
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
 
-        // The debounce timer was scheduled but not yet advanced — dirty is set
-        // synchronously by onInput(), well before any PATCH fires.
         expect(Alpine.store('autosave').dirty[field.key]).toBe(true);
         expect(Alpine.store('autosave').isDirty()).toBe(true);
     });
 
-    /**
-     * The editor half of the dirty gate. A wysiwyg field fires no `input` event of its
-     * own: `syncTextarea()` assigns `textarea.value`, and ProseMirror applies Delete,
-     * the toolbar and undo as transactions. `wysiwyg:text-changed` is the only signal
-     * that reaches this component, so an edit made that way must autosave too.
-     */
     function mountEditorField(config) {
         const { field, textarea } = mountField(config);
         const editor = document.createElement('div');
         textarea.parentNode.appendChild(editor);
 
-        /** What wysiwyg.js's `onUpdate` does: assign the value, then announce it. */
         const edit = (value) => {
             textarea.value = value;
             editor.dispatchEvent(new CustomEvent('wysiwyg:text-changed', { detail: { text: value }, bubbles: true }));
@@ -256,14 +223,6 @@ describe('registerAutosaveField store dirty tracking', () => {
         expect(Alpine.store('autosave').isDirty()).toBe(false);
     });
 
-    /**
-     * `notifyWordCount()` is the field's half of the
-     * counter-reconciliation channel — resources/js/word-count.js only ever
-     * trusts this dispatch for the authoritative number. Covered here in
-     * isolation (a hand-added `[data-word-count]` element, not the real
-     * component) so this contract stays pinned independently of
-     * word-count.js's own tests.
-     */
     it('a successful save dispatches word-count:reconcile on this field\'s [data-word-count] element, carrying the response word_count', async () => {
         window.axios = {
             patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash', word_count: 7 } }),
@@ -338,13 +297,6 @@ describe('registerAutosaveField store dirty tracking', () => {
     });
 });
 
-/**
- * Regression guards for the removed draft mirror. They assert on
- * `window.localStorage` itself rather than on a spy: there is no `writeDraft` left
- * to spy on, and a spy that attaches to nothing passes for the wrong reason. The
- * two moments that used to write a draft — departure and a settled save — are the
- * two covered here.
- */
 describe('no localStorage writes', () => {
     let Alpine;
 

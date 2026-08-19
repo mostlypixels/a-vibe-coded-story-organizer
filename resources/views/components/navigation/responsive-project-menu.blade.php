@@ -1,13 +1,9 @@
 @props(['navigation'])
 
-{{-- Collapsed (mobile) primary menu: the same sections in the same order as
-     navigation.project-menu, flattened — a heading per section instead of a
-     dropdown. Same ProjectNavigation flags drive both. --}}
 <x-responsive-nav-link :href="route('projects.show', $navigation->project)" :active="$navigation->homeActive">
     {{ __('Dashboard') }}
 </x-responsive-nav-link>
 
-{{-- Guarded on hasBook(), not hasProject() — see project-menu.blade.php. --}}
 @if ($navigation->hasBook())
     <x-navigation.section-heading>{{ __('Story') }}</x-navigation.section-heading>
 

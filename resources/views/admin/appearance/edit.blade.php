@@ -14,14 +14,10 @@
         $selectedLeading = old('manuscript_leading', $fonts->leadingSlug);
         $selectedUiLeading = old('ui_leading', $fonts->uiLeadingSlug);
 
-        // The live preview resolves a picked slug through this map and writes
-        // nothing when the slug is absent. Authored config values only: the
-        // browser never assembles a CSS value out of the form.
         $stacks = array_map(fn (array $family) => $family['stack'], $families);
 
+        // Only server-approved values can reach CSS properties.
         $previewMap = [
-            // A theme entry is the whole `--color-*` block ThemeStyleBlock prints,
-            // not one value: picking a preset moves every token at once.
             'theme_slug' => $themeDeclarations,
             'ui_font' => $stacks,
             'manuscript_font' => $stacks,
@@ -32,11 +28,7 @@
         ];
     @endphp
 
-    {{-- `autocomplete="off"` stops the browser restoring the radios on a reload.
-         Restoration fires no `change` event, so the live preview never runs and
-         a restored radio disagrees with the `<style>` block, which always paints
-         the saved values. A reload now returns the whole page to what is
-         stored. --}}
+    {{-- Disable radio restoration because it does not trigger the live preview. --}}
     <form
         method="post"
         action="{{ route('admin.appearance.update') }}"
@@ -55,9 +47,6 @@
                 </p>
             </x-slot>
 
-            {{-- Native radios, not a <select> and not styled <div>s: arrow-key
-                 navigation comes free. Picking one repaints the page live; the
-                 choice is stored only on submit. --}}
             <fieldset>
                 <legend class="sr-only">{{ __('Theme') }}</legend>
 
@@ -119,8 +108,6 @@
                     />
                 </div>
 
-                {{-- The chrome around this page is already the real preview; this
-                     block only keeps a sentence of it in view while picking. --}}
                 <p class="rounded-md border border-border p-4 text-sm text-content">
                     {{ __('Menus, buttons and labels use this typeface at this size and spacing.') }}
                 </p>
@@ -173,13 +160,6 @@
                     />
                 </div>
 
-                {{-- Real text, not aria-hidden: a screen-reader user changing line
-                     spacing for a sighted partner still needs to read the sample.
-
-                     The three manuscript variables, not the resolved values: the
-                     page-wide <style> block gives them the saved values on load,
-                     and the live preview repaints the sample with the rest of the
-                     page. --}}
                 <div
                     class="rounded-md border border-border p-4"
                     style="font-family: var(--font-manuscript); font-size: var(--manuscript-scale); line-height: var(--manuscript-leading);"

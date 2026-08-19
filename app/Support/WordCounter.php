@@ -8,8 +8,7 @@ use Illuminate\Support\Str;
 /**
  * The one definition of "a word" in this app (word-count spec,
  * `.specs/shipped/2026-07/word-count/expanded/architecture.md`). Pure text-in,
- * int-out — no model, no controller, no DB access (CLAUDE.md's "Where logic
- * lives": reference logic belongs in app/Support, beside {@see RichText}).
+ * int-out, with no model or database access.
  *
  * Four steps, always in this order:
  *   1. Strip fenced code blocks from Markdown input, before rendering. A fence is

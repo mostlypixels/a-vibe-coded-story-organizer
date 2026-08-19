@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-19 — Comment and documentation cleanup (#115)
+
+### Changed
+
+- Documentation is reorganised around shorter, task-focused guides.
+
+### Removed
+
+- Comments that repeated what the code already says.
+
 ## 2026-08-18 — Multiple books per project (#114)
 
 ### Added

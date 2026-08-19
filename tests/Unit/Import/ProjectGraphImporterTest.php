@@ -15,31 +15,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/**
- * Unit-level tests for ProjectGraphImporter: the phase methods are called
- * directly against a hand-built, already-extracted archive directory — no zip,
- * no HTTP, no Import row. ArchiveValidatorTest, ProjectImporterTest and
- * ImportTest cover those.
- *
- * The fixture covers every remapping/reconciliation rule from data-model.md:
- * a story tree whose position order deliberately disagrees with insertion
- * order, a non-main plotline and a non-fixed event alongside the anchors, a
- * scene referencing timeline events, and a codex entry with aliases, tags,
- * event-anchored attribute values, and media both with and without bytes.
- */
+/** Test import phases against an extracted archive fixture. */
 class ProjectGraphImporterTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * A minimal valid 1x1 PNG for the cover media bytes.
-     */
     private const TINY_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
-    /**
-     * The fixture's single book directory, and the act directory beneath it.
-     * The manuscript hangs off a book, so every story path starts here.
-     */
     private const BOOK_DIR = 'data/books/50-fixture-book';
 
     private const ACT_DIR = self::BOOK_DIR.'/acts/100-act-one';

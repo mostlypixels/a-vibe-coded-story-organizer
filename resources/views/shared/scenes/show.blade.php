@@ -1,14 +1,10 @@
 <x-public-layout>
     <div class="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        {{-- Formatted title: "Chapter 1 — Chapter title: Scene title".
-             Continuous, project-wide chapter number, matching the Story overview. --}}
         <x-heading level="1">
             {{ __('Chapter :number', ['number' => $numbering->chapter($scene->chapter)]) }}
             &mdash; {{ $scene->chapter->name }}: {{ $scene->name }}
         </x-heading>
 
-        {{-- Description in a COLLAPSED card (starts closed, per spec). The body
-             is already-sanitized rich HTML, rendered only via x-rich-text. --}}
         @if (filled($scene->description))
             <div x-data="{ open: false }" class="bg-surface-raised shadow-xs rounded-lg">
                 <button type="button" @click="open = ! open"
@@ -22,9 +18,6 @@
             </div>
         @endif
 
-        {{-- Contents rendered as formatted HTML (Markdown → HTML) via the single
-             Scene::renderedContents accessor, the same render path as the Story
-             overview and the book export. `notes` is NEVER rendered here. --}}
         <article class="prose prose-sm max-w-none text-content-muted text-justify [&_p]:my-4">
             {!! $scene->renderedContents !!}
         </article>

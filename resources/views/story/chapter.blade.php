@@ -12,11 +12,6 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {{-- Left column: whole-book Table of Contents, sticky so it stays in view
-                 while the current chapter scrolls beside it. Every act and chapter is
-                 listed even though only one chapter's scenes are loaded. Links carry
-                 the target chapter's id — the act link points at its first chapter —
-                 plus the `#chapter-{id}` fragment so the target scrolls into view. --}}
             <div class="lg:col-span-3">
                 <x-collapsible-card :title="__('Table of Contents')" class="lg:sticky lg:top-6">
                     <div class="space-y-3">
@@ -48,11 +43,6 @@
                 </x-collapsible-card>
             </div>
 
-            {{-- Right column: the current chapter only, under an always-shown header for
-                 its act so a mid-act chapter page keeps the reader's place. The act total
-                 is the whole act's, from the aggregate — not the one loaded chapter. The
-                 pager sits above and below the chapter card so it's reachable without
-                 scrolling back up on a long chapter. --}}
             <div class="lg:col-span-9 space-y-10">
                 @if ($currentChapter)
                     <div class="space-y-6">

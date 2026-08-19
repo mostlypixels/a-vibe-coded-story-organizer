@@ -1,7 +1,4 @@
 @php
-    // A project always holds at least one book (Project::booted()) — the last
-    // one gets no delete control at all, the same belt-and-braces the main
-    // plotline gets.
     $isLastBook = $books->count() === 1;
 @endphp
 
@@ -52,8 +49,6 @@
                 @endforeach
             </x-table>
 
-            {{-- Delete-with-move dialogs live outside the table (a modal <div> is not
-                 valid inside a <tbody>); each is opened by its row's trash button. --}}
             @unless ($isLastBook)
                 @foreach ($books as $book)
                     @if ($book->acts_count > 0)

@@ -6,17 +6,7 @@ use App\Enums\SearchMode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * Validates a project search request.
- *
- * Authorization mirrors the controller: search reads a project's contents, so it
- * flows from the project via ProjectPolicy::view (CLAUDE.md § Authorization).
- *
- * `q` is deliberately nullable — an absent/blank query is the normal landing
- * state (render the form, no results), never a validation error. `mode` is an
- * optional SearchMode; the controller applies the AND default when it is absent,
- * so it is validated (a bad value fails) but not required.
- */
+/** Blank queries show the search form without results. */
 class SearchRequest extends FormRequest
 {
     public function authorize(): bool

@@ -16,25 +16,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
-/**
- * The write path: one snapshot row per project per writer-day, holding the
- * project's cumulative word count (expanded/architecture.md "The write path").
- *
- * The recorder runs from model events in `Scene`, `Chapter` and `Act`, never
- * from a controller — `RevisionReverter` writes through `$entity->save()` and
- * never reaches a controller, so Undo would stop recording. The chapter and act
- * hooks exist because their children cascade at the database level and fire no
- * `Scene::deleted`.
- */
+/** Record one cumulative total per project and writer day. */
 class WordCountSnapshotTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * A project owned by $user, with one empty scene. Empty on purpose: a scene
-     * created with no words moves no total, so the tree exists with no snapshot
-     * row yet and each test writes the first one itself.
-     */
     private function emptySceneFor(User $user): Scene
     {
         [, $book] = $this->projectWithBook($user);

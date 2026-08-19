@@ -1,14 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STATES, mapResponse, retryDelayMs, scheduleRetry, worstState } from './store.js';
 
-/**
- * Tests for `resources/js/autosave/store.js` — the pure decision logic behind
- * the autosave indicator. No DOM, no network: every case here is a plain
- * function call against the status-code mapping table in
- * `expanded/architecture.md` and the worst-state-wins precedence in
- * `expanded/ui.md`.
- */
-
 describe('mapResponse — status-code mapping table', () => {
     it('200 maps to saved', () => {
         expect(mapResponse(200)).toEqual({ state: STATES.SAVED });

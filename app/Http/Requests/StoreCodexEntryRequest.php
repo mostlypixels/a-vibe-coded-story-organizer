@@ -12,7 +12,6 @@ class StoreCodexEntryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Mirror ProjectPolicy@update: only the owner may add entries to a project.
         return $this->user()->can('update', $this->route('project'));
     }
 
@@ -29,16 +28,10 @@ class StoreCodexEntryRequest extends FormRequest
             'tags' => ['nullable', 'array'],
             'tags.*' => ['nullable', 'string', 'max:255'],
 
-            // Start-anchored baseline value per applicable attribute, keyed by attribute id
-            // (attribute_baselines[<codex_attribute_id>] => value). Values are validated here;
-            // the keys (project scope + applies_to) are checked in withValidator below, because
-            // applies_to is a JSON column filtered in PHP rather than via a DB rule.
+            // withValidator checks the project and entry type for each attribute key.
             'attribute_baselines' => ['nullable', 'array'],
             'attribute_baselines.*' => ['nullable', 'string', 'max:255'],
 
-            // Media uploads. Rules are centralized in CodexMediaRules so store/update
-            // (and the form hints) never drift. No remove_media[] here: a brand-new
-            // entry has nothing to remove — that only applies on update.
             'cover' => CodexMediaRules::coverRules(),
             'reference_images' => ['nullable', 'array'],
             'reference_images.*' => CodexMediaRules::referenceImageRules(),
@@ -47,11 +40,7 @@ class StoreCodexEntryRequest extends FormRequest
         ];
     }
 
-    /**
-     * Validate the attribute_baselines *keys*: each must be an attribute of this project
-     * whose applies_to includes the entry type — the same cross-project rigor applied to
-     * anchor events. Done here (not as array rules) because applies_to is JSON checked in PHP.
-     */
+    /** Checks each JSON-backed attribute key against the project and entry type. */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {

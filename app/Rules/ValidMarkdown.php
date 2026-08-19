@@ -11,16 +11,12 @@ use Throwable;
 class ValidMarkdown implements ValidationRule
 {
     /**
-     * Run the validation rule.
-     *
      * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         try {
-            // GFM (not bare CommonMark) so validation recognizes the same grammar
-            // Scene::renderedContents() already renders via Str::markdown() —
-            // strikethrough (~~text~~) and task lists ([ ]/[x]) included.
+            // Validate the same GFM grammar that renders scene contents.
             (new GithubFlavoredMarkdownConverter)->convert((string) $value);
         } catch (Throwable) {
             $fail('The :attribute must be valid Markdown.');

@@ -11,17 +11,19 @@ paths:
 
 ### Documentation
 
-The code must be understandable by junior developers — the code, the architecture, the pitfalls to
-avoid, and the best practices to follow.
+Make the code, architecture, limits, and practices clear to junior developers.
 
 * Code comments have their own rules: `.claude/rules/code-comments.md` (loads when you edit a
   PHP file).
-* Maintain a `documentation/` folder of **GitHub-flavored Markdown** files, at least:
-    * `best-practices.md`
-    * `code-style.md`
-    * `architecture.md`
-    * `glossary.md` — higher-level concepts and design patterns
-    * add pages as needed.
+* `documentation/README.md` is the entry point. It links to category indexes.
+* Keep pages in the matching category:
+    * `architecture/` for system structure and terms;
+    * `features/` for application behavior;
+    * `export-import/` for interchange contracts;
+    * `interface/` for components and visual configuration;
+    * `development/` for contributor workflows and standards.
+* Each category has a `README.md`. Link every page from its category index and keep all pages
+  reachable from `documentation/README.md`.
 * In `documentation/`: explain *why*, not only *what*, and include examples for complex concepts.
   Use GFM alert callouts for emphasis, e.g. `> [!WARNING]` for pitfalls and `> [!NOTE]` for tips
   (these render in color on GitHub and in the IDE; inline HTML `style=` is stripped by GitHub, so
@@ -41,10 +43,10 @@ them. Both readers want the same thing — the facts, findable, with nothing bet
   move on; the reader can open it.
 * **No padding.** No "Note that…", no recap paragraph under a heading, no summary that
   repeats the section above it, no preamble announcing what the section will cover.
-* **Entry point short, deep dive linked.** A feature gets a compact section in
-  `architecture.md` — what it is, the load-bearing pieces, the rules that bite — linking to
-  `documentation/<feature>.md` for the full reference (see `revisions.md`). The deep dive
-  holds detail, not padding: the same rules apply to it.
+* **Keep entry points short.** The root index leads to category indexes. Architecture names the
+  load-bearing rules and links to feature guides for detail. Do not copy the detail into indexes.
+* **Use relative links.** GitHub navigation must work from the file's current folder. Run the
+  documentation link test after moving or renaming a page.
 * **If a doc needs a "skim this" instruction, it is too long.** Cut it; don't annotate it.
 
 This applies to everything written here: `documentation/`, specs, `.claude/` skills and

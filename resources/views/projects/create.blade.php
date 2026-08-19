@@ -25,7 +25,6 @@
         </x-card>
 
         <x-slot:sidebar>
-            {{-- The projects list is the dashboard: there is no projects.index route. --}}
             <x-create-actions form="project-create-form" :cancel="route('dashboard')">
                 {{ __('Create Project') }}
             </x-create-actions>

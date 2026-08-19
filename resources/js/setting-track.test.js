@@ -3,11 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { registerSettingTrack, selectStep, stepAt } from './setting-track';
 
 describe('registerSettingTrack', () => {
-    /**
-     * Every track on the page runs its own instance. A property only assigned
-     * in `init()` is not part of the component's own data, so all four tracks
-     * shared one radio list and each drove the last one.
-     */
     it('declares its own radio list per instance', () => {
         let factory;
         registerSettingTrack({ data: (_name, callback) => { factory = callback; } });
@@ -22,7 +17,6 @@ describe('registerSettingTrack', () => {
     });
 });
 
-// A 500px track of 5 steps: 100px slices, ticks at 50/150/250/350/450.
 const rect = { left: 100, width: 500 };
 
 describe('stepAt', () => {

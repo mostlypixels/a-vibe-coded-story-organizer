@@ -16,18 +16,7 @@ use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
 
-/**
- * RevisionController::revert() and the App\Services\RevisionReverter behind it
- * copy an older revision's value back onto the live column, additively
- * (expanded/architecture.md "Revert"). Revert is never destructive: the
- * reverted-away-from state and every other row stay as they were, and revert
- * always creates a new `origin: revert` row.
- *
- * These tests drive the service through the HTTP endpoint, not in isolation.
- * The base-hash check, the re-validation and the recorded row are all things a
- * request must end up with. The conflict *response* belongs here too, beside
- * the revert behaviour it guards.
- */
+/** Revert through the HTTP boundary without deleting revision history. */
 class RevertRevisionTest extends TestCase
 {
     use RefreshDatabase;
@@ -232,21 +221,7 @@ class RevertRevisionTest extends TestCase
         $response->assertDontSee('reload and try again');
     }
 
-    /**
-     * The base hash must not be checked against a model already hydrated in
-     * memory, with the value written afterwards — two steps, and nothing holds
-     * the row still in between. Two reverts that arrive together both pass that
-     * check, and the second silently overwrites the first: exactly the outcome
-     * the base hash exists to prevent.
-     *
-     * A real race cannot be scheduled in a test, so this reproduces its *shape*.
-     * The row moves after the reverter has been handed an entity whose in-memory
-     * copy still hashes to what the page showed, so the cheap pre-flight check
-     * passes and only the locked re-read inside the write transaction can catch
-     * it. The service is driven directly here rather than through the endpoint,
-     * because the window being closed opens after the controller has resolved
-     * the model.
-     */
+    /** Require the locked re-read to catch a change after the preflight check. */
     public function test_a_value_that_moves_after_the_preflight_check_is_still_refused(): void
     {
         $user = User::factory()->create();

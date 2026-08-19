@@ -6,7 +6,6 @@
             <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-content scroll-mt-16">
                 {{ __('Chapter :number', ['number' => $numbering->chapter($chapter)]) }} &mdash; {{ $chapter->name }}
             </h3>
-            {{-- $chapter->scenes is already eager-loaded, so this ->sum() is free. --}}
             <x-word-count :count="$chapter->scenes->sum('word_count')" class="shrink-0" />
         </div>
     </x-slot:header>
@@ -28,11 +27,6 @@
                             <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-danger px-2 py-0.5 text-xs font-medium text-danger-surface-content">{{ __('Unassigned') }}</span>
                         @endif
                         <x-scene-status-badge :status="$scene->status" />
-                        {{-- Reordering here is AJAX (moveScene below re-evaluates which
-                             buttons are at the ends and toggles `disabled` in place), so
-                             these are plain buttons rather than <x-icon-move-button>'s
-                             PATCH form. The `ghost` variant styles its own disabled
-                             state, so the JS toggle restyles them with no extra work. --}}
                         <x-icon-button
                             type="button"
                             variant="ghost"

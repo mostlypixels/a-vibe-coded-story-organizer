@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * per-attempt state. `phase` records the last completed {@see ImportPhase} and
  * `id_maps` the accumulated id-remapping arrays, both checkpointed after each
  * phase commits so a stalled import can resume or be discarded. See
- * documentation/architecture.md and .specs/.../data-model.md.
+ * documentation/export-import/archive-format.md and .specs/.../data-model.md.
  */
 class Import extends Model
 {

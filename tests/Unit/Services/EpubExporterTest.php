@@ -23,16 +23,6 @@ use RuntimeException;
 use Tests\TestCase;
 use ZipArchive;
 
-/**
- * Service-level tests for EpubExporter: the full (unfiltered) outline, position
- * ordering, Act/Chapter page content, the epub-only SmartPunct typography, the
- * `lang` attribute, and the packaged .epub that {@see EpubExporter::export()}
- * writes (its OPF metadata, spine and nav).
- *
- * Uses RefreshDatabase + factories because the service reads the persisted
- * act → chapter → scene tree, but asserts directly on the service output rather than
- * through the HTTP layer.
- */
 class EpubExporterTest extends TestCase
 {
     use RefreshDatabase;
@@ -42,9 +32,6 @@ class EpubExporterTest extends TestCase
         return new EpubExporter(app(CoverImageService::class));
     }
 
-    /**
-     * Read the package document (book.opf) out of a generated .epub.
-     */
     private function opfOf(string $path): string
     {
         $opf = $this->entryOf($path, 'OEBPS/book.opf');
@@ -522,25 +509,7 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
-    /**
-     * The defaults regression guard, covering the metadata + book-cover slice.
-     *
-     * Every PublicationSetting toggle must default to "no change to the output". This
-     * test exports the same richly-populated book twice —
-     *   (a) with NO PublicationSetting row at all (the lazy default returned by
-     *       Book::publicationSettingOrDefault()), and
-     *   (b) with an EXPLICIT row whose every column is the literal default value (the
-     *       PublicationSettingFactory's default state, which mirrors
-     *       publicationSettingOrDefault() field-for-field) —
-     * and asserts the two generated .epub files are byte-for-byte identical. Because
-     * applyMetadata() and applyCover() are gated behind toggles that default true, that
-     * match proves the gating is a true no-op for a default book.
-     *
-     * > [!NOTE]
-     * > A literal diff against a pre-feature commit's output needs a stored binary
-     * > fixture. This equivalence check is the self-contained proxy: it fails as soon as
-     * > a "default" toggle does something an untouched export would not have done.
-     */
+    /** Keep lazy and explicit publication defaults content-identical. */
     public function test_defaults_v1_regression_lazy_default_and_explicit_default_row_produce_byte_identical_epubs(): void
     {
         Storage::fake('public');
@@ -1889,11 +1858,7 @@ class EpubExporterTest extends TestCase
         );
     }
 
-    /**
-     * With `appendix_include_images` on, the entry's FIRST media image is
-     * embedded on its page — bytes packaged and referenced by the page's <img>. A SECOND image
-     * on the same entry is deliberately NOT embedded (V1 first-image-only scope limit).
-     */
+    /** Embed only the first available image for each appendix entry. */
     public function test_appendix_embeds_only_the_first_media_image_when_include_images_is_on(): void
     {
         Storage::fake('public');

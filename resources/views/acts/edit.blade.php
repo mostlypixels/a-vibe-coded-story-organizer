@@ -27,7 +27,6 @@
 
         <x-slot:sidebar>
             @if ($act->chapters_count > 0)
-                {{-- Act has chapters: offer "move them elsewhere, then delete" or a full cascade. --}}
                 <x-edit-actions form="act-edit-form" :history-model="$act">
                     <x-slot:delete>
                         <x-button
@@ -57,7 +56,6 @@
                     :destinations="$destinations"
                 />
             @else
-                {{-- No chapters: nothing to move or count — keep the original plain confirm(). --}}
                 <x-edit-actions
                     form="act-edit-form"
                     :history-model="$act"

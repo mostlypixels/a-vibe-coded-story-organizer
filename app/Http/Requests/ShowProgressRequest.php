@@ -7,15 +7,9 @@ use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates the Progress page's range picker (`?from=&to=`).
+ * Blank dates select the current month.
  *
- * Authorization mirrors the controller: the chart reads a project's history, so
- * it flows from the project via ProjectPolicy::view (CLAUDE.md § Authorization).
- *
- * Both fields are nullable — an absent range is the normal landing state, and
- * `ProgressController` fills in the current month. The span cap exists because
- * the series materialises one entry per day in PHP; a hand-edited URL asking
- * for a decade of points is a memory question, not a valid range.
+ * The span limit bounds the daily series that PHP creates in memory.
  */
 class ShowProgressRequest extends FormRequest
 {

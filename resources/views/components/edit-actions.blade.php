@@ -6,28 +6,6 @@
     'duplicateModal' => null,
 ])
 
-{{--
-    Shared sidebar block for entity edit pages: Save / Save and stay / Delete, all acting
-    on the main edit form via the `form` attribute (the buttons live in the sidebar column,
-    outside the <form> tag itself — see resources/views/components/edit-layout.blade.php).
-
-    "Save" submits normally (controller redirects back to the list, as before). "Save and
-    stay" submits the same form with a `stay=1` field so the controller redirects back to
-    this edit page instead. $slot is the Delete button's label; omit `deleteAction` (e.g.
-    a fixed/un-deletable event) to hide the Delete button entirely.
-
-    Pass a `delete` slot to replace the default confirm() delete button with a custom
-    trigger (e.g. Act/Chapter's "move or delete" dialog trigger) while keeping the same
-    Actions card layout and divider.
-
-    Pass `historyModel` (the entity being edited) on a revisionable screen to add the
-    entity-level History link — the primary entry point into the revisions browser. Omit
-    it on screens whose model has no revision history (e.g. a codex attribute).
-
-    Pass `duplicateModal` (the name of an <x-duplicate-dialog>) to add a "Duplicate"
-    button below Save / Save and stay / History. The dialog itself is placed by the
-    edit view, not here — same split as the delete dialog above.
---}}
 <x-card :title="__('Actions')">
     @if (session('status') === 'saved')
         <x-auth-session-status :status="__('Saved.')" class="mb-3" />
@@ -35,13 +13,6 @@
         <x-auth-session-status :status="__('Duplicated.')" class="mb-3" />
     @endif
 
-    {{--
-        `data-guard-save` marks these as the entity save action: the navigation guard
-        (resources/js/navigation-guard.js) reads it off the submit event's `submitter` so
-        the native "unsaved changes" prompt stays silent when the writer clicks Save /
-        Save and stay — the submit *is* the save. No other form on the page carries it, so
-        every other submit keeps warning/behaving as before.
-    --}}
     <div class="flex flex-col gap-3">
         <x-button variant="primary" type="submit" form="{{ $form }}" data-guard-save :icon="true" class="w-full">{{ __('Save') }}</x-button>
         <x-button variant="secondary" type="submit" form="{{ $form }}" data-guard-save name="stay" value="1" icon="tabler-device-floppy" class="w-full">{{ __('Save and stay') }}</x-button>

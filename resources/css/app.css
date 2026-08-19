@@ -5,21 +5,7 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
-/*
-  v4 scans the whole project for class names instead of reading v3's `content`
-  array, and it does not care whether a file can render HTML: a utility merely
-  *named* in Markdown prose becomes a real rule in the stylesheet. Our specs,
-  docs and agent prompts discuss class names constantly, so without these
-  exclusions the build ships utilities no template uses (`.caret-transparent`
-  and `.indent-8` from a throwaway probe described in a log, for instance).
-
-  Excluded rather than narrowed to `resources/`: auto-detection is what keeps a
-  new Blade file working with no config, and that is worth keeping.
-
-  `.claude` is the same case as the other two and was simply missed — it is
-  tracked, so nothing in .gitignore prunes it, and at ~950 files of prompts and
-  skills it is the largest body of prose in the repo.
-*/
+/* Exclude prose that names Tailwind classes but cannot render them. */
 @source not '../../.specs';
 @source not '../../documentation';
 @source not '../../.claude';
@@ -31,46 +17,9 @@
 }
 
 /*
- * The five hand-authored hue ramps that used to live above (ocean / aqua / navy /
- * sun / flame) are gone, together with the loud placeholder the Tailwind 4 port
- * left on the active-nav indicator. Nothing may declare a colour here again: a
- * value a template can reach by hue is a value no preset can repaint. Colours are
- * the role tokens below, and their runtime values come from `config/themes.php`.
- */
-
-/*
- * ROLE TOKENS — the public colour vocabulary. A class names what a colour is *for*
- * (`bg-surface`, `text-content-muted`), never which hue it happens to be, so a theme
- * can repaint the app by overriding these custom properties at runtime. The full list
- * and each background's chosen foreground live in App\Support\ThemeTokens.
- *
- * `static`, not plain `@theme`: Tailwind 4 tree-shakes theme variables it sees no
- * utility for, and until the sweep renames the templates no utility references these
- * at all — they would vanish from the compiled `:root` and the runtime override would
- * have nothing to override. `static` emits every variable regardless.
- *
- * NEVER `@theme inline`. `inline` bakes the value into each utility rule instead of
- * referencing the custom property, which silently breaks every runtime override — the
- * single failure mode that looks like "the switcher does nothing", with no error
- * anywhere.
- *
- * The values below are the **Daylight preset's**, copied literally from
- * `config/themes.php`. They are a fallback, not the source of truth: every rendered
- * page ships a `:root` block (`<x-theme-style />`) that overrides all of them with the
- * active preset's values, so these only paint if that block is missing. They exist so
- * the compiled stylesheet is never colourless on its own.
- *
- * Duplication of the Daylight values is the price of deleting the ramps — until then
- * these were `var()` references to them. `ThemePresetTest` compares this block against
- * `config('themes.presets.daylight.tokens')` value-for-value, so the two cannot drift.
- * Change a Daylight colour in `config/themes.php` and mirror it here, or that test
- * fails.
- *
- * The mixed hex/oklch notation is deliberate and matches the config exactly: Tailwind
- * 4's own palette is oklch, and a hex approximation would move the pixel by a digit.
- *
- * There is deliberately no `dark:` variant and no `@custom-variant dark`. Dark mode is
- * the `low-glare-dark` preset — one axis, not two.
+ * Public theme tokens live in ThemeTokens. `static` keeps all variables available
+ * for runtime overrides. `inline` would bake values into utilities and break themes.
+ * These fallback values must match the Daylight preset; ThemePresetTest enforces this.
  */
 @theme static {
   /* Surfaces — by elevation. */
@@ -79,8 +28,7 @@
   --color-surface-sunken: oklch(98.5% 0.002 247.839);
   --color-surface-overlay: #ffffff;
 
-  /* The modal backdrop — an effect, not a surface, so it has no foreground
-     partner and no contrast floor. See ThemeTokens::DECORATIVE. */
+  /* The scrim is decorative and has no contrast pair. */
   --color-scrim: oklch(55.1% 0.027 264.364);
 
   /* Content — by emphasis. */
@@ -88,7 +36,7 @@
   --color-content-muted: oklch(44.6% 0.03 256.802);
   --color-content-subtle: oklch(53% 0.027 264.364);
 
-  /* Lines and rings. `focus` is its own token, never an alias of `primary`. */
+  /* Lines and rings. */
   --color-border: oklch(92.8% 0.006 264.531);
   --color-border-strong: oklch(62% 0.024 261.325);
   --color-focus: #1e93af;
@@ -110,17 +58,13 @@
   --color-table-header: #ffc933;
   --color-table-header-content: #023047;
 
-  /* The nav band — a dark band above a light page, not an elevated surface. */
+  /* Navigation. */
   --color-nav: #011f2f;
   --color-nav-content: #ddeff7;
   --color-nav-content-muted: #8ecae6;
   --color-nav-raised: #123c49;
 
-  /*
-   * Status: the solid fill, the text on it, the tinted background, and the text on
-   * *that*. Four per status, not three — the tint's foreground has to be nameable,
-   * or it defaults to the fill and lands under 4.5:1 on three statuses out of four.
-   */
+  /* Each status defines solid and tinted foreground/background pairs. */
   --color-danger: oklch(57.7% 0.245 27.325);
   --color-danger-content: #ffffff;
   --color-danger-surface: oklch(97.1% 0.013 17.38);
@@ -138,51 +82,14 @@
   --color-info-surface: oklch(97% 0.014 254.604);
   --color-info-surface-content: oklch(42.4% 0.199 265.638);
 
-  /*
-   * The manuscript face. `--font-sans` (above) is what every existing
-   * `font-sans` utility already follows; this is the same idea for prose
-   * surfaces, giving a `font-manuscript` utility. `static` for the same
-   * reason as the block above — the prose surfaces this feeds (task 05)
-   * don't exist yet, so a plain `@theme` would tree-shake it. Fallback
-   * value: the Inter stack, config's `default_manuscript`. The active
-   * user's choice overrides it at runtime via `<x-theme-style />`.
-   */
+  /* FontStyleBlock overrides these manuscript defaults at runtime. */
   --font-manuscript: Inter, ui-sans-serif, system-ui, sans-serif;
 
-  /*
-   * Fallbacks for the same reason as --font-manuscript above: the `.prose`
-   * rule below references both via var() before FontStyleBlock's <style>
-   * block (task 04) ever renders, and a build with no @theme static
-   * declaration for them would ship a dangling reference. Values match
-   * config('fonts.default_manuscript_scale') / config('fonts.default_leading').
-   */
   --manuscript-scale: 100%;
   --manuscript-leading: 1.6;
 }
 
-/*
- * Tailwind Typography (`prose`) ships its own colour scale as `--tw-prose-*`
- * variables, hard-coded to greys — `--tw-prose-bold` is near-black. Those beat the
- * `text-content-muted` every `prose` callsite sets, because the plugin paints
- * `strong`, headings, links, `code` and the table/quote borders by variable rather
- * than letting them inherit. Under a dark preset that renders bold text nearly
- * invisible against a dark surface.
- *
- * So the plugin's scale is re-pointed at the role tokens. Unlayered and after the
- * `@plugin` line, which is what lets it win: same specificity as the plugin's own
- * `.prose` rule, later in source order.
- *
- * The same trick carries `line-height` and `font-size` from the author's manuscript
- * choice (`--manuscript-leading`/`--manuscript-scale`, set by FontStyleBlock) onto the
- * block. Typography sets its own per-element `line-height`, so this must also come
- * after the `@plugin` line to win. It applies to the whole block, so headings inside
- * prose inherit it too — a manuscript with a loose body and tight headings reads wrong.
- *
- * > [!WARNING]
- * > Adding a `prose` usage needs nothing here, but adding a `prose-invert` one does
- * > — the `--tw-prose-invert-*` half of the scale is still the plugin's greys. The
- * > app has no `prose-invert` usage today; a preset is how it gets a dark theme.
- */
+/* Override Typography after the plugin so prose uses theme and manuscript tokens. */
 .prose {
     --tw-prose-body: var(--color-content-muted);
     --tw-prose-headings: var(--color-content);
@@ -197,11 +104,7 @@
     --tw-prose-captions: var(--color-content-muted);
     --tw-prose-kbd: var(--color-content);
     --tw-prose-code: var(--color-content);
-    /*
-     * A `<pre>` block is light-on-dark in every preset, and the `nav` family is the
-     * only pair in the vocabulary that guarantees that — the same judgement call
-     * `x-tooltip`'s bubble and `x-icon-button`'s `light` variant already make.
-     */
+    /* Code blocks use the guaranteed light-on-dark navigation pair. */
     --tw-prose-pre-code: var(--color-nav-content);
     --tw-prose-pre-bg: var(--color-nav);
     --tw-prose-th-borders: var(--color-border-strong);
@@ -210,35 +113,9 @@
     font-size: var(--manuscript-scale);
 }
 
-/*
- * Tailwind 3 defaulted every border to a light grey; Tailwind 4 defaults to
- * currentColor. The port kept v3's behaviour with a base-layer shim on `*` so ~88
- * width-only `border` usages did not become text-coloured hairlines overnight.
- *
- * The shim is gone: every one of those usages now names `--color-border` (or a
- * status/accent token) explicitly, which is what makes them themeable at all. A
- * blanket default would have quietly re-hidden the next one someone forgot.
- *
- * > [!WARNING]
- * > A width-only `border` class now inherits `currentColor` — the element's text
- * > colour. Always pair a border width with a border colour.
- */
+/* Tailwind borders inherit currentColor. Pair each border width with a color. */
 
-/*
- * Self-hosted web fonts (latin + latin-ext subsets, matching what fonts.bunny.net
- * served — latin-ext covers Central/Eastern European diacritics beyond what
- * French/Italian need). Previously loaded from fonts.bunny.net; self-hosted so the
- * app works fully air-gapped. Files live in public/fonts. unicode-range lets the
- * browser fetch only the subset it needs for the text being rendered.
- *
- * Atkinson Hyperlegible Next only — it is the sole family `--font-sans` names.
- * Figtree and Instrument Sans were declared here too, left over from the Laravel
- * starter kit, and no rendered page could ever reach them: whenever a build
- * exists, `welcome.blade.php` loads this stylesheet (so `--font-sans` is
- * Atkinson), and when one does not, it falls back to its own inlined stylesheet,
- * which cannot see these @font-face rules either. Both were removed with their
- * woff2 files. Adding a family means adding it to `--font-sans` as well.
- */
+/* Self-host latin and latin-ext subsets for offline use. */
 @font-face {
     font-family: 'Atkinson Hyperlegible Next';
     font-style: normal;
@@ -347,19 +224,7 @@
     unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/*
- * The four bundled font-choice families (config/fonts.php's `bundled => true`
- * entries besides Atkinson, fetched by scripts/fetch-fonts.sh). Each ships one
- * variable woff2 per style/subset — `font-weight: 200 700` covers the whole
- * range in one @font-face rather than one rule per weight, unlike Atkinson
- * above. `bundled => false` families (Arial, Verdana, Georgia, system stack)
- * get no rule here: that is the entire reason they are on that side of the
- * config list.
- *
- * Lexend has no italic design upstream, so it has no italic rule below —
- * choosing it for the manuscript face means italic text renders as a
- * browser-synthesised oblique, the same known cost Atkinson already carries.
- */
+/* Bundled variable fonts cover weights 200–700. Lexend has no italic file. */
 @font-face {
     font-family: 'Inter';
     font-style: normal;
@@ -522,12 +387,7 @@
     unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/*
- * WYSIWYG editor (Tiptap) — kept minimal so it doesn't fight the Tailwind `prose`
- * output that already styles the editable region. Only the placeholder needs custom
- * CSS: the Placeholder extension marks the empty first paragraph, and we render its
- * text via a ::before pseudo-element.
- */
+/* Tiptap-specific editor behavior. */
 .tiptap:focus {
     outline: none;
 }
@@ -540,14 +400,7 @@
     color: var(--color-content-subtle);
 }
 
-/*
- * The `/` slash-command menu. The @tiptap/suggestion plugin owns positioning (via
- * floating-ui through props.mount); these rules only style the popup list itself,
- * kept consistent with the editor toolbar. `bg-surface-overlay` matches every other
- * floating panel in the app (x-dropdown, x-popover); the selected item reuses
- * `accent-surface`/`accent-content`, the exact pair x-dropdown-link's active state
- * already carries — and, for Daylight, value-identical to this menu's old tint.
- */
+/* The suggestion plugin positions this slash-command menu. */
 .wysiwyg-slash {
     z-index: 50;
     max-height: 18rem;
@@ -582,14 +435,7 @@
     color: var(--color-content-subtle);
 }
 
-/*
- * Table, task-list, and image-resize affordances. `prose`
- * (@tailwindcss/typography) already styles rendered tables/task lists reasonably
- * outside the editor, but the *editing* surface needs its own minimal rules: cell
- * borders/padding so an empty table is visible at all, ProseMirror's own resize/
- * selection classes (which `prose` knows nothing about), and checkbox alignment for
- * TaskItem's <label><input> markup.
- */
+/* Editor-only table, task-list, and image-resize affordances. */
 .tiptap table {
     border-collapse: collapse;
     table-layout: fixed;
@@ -609,7 +455,6 @@
     text-align: left;
 }
 
-/* Same "this is selected" idea as the slash menu above — reuses its tint. */
 .tiptap .selectedCell {
     background-color: var(--color-accent-surface);
 }
@@ -638,24 +483,7 @@
     margin-top: 0;
 }
 
-/*
- * Callout / alert blocks (`> [!TYPE]`) — the GitHub-flavoured
- * alert look already used in this repo's own documentation/*.md, rendered over the
- * <blockquote> element via the data-callout-type attribute. A left border + a per-type
- * accent colour and icon (::before) distinguishes the five types from a plain quote.
- * Styled on `blockquote[data-callout-type]` (not scoped to `.tiptap`) so it looks the
- * same inside the editor and in the rendered HTML fields downstream.
- *
- * Four of the five types map onto a status: `note`/info, `tip`/success,
- * `warning`/warning, `caution`/danger. The border and label both used a shade with no
- * exact token match (500/700), so — same reasoning as x-alert's own comment — the
- * label sits on `<status>-surface-content` (the shade already chosen to read on a
- * tint) rather than the solid `<status>` fill, which measures as low as 1.85:1 as text.
- *
- * `important` (purple) has no status equivalent, so it takes `x-badge`'s `accent`
- * pair wholesale — background included, unlike the other four, which keep the shared
- * neutral background below.
- */
+/* Render GFM callouts consistently in the editor and stored rich text. */
 blockquote[data-callout-type] {
     margin: --spacing(4) 0;
     border-left-width: 4px;
@@ -722,24 +550,8 @@ blockquote[data-callout-type='caution']::before {
 }
 
 /*
- * Revision diffs — applied only by the `x-diff` component
- * (resources/views/components/diff.blade.php), which is the single view allowed
- * to emit these classes. Written as CSS rather than as Tailwind utilities
- * because it styles markup this app generates but the template never sees:
- * App\Services\Diff\DiffHtmlRenderer's <ins>/<del> markers and rebuilt blocks,
- * and jfcherng's side-by-side <table>. Pseudo-element gutter glyphs and
- * descendant selectors read far better here than as arbitrary variants, exactly
- * as with the .tiptap rules above.
- *
- * Every change is signalled three ways: a background tint, a +/- gutter glyph,
- * and a visually-hidden "inserted"/"removed" label the renderer puts inside each
- * marker. Colour alone is not information, and <ins>/<del> announcement is
- * inconsistent across screen readers, so each channel covers for the others.
- *
- * NEVER use text-decoration as a change marker. The writer can apply <s> and <u>
- * herself (both are in RichTextFields::ALLOWED_TAGS), so a struck-out passage has
- * to keep meaning "she struck this out" — which is also why the markers below
- * explicitly clear the decoration browsers put on <ins>/<del> by default.
+ * `x-diff` signals changes with tint, a gutter glyph, and hidden text.
+ * Clear marker decoration so author-supplied `<s>` and `<u>` keep their meaning.
  */
 .revision-diff {
     font-size: var(--text-sm);
@@ -766,11 +578,7 @@ blockquote[data-callout-type='caution']::before {
     color: var(--color-danger-surface-content);
 }
 
-/*
- * The gutter glyph. `aria-hidden` cannot be set on generated content, so these
- * are deliberately punctuation-only marks that add nothing when a screen reader
- * does read them — the meaning is carried by the sr-only label beside them.
- */
+/* Punctuation glyphs supplement the hidden inserted/removed labels. */
 .revision-diff ins.diff-ins::before {
     content: '+';
     font-weight: 700;
@@ -785,11 +593,7 @@ blockquote[data-callout-type='caution']::before {
     opacity: 0.7;
 }
 
-/*
- * A whole block that arrived or left, as opposed to words inside a block that
- * changed. Marked on the block itself with a coloured edge, so a wholly-new
- * paragraph is legible as one thing rather than as a wall of tint.
- */
+/* Mark whole-block changes with an edge. */
 .revision-diff .diff-inserted,
 .revision-diff .diff-removed,
 .revision-diff .diff-formatting-changed {
@@ -809,21 +613,13 @@ blockquote[data-callout-type='caution']::before {
     border-inline-start-color: var(--color-info);
 }
 
-/*
- * "formatting changed: bold added" — the renderer writes the sentence (it is the
- * only layer that knows which marks moved); this makes it look like an x-badge.
- * Kept in step with resources/views/components/badge.blade.php's `info` variant.
- */
+/* Match formatting-change notes to the info badge. */
 .revision-diff .diff-note {
     display: inline-flex;
     align-items: center;
     margin-inline-start: --spacing(2);
     padding: 0.125rem --spacing(2);
-    /*
-     * Tailwind 4 has no `--radius-full` theme variable — the `rounded-full` utility is
-     * hard-coded to `calc(infinity * 1px)`. This literal is what that utility emits, so the
-     * pill stays identical to the `rounded-full` badge component this rule mirrors.
-     */
+    /* Tailwind's rounded-full value has no theme variable. */
     border-radius: calc(infinity * 1px);
     background-color: var(--color-info-surface);
     color: var(--color-info-surface-content);
@@ -833,11 +629,7 @@ blockquote[data-callout-type='caution']::before {
     vertical-align: middle;
 }
 
-/*
- * Visual diff — the writer's own formatting is preserved (a heading still looks
- * like a heading) without inheriting the editor's prose styles, which is why
- * this sets its own spacing rather than reaching for `prose`.
- */
+/* Preserve author formatting without applying prose styles. */
 .revision-diff--visual > * + * {
     margin-top: --spacing(3);
 }
@@ -887,14 +679,7 @@ blockquote[data-callout-type='caution']::before {
     height: auto;
 }
 
-/*
- * Source diff — jfcherng's SideBySide renderer emits a two-column table, one
- * <td class="old">/<td class="new"> pair per row (no header or line numbers, per
- * RevisionDiffer's options). Styled to read as two prose panels rather than as a
- * spreadsheet: no per-cell borders, just a divider between the columns. An empty
- * counterpart cell (`td.none`, one side of an add or a remove) gets a faint grey
- * so it reads as "nothing here" rather than as an oversight.
- */
+/* Render the source differ's table as two prose panels. */
 .revision-diff--source table {
     width: 100%;
     table-layout: fixed;
@@ -917,19 +702,7 @@ blockquote[data-callout-type='caution']::before {
     background-color: var(--color-surface-sunken);
 }
 
-/*
- * jfcherng marks word-level changes with bare <ins>/<del> (no class of its own),
- * so the source diff needs the same treatment applied by element.
- *
- * > [!NOTE]
- * > This side gets two of the three channels — tint and glyph — not three. The
- * > visually-hidden label is emitted by DiffHtmlRenderer, which only renders the
- * > visual diff; jfcherng writes this markup itself and offers no hook for one.
- * > The semantic <ins>/<del> elements are still there for the screen readers
- * > that do announce them. Closing the gap properly means the source path
- * > producing its own markers rather than delegating to the library, which is a
- * > bigger change than a styling component should make.
- */
+/* jfcherng emits bare semantic `<ins>` and `<del>` elements. */
 .revision-diff--source ins,
 .revision-diff--source del {
     text-decoration: none;
@@ -961,10 +734,7 @@ blockquote[data-callout-type='caution']::before {
     opacity: 0.7;
 }
 
-/*
- * Summary mode — one line in a history row. No block chrome at all: the row is a
- * scan target, so the markers are the only thing allowed to draw the eye.
- */
+/* Keep history summaries to one quiet line. */
 .revision-diff--inline {
     display: block;
     overflow-x: hidden;

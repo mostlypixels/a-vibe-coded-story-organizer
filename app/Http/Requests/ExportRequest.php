@@ -6,15 +6,7 @@ use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * Validates and authorizes a project export.
- *
- * The /admin area sits behind the `access-admin` gate (any authenticated user),
- * which is NOT ownership. Because the export reads one user-owned project, this
- * request also walks ProjectPolicy: a foreign or missing project_id is a 403,
- * never a silent export of another user's project. The controller mirrors the
- * same authorize('view', $project) check.
- */
+/** Authorizes an archive export through the selected project. */
 class ExportRequest extends FormRequest
 {
     public function authorize(): bool
@@ -31,8 +23,6 @@ class ExportRequest extends FormRequest
     {
         return [
             'project_id' => ['required', 'integer', Rule::exists('projects', 'id')],
-            // Unchecked checkboxes are absent from the request; read the value with
-            // $request->boolean('include_images') so absent means false.
             'include_images' => ['sometimes', 'boolean'],
         ];
     }

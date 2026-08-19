@@ -14,17 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
 use Tests\TestCase;
 
-/**
- * Every revision row carries its own summary, written when the row itself is
- * written (expanded/data-model.md, *Who writes `summary_html` /
- * `change_count`*).
- *
- * The point of storing them is that a page of history renders without diffing
- * anything, so what matters here is that the columns are correct at every way
- * *in*: a fresh insert, a coalescing autosave that rewrites a row it already
- * summarised, a baseline with nothing before it, and an import replaying a
- * whole history at once.
- */
+/** Keep stored revision summaries correct on every write path. */
 class RevisionSummaryTest extends TestCase
 {
     use RefreshDatabase;

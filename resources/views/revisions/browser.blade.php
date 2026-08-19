@@ -3,10 +3,6 @@
         {{ __('Revisions') }} &mdash; {{ $project->name }}
     </x-page-heading>
 
-    {{-- Landing pane: the sidebar is the browser's real navigation, so this pane
-         just orients the reader. When the project has no history yet the sidebar
-         shows its own empty state, so a neutral prompt here reads correctly either
-         way. --}}
     <x-card>
         <div class="max-w-prose space-y-3">
             <x-heading level="3">{{ __('Browse this project\'s revision history') }}</x-heading>

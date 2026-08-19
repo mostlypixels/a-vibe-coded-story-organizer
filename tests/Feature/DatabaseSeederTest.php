@@ -18,8 +18,6 @@ class DatabaseSeederTest extends TestCase
 
     public function test_the_seeder_can_run_twice_without_failing(): void
     {
-        // A second `db:seed` against a populated database used to abort on the
-        // users.email UNIQUE constraint before MelusineSeeder was ever reached.
         $this->seed();
         $this->seed();
 
@@ -28,9 +26,6 @@ class DatabaseSeederTest extends TestCase
 
     public function test_the_seeder_does_not_duplicate_the_demo_projects_on_a_second_run(): void
     {
-        // Each MelusineSeeder{En,Fr,It} used to `Project::create()` unconditionally,
-        // so a second `db:seed` (or `make seed` run twice) silently doubled every
-        // demo project instead of no-op'ing.
         $this->seed();
         $this->seed();
 

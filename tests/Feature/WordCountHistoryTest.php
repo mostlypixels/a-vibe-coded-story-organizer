@@ -10,15 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
-/**
- * The read path: snapshot rows become one entry per calendar day, with the
- * daily figure derived (expanded/architecture.md "The read path").
- *
- * The rules under test: a day with no row inherits the previous total and
- * wrote 0; the first day's figure comes from the row before the range; and
- * with no earlier row the previous total is 0, so a project's first writing
- * day counts in full.
- */
+/** Convert cumulative snapshots into daily totals for a date range. */
 class WordCountHistoryTest extends TestCase
 {
     use RefreshDatabase;

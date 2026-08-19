@@ -31,20 +31,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * The autosave endpoint and the Save button must never validate the same field
- * two different ways — AutosavableFields' docblock states it, and until this
- * test existed nothing enforced it. Twelve of the fourteen registered fields had
- * silently drifted apart: `dedication` was capped at 20,000 by the form and
- * 100,000 by autosave, while `Scene.contents` had no form cap at all against
- * autosave's 1,000,000.
- *
- * Both directions are a real bug a writer can reach. Autosave accepts text, then
- * Save rejects what the server already stored; or Save accepts a paste that every
- * later autosave refuses. So the check is structural rather than per-field: it
- * walks the registry, so a field added tomorrow is covered without touching this
- * file.
- */
+/** Keep manual-save and autosave limits equal for every registered field. */
 class FormRequestCapAgreementTest extends TestCase
 {
     use RefreshDatabase;
@@ -213,14 +200,6 @@ class FormRequestCapAgreementTest extends TestCase
     // ---------------------------------------------------------------------
 
     /**
-     * Build a Form Request outside the HTTP kernel and read its rules().
-     *
-     * Only the route resolver is stubbed: several rules() methods walk a bound
-     * model up to its project (`$this->route('scene')->chapter->act->book->project`).
-     * FormRequest::route() calls `parameter()` on whatever the resolver returns,
-     * so a tiny object is enough — no router, no request lifecycle, and
-     * authorize() never runs.
-     *
      * @param  class-string<FormRequest>  $requestClass
      * @return array<string, mixed>
      */

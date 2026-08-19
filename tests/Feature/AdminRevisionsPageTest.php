@@ -10,16 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * The admin "Revisions" page: the confirm-gated retention form and the
- * "Revision storage" panel's bulk-delete actions.
- *
- * RevisionSettingController is the SECOND call site of RevisionPurger (the
- * first is the `revisions:purge` command, covered by
- * RevisionRetentionAndPurgeTest) — these tests exercise the deletion rules
- * through this page's controller actions specifically, proving the wiring,
- * not re-testing RevisionPurger's own rules from scratch.
- */
+/** Test revision retention and purge actions through the admin page. */
 class AdminRevisionsPageTest extends TestCase
 {
     use RefreshDatabase;

@@ -79,8 +79,6 @@
                 @endforelse
             </x-table>
 
-            {{-- Duplicate-name dialogs live outside the table (a modal <div> is not
-                 valid inside a <tbody>); each is opened by its row's copy button. --}}
             @foreach ($entries as $entry)
                 <x-duplicate-dialog
                     name="duplicate-codex-entry-{{ $entry->id }}"

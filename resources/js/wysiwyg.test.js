@@ -2,35 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { buildExtensions, buildSlashItems, registerWysiwyg } from './wysiwyg.js';
 
-/**
- * Round-trip tests for the Tiptap extension configuration `wysiwyg.js` builds
- * (`buildExtensions()`), covering the constructs added by the expand-tip-tap
- * feature (tables, images, task lists) plus regression guards for constructs that
- * were already safe. See `.specs/shipped/2026-07/expand-tip-tap/spec.md`
- * ("The pivotal unknown — verified") for why these round-trip without a
- * hand-written serializer, and its "Two round-trip gaps" bullets for the two
- * accepted losses this file pins deliberately (not accidentally).
- *
- * `environment: 'jsdom'` (vitest.config.js) is required: `Editor.getHTML()` calls
- * ProseMirror's `DOMSerializer`, which needs a real `window.document` — plain Node
- * has none. `getMarkdown()` alone would not need it, but this file exercises both.
- *
- * No DOM `element` is mounted (headless): these tests operate purely on content —
- * `getMarkdown()`/`getHTML()` — not on user interaction, so a detached `Editor`
- * instance is enough and needs no cleanup between tests.
- */
-
-/** A markdown-format editor (Scene.contents), matching wysiwyg.js's isMarkdown branch. */
 function markdownEditor(content) {
     return new Editor({ extensions: buildExtensions('markdown'), content, contentType: 'markdown' });
 }
 
-/** An html-format editor (the 8 RichTextFields fields), matching wysiwyg.js's default branch. */
 function htmlEditor(content) {
     return new Editor({ extensions: buildExtensions('html'), content });
 }
 
-/** The position just inside the first table cell's text, for placing a selection there. */
 function firstCellTextPosition(editor) {
     let position = null;
     editor.state.doc.descendants((node, pos) => {
@@ -62,9 +41,6 @@ describe('table round-trip', () => {
     });
 
     it('a merged table cell survives in html format but loses the merge in markdown format', () => {
-        // Hand-written: the toolbar offers merge/split for HTML fields only
-        // (WysiwygToolbar::table()), so a merged cell reaches a Markdown field
-        // through paste or import. This pins the documented gap for that content.
         const merged = '<table><tbody><tr><td colspan="2">merged</td></tr><tr><td>a</td><td>b</td></tr></tbody></table>';
 
         const htmlOut = htmlEditor(merged).getHTML();
@@ -72,7 +48,6 @@ describe('table round-trip', () => {
 
         const markdownOut = markdownEditor(merged).getMarkdown();
         expect(markdownOut).not.toContain('colspan');
-        // The cell text survives; only the merge/structure is lost, per spec.md.
         expect(markdownOut).toContain('merged');
     });
 });
@@ -97,9 +72,6 @@ describe('image round-trip', () => {
     });
 
     it('a resized image survives in html format but loses width/height in markdown format', () => {
-        // Hand-written: resize is a drag handle on the image itself
-        // (`Image.configure({ resize: … })`), and it is off for Markdown fields. The
-        // doc is built with width/height already set, as an external paste delivers it.
         const resized = '<img src="http://example.com/img.png" alt="a" width="100" height="50">';
 
         const htmlOut = htmlEditor(resized).getHTML();
@@ -175,11 +147,6 @@ describe('already-safe constructs — regression guards', () => {
     });
 });
 
-/**
- * Table/image UI. Resize and table merge/split are HTML-mode-only
- * (lossy in Markdown, see the two hand-written round-trip-gap tests above), so the
- * extension configuration itself — not just the toolbar — must differ by format.
- */
 describe('image resize — HTML-mode only', () => {
     const imageOptions = (format) =>
         new Editor({ extensions: buildExtensions(format), content: '<p></p>' }).extensionManager.extensions.find(
@@ -197,9 +164,6 @@ describe('image resize — HTML-mode only', () => {
 
 describe('table merge/split — HTML-mode only', () => {
     it('mergeCells/splitCell commands exist in both formats (the Table extension itself is unconditional)', () => {
-        // The gate is the toolbar (WysiwygToolbar::table() adds the two entries only
-        // when `! $markdown`), not the extension — Table ships mergeCells/splitCell
-        // unconditionally in both formats, same as the rest of its command set.
         const html = htmlEditor('<p></p>');
         const markdown = markdownEditor('text');
 
@@ -210,8 +174,6 @@ describe('table merge/split — HTML-mode only', () => {
     });
 
     it('a merged cell round-trips through html format without a style or colgroup leaking into the saved output', () => {
-        // Confirms the PlainTable override (wysiwyg.js) — the sanitizer allow-list
-        // never had to grow `style`/`colgroup`/`col` for merge/split to survive.
         const merged = '<table><tbody><tr><td colspan="2">merged</td></tr><tr><td>a</td><td>b</td></tr></tbody></table>';
         const out = htmlEditor(merged).getHTML();
 
@@ -223,10 +185,6 @@ describe('table merge/split — HTML-mode only', () => {
 });
 
 describe('table row/column add and remove — both formats', () => {
-    // Unlike merge/split, adding/removing a row or column always keeps the grid
-    // rectangular (every row keeps the same cell count), which GFM tables always
-    // support — so these commands are exercised, and the toolbar renders them,
-    // in both formats, no `! $markdown` gate.
     const twoByTwo = '<table><tbody><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></tbody></table>';
 
     it('addRowAfter grows a 2x2 html table to three rows and the result round-trips', () => {
@@ -438,23 +396,11 @@ describe('slash menu — no merge/split entry in either format', () => {
     });
 });
 
-/**
- * `resources/js/word-count.js` cannot reach `editor`
- * directly (it's a closure variable — see this file's own docblock on why),
- * so it relies on this dispatch to learn the rendered text as the writer
- * types. This is a probe, not a read of the source: it mounts the *real*
- * `registerWysiwyg()` Alpine component (the exact factory app.js registers)
- * over a real, attached DOM node and drives it through an actual editor
- * transaction, rather than asserting the CustomEvent exists by inspecting
- * the code — proving the event genuinely fires from a live edit, for both
- * formats the editor supports.
- */
 describe('wysiwyg:text-changed CustomEvent', () => {
     afterEach(() => {
         document.body.innerHTML = '';
     });
 
-    /** Minimal Alpine stand-in, matching field.test.js's precedent. */
     function createAlpineStub() {
         const factories = {};
 
@@ -468,8 +414,6 @@ describe('wysiwyg:text-changed CustomEvent', () => {
         };
     }
 
-    /** Mounts `wysiwyg()` on a real, attached `<div><textarea/><div/></div>`,
-     *  matching wysiwyg.blade.php's `x-ref="textarea"` / `x-ref="editor"` shape. */
     function mountWysiwyg(format) {
         const el = document.createElement('div');
         const textarea = document.createElement('textarea');
@@ -494,9 +438,6 @@ describe('wysiwyg:text-changed CustomEvent', () => {
         const handler = vi.fn();
         el.addEventListener('wysiwyg:text-changed', handler);
 
-        // A real editor transaction (the same kind a keystroke produces),
-        // not a hand-fired event — this is what proves onUpdate itself does
-        // the dispatching, not just that the event shape is right.
         component.cmd('insertContent', 'hello world');
 
         expect(handler).toHaveBeenCalledTimes(1);
