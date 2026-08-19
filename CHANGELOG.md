@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-19 — Smart punctuation while typing
+## 2026-08-19 — Smart punctuation while typing (#122)
 
 ### Added
 
