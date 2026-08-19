@@ -395,8 +395,10 @@ class EpubExporterTest extends TestCase
         $shared = $scene->fresh()->renderedContents;
         $this->assertStringContainsString('--', $shared);
         $this->assertStringContainsString('...', $shared);
-        // Straight quotes stay straight (HTML-escaped to &quot;), never curled.
-        $this->assertStringContainsString('&quot;quotes&quot;', $shared);
+        // Straight quotes stay straight, never curled. The sanitizer that
+        // AuthorMarkdown::render() applies emits the bare `"` character rather
+        // than the `&quot;` entity CommonMark produces; both are a straight quote.
+        $this->assertStringContainsString('"quotes"', $shared);
         $this->assertStringNotContainsString("\u{2014}", $shared, 'shared render must not get em-dashes');
         $this->assertStringNotContainsString("\u{201C}", $shared, 'shared render must not get curly quotes');
     }

@@ -17,6 +17,22 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-19 — Sanitize rendered scene Markdown
+
+### Fixed
+
+- Scene Markdown is sanitized when it is rendered. Markdown carries raw HTML through and
+  `ValidMarkdown` rejects none of it, so anything typed into `Scene.contents` reached the
+  page unfiltered — including on the unauthenticated scene share link and in the exported
+  static site and EPUB. Event-handler attributes, `javascript:` links, `<iframe>` and
+  inline `style` are now removed. The `<u>`, `<sub>` and `<sup>` tags the editor writes
+  itself are kept.
+
+### Changed
+
+- `App\Support\AuthorMarkdown::render()` sanitizes; `renderUnsanitized()` is the
+  deliberately unsafe variant the import allow-list check and the word counter need.
+
 ## 2026-08-19 — Markdown strikethrough renders as `<s>`
 
 ### Fixed

@@ -280,6 +280,28 @@ class SceneShareTest extends TestCase
     }
 
     /**
+     * Markdown carries raw HTML through and ValidMarkdown rejects none of it, so
+     * scene contents reach this page as untrusted markup. The page is
+     * unauthenticated, which makes the visitor — not just the author — the one
+     * exposed. AuthorMarkdown::render() sanitizes for exactly this reason.
+     */
+    public function test_raw_html_in_scene_contents_cannot_run_on_the_public_page(): void
+    {
+        [, $token] = $this->sharedScene([
+            'contents' => 'Prose. <img src=x onerror="alert(1)"> More <a href="javascript:alert(2)">prose</a>.',
+        ]);
+
+        $response = $this->get(route('shared.scenes.show', $token));
+
+        $response->assertOk();
+        $response->assertDontSee('onerror', escape: false);
+        $response->assertDontSee('javascript:', escape: false);
+        // The author's words survive; only the dangerous markup is dropped.
+        $response->assertSee('Prose.', escape: false);
+        $response->assertSee('More', escape: false);
+    }
+
+    /**
      * The public page's heading takes the project-wide chapter number, not the
      * chapter's own `position` within its act — here 3, though the chapter's
      * `position` within act two is 1.
