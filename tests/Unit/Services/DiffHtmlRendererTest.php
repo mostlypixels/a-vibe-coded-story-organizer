@@ -238,4 +238,16 @@ class DiffHtmlRendererTest extends TestCase
         $this->assertStringContainsString('&lt;del&gt;', $html);
         $this->assertStringNotContainsString('<del>fake', $html);
     }
+
+    public function test_the_note_names_a_superscript_and_a_tick_in_the_writers_words(): void
+    {
+        $differ = new VisualHtmlDiffer(new HtmlTokenizer);
+
+        $superscript = $this->renderer->render($differ->diff('<p>E = mc2</p>', '<p>E = mc<sup>2</sup></p>')->blocks);
+        $this->assertStringContainsString('formatting changed: superscript added', $superscript);
+
+        $list = '<ul data-type="taskList"><li data-type="taskItem" data-checked="%s">buy milk</li></ul>';
+        $tick = $this->renderer->render($differ->diff(sprintf($list, 'false'), sprintf($list, 'true'))->blocks);
+        $this->assertStringContainsString('formatting changed: tick added', $tick);
+    }
 }

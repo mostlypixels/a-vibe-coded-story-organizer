@@ -213,8 +213,9 @@ class VisualHtmlDiffer
      * can be asked which arrived and which left.
      *
      * That is the block's own alignment (as the pseudo-mark `align:center`,
-     * because it belongs to the block rather than to any word) plus every mark
-     * in force anywhere inside it.
+     * because it belongs to the block rather than to any word), a ticked task
+     * item's state (as `checked`, for the same reason), plus every mark in
+     * force anywhere inside it.
      *
      * @return list<string>
      */
@@ -225,6 +226,11 @@ class VisualHtmlDiffer
 
         if ($align !== null) {
             $marks[HtmlTokenizer::ALIGN_MARK_PREFIX.$align] = true;
+        }
+
+        // TipTap writes the attribute on every task item, ticked or not.
+        if (($block->attributes['data-checked'] ?? null) === 'true') {
+            $marks[HtmlTokenizer::CHECKED_MARK] = true;
         }
 
         foreach ($block->tokens as $token) {

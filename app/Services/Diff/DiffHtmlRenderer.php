@@ -68,7 +68,10 @@ class DiffHtmlRenderer
         'em' => 'italic',
         'u' => 'underline',
         's' => 'strikethrough',
+        'sub' => 'subscript',
+        'sup' => 'superscript',
         'code' => 'code',
+        HtmlTokenizer::CHECKED_MARK => 'tick',
     ];
 
     /**

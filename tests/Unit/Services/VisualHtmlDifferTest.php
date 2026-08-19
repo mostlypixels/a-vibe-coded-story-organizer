@@ -247,4 +247,62 @@ class VisualHtmlDifferTest extends TestCase
         $this->assertSame([DiffChange::Replaced], $this->changes($diff));
         $this->assertNotSame([], $diff->blocks[0]->spans);
     }
+
+    // ------------------------------------------------------------------
+    // Formatting the words themselves don't carry
+    // ------------------------------------------------------------------
+
+    public function test_adding_superscript_reports_formatting_not_replacement(): void
+    {
+        $diff = $this->differ->diff('<p>E = mc2</p>', '<p>E = mc<sup>2</sup></p>');
+
+        $this->assertSame(1, $diff->changeCount);
+        $this->assertSame(DiffChange::FormattingChanged, $diff->blocks[0]->change);
+        $this->assertSame(['sup'], $diff->blocks[0]->marksAdded);
+    }
+
+    public function test_adding_subscript_reports_formatting_not_replacement(): void
+    {
+        $diff = $this->differ->diff('<p>H2O is water</p>', '<p>H<sub>2</sub>O is water</p>');
+
+        $this->assertSame(DiffChange::FormattingChanged, $diff->blocks[0]->change);
+        $this->assertSame(['sub'], $diff->blocks[0]->marksAdded);
+    }
+
+    public function test_bolding_part_of_a_word_reports_formatting_not_replacement(): void
+    {
+        $diff = $this->differ->diff('<p>unbelievable stuff</p>', '<p>un<strong>believ</strong>able stuff</p>');
+
+        $this->assertSame(DiffChange::FormattingChanged, $diff->blocks[0]->change);
+        $this->assertSame(['strong'], $diff->blocks[0]->marksAdded);
+    }
+
+    public function test_ticking_a_task_item_is_reported(): void
+    {
+        $list = '<ul data-type="taskList"><li data-type="taskItem" data-checked="%s">buy milk</li></ul>';
+
+        $diff = $this->differ->diff(sprintf($list, 'false'), sprintf($list, 'true'));
+
+        $this->assertSame(1, $diff->changeCount);
+        $this->assertSame(DiffChange::FormattingChanged, $diff->blocks[0]->change);
+        $this->assertSame([HtmlTokenizer::CHECKED_MARK], $diff->blocks[0]->marksAdded);
+    }
+
+    public function test_unticking_a_task_item_is_reported_as_a_removal(): void
+    {
+        $list = '<ul data-type="taskList"><li data-type="taskItem" data-checked="%s">buy milk</li></ul>';
+
+        $diff = $this->differ->diff(sprintf($list, 'true'), sprintf($list, 'false'));
+
+        $this->assertSame(DiffChange::FormattingChanged, $diff->blocks[0]->change);
+        $this->assertSame([HtmlTokenizer::CHECKED_MARK], $diff->blocks[0]->marksRemoved);
+    }
+
+    /** The counterpart: changing a word is still a replacement, not formatting. */
+    public function test_changing_a_word_is_still_a_replacement(): void
+    {
+        $diff = $this->differ->diff('<p>the cat sat</p>', '<p>the dog sat</p>');
+
+        $this->assertSame(DiffChange::Replaced, $diff->blocks[0]->change);
+    }
 }
