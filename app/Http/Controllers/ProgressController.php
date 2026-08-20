@@ -2,22 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ChallengeState;
 use App\Http\Requests\ShowProgressRequest;
+use App\Models\Challenge;
 use App\Models\Project;
 use App\Models\WordCountSnapshot;
+use App\Services\ChallengeProgress;
 use App\Services\WordCountHistory;
+use App\Support\ChallengeStanding;
 use App\Support\WriterDay;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
  * Tools ▸ Progress: the writer's status against their two goals — today's
  * words and the project's running total — plus the chart of the range they
- * pick. The status strip always shows *now* and ignores the range below it.
+ * pick, and the list of challenges (there is no separate index page for
+ * those). The status strip always shows *now* and ignores the range below.
  */
 class ProgressController extends Controller
 {
-    public function __construct(private readonly WordCountHistory $history) {}
+    public function __construct(
+        private readonly WordCountHistory $history,
+        private readonly ChallengeProgress $challengeProgress,
+    ) {}
 
     public function index(Project $project, ShowProgressRequest $request): View
     {
@@ -48,7 +57,47 @@ class ProgressController extends Controller
             'to' => $to,
             'months' => $this->recentMonths($project),
             'hasSnapshots' => $hasSnapshots,
+            ...$this->challengeSections($project, $today),
         ]);
+    }
+
+    /**
+     * Every challenge, scored against `$today` and bucketed into the three
+     * sections the page shows. Each entry pairs a `Challenge` with its
+     * `ChallengeStanding` — the standing alone has no name to show.
+     *
+     * @return array{
+     *     runningChallenges: Collection<int, array{challenge: Challenge, standing: ChallengeStanding}>,
+     *     upcomingChallenges: Collection<int, array{challenge: Challenge, standing: ChallengeStanding}>,
+     *     pastChallenges: Collection<int, array{challenge: Challenge, standing: ChallengeStanding}>,
+     * }
+     */
+    private function challengeSections(Project $project, CarbonImmutable $today): array
+    {
+        $challenges = $project->challenges()->get();
+
+        $current = $challenges->map(fn (Challenge $challenge) => [
+            'challenge' => $challenge,
+            'standing' => $this->challengeProgress->standing($challenge, $today),
+        ]);
+
+        return [
+            'runningChallenges' => $current
+                ->filter(fn (array $pair) => $pair['standing']->state === ChallengeState::Running)
+                ->sortBy(fn (array $pair) => $pair['standing']->window->to)
+                ->values(),
+            'upcomingChallenges' => $current
+                ->filter(fn (array $pair) => $pair['standing']->state === ChallengeState::Upcoming)
+                ->sortBy(fn (array $pair) => $pair['standing']->window->from)
+                ->values(),
+            'pastChallenges' => $challenges
+                ->flatMap(fn (Challenge $challenge) => $this->challengeProgress
+                    ->pastOccurrences($challenge, $today)
+                    ->map(fn (ChallengeStanding $standing) => ['challenge' => $challenge, 'standing' => $standing]))
+                ->sortByDesc(fn (array $pair) => $pair['standing']->window->to)
+                ->take(ChallengeProgress::PAST_LIMIT)
+                ->values(),
+        ];
     }
 
     /**

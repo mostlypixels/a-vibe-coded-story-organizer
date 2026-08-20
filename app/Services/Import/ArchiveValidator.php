@@ -39,6 +39,7 @@ class ArchiveValidator
         'data/codex/attributes.json' => ['id', 'name', 'applies_to', 'position'],
         'data/tags.json' => ['id', 'name'],
         'data/word-count-snapshots.json' => ['recorded_on', 'word_count'],
+        'data/challenges.json' => ['name', 'recurrence', 'starts_on', 'ends_on', 'target_words'],
     ];
 
     /** @var array<int, string> */

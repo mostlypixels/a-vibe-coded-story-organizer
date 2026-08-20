@@ -102,9 +102,9 @@ class ExportTest extends TestCase
 
         $manifest = json_decode($raw, true);
         $this->assertIsArray($manifest, 'data/manifest.json is not valid JSON.');
-        // The multiple-books feature bumped this to 4 — see
+        // The word-count-challenges feature bumped this to 5 — see
         // StaticSiteExporter::DATA_VERSION.
-        $this->assertSame(4, $manifest['version']);
+        $this->assertSame(5, $manifest['version']);
         $this->assertSame($project->id, $manifest['project_id']);
         $this->assertTrue($manifest['includes_media']);
         $this->assertArrayHasKey('exported_at', $manifest);

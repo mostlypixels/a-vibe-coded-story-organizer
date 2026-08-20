@@ -73,13 +73,14 @@ class ProjectGraphImporter
         $descriptor = $this->readJson($dataPath, 'data/project/project.json');
         $description = $this->readHtmlField($dataPath, 'data/project', $descriptor);
         $snapshots = $this->readWordCountSnapshots($dataPath);
+        $challenges = $this->readChallenges($dataPath);
 
         // A database rollback cannot remove a copied file.
         $copiedCovers = [];
         $cover = $this->importCover($dataPath, 'data/project', $descriptor, CoverImageService::PROJECT_COVER_DIRECTORY, $copiedCovers);
 
         try {
-            return DB::transaction(function () use ($user, $descriptor, $description, $cover, $snapshots): Project {
+            return DB::transaction(function () use ($user, $descriptor, $description, $cover, $snapshots, $challenges): Project {
                 $project = $user->projects()->create([
                     'name' => $this->collisionFreeName((string) $descriptor['name'], $user),
                     'description' => $description,
@@ -89,6 +90,7 @@ class ProjectGraphImporter
                 ]);
 
                 $this->importWordCountSnapshots($project, $snapshots);
+                $this->importChallenges($project, $challenges);
 
                 return $project;
             });
@@ -130,6 +132,41 @@ class ProjectGraphImporter
                 'updated_at' => $now,
             ],
             $snapshots,
+        ));
+    }
+
+    /** @return array<int, array{name: string, recurrence: string, starts_on: string, ends_on: ?string, target_words: int}> */
+    private function readChallenges(string $dataPath): array
+    {
+        /** @var array<int, array{name: string, recurrence: string, starts_on: string, ends_on: ?string, target_words: int}> */
+        return $this->readJsonIfPresent($dataPath, 'data/challenges.json');
+    }
+
+    /**
+     * Restores challenges exactly, without model events or re-derived progress.
+     *
+     * @param  array<int, array{name: string, recurrence: string, starts_on: string, ends_on: ?string, target_words: int}>  $challenges
+     */
+    private function importChallenges(Project $project, array $challenges): void
+    {
+        if ($challenges === []) {
+            return;
+        }
+
+        $now = now();
+
+        DB::table('challenges')->insert(array_map(
+            fn (array $challenge): array => [
+                'project_id' => $project->id,
+                'name' => (string) $challenge['name'],
+                'recurrence' => (string) $challenge['recurrence'],
+                'starts_on' => Carbon::parse((string) $challenge['starts_on'])->toDateString(),
+                'ends_on' => $challenge['ends_on'] === null ? null : Carbon::parse((string) $challenge['ends_on'])->toDateString(),
+                'target_words' => (int) $challenge['target_words'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            $challenges,
         ));
     }
 

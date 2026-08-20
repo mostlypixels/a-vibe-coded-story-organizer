@@ -49,6 +49,26 @@ class WordCountSeries
         return $this->days->last()?->total ?? 0;
     }
 
+    /**
+     * The running sum of `written`, one entry per day, starting from the
+     * first day of the range.
+     *
+     * Rebased: the total starts at 0 on day 1 whatever the project wrote
+     * before the range, which is what a challenge line must climb from.
+     *
+     * @return Collection<int, int>
+     */
+    public function rebasedTotals(): Collection
+    {
+        $running = 0;
+
+        return $this->days->map(function (DailyWordCount $day) use (&$running): int {
+            $running += $day->written;
+
+            return $running;
+        })->values();
+    }
+
     public function isEmpty(): bool
     {
         return $this->days->isEmpty();

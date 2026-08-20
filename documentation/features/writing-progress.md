@@ -72,6 +72,38 @@ Projects have nullable `daily_word_goal` and `total_word_goal` columns.
 - Current total words come from the live scene sum.
 - Range queries are limited to 366 days. Snapshots are not pruned.
 
+## Challenges
+
+A challenge is a **window plus a target** (`name`, `starts_on`, `ends_on`, `target_words`).
+Nothing about progress is stored — words so far, par, ahead/behind, and the finished verdict
+are all arithmetic over `word_count_snapshots`, the same rows the chart above reads.
+
+- `App\Models\Challenge` belongs to a project. Several may run at once, and their windows may
+  overlap.
+- `App\Enums\ChallengeRecurrence::Monthly` stores **one row**. Its window is the calendar
+  month containing the day being asked about — derived at read time, never materialized into
+  occurrence rows. A challenge started on the 10th is **not** pro-rated: it is behind par for
+  that first month, same as any other month.
+- An optional `ends_on` on a monthly challenge stops the recurrence without deleting the row,
+  so every month it ran stays readable.
+- A fixed (`None`) challenge always has an `ends_on` and caps at 366 days, matching the chart
+  range cap. The cap does not apply to `Monthly`.
+- A challenge is `Running` through its last day and `Finished` from the next day
+  (`App\Enums\ChallengeState`).
+- `written` is words written **inside the window** (`WordCountSeries::writtenInRange()`). A
+  window opening before the project's first snapshot needs no special case — the total before
+  that snapshot is already zero.
+- **Par counts finished days only.** Day 1 opens at par 0, so a challenge is never behind
+  before the writer has had a full day — the same forgiveness `currentStreak()` gives today.
+  The par *line* on the chart still plots the end-of-day figure, so it reaches full par only
+  once the challenge finishes.
+- Negative words (a net cut) still display: an empty bar in the danger colour. Overshoot keeps
+  counting past a full bar, reporting "target reached" instead of a per-day figure.
+- Editing a target re-scores the past, the same as the two project goals: no revisions, no
+  lock, no warning.
+- `App\Services\ChallengeProgress` turns a `Challenge` and `WriterDay::for($project->user)`
+  into an `App\Support\ChallengeStanding` — the view never calculates.
+
 ## Where things live
 
 | Concern | Location |
@@ -85,6 +117,13 @@ Projects have nullable `daily_word_goal` and `total_word_goal` columns.
 | History reads | `app/Services/WordCountHistory.php` |
 | Progress page | `app/Http/Controllers/ProgressController.php` |
 | Chart | `resources/js/word-count-chart.js` |
+| Challenge row | `app/Models/Challenge.php` |
+| Recurrence, state | `app/Enums/ChallengeRecurrence.php`, `app/Enums/ChallengeState.php` |
+| Window derivation | `app/Support/ChallengeWindow.php` |
+| Standing arithmetic | `app/Services/ChallengeProgress.php` |
+| Standing value object | `app/Support/ChallengeStanding.php` |
+| Challenge CRUD | `app/Http/Controllers/ChallengeController.php` |
+| Challenge chart | `resources/js/word-count-chart.js` (second component, not a chart variant) |
 
 ## Related documentation
 

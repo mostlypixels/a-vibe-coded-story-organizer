@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-20 — Word count challenges (#123)
+
+### Added
+
+- Set a word target for a date range, or for every month, on the Progress page.
+- A challenge shows words so far, par for today, ahead or behind, and words a day still needed.
+- A finished challenge stays on the page as a record, marked met or missed.
+- Challenges travel in the project export archive.
+
+### Fixed
+
+- A negative word count now reads "words" instead of "word".
+
 ## 2026-08-19 — Smart punctuation while typing (#122)
 
 ### Added

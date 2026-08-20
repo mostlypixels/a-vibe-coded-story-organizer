@@ -8,7 +8,7 @@ use App\Models\ImportSetting;
 class ImportRules
 {
     /** @var array<int, int> Manifest versions that match the current archive layout. */
-    public const SUPPORTED_MANIFEST_VERSIONS = [4];
+    public const SUPPORTED_MANIFEST_VERSIONS = [4, 5];
 
     /** Default archive size in kilobytes. Runtime validation uses {@see ImportSetting}. */
     public const DEFAULT_MAX_ARCHIVE_KILOBYTES = 204800;
@@ -18,6 +18,7 @@ class ImportRules
         'data/manifest.json',
         'data/tags.json',
         'data/word-count-snapshots.json',
+        'data/challenges.json',
         'README.md',
     ];
 

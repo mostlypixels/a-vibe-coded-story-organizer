@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\AttributeTimeline;
 use App\Support\PlotlineColors;
 use Database\Seeders\Concerns\BackfillsSceneWordCounts;
+use Database\Seeders\Concerns\SeedsChallenges;
 use Database\Seeders\Concerns\SeedsWordCountHistory;
 use Database\Seeders\Concerns\SyncsCodexReferences;
 use Illuminate\Database\Seeder;
@@ -20,6 +21,7 @@ use Illuminate\Database\Seeder;
 class MelusineSeederFr extends Seeder
 {
     use BackfillsSceneWordCounts;
+    use SeedsChallenges;
     use SeedsWordCountHistory;
     use SyncsCodexReferences;
 
@@ -431,6 +433,7 @@ class MelusineSeederFr extends Seeder
         // streak instead of an empty one.
         $project->update(['daily_word_goal' => 100, 'total_word_goal' => 20000]);
         $this->seedWordCountHistory($project);
+        $this->seedChallenges($project, 'Le mois dernier', 'Ce mois-ci');
 
         $this->seedCodex($project, $eventsByTitle);
 

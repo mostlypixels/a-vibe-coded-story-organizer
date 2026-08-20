@@ -1,11 +1,14 @@
 ---
-status: draft
+status: shipped
+shipped: 2026-08-20
+planned: 2026-08-20
+expanded: 2026-08-20
 ---
 
 # Word Count Challenges
 
 A writer commits to a target inside a window — "a first draft by the end of the summer",
-"finish act 2 by March". A standing daily goal (`word-count-goals`) cannot say *am I on
+"finish book two's act 2 by March". A standing daily goal (`word-count-goals`) cannot say *am I on
 track?*, because it has no end date to be behind against.
 
 Depends on `word-count-goals`: challenges read its daily snapshots and add nothing to how
@@ -49,6 +52,9 @@ words are counted or stored. Three things that spec settled and this one must no
 
 ## Open ends
 
+- Does a challenge cover the whole project or one book? Snapshots stay on the project, so a
+  project-wide challenge needs no new counting, while a per-book one needs a per-book series
+  that does not exist yet. "A first draft by the end of the summer" reads as one book.
 - Does a challenge count *all* the project's words, or only words written inside its
   window? The usual reading is the second — the counter starts at zero on day 1.
 - What happens to a challenge whose window is changed once it has started?

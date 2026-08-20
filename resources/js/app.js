@@ -7,7 +7,7 @@ import { registerAutosaveBadge } from './autosave/badge';
 import { registerNavigationGuard } from './navigation-guard';
 import { registerRevisionPicker } from './revision-picker';
 import { registerWordCount } from './word-count';
-import { registerWordCountChart } from './word-count-chart';
+import { registerChallengeChart, registerWordCountChart } from './word-count-chart';
 import { registerFontPreview } from './font-preview';
 import { registerSettingTrack } from './setting-track';
 import { moveScene } from './scene-reorder';
@@ -21,6 +21,7 @@ registerNavigationGuard(Alpine);
 registerRevisionPicker(Alpine);
 registerWordCount(Alpine);
 registerWordCountChart(Alpine);
+registerChallengeChart(Alpine);
 registerFontPreview(Alpine);
 registerSettingTrack(Alpine);
 

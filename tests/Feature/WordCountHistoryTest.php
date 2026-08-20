@@ -256,4 +256,16 @@ class WordCountHistoryTest extends TestCase
         $this->assertCount(1, DB::getQueryLog());
         DB::disableQueryLog();
     }
+
+    public function test_rebased_totals_climb_from_zero_whatever_came_before_the_range(): void
+    {
+        $project = Project::factory()->create();
+        $this->snapshot($project, '2026-02-28', 10000);
+        $this->snapshot($project, '2026-03-01', 10400);
+        $this->snapshot($project, '2026-03-03', 10100);
+
+        $series = $this->series($project, '2026-03-01', '2026-03-04');
+
+        $this->assertSame([400, 400, 100, 100], $series->rebasedTotals()->all());
+    }
 }

@@ -22,6 +22,89 @@
     </x-card>
 
     <x-card class="mt-6">
+        <div class="flex items-center justify-between gap-4">
+            <x-heading level="3">{{ __('Challenges') }}</x-heading>
+            <x-button variant="primary" size="sm" :href="route('projects.challenges.create', $project)">{{ __('New challenge') }}</x-button>
+        </div>
+
+        @if ($runningChallenges->isEmpty() && $upcomingChallenges->isEmpty() && $pastChallenges->isEmpty())
+            <p class="mt-4 text-content-muted">{{ __("You haven't started a challenge yet.") }}</p>
+        @else
+            <div class="mt-4 space-y-6">
+                @if ($runningChallenges->isNotEmpty())
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        @foreach ($runningChallenges as $pair)
+                            <x-challenge-card :challenge="$pair['challenge']" :standing="$pair['standing']" />
+                        @endforeach
+                    </div>
+                @endif
+
+                @if ($upcomingChallenges->isNotEmpty())
+                    <div>
+                        <x-heading level="5">{{ __('Upcoming') }}</x-heading>
+                        <ul class="mt-2 divide-y divide-border">
+                            @foreach ($upcomingChallenges as $pair)
+                                @php
+                                    $challenge = $pair['challenge'];
+                                    $standing = $pair['standing'];
+                                    $parPerDay = (int) round($standing->target / $standing->totalDays);
+                                @endphp
+                                <li class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                                    <div>
+                                        <span class="font-medium text-content">{{ $challenge->name }}</span>
+                                        <x-challenge-window class="ml-2 text-content-muted" :window="$standing->window" :recurrence="$challenge->recurrence" />
+                                    </div>
+                                    <span class="text-content-muted">
+                                        {{ __(':target words · :par a day', [
+                                            'target' => number_format($standing->target),
+                                            'par' => number_format($parPerDay),
+                                        ]) }}
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @if ($pastChallenges->isNotEmpty())
+                    <div>
+                        <x-heading level="5">{{ __('Past') }}</x-heading>
+                        <x-table class="mt-2">
+                            <x-slot:head>
+                                <x-table-heading>{{ __('Name') }}</x-table-heading>
+                                <x-table-heading>{{ __('Window') }}</x-table-heading>
+                                <x-table-heading>{{ __('Words') }}</x-table-heading>
+                                <x-table-heading />
+                            </x-slot:head>
+
+                            @foreach ($pastChallenges as $pair)
+                                @php
+                                    $challenge = $pair['challenge'];
+                                    $standing = $pair['standing'];
+                                @endphp
+                                <x-table-row :striped="$loop->even">
+                                    <td class="px-4 py-3 font-medium text-content">{{ $challenge->name }}</td>
+                                    <td class="px-4 py-3 text-sm text-content-muted">
+                                        <x-challenge-window :window="$standing->window" :recurrence="$challenge->recurrence" />
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-content-muted">
+                                        <x-word-count :count="$standing->written" variant="inline" /> {{ __('of') }} <x-word-count :count="$standing->target" variant="inline" />
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <x-badge :variant="$standing->met ? 'success' : 'danger'">
+                                            {{ $standing->met ? __('Met') : __('Missed') }}
+                                        </x-badge>
+                                    </td>
+                                </x-table-row>
+                            @endforeach
+                        </x-table>
+                    </div>
+                @endif
+            </div>
+        @endif
+    </x-card>
+
+    <x-card class="mt-6">
         <form
             method="GET"
             action="{{ route('projects.progress', $project) }}"

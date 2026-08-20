@@ -1,7 +1,7 @@
 @props(['value', 'goal', 'label'])
 
 @php
-    $percent = $goal > 0 ? min(100, (int) round($value / $goal * 100)) : 0;
+    $percent = $goal > 0 ? max(0, min(100, (int) round($value / $goal * 100))) : 0;
 @endphp
 
 <div>
