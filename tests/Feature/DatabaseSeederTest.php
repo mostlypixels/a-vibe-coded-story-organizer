@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ChallengeRecurrence;
+use App\Enums\ChallengeState;
+use App\Models\Challenge;
 use App\Models\CodexEntry;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use App\Models\WordCountSnapshot;
+use App\Services\ChallengeProgress;
 use App\Support\WordCountHistoryGenerator;
 use App\Support\WriterDay;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -171,6 +175,41 @@ class DatabaseSeederTest extends TestCase
                 $lastSnapshot->word_count,
                 "Last snapshot mismatch for {$name}.",
             );
+        }
+    }
+
+    /**
+     * Each Melusine project gets one finished challenge and one running
+     * monthly challenge, both scored from the seeded history
+     * (Database\Seeders\Concerns\SeedsChallenges).
+     */
+    public function test_a_seeded_melusine_project_has_a_finished_and_a_running_challenge(): void
+    {
+        $this->seed();
+
+        foreach (['The Roman of Melusine', 'Le Roman de Mélusine', 'Il Romanzo di Melusina'] as $name) {
+            $project = Project::where('name', $name)->firstOrFail();
+            $today = WriterDay::for($project->user);
+            $progress = app(ChallengeProgress::class);
+
+            $this->assertSame(2, Challenge::where('project_id', $project->id)->count(), "Challenge count for {$name}.");
+
+            $finished = Challenge::where('project_id', $project->id)
+                ->where('recurrence', ChallengeRecurrence::None)
+                ->first();
+            $running = Challenge::where('project_id', $project->id)
+                ->where('recurrence', ChallengeRecurrence::Monthly)
+                ->first();
+
+            $this->assertNotNull($finished, "No finished challenge for {$name}.");
+            $this->assertNotNull($running, "No running challenge for {$name}.");
+
+            $finishedStanding = $progress->standing($finished, $today);
+            $this->assertSame(ChallengeState::Finished, $finishedStanding->state, "Finished state for {$name}.");
+            $this->assertTrue($finishedStanding->met, "Finished challenge should read met for {$name}.");
+
+            $runningStanding = $progress->standing($running, $today);
+            $this->assertSame(ChallengeState::Running, $runningStanding->state, "Running state for {$name}.");
         }
     }
 }

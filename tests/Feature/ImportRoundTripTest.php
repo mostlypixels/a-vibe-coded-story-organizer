@@ -524,6 +524,35 @@ class ImportRoundTripTest extends TestCase
         $this->assertNull($importedChapter->cover_image);
     }
 
+    public function test_a_version_4_archive_with_no_challenges_file_imports_cleanly(): void
+    {
+        $owner = User::factory()->create();
+        $project = Project::factory()->for($owner)->create(['name' => 'Pre-Challenges Project']);
+
+        $zipPath = $this->exportZip($project, includeMedia: false);
+
+        // Version 4 never wrote data/challenges.json or claimed version 5;
+        // simulate that by stripping the entry and rewriting the manifest.
+        $zip = new \ZipArchive;
+        $zip->open($zipPath);
+        $zip->deleteName('data/challenges.json');
+        $manifest = json_decode($zip->getFromName('data/manifest.json'), true);
+        $manifest['version'] = 4;
+        $zip->deleteName('data/manifest.json');
+        $zip->addFromString('data/manifest.json', json_encode($manifest));
+        $zip->close();
+
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertSessionHasNoErrors();
+
+        $imported = $importer->projects()->sole();
+        $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
+        $this->assertSame(0, $imported->challenges()->count());
+    }
+
     // ------------------------------------------------------------------
     // Fixtures & helpers
     // ------------------------------------------------------------------

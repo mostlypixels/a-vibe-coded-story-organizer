@@ -21,10 +21,17 @@ class WordCountFormat
 {
     private const TRANSLATION_KEY = '{0} :count words|{1} :count word|[2,*] :count words';
 
-    /** The final, formatted string — "1,234 words" / "1 word" / "0 words". */
+    /**
+     * The final, formatted string — "1,234 words" / "1 word" / "0 words".
+     *
+     * The plural branch is chosen on the *size* of the count, because a count
+     * can be negative: a challenge whose writer cut more than they added shows
+     * "-2,300 words". None of the key's ranges match a negative number, so
+     * `trans_choice()` would fall through to the singular branch.
+     */
     public static function text(int $count): string
     {
-        return trans_choice(self::TRANSLATION_KEY, $count, ['count' => number_format($count)]);
+        return trans_choice(self::TRANSLATION_KEY, abs($count), ['count' => number_format($count)]);
     }
 
     /**

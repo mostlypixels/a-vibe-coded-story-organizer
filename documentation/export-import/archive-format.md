@@ -25,6 +25,7 @@ owns it:
 | `data/timeline/` | plotlines and events | the project, shared by every book |
 | `data/codex/`, `data/tags.json` | codex entries, attribute definitions, tags, media | the project, shared by every book |
 | `data/word-count-snapshots.json` | the writing history | the project |
+| `data/challenges.json` | word-count challenges | the project |
 
 ## Stable identifiers
 
@@ -39,7 +40,7 @@ The archive's root descriptor, written once per export:
 
 ```json
 {
-  "version": 4,
+  "version": 5,
   "project_id": 42,
   "exported_at": "2026-08-17T14:03:11+00:00",
   "includes_media": true
@@ -61,12 +62,13 @@ additive changes (a new optional field, a new entity type folder) do **not** bum
 an importer must ignore keys it does not recognize.
 
 > [!IMPORTANT]
-> **Only version 4 is supported.** `ImportRules::SUPPORTED_MANIFEST_VERSIONS = [4]` — every
-> older archive is rejected outright. Version 4 moved the manuscript under
+> **Versions 4 and 5 are supported.** `ImportRules::SUPPORTED_MANIFEST_VERSIONS = [4, 5]` —
+> older archives are rejected outright. Version 4 moved the manuscript under
 > `data/books/<id>-slug/acts/`, gave each book its own `publication-setting.json`, and renamed
 > the reading layer `book/` → `books/`; a relocated path is exactly the breaking change this
-> number exists for. There is no migration path between versions: pre-V1, nobody holds an
-> archive they cannot simply re-export.
+> number exists for. Version 5 only **adds** `data/challenges.json` — additive, so a version-4
+> archive still imports cleanly with no challenges. There is no migration path between
+> breaking versions: pre-V1, nobody holds an archive they cannot simply re-export.
 
 Revision history is not exported. It is large, is not restored, and imported rows would not qualify for automatic pruning.
 
@@ -310,6 +312,34 @@ oldest first:
 Always written, even as `[]` — "no history" is a real, representable state, not a lazy
 default. Restored in bulk (`DB::table('word_count_snapshots')->insert(...)`, never through the
 model) so no `WordCountSnapshotRecorder` event fires on top of the restored rows.
+
+## `data/challenges.json`
+
+The project's word-count challenges — one row per challenge, **no ids**: a challenge
+references nothing, so nothing needs remapping on import. A flat array, always written, even
+as `[]`:
+
+```json
+[
+  {
+    "name": "50,000 in November",
+    "recurrence": "none",
+    "starts_on": "2026-11-01",
+    "ends_on": "2026-11-30",
+    "target_words": 50000
+  }
+]
+```
+
+| Key | Notes |
+| --- | --- |
+| `recurrence` | The `ChallengeRecurrence` **enum value** (`"none"` or `"monthly"`). |
+| `ends_on` | `null` for a `monthly` challenge with no stop date; always set for `none`. |
+
+Restored inside `ImportPhase::Project` by `ProjectGraphImporter`, through the same
+`DB::table()->insert()` path as `word-count-snapshots.json` — no model events, no
+re-derivation. A version-4 archive has no `data/challenges.json`; import treats absent as "no
+challenges", not an error.
 
 ## The Timeline branch
 

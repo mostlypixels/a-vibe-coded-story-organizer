@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\CodexMediaCollection;
 use App\Models\Act;
 use App\Models\Book;
+use App\Models\Challenge;
 use App\Models\Chapter;
 use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
@@ -34,7 +35,7 @@ use ZipArchive;
 class StaticSiteExporter
 {
     /** Bump this version only when the data layout changes incompatibly. */
-    private const DATA_VERSION = 4;
+    private const DATA_VERSION = 5;
 
     /** Builds a temporary ZIP and removes partial files after a failure. */
     public function export(Project $project, bool $includeMedia): string
@@ -50,6 +51,7 @@ class StaticSiteExporter
             $this->addReadme($zip, $project);
             $this->addManifest($zip, $project, $includeMedia);
             $this->addWordCountSnapshots($zip, $project);
+            $this->addChallenges($zip, $project);
             $this->addProject($zip, $project, $includeMedia);
             $this->addBooks($zip, $project, $includeMedia);
             $this->addTimeline($zip, $project);
@@ -95,6 +97,28 @@ class StaticSiteExporter
             ->all();
 
         $this->addJson($zip, 'data/word-count-snapshots.json', $snapshots);
+    }
+
+    /**
+     * Writes every challenge, including an empty list.
+     *
+     * A challenge references nothing, so the payload carries no id.
+     */
+    private function addChallenges(ZipArchive $zip, Project $project): void
+    {
+        $challenges = $project->challenges()
+            ->orderBy('id')
+            ->get(['name', 'recurrence', 'starts_on', 'ends_on', 'target_words'])
+            ->map(fn (Challenge $challenge): array => [
+                'name' => $challenge->name,
+                'recurrence' => $challenge->recurrence->value,
+                'starts_on' => $challenge->starts_on->toDateString(),
+                'ends_on' => $challenge->ends_on?->toDateString(),
+                'target_words' => $challenge->target_words,
+            ])
+            ->all();
+
+        $this->addJson($zip, 'data/challenges.json', $challenges);
     }
 
     /** Writes a human introduction. The README is not an import source. */

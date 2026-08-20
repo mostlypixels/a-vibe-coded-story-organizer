@@ -316,6 +316,27 @@ class ArchiveValidatorTest extends TestCase
         (new ArchiveValidator)->validate($path);
     }
 
+    public function test_rejects_a_challenges_entry_missing_a_required_key(): void
+    {
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip);
+            // A challenge item without `target_words`.
+            $zip->addFromString('data/challenges.json', json_encode([
+                [
+                    'name' => 'Fixed sprint',
+                    'recurrence' => 'none',
+                    'starts_on' => '2026-08-01',
+                    'ends_on' => '2026-08-30',
+                ],
+            ]));
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('missing the required "target_words" field');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
     // ------------------------------------------------------------------
     // Check 6 — content-sniffed media
     // ------------------------------------------------------------------

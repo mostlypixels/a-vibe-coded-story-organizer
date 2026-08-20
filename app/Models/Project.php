@@ -112,6 +112,11 @@ class Project extends Model
         return $this->hasMany(WordCountSnapshot::class);
     }
 
+    public function challenges(): HasMany
+    {
+        return $this->hasMany(Challenge::class)->orderByDesc('starts_on');
+    }
+
     /**
      * Every chapter in this project, as a query to build on.
      *

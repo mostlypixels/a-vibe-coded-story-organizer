@@ -5,6 +5,7 @@ use App\Enums\SearchDomain;
 use App\Http\Controllers\ActController;
 use App\Http\Controllers\AppearanceController;
 use App\Http\Controllers\BookController;
+use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\CodexAttributeController;
 use App\Http\Controllers\CodexAttributeValueController;
@@ -111,6 +112,11 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
     Route::resource('projects.plotlines', PlotlineController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->shallow();
+
+    // No index: the Progress page lists challenges.
+    Route::resource('projects.challenges', ChallengeController::class)
+        ->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
 
     Route::resource('projects.events', EventController::class)

@@ -45,6 +45,17 @@ class WordCountComponentTest extends TestCase
         $this->assertStringNotContainsString('1 words', $rendered);
     }
 
+    public function test_a_negative_count_is_plural(): void
+    {
+        // A challenge whose writer cut more than they added shows a negative
+        // total. No range in the translation key matches a negative number, so
+        // the plural branch is chosen on the size of the count.
+        $rendered = $this->render('<x-word-count :count="$count" />', ['count' => -2300]);
+
+        $this->assertStringContainsString('-2,300 words', $rendered);
+        $this->assertStringNotContainsString('-2,300 word ', $rendered);
+    }
+
     public function test_large_counts_are_thousands_separated(): void
     {
         $rendered = $this->render('<x-word-count :count="$count" />', ['count' => 1234]);
