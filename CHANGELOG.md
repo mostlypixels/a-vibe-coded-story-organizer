@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-20 — Word count challenges
+## 2026-08-20 — Word count challenges (#123)
 
 ### Added
 
