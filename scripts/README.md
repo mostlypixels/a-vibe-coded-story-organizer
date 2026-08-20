@@ -14,7 +14,7 @@ secrets from env, `set -euo pipefail`, header naming its callers) is documented 
 | `verify.sh [--filter P] [--no-js] [--no-lint]` | Run the whole green-tree gate in one call — PHP suite, JS suite, Pint check — all three even if one fails, then one summary line each with counts (exit 1 = something failed) | plan-implementer, ship-plan, ship-pr, run-imagoldfish |
 | `probe-test.sh '<php>'` | Answer a scratch question with a throwaway feature test (in-memory DB, `RefreshDatabase`), run then deleted — the tinker-free probe CLAUDE.md requires | humans and agents debugging; CLAUDE.md → Testing |
 | `assets-state.sh` | Report whether the app would serve the build: stale `public/hot`, missing `public/build`, dev database behind migrations (exit 1 = at least one) | serve-app.sh, plan-implementer, run-imagoldfish |
-| `serve-app.sh [--port N]` | Pre-flight-check via `assets-state.sh`, then start `php artisan serve` in the background with a PID file; idempotent | run-imagoldfish |
+| `serve-app.sh [--port N]` | Refuse if another server holds the port (e.g. the Docker stack), pre-flight-check via `assets-state.sh`, then start `php artisan serve` in the background with a PID file; idempotent | run-imagoldfish |
 | `stop-app.sh` | Kill the exact dev-server PID recorded by serve-app.sh and remove the PID file; idempotent | run-imagoldfish |
 | `claude-usage.sh [--text\|--raw]` | Report Claude Code session/week limit usage as JSON (default); failures print one word (`unavailable`, `unparseable`) and exit 1 | plan-implementer |
 | `pr-land.sh <title> <body-file>` | Land the current feature branch on master: push, open PR, stamp the PR number onto the changelog heading, arm squash auto-merge, watch CI, merge, confirm MERGED, update local master | ship-pr |

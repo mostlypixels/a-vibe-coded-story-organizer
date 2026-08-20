@@ -15,6 +15,11 @@ The `Makefile` only wraps Docker Compose commands. Run `make help` to list them.
 
 ## Development start
 
+> [!WARNING]
+> Stop the native server first (`bash scripts/stop-app.sh`). Both serve port 8000
+> and write `database/database.sqlite`; two writers on one SQLite file corrupt it
+> across the bind mount. `make up` refuses while the native PID file exists.
+
 ```bash
 cp .env.docker .env
 make up

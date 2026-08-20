@@ -50,6 +50,19 @@ if [ -f "$PID_FILE" ]; then
     rm -f "$PID_FILE"
 fi
 
+# The Docker stack (docker-compose.dev.yml) publishes the same port and writes
+# the same database/database.sqlite. Two servers on one SQLite file across the
+# WSL2 bind mount corrupt it, so refuse the port instead of competing for it.
+if curl -sf "$URL" -o /dev/null --max-time 5; then
+    echo "ERROR: something already answers at $URL — refusing to start a second server." >&2
+    if docker ps --filter "publish=$PORT" --format '{{.Names}}' 2>/dev/null | grep -q .; then
+        echo "       It is the Docker dev stack. Stop it first: make down" >&2
+    else
+        echo "       Stop that server first, or pick another port: --port N" >&2
+    fi
+    exit 1
+fi
+
 # Stale public/hot, a missing build, a dev database behind migrations: three
 # states that serve broken pages while the test suite stays green.
 if ! bash scripts/assets-state.sh; then

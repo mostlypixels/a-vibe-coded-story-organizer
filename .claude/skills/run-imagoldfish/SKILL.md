@@ -17,10 +17,10 @@ Windows/PowerShell environment observed in this repo. PHP 8.5, Composer, and
 Node/npm must already be on PATH on the machine this skill runs from — verify with
 `php --version` / `node --version` (PHP 8.5 / Node v20+ expected).
 
-The project also has a Docker setup (`documentation/development/docker.md`) for humans who don't
-want a local PHP/Node install, but this skill's driver (`serve-app.sh` / `driver.mjs`)
-talks to a locally-run `php artisan serve`, not a container — the agent sandbox this
-skill runs in is the host machine itself, not inside Docker.
+The default way to run the app is Docker (`documentation/development/docker.md`),
+which needs neither on the host. PHP and Node on PATH are required only for the
+native path and for running the test suites directly. `driver.mjs` runs on the
+host either way and drives `http://localhost:8000`, whichever server serves it.
 
 ## Setup
 
@@ -71,17 +71,54 @@ bash scripts/assets-state.sh
 
 ## Run (agent path)
 
-Start the server with the helper script (Git Bash) — it runs `assets-state.sh`
-first and refuses to start unless it passes,
-starts `php artisan serve` in the background, records the PID in
-`scripts/.serve-app.pid`, logs to `storage/logs/artisan-serve.log`, and polls
+**Docker is the default. Use the native server only when the user asks for it**
+— "natively", "artisan serve", "not in Docker". "Run the app" alone means Docker.
+
+Run one or the other, never both. They share port 8000 and
+`database/database.sqlite`, and two writers on one SQLite file corrupt it. Each
+start command refuses while the other holds the port.
+
+### Docker (default)
+
+```bash
+make up          # foreground; use a background call or `docker compose -f docker-compose.dev.yml up -d`
+make migrate     # after the app container answers
+make down        # stop
+```
+
+The app answers at `http://localhost:8000` — same URL as the native server, so
+`driver.mjs` needs no change. Poll it until it answers; the container runs a
+setup step before nginx and php-fpm come up.
+
+Container specifics that differ from the native path:
+
+- Logs are `docker logs <container>` and `/var/log/nginx/error.log` inside it.
+  A 504 there means php-fpm is wedged, not that the app threw.
+- Run artisan and Composer inside the container: `make shell`, `make tinker`,
+  `make test`, `make lint`, `make fresh`. A host `php artisan` command talks to
+  the same database but a different PHP.
+- `make up` refuses while `scripts/.serve-app.pid` exists — stop the native
+  server first with `bash scripts/stop-app.sh`.
+- After `composer.json`/`package.json` changes, `make rebuild`, not `make up`.
+
+### Native (only when asked)
+
+The helper script (Git Bash) runs `assets-state.sh` first and refuses to start
+unless it passes, starts `php artisan serve` in the background, records the PID
+in `scripts/.serve-app.pid`, logs to `storage/logs/artisan-serve.log`, and polls
 until the URL answers. Idempotent — re-running while the server is up is a
 no-op:
 
 ```bash
 bash scripts/serve-app.sh            # default port 8000
 bash scripts/serve-app.sh --port 8123
+bash scripts/stop-app.sh             # stop
 ```
+
+It refuses when another server already answers on the port — normally the Docker
+stack. Stop that stack (`make down`) rather than picking a second port.
+
+Native needs PHP and Node on the host; Docker does not.
 
 The app requires a logged-in session for almost everything. Use the seeded dev
 user `admin@example.com` / `password` — `DatabaseSeeder` creates it (idempotently,
@@ -204,11 +241,13 @@ node dark-contrast-audit.mjs --origin http://localhost:8000
 ## Run (human path)
 
 ```bash
-php artisan serve
+make up
 ```
-Visit `http://localhost:8000` in a real browser. Ctrl-C to stop.
+Visit `http://localhost:8000` in a real browser. `make down` to stop.
+See `documentation/development/docker.md`.
 
-(Or `make up` for the Docker version — same URL, see `documentation/development/docker.md`.)
+(Or `php artisan serve` for the native version — same URL, needs PHP and Node on
+the host. Ctrl-C to stop. Do not run both.)
 
 ## Test
 
