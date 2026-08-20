@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-20 — Docker as the default way to run the app
+## 2026-08-20 — Docker as the default way to run the app (#124)
 
 ### Changed
 
