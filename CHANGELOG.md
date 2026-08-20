@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-20 — Docker as the default way to run the app
+
+### Changed
+
+- Docker is now the documented way to run the development app; the native server is the alternative.
+
+### Fixed
+
+- `make up` and the native start script each refuse while the other holds port 8000.
+- `make up` and `make rebuild` no longer fail to parse when Make runs from Git Bash.
+
 ## 2026-08-20 — Word count challenges (#123)
 
 ### Added

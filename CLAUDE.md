@@ -9,13 +9,15 @@ Use these rules during planning and development. Prefer clear code that junior d
 - Format: `composer lint`
 - Check formatting: `composer lint -- --test`
 - Build frontend: `npm run build`
-- Start development server: `php artisan serve`
+- Start development server: `make up` (Docker, the default); `php artisan serve` when a native run is asked for
 - Run all checks: `bash scripts/verify.sh`
 - Run one PHP test: `bash scripts/verify.sh --filter <pattern>`
 
 PHP tests use separate in-memory SQLite databases. JavaScript tests use Vitest and stay next to their source files. Use the scripts in `scripts/` before you add another command sequence.
 
-Docker provides the same commands for systems without local PHP and Node. See [Docker development](documentation/development/docker.md).
+Docker is the default way to run the app and provides the same commands. See [Docker development](documentation/development/docker.md). The native server is for when someone asks for it by name.
+
+Run the native server or the Docker stack, never both. They share port 8000 and `database/database.sqlite`, and two writers on one SQLite file corrupt it. Each start command refuses while the other holds the port.
 
 `master` is protected. Ship changes through a branch and pull request. The `tests` check must pass before squash-merge.
 

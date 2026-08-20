@@ -1,4 +1,4 @@
-.PHONY: help up down build rebuild logs shell tinker test lint migrate seed fresh ps restart clean
+.PHONY: help up down build rebuild logs shell tinker test lint migrate seed fresh ps restart clean guard-native
 
 # `docker compose` (v2, a subcommand) rather than `docker-compose` (v1, a separate
 # Python binary that reached end of life in 2023).
@@ -17,6 +17,14 @@ ifeq ($(OS),Windows_NT)
 else
     REMOVE_DEV_DATABASE = rm -f database/database.sqlite
 endif
+
+# The native server (scripts/serve-app.sh) publishes the same port and writes the
+# same database/database.sqlite. Two servers on one SQLite file corrupt it, so the
+# PID file it records blocks `make up`.
+#
+# Make tests for the file itself rather than a shell `if`: recipes run through
+# cmd.exe or sh depending on how Make was started, and no `if` syntax suits both.
+NATIVE_SERVER_PID_FILE := $(wildcard scripts/.serve-app.pid)
 
 help:
 	@echo "Imagoldfish Docker Commands"
@@ -45,7 +53,14 @@ help:
 	@echo "  make clean           - Remove containers and volumes"
 	@echo ""
 
-up:
+guard-native:
+ifneq ($(NATIVE_SERVER_PID_FILE),)
+	@echo ERROR: the native dev server holds port 8000.
+	@echo Stop it first: bash scripts/stop-app.sh
+	@exit 1
+endif
+
+up: guard-native
 	$(COMPOSE_DEV) up
 
 down:
@@ -63,7 +78,7 @@ build:
 # OLD dependencies still mounted on top of it, which looks exactly like the build
 # having silently done nothing. --renew-anon-volumes is what discards them so they
 # are repopulated from the freshly built image.
-rebuild:
+rebuild: guard-native
 	$(COMPOSE_DEV) build --no-cache
 	$(COMPOSE_DEV) up --force-recreate --renew-anon-volumes
 
