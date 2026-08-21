@@ -145,7 +145,9 @@ class RouteContextTest extends TestCase
 
     public function test_an_off_route_page_resolves_neither(): void
     {
-        $this->actingAs($this->user)->get('/dashboard')->assertSuccessful();
+        $this->projectWithBook($this->user);
+
+        $this->actingAs($this->user)->get('/projects')->assertSuccessful();
 
         /** @var Request $request */
         $request = $this->app->make('request');

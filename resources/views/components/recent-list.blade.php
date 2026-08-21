@@ -28,7 +28,16 @@
 
                     <span class="min-w-0 flex-1">
                         <a href="{{ $item->url }}" class="font-medium text-content hover:text-link">{{ $item->label }}</a>
-                        @if ($item->context)
+                        @if ($item->contextSegments)
+                            <span class="flex min-w-0 items-center gap-1 text-xs text-content-subtle">
+                                @foreach ($item->contextSegments as $segment)
+                                    @unless ($loop->first)
+                                        <x-tabler-chevron-right class="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden="true" />
+                                    @endunless
+                                    <span class="{{ $loop->last ? 'truncate' : 'shrink-0 whitespace-nowrap' }}">{{ $segment }}</span>
+                                @endforeach
+                            </span>
+                        @elseif ($item->context)
                             <span class="block truncate text-xs text-content-subtle">{{ $item->context }}</span>
                         @endif
                     </span>

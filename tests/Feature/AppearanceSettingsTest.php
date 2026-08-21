@@ -112,13 +112,13 @@ class AppearanceSettingsTest extends TestCase
         $daylightUser = User::factory()->create(['theme_slug' => 'daylight']);
         $darkUser = User::factory()->create(['theme_slug' => 'low-glare-dark']);
 
-        $daylightContent = $this->actingAs($daylightUser)->get(route('dashboard'))->getContent();
+        $daylightContent = $this->actingAs($daylightUser)->get(route('onboarding'))->getContent();
         $this->assertStringContainsString(
             '--color-primary:'.config('themes.presets.daylight.tokens.primary').';',
             $daylightContent,
         );
 
-        $darkContent = $this->actingAs($darkUser)->get(route('dashboard'))->getContent();
+        $darkContent = $this->actingAs($darkUser)->get(route('onboarding'))->getContent();
         $this->assertStringContainsString(
             '--color-primary:'.config('themes.presets.low-glare-dark.tokens.primary').';',
             $darkContent,
@@ -134,7 +134,7 @@ class AppearanceSettingsTest extends TestCase
     {
         $user = User::factory()->create(['theme_slug' => 'a-preset-that-was-removed']);
 
-        $response = $this->actingAs($user)->get(route('dashboard'));
+        $response = $this->actingAs($user)->get(route('onboarding'));
 
         $response->assertOk();
         $response->assertSee(
@@ -282,7 +282,7 @@ class AppearanceSettingsTest extends TestCase
             'ui_font' => 'malicious-slug"></style><script>alert(1)</script>',
         ]);
 
-        $html = $this->actingAs($user)->get(route('dashboard'))->getContent();
+        $html = $this->actingAs($user)->get(route('projects.index'))->getContent();
 
         $this->assertStringNotContainsString('malicious-slug', $html);
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);

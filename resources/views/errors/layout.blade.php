@@ -34,8 +34,8 @@
                     </p>
 
                     <div class="pt-4">
-                        <x-button variant="secondary" :href="auth()->check() ? route('dashboard') : url('/')">
-                            {{ auth()->check() ? __('Back to dashboard') : __('Back to home') }}
+                        <x-button variant="secondary" :href="auth()->check() ? route('projects.index') : url('/')">
+                            {{ auth()->check() ? __('Back to projects') : __('Back to home') }}
                         </x-button>
                     </div>
                 </div>

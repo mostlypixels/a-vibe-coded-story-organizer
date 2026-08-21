@@ -23,7 +23,9 @@ side is the one that runs long; the scene card is collapsible, so it is the less
 
 - Codex → scenes: **sorted in PHP** on a 6-part key — unassigned scenes last, then
   `(event_datetime, id)`, tiebroken by `(act.position, chapter.position, position)`. Not a SQL
-  order.
+  order. The codex belongs to the project, so this list crosses every book: the manuscript
+  tiebreak must gain `book.position` in front of `act.position`, or two books interleave by act
+  number. See *Fix in passing*.
 - Scene → entries: SQL `(type, name)`.
 
 ## Goals
@@ -58,3 +60,9 @@ side is the one that runs long; the scene card is collapsible, so it is the less
 
 - `CodexEntryController.php:159` cites "the sidebar card in `codex/partials/fields.blade.php`";
   the card is in `codex/edit.blade.php` and is not a sidebar.
+- `referencingScenesInTimelineOrder()` still sorts on `(act.position, chapter.position,
+  position)` and eager-loads `chapter.act`. Since acts hang off a book, a scene from book 2 act 1
+  sorts above a scene from book 1 act 2. Add `book.position` to the key and `chapter.act.book` to
+  the eager load.
+- The scene row must name its book when the project holds more than one, through
+  `Book::displayName()` — an unnamed book borrows the project name and must never print `#<id>`.

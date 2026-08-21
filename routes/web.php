@@ -11,7 +11,6 @@ use App\Http\Controllers\CodexAttributeController;
 use App\Http\Controllers\CodexAttributeValueController;
 use App\Http\Controllers\CodexController;
 use App\Http\Controllers\CodexEntryController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseConfigurationController;
 use App\Http\Controllers\DataTransferController;
 use App\Http\Controllers\EpubExportController;
@@ -21,6 +20,7 @@ use App\Http\Controllers\FieldAutosaveController;
 use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportSettingController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgressController;
@@ -53,9 +53,16 @@ Route::get('/shared/scenes/{token}', [SharedSceneController::class, 'show'])
 // Crawlers are anonymous. A static public/robots.txt would shadow this route.
 Route::get('/robots.txt', RobotsTxtController::class)->name('robots.txt');
 
-Route::get('/dashboard', DashboardController::class)
+// The project list. An account with no projects is redirected to onboarding,
+// so every path here (the logo, the auth redirects, a project delete) sends a
+// new writer to the same first-project prompt.
+Route::get('/projects', [ProjectController::class, 'index'])
     ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+    ->name('projects.index');
+
+Route::get('/onboarding', OnboardingController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('onboarding');
 
 // Only authenticated project pages update users.active_project_id.
 Route::middleware(['auth', TrackActiveProject::class])->group(function () {
@@ -126,6 +133,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::resource('projects.books', BookController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->shallow();
+    Route::get('/books/{book}/select', [BookController::class, 'select'])->name('books.select');
     Route::patch('/books/{book}/move-up', [BookController::class, 'moveUp'])->name('books.move-up');
     Route::patch('/books/{book}/move-down', [BookController::class, 'moveDown'])->name('books.move-down');
 

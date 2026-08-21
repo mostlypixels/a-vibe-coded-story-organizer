@@ -171,7 +171,7 @@ class ActiveProjectTest extends TestCase
         $book = $project->books()->first();
         $user->forceFill(['active_project_id' => $project->id])->save();
 
-        $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
+        $html = $this->actingAs($user)->get(route('projects.index'))->assertOk()->getContent();
 
         // The point of the feature: the project menu renders on a page whose URL
         // names no project, so returning to the work is one click.
@@ -185,7 +185,7 @@ class ActiveProjectTest extends TestCase
         $project = Project::factory()->for($user)->create();
         $user->forceFill(['active_project_id' => $project->id])->save();
 
-        $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
+        $html = $this->actingAs($user)->get(route('projects.index'))->assertOk()->getContent();
 
         // The `*Active` flags match the route, not the stored project: no section
         // is open on the dashboard, so nothing may claim to be current. Scoped to
@@ -198,7 +198,7 @@ class ActiveProjectTest extends TestCase
         $user = User::factory()->create();
         [, $book] = $this->projectWithBook($user);
 
-        $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
+        $html = $this->actingAs($user)->get(route('projects.index'))->assertOk()->getContent();
 
         $this->assertStringContainsString('Choose a project', $html);
         $this->assertStringNotContainsString('href="'.e(route('books.story.overview', $book)).'"', $html);
@@ -208,13 +208,16 @@ class ActiveProjectTest extends TestCase
     {
         $user = User::factory()->create();
         [$project, $book] = $this->projectWithBook($user);
+        // A second project keeps the account non-empty after the delete, so the
+        // list renders instead of redirecting to onboarding.
+        Project::factory()->for($user)->create();
         $user->forceFill(['active_project_id' => $project->id])->save();
 
         $project->delete();
 
         // The FK nulls the column, so the fallback has nothing to fall back to —
         // the nav must not render links to a project that no longer exists.
-        $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
+        $html = $this->actingAs($user)->get(route('projects.index'))->assertOk()->getContent();
 
         $this->assertStringContainsString('Choose a project', $html);
         $this->assertStringNotContainsString('href="'.e(route('books.story.overview', $book)).'"', $html);
@@ -303,7 +306,7 @@ class ActiveProjectTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect(route('projects.index', absolute: false));
     }
 
     public function test_login_after_a_deep_link_still_lands_on_the_intended_url(): void

@@ -3,7 +3,7 @@
         <div class="flex justify-between h-12">
             <div class="flex">
                 <div class="shrink-0 flex items-center bg-nav-raised px-2">
-                    <a href="{{ route('dashboard') }}">
+                    <a href="{{ $navigation->homeUrl() }}">
                         <x-application-logo class="block h-6 w-auto fill-current text-nav-content" />
                     </a>
                 </div>
@@ -32,7 +32,7 @@
                         <x-slot name="content">
                             @if ($navigation->hasBook())
                                 @foreach ($navigation->projectBooks() as $projectBook)
-                                    <x-dropdown-link :href="route('books.show', $projectBook)" :active="$projectBook->is($navigation->routeBook)">
+                                    <x-dropdown-link :href="route('books.select', $projectBook)" :active="$projectBook->is($navigation->routeBook)">
                                         {{ $projectBook->displayName() }}
                                     </x-dropdown-link>
                                 @endforeach
@@ -49,7 +49,7 @@
 
                                 @foreach ($otherProject->books as $otherBook)
                                     <div class="pl-4">
-                                        <x-dropdown-link :href="route('books.show', $otherBook)">
+                                        <x-dropdown-link :href="route('books.select', $otherBook)">
                                             {{ $otherBook->displayName() }}
                                         </x-dropdown-link>
                                     </div>
@@ -58,7 +58,7 @@
 
                             <div class="border-t border-border"></div>
 
-                            <x-dropdown-link :href="route('dashboard')">{{ __('All projects') }} &rarr;</x-dropdown-link>
+                            <x-dropdown-link :href="route('projects.index')">{{ __('All projects') }} &rarr;</x-dropdown-link>
                         </x-slot>
                     </x-dropdown>
                 </div>
@@ -119,7 +119,7 @@
 
             @if ($navigation->hasBook())
                 @foreach ($navigation->projectBooks() as $projectBook)
-                    <x-responsive-nav-link :href="route('books.show', $projectBook)" :active="$projectBook->is($navigation->routeBook)">
+                    <x-responsive-nav-link :href="route('books.select', $projectBook)" :active="$projectBook->is($navigation->routeBook)">
                         {{ $projectBook->displayName() }}
                     </x-responsive-nav-link>
                 @endforeach
@@ -134,14 +134,14 @@
 
                 @foreach ($otherProject->books as $otherBook)
                     <div class="pl-4">
-                        <x-responsive-nav-link :href="route('books.show', $otherBook)">
+                        <x-responsive-nav-link :href="route('books.select', $otherBook)">
                             {{ $otherBook->displayName() }}
                         </x-responsive-nav-link>
                     </div>
                 @endforeach
             @endforeach
 
-            <x-responsive-nav-link :href="route('dashboard')">{{ __('All projects') }} &rarr;</x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('projects.index')">{{ __('All projects') }} &rarr;</x-responsive-nav-link>
         </div>
 
         <div class="pt-2 pb-3 space-y-1">

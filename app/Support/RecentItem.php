@@ -28,6 +28,12 @@ final readonly class RecentItem
      * Cover media row, a chapter's `cover_image`. Null both for an entity type
      * with no cover field and for one that simply has no cover yet; the list
      * reserves the thumbnail column only when at least one row fills it.
+     *
+     * `$contextSegments` is `$context` split into breadcrumb parts — the list
+     * draws a chevron between them, like the page breadcrumb. A scene uses it
+     * for "Book 1 › Act 1 › Chapter 1: <name>". Set one or the other, never both.
+     *
+     * @param  list<string>|null  $contextSegments
      */
     public function __construct(
         public string $label,
@@ -35,5 +41,6 @@ final readonly class RecentItem
         public CarbonInterface $updatedAt,
         public ?string $context = null,
         public ?string $imageUrl = null,
+        public ?array $contextSegments = null,
     ) {}
 }

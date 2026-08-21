@@ -37,7 +37,7 @@ mkdirSync(outputDir, { recursive: true });
 /** Anything that logs out, mutates, or streams a file rather than rendering a page. */
 const SKIP = /\/(logout|download|export\/(project|ebook|site)\/|storage\/|robots\.txt)/;
 
-const SEEDS = ['/dashboard', '/projects', '/admin/settings', '/search?q=Melusine'];
+const SEEDS = ['/projects', '/admin/settings', '/search?q=Melusine'];
 
 async function login(page, origin) {
     await page.goto(`${origin}/login`, { waitUntil: 'domcontentloaded' });

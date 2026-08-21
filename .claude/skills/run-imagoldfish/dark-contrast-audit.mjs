@@ -25,7 +25,7 @@ const EMAIL = args.email ?? 'admin@example.com';
 const PASSWORD = args.password ?? 'password';
 
 const SKIP = /\/(logout|download|export\/(project|ebook|site)\/|storage\/|robots\.txt)/;
-const SEEDS = ['/dashboard', '/projects', '/admin/settings', '/search?q=Melusine'];
+const SEEDS = ['/projects', '/admin/settings', '/search?q=Melusine'];
 
 async function login(page) {
     await page.goto(`${ORIGIN}/login`, { waitUntil: 'domcontentloaded' });

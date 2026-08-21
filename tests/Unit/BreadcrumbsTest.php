@@ -269,7 +269,11 @@ class BreadcrumbsTest extends TestCase
 
     public function test_a_non_project_route_yields_an_empty_trail(): void
     {
-        $breadcrumbs = $this->breadcrumbsFor('dashboard');
+        // The list renders only for a non-empty account; an empty one redirects
+        // to onboarding.
+        Project::factory()->for($this->user)->create();
+
+        $breadcrumbs = $this->breadcrumbsFor('projects.index');
 
         $this->assertTrue($breadcrumbs->isEmpty());
         $this->assertCount(0, $breadcrumbs);

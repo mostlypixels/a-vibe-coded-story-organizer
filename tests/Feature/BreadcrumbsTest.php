@@ -338,16 +338,18 @@ class BreadcrumbsTest extends TestCase
         $this->assertStringContainsString('shadow-sm text-nav-content', $html);
     }
 
-    public function test_no_band_and_header_slot_intact_on_the_root_dashboard(): void
+    public function test_no_band_and_header_slot_intact_on_the_project_list(): void
     {
+        Project::factory()->for($this->user)->create();
+
         $html = $this->actingAs($this->user)
-            ->get(route('dashboard'))
+            ->get(route('projects.index'))
             ->assertOk()
             ->getContent();
 
         $this->assertStringNotContainsString('aria-label="Breadcrumb"', $html);
         // The page keeps its own header-slot heading.
-        $this->assertStringContainsString(__('Dashboard'), $html);
+        $this->assertStringContainsString(__('Projects'), $html);
     }
 
     public function test_no_band_on_the_profile_page(): void

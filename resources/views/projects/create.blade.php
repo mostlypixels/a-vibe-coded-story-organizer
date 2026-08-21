@@ -25,7 +25,7 @@
         </x-card>
 
         <x-slot:sidebar>
-            <x-create-actions form="project-create-form" :cancel="route('dashboard')">
+            <x-create-actions form="project-create-form" :cancel="route('projects.index')">
                 {{ __('Create Project') }}
             </x-create-actions>
         </x-slot:sidebar>

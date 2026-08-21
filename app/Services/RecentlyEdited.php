@@ -12,6 +12,7 @@ use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Support\RecentItem;
+use App\Support\StoryNumbering;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -72,17 +73,43 @@ class RecentlyEdited
     /** @return Collection<int, RecentItem> */
     public function scenes(Project|Book $scope, int $limit = RecentItem::LIMIT): Collection
     {
-        return $scope->sceneQuery()
-            ->with('chapter.act')
+        // The project dashboard mixes scenes from every book, so it names the
+        // book too. A book-scoped list already sits in one book, so it leaves
+        // the book out.
+        $withBook = $scope instanceof Project;
+
+        $scenes = $scope->sceneQuery()
+            ->with('chapter.act.book')
             ->latest('updated_at')
             ->limit($limit)
-            ->get()
-            ->map(fn (Scene $scene) => new RecentItem(
+            ->get();
+
+        // Act and chapter numbers are book-wide and gap-free (see
+        // StoryNumbering), not the raw `position` — so the breadcrumb agrees
+        // with the chapter page. One numbering table per book the list touches.
+        $numbering = [];
+
+        return $scenes->map(function (Scene $scene) use ($withBook, &$numbering) {
+            $chapter = $scene->chapter;
+            $book = $chapter->act->book;
+            $numbers = $numbering[$book->id] ??= StoryNumbering::forBook($book);
+
+            $segments = [
+                __('Act :number', ['number' => $numbers->act($chapter->act)]),
+                __('Chapter :number', ['number' => $numbers->chapter($chapter)]).': '.$chapter->name,
+            ];
+
+            if ($withBook) {
+                array_unshift($segments, __('Book :number', ['number' => $book->position]));
+            }
+
+            return new RecentItem(
                 label: $scene->name,
                 url: route('scenes.edit', $scene),
                 updatedAt: $scene->updated_at,
-                context: $scene->chapter->act->name.' — '.$scene->chapter->name,
-            ));
+                contextSegments: $segments,
+            );
+        });
     }
 
     /** @return Collection<int, RecentItem> */

@@ -24,7 +24,7 @@ class PageTitleTest extends TestCase
     {
         config(['app.name' => 'AVCSO']);
 
-        $response = $this->actingAs(User::factory()->create())->get(route('dashboard'));
+        $response = $this->actingAs(User::factory()->create())->get(route('onboarding'));
 
         $response->assertSee('<title>AVCSO</title>', false);
     }
@@ -47,7 +47,7 @@ class PageTitleTest extends TestCase
         $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
         $user->forceFill(['active_project_id' => $project->id])->save();
 
-        $response = $this->actingAs($user)->get(route('dashboard'));
+        $response = $this->actingAs($user)->get(route('projects.index'));
 
         // The nav falls back to the account's active project off-route; the title
         // deliberately does not. Building it from $navigation->project instead of

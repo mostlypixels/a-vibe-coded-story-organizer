@@ -349,12 +349,12 @@ class NavigationTest extends TestCase
         // Another project renders as an unlinked heading, its (sole, unnamed)
         // book listed beneath it and linking to the book, not the project.
         $this->assertStringContainsString('Another one', $html);
-        $this->assertStringContainsString('href="'.e(route('books.show', $other->books()->first())).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('books.select', $other->books()->first())).'"', $html);
         $this->assertStringNotContainsString('href="'.e(route('projects.show', $other)).'"', $html);
 
         // "All projects" is the overflow route out of a capped list, so it is
         // part of the contract, not decoration.
-        $this->assertStringContainsString('href="'.e(route('dashboard')).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('projects.index')).'"', $html);
 
         // x-dropdown maps only the legacy width="48" and passes anything else
         // through verbatim, so width="56" would emit a junk `56` class and leave
@@ -374,8 +374,8 @@ class NavigationTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('href="'.e(route('books.show', $firstBook)).'"', $html);
-        $this->assertStringContainsString('href="'.e(route('books.show', $secondBook)).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('books.select', $firstBook)).'"', $html);
+        $this->assertStringContainsString('href="'.e(route('books.select', $secondBook)).'"', $html);
         $this->assertStringContainsString('href="'.e(route('projects.books.index', $project)).'"', $html);
     }
 
@@ -391,8 +391,8 @@ class NavigationTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertLinkIsCurrent($html, route('books.show', $firstBook));
-        $this->assertLinkIsNotCurrent($html, route('books.show', $secondBook));
+        $this->assertLinkIsCurrent($html, route('books.select', $firstBook));
+        $this->assertLinkIsNotCurrent($html, route('books.select', $secondBook));
     }
 
     public function test_a_sole_unnamed_book_shows_one_picker_line(): void
@@ -536,7 +536,7 @@ class NavigationTest extends TestCase
         // active_project_id, which is why this case is reachable at all — the
         // test below makes the other half of that guarantee explicit.
         $html = $this->actingAs($user)
-            ->get(route('dashboard'))
+            ->get(route('projects.index'))
             ->assertOk()
             ->getContent();
 
@@ -551,7 +551,7 @@ class NavigationTest extends TestCase
         $user->forceFill(['active_project_id' => $project->id])->save();
 
         $html = $this->actingAs($user)
-            ->get(route('dashboard'))
+            ->get(route('projects.index'))
             ->assertOk()
             ->getContent();
 
