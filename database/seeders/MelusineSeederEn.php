@@ -66,9 +66,10 @@ class MelusineSeederEn extends Seeder
             ]);
 
         // Model events are off under `db:seed`, so the first book hook does not
-        // fire either. Unnamed: a sole book shows the project's name
+        // fire either. Named on purpose: the seed shows the book layer in the UI
         // (see Book::displayName()).
         $book = $project->books()->create([
+            'name' => 'First book',
             'position' => 1,
             'language' => BookLanguage::English,
         ]);

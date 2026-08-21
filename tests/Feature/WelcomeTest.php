@@ -16,7 +16,7 @@ class WelcomeTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(route('login'), false);
-        $response->assertDontSee(route('dashboard'), false);
+        $response->assertDontSee(route('projects.index'), false);
     }
 
     public function test_an_authenticated_user_sees_a_dashboard_link(): void
@@ -26,7 +26,7 @@ class WelcomeTest extends TestCase
         $response = $this->actingAs($user)->get('/');
 
         $response->assertOk();
-        $response->assertSee(route('dashboard'), false);
+        $response->assertSee(route('projects.index'), false);
         $response->assertDontSee(route('login'), false);
     }
 }

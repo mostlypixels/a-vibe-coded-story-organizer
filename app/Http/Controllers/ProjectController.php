@@ -14,6 +14,7 @@ use App\Services\WordCountHistory;
 use App\Support\ProjectDeleteWarning;
 use App\Support\WriterDay;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Throwable;
 
@@ -31,6 +32,29 @@ class ProjectController extends Controller
         private CoverImageService $coverImageService,
         private WordCountHistory $history,
     ) {}
+
+    public function index(Request $request): View|RedirectResponse
+    {
+        // The counts feed each row's delete warning. One aggregate query for the whole
+        // list, not one per row.
+        $projects = $request->user()->projects()
+            ->withCount(ProjectDeleteWarning::countRelations())
+            ->orderBy('name')
+            ->get();
+
+        // A new account has nothing to list. Send it to onboarding, not an empty table.
+        if ($projects->isEmpty()) {
+            return redirect()->route('onboarding');
+        }
+
+        return view('projects.index', [
+            'projects' => $projects,
+            // One warning per row, built here so the Blade stays free of domain logic.
+            'deleteConfirms' => $projects->mapWithKeys(
+                fn (Project $project) => [$project->id => ProjectDeleteWarning::for($project)]
+            ),
+        ]);
+    }
 
     public function create(): View
     {
@@ -160,7 +184,7 @@ class ProjectController extends Controller
 
         $project->delete();
 
-        return redirect()->route('dashboard');
+        return redirect()->route('projects.index');
     }
 
     /**

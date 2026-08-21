@@ -35,6 +35,11 @@ database, and by an in-memory probe (`scripts/probe-test.sh`) reproducing the sa
   changed (146 queries at 143 scenes with a correct pivot). Writes add only on real changes.
 - Extrapolated: ~250 ms at 1000 scenes, ~1 s at 4000 — roughly 7–30× the current sample.
 - Peak memory 94 MB in the probe: `syncProject` loads every scene's contents at once.
+- The sample predates multiple books. The codex belongs to the project, so one rescan still
+  covers every book: `Project::sceneQuery()` walks `chapter.act.book`. A project of several
+  books therefore reaches the scene counts extrapolated below sooner than a single-book one,
+  and one book's entry save pays for every other book's scenes. Re-measure per project, never
+  per book.
 
 Cheaper fixes to weigh against queuing, both of which also help a queued job:
 
@@ -52,6 +57,9 @@ Cheaper fixes to weigh against queuing, both of which also help a queued job:
   like `CrawlerSetting`, carrying a `run_in_background` toggle consulted by `ImportController`.
   Does this feature need its own per-project or global toggle, or should it always queue once a
   project passes some scene-count threshold?
+- Should the rescan stay project-wide, or run per book? A book the writer is not in still
+  pays for the save. Splitting it changes what the job takes as its subject, so decide before
+  the job shape is fixed.
 - What does the UI show while a rescan is pending (a codex entry save currently redirects
   straight back to the index with fresh data assumed correct)?
 - Does the scene edit page's "Codex references" sidebar need a "still recalculating" state, or

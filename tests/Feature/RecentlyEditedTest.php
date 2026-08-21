@@ -72,7 +72,7 @@ class RecentlyEditedTest extends TestCase
         $this->actingAs($user)
             ->get(route('books.story.home', $chapter->act->book))
             ->assertOk()
-            ->assertSee('Act of departure — First chapter');
+            ->assertSeeInOrder(['Act 1', 'Chapter 1: First chapter']);
     }
 
     public function test_the_story_home_caps_each_list_at_the_recent_limit(): void
@@ -169,8 +169,47 @@ class RecentlyEditedTest extends TestCase
         $response->assertOk();
         $response->assertSee(__('Recent scenes'));
         $response->assertSeeInOrder(['Newest scene', 'Older scene']);
-        $response->assertSee('Act of departure');
-        $response->assertSee('First chapter');
+        $response->assertSeeInOrder(['Book 1', 'Act 1', 'Chapter 1: First chapter']);
+    }
+
+    public function test_the_dashboard_scene_breadcrumb_names_the_book_by_number(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create();
+
+        $firstChapter = Chapter::factory()
+            ->for(Act::factory()->for($firstBook)->create())
+            ->create(['name' => 'Chapter one']);
+        $secondChapter = Chapter::factory()
+            ->for(Act::factory()->for($secondBook)->create())
+            ->create(['name' => 'Chapter two']);
+
+        Scene::factory()->for($firstChapter)->create(['name' => 'Book-one scene']);
+        Scene::factory()->for($secondChapter)->create(['name' => 'Book-two scene']);
+
+        // Act and chapter numbers restart at each book (see StoryNumbering).
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee("Book {$firstBook->position}")
+            ->assertSee("Book {$secondBook->position}")
+            ->assertSee('Chapter 1: Chapter one')
+            ->assertSee('Chapter 1: Chapter two');
+    }
+
+    public function test_the_story_home_scene_breadcrumb_omits_the_book_number(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user, 'Act of departure');
+        Scene::factory()->for($chapter)->create(['name' => 'A scene']);
+
+        // The Story page already sits in one book, so it drops "Book N".
+        $this->actingAs($user)
+            ->get(route('books.story.home', $chapter->act->book))
+            ->assertOk()
+            ->assertSeeInOrder(['Act 1', 'Chapter 1: First chapter'])
+            ->assertDontSee('Book 1');
     }
 
     public function test_the_dashboard_codex_list_mixes_the_types_and_names_each_one(): void

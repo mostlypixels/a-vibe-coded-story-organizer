@@ -26,7 +26,7 @@ class ErrorPageTest extends TestCase
 
         $response->assertForbidden();
         $response->assertSee(__('This is not yours to open.'));
-        $response->assertSee(__('Back to dashboard'));
+        $response->assertSee(__('Back to projects'));
     }
 
     public function test_the_error_bar_offers_the_project_picker_and_configuration(): void
@@ -63,13 +63,13 @@ class ErrorPageTest extends TestCase
         $response->assertSee(__('We cannot find that page.'));
     }
 
-    public function test_a_guest_on_an_unknown_url_is_sent_home_rather_than_to_the_dashboard(): void
+    public function test_a_guest_on_an_unknown_url_is_sent_home_rather_than_to_the_project_list(): void
     {
         $response = $this->get('/no-such-page');
 
         $response->assertNotFound();
         $response->assertSee(__('Back to home'));
-        $response->assertDontSee(__('Back to dashboard'));
+        $response->assertDontSee(__('Back to projects'));
     }
 
     public function test_a_post_to_an_unmatched_url_still_404s_rather_than_405s(): void

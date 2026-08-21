@@ -167,6 +167,18 @@ class ProjectNavigation
         return $this->project !== null;
     }
 
+    /**
+     * Where the site logo goes: the active project's dashboard, or the project
+     * list. The list itself redirects an empty account to onboarding, so no
+     * project count is queried here.
+     */
+    public function homeUrl(): string
+    {
+        return $this->project !== null
+            ? route('projects.show', $this->project)
+            : route('projects.index');
+    }
+
     /** Whether there is a book to build book-scoped links from. */
     public function hasBook(): bool
     {

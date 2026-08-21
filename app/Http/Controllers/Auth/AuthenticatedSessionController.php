@@ -37,7 +37,7 @@ class AuthenticatedSessionController extends Controller
 
         $fallback = $activeProject
             ? route('projects.show', $activeProject, absolute: false)
-            : route('dashboard', absolute: false);
+            : route('projects.index', absolute: false);
 
         return redirect()->intended($fallback);
     }

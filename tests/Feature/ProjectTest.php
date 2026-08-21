@@ -28,7 +28,7 @@ class ProjectTest extends TestCase
         Project::factory()->for($user)->create(['name' => 'Zebra']);
         Project::factory()->for($user)->create(['name' => 'Apple']);
 
-        $response = $this->actingAs($user)->get(route('dashboard'));
+        $response = $this->actingAs($user)->get(route('projects.index'));
 
         $response->assertSeeInOrder(['Apple', 'Zebra']);
     }
@@ -38,7 +38,7 @@ class ProjectTest extends TestCase
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
 
-        $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
+        $html = $this->actingAs($user)->get(route('projects.index'))->assertOk()->getContent();
 
         $this->assertStringContainsString('href="'.route('projects.edit', $project).'"', $html);
         $this->assertStringContainsString('action="'.route('projects.destroy', $project).'"', $html);
@@ -56,7 +56,7 @@ class ProjectTest extends TestCase
 
         $expected = 'This project has 1 act and 1 codex entry, which will also be deleted.';
 
-        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee($expected);
+        $this->actingAs($user)->get(route('projects.index'))->assertOk()->assertSee($expected);
         $this->actingAs($user)->get(route('projects.edit', $project))->assertOk()->assertSee($expected);
     }
 
@@ -69,17 +69,17 @@ class ProjectTest extends TestCase
 
         // The first request of a session writes rows a later one only reads, so warm it
         // up before measuring — the comparison is between two steady-state requests.
-        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $this->actingAs($user)->get(route('projects.index'))->assertOk();
 
         DB::enableQueryLog();
-        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $this->actingAs($user)->get(route('projects.index'))->assertOk();
         $withOne = count(DB::getQueryLog());
 
         Project::factory()->for($user)->count(4)->create();
 
         // Flush after the factory writes, so only the request's own queries are counted.
         DB::flushQueryLog();
-        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $this->actingAs($user)->get(route('projects.index'))->assertOk();
         $withFive = count(DB::getQueryLog());
         DB::disableQueryLog();
 
@@ -350,7 +350,7 @@ class ProjectTest extends TestCase
         $project = Project::factory()->for($user)->create(['cover_image' => $coverPath]);
 
         $this->actingAs($user)->delete(route('projects.destroy', $project))
-            ->assertRedirect(route('dashboard'));
+            ->assertRedirect(route('projects.index'));
 
         Storage::disk('public')->assertMissing($coverPath);
     }

@@ -2,7 +2,7 @@
     <div class="flex justify-between h-12">
         <div class="flex">
             <div class="shrink-0 flex items-center bg-nav-raised px-2">
-                <a href="{{ auth()->check() ? route('dashboard') : url('/') }}">
+                <a href="{{ auth()->check() ? $navigation->homeUrl() : url('/') }}">
                     <x-application-logo class="block h-6 w-auto fill-current text-nav-content" />
                 </a>
             </div>
@@ -25,7 +25,7 @@
 
                         <div class="border-t border-border"></div>
 
-                        <x-dropdown-link :href="route('dashboard')">{{ __('All projects') }} &rarr;</x-dropdown-link>
+                        <x-dropdown-link :href="route('projects.index')">{{ __('All projects') }} &rarr;</x-dropdown-link>
                     </x-slot>
                 </x-dropdown>
             @endauth

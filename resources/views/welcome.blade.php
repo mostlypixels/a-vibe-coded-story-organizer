@@ -20,7 +20,7 @@
             </div>
 
             @auth
-                <x-button href="{{ route('dashboard') }}">Dashboard</x-button>
+                <x-button href="{{ route('projects.index') }}">Projects</x-button>
             @else
                 <x-button href="{{ route('login') }}">Log in</x-button>
             @endauth

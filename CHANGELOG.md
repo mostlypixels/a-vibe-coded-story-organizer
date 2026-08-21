@@ -17,6 +17,24 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-21 — Onboarding and clearer project navigation (#125)
+
+### Added
+
+- A new account with no projects lands on an onboarding page that prompts for the first project.
+
+### Changed
+
+- The site logo now opens the active project's dashboard, or the project list when none is open.
+- The project list moved from `/dashboard` to `/projects`.
+- The nav book picker now opens the project dashboard instead of the book home page.
+  Picking a book records it as the project's last book on the way through.
+- The Melusine demo seeders name their book ("First book", "Premier livre", "Primo
+  libro"), so a seeded project shows the book layer in the interface.
+- The "Recent scenes" breadcrumb now numbers the location, chevron-separated like
+  the page breadcrumb ("Act 1 › Chapter 1: <name>"). The project dashboard prefixes
+  "Book N", so a writer sees which book a scene sits in without its full name.
+
 ## 2026-08-20 — Docker as the default way to run the app (#124)
 
 ### Changed

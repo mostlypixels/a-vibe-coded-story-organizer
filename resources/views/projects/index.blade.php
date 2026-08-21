@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <x-heading level="2">
-            {{ __('Dashboard') }}
+            {{ __('Projects') }}
         </x-heading>
     </x-slot>
 

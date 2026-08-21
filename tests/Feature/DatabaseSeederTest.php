@@ -69,7 +69,6 @@ class DatabaseSeederTest extends TestCase
 
         foreach (Project::all() as $project) {
             $this->assertSame(1, $project->books()->count(), "Book count for {$project->name}.");
-            $this->assertNull($project->books()->first()->name);
         }
     }
 

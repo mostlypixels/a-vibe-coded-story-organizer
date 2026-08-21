@@ -199,6 +199,24 @@ class BookController extends Controller
         return redirect()->route('projects.books.index', $project);
     }
 
+    /**
+     * The nav book picker. The dashboard carries no book in its URL, so
+     * TrackActiveProject cannot record the choice on the way through — this
+     * action writes `last_book_id` itself, then sends the writer to the
+     * project dashboard.
+     */
+    public function select(Book $book): RedirectResponse
+    {
+        $this->authorize('view', $book->project);
+
+        // Assigned directly: last_book_id is kept out of Project::$fillable,
+        // the same rule TrackActiveProject follows.
+        $book->project->last_book_id = $book->id;
+        $book->project->save();
+
+        return redirect()->route('projects.show', $book->project);
+    }
+
     public function moveUp(Book $book): RedirectResponse
     {
         $this->reorderSibling($book, $book->project, up: true);

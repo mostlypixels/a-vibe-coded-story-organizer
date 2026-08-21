@@ -62,7 +62,7 @@ class BladeComponentCompilationTest extends TestCase
         CodexEntry $codexEntry,
     ): array {
         return [
-            route('dashboard'),
+            route('projects.index'),
             route('projects.show', $project),
             route('projects.edit', $project),
             route('projects.books.index', $project),

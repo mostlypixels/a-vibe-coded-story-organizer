@@ -666,4 +666,66 @@ class BookTest extends TestCase
             ->get(route('books.show', $book))
             ->assertForbidden();
     }
+
+    // ---------------------------------------------------------------------
+    // Book picker (books.select)
+    // ---------------------------------------------------------------------
+
+    public function test_selecting_a_book_opens_the_project_dashboard(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->get(route('books.select', $book))
+            ->assertRedirect(route('projects.show', $project));
+    }
+
+    public function test_selecting_a_book_records_it_as_the_projects_last_book(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create();
+
+        // The dashboard has no book in its URL, so nothing else can write this.
+        $this->actingAs($user)->get(route('books.select', $secondBook));
+
+        $this->assertSame($secondBook->id, $project->fresh()->last_book_id);
+
+        $this->actingAs($user)->get(route('books.select', $firstBook));
+
+        $this->assertSame($firstBook->id, $project->fresh()->last_book_id);
+    }
+
+    public function test_selecting_a_book_in_another_project_switches_both(): void
+    {
+        $user = User::factory()->create();
+        [$first] = $this->projectWithBook($user);
+        [$second, $secondBook] = $this->projectWithBook($user);
+
+        $this->actingAs($user)->get(route('projects.show', $first))->assertOk();
+
+        $this->actingAs($user)
+            ->get(route('books.select', $secondBook))
+            ->assertRedirect(route('projects.show', $second));
+
+        // active_project_id follows on the dashboard the redirect lands on.
+        $this->actingAs($user)->get(route('projects.show', $second))->assertOk();
+
+        $this->assertSame($second->id, $user->fresh()->active_project_id);
+        $this->assertSame($secondBook->id, $second->fresh()->last_book_id);
+    }
+
+    public function test_a_non_owner_cannot_select_a_book(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($owner);
+
+        $this->actingAs($other)
+            ->get(route('books.select', $book))
+            ->assertForbidden();
+
+        $this->assertNotSame($book->id, $project->fresh()->last_book_id);
+    }
 }

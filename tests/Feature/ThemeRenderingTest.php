@@ -15,7 +15,7 @@ class ThemeRenderingTest extends TestCase
 
     public function test_the_authenticated_layout_emits_the_token_block(): void
     {
-        $response = $this->actingAs(User::factory()->create())->get(route('dashboard'));
+        $response = $this->actingAs(User::factory()->create())->get(route('onboarding'));
 
         $response->assertOk();
         $this->assertEmitsEveryToken($response->getContent());
@@ -60,7 +60,7 @@ class ThemeRenderingTest extends TestCase
      */
     public function test_the_emitted_block_carries_literal_values_and_no_hue_variable(): void
     {
-        $content = $this->actingAs(User::factory()->create())->get(route('dashboard'))->getContent();
+        $content = $this->actingAs(User::factory()->create())->get(route('onboarding'))->getContent();
 
         // Read through themes.default: this user picked no preset, so the block
         // carries whatever the default resolves to. Naming a preset here would
@@ -77,7 +77,7 @@ class ThemeRenderingTest extends TestCase
 
     public function test_the_authenticated_layout_emits_the_font_variables(): void
     {
-        $response = $this->actingAs(User::factory()->create())->get(route('dashboard'));
+        $response = $this->actingAs(User::factory()->create())->get(route('onboarding'));
 
         $response->assertOk();
         $this->assertEmitsFontVariables($response->getContent());
@@ -111,7 +111,7 @@ class ThemeRenderingTest extends TestCase
     {
         $user = User::factory()->create(['ui_font' => 'atkinson']);
 
-        $content = $this->actingAs($user)->get(route('dashboard'))->getContent();
+        $content = $this->actingAs($user)->get(route('onboarding'))->getContent();
 
         $this->assertStringContainsString(
             '--font-sans:'.config('fonts.families.atkinson.stack').';',
