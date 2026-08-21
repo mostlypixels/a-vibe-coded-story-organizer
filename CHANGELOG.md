@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-21 — Onboarding and clearer project navigation
+## 2026-08-21 — Onboarding and clearer project navigation (#125)
 
 ### Added
 
