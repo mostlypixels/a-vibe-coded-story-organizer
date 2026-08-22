@@ -26,11 +26,28 @@ class MelusineSeederFr extends Seeder
     use SyncsCodexReferences;
 
     /**
+     * The project owner. When a caller does not set one, the seeder falls back to
+     * the first user, so `db:seed` still works without a target.
+     */
+    private ?User $targetUser = null;
+
+    /**
+     * Set the user this demo project belongs to. Returns $this so a caller can
+     * chain it before `run()`.
+     */
+    public function forUser(User $user): static
+    {
+        $this->targetUser = $user;
+
+        return $this;
+    }
+
+    /**
      * Seed a sample "Roman de Melusine" project (French) with plotlines and events.
      */
     public function run(): void
     {
-        $user = User::first() ?? User::factory()->create();
+        $user = $this->targetUser ?? User::first() ?? User::factory()->create();
 
         // Guards against re-running `db:seed` against a database that already has
         // this demo project — without it, every re-run (e.g. `make seed` invoked

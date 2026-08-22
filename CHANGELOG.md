@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-22 — Genre-based onboarding
+
+### Added
+
+- Onboarding now offers a genre; picking one seeds the first project with fitting codex attributes, tags, example entries, and a starter book.
+- New writers can install a demo project from onboarding to explore a finished story.
+
+### Changed
+
+- Demo projects no longer seed automatically on a fresh database.
+
 ## 2026-08-21 — Onboarding and clearer project navigation (#125)
 
 ### Added
