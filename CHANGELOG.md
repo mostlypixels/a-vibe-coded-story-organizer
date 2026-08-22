@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-22 — Genre-based onboarding
+## 2026-08-22 — Genre-based onboarding (#126)
 
 ### Added
 
