@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Genre;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CodexMediaService;
@@ -27,6 +28,11 @@ class Project extends Model
         'cover_image',
         'daily_word_goal',
         'total_word_goal',
+        'genre',
+    ];
+
+    protected $casts = [
+        'genre' => Genre::class,
     ];
 
     public function user(): BelongsTo

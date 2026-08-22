@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Genre;
 use App\Enums\RevisionOrigin;
 use App\Models\Act;
 use App\Models\Chapter;
@@ -658,5 +659,26 @@ class ProjectTest extends TestCase
             ->get(route('projects.show', $project))
             ->assertOk()
             ->assertDontSee(__('No streak yet'));
+    }
+
+    public function test_genre_round_trips_through_the_enum_cast(): void
+    {
+        $project = Project::factory()->create(['genre' => Genre::Fantasy]);
+
+        $this->assertSame(Genre::Fantasy, $project->fresh()->genre);
+    }
+
+    public function test_a_project_can_be_created_with_no_genre(): void
+    {
+        $project = Project::factory()->create(['genre' => null]);
+
+        $this->assertNull($project->fresh()->genre);
+    }
+
+    public function test_a_project_can_be_created_with_a_blank_genre(): void
+    {
+        $project = Project::factory()->create(['genre' => Genre::Blank]);
+
+        $this->assertSame(Genre::Blank, $project->fresh()->genre);
     }
 }

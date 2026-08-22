@@ -3,26 +3,25 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * `db:seed` creates the admin user only. The demo projects and the second user
+ * come from `app:install-demo` and `app:install-test-fixtures` instead, so the
+ * empty-app onboarding flow is never bypassed by a plain seed.
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
         // Guarded so a re-run of `php artisan db:seed` against a populated database
-        // doesn't hit the users.email UNIQUE constraint before the Melusine seeders (which
-        // are themselves idempotent via firstOrCreate) are ever reached. The factory is kept
-        // rather than a plain firstOrCreate because its defaults mark the email
-        // verified — email_verified_at is not fillable, so firstOrCreate would
-        // silently drop it and lock the admin out of the `verified` dashboard route.
+        // doesn't hit the users.email UNIQUE constraint. The factory is kept rather
+        // than a plain firstOrCreate because its defaults mark the email verified —
+        // email_verified_at is not fillable, so firstOrCreate would silently drop it
+        // and lock the admin out of the `verified` dashboard route.
         if (User::where('email', 'admin@example.com')->doesntExist()) {
             User::factory()->create([
                 'name' => 'Admin',
@@ -30,14 +29,5 @@ class DatabaseSeeder extends Seeder
                 'password' => bcrypt('password'),
             ]);
         }
-
-        // Three separate projects (one per language) so the epub export's per-project
-        // language metadata can be exercised across distinct sample content.
-        $this->call([
-            MelusineSeederEn::class,
-            MelusineSeederFr::class,
-            MelusineSeederIt::class,
-            LoremIpsumSeeder::class,
-        ]);
     }
 }

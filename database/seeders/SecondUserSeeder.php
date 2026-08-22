@@ -14,7 +14,7 @@ use Illuminate\Database\Seeder;
  * A second user with a minimal project. It gives the demo data an owner other than
  * Admin, so authorization (a non-owner gets a 403) can be tried by hand in the app.
  */
-class LoremIpsumSeeder extends Seeder
+class SecondUserSeeder extends Seeder
 {
     use BackfillsSceneWordCounts;
 

@@ -60,9 +60,17 @@ Route::get('/projects', [ProjectController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('projects.index');
 
-Route::get('/onboarding', OnboardingController::class)
+Route::get('/onboarding', [OnboardingController::class, 'show'])
     ->middleware(['auth', 'verified'])
     ->name('onboarding');
+
+Route::post('/onboarding', [OnboardingController::class, 'store'])
+    ->middleware(['auth', 'verified'])
+    ->name('onboarding.store');
+
+Route::post('/onboarding/demo', [OnboardingController::class, 'installDemo'])
+    ->middleware(['auth', 'verified'])
+    ->name('onboarding.demo');
 
 // Only authenticated project pages update users.active_project_id.
 Route::middleware(['auth', TrackActiveProject::class])->group(function () {

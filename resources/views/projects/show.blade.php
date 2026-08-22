@@ -1,4 +1,10 @@
 <x-app-layout>
+    @if (session('status') === 'onboarding-seeded')
+        <x-alert variant="success" dismissible class="mb-6">
+            {{ __("Here's your project. We added some starter attributes, tags, and a first book. Open the codex to see them, and change anything that doesn't fit.") }}
+        </x-alert>
+    @endif
+
     <div class="mb-6">
         <x-heading level="1">{{ $project->name }}</x-heading>
     </div>
