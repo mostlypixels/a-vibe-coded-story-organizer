@@ -33,6 +33,42 @@ enum CodexEntryType: string
     }
 
     /**
+     * Label for the inception event field ("Born", "Created", "Founded").
+     */
+    public function inceptionLabel(): string
+    {
+        return match ($this) {
+            self::Character => 'Born',
+            self::Location => 'Created',
+            self::Organization => 'Founded',
+        };
+    }
+
+    /**
+     * Label for the termination event field ("Died", "Destroyed", "Dissolved").
+     */
+    public function terminationLabel(): string
+    {
+        return match ($this) {
+            self::Character => 'Died',
+            self::Location => 'Destroyed',
+            self::Organization => 'Dissolved',
+        };
+    }
+
+    /**
+     * Whether this type has a lifespan (inception/termination, age, existence
+     * filter). True for every case today; a future type with no age concept
+     * opts out here.
+     */
+    public function tracksLifespan(): bool
+    {
+        return match ($this) {
+            self::Character, self::Location, self::Organization => true,
+        };
+    }
+
+    /**
      * The singular label as a lowercase noun, for copy that reads it
      * mid-sentence ("Latest character").
      */

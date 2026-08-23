@@ -111,6 +111,126 @@ class CodexAsOfTest extends TestCase
             ->assertDontSee('crimson');
     }
 
+    public function test_scene_panel_shows_age_for_an_entity_alive_at_the_moment(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $inception = Event::factory()->for($project)->create(['event_datetime' => '1980-01-01']);
+        $entry = CodexEntry::factory()->for($project)->character()->create([
+            'name' => 'Melusine',
+            'inception_event_id' => $inception->id,
+        ]);
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Hair color']);
+        $start = $project->events()->where('title', 'Start')->firstOrFail();
+        (new AttributeTimeline($entry, $attribute))->upsertAt($start, 'blonde');
+
+        $atMoment = Event::factory()->for($project)->create(['event_datetime' => '2000-01-01']);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $scene = Scene::factory()->for($chapter)->create(['event_id' => $atMoment->id]);
+
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertSee('Melusine')
+            ->assertSee('Age 20');
+    }
+
+    public function test_scene_panel_hides_an_entity_before_its_inception(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $inception = Event::factory()->for($project)->create(['event_datetime' => '1980-01-01']);
+        CodexEntry::factory()->for($project)->character()->create([
+            'name' => 'Melusine',
+            'inception_event_id' => $inception->id,
+        ]);
+
+        $before = Event::factory()->for($project)->create(['event_datetime' => '1970-01-01']);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $scene = Scene::factory()->for($chapter)->create(['event_id' => $before->id]);
+
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertDontSee('Melusine');
+    }
+
+    public function test_scene_panel_hides_an_entity_after_its_termination(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $inception = Event::factory()->for($project)->create(['event_datetime' => '1980-01-01']);
+        $termination = Event::factory()->for($project)->create(['event_datetime' => '2000-01-01']);
+        CodexEntry::factory()->for($project)->character()->create([
+            'name' => 'Melusine',
+            'inception_event_id' => $inception->id,
+            'termination_event_id' => $termination->id,
+        ]);
+
+        $after = Event::factory()->for($project)->create(['event_datetime' => '2010-01-01']);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $scene = Scene::factory()->for($chapter)->create(['event_id' => $after->id]);
+
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertDontSee('Melusine');
+    }
+
+    public function test_scene_panel_shows_an_entity_with_an_age_and_no_attribute_values(): void
+    {
+        // Guards the resolver keep-if-age change: before the fix, an entry with no
+        // attribute values as of the moment was dropped even when it has an age to show.
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $inception = Event::factory()->for($project)->create(['event_datetime' => '1980-01-01']);
+        CodexEntry::factory()->for($project)->character()->create([
+            'name' => 'Melusine',
+            'inception_event_id' => $inception->id,
+        ]);
+
+        $atMoment = Event::factory()->for($project)->create(['event_datetime' => '2000-01-01']);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $scene = Scene::factory()->for($chapter)->create(['event_id' => $atMoment->id]);
+
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertSee('Melusine')
+            ->assertSee('Age 20');
+    }
+
+    public function test_scene_panel_shows_an_inverted_lifespan_entity_with_no_age(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $inception = Event::factory()->for($project)->create(['event_datetime' => '2000-01-01']);
+        $termination = Event::factory()->for($project)->create(['event_datetime' => '1980-01-01']);
+        $entry = CodexEntry::factory()->for($project)->character()->create([
+            'name' => 'Melusine',
+            'inception_event_id' => $inception->id,
+            'termination_event_id' => $termination->id,
+        ]);
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Hair color']);
+        $start = $project->events()->where('title', 'Start')->firstOrFail();
+        (new AttributeTimeline($entry, $attribute))->upsertAt($start, 'blonde');
+
+        $anyMoment = Event::factory()->for($project)->create(['event_datetime' => '1970-01-01']);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $scene = Scene::factory()->for($chapter)->create(['event_id' => $anyMoment->id]);
+
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertSee('Melusine')
+            ->assertDontSee('Age ');
+    }
+
     public function test_non_owner_cannot_open_the_scene_edit_page(): void
     {
         [, , , $scene] = $this->makeScenario();

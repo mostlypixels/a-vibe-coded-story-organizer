@@ -25,6 +25,9 @@
                     @foreach ($group['entries'] as $row)
                         <div>
                             <a href="{{ route('codex.edit', $row['entry']) }}" class="text-sm font-medium text-link hover:text-link-hover">{{ $row['entry']->name }}</a>
+                            @if ($row['age'] !== null)
+                                <p class="text-sm text-content-muted">{{ __('Age :years', ['years' => $row['age']->years]) }}</p>
+                            @endif
                             @if ($row['attributes']->isNotEmpty())
                                 <dl class="mt-1 space-y-0.5">
                                     @foreach ($row['attributes'] as $attribute)

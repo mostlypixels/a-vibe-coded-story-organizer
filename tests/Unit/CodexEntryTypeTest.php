@@ -28,4 +28,25 @@ class CodexEntryTypeTest extends TestCase
 
         CodexEntryType::fromRouteKey('dragons');
     }
+
+    public function test_inception_label_per_type(): void
+    {
+        $this->assertSame('Born', CodexEntryType::Character->inceptionLabel());
+        $this->assertSame('Created', CodexEntryType::Location->inceptionLabel());
+        $this->assertSame('Founded', CodexEntryType::Organization->inceptionLabel());
+    }
+
+    public function test_termination_label_per_type(): void
+    {
+        $this->assertSame('Died', CodexEntryType::Character->terminationLabel());
+        $this->assertSame('Destroyed', CodexEntryType::Location->terminationLabel());
+        $this->assertSame('Dissolved', CodexEntryType::Organization->terminationLabel());
+    }
+
+    public function test_tracks_lifespan_is_true_for_every_type(): void
+    {
+        foreach (CodexEntryType::cases() as $type) {
+            $this->assertTrue($type->tracksLifespan());
+        }
+    }
 }

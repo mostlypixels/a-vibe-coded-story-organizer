@@ -50,6 +50,38 @@
         </div>
     </x-card>
 
+    @if ($entry !== null && $type->tracksLifespan())
+        <x-card :title="__('Existence')">
+            <div class="space-y-6">
+                <x-single-event-field
+                    name="inception_event_id"
+                    :label="$type->inceptionLabel()"
+                    :events="$regularEvents"
+                    :selected="$entry->inception_event_id"
+                    :empty-label="__('— Not set —')"
+                    :window-min="$windowMin"
+                    :window-max="$windowMax"
+                />
+
+                <x-single-event-field
+                    name="termination_event_id"
+                    :label="$type->terminationLabel()"
+                    :events="$regularEvents"
+                    :selected="$entry->termination_event_id"
+                    :empty-label="__('— Not set —')"
+                    :window-min="$windowMin"
+                    :window-max="$windowMax"
+                >
+                    @if ($entry->hasInvertedLifespan())
+                        <p class="mt-2 text-sm text-content-subtle">
+                            {{ __('Termination is before inception, so age is not calculated. Track age with an attribute instead.') }}
+                        </p>
+                    @endif
+                </x-single-event-field>
+            </div>
+        </x-card>
+    @endif
+
     @if ($entry === null && $attributes->isNotEmpty())
         <x-card :title="__('Attributes')">
             <p class="text-sm text-content-muted">{{ __('Starting value for each attribute (from the Start of the timeline). You can add later changes after saving.') }}</p>

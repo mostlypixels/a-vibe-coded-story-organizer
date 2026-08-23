@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-23 — Birth and death (#131)
+
+### Added
+
+- Codex entries can record when they start and end, linked to timeline events, labelled by type (born/died, created/destroyed, founded/dissolved).
+- A scene's codex panel shows each entity's age, and hides entities not yet born or already gone at that moment.
+
 ## 2026-08-23 — Codex menu separator (#130)
 
 ### Changed

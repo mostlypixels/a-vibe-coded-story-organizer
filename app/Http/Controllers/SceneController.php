@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\CreatesInlineEvents;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
@@ -25,6 +26,7 @@ use Illuminate\View\View;
 
 class SceneController extends Controller
 {
+    use CreatesInlineEvents;
     use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ReordersSiblings;
@@ -120,7 +122,12 @@ class SceneController extends Controller
         $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
 
         $scene = $chapter->scenes()->create(
-            $this->sceneAttributes($validated) + ['event_id' => $this->resolveHappensDuringEvent($book->project, $validated)]
+            $this->sceneAttributes($validated) + ['event_id' => $this->resolveInlineEvent(
+                $book->project,
+                $validated['new_event_title'] ?? null,
+                $validated['new_event_datetime'] ?? null,
+                $validated['event_id'] ?? null,
+            )]
         );
 
         $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
@@ -183,7 +190,12 @@ class SceneController extends Controller
 
         $scene->update(
             $sceneAttributes
-            + ['chapter_id' => $chapter->id, 'event_id' => $this->resolveHappensDuringEvent($project, $validated)]
+            + ['chapter_id' => $chapter->id, 'event_id' => $this->resolveInlineEvent(
+                $project,
+                $validated['new_event_title'] ?? null,
+                $validated['new_event_datetime'] ?? null,
+                $validated['event_id'] ?? null,
+            )]
         );
 
         $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
@@ -264,28 +276,5 @@ class SceneController extends Controller
         return collect($validated)
             ->except(['chapter_id', 'event_id', 'new_event_title', 'new_event_datetime', 'mentioned_events'])
             ->all();
-    }
-
-    /**
-     * Resolve the "happens during" event id: create a new event from the inline form when
-     * provided (auto-attached to the main plotline), otherwise use the selected event (may
-     * be null, leaving the scene unassigned).
-     *
-     * @param  array<string, mixed>  $validated
-     */
-    private function resolveHappensDuringEvent(Project $project, array $validated): ?int
-    {
-        if (! empty($validated['new_event_title'])) {
-            $event = $project->events()->create([
-                'title' => $validated['new_event_title'],
-                'event_datetime' => $validated['new_event_datetime'],
-            ]);
-
-            $event->plotlines()->attach($project->plotlines()->where('is_main', true)->value('id'));
-
-            return $event->id;
-        }
-
-        return $validated['event_id'] ?? null;
     }
 }

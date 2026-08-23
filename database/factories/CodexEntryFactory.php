@@ -24,6 +24,8 @@ class CodexEntryFactory extends Factory
             'type' => CodexEntryType::Character,
             'name' => fake()->name(),
             'description' => fake()->optional()->paragraph(),
+            'inception_event_id' => null,
+            'termination_event_id' => null,
         ];
     }
 
