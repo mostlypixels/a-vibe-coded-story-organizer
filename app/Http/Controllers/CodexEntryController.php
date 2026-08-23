@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
+use App\Http\Controllers\Concerns\CreatesInlineEvents;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
@@ -30,6 +31,7 @@ use Illuminate\View\View;
 
 class CodexEntryController extends Controller
 {
+    use CreatesInlineEvents;
     use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ResolvesIndexSorting;
@@ -125,7 +127,7 @@ class CodexEntryController extends Controller
     {
         $this->authorize('update', $codexEntry->project);
 
-        $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent');
+        $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent', 'inceptionEvent', 'terminationEvent');
 
         $project = $codexEntry->project;
         $startEvent = $project->startEvent();
@@ -137,6 +139,11 @@ class CodexEntryController extends Controller
             'sheets' => $this->timelineSheets($codexEntry, $startEvent),
             'startEvent' => $startEvent,
             'events' => $project->events()->orderBy('event_datetime')->orderBy('id')->get(),
+            // Inception/termination pickers offer regular events only — Start/End are
+            // fixed project bookends, not events an entity's lifespan can attach to.
+            'regularEvents' => $project->events()->where('is_fixed', false)->orderBy('event_datetime')->orderBy('id')->get(),
+            'windowMin' => $startEvent->event_datetime->format('Y-m-d\TH:i'),
+            'windowMax' => $project->endEvent()->event_datetime->format('Y-m-d\TH:i'),
             'projectTags' => $project->tags()->orderBy('name')->get(),
             'referencingScenes' => $this->referencingScenesInTimelineOrder($codexEntry),
             'duplicateSuggestion' => DuplicateName::suggest(
@@ -171,7 +178,23 @@ class CodexEntryController extends Controller
     {
         $project = $codexEntry->project;
         $validated = $request->validated();
-        $data = ['name' => $validated['name'], 'description' => $validated['description'] ?? null];
+        $data = [
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            // Plain saves, not autosaved fields — no revision snapshot for these.
+            'inception_event_id' => $this->resolveInlineEvent(
+                $project,
+                $validated['new_inception_event_title'] ?? null,
+                $validated['new_inception_event_datetime'] ?? null,
+                $validated['inception_event_id'] ?? null,
+            ),
+            'termination_event_id' => $this->resolveInlineEvent(
+                $project,
+                $validated['new_termination_event_title'] ?? null,
+                $validated['new_termination_event_datetime'] ?? null,
+                $validated['termination_event_id'] ?? null,
+            ),
+        ];
 
         // Keep disk operations outside the database transaction.
         $pathsToDelete = DB::transaction(function () use ($request, $project, $codexEntry, $validated, $data, $media, $matcher) {

@@ -7,6 +7,7 @@ use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Project;
+use App\Support\Age;
 use Illuminate\Support\Collection;
 
 /**
@@ -25,19 +26,25 @@ class CodexAsOfResolver
      *
      * When $moment is null (an unassigned scene) each value resolves to null so the panel
      * can render the "undetermined" state rather than guessing. Entries and the project's
-     * attributes are eager-loaded once (attributeValues.startEvent) so AttributeTimeline
-     * resolves each pair from memory instead of querying per pair — no N+1 across entries.
+     * attributes are eager-loaded once (attributeValues.startEvent, inceptionEvent,
+     * terminationEvent) so AttributeTimeline and existsAt/ageAt resolve from memory instead
+     * of querying per pair — no N+1 across entries.
      *
-     * @return Collection<int, array{type: CodexEntryType, entries: Collection<int, array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: ?string}>}>}>
+     * An entry that does not exist at $moment (before inception, after termination) is
+     * dropped entirely — the panel never shows a "not yet" or "gone" state.
+     *
+     * @return Collection<int, array{type: CodexEntryType, entries: Collection<int, array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: ?string}>, age: ?Age}>}>
      */
     public function resolve(Project $project, ?Event $moment): Collection
     {
         $attributes = $project->codexAttributes()->orderBy('position')->get();
 
         $entries = $project->codexEntries()
-            ->with('attributeValues.startEvent')
+            ->with(['attributeValues.startEvent', 'inceptionEvent', 'terminationEvent'])
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->filter(fn (CodexEntry $entry) => $entry->existsAt($moment))
+            ->values();
 
         return collect(CodexEntryType::cases())
             ->map(fn (CodexEntryType $type) => [
@@ -50,11 +57,11 @@ class CodexAsOfResolver
     }
 
     /**
-     * Resolve the applicable attributes for every entry of the given type.
+     * Resolve the applicable attributes and age for every entry of the given type.
      *
      * @param  Collection<int, CodexEntry>  $entries
      * @param  Collection<int, CodexAttribute>  $attributes
-     * @return Collection<int, array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: ?string}>}>
+     * @return Collection<int, array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: ?string}>, age: ?Age}>
      */
     private function entriesForType(Collection $entries, Collection $attributes, CodexEntryType $type, ?Event $moment): Collection
     {
@@ -73,9 +80,10 @@ class CodexAsOfResolver
                     ])
                     ->filter(fn (array $attribute) => filled($attribute['value']))
                     ->values(),
+                'age' => $entry->ageAt($moment),
             ])
-            // An entry with nothing but blank values as of this moment has nothing to show.
-            ->filter(fn (array $row) => $row['attributes']->isNotEmpty())
+            // An entry with nothing to show — no attributes and no age — is dropped.
+            ->filter(fn (array $row) => $row['attributes']->isNotEmpty() || $row['age'] !== null)
             ->values();
     }
 }

@@ -563,6 +563,13 @@ class MelusineSeederIt extends Seeder
             ['La trasformazione', 'Muri screpolati che piangono malta dove Melusina ha girato'],
         ], $eventsByTitle);
 
+        // Created and destroyed within the tale's own events, so the as-of panel
+        // demonstrates the existence filter and age for a Location, not only a Character.
+        $castle->update([
+            'inception_event_id' => $eventsByTitle['La costruzione di Lusignano']->id,
+            'termination_event_id' => $eventsByTitle['La caduta di Lusignano']->id,
+        ]);
+
         // --- Organization ---
 
         $house = $this->seedEntry(

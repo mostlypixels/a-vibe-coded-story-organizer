@@ -8,6 +8,7 @@ use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\AttributeTimeline;
 use App\Services\CodexMediaService;
+use App\Support\Age;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,8 @@ class CodexEntry extends Model
         'type',
         'name',
         'description',
+        'inception_event_id',
+        'termination_event_id',
     ];
 
     protected $casts = [
@@ -45,6 +48,16 @@ class CodexEntry extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function inceptionEvent(): BelongsTo
+    {
+        return $this->belongsTo(Event::class);
+    }
+
+    public function terminationEvent(): BelongsTo
+    {
+        return $this->belongsTo(Event::class);
     }
 
     /**
@@ -94,6 +107,55 @@ class CodexEntry extends Model
     {
         return $this->hasOne(CodexMedia::class)
             ->where('collection', CodexMediaCollection::Cover);
+    }
+
+    /**
+     * Whether termination happens before inception — a time traveller.
+     * A legal save (see the edit page warning); age and the existence
+     * filter both stand down when this is true.
+     */
+    public function hasInvertedLifespan(): bool
+    {
+        if (! $this->inceptionEvent || ! $this->terminationEvent) {
+            return false;
+        }
+
+        return $this->terminationEvent->event_datetime->lt($this->inceptionEvent->event_datetime);
+    }
+
+    /**
+     * This entry's age at a moment, in whole years. Null when there is no
+     * inception event, no moment, or the lifespan is inverted — a single
+     * number cannot describe a nonsensical timeline.
+     */
+    public function ageAt(?Event $moment): ?Age
+    {
+        if (! $this->inceptionEvent || ! $moment || $this->hasInvertedLifespan()) {
+            return null;
+        }
+
+        return Age::between($this->inceptionEvent->event_datetime, $moment->event_datetime);
+    }
+
+    /**
+     * Whether this entry exists at a moment: true with no moment, a type
+     * that does not track a lifespan, an inverted lifespan (always shown),
+     * or when inception <= moment <= termination (each bound inclusive, an
+     * unset bound open).
+     */
+    public function existsAt(?Event $moment): bool
+    {
+        if (! $moment || ! $this->type->tracksLifespan() || $this->hasInvertedLifespan()) {
+            return true;
+        }
+
+        $afterInception = ! $this->inceptionEvent
+            || ! $moment->event_datetime->lt($this->inceptionEvent->event_datetime);
+
+        $beforeTermination = ! $this->terminationEvent
+            || ! $moment->event_datetime->gt($this->terminationEvent->event_datetime);
+
+        return $afterInception && $beforeTermination;
     }
 
     /**

@@ -786,4 +786,210 @@ class CodexEntryTest extends TestCase
             ->assertOk()
             ->assertSee('value="Luna (2)"', false);
     }
+
+    public function test_inception_and_termination_events_resolve_as_relations(): void
+    {
+        $project = Project::factory()->create();
+        $birth = Event::factory()->for($project)->create();
+        $death = Event::factory()->for($project)->create();
+
+        $entry = CodexEntry::factory()->for($project)->create([
+            'inception_event_id' => $birth->id,
+            'termination_event_id' => $death->id,
+        ]);
+
+        $entry->refresh();
+
+        $this->assertTrue($entry->inceptionEvent->is($birth));
+        $this->assertTrue($entry->terminationEvent->is($death));
+    }
+
+    public function test_deleting_a_linked_event_nulls_the_lifespan_link_but_keeps_the_entry(): void
+    {
+        $project = Project::factory()->create();
+        $birth = Event::factory()->for($project)->create();
+
+        $entry = CodexEntry::factory()->for($project)->create([
+            'inception_event_id' => $birth->id,
+        ]);
+
+        $birth->delete();
+
+        $this->assertDatabaseHas('codex_entries', [
+            'id' => $entry->id,
+            'inception_event_id' => null,
+        ]);
+    }
+
+    // ---------------------------------------------------------------------
+    // Lifespan link write (inception/termination)
+    // ---------------------------------------------------------------------
+
+    public function test_owner_can_set_inception_and_termination_to_existing_events(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $birth = Event::factory()->for($project)->create();
+        $death = Event::factory()->for($project)->create();
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => $entry->name,
+            'inception_event_id' => $birth->id,
+            'termination_event_id' => $death->id,
+        ])->assertRedirect();
+
+        $entry->refresh();
+        $this->assertSame($birth->id, $entry->inception_event_id);
+        $this->assertSame($death->id, $entry->termination_event_id);
+    }
+
+    public function test_owner_can_create_an_inception_event_inline(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => $entry->name,
+            'new_inception_event_title' => 'A Birth',
+            'new_inception_event_datetime' => $project->startEvent()->event_datetime->addDay()->format('Y-m-d\TH:i'),
+        ])->assertRedirect();
+
+        $entry->refresh();
+        $event = Event::where('title', 'A Birth')->firstOrFail();
+        $this->assertSame($event->id, $entry->inception_event_id);
+        $this->assertTrue($event->plotlines()->where('is_main', true)->exists());
+    }
+
+    public function test_owner_can_create_a_termination_event_inline(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => $entry->name,
+            'new_termination_event_title' => 'A Death',
+            'new_termination_event_datetime' => $project->startEvent()->event_datetime->addDay()->format('Y-m-d\TH:i'),
+        ])->assertRedirect();
+
+        $entry->refresh();
+        $event = Event::where('title', 'A Death')->firstOrFail();
+        $this->assertSame($event->id, $entry->termination_event_id);
+        $this->assertTrue($event->plotlines()->where('is_main', true)->exists());
+    }
+
+    public function test_termination_before_inception_is_saved_not_rejected(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $later = Event::factory()->for($project)->create(['event_datetime' => now()->addDays(10)]);
+        $earlier = Event::factory()->for($project)->create(['event_datetime' => now()->addDays(2)]);
+
+        $response = $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => $entry->name,
+            'inception_event_id' => $later->id,
+            'termination_event_id' => $earlier->id,
+        ]);
+
+        $response->assertRedirect();
+        $entry->refresh();
+        $this->assertSame($later->id, $entry->inception_event_id);
+        $this->assertSame($earlier->id, $entry->termination_event_id);
+        $this->assertTrue($entry->hasInvertedLifespan());
+    }
+
+    public function test_inception_event_id_from_another_project_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $otherProject = Project::factory()->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $foreignEvent = Event::factory()->for($otherProject)->create();
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => $entry->name,
+            'inception_event_id' => $foreignEvent->id,
+        ])->assertSessionHasErrors('inception_event_id');
+    }
+
+    public function test_a_bookend_id_is_rejected_as_an_inception_event(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => $entry->name,
+            'inception_event_id' => $project->startEvent()->id,
+        ])->assertSessionHasErrors('inception_event_id');
+    }
+
+    public function test_non_owner_cannot_update_lifespan_links(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $event = Event::factory()->for($project)->create();
+
+        $this->actingAs($other)->put(route('codex.update', $entry), [
+            'name' => $entry->name,
+            'inception_event_id' => $event->id,
+        ])->assertForbidden();
+    }
+
+    // ---------------------------------------------------------------------
+    // Edit page UI (Existence card)
+    // ---------------------------------------------------------------------
+
+    public function test_edit_page_renders_the_existence_card_for_a_lifespan_type(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($user)
+            ->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('Existence')
+            ->assertSee('Born')
+            ->assertSee('Died');
+    }
+
+    public function test_inverted_lifespan_warning_shows_when_termination_precedes_inception(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $later = Event::factory()->for($project)->create(['event_datetime' => now()->addDays(10)]);
+        $earlier = Event::factory()->for($project)->create(['event_datetime' => now()->addDays(2)]);
+        $entry = CodexEntry::factory()->for($project)->character()->create([
+            'inception_event_id' => $later->id,
+            'termination_event_id' => $earlier->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('Termination is before inception, so age is not calculated. Track age with an attribute instead.');
+    }
+
+    public function test_inverted_lifespan_warning_is_absent_for_a_normal_order(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $earlier = Event::factory()->for($project)->create(['event_datetime' => now()->addDays(2)]);
+        $later = Event::factory()->for($project)->create(['event_datetime' => now()->addDays(10)]);
+        $entry = CodexEntry::factory()->for($project)->character()->create([
+            'inception_event_id' => $earlier->id,
+            'termination_event_id' => $later->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertDontSee('Termination is before inception');
+    }
 }

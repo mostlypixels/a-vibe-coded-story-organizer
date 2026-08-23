@@ -710,6 +710,13 @@ class MelusineSeederEn extends Seeder
             ['The Fall of Lusignan', 'Roofless stumps of stone, open to the rain'],
         ], $eventsByTitle);
 
+        // Created and destroyed within the tale's own events, so the as-of panel
+        // demonstrates the existence filter and age for a Location, not only a Character.
+        $castle->update([
+            'inception_event_id' => $eventsByTitle['The Building of Lusignan']->id,
+            'termination_event_id' => $eventsByTitle['The Fall of Lusignan']->id,
+        ]);
+
         // --- Locations absent from the original seed ---
         //
         // Several of these carry a lower-case common-noun alias ('fountain', 'caves',

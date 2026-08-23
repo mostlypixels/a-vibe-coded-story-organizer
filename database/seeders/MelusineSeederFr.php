@@ -563,6 +563,13 @@ class MelusineSeederFr extends Seeder
             ['La transformation', 'Murs fissurés pleurant du mortier là où Mélusine a tourné'],
         ], $eventsByTitle);
 
+        // Created and destroyed within the tale's own events, so the as-of panel
+        // demonstrates the existence filter and age for a Location, not only a Character.
+        $castle->update([
+            'inception_event_id' => $eventsByTitle['La construction de Lusignan']->id,
+            'termination_event_id' => $eventsByTitle['La chute de Lusignan']->id,
+        ]);
+
         // --- Organization ---
 
         $house = $this->seedEntry(
