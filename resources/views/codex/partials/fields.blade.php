@@ -112,7 +112,7 @@
             </div>
         </x-card>
 
-        <x-card :title="__('Tags')">
+        <x-card :title="__('Tags')" overflow="visible">
             <x-tag-picker name="tags" :tags="$projectTags" :selected="$tagValues" />
             <x-input-error :messages="$errors->get('tags')" class="mt-2" />
         </x-card>
