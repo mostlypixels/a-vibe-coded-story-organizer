@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-23 — Tag management page
+## 2026-08-23 — Tag management page (#129)
 
 ### Added
 
