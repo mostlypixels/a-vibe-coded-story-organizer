@@ -5,7 +5,8 @@
         </x-heading>
     </x-slot>
 
-    <div class="mx-auto max-w-2xl space-y-6">
+    <div class="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2 lg:items-start">
+        <div class="space-y-6">
         <x-card>
             <p class="text-content">
                 {{ __("Hi! Let's make your first project. You can change anything here later.") }}
@@ -29,7 +30,9 @@
                 </p>
             </div>
         </x-collapsible-card>
+        </div>
 
+        <div class="space-y-6">
         <x-card>
             <form id="onboarding-form" method="POST" action="{{ route('onboarding.store') }}" class="space-y-6">
                 @csrf
@@ -43,11 +46,13 @@
                 <fieldset>
                     <legend class="font-medium text-content">{{ __('Pick your genre') }}</legend>
                     <p class="mt-1 text-sm text-content-muted">
-                        {{ __("What kind of story is this? Your answer sets up the attributes, tags, and a few example entries. Writing something that doesn't fit? Pick Blank and build it yourself.") }}
+                        {{ __("What kind of story is this? Your answer sets up the attributes, tags, and a few example entries. Writing something that doesn't fit? Skip and start blank below.") }}
                     </p>
 
+                    {{-- Blank is offered by the "Skip and start blank" link below, not as a tile. --}}
                     <div class="mt-3 grid gap-3 sm:grid-cols-2">
                         @foreach (\App\Enums\Genre::cases() as $genre)
+                            @continue($genre === \App\Enums\Genre::Blank)
                             <x-genre-option :genre="$genre" :checked="old('genre') === $genre->value" />
                         @endforeach
                     </div>
@@ -88,5 +93,6 @@
                 </x-button>
             </form>
         </x-card>
+        </div>
     </div>
 </x-app-layout>
