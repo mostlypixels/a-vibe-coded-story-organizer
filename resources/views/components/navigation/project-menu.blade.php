@@ -77,6 +77,9 @@
                 </x-dropdown-link>
             @endforeach
 
+            {{-- Divides the entry types above from the metadata pages below. --}}
+            <div class="my-1 border-t border-border" role="separator"></div>
+
             <x-dropdown-link :href="route('projects.codex-attributes.index', $navigation->project)" :active="$navigation->attributesActive">
                 {{ __('Attributes') }}
             </x-dropdown-link>

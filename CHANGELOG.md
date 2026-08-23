@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-23 — Codex menu separator (#130)
+
+### Changed
+
+- The Codex menu now sets the entry types apart from the Attributes and Tags pages with a divider.
+
 ## 2026-08-23 — Tag management page (#129)
 
 ### Added
