@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-23 — Onboarding two-column layout
+## 2026-08-23 — Onboarding two-column layout (#127)
 
 ### Changed
 
