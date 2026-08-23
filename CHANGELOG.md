@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-23 — Codex tag suggestions no longer clipped
+## 2026-08-23 — Codex tag suggestions no longer clipped (#128)
 
 ### Fixed
 
