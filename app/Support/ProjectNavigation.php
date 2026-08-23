@@ -70,6 +70,8 @@ class ProjectNavigation
 
     public readonly bool $attributesActive;
 
+    public readonly bool $tagsActive;
+
     public readonly bool $codexActive;
 
     public readonly bool $searchActive;
@@ -135,10 +137,11 @@ class ProjectNavigation
             || $this->plotlinesActive
             || $this->eventsActive;
 
-        // Attribute pages activate Codex but no entry type.
+        // Attribute and tag pages activate Codex but no entry type.
         $this->attributesActive = $request->routeIs('projects.codex-attributes.*', 'codex-attributes.*');
+        $this->tagsActive = $request->routeIs('projects.tags.*', 'tags.*');
         $this->activeCodexType = $this->resolveActiveCodexType($request);
-        $this->codexActive = $request->routeIs('projects.codex.*', 'codex.*') || $this->attributesActive;
+        $this->codexActive = $request->routeIs('projects.codex.*', 'codex.*') || $this->attributesActive || $this->tagsActive;
 
         $this->searchActive = $request->routeIs('projects.search.*');
 

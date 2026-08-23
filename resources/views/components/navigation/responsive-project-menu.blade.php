@@ -60,6 +60,10 @@
     {{ __('Attributes') }}
 </x-responsive-nav-link>
 
+<x-responsive-nav-link :href="route('projects.tags.index', $navigation->project)" :active="$navigation->tagsActive">
+    {{ __('Tags') }}
+</x-responsive-nav-link>
+
 <x-navigation.section-heading>{{ __('Tools') }}</x-navigation.section-heading>
 
 <x-responsive-nav-link :href="route('projects.tools.home', $navigation->project)" :active="$navigation->toolsHomeActive">

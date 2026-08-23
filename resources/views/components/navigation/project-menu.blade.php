@@ -80,6 +80,10 @@
             <x-dropdown-link :href="route('projects.codex-attributes.index', $navigation->project)" :active="$navigation->attributesActive">
                 {{ __('Attributes') }}
             </x-dropdown-link>
+
+            <x-dropdown-link :href="route('projects.tags.index', $navigation->project)" :active="$navigation->tagsActive">
+                {{ __('Tags') }}
+            </x-dropdown-link>
         </x-slot>
     </x-dropdown>
 </div>
