@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-23 — Tag management page (#129)
+
+### Added
+
+- A Tags page under Codex lists every tag in the project with how many entries use it, and adds, renames, or deletes tags.
+
 ## 2026-08-23 — Codex tag suggestions no longer clipped (#128)
 
 ### Fixed

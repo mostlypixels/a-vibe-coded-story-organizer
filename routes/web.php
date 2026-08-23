@@ -35,6 +35,7 @@ use App\Http\Controllers\SceneShareController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SharedSceneController;
 use App\Http\Controllers\StoryController;
+use App\Http\Controllers\TagController;
 use App\Http\Controllers\TimelineController;
 use App\Http\Controllers\ToolsController;
 use App\Http\Middleware\TrackActiveProject;
@@ -204,6 +205,12 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::resource('projects.codex-attributes', CodexAttributeController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
         ->parameters(['codex-attributes' => 'codexAttribute'])
+        ->shallow();
+
+    // Tags are created inline on the codex form; this screen renames and removes
+    // them, so it needs no create or edit page of its own.
+    Route::resource('projects.tags', TagController::class)
+        ->only(['index', 'store', 'update', 'destroy'])
         ->shallow();
 
     // Store is an upsert, including for the Start baseline.

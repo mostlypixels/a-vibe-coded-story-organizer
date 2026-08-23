@@ -202,6 +202,11 @@ class Breadcrumbs implements Countable, IteratorAggregate
             )];
         }
 
+        // Tags manage on one page, so the trail stops at the section.
+        if ($navigation->tagsActive) {
+            return [$section, new Crumb(__('Tags'), current: true)];
+        }
+
         $type = $this->activeCodexType($navigation);
 
         // Not reachable in practice (codexActive implies a type or
