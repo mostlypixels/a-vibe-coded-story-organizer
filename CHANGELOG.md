@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-23 — Onboarding two-column layout
+
+### Changed
+
+- Onboarding lays out in two columns on wide screens so the guidance and the project form sit side by side.
+- Blank is no longer a genre tile; start a blank project with the "Skip and start blank" link.
+
 ## 2026-08-22 — Genre-based onboarding (#126)
 
 ### Added

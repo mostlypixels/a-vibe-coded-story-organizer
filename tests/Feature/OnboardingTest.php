@@ -37,7 +37,13 @@ class OnboardingTest extends TestCase
             ->assertSee(e(route('onboarding.store')), false)
             ->assertSee(e(route('onboarding.demo')), false);
 
+        // Every genre except Blank is a picker tile. Blank is reached through the
+        // "Skip and start blank" link, not a tile.
         foreach (Genre::cases() as $genre) {
+            if ($genre === Genre::Blank) {
+                continue;
+            }
+
             $response->assertSee(__($genre->label()));
         }
     }
@@ -52,7 +58,9 @@ class OnboardingTest extends TestCase
             ->assertSee(__('Pick your genre'))
             ->assertSee(__('Install demo projects'))
             ->assertSee(__('Skip and start blank'))
-            ->assertSee('value="'.Genre::Blank->value.'"', false);
+            ->assertSee('value="'.Genre::Blank->value.'"', false)
+            // Blank is the skip link, not a genre tile.
+            ->assertDontSee(__(Genre::Blank->description()));
     }
 
     public function test_onboarding_bounces_an_account_that_already_has_a_project(): void
