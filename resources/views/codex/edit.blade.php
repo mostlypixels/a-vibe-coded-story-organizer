@@ -9,10 +9,6 @@
             @method('PUT')
 
             @include('codex.partials.fields')
-
-            <div class="flex items-center gap-4">
-                <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-content-muted hover:text-content">{{ __('Cancel') }}</a>
-            </div>
         </form>
 
         <form

@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-23 — Codex tag suggestions no longer clipped
+
+### Fixed
+
+- The tag suggestion list on a codex entry no longer gets cut off by the card edge.
+
 ## 2026-08-23 — Onboarding two-column layout (#127)
 
 ### Changed
