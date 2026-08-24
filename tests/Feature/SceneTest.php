@@ -332,6 +332,21 @@ class SceneTest extends TestCase
         $this->assertSame($event->id, Scene::first()->event_id);
     }
 
+    public function test_the_edit_page_names_the_inline_event_fields_to_match_the_controller(): void
+    {
+        // The picker name is `event_id`, but the inline-new fields must post
+        // `new_event_title`/`new_event_datetime` — the keys the controller reads.
+        // A stray `_id` in those names drops the typed event with no error.
+        $user = User::factory()->create();
+        $scene = Scene::factory()->for($this->chapterFor($user))->create();
+
+        $this->actingAs($user)->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertSee('name="new_event_title"', false)
+            ->assertSee('name="new_event_datetime"', false)
+            ->assertDontSee('name="new_event_id_title"', false);
+    }
+
     public function test_the_inline_new_event_form_creates_an_event_attached_to_the_main_plotline(): void
     {
         $user = User::factory()->create();

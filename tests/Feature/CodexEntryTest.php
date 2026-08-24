@@ -880,6 +880,23 @@ class CodexEntryTest extends TestCase
         $this->assertTrue($event->plotlines()->where('is_main', true)->exists());
     }
 
+    public function test_edit_form_names_inline_event_fields_to_match_the_controller(): void
+    {
+        // Guards the render-vs-controller gap: the picker name carries `_id`
+        // (inception_event_id) but the inline-new fields must not, or the typed
+        // event is posted under a key nothing reads and silently dropped.
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('name="new_inception_event_title"', false)
+            ->assertSee('name="new_inception_event_datetime"', false)
+            ->assertSee('name="new_termination_event_title"', false)
+            ->assertDontSee('name="new_inception_event_id_title"', false);
+    }
+
     public function test_termination_before_inception_is_saved_not_rejected(): void
     {
         $user = User::factory()->create();
