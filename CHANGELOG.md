@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-08-24 — Inline event creation fix
+## 2026-08-24 — Inline event creation fix (#132)
 
 ### Fixed
 
