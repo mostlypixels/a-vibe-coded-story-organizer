@@ -9,9 +9,12 @@
 ])
 
 @php
-    // One prefix drives both inline-new field names, so a caller only names the picker itself.
-    $newTitleName = 'new_'.$name.'_title';
-    $newDatetimeName = 'new_'.$name.'_datetime';
+    // The picker name carries the `_id` suffix to match its column (event_id,
+    // inception_event_id). The inline-new fields drop it, so the names line up
+    // with the controller keys (new_event_title, new_inception_event_title).
+    $base = str_ends_with($name, '_id') ? substr($name, 0, -3) : $name;
+    $newTitleName = 'new_'.$base.'_title';
+    $newDatetimeName = 'new_'.$base.'_datetime';
 @endphp
 
 <div x-data="{ newEvent: {{ old($newTitleName) ? 'true' : 'false' }} }">

@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-08-24 — Inline event creation fix
+
+### Fixed
+
+- Typing a new event inline on a codex Born/Died field or a scene's "happens during" now saves it, instead of dropping it without warning.
+
 ## 2026-08-23 — Birth and death (#131)
 
 ### Added
