@@ -17,6 +17,23 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-02 — JavaScript tests in the automated checks (#133)
+
+### Added
+
+- The automated checks now run the JavaScript test suite. They ran only the PHP
+  suite and the formatter, so a broken JavaScript test could reach `master`.
+
+### Fixed
+
+- JavaScript tests no longer fail on Node 24 and later. Node defines its own
+  `localStorage`, which hid the one jsdom installs and broke 15 tests.
+
+### Changed
+
+- The automated checks use Node 24 instead of Node 20, to match the development
+  machines.
+
 ## 2026-08-24 — Inline event creation fix (#132)
 
 ### Fixed

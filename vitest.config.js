@@ -8,10 +8,13 @@ import { defineConfig } from 'vitest/config';
  * calls ProseMirror's `DOMSerializer`, which reaches for `window.document` to
  * build the output — plain Node has no such global. `getMarkdown()` alone does
  * not need it, but tests in this suite exercise both directions.
+ *
+ * `setupFiles` repairs `localStorage`; see resources/js/test-setup.js.
  */
 export default defineConfig({
     test: {
         environment: 'jsdom',
         include: ['resources/js/**/*.test.js'],
+        setupFiles: ['resources/js/test-setup.js'],
     },
 });
