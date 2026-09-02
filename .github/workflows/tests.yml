@@ -15,9 +15,12 @@ jobs:
         with:
           php-version: '8.5'
 
+      # Node 24+ matches the development machines. Older Node has no built-in
+      # Web Storage, so it would not exercise the localStorage workaround in
+      # resources/js/test-setup.js.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
 
       - name: Install PHP dependencies
@@ -35,8 +38,11 @@ jobs:
           npm ci
           npm run build
 
-      - name: Run test suite
+      - name: Run PHP test suite
         run: composer test
+
+      - name: Run JS test suite
+        run: npm run test
 
       - name: Check code style
         run: composer lint -- --test
