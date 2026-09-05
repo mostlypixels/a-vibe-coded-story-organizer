@@ -17,11 +17,9 @@
 <x-edit-layout>
     <x-card>
         <div class="space-y-6">
-            <div>
-                <x-input-label for="name" :value="__('Name')" />
+            <x-field name="name" :label="__('Name')">
                 <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $entry?->name)" required autofocus />
-                <x-input-error :messages="$errors->get('name')" class="mt-2" />
-            </div>
+            </x-field>
 
             <div>
                 @if ($entry !== null)
@@ -136,12 +134,10 @@
                 </label>
             @endif
 
-            <div class="mt-3">
-                <x-input-label for="cover" :value="$cover ? __('Replace cover') : __('Upload cover')" />
+            <x-field name="cover" :label="$cover ? __('Replace cover') : __('Upload cover')" class="mt-3">
                 <input id="cover" name="cover" type="file" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
                 <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::imageHint() }}</p>
-                <x-input-error :messages="$errors->get('cover')" class="mt-2" />
-            </div>
+            </x-field>
         </x-card>
 
         <x-card :title="__('Tags')" overflow="visible">

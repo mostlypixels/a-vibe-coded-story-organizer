@@ -9,24 +9,20 @@
                 @csrf
                 @method('PUT')
 
-                <div>
-                    <x-input-label for="title" :value="__('Title')" />
+                <x-field name="title" :label="__('Title')">
                     <x-text-input id="title" name="title" type="text" class="mt-1 block w-full" :value="old('title', $event->title)" required autofocus />
-                    <x-input-error :messages="$errors->get('title')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <x-autosave-field entity="event" :model="$event" field="description" :label="__('Description')" />
                 </div>
 
-                <div>
-                    <x-input-label for="event_datetime" :value="__('Date & Time')" />
+                <x-field name="event_datetime" :label="__('Date & Time')">
                     <x-date-field name="event_datetime" :value="old('event_datetime', $event->event_datetime->format('Y-m-d\TH:i'))" :min="$windowMin" :max="$windowMax" required />
                     @if ($event->is_fixed)
                         <p class="mt-1 text-xs text-content-muted">{{ __('This bookend anchors the timeline; every other event must stay between Start and End.') }}</p>
                     @endif
-                    <x-input-error :messages="$errors->get('event_datetime')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <x-input-label :value="__('Plotlines')" />

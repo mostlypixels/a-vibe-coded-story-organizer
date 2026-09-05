@@ -27,8 +27,7 @@
             <form method="POST" action="{{ route('admin.data.export') }}" class="mt-6 space-y-6 max-w-lg">
                 @csrf
 
-                <div>
-                    <x-input-label for="project_id" :value="__('Project')" />
+                <x-field name="project_id" :label="__('Project')">
                     <x-select id="project_id" name="project_id" class="mt-1 block w-full">
                         @foreach ($projects as $project)
                             <option value="{{ $project->id }}" @selected(old('project_id') == $project->id)>
@@ -36,8 +35,7 @@
                             </option>
                         @endforeach
                     </x-select>
-                    <x-input-error :messages="$errors->get('project_id')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <label for="include_images" class="inline-flex items-center">

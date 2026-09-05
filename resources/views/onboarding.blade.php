@@ -37,11 +37,9 @@
             <form id="onboarding-form" method="POST" action="{{ route('onboarding.store') }}" class="space-y-6">
                 @csrf
 
-                <div>
-                    <x-input-label for="name" :value="__('Project name')" />
+                <x-field name="name" :label="__('Project name')">
                     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name')" required autofocus />
-                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <fieldset>
                     <legend class="font-medium text-content">{{ __('Pick your genre') }}</legend>

@@ -9,15 +9,13 @@
                 @csrf
                 @method('PUT')
 
-                <div>
-                    <x-input-label for="name" :value="__('Title')" />
+                <x-field name="name" :label="__('Title')">
                     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $act->name)" placeholder="{{ __('e.g. The Curse of Pressine') }}" required autofocus />
                     <p class="mt-1 text-sm text-content-muted">{{ __('Act :number of :total. Use the move up/down buttons on the list to reorder.', [
                         'number' => $numbering->act($act),
                         'total' => $totalActs,
                     ]) }}</p>
-                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <x-autosave-field entity="act" :model="$act" field="description" :label="__('Description')" />

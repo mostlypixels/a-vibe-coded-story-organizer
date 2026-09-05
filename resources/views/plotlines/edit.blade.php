@@ -9,11 +9,9 @@
                 @csrf
                 @method('PUT')
 
-                <div>
-                    <x-input-label for="name" :value="__('Name')" />
+                <x-field name="name" :label="__('Name')">
                     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $plotline->name)" required autofocus />
-                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <x-autosave-field entity="plotline" :model="$plotline" field="description" :label="__('Description')" />

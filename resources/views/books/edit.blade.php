@@ -17,14 +17,12 @@
                 @csrf
                 @method('PUT')
 
-                <div>
-                    <x-input-label for="name" :value="__('Name')" />
+                <x-field name="name" :label="__('Name')">
                     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $book->name)" :required="$nameRequired" autofocus />
                     @unless ($nameRequired)
                         <p class="mt-1 text-sm text-content-muted">{{ __('Optional while this is the project\'s only book — it takes the project\'s name until you give it one of its own.') }}</p>
                     @endunless
-                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <x-autosave-field entity="book" :model="$book" field="description" :label="__('Description')" />
@@ -36,34 +34,26 @@
             <p class="text-sm text-content-muted">{{ __('Used when exporting this book as an EPUB.') }}</p>
 
             <div class="mt-4 space-y-6">
-                <div>
-                    <x-input-label for="language" :value="__('Language')" />
+                <x-field name="language" :label="__('Language')">
                     <x-select id="language" name="language" form="book-edit-form" class="mt-1 block w-full" required>
                         @foreach (\App\Enums\BookLanguage::cases() as $language)
                             <option value="{{ $language->value }}" @selected(old('language', $book->language->value) === $language->value)>{{ $language->label() }}</option>
                         @endforeach
                     </x-select>
-                    <x-input-error :messages="$errors->get('language')" class="mt-2" />
-                </div>
+                </x-field>
 
-                <div>
-                    <x-input-label for="author" :value="__('Author')" />
+                <x-field name="author" :label="__('Author')">
                     <x-text-input id="author" name="author" form="book-edit-form" type="text" class="mt-1 block w-full" :value="old('author', $book->author)" />
-                    <x-input-error :messages="$errors->get('author')" class="mt-2" />
-                </div>
+                </x-field>
 
-                <div>
-                    <x-input-label for="publisher" :value="__('Publisher')" />
+                <x-field name="publisher" :label="__('Publisher')">
                     <x-text-input id="publisher" name="publisher" form="book-edit-form" type="text" class="mt-1 block w-full" :value="old('publisher', $book->publisher)" />
-                    <x-input-error :messages="$errors->get('publisher')" class="mt-2" />
-                </div>
+                </x-field>
 
-                <div>
-                    <x-input-label for="isbn" :value="__('ISBN')" />
+                <x-field name="isbn" :label="__('ISBN')">
                     <x-text-input id="isbn" name="isbn" form="book-edit-form" type="text" class="mt-1 block w-full" :value="old('isbn', $book->isbn)" />
                     <p class="mt-1 text-xs text-content-subtle">{{ __('ISBN-13, with or without hyphens.') }}</p>
-                    <x-input-error :messages="$errors->get('isbn')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <x-autosave-field entity="book" :model="$book" field="rights" form="book-edit-form" :label="__('Rights')" />
