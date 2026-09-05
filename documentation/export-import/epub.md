@@ -24,7 +24,7 @@ The download filename uses the book's display name. Reserve `$book` for the mode
 
 Two render paths must remain separate.
 
-1. Scene bodies and matter Markdown use the exporter’s private SmartPunct CommonMark converter. They do not use `Scene::renderedContents`.
+1. Scene bodies and matter Markdown use the exporter's private CommonMark converter. They do not use `Scene::renderedContents`.
 2. Rich descriptions use `RichText::toXhtmlFragment()` before Blade emits them.
 
 Markdown does not use the XHTML helper. Rich HTML does not use the Markdown converter.

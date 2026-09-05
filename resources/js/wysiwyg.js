@@ -10,6 +10,8 @@ import { Underline } from '@tiptap/extension-underline';
 import { Subscript } from '@tiptap/extension-subscript';
 import { Superscript } from '@tiptap/extension-superscript';
 import { Typography } from '@tiptap/extension-typography';
+import { Plugin } from '@tiptap/pm/state';
+import { normalizePunctuation } from './punctuation.js';
 
 /** Remove unsupported presentation markup from serialized tables. */
 const PlainTable = Table.extend({
@@ -38,7 +40,7 @@ const MarkdownSuperscript = Superscript.extend({
     },
 });
 
-/** CommonMark's dash convention, which the EPUB exporter's SmartPunct pass already uses. */
+/** CommonMark's dash convention, the same one `tests/Fixtures/punctuation.json` defines. */
 const EN_DASH = '\u2013';
 const EM_DASH = '\u2014';
 
@@ -49,8 +51,8 @@ const EM_DASH = '\u2014';
  * Typography has no rule for three hyphens: its own `emDash` fires on the second
  * one, so `---` came out as an em dash followed by a stray hyphen. Overriding
  * that rule to write an en dash and adding this one is what makes the editor
- * agree with the exporter, which follows CommonMark — where `--` is an en dash
- * and `---` an em dash. Without the agreement, a hyphen pair typed today and one
+ * agree with `tests/Fixtures/punctuation.json` — where `--` is an en dash and
+ * `---` an em dash. Without the agreement, a hyphen pair typed today and one
  * imported yesterday would end up as different characters in the same book.
  */
 const EmDashFromThreeHyphens = Extension.create({
@@ -58,6 +60,69 @@ const EmDashFromThreeHyphens = Extension.create({
 
     addInputRules() {
         return [textInputRule({ find: new RegExp(`${EN_DASH}-$`), replace: EM_DASH })];
+    },
+});
+
+const OPEN_SINGLE_QUOTE = '‘';
+const CLOSE_SINGLE_QUOTE = '’';
+
+/**
+ * Turns the open single quote back into an apostrophe when a digit follows it,
+ * so `the '90s` reads `the ’90s` (issue #122).
+ *
+ * Typography decides the direction from the character before the quote alone,
+ * and after a space that is always an opening quote. The digit that proves the
+ * mark is an elision arrives one keystroke later, so the correction has to be
+ * its own rule. This matches `CanonicalPunctuation`, which import uses.
+ */
+const ElisionApostropheBeforeDigit = Extension.create({
+    name: 'elisionApostropheBeforeDigit',
+
+    addInputRules() {
+        return [textInputRule({ find: new RegExp(`(${OPEN_SINGLE_QUOTE})\\d$`), replace: CLOSE_SINGLE_QUOTE })];
+    },
+});
+
+/** True when the paste lands inside a code block or under a code mark. */
+function pastingIntoCode(state) {
+    const { $from, $to } = state.selection;
+
+    if ($from.parent.type.spec.code) {
+        return true;
+    }
+
+    const codeMark = state.schema.marks.code;
+
+    if (!codeMark) {
+        return false;
+    }
+
+    return (
+        codeMark.isInSet(state.storedMarks || $from.marks()) !== undefined ||
+        state.doc.rangeHasMark($from.pos, $to.pos, codeMark)
+    );
+}
+
+/**
+ * Applies the canonical punctuation convention to pasted plain text.
+ *
+ * Input rules cannot do this. Each of them is anchored to the character that was
+ * just typed, so a writer who drafts elsewhere and pastes keeps ASCII quotes and
+ * hyphen pairs, and stores text the importer would have normalized. Code is left
+ * alone, the same rule `CanonicalPunctuation::inHtml()` follows.
+ */
+const NormalizePastedPunctuation = Extension.create({
+    name: 'normalizePastedPunctuation',
+
+    addProseMirrorPlugins() {
+        return [
+            new Plugin({
+                props: {
+                    transformPastedText: (text, _plain, view) =>
+                        pastingIntoCode(view.state) ? text : normalizePunctuation(text),
+                },
+            }),
+        ];
     },
 });
 
@@ -69,7 +134,7 @@ const EmDashFromThreeHyphens = Extension.create({
  *
  * `emDash` turns `--` into an em dash the moment it is typed, which is what puts
  * the editor and the exported EPUB in step: the character is already real by the
- * time the exporter sees it, so its own SmartPunct pass has nothing left to do.
+ * time the exporter converts the Markdown, so there is no dash left to convert.
  *
  * Quotes are on because scenes already ship curly quotes in the EPUB — leaving
  * them off here would keep the editor showing something the book does not.
@@ -526,6 +591,8 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
         Placeholder.configure({ placeholder }),
         Typography.configure(TYPOGRAPHY_RULES),
         EmDashFromThreeHyphens,
+        ElisionApostropheBeforeDigit,
+        NormalizePastedPunctuation,
         MarkdownUnderline,
         MarkdownSubscript,
         MarkdownSuperscript,

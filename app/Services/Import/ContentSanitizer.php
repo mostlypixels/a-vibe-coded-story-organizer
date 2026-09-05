@@ -7,6 +7,7 @@ use App\Exceptions\ImportValidationException;
 use App\Rules\ValidMarkdown;
 use App\Services\HtmlSanitizer;
 use App\Support\AuthorMarkdown;
+use App\Support\CanonicalPunctuation;
 use Throwable;
 
 /**
@@ -15,23 +16,38 @@ use Throwable;
  * Normal form saves strip disallowed HTML. Imports fail instead of changing bulk
  * content silently. Rendered Markdown receives the same check because it can pass
  * raw HTML through.
+ *
+ * One exception to "no silent change": the returned content has its punctuation
+ * normalized to the app's convention (`CanonicalPunctuation`). The allow-list
+ * still fails an import; normalization runs only after the allow-list passes,
+ * and it changes punctuation only. Callers must store the returned string.
  */
 class ContentSanitizer
 {
     public function __construct(private HtmlSanitizer $htmlSanitizer) {}
 
-    /** @throws ImportValidationException When cleaning changes the fragment. */
-    public function assertHtmlAllowed(string $html, RichTextProfile $profile = RichTextProfile::Rich): void
+    /**
+     * @return string The fragment with canonical punctuation.
+     *
+     * @throws ImportValidationException When cleaning changes the fragment.
+     */
+    public function assertHtmlAllowed(string $html, RichTextProfile $profile = RichTextProfile::Rich): string
     {
         $cleaned = $this->htmlSanitizer->clean($html, $profile);
 
         if ($this->canonicalize($cleaned) !== $this->canonicalize($html)) {
             throw ImportValidationException::disallowedHtmlContent();
         }
+
+        return CanonicalPunctuation::inHtml($html);
     }
 
-    /** @throws ImportValidationException For invalid Markdown or rendered HTML. */
-    public function assertMarkdownAllowed(string $markdown): void
+    /**
+     * @return string The Markdown with canonical punctuation.
+     *
+     * @throws ImportValidationException For invalid Markdown or rendered HTML.
+     */
+    public function assertMarkdownAllowed(string $markdown): string
     {
         // Convert the validation callback to the import exception type.
         $markdownIsInvalid = false;
@@ -55,6 +71,8 @@ class ContentSanitizer
         // AuthorMarkdown::render() applies, so an import carrying a decorative
         // class is rejected instead of silently stripped later.
         $this->assertHtmlAllowed($rendered, RichTextProfile::Structural);
+
+        return CanonicalPunctuation::inMarkdown($markdown);
     }
 
     /**

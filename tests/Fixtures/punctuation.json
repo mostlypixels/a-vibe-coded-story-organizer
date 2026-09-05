@@ -1,0 +1,54 @@
+[
+    {
+        "input": "a -- b",
+        "expected": "a – b",
+        "note": "double hyphen becomes an en dash"
+    },
+    {
+        "input": "a --- b",
+        "expected": "a — b",
+        "note": "triple hyphen becomes an em dash"
+    },
+    {
+        "input": "-- and then",
+        "expected": "– and then",
+        "note": "a dash at the start of a line still converts"
+    },
+    {
+        "input": "Wait...",
+        "expected": "Wait…"
+    },
+    {
+        "input": "\"Hello,\" she said.",
+        "expected": "“Hello,” she said."
+    },
+    {
+        "input": "(\"Hello\")",
+        "expected": "(“Hello”)",
+        "note": "a quote right after an opening parenthesis still curls the right way"
+    },
+    {
+        "input": "'Hello'",
+        "expected": "‘Hello’"
+    },
+    {
+        "input": "don't",
+        "expected": "don’t",
+        "note": "an apostrophe inside a word is not a closing quote"
+    },
+    {
+        "input": "the '90s",
+        "expected": "the ’90s",
+        "note": "an apostrophe before a digit is an elision, not an open quote (issue #122)"
+    },
+    {
+        "input": "rock 'n' roll",
+        "expected": "rock ‘n’ roll",
+        "note": "known wrong: SmartPunct reads both apostrophes as quote marks, not elisions. Kept as the shared answer so all three implementations agree."
+    },
+    {
+        "input": "– — … “Hello” ‘Hi’",
+        "expected": "– — … “Hello” ‘Hi’",
+        "note": "already-canonical text is unchanged (idempotence)"
+    }
+]

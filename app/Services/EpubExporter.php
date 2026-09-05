@@ -21,7 +21,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use League\CommonMark\CommonMarkConverter;
-use League\CommonMark\Extension\SmartPunct\SmartPunctExtension;
 use League\CommonMark\Extension\Strikethrough\StrikethroughExtension;
 use League\CommonMark\Extension\TaskList\TaskListExtension;
 use Rampmaster\EPub\Core\EPub;
@@ -48,9 +47,6 @@ use ZipArchive;
  * content causes a RuntimeException because it is a generator error.
  *
  * > [!WARNING]
- * > Use this service's private SmartPunct converter for scene Markdown. Do not
- * > change the shared scene renderer.
- * >
  * > Render EPUB HTML through resources/views/exports/epub/. Do not build it here.
  */
 class EpubExporter
@@ -172,7 +168,7 @@ class EpubExporter
         return $path;
     }
 
-    /** The private SmartPunct converter for this export. */
+    /** The private Markdown-to-XHTML converter for this export. */
     private ?CommonMarkConverter $converter = null;
 
     /**
@@ -886,7 +882,7 @@ class EpubExporter
     }
 
     /**
-     * Converts scene Markdown with the EPUB-only SmartPunct converter, then
+     * Converts scene Markdown, already holding canonical punctuation, then
      * sanitizes it.
      *
      * Markdown carries raw HTML through, and a reading system may run scripts,
@@ -907,8 +903,6 @@ class EpubExporter
     {
         if ($this->converter === null) {
             $converter = new CommonMarkConverter;
-            // Smart punctuation must remain isolated from the shared scene renderer.
-            $converter->getEnvironment()->addExtension(new SmartPunctExtension);
             // Add the GFM features that scene validation and shared rendering support.
             $converter->getEnvironment()->addExtension(new StrikethroughExtension);
             // Same `<s>` tag as the shared AuthorMarkdown renderer, not `<del>`.

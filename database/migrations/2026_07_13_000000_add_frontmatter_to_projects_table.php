@@ -14,8 +14,7 @@ return new class extends Migration
      *
      * These stay RAW Markdown, exactly like `Scene.contents` — never rich
      * HTML, never routed through SanitizesRichHtml. They render through
-     * EpubExporter's own SmartPunct CommonMark converter, never
-     * Scene::renderedContents.
+     * EpubExporter's own CommonMark converter, never Scene::renderedContents.
      */
     public function up(): void
     {

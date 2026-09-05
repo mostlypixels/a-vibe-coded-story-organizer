@@ -17,6 +17,24 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-05 — Canonical punctuation everywhere (#135)
+
+### Added
+
+- Pasted text now gets the same punctuation treatment as typed text. Dashes, ellipses and
+  quotes are converted on paste, so drafting elsewhere and pasting in no longer leaves
+  typewriter punctuation behind.
+- Imported prose is converted the same way, so a story and its appendix read alike.
+
+### Fixed
+
+- A decade written as `'90s` got an opening quote instead of an apostrophe.
+
+### Removed
+
+- EPUB export no longer converts punctuation of its own. Text is already correct when it is
+  stored, so the book gets what the writer sees.
+
 ## 2026-09-05 — Date picker and date locale (#134)
 
 ### Added

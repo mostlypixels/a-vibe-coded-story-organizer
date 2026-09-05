@@ -615,7 +615,7 @@ describe('smart punctuation', () => {
         return typeText(editor, text);
     }
 
-    // CommonMark's convention, which the EPUB exporter's SmartPunct pass uses.
+    // CommonMark's convention, the same one `tests/Fixtures/punctuation.json` defines.
     // Typography's own emDash rule fires on two hyphens and would disagree.
     it('turns two hyphens into an en dash and three into an em dash', () => {
         expect(typedInto('1914--1918')).toBe('1914\u20131918');
@@ -651,9 +651,9 @@ describe('smart punctuation', () => {
     });
 
     /**
-     * Input rules fire on keystrokes only. Imported or previously stored text is
-     * never rewritten, which is why the EPUB exporter keeps its own SmartPunct
-     * pass for scene Markdown.
+     * Input rules fire on keystrokes only. Imported text is normalized on the way
+     * in by `App\Services\Import\ContentSanitizer` instead, so it never reaches
+     * the editor un-canonical.
      */
     it('leaves loaded content untouched', () => {
         const editor = new Editor({ extensions: buildExtensions('html'), content: '<p>a -- b and c... d</p>' });
