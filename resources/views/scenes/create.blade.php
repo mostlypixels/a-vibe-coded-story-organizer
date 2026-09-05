@@ -19,35 +19,14 @@
                         <x-input-error :messages="$errors->get('chapter_id')" class="mt-2" />
                     </div>
 
-                    <div x-data="{ newEvent: {{ old('new_event_title') ? 'true' : 'false' }} }">
-                        <x-input-label for="event_id" :value="__('Happens during')" />
-                        <x-select id="event_id" name="event_id" x-bind:disabled="newEvent" class="mt-1 block w-full disabled:bg-surface-sunken disabled:text-content-subtle">
-                            <option value="">{{ __('— Not assigned —') }}</option>
-                            @foreach ($events as $event)
-                                <option value="{{ $event->id }}" @selected(old('event_id') == $event->id)>{{ $event->title }} &mdash; {{ \App\Support\DateFormat::date($event->event_datetime, $locale) }}</option>
-                            @endforeach
-                        </x-select>
-                        <x-input-error :messages="$errors->get('event_id')" class="mt-2" />
-
-                        <button type="button" @click="newEvent = ! newEvent" class="mt-2 text-sm text-link hover:text-link-hover">
-                            <span x-show="! newEvent">{{ __('+ New event') }}</span>
-                            <span x-show="newEvent">{{ __('Cancel new event') }}</span>
-                        </button>
-
-                        <div x-show="newEvent" style="{{ old('new_event_title') ? '' : 'display: none;' }}" class="mt-3 space-y-3 border-l-2 border-border pl-4">
-                            <div>
-                                <x-input-label for="new_event_title" :value="__('New event title')" />
-                                <x-text-input id="new_event_title" name="new_event_title" type="text" class="mt-1 block w-full" :value="old('new_event_title')" />
-                                <p class="mt-1 text-sm text-content-muted">{{ __('Created and attached to the Main plotline.') }}</p>
-                                <x-input-error :messages="$errors->get('new_event_title')" class="mt-2" />
-                            </div>
-                            <div>
-                                <x-input-label for="new_event_datetime" :value="__('New event date & time')" />
-                                <x-date-field id="new_event_datetime" name="new_event_datetime" :value="old('new_event_datetime')" :min="$windowMin" :max="$windowMax" />
-                                <x-input-error :messages="$errors->get('new_event_datetime')" class="mt-2" />
-                            </div>
-                        </div>
-                    </div>
+                    <x-single-event-field
+                        name="event_id"
+                        :label="__('Happens during')"
+                        :events="$events"
+                        :empty-label="__('— Not assigned —')"
+                        :window-min="$windowMin"
+                        :window-max="$windowMax"
+                    />
 
                     <div>
                         <x-input-label for="name" :value="__('Title')" />
