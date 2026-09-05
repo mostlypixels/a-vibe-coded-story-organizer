@@ -1,0 +1,451 @@
+<title>Codex Attribute Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --paper: #f5f4f1;
+    --surface: #fffffe;
+    --surface-2: #ecebe7;
+    --border: #dcdad3;
+    --border-strong: #c6c3ba;
+    --ink: #23262e;
+    --ink-soft: #4c5059;
+    --ink-mute: #767b85;
+
+    --c-global: #3b3f4a;
+    --c-global-bg: #e7e7e4;
+    --c-contemp: #0f766e;
+    --c-contemp-bg: #d8ede9;
+    --c-hist: #9a6a15;
+    --c-hist-bg: #efe4cf;
+    --c-fantasy: #6d3ce0;
+    --c-fantasy-bg: #e6ddf9;
+    --c-scifi: #0d6aa8;
+    --c-scifi-bg: #d5e9f4;
+
+    /* mutable = tracked over the timeline; fixed = set once */
+    --mut: #b4451f;
+    --mut-bg: #f4ddd2;
+    --fix: #4c5059;
+    --fix-bg: #e7e7e4;
+
+    --stop-bg: #f6ddd6;
+    --stop-line: #d98b6f;
+
+    --shadow: 0 1px 2px rgba(35,38,46,.05), 0 8px 24px -12px rgba(35,38,46,.18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14161a;
+      --surface: #1c1f25;
+      --surface-2: #23272e;
+      --border: #30343c;
+      --border-strong: #3d424c;
+      --ink: #e8e9ec;
+      --ink-soft: #b3b7bf;
+      --ink-mute: #838893;
+
+      --c-global: #c3c7d0;
+      --c-global-bg: #2b2f37;
+      --c-contemp: #4bc9bb;
+      --c-contemp-bg: #14312e;
+      --c-hist: #d9a94f;
+      --c-hist-bg: #352a15;
+      --c-fantasy: #b499f7;
+      --c-fantasy-bg: #2b2246;
+      --c-scifi: #58b6e6;
+      --c-scifi-bg: #12303f;
+
+      --mut: #ec7a54;
+      --mut-bg: #3a2016;
+      --fix: #b3b7bf;
+      --fix-bg: #2b2f37;
+
+      --stop-bg: #351a12;
+      --stop-line: #7a4029;
+
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #14161a;
+    --surface: #1c1f25;
+    --surface-2: #23272e;
+    --border: #30343c;
+    --border-strong: #3d424c;
+    --ink: #e8e9ec;
+    --ink-soft: #b3b7bf;
+    --ink-mute: #838893;
+
+    --c-global: #c3c7d0;
+    --c-global-bg: #2b2f37;
+    --c-contemp: #4bc9bb;
+    --c-contemp-bg: #14312e;
+    --c-hist: #d9a94f;
+    --c-hist-bg: #352a15;
+    --c-fantasy: #b499f7;
+    --c-fantasy-bg: #2b2246;
+    --c-scifi: #58b6e6;
+    --c-scifi-bg: #12303f;
+
+    --mut: #ec7a54;
+    --mut-bg: #3a2016;
+    --fix: #b3b7bf;
+    --fix-bg: #2b2f37;
+
+    --stop-bg: #351a12;
+    --stop-line: #7a4029;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Public Sans", system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 4rem) clamp(1.1rem, 4vw, 2.5rem) 5rem;
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: .72rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--ink-mute); margin: 0 0 1rem;
+  }
+  h1 {
+    font-family: "Spectral", Georgia, serif; font-weight: 700;
+    font-size: clamp(2.1rem, 5.6vw, 3.4rem); line-height: 1.03;
+    letter-spacing: -.01em; text-wrap: balance; margin: 0 0 .9rem;
+  }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: 62ch; margin: 0 0 2.2rem; }
+
+  /* definition + exclusion cards */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem; }
+  @media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+
+  .rule, .excl {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.3rem 1.45rem; box-shadow: var(--shadow);
+  }
+  .rule { border-left: 3px solid var(--c-global); }
+  .excl { border-left: 3px solid var(--stop-line); background: var(--stop-bg); }
+  .rule h2, .excl h2 { font-family: "Spectral", Georgia, serif; font-size: 1.12rem; margin: 0 0 .7rem; }
+  .rule ul, .excl ul { margin: 0; padding-left: 1.05rem; }
+  .rule li, .excl li { margin: .4rem 0; color: var(--ink-soft); }
+  .rule strong, .excl strong { color: var(--ink); font-weight: 600; }
+  .excl li { color: var(--ink); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.4rem 0 3rem; align-items: center; }
+  .chip {
+    font-family: "JetBrains Mono", monospace; font-size: .72rem; font-weight: 600;
+    letter-spacing: .04em; padding: .22rem .6rem; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
+  }
+  .chip::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; }
+  .chip.global  { color: var(--c-global);  background: var(--c-global-bg); }
+  .chip.contemp { color: var(--c-contemp); background: var(--c-contemp-bg); }
+  .chip.hist    { color: var(--c-hist);    background: var(--c-hist-bg); }
+  .chip.fantasy { color: var(--c-fantasy); background: var(--c-fantasy-bg); }
+  .chip.scifi   { color: var(--c-scifi);   background: var(--c-scifi-bg); }
+  .legend .sep { width: 1px; height: 1.1rem; background: var(--border-strong); margin: 0 .3rem; }
+
+  /* mutable / fixed markers */
+  .pill {
+    font-family: "JetBrains Mono", monospace; font-size: .58rem; font-weight: 600;
+    letter-spacing: .05em; text-transform: uppercase; padding: .08rem .38rem;
+    border-radius: 4px; white-space: nowrap;
+  }
+  .pill.mut { color: var(--mut); background: var(--mut-bg); }
+  .pill.fix { color: var(--fix); background: var(--fix-bg); }
+
+  .type-sec { margin-bottom: 3.4rem; }
+  .type-head {
+    display: flex; align-items: baseline; gap: .75rem;
+    border-bottom: 2px solid var(--border-strong); padding-bottom: .55rem; margin-bottom: 1rem;
+  }
+  .type-head h2 { font-family: "Spectral", Georgia, serif; font-size: 1.9rem; font-weight: 700; margin: 0; }
+  .type-head .count { font-family: "JetBrains Mono", monospace; font-size: .75rem; color: var(--ink-mute); margin-left: auto; }
+  .type-sub { color: var(--ink-soft); margin: 0 0 1.5rem; max-width: 64ch; }
+
+  .block-label {
+    font-family: "JetBrains Mono", monospace; font-size: .74rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-mute); margin: 1.6rem 0 .9rem;
+    display: flex; align-items: center; gap: .6rem;
+  }
+  .block-label .pill { text-transform: uppercase; }
+  .block-label::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  .attr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: .55rem; }
+  .attr { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .7rem .85rem; }
+  .attr .name { font-weight: 600; font-size: .95rem; }
+  .attr .why { color: var(--ink-soft); font-size: .83rem; margin-top: .15rem; }
+  .attr .eg { color: var(--ink-mute); font-size: .8rem; font-style: italic; }
+
+  .genre-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .9rem; margin-top: .4rem; }
+  .genre-col {
+    background: var(--surface); border: 1px solid var(--border);
+    border-top: 3px solid var(--gc, var(--border-strong)); border-radius: 8px;
+    padding: 1rem 1.05rem 1.1rem; box-shadow: var(--shadow);
+  }
+  .genre-col.contemp { --gc: var(--c-contemp); }
+  .genre-col.hist    { --gc: var(--c-hist); }
+  .genre-col.fantasy { --gc: var(--c-fantasy); }
+  .genre-col.scifi   { --gc: var(--c-scifi); }
+  .genre-col h4 {
+    font-family: "JetBrains Mono", monospace; font-size: .78rem; letter-spacing: .06em;
+    text-transform: uppercase; margin: 0 0 .75rem; color: var(--gc);
+  }
+  .genre-col ul { margin: 0; padding: 0; list-style: none; }
+  .genre-col li { padding: .42rem 0; border-top: 1px dashed var(--border); font-size: .9rem; }
+  .genre-col li:first-child { border-top: none; padding-top: 0; }
+  .genre-col li .g-name { font-weight: 600; display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+  .genre-col li .g-why { color: var(--ink-soft); font-size: .82rem; }
+  .genre-col .none { color: var(--ink-mute); font-size: .85rem; font-style: italic; }
+
+  footer {
+    margin-top: 3rem; padding-top: 1.4rem; border-top: 1px solid var(--border);
+    color: var(--ink-mute); font-size: .85rem; max-width: 68ch;
+  }
+  footer code {
+    font-family: "JetBrains Mono", monospace; font-size: .8em; background: var(--surface-2);
+    padding: .08rem .34rem; border-radius: 4px; color: var(--ink-soft);
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Story codex · attribute planning</p>
+  <h1>Short facts that change as the story moves</h1>
+  <p class="lede">
+    An attribute is one short value on an entry's sheet, held against the
+    timeline — it takes effect at an event and stands until the next change.
+    So the real work of attributes is <em>current state</em>: what a character
+    wants, believes, knows, and is hiding right now.
+  </p>
+
+  <div class="cards">
+    <div class="rule">
+      <h2>What an attribute is</h2>
+      <ul>
+        <li><strong>A short value.</strong> A word or a phrase — <em>blue</em>, <em>injured</em>, <em>believes she is an orphan</em>. Not a paragraph.</li>
+        <li><strong>Mutable, most of the time.</strong> It's stored per event, so it can change across the book. That's the point, not a side effect.</li>
+        <li><strong>About one entry.</strong> It describes this character, place, or group on its own.</li>
+      </ul>
+    </div>
+    <div class="excl">
+      <h2>What isn't an attribute</h2>
+      <ul>
+        <li><strong>Backstory or prose.</strong> Origins, personality essays, history → the entry's <em>Description</em>, not an attribute.</li>
+        <li><strong>A link to another entry.</strong> Employer, faction, ruler, a group's leader or members → a <em>relationship</em>. Test: if the value is really the name of another entry, it isn't an attribute.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span class="pill mut">Mutable</span><span style="font-size:.82rem;color:var(--ink-soft)">tracked over the timeline</span>
+    <span class="pill fix">Fixed</span><span style="font-size:.82rem;color:var(--ink-soft)">set once</span>
+    <span class="sep"></span>
+    <span class="chip contemp">Contemporary</span>
+    <span class="chip hist">Historical</span>
+    <span class="chip fantasy">Fantasy</span>
+    <span class="chip scifi">Science Fiction</span>
+  </div>
+
+  <!-- ============ CHARACTER ============ -->
+  <section class="type-sec">
+    <div class="type-head">
+      <h2>Character</h2>
+      <span class="count">the current-state sheet</span>
+    </div>
+    <p class="type-sub">The heart of the codex. Most of a character's attributes are things that move — what drives them and what they hold true shifts scene to scene, and the timeline is built to record exactly that.</p>
+
+    <p class="block-label"><span class="pill mut">Mutable</span> current state — the four that matter most</p>
+    <div class="attr-grid">
+      <div class="attr"><div class="name">Current goal</div><div class="why">What they're chasing in this stretch of the book.</div><div class="eg">e.g. Reach the capital before winter</div></div>
+      <div class="attr"><div class="name">Current beliefs</div><div class="why">What they hold true right now — often wrong, often changing.</div><div class="eg">e.g. Believes her brother is dead</div></div>
+      <div class="attr"><div class="name">Current knowledge</div><div class="why">What they actually know at this point. Drives dramatic irony.</div><div class="eg">e.g. Doesn't know the map is forged</div></div>
+      <div class="attr"><div class="name">Current lies</div><div class="why">What they're pretending or hiding, and to whom.</div><div class="eg">e.g. Claims to be a merchant</div></div>
+    </div>
+
+    <p class="block-label"><span class="pill mut">Mutable</span> other state that shifts</p>
+    <div class="attr-grid">
+      <div class="attr"><div class="name">Mood</div><div class="why">Emotional weather in the current scenes.</div></div>
+      <div class="attr"><div class="name">Health / condition</div><div class="why">Well, injured, ill, exhausted.</div></div>
+      <div class="attr"><div class="name">Status</div><div class="why">Alive, missing, presumed dead.</div></div>
+      <div class="attr"><div class="name">Standing / class</div><div class="why">Their rank in society — can rise or fall.</div></div>
+    </div>
+
+    <p class="block-label"><span class="pill fix">Fixed</span> short traits</p>
+    <div class="attr-grid">
+      <div class="attr"><div class="name">Eye colour</div><div class="eg">e.g. Blue</div></div>
+      <div class="attr"><div class="name">Hair</div><div class="eg">e.g. Dark, cropped</div></div>
+      <div class="attr"><div class="name">Height / build</div><div class="eg">e.g. Tall, wiry</div></div>
+      <div class="attr"><div class="name">Distinguishing mark</div><div class="eg">e.g. Scar over left brow</div></div>
+      <div class="attr"><div class="name">Gender / pronouns</div></div>
+    </div>
+
+    <p class="block-label">By genre</p>
+    <div class="genre-grid">
+      <div class="genre-col contemp">
+        <h4>Contemporary</h4>
+        <ul>
+          <li><div class="g-name">Nationality <span class="pill fix">Fixed</span></div><div class="g-why">Where they're from, as a short label.</div></li>
+          <li><div class="g-name">Languages <span class="pill fix">Fixed</span></div><div class="g-why">What they speak.</div></li>
+        </ul>
+      </div>
+      <div class="genre-col hist">
+        <h4>Historical</h4>
+        <ul>
+          <li><div class="g-name">Form of address <span class="pill mut">Mut.</span></div><div class="g-why">Honorific the period uses — shifts with marriage, rank, widowhood.</div></li>
+          <li><div class="g-name">Affliction <span class="pill mut">Mut.</span></div><div class="g-why">An era-typical ailment that comes and goes.</div></li>
+        </ul>
+      </div>
+      <div class="genre-col fantasy">
+        <h4>Fantasy</h4>
+        <ul>
+          <li><div class="g-name">Species / race <span class="pill fix">Fixed</span></div><div class="g-why">Human, elf, other.</div></li>
+          <li><div class="g-name">Magical affinity <span class="pill fix">Fixed</span></div><div class="g-why">The element or school they lean to.</div></li>
+          <li><div class="g-name">Power level <span class="pill mut">Mut.</span></div><div class="g-why">Grows or is drained through the story.</div></li>
+          <li><div class="g-name">Curse / affliction <span class="pill mut">Mut.</span></div><div class="g-why">A magical condition that can lift.</div></li>
+        </ul>
+      </div>
+      <div class="genre-col scifi">
+        <h4>Science Fiction</h4>
+        <ul>
+          <li><div class="g-name">Species <span class="pill fix">Fixed</span></div><div class="g-why">Human, synthetic, alien.</div></li>
+          <li><div class="g-name">Augmentations <span class="pill mut">Mut.</span></div><div class="g-why">Implants added or lost over time.</div></li>
+          <li><div class="g-name">Life-support need <span class="pill mut">Mut.</span></div><div class="g-why">Air, gravity, meds they currently depend on.</div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LOCATION ============ -->
+  <section class="type-sec">
+    <div class="type-head">
+      <h2>Location</h2>
+      <span class="count">what it is · what state it's in</span>
+    </div>
+    <p class="type-sub">A place has a fixed nature and a changing condition. Who rules or lives there is a relationship, not an attribute — keep those off the sheet.</p>
+
+    <p class="block-label"><span class="pill mut">Mutable</span> current state</p>
+    <div class="attr-grid">
+      <div class="attr"><div class="name">Condition</div><div class="why">Thriving, ruined, under siege, rebuilt.</div></div>
+      <div class="attr"><div class="name">Access</div><div class="why">Open, sealed, hidden, forbidden right now.</div></div>
+      <div class="attr"><div class="name">Population</div><div class="why">Rough headcount — rises and empties.</div></div>
+    </div>
+
+    <p class="block-label"><span class="pill fix">Fixed</span> nature</p>
+    <div class="attr-grid">
+      <div class="attr"><div class="name">Type</div><div class="eg">e.g. City, keep, single room</div></div>
+      <div class="attr"><div class="name">Size / scale</div><div class="eg">e.g. A few streets</div></div>
+      <div class="attr"><div class="name">Climate / weather</div><div class="eg">e.g. Cold, wet</div></div>
+    </div>
+
+    <p class="block-label">By genre</p>
+    <div class="genre-grid">
+      <div class="genre-col contemp">
+        <h4>Contemporary</h4>
+        <ul>
+          <li><div class="g-name">Setting type <span class="pill fix">Fixed</span></div><div class="g-why">Urban, suburban, rural.</div></li>
+        </ul>
+      </div>
+      <div class="genre-col hist">
+        <h4>Historical</h4>
+        <ul>
+          <li><div class="g-name">Era / period <span class="pill fix">Fixed</span></div><div class="g-why">When it stands. Already seeded.</div></li>
+        </ul>
+      </div>
+      <div class="genre-col fantasy">
+        <h4>Fantasy</h4>
+        <ul>
+          <li><div class="g-name">Ambient magic <span class="pill mut">Mut.</span></div><div class="g-why">How thick the magic runs here now.</div></li>
+          <li><div class="g-name">Terrain type <span class="pill fix">Fixed</span></div><div class="g-why">Invented landscape.</div></li>
+        </ul>
+      </div>
+      <div class="genre-col scifi">
+        <h4>Science Fiction</h4>
+        <ul>
+          <li><div class="g-name">Gravity <span class="pill fix">Fixed</span></div><div class="g-why">What bodies weigh here.</div></li>
+          <li><div class="g-name">Atmosphere <span class="pill mut">Mut.</span></div><div class="g-why">Breathable, toxic, failing.</div></li>
+          <li><div class="g-name">Tech level <span class="pill fix">Fixed</span></div><div class="g-why">How advanced, how wired.</div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ORGANIZATION ============ -->
+  <section class="type-sec">
+    <div class="type-head">
+      <h2>Organization</h2>
+      <span class="count">what it is · how it's faring</span>
+    </div>
+    <p class="type-sub">Its leader, members, allies, and rivals are all relationships to other entries — none belong here. What's left is its own shape and its changing fortunes.</p>
+
+    <p class="block-label"><span class="pill mut">Mutable</span> current state</p>
+    <div class="attr-grid">
+      <div class="attr"><div class="name">Status</div><div class="why">Active, disbanded, hidden, at war.</div></div>
+      <div class="attr"><div class="name">Size</div><div class="why">Rough membership — grows and shrinks.</div></div>
+      <div class="attr"><div class="name">Wealth / resources</div><div class="why">How well-funded it is now.</div></div>
+      <div class="attr"><div class="name">Influence</div><div class="why">How far its reach extends at this point.</div></div>
+    </div>
+
+    <p class="block-label"><span class="pill fix">Fixed</span> nature</p>
+    <div class="attr-grid">
+      <div class="attr"><div class="name">Type</div><div class="eg">e.g. Guild, company, order, family</div></div>
+      <div class="attr"><div class="name">Founded</div><div class="eg">e.g. Year or era</div></div>
+    </div>
+
+    <p class="block-label">By genre</p>
+    <div class="genre-grid">
+      <div class="genre-col contemp">
+        <h4>Contemporary</h4>
+        <ul>
+          <li><div class="g-name">Sector <span class="pill fix">Fixed</span></div><div class="g-why">The field it works in.</div></li>
+        </ul>
+      </div>
+      <div class="genre-col hist">
+        <h4>Historical</h4>
+        <ul>
+          <li><div class="g-name">Era active <span class="pill fix">Fixed</span></div><div class="g-why">The period it holds power.</div></li>
+        </ul>
+      </div>
+      <div class="genre-col fantasy">
+        <h4>Fantasy</h4>
+        <ul>
+          <li><div class="g-name">Magic domain <span class="pill fix">Fixed</span></div><div class="g-why">The order's craft or school.</div></li>
+          <li><div class="g-name">Sigil <span class="pill fix">Fixed</span></div><div class="g-why">Its mark, in a few words.</div></li>
+        </ul>
+      </div>
+      <div class="genre-col scifi">
+        <h4>Science Fiction</h4>
+        <ul>
+          <li><div class="g-name">Specialty <span class="pill fix">Fixed</span></div><div class="g-why">The tech or trade it controls.</div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Maps to the genre bundles in <code>app/Support/Bundles</code>. Every value lives in
+    <code>codex_attribute_values</code> against a <code>start_event_id</code>, so a
+    <span class="pill mut">Mutable</span> attribute holds until the next event changes it;
+    a <span class="pill fix">Fixed</span> one just never gets a second value. Of the v1
+    placeholders, only <em>Era</em> survives here as-is — <em>Occupation</em> is a relationship
+    to an employer, and <em>Magic System</em> splits into a fixed affinity and a mutable power level.
+  </footer>
+
+</div>
