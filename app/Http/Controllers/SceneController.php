@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\CreatesInlineEvents;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
@@ -14,6 +13,7 @@ use App\Models\Book;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CodexAsOfResolver;
+use App\Services\Concerns\CreatesInlineEvents;
 use App\Services\SceneDuplicator;
 use App\Services\SceneReferenceMatcher;
 use App\Support\DuplicateName;

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CodexEntryType;
 use App\Enums\Genre;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
@@ -103,6 +105,23 @@ class Project extends Model
     public function codexAttributes(): HasMany
     {
         return $this->hasMany(CodexAttribute::class);
+    }
+
+    /**
+     * The project's attributes that belong on sheets of one entry type, in order.
+     *
+     * Filtered in PHP, not SQL: `applies_to` is a cast collection in one column,
+     * so no engine-portable WHERE can read it.
+     *
+     * @return Collection<int, CodexAttribute>
+     */
+    public function codexAttributesFor(CodexEntryType $type): Collection
+    {
+        return $this->codexAttributes()
+            ->orderBy('position')
+            ->get()
+            ->filter(fn (CodexAttribute $attribute) => $attribute->appliesTo($type))
+            ->values();
     }
 
     public function tags(): HasMany
