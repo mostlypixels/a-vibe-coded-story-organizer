@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-05 — Codex saving moved out of the controller
+
+### Changed
+
+- Creating and updating a codex entry now runs through one shared routine, so both paths
+  write the same tables in the same order.
+
 ## 2026-09-05 — Canonical punctuation everywhere (#135)
 
 ### Added

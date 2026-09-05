@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Concerns;
+namespace App\Services\Concerns;
 
 use App\Models\Project;
 
