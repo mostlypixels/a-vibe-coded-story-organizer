@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-05 — The same event picker on both scene screens (#139)
+
+### Fixed
+
+- The "happens during" picker on the new-scene page now matches the one on the edit page.
+  Its button and its explanation had drifted apart.
+
 ## 2026-09-05 — One list of the entities that keep history (#138)
 
 ### Changed
