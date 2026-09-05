@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-05 — A page for reading a codex entry
+## 2026-09-05 — A page for reading a codex entry (#144)
 
 ### Added
 
