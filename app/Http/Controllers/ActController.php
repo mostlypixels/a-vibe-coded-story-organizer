@@ -45,12 +45,6 @@ class ActController extends Controller
             ->orderBy($sort, $direction)
             ->get();
 
-        // withSum leaves word_count as NULL for an act with no scenes (SQL SUM has no
-        // rows to sum). An act with no scenes renders "0 words", not blank.
-        foreach ($acts as $act) {
-            $act->word_count ??= 0;
-        }
-
         // The delete-with-move dialog on each row needs the full set of sibling acts as
         // move destinations, independent of the current search filter above (moving is
         // never limited to what the search happens to match).

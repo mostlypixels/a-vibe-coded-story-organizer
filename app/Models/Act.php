@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
+use App\Models\Concerns\SumsSceneWords;
 use App\Services\CoverImageService;
 use App\Services\WordCountSnapshotRecorder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,6 +20,7 @@ class Act extends Model
     use HasRevisions;
     use HasSiblingPosition;
     use SanitizesRichHtml;
+    use SumsSceneWords;
 
     protected $fillable = [
         'name',

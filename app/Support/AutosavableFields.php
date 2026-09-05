@@ -29,12 +29,15 @@ class AutosavableFields
      *
      * Codex attribute values use story-time history and must not use edit-time history.
      *
-     * @var array<string, array{0: class-string, 1: array<string, FieldKind>}>
+     * The third element is the route that edits the entity. The revision pages
+     * link back to it, and it belongs beside the model so the two cannot drift.
+     *
+     * @var array<string, array{0: class-string, 1: array<string, FieldKind>, 2: string}>
      */
     public const REGISTRY = [
         'project' => [Project::class, [
             'description' => FieldKind::Rich,
-        ]],
+        ], 'projects.edit'],
         'book' => [Book::class, [
             'description' => FieldKind::Rich,
             'dedication' => FieldKind::Markdown,
@@ -42,27 +45,27 @@ class AutosavableFields
             'preface' => FieldKind::Markdown,
             'postface' => FieldKind::Markdown,
             'rights' => FieldKind::Plain,
-        ]],
+        ], 'books.edit'],
         'act' => [Act::class, [
             'description' => FieldKind::Rich,
-        ]],
+        ], 'acts.edit'],
         'chapter' => [Chapter::class, [
             'description' => FieldKind::Rich,
-        ]],
+        ], 'chapters.edit'],
         'plotline' => [Plotline::class, [
             'description' => FieldKind::Rich,
-        ]],
+        ], 'plotlines.edit'],
         'event' => [Event::class, [
             'description' => FieldKind::Rich,
-        ]],
+        ], 'events.edit'],
         'scene' => [Scene::class, [
             'description' => FieldKind::Rich,
             'notes' => FieldKind::Rich,
             'contents' => FieldKind::Markdown,
-        ]],
+        ], 'scenes.edit'],
         'codex' => [CodexEntry::class, [
             'description' => FieldKind::Rich,
-        ]],
+        ], 'codex.edit'],
     ];
 
     /** @return list<string> */
@@ -75,6 +78,33 @@ class AutosavableFields
     public static function modelFor(string $slug): string
     {
         return self::REGISTRY[$slug][0];
+    }
+
+    /**
+     * The registered fields of one slug.
+     *
+     * @return array<string, FieldKind>
+     */
+    public static function fieldsFor(string $slug): array
+    {
+        return self::REGISTRY[$slug][1];
+    }
+
+    /**
+     * The registered fields of one model class.
+     *
+     * @param  class-string  $modelClass
+     * @return array<string, FieldKind>
+     */
+    public static function fieldsForModel(string $modelClass): array
+    {
+        return self::fieldsFor(self::slugFor($modelClass));
+    }
+
+    /** The name of the route that edits one slug's entity. */
+    public static function editRouteFor(string $slug): string
+    {
+        return self::REGISTRY[$slug][2];
     }
 
     /**
@@ -142,7 +172,7 @@ class AutosavableFields
      */
     public static function snapshotFieldsBeforeUpdate(Model $model, array $data): array
     {
-        $fields = self::REGISTRY[self::slugFor($model::class)][1];
+        $fields = self::fieldsForModel($model::class);
 
         $snapshot = [];
 

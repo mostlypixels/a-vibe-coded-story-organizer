@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-05 — One list of the entities that keep history
+
+### Changed
+
+- The revision pages read the entities they cover from the same list the rest of the
+  history feature uses.
+
 ## 2026-09-05 — One owner for the event date bounds (#137)
 
 ### Changed

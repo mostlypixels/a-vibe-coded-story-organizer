@@ -71,12 +71,6 @@ class ChapterController extends Controller
             )
             ->get();
 
-        // withSum leaves word_count as NULL for a chapter with no scenes (SQL SUM has
-        // no rows to sum). A chapter with no scenes renders "0 words", not blank.
-        foreach ($chapters as $chapter) {
-            $chapter->word_count ??= 0;
-        }
-
         // The delete-with-move dialog on each row needs the full set of the book's
         // chapters as move destinations, independent of the current search/act filter
         // above (moving is never limited to what the filter happens to match).

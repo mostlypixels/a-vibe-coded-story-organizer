@@ -170,7 +170,7 @@ class ProjectRevisionsBrowser
     {
         $countByField = $fieldRows->keyBy('field');
 
-        return collect(array_keys(AutosavableFields::REGISTRY[$slug][1]))
+        return collect(array_keys(AutosavableFields::fieldsFor($slug)))
             ->filter(fn (string $field) => $countByField->has($field))
             ->map(fn (string $field) => (object) [
                 'field' => $field,

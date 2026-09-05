@@ -60,7 +60,7 @@ class RevisionComparison
         }
 
         $revisions = $this->hydrate($changed, $before, $after);
-        $kinds = AutosavableFields::REGISTRY[AutosavableFields::slugFor($entity::class)][1];
+        $kinds = AutosavableFields::fieldsForModel($entity::class);
 
         return collect($changed)->map(function (string $name) use ($kinds, $revisions, $before, $after): FieldComparison {
             $old = $revisions[$before->revisionIdFor($name)] ?? null;
@@ -84,7 +84,7 @@ class RevisionComparison
      */
     private function changedFields(Model $entity, EntitySnapshot $before, EntitySnapshot $after, ?string $field): array
     {
-        $fields = array_keys(AutosavableFields::REGISTRY[AutosavableFields::slugFor($entity::class)][1]);
+        $fields = array_keys(AutosavableFields::fieldsForModel($entity::class));
 
         return array_values(array_filter($fields, function (string $name) use ($before, $after, $field): bool {
             if ($field !== null && $name !== $field) {
