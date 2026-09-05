@@ -7,8 +7,10 @@ use App\Services\HtmlSanitizer;
 use App\Services\RevisionRecorder;
 use App\Support\AdminNavigation;
 use App\Support\Breadcrumbs;
+use App\Support\LocaleChoice;
 use App\Support\PageTitle;
 use App\Support\ProjectNavigation;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -34,6 +36,12 @@ class AppServiceProvider extends ServiceProvider
         if (! $this->app->environment('local', 'testing')) {
             URL::forceScheme('https');
         }
+
+        // A composer, not a bare View::share value: auth isn't resolved yet when
+        // providers boot, only once the request reaches view rendering.
+        View::composer('*', function ($view) {
+            $view->with('locale', LocaleChoice::resolve(Auth::user()?->locale));
+        });
 
         // Route context sets the title and breadcrumbs. Stored context sets the main navigation.
         View::composer(['layouts.navigation', 'layouts.app'], function ($view) {

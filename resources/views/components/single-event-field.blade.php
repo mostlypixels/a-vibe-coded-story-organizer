@@ -22,7 +22,7 @@
     <x-select :id="$name" :name="$name" x-bind:disabled="newEvent" class="mt-1 block w-full disabled:bg-surface-sunken disabled:text-content-subtle">
         <option value="">{{ $emptyLabel }}</option>
         @foreach ($events as $event)
-            <option value="{{ $event->id }}" @selected(old($name, $selected) == $event->id)>{{ $event->title }} &mdash; {{ $event->event_datetime->format('M j, Y') }}</option>
+            <option value="{{ $event->id }}" @selected(old($name, $selected) == $event->id)>{{ $event->title }} &mdash; {{ \App\Support\DateFormat::date($event->event_datetime, $locale) }}</option>
         @endforeach
     </x-select>
     <x-input-error :messages="$errors->get($name)" class="mt-2" />
@@ -39,7 +39,7 @@
         </div>
         <div>
             <x-input-label :for="$newDatetimeName" :value="__('New event date & time')" />
-            <x-text-input :id="$newDatetimeName" :name="$newDatetimeName" type="datetime-local" class="mt-1 block w-full" :value="old($newDatetimeName)" min="{{ $windowMin }}" max="{{ $windowMax }}" />
+            <x-date-field :id="$newDatetimeName" :name="$newDatetimeName" :value="old($newDatetimeName)" :min="$windowMin" :max="$windowMax" />
             <x-input-error :messages="$errors->get($newDatetimeName)" class="mt-2" />
         </div>
 

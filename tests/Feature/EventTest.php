@@ -45,6 +45,20 @@ class EventTest extends TestCase
             ->assertSeeInOrder(['Apple Event', 'Zebra Event']);
     }
 
+    public function test_the_events_index_renders_the_event_date_in_the_users_locale(): void
+    {
+        $user = User::factory()->create(['locale' => 'fr']);
+        $project = Project::factory()->for($user)->create();
+        Event::factory()->for($project)->create([
+            'title' => 'The Battle',
+            'event_datetime' => '1247-03-15 14:30:00',
+        ]);
+
+        $this->actingAs($user)->get(route('projects.events.index', $project))
+            ->assertOk()
+            ->assertSee('15 mars 1247');
+    }
+
     public function test_the_events_index_can_be_filtered_by_title_and_plotline(): void
     {
         $user = User::factory()->create();
@@ -338,7 +352,7 @@ class EventTest extends TestCase
         $this->assertSame('3000', $end->fresh()->event_datetime->format('Y'));
     }
 
-    public function test_the_bookend_edit_page_renders_an_editable_datetime_input(): void
+    public function test_the_bookend_edit_page_renders_an_editable_date_field(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -347,7 +361,7 @@ class EventTest extends TestCase
         $this->actingAs($user)->get(route('events.edit', $start))
             ->assertOk()
             ->assertSee('name="event_datetime"', false)
-            ->assertSee('type="datetime-local"', false);
+            ->assertSee('data-date-field="event_datetime"', false);
     }
 
     public function test_a_fixed_event_title_can_be_edited_with_its_datetime_resubmitted(): void

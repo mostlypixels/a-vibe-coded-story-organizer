@@ -17,6 +17,25 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-05 — Date picker and date locale (#134)
+
+### Added
+
+- A date locale setting under Appearance. It sets the order of the day, month and year
+  boxes, the month names, the 12- or 24-hour clock, and the way every event date reads.
+  The 24 official languages of the European Union and American English are offered.
+- A new date picker with separate boxes for the year, the month and the day. The time is
+  hidden until you ask for it. It replaces the browser date field on the event forms, the
+  inline event field, and the new event on a scene.
+
+### Changed
+
+- A date outside your story window moves to the nearest end of it, and the picker now
+  tells you where it put the date. It stops one minute inside the window, so an event can
+  no longer share an instant with Start or End and sort on the wrong side of it.
+- A new project ends at 23:59, so the whole of the last day stays available.
+- The Melusine demo starts in 980 and ends in 1250, close to the story it holds.
+
 ## 2026-09-02 — JavaScript tests in the automated checks (#133)
 
 ### Added

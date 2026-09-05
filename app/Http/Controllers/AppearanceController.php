@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateAppearanceRequest;
 use App\Services\ThemeStyleBlock;
+use App\Support\DateFormat;
 use App\Support\FontChoice;
+use App\Support\LocaleChoice;
 use App\Support\ThemePreset;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 /**
@@ -47,6 +50,13 @@ class AppearanceController extends Controller
                 $user?->manuscript_scale,
                 $user?->manuscript_leading,
                 $user?->ui_leading,
+            ),
+            'locales' => LocaleChoice::all(),
+            'activeLocale' => LocaleChoice::resolve($user?->locale)->slug,
+            // Keyed by slug so the picker can show a live sample without a round trip.
+            'localeSamples' => array_map(
+                fn (LocaleChoice $locale): string => DateFormat::dateTime(Carbon::now(), $locale),
+                LocaleChoice::all(),
             ),
         ]);
     }

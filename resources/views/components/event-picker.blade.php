@@ -4,8 +4,8 @@
     $options = collect($events)->map(fn ($event) => [
         'value' => (int) $event->id,
         'label' => $event->title,
-        'sublabel' => $event->event_datetime->format('M j, Y'),
-        'search' => strtolower($event->title.' '.$event->event_datetime->format('M j, Y').' '.$event->event_datetime->format('Y-m-d')),
+        'sublabel' => \App\Support\DateFormat::date($event->event_datetime, $locale),
+        'search' => strtolower($event->title.' '.\App\Support\DateFormat::date($event->event_datetime, $locale).' '.$event->event_datetime->format('Y-m-d')),
     ])->values()->all();
 @endphp
 

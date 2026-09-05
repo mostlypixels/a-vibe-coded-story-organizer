@@ -47,7 +47,7 @@
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$event->description" /></div>
                             @endif
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $event->event_datetime->format('M j, Y g:i A') }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted"><x-date :value="$event->event_datetime" with-time /></td>
                         <td class="px-4 py-3 text-sm text-content-subtle">
                             <div class="flex items-center gap-3 flex-wrap">
                                 @foreach ($event->plotlines as $plotline)

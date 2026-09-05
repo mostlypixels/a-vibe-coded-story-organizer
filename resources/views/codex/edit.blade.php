@@ -41,7 +41,7 @@
                                 {{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }} &mdash; {{ $scene->name }}
                             </a>
                             @if ($scene->event)
-                                <span class="block text-xs text-content-subtle">{{ $scene->event->title }} &mdash; {{ $scene->event->event_datetime->format('M j, Y') }}</span>
+                                <span class="block text-xs text-content-subtle">{{ $scene->event->title }} &mdash; <x-date :value="$scene->event->event_datetime" /></span>
                             @else
                                 <span class="block text-xs text-content-subtle">{{ __('No event assigned') }}</span>
                             @endif

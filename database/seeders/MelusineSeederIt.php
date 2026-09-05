@@ -113,8 +113,8 @@ class MelusineSeederIt extends Seeder
         ]);
 
         foreach ([
-            ['title' => 'Inizio', 'event_datetime' => '0001-01-01 00:00:00'],
-            ['title' => 'Fine', 'event_datetime' => '3000-01-01 00:00:00'],
+            ['title' => 'Inizio', 'event_datetime' => '0980-01-01 00:00:00'],
+            ['title' => 'Fine', 'event_datetime' => '1250-12-31 23:59:00'],
         ] as $bookend) {
             $bookendEvent = $project->events()->firstOrCreate(
                 ['title' => $bookend['title']],

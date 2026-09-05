@@ -11,9 +11,12 @@ use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
+use App\Support\DateFormat;
+use App\Support\LocaleChoice;
 use App\Support\RecentItem;
 use App\Support\StoryNumbering;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -129,6 +132,8 @@ class RecentlyEdited
     /** @return Collection<int, RecentItem> */
     public function events(Project $project, int $limit = RecentItem::LIMIT): Collection
     {
+        $locale = LocaleChoice::resolve(Auth::user()?->locale);
+
         return $project->events()
             ->latest('updated_at')
             ->limit($limit)
@@ -137,7 +142,7 @@ class RecentlyEdited
                 label: $event->title,
                 url: route('events.edit', $event),
                 updatedAt: $event->updated_at,
-                context: $event->event_datetime->format('M j, Y'),
+                context: DateFormat::date($event->event_datetime, $locale),
             ));
     }
 

@@ -70,7 +70,7 @@
                             >
                                 <option value="">{{ __('Add period at…') }}</option>
                                 @foreach ($events as $event)
-                                    <option value="{{ $event->id }}" @selected(old('start_event_id') == $event->id)>{{ $event->title }} — {{ $event->event_datetime->format('M j, Y') }}</option>
+                                    <option value="{{ $event->id }}" @selected(old('start_event_id') == $event->id)>{{ $event->title }} — {{ \App\Support\DateFormat::date($event->event_datetime, $locale) }}</option>
                                 @endforeach
                             </x-select>
                             <label class="sr-only" for="add_value_{{ $attribute->id }}">{{ __('New value') }}</label>

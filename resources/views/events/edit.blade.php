@@ -21,7 +21,7 @@
 
                 <div>
                     <x-input-label for="event_datetime" :value="__('Date & Time')" />
-                    <x-text-input id="event_datetime" name="event_datetime" type="datetime-local" class="mt-1 block w-full" :value="old('event_datetime', $event->event_datetime->format('Y-m-d\TH:i'))" min="{{ $windowMin }}" max="{{ $windowMax }}" required />
+                    <x-date-field name="event_datetime" :value="old('event_datetime', $event->event_datetime->format('Y-m-d\TH:i'))" :min="$windowMin" :max="$windowMax" required />
                     @if ($event->is_fixed)
                         <p class="mt-1 text-xs text-content-muted">{{ __('This bookend anchors the timeline; every other event must stay between Start and End.') }}</p>
                     @endif
