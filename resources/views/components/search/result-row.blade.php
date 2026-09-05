@@ -6,21 +6,21 @@
 ])
 
 <x-table-row :striped="$striped">
-    <td class="px-4 py-3 align-top min-w-48">
+    <x-table-cell top class="min-w-48">
         <a href="{{ route($editRoute, $row->entity) }}" class="font-medium text-link hover:text-link-hover hover:underline">
             {{ $row->entity->{$nameField} }}
         </a>
         @if ($row->book)
             <div class="text-xs text-content-muted">{{ $row->book->displayName() }}</div>
         @endif
-    </td>
-    <td class="px-4 py-3 align-top text-sm text-content-muted whitespace-nowrap">
+    </x-table-cell>
+    <x-table-cell top muted nowrap>
         {{ $row->matchedFields() }}
-    </td>
-    <td class="px-4 py-3 align-top text-sm text-content-muted w-full">
+    </x-table-cell>
+    <x-table-cell top muted class="w-full">
         {!! $row->snippet !!}
-    </td>
-    <td class="px-4 py-3 align-top text-right text-sm whitespace-nowrap">
+    </x-table-cell>
+    <x-table-cell top align="right" nowrap sm>
         <x-icon-view-link :href="route($editRoute, $row->entity)" />
-    </td>
+    </x-table-cell>
 </x-table-row>

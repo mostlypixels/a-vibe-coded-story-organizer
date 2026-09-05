@@ -31,7 +31,7 @@
 
                 @forelse ($events as $event)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3">
+                        <x-table-cell>
                             <a href="{{ route('events.edit', $event) }}" class="flex items-center gap-2 font-semibold text-content hover:text-link">
                                 {{ $event->title }}
                                 @if ($event->is_fixed)
@@ -41,9 +41,9 @@
                             @if ($event->description)
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$event->description" /></div>
                             @endif
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted"><x-date :value="$event->event_datetime" with-time /></td>
-                        <td class="px-4 py-3 text-sm text-content-subtle">
+                        </x-table-cell>
+                        <x-table-cell muted nowrap><x-date :value="$event->event_datetime" with-time /></x-table-cell>
+                        <x-table-cell sm class="text-content-subtle">
                             <div class="flex items-center gap-3 flex-wrap">
                                 @foreach ($event->plotlines as $plotline)
                                     <span class="inline-flex items-center gap-1">
@@ -52,15 +52,15 @@
                                     </span>
                                 @endforeach
                             </div>
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 <x-icon-edit-link :href="route('events.edit', $event)" />
                                 @unless ($event->is_fixed)
                                     <x-icon-delete-button :action="route('events.destroy', $event)" :confirm="__('Are you sure you want to delete this event?')" />
                                 @endunless
                             </div>
-                        </td>
+                        </x-table-cell>
                     </x-table-row>
                 @empty
                     <x-table-empty

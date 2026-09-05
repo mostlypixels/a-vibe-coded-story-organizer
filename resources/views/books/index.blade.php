@@ -23,15 +23,15 @@
 
                 @foreach ($books as $book)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $loop->iteration }}</td>
-                        <td class="px-4 py-3">
+                        <x-table-cell muted nowrap>{{ $loop->iteration }}</x-table-cell>
+                        <x-table-cell>
                             <a href="{{ route('books.edit', $book) }}" class="font-semibold text-content hover:text-link">{{ $book->displayName() }}</a>
-                        </td>
-                        <td class="px-4 py-3 text-sm text-content-muted">{{ $book->acts_count }}</td>
-                        <td class="px-4 py-3 text-right text-sm text-content-muted whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell muted>{{ $book->acts_count }}</x-table-cell>
+                        <x-table-cell align="right" muted nowrap>
                             <x-word-count :count="$book->word_count" variant="inline" />
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 <x-icon-move-button direction="up" :action="route('books.move-up', $book)" :disabled="$loop->first" />
                                 <x-icon-move-button direction="down" :action="route('books.move-down', $book)" :disabled="$loop->last" />
@@ -44,7 +44,7 @@
                                     @endif
                                 @endunless
                             </div>
-                        </td>
+                        </x-table-cell>
                     </x-table-row>
                 @endforeach
             </x-table>

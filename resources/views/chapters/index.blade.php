@@ -33,19 +33,19 @@
 
                 @forelse ($chapters as $chapter)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $numbering->chapter($chapter) }}</td>
-                        <td class="px-4 py-3">
+                        <x-table-cell muted nowrap>{{ $numbering->chapter($chapter) }}</x-table-cell>
+                        <x-table-cell>
                             <a href="{{ route('chapters.edit', $chapter) }}" class="font-semibold text-content hover:text-link">{{ $chapter->name }}</a>
                             @if ($chapter->description)
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$chapter->description" /></div>
                             @endif
-                        </td>
-                        <td class="px-4 py-3 text-sm text-content-muted">{{ $chapter->act->name }}</td>
-                        <td class="px-4 py-3 text-sm text-content-muted">{{ $chapter->scenes_count }}</td>
-                        <td class="px-4 py-3 text-right text-sm text-content-muted whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell muted>{{ $chapter->act->name }}</x-table-cell>
+                        <x-table-cell muted>{{ $chapter->scenes_count }}</x-table-cell>
+                        <x-table-cell align="right" muted nowrap>
                             <x-word-count :count="$chapter->word_count" variant="inline" />
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 @if ($sort === 'position' && request()->filled('act'))
                                     <x-icon-move-button direction="up" :action="route('chapters.move-up', $chapter)" :disabled="$loop->first" />
@@ -58,7 +58,7 @@
                                     <x-icon-delete-button :action="route('chapters.destroy', $chapter)" :confirm="__('Are you sure you want to delete this chapter?')" />
                                 @endif
                             </div>
-                        </td>
+                        </x-table-cell>
                     </x-table-row>
                 @empty
                     <x-table-empty
@@ -72,12 +72,12 @@
 
                 @if ($chapters->isNotEmpty())
                     <x-slot:foot>
-                        <td colspan="3" class="px-4 py-3 text-sm font-semibold text-table-header-content">{{ __('Total') }}</td>
-                        <td class="px-4 py-3 text-sm font-semibold text-table-header-content">{{ $chapters->sum('scenes_count') }}</td>
-                        <td class="px-4 py-3 text-right text-sm font-semibold text-table-header-content whitespace-nowrap">
+                        <x-table-cell colspan="3" total>{{ __('Total') }}</x-table-cell>
+                        <x-table-cell total>{{ $chapters->sum('scenes_count') }}</x-table-cell>
+                        <x-table-cell align="right" total nowrap>
                             <x-word-count :count="$chapters->sum('word_count')" variant="inline" />
-                        </td>
-                        <td class="px-4 py-3"></td>
+                        </x-table-cell>
+                        <x-table-cell></x-table-cell>
                     </x-slot:foot>
                 @endif
             </x-table>
