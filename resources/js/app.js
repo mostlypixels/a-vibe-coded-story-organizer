@@ -10,6 +10,7 @@ import { registerWordCount } from './word-count';
 import { registerChallengeChart, registerWordCountChart } from './word-count-chart';
 import { registerFontPreview } from './font-preview';
 import { registerSettingTrack } from './setting-track';
+import { registerDateField } from './date-field';
 import { moveScene } from './scene-reorder';
 
 window.Alpine = Alpine;
@@ -24,6 +25,7 @@ registerWordCountChart(Alpine);
 registerChallengeChart(Alpine);
 registerFontPreview(Alpine);
 registerSettingTrack(Alpine);
+registerDateField(Alpine);
 
 Alpine.start();
 

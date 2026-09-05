@@ -228,9 +228,11 @@ class Project extends Model
                 'color' => PlotlineColors::PRESETS[0],
             ]);
 
+            // End sits on the last minute of its day, so the whole day stays
+            // inside the window a writer can put an event in.
             foreach ([
                 ['title' => 'Start', 'event_datetime' => '0001-01-01 00:00:00'],
-                ['title' => 'End', 'event_datetime' => '3000-01-01 00:00:00'],
+                ['title' => 'End', 'event_datetime' => '3000-01-01 23:59:00'],
             ] as $data) {
                 $event = $project->events()->create($data + ['is_fixed' => true]);
                 $event->plotlines()->attach($mainPlotline);

@@ -453,6 +453,24 @@ class CodexEntryTest extends TestCase
             ->assertSeeInOrder(['Scene at the betrothal', 'Scene at the coronation']);
     }
 
+    public function test_edit_page_renders_the_referencing_scenes_event_date_in_the_users_locale(): void
+    {
+        $user = User::factory()->create(['locale' => 'fr']);
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $event = Event::factory()->for($project)->create([
+            'title' => 'The Coronation',
+            'event_datetime' => '1247-03-15 00:00:00',
+        ]);
+        $scene = $this->sceneIn($project, 'Contents.', 'Scene at the coronation', $event);
+        $entry->referencingScenes()->attach($scene->id);
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('15 mars 1247');
+    }
+
     public function test_edit_page_lists_scenes_without_an_event_last_and_labelled(): void
     {
         $user = User::factory()->create();

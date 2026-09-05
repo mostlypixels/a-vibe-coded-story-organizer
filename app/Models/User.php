@@ -26,6 +26,7 @@ class User extends Authenticatable
         'password',
         'theme_slug',
         'timezone',
+        'locale',
         'ui_font',
         'manuscript_font',
         'ui_scale',

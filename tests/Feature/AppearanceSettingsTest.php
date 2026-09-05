@@ -401,6 +401,62 @@ class AppearanceSettingsTest extends TestCase
         );
     }
 
+    // ---------------------------------------------------------------------
+    // Locale
+    // ---------------------------------------------------------------------
+
+    public function test_patch_with_a_supported_locale_persists_it(): void
+    {
+        $user = User::factory()->create(['locale' => null]);
+
+        $response = $this->actingAs($user)->patch(route('admin.appearance.update'), [
+            'theme_slug' => null,
+            'locale' => 'fr',
+        ]);
+
+        $response->assertRedirect(route('admin.appearance.edit'));
+        $this->assertSame('fr', $user->fresh()->locale);
+    }
+
+    public function test_patch_with_an_unsupported_locale_fails_validation(): void
+    {
+        $user = User::factory()->create(['locale' => 'fr']);
+
+        $response = $this->actingAs($user)->patch(route('admin.appearance.update'), [
+            'theme_slug' => null,
+            'locale' => 'not-a-real-locale',
+        ]);
+
+        $response->assertSessionHasErrors('locale');
+        $this->assertSame('fr', $user->fresh()->locale);
+    }
+
+    public function test_patch_with_a_null_locale_clears_the_preference_back_to_the_default(): void
+    {
+        $user = User::factory()->create(['locale' => 'fr']);
+
+        $response = $this->actingAs($user)->patch(route('admin.appearance.update'), [
+            'theme_slug' => null,
+            'locale' => null,
+        ]);
+
+        $response->assertRedirect(route('admin.appearance.edit'));
+        $this->assertNull($user->fresh()->locale);
+    }
+
+    public function test_the_picker_lists_every_configured_locale_with_the_active_one_selected(): void
+    {
+        $user = User::factory()->create(['locale' => 'fr']);
+
+        $html = $this->actingAs($user)->get(route('admin.appearance.edit'))->getContent();
+
+        foreach (array_keys(config('locales.supported')) as $slug) {
+            $this->assertStringContainsString('value="'.$slug.'"', $html);
+        }
+
+        $this->assertMatchesRegularExpression('/<option value="fr" selected/', $html);
+    }
+
     public function test_one_users_patch_leaves_another_users_font_columns_untouched(): void
     {
         $userA = User::factory()->create(['ui_font' => 'inter']);

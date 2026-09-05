@@ -13,6 +13,7 @@
         $selectedManuscriptScale = old('manuscript_scale', $fonts->manuscriptScaleSlug);
         $selectedLeading = old('manuscript_leading', $fonts->leadingSlug);
         $selectedUiLeading = old('ui_leading', $fonts->uiLeadingSlug);
+        $selectedLocale = old('locale', $activeLocale);
 
         $stacks = array_map(fn (array $family) => $family['stack'], $families);
 
@@ -166,6 +167,38 @@
                 >
                     {{ __('Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.') }}
                 </div>
+            </div>
+        </x-card>
+
+        <x-card class="max-w-5xl mt-6">
+            <x-slot name="header">
+                <x-heading level="3">{{ __('Date & time locale') }}</x-heading>
+                <p class="mt-1 text-sm text-content-muted">
+                    {{ __('Choose how event dates and times are written across the app.') }}
+                </p>
+            </x-slot>
+
+            <div
+                class="max-w-sm"
+                x-data="{ locale: {{ Js::from($selectedLocale) }}, samples: {{ Js::from($localeSamples) }} }"
+            >
+                <label for="locale" class="sr-only">{{ __('Locale') }}</label>
+                <select
+                    id="locale"
+                    name="locale"
+                    x-model="locale"
+                    class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-content"
+                >
+                    @foreach ($locales as $slug => $locale)
+                        <option value="{{ $slug }}" @selected($selectedLocale === $slug)>
+                            {{ $locale->name }}
+                        </option>
+                    @endforeach
+                </select>
+
+                <x-input-error class="mt-2" :messages="$errors->get('locale')" />
+
+                <p class="mt-2 text-sm text-content-muted" x-text="samples[locale]"></p>
             </div>
         </x-card>
 
