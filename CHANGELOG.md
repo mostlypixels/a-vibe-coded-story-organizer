@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-05 — Date picker and date locale
+## 2026-09-05 — Date picker and date locale (#134)
 
 ### Added
 
