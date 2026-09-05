@@ -373,43 +373,70 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
-    public function test_typography_is_smart_in_the_epub_but_scene_rendered_contents_is_unaffected(): void
+    public function test_canonical_punctuation_in_scene_contents_carries_through_the_epub_unchanged(): void
     {
         [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create([
-            'contents' => 'A dash -- and a range --- and an ellipsis... and "quotes".',
+            'contents' => "A dash \u{2013} and a range \u{2014} and an ellipsis\u{2026} and \u{201C}quotes\u{201D}.",
         ]);
 
         $tree = $this->exporter()->actTree($book);
         $html = $this->exporter()->renderChapter($tree->first()->chapters->first(), $book);
 
-        // Epub output: SmartPunct converts dashes, ellipsis, and straight quotes.
-        $this->assertStringContainsString("\u{2013}", $html, 'en-dash expected for --');
-        $this->assertStringContainsString("\u{2014}", $html, 'em-dash expected for ---');
-        $this->assertStringContainsString("\u{2026}", $html, 'ellipsis expected for ...');
-        $this->assertStringContainsString("\u{201C}", $html, 'opening curly quote expected');
-        $this->assertStringContainsString("\u{201D}", $html, 'closing curly quote expected');
+        // Import normalizes punctuation before it ever reaches Scene.contents,
+        // so the exporter carries it through instead of converting it itself.
+        $this->assertStringContainsString("\u{2013}", $html, 'en-dash must survive export');
+        $this->assertStringContainsString("\u{2014}", $html, 'em-dash must survive export');
+        $this->assertStringContainsString("\u{2026}", $html, 'ellipsis must survive export');
+        $this->assertStringContainsString("\u{201C}", $html, 'opening curly quote must survive export');
+        $this->assertStringContainsString("\u{201D}", $html, 'closing curly quote must survive export');
 
-        // Isolation: the shared accessor must remain the raw, straight-punctuation render.
+        // The shared accessor renders the same stored punctuation.
         $shared = $scene->fresh()->renderedContents;
-        $this->assertStringContainsString('--', $shared);
-        $this->assertStringContainsString('...', $shared);
-        // Straight quotes stay straight, never curled. The sanitizer that
-        // AuthorMarkdown::render() applies emits the bare `"` character rather
-        // than the `&quot;` entity CommonMark produces; both are a straight quote.
-        $this->assertStringContainsString('"quotes"', $shared);
-        $this->assertStringNotContainsString("\u{2014}", $shared, 'shared render must not get em-dashes');
-        $this->assertStringNotContainsString("\u{201C}", $shared, 'shared render must not get curly quotes');
+        $this->assertStringContainsString("\u{2013}", $shared);
+        $this->assertStringContainsString("\u{2026}", $shared);
+        $this->assertStringContainsString("\u{201C}quotes\u{201D}", $shared);
+    }
+
+    public function test_a_scene_with_canonical_characters_exports_intact_and_well_formed(): void
+    {
+        [, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        Scene::factory()->for($chapter)->create([
+            'contents' => "\u{201C}Wait\u{2014}\u{201D}she said\u{2026} \u{2018}n\u{2019} then stopped.",
+        ]);
+
+        $path = $this->exporter()->export($book);
+
+        $chapterEntry = null;
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($path) === true);
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = (string) $zip->getNameIndex($i);
+            if (str_contains($name, 'chapter-') && str_ends_with($name, '.xhtml')) {
+                $chapterEntry = (string) $zip->getFromName($name);
+                break;
+            }
+        }
+        $zip->close();
+
+        $this->assertNotNull($chapterEntry, 'the chapter page must be packaged');
+        $this->assertStringContainsString("\u{201C}Wait\u{2014}\u{201D}she said\u{2026}", $chapterEntry);
+        $dom = new DOMDocument;
+        $this->assertTrue($dom->loadXML($chapterEntry), 'canonical punctuation must not break well-formedness');
+
+        @unlink($path);
     }
 
     public function test_strikethrough_and_task_list_render_as_real_markup_in_the_epub(): void
     {
         // The isolated EPUB converter carries the Strikethrough and TaskList
-        // extensions alongside SmartPunct, so this markup renders as
-        // real HTML instead of literal tildes/brackets — matching what the editor and
-        // Scene::renderedContents() already produce via GFM.
+        // extensions, so this markup renders as real HTML instead of literal
+        // tildes/brackets — matching what the editor and Scene::renderedContents()
+        // already produce via GFM.
         [, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
@@ -1485,11 +1512,11 @@ class EpubExporterTest extends TestCase
         @unlink($path);
     }
 
-    public function test_matter_page_applies_smart_typography(): void
+    public function test_matter_page_carries_through_stored_canonical_punctuation(): void
     {
         $project = Project::factory()->create();
         $book = $project->books()->first();
-        $book->update(['dedication' => 'To "her" -- always.']);
+        $book->update(['dedication' => "To \u{201C}her\u{201D} \u{2013} always."]);
         $act = Act::factory()->for($book)->create();
         $chapter = Chapter::factory()->for($act)->create();
         Scene::factory()->for($chapter)->create(['contents' => 'Prose.']);
@@ -1498,11 +1525,11 @@ class EpubExporterTest extends TestCase
 
         $path = $this->exporter()->export($book);
 
+        // Front matter is imported through the same normalizer as scenes, so
+        // it already holds canonical punctuation; the exporter must not alter it.
         $dedication = (string) $this->entryOf($path, 'OEBPS/dedication.xhtml');
-        $this->assertStringNotContainsString('"her"', $dedication, 'straight quotes must be converted');
-        $this->assertStringNotContainsString('--', $dedication, 'the double hyphen must become a smart dash');
         $this->assertMatchesRegularExpression('/[\x{201C}\x{201D}]her[\x{201C}\x{201D}]/u', $dedication);
-        $this->assertStringContainsString("\u{2013}", $dedication, 'expected a smart en-dash for --');
+        $this->assertStringContainsString("\u{2013}", $dedication);
 
         @unlink($path);
     }

@@ -87,8 +87,8 @@ back to drive behaviour.
 - Render it through `Scene::renderedContents` for normal application consumers.
 - `App\Support\AuthorMarkdown` holds the renderer choice and the sanitizing step. Use it
   for any author-written Markdown, never `Str::markdown()` directly.
-- EPUB uses its own SmartPunct path and must not change the shared accessor. It registers
-  the same strikethrough extension so both paths emit the same tag.
+- EPUB uses its own CommonMark converter and must not change the shared accessor. It
+  registers the same strikethrough extension so both paths emit the same tag.
 
 ### Strikethrough renders as `<s>`
 
@@ -124,18 +124,36 @@ longer tell an author's strike from a deleted word.
 It follows **CommonMark's** dash convention, not Typography's own — Typography's `emDash`
 rule fires on two hyphens. It is overridden to write an en dash, and the local
 `EmDashFromThreeHyphens` rule upgrades it when a third arrives. The convention has to match
-`EpubExporter`'s SmartPunct pass, or a hyphen pair typed today and one imported yesterday
-end up as different characters in the same book.
+`CanonicalPunctuation`'s rules, or a hyphen pair typed today and one imported yesterday end
+up as different characters in the same book.
 
 The other 16 Typography rules are disabled by name — arrows, fractions, `(c)`, guillemets
 and the rest are wrong in a novel. Naming them individually means a Tiptap upgrade that
 adds a rule cannot switch it on for us.
 
 > [!NOTE]
-> Input rules fire on keystrokes only. Imported and previously stored text is never
-> rewritten, which is why `EpubExporter` keeps its own SmartPunct pass for scene Markdown.
-> Rich HTML fields have no such pass, so an imported `--` in a codex description stays a
-> hyphen pair in the appendix.
+> Input rules fire on keystrokes only. A paste runs the separate
+> `NormalizePastedPunctuation` plugin instead. Imported text is normalized on the way in by
+> `App\Services\Import\ContentSanitizer`, so it reaches the editor already canonical. See
+> *Canonical punctuation* below for how the three paths stay in agreement.
+
+### Canonical punctuation
+
+`tests/Fixtures/punctuation.json` is the single definition of the app's punctuation
+convention: which typewriter input becomes which typographic character. Three
+implementations assert against it and must agree:
+
+- `App\Support\CanonicalPunctuation` — import, one text run at a time.
+- The editor's Typography input rules (above) — as the writer types.
+- `NormalizePastedPunctuation` in `resources/js/wysiwyg.js` — on paste.
+
+Import reaches the convention through `App\Services\Import\ContentSanitizer`, which
+normalizes a fragment's punctuation only after the allow-list check passes.
+`ManuskriptImporter` gets this for free by calling the sanitizer; it holds no
+punctuation code of its own.
+
+A case may not live in only one of the three implementations' tests — add it to the
+fixture first.
 
 > [!CAUTION]
 > Keep the Tiptap `Editor` in a closure. Alpine proxies reactive values, and a proxied ProseMirror editor does not work reliably.

@@ -392,6 +392,94 @@ class ProjectGraphImporterTest extends TestCase
         $this->importer()->importProject($this->fixtureRoot, User::factory()->create());
     }
 
+    public function test_a_rejected_import_stores_nothing_because_validation_runs_before_normalization(): void
+    {
+        file_put_contents(
+            $this->fixtureRoot.'/data/project/description.html',
+            '<p onclick="alert(1)">He said -- "no".</p>',
+        );
+
+        try {
+            $this->importer()->importProject($this->fixtureRoot, User::factory()->create());
+            $this->fail('the disallowed fragment should have thrown');
+        } catch (ImportValidationException) {
+            $this->assertSame(0, Project::count());
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Canonical punctuation — normalized on the way in, code untouched
+    // ------------------------------------------------------------------
+
+    public function test_imported_markdown_and_html_prose_is_stored_with_canonical_punctuation(): void
+    {
+        $sceneDir = self::ACT_DIR.'/chapters/200-chapter-one/scenes/300-scene-b';
+        $this->writeFixtureFile("{$sceneDir}/contents.md", 'She waited -- "for how long?" -- and then...');
+        $this->writeFixtureFile(
+            'data/codex/character/400-alice-harker/description.html',
+            '<p>A <strong>"quoted"</strong> name -- and more...</p><ul><li>Wait---then go</li></ul>',
+        );
+
+        [$project] = $this->runFullImport(User::factory()->create());
+
+        $scene = Scene::query()->where('name', 'Scene B')->firstOrFail();
+        $this->assertSame('She waited – “for how long?” – and then…', $scene->contents);
+
+        $description = (string) $project->codexEntries()->firstOrFail()->description;
+        $this->assertStringContainsString('<strong>“quoted”</strong> name – and more…', $description);
+        $this->assertStringContainsString('<li>Wait—then go</li>', $description);
+    }
+
+    public function test_imported_code_constructs_survive_the_import_byte_identical(): void
+    {
+        $markdown = "Prose -- here.\n\nA `--` span.\n\n```\nlet a = \"x\" -- y...\n```\n";
+        $sceneDir = self::ACT_DIR.'/chapters/200-chapter-one/scenes/300-scene-b';
+        $this->writeFixtureFile("{$sceneDir}/contents.md", $markdown);
+        $this->writeFixtureFile(
+            'data/codex/character/400-alice-harker/description.html',
+            '<p>Note -- this.</p><pre><code>a -- b ... "c"</code></pre>',
+        );
+
+        [$project] = $this->runFullImport(User::factory()->create());
+
+        $contents = (string) Scene::query()->where('name', 'Scene B')->firstOrFail()->contents;
+        $this->assertStringContainsString('A `--` span.', $contents);
+        $this->assertStringContainsString('let a = "x" -- y...', $contents);
+        $this->assertStringContainsString('Prose – here.', $contents);
+
+        $description = (string) $project->codexEntries()->firstOrFail()->description;
+        $this->assertStringContainsString('<code>a -- b ... "c"</code>', $description);
+        $this->assertStringContainsString('Note – this.', $description);
+    }
+
+    public function test_titles_and_names_are_never_normalized(): void
+    {
+        $this->mutateFixtureJson('data/project/project.json', function (array $data): array {
+            $data['name'] = 'Fixture -- project...';
+
+            return $data;
+        });
+        $this->mutateFixtureJson(self::ACT_DIR.'/act.json', function (array $data): array {
+            $data['name'] = 'Act -- One';
+
+            return $data;
+        });
+        $this->mutateFixtureJson(
+            self::ACT_DIR.'/chapters/200-chapter-one/scenes/300-scene-b/scene.json',
+            function (array $data): array {
+                $data['name'] = 'Scene -- B';
+
+                return $data;
+            },
+        );
+
+        [$project] = $this->runFullImport(User::factory()->create());
+
+        $this->assertSame('Fixture -- project...', $project->name);
+        $this->assertSame('Act -- One', $project->acts()->firstOrFail()->name);
+        $this->assertSame(1, Scene::query()->where('name', 'Scene -- B')->count());
+    }
+
     // ------------------------------------------------------------------
     // Import never replays revision history
     // ------------------------------------------------------------------

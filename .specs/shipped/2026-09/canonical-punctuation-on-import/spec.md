@@ -1,5 +1,8 @@
 ---
-status: draft
+status: shipped
+shipped: 2026-09-05
+planned: 2026-09-05
+expanded: 2026-09-05
 ---
 
 # Canonical Punctuation On Import

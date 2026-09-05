@@ -705,28 +705,28 @@ class ProjectGraphImporter
         return $items;
     }
 
-    /** Sanitizes linked rich HTML. A missing key is empty; a missing file is invalid. */
+    /** Sanitizes linked rich HTML and returns it with canonical punctuation. A missing key is empty; a missing file is invalid. */
     private function readHtmlField(string $dataPath, string $directory, array $descriptor, string $key = 'description_file'): ?string
     {
         $html = $this->readFieldFile($dataPath, $directory, $descriptor, $key);
 
         if ($html !== null) {
-            $this->contentSanitizer->assertHtmlAllowed($html);
+            return $this->contentSanitizer->assertHtmlAllowed($html);
         }
 
-        return $html;
+        return null;
     }
 
-    /** Validates linked Markdown and its rendered HTML. */
+    /** Validates linked Markdown and its rendered HTML, and returns it with canonical punctuation. */
     private function readMarkdownField(string $dataPath, string $directory, array $descriptor, string $key = 'contents_file'): ?string
     {
         $markdown = $this->readFieldFile($dataPath, $directory, $descriptor, $key);
 
         if ($markdown !== null) {
-            $this->contentSanitizer->assertMarkdownAllowed($markdown);
+            return $this->contentSanitizer->assertMarkdownAllowed($markdown);
         }
 
-        return $markdown;
+        return null;
     }
 
     /** Returns linked raw content, or null when the descriptor omits the key. */
