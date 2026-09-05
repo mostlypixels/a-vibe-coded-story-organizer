@@ -4,19 +4,14 @@
     </x-page-heading>
 
     <div class="space-y-6">
-            <div class="flex items-center justify-between gap-4">
-                <form method="GET" class="flex items-center gap-2">
-                    <input type="hidden" name="sort" value="{{ $sort }}">
-                    <input type="hidden" name="direction" value="{{ $direction }}">
-                    <x-text-input type="text" name="search" placeholder="{{ __('Search by name...') }}" class="text-sm" :value="request('search')" />
-                    <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
-                    @if (request()->filled('search'))
-                        <a href="{{ route('projects.plotlines.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
-                    @endif
-                </form>
-
-                <x-button variant="primary" :href="route('projects.plotlines.create', $project)">{{ __('New Plotline') }}</x-button>
-            </div>
+            <x-index-toolbar
+                :sort="$sort"
+                :direction="$direction"
+                :search-placeholder="__('Search by name...')"
+                :clear-url="route('projects.plotlines.index', $project)"
+                :create-url="route('projects.plotlines.create', $project)"
+                :create-label="__('New Plotline')"
+            />
 
             <x-table>
                 <x-slot:head>
