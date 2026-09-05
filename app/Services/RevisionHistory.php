@@ -167,7 +167,7 @@ class RevisionHistory
      */
     private function entriesFor(Model $entity, Collection $rows): Collection
     {
-        $kinds = AutosavableFields::REGISTRY[AutosavableFields::slugFor($entity::class)][1];
+        $kinds = AutosavableFields::fieldsForModel($entity::class);
         $byField = $rows->keyBy('field');
 
         return collect($kinds)

@@ -29,18 +29,6 @@ use Illuminate\View\View;
  */
 class RevisionController extends Controller
 {
-    /** @var array<string, string> Explicit edit routes for registry slugs. */
-    private const EDIT_ROUTES = [
-        'project' => 'projects.edit',
-        'book' => 'books.edit',
-        'act' => 'acts.edit',
-        'chapter' => 'chapters.edit',
-        'plotline' => 'plotlines.edit',
-        'event' => 'events.edit',
-        'scene' => 'scenes.edit',
-        'codex' => 'codex.edit',
-    ];
-
     /** Shows one entity's filtered, bookmarkable save-point history. */
     public function index(Request $request, string $entity, int $id, RevisionHistory $history): View
     {
@@ -71,7 +59,7 @@ class RevisionController extends Controller
             // A filtered page still needs hashes for every field in the save.
             'baseHashes' => $this->baseHashes($entity, $model),
             'fieldOptions' => $this->fieldOptions($entity, $model),
-            'editUrl' => route(self::EDIT_ROUTES[$entity], $model),
+            'editUrl' => route(AutosavableFields::editRouteFor($entity), $model),
             'heading' => $heading,
             'breadcrumbTrail' => $this->revisionsTrail($project, $heading),
         ]);
@@ -98,7 +86,7 @@ class RevisionController extends Controller
      */
     private function fieldOptions(string $entity, Model $model): array
     {
-        [, $fields] = AutosavableFields::REGISTRY[$entity];
+        $fields = AutosavableFields::fieldsFor($entity);
 
         $withHistory = $model->revisions()->getQuery()->reorder()->distinct()->pluck('field')->all();
 
@@ -152,7 +140,7 @@ class RevisionController extends Controller
             // Restore buttons use current hashes for conflict detection.
             'baseHashes' => $this->baseHashes($entity, $model),
             'savesApart' => $this->savesApart($points, $from, $to),
-            'editUrl' => route(self::EDIT_ROUTES[$entity], $model),
+            'editUrl' => route(AutosavableFields::editRouteFor($entity), $model),
             'heading' => $heading,
             'breadcrumbTrail' => $this->revisionsTrail($project, $heading),
         ]);
@@ -234,7 +222,7 @@ class RevisionController extends Controller
         }
 
         $changed = $comparisons->pluck('field')->all();
-        [, $fields] = AutosavableFields::REGISTRY[$entity];
+        $fields = AutosavableFields::fieldsFor($entity);
 
         return array_values(array_map(
             fn (string $field): string => Str::headline($field),
@@ -245,7 +233,7 @@ class RevisionController extends Controller
     /** @return array<string, string> Current hashes by registered field. */
     private function baseHashes(string $entity, Model $model): array
     {
-        [, $fields] = AutosavableFields::REGISTRY[$entity];
+        $fields = AutosavableFields::fieldsFor($entity);
         $hashes = [];
 
         foreach (array_keys($fields) as $field) {
@@ -322,7 +310,7 @@ class RevisionController extends Controller
         }
 
         return redirect()
-            ->route(self::EDIT_ROUTES[AutosavableFields::slugFor($entity::class)], $entity)
+            ->route(AutosavableFields::editRouteFor(AutosavableFields::slugFor($entity::class)), $entity)
             ->with('status', 'reverted-save')
             ->with('restored_fields', array_map(Str::headline(...), $restored));
     }

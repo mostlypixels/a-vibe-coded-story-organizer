@@ -117,6 +117,6 @@ class RevisionSnapshot
      */
     private function registeredFields(Model $entity): array
     {
-        return AutosavableFields::REGISTRY[AutosavableFields::slugFor($entity::class)][1];
+        return AutosavableFields::fieldsForModel($entity::class);
     }
 }
