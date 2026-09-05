@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-05 — Codex saving moved out of the controller
+## 2026-09-05 — Codex saving moved out of the controller (#136)
 
 ### Changed
 
