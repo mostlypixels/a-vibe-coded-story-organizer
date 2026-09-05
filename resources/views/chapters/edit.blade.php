@@ -17,18 +17,15 @@
                 @csrf
                 @method('PUT')
 
-                <div>
-                    <x-input-label for="act_id" :value="__('Act')" />
+                <x-field name="act_id" :label="__('Act')">
                     <x-select id="act_id" name="act_id" class="mt-1 block w-full" required>
                         @foreach ($acts as $act)
                             <option value="{{ $act->id }}" @selected(old('act_id', $chapter->act_id) == $act->id)>{{ $act->name }}</option>
                         @endforeach
                     </x-select>
-                    <x-input-error :messages="$errors->get('act_id')" class="mt-2" />
-                </div>
+                </x-field>
 
-                <div>
-                    <x-input-label for="name" :value="__('Title')" />
+                <x-field name="name" :label="__('Title')">
                     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $chapter->name)" placeholder="{{ __('e.g. The Oath at the Fountain') }}" required autofocus />
                     <p class="mt-1 text-sm text-content-muted">{{ __('Chapter :number — :position of :total in :act. Use the move up/down buttons on the list to reorder.', [
                         'number' => $numbering->chapter($chapter),
@@ -36,8 +33,7 @@
                         'total' => $totalInAct,
                         'act' => __('Act :number', ['number' => $numbering->act($chapter->act)]),
                     ]) }}</p>
-                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <x-autosave-field entity="chapter" :model="$chapter" field="description" :label="__('Description')" />

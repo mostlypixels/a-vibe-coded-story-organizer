@@ -28,14 +28,11 @@
     }"
     class="space-y-6"
 >
-    <div>
-        <x-input-label for="name" :value="__('Name')" />
+    <x-field name="name" :label="__('Name')">
         <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $challenge?->name)" required autofocus />
-        <x-input-error :messages="$errors->get('name')" class="mt-2" />
-    </div>
+    </x-field>
 
-    <div>
-        <x-input-label for="recurrence" :value="__('Recurrence')" />
+    <x-field name="recurrence" :label="__('Recurrence')">
         <x-select id="recurrence" name="recurrence" x-model="recurrence" class="mt-1 block w-full" required>
             @foreach (\App\Enums\ChallengeRecurrence::cases() as $recurrence)
                 <option value="{{ $recurrence->value }}" @selected(old('recurrence', $challenge?->recurrence?->value ?? 'none') === $recurrence->value)>
@@ -43,14 +40,11 @@
                 </option>
             @endforeach
         </x-select>
-        <x-input-error :messages="$errors->get('recurrence')" class="mt-2" />
-    </div>
+    </x-field>
 
-    <div>
-        <x-input-label for="starts_on" :value="__('Starts on')" />
+    <x-field name="starts_on" :label="__('Starts on')">
         <x-text-input id="starts_on" name="starts_on" type="date" x-model="startsOn" class="mt-1 block w-full" required />
-        <x-input-error :messages="$errors->get('starts_on')" class="mt-2" />
-    </div>
+    </x-field>
 
     <div>
         <x-input-label for="ends_on" :value="__('Ends on')" />
@@ -63,10 +57,8 @@
         <x-input-error :messages="$errors->get('ends_on')" class="mt-2" />
     </div>
 
-    <div>
-        <x-input-label for="target_words" :value="__('Target words')" />
+    <x-field name="target_words" :label="__('Target words')">
         <x-text-input id="target_words" name="target_words" type="number" min="1" x-model="targetWords" class="mt-1 block w-full" required />
         <p class="mt-1 text-sm text-content-muted" x-show="parHint" x-text="parHint ? 'about ' + parHint + ' words a day' : ''"></p>
-        <x-input-error :messages="$errors->get('target_words')" class="mt-2" />
-    </div>
+    </x-field>
 </div>

@@ -15,15 +15,13 @@
                     @csrf
                     @method('PUT')
 
-                    <div>
-                        <x-input-label for="chapter_id" :value="__('Chapter')" />
+                    <x-field name="chapter_id" :label="__('Chapter')">
                         <x-select id="chapter_id" name="chapter_id" class="mt-1 block w-full" required>
                             @foreach ($chapters as $chapter)
                                 <option value="{{ $chapter->id }}" @selected(old('chapter_id', $scene->chapter_id) == $chapter->id)>{{ $chapter->act->name }} &mdash; {{ $chapter->name }}</option>
                             @endforeach
                         </x-select>
-                        <x-input-error :messages="$errors->get('chapter_id')" class="mt-2" />
-                    </div>
+                    </x-field>
 
                     <x-single-event-field
                         name="event_id"
@@ -35,8 +33,7 @@
                         :window-max="$windowMax"
                     />
 
-                    <div>
-                        <x-input-label for="name" :value="__('Title')" />
+                    <x-field name="name" :label="__('Title')">
                         <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $scene->name)" placeholder="{{ __('e.g. A Lady at the Fountain') }}" required autofocus />
                         <p class="mt-1 text-sm text-content-muted">{{ __('Scene :number — :position of :total in :chapter. Use the move up/down buttons on the list to reorder.', [
                             'number' => $numbering->scene($scene),
@@ -44,18 +41,15 @@
                             'total' => $totalInChapter,
                             'chapter' => __('Chapter :number', ['number' => $numbering->chapter($scene->chapter)]),
                         ]) }}</p>
-                        <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                    </div>
+                    </x-field>
 
-                    <div>
-                        <x-input-label for="status" :value="__('Status')" />
+                    <x-field name="status" :label="__('Status')">
                         <x-select id="status" name="status" class="mt-1 block w-full" required>
                             @foreach (\App\Enums\SceneStatus::cases() as $status)
                                 <option value="{{ $status->value }}" @selected(old('status', $scene->status->value) === $status->value)>{{ $status->label() }}</option>
                             @endforeach
                         </x-select>
-                        <x-input-error :messages="$errors->get('status')" class="mt-2" />
-                    </div>
+                    </x-field>
 
                     <div>
                         <x-autosave-field entity="scene" :model="$scene" field="description" :label="__('Description')" />
@@ -102,8 +96,7 @@
                     <form method="POST" action="{{ route('scenes.share.store', $scene) }}" class="space-y-4">
                         @csrf
 
-                        <div>
-                            <x-input-label for="duration" :value="__('Link duration')" />
+                        <x-field name="duration" :label="__('Link duration')">
                             <x-select id="duration" name="duration" class="mt-1 block w-full">
                                 @foreach ($shareDurations as $label => $value)
                                     <option value="{{ $value }}" @selected(old('duration', $shareDefaultDuration) === $value)>{{ $label }}</option>
@@ -112,8 +105,7 @@
                             <p class="mt-1 text-sm text-content-muted">
                                 {{ __('Creates a public, read-only link. Choose how long it stays valid: :choices.', ['choices' => implode(', ', array_keys($shareDurations))]) }}
                             </p>
-                            <x-input-error :messages="$errors->get('duration')" class="mt-2" />
-                        </div>
+                        </x-field>
 
                         <x-button variant="primary">{{ __('Generate share link') }}</x-button>
                     </form>

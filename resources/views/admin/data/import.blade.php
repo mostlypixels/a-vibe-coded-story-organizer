@@ -29,8 +29,7 @@
             @csrf
             @method('patch')
 
-            <div>
-                <x-input-label for="max_archive_megabytes" :value="__('Maximum archive size (MB)')" />
+            <x-field name="max_archive_megabytes" :label="__('Maximum archive size (MB)')">
                 <x-text-input
                     id="max_archive_megabytes"
                     type="number"
@@ -39,8 +38,7 @@
                     :value="old('max_archive_megabytes', intdiv($importSetting->max_archive_kilobytes, 1024))"
                     class="mt-1 block w-32"
                 />
-                <x-input-error :messages="$errors->get('max_archive_megabytes')" class="mt-2" />
-            </div>
+            </x-field>
 
             <div class="flex items-start gap-3">
                 <input
@@ -75,8 +73,7 @@
         <form method="POST" action="{{ route('admin.data.import') }}" enctype="multipart/form-data" class="mt-6 space-y-6 max-w-lg">
             @csrf
 
-            <div>
-                <x-input-label for="archive" :value="__('Archive (.zip)')" />
+            <x-field name="archive" :label="__('Archive (.zip)')">
                 <input
                     id="archive"
                     type="file"
@@ -85,8 +82,7 @@
                     class="mt-1 block w-full text-sm text-content-muted file:mr-4 file:rounded-md file:border-0 file:bg-info-surface file:px-4 file:py-2 file:text-sm file:font-medium file:text-info-surface-content hover:file:bg-info-surface/80"
                 >
                 <p class="mt-1 text-xs text-content-muted">{{ __('Up to :size MB', ['size' => intdiv($importSetting->max_archive_kilobytes, 1024)]) }}</p>
-                <x-input-error :messages="$errors->get('archive')" class="mt-2" />
-            </div>
+            </x-field>
 
             <x-button variant="primary">{{ __('Import') }}</x-button>
         </form>

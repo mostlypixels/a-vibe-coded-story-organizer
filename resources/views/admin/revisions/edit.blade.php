@@ -42,8 +42,7 @@
             @csrf
             @method('patch')
 
-            <div>
-                <x-input-label for="retention_days" :value="__('Retention window (days)')" />
+            <x-field name="retention_days" :label="__('Retention window (days)')">
                 <x-text-input
                     id="retention_days"
                     type="number"
@@ -53,8 +52,7 @@
                     :value="old('retention_days', $retentionDays)"
                     class="mt-1 block w-32"
                 />
-                <x-input-error :messages="$errors->get('retention_days')" class="mt-2" />
-            </div>
+            </x-field>
 
             <x-button variant="primary">{{ __('Save') }}</x-button>
         </form>

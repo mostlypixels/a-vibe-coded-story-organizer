@@ -8,17 +8,13 @@
             <form id="plotline-create-form" method="POST" action="{{ route('projects.plotlines.store', $project) }}" class="space-y-6">
                 @csrf
 
-                <div>
-                    <x-input-label for="name" :value="__('Name')" />
+                <x-field name="name" :label="__('Name')">
                     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name')" required autofocus />
-                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                </div>
+                </x-field>
 
-                <div>
-                    <x-input-label for="description" :value="__('Description')" />
+                <x-field name="description" :label="__('Description')">
                     <x-wysiwyg id="description" name="description" :value="old('description')" :rows="4" />
-                    <x-input-error :messages="$errors->get('description')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <x-input-label :value="__('Color')" />

@@ -25,11 +25,9 @@
                 @csrf
                 @method('PUT')
 
-                <div>
-                    <x-input-label for="name" :value="__('Name')" />
+                <x-field name="name" :label="__('Name')">
                     <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $project->name)" required autofocus />
-                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                </div>
+                </x-field>
 
                 <div>
                     <x-autosave-field entity="project" :model="$project" field="description" :label="__('Description')" />
@@ -67,17 +65,13 @@
                 <p class="text-sm text-content-muted">{{ __('Shown on the Progress page and the project dashboard. Leave a field empty for no goal.') }}</p>
 
                 <div class="mt-4 space-y-6">
-                    <div>
-                        <x-input-label for="daily_word_goal" :value="__('Daily word goal')" />
+                    <x-field name="daily_word_goal" :label="__('Daily word goal')">
                         <x-text-input id="daily_word_goal" name="daily_word_goal" form="project-edit-form" type="number" min="0" placeholder="{{ __('Leave empty for no goal') }}" class="mt-1 block w-full" :value="old('daily_word_goal', $project->daily_word_goal)" />
-                        <x-input-error :messages="$errors->get('daily_word_goal')" class="mt-2" />
-                    </div>
+                    </x-field>
 
-                    <div>
-                        <x-input-label for="total_word_goal" :value="__('Total word goal')" />
+                    <x-field name="total_word_goal" :label="__('Total word goal')">
                         <x-text-input id="total_word_goal" name="total_word_goal" form="project-edit-form" type="number" min="0" placeholder="{{ __('Leave empty for no goal') }}" class="mt-1 block w-full" :value="old('total_word_goal', $project->total_word_goal)" />
-                        <x-input-error :messages="$errors->get('total_word_goal')" class="mt-2" />
-                    </div>
+                    </x-field>
                 </div>
             </x-card>
         </x-slot:sidebar>
