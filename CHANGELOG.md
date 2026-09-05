@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-05 — Canonical punctuation everywhere
+## 2026-09-05 — Canonical punctuation everywhere (#135)
 
 ### Added
 
