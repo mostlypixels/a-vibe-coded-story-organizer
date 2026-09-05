@@ -86,10 +86,10 @@
 
             @foreach ($storage as $category => $result)
                 <x-table-row :striped="$loop->even">
-                    <td class="px-4 py-3 text-sm text-content-muted">{{ $categoryLabels[$category] }}</td>
-                    <td class="px-4 py-3 text-sm text-content-muted">{{ number_format($result->count) }}</td>
-                    <td class="px-4 py-3 text-sm text-content-muted">{{ number_format($result->sizeBytes / 1024, 1) }} KB</td>
-                    <td class="px-4 py-3 text-right">
+                    <x-table-cell muted>{{ $categoryLabels[$category] }}</x-table-cell>
+                    <x-table-cell muted>{{ number_format($result->count) }}</x-table-cell>
+                    <x-table-cell muted>{{ number_format($result->sizeBytes / 1024, 1) }} KB</x-table-cell>
+                    <x-table-cell align="right">
                         <x-button
                             type="button"
                             variant="danger"
@@ -116,7 +116,7 @@
                                 </form>
                             </x-slot>
                         </x-dialog>
-                    </td>
+                    </x-table-cell>
                 </x-table-row>
             @endforeach
         </x-table>

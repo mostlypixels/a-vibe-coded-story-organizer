@@ -83,18 +83,18 @@
                                     $standing = $pair['standing'];
                                 @endphp
                                 <x-table-row :striped="$loop->even">
-                                    <td class="px-4 py-3 font-medium text-content">{{ $challenge->name }}</td>
-                                    <td class="px-4 py-3 text-sm text-content-muted">
+                                    <x-table-cell class="font-medium text-content">{{ $challenge->name }}</x-table-cell>
+                                    <x-table-cell muted>
                                         <x-challenge-window :window="$standing->window" :recurrence="$challenge->recurrence" />
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-content-muted">
+                                    </x-table-cell>
+                                    <x-table-cell muted>
                                         <x-word-count :count="$standing->written" variant="inline" /> {{ __('of') }} <x-word-count :count="$standing->target" variant="inline" />
-                                    </td>
-                                    <td class="px-4 py-3">
+                                    </x-table-cell>
+                                    <x-table-cell>
                                         <x-badge :variant="$standing->met ? 'success' : 'danger'">
                                             {{ $standing->met ? __('Met') : __('Missed') }}
                                         </x-badge>
-                                    </td>
+                                    </x-table-cell>
                                 </x-table-row>
                             @endforeach
                         </x-table>

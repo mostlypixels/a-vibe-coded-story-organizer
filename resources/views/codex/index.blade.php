@@ -32,7 +32,7 @@
 
                 @forelse ($entries as $entry)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3">
+                        <x-table-cell>
                             <a href="{{ route('codex.edit', $entry) }}">
                                 @if ($entry->cover)
                                     <img src="{{ $entry->cover->url() }}" alt="{{ $entry->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
@@ -40,14 +40,14 @@
                                     <div class="h-10 w-10 rounded-sm bg-surface border border-border" aria-hidden="true"></div>
                                 @endif
                             </a>
-                        </td>
-                        <td class="px-4 py-3">
+                        </x-table-cell>
+                        <x-table-cell>
                             <a href="{{ route('codex.edit', $entry) }}" class="font-semibold text-content hover:text-link">{{ $entry->name }}</a>
-                        </td>
-                        <td class="px-4 py-3 text-sm text-content-muted">
+                        </x-table-cell>
+                        <x-table-cell muted>
                             {{ $entry->aliases->pluck('alias')->join(', ') ?: '—' }}
-                        </td>
-                        <td class="px-4 py-3">
+                        </x-table-cell>
+                        <x-table-cell>
                             <div class="flex flex-wrap gap-1">
                                 @forelse ($entry->tags as $tag)
                                     <x-badge>{{ $tag->name }}</x-badge>
@@ -55,14 +55,14 @@
                                     <span class="text-sm text-content-subtle">—</span>
                                 @endforelse
                             </div>
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 <x-icon-dialog-button icon="copy" variant="outline-solid" :modal="'duplicate-codex-entry-'.$entry->id" :label="__('Duplicate')" />
                                 <x-icon-edit-link :href="route('codex.edit', $entry)" />
                                 <x-icon-delete-button :action="route('codex.destroy', $entry)" :confirm="__('Are you sure you want to delete this entry?')" />
                             </div>
-                        </td>
+                        </x-table-cell>
                     </x-table-row>
                 @empty
                     <x-table-empty

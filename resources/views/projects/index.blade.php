@@ -42,7 +42,7 @@
 
                     @forelse ($projects as $project)
                         <x-table-row :striped="$loop->even">
-                            <td class="px-4 py-3">
+                            <x-table-cell>
                                 <a href="{{ route('projects.edit', $project) }}">
                                     @if ($project->cover_image)
                                         <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
@@ -50,18 +50,18 @@
                                         <div class="h-10 w-10 rounded-sm bg-surface border border-border" aria-hidden="true"></div>
                                     @endif
                                 </a>
-                            </td>
-                            <td class="px-4 py-3">
+                            </x-table-cell>
+                            <x-table-cell>
                                 <a href="{{ route('projects.edit', $project) }}" class="font-semibold text-content hover:text-link">{{ $project->name }}</a>
-                            </td>
-                            <td class="px-4 py-3 text-sm text-content-muted">
+                            </x-table-cell>
+                            <x-table-cell muted>
                                 @if ($project->description)
                                     <x-rich-text-excerpt :html="$project->description" />
                                 @else
                                     &mdash;
                                 @endif
-                            </td>
-                            <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                            </x-table-cell>
+                            <x-table-cell align="right" nowrap sm>
                                 <div class="flex items-center justify-end gap-1">
                                     <x-icon-edit-link :href="route('projects.edit', $project)" />
                                     <x-icon-delete-button
@@ -69,7 +69,7 @@
                                         :confirm="$deleteConfirms[$project->id]"
                                     />
                                 </div>
-                            </td>
+                            </x-table-cell>
                         </x-table-row>
                     @empty
                         <x-table-empty

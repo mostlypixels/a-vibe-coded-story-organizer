@@ -21,7 +21,7 @@
 
                 @forelse ($plotlines as $plotline)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3">
+                        <x-table-cell>
                             <a href="{{ route('plotlines.edit', $plotline) }}" class="font-semibold text-content hover:text-link flex items-center gap-2">
                                 <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
                                 {{ $plotline->name }}
@@ -32,15 +32,15 @@
                             @if ($plotline->description)
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$plotline->description" /></div>
                             @endif
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 <x-icon-edit-link :href="route('plotlines.edit', $plotline)" />
                                 @unless ($plotline->is_main)
                                     <x-icon-delete-button :action="route('plotlines.destroy', $plotline)" :confirm="__('Are you sure you want to delete this plotline?')" />
                                 @endunless
                             </div>
-                        </td>
+                        </x-table-cell>
                     </x-table-row>
                 @empty
                     <x-table-empty :colspan="2">{{ __('No plotlines match.') }}</x-table-empty>

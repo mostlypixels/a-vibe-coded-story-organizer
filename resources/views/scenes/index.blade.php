@@ -35,27 +35,27 @@
 
                 @forelse ($scenes as $scene)
                     <x-table-row :striped="$loop->even">
-                        <td @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="px-4 py-3 whitespace-nowrap text-sm text-content-muted {{ $scene->event ? '' : 'border-l-4 border-danger' }}">{{ $numbering->scene($scene) }}</td>
-                        <td class="px-4 py-3">
+                        <x-table-cell :title="$scene->event ? null : __('This scene has no “happens during” event yet.')" muted nowrap class="{{ $scene->event ? '' : 'border-l-4 border-danger' }}">{{ $numbering->scene($scene) }}</x-table-cell>
+                        <x-table-cell>
                             <a href="{{ route('scenes.edit', $scene) }}" class="font-semibold text-content hover:text-link">{{ $scene->name }}</a>
                             @if ($scene->description)
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$scene->description" /></div>
                             @endif
-                        </td>
-                        <td class="px-4 py-3 text-sm text-content-muted">{{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }}</td>
-                        <td class="px-4 py-3 text-sm text-content-muted">{{ $scene->position }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap"><x-scene-status-badge :status="$scene->status" /></td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                        </x-table-cell>
+                        <x-table-cell muted>{{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }}</x-table-cell>
+                        <x-table-cell muted>{{ $scene->position }}</x-table-cell>
+                        <x-table-cell nowrap><x-scene-status-badge :status="$scene->status" /></x-table-cell>
+                        <x-table-cell nowrap sm>
                             @if ($scene->event)
                                 <span class="text-content-muted">{{ $scene->event->title }}</span>
                             @else
                                 <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-danger px-2 py-0.5 text-xs font-medium text-danger-surface-content">{{ __('Unassigned') }}</span>
                             @endif
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm text-content-muted whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell align="right" muted nowrap>
                             <x-word-count :count="$scene->word_count" variant="inline" />
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 @if ($sort === 'position' && request()->filled('chapter'))
                                     <x-icon-move-button direction="up" :action="route('scenes.move-up', $scene)" :disabled="$loop->first" />
@@ -65,7 +65,7 @@
                                 <x-icon-edit-link :href="route('scenes.edit', $scene)" />
                                 <x-icon-delete-button :action="route('scenes.destroy', $scene)" :confirm="__('Are you sure you want to delete this scene?')" />
                             </div>
-                        </td>
+                        </x-table-cell>
                     </x-table-row>
                 @empty
                     <x-table-empty
@@ -79,11 +79,11 @@
 
                 @if ($scenes->isNotEmpty())
                     <x-slot:foot>
-                        <td colspan="6" class="px-4 py-3 text-sm font-semibold text-table-header-content">{{ __('Total') }}</td>
-                        <td class="px-4 py-3 text-right text-sm font-semibold text-table-header-content whitespace-nowrap">
+                        <x-table-cell colspan="6" total>{{ __('Total') }}</x-table-cell>
+                        <x-table-cell align="right" total nowrap>
                             <x-word-count :count="$scenes->sum('word_count')" variant="inline" />
-                        </td>
-                        <td class="px-4 py-3"></td>
+                        </x-table-cell>
+                        <x-table-cell></x-table-cell>
                     </x-slot:foot>
                 @endif
             </x-table>

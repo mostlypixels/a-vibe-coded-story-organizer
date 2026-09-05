@@ -17,24 +17,24 @@
 
                 @forelse ($attributes as $attribute)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3">
+                        <x-table-cell>
                             <a href="{{ route('codex-attributes.edit', $attribute) }}" class="font-semibold text-content hover:text-link">{{ $attribute->name }}</a>
-                        </td>
-                        <td class="px-4 py-3">
+                        </x-table-cell>
+                        <x-table-cell>
                             <div class="flex flex-wrap gap-1">
                                 @foreach ($attribute->applies_to as $type)
                                     <x-badge>{{ $type->label() }}</x-badge>
                                 @endforeach
                             </div>
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 <x-icon-edit-link :href="route('codex-attributes.edit', $attribute)" />
                                 <x-icon-delete-button
                                     :action="route('codex-attributes.destroy', $attribute)"
                                     :confirm="__('Delete this attribute? Every timeline value recorded for it will be permanently removed.')" />
                             </div>
-                        </td>
+                        </x-table-cell>
                     </x-table-row>
                 @empty
                     <x-table-empty :colspan="3">{{ __('No attributes yet.') }}</x-table-empty>

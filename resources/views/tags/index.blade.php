@@ -26,7 +26,7 @@
 
             @forelse ($tags as $tag)
                 <x-table-row :striped="$loop->even">
-                    <td class="px-4 py-3">
+                    <x-table-cell>
                         <form method="POST" action="{{ route('tags.update', $tag) }}" class="flex items-center gap-2">
                             @csrf
                             @method('PUT')
@@ -34,17 +34,17 @@
                             <x-text-input :id="'name-'.$tag->id" name="name" type="text" class="text-sm" :value="$tag->name" required />
                             <x-icon-save-button />
                         </form>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-content-muted">
+                    </x-table-cell>
+                    <x-table-cell muted>
                         {{ $tag->entries_count }}
-                    </td>
-                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                    </x-table-cell>
+                    <x-table-cell align="right" nowrap>
                         <div class="flex items-center justify-end">
                             <x-icon-delete-button
                                 :action="route('tags.destroy', $tag)"
                                 :confirm="__('Delete this tag? It will be removed from :count entries.', ['count' => $tag->entries_count])" />
                         </div>
-                    </td>
+                    </x-table-cell>
                 </x-table-row>
             @empty
                 <x-table-empty :colspan="3">{{ __('No tags yet. Add one above, or tag an entry on its page.') }}</x-table-empty>

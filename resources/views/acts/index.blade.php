@@ -24,18 +24,18 @@
 
                 @forelse ($acts as $act)
                     <x-table-row :striped="$loop->even">
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-content-muted">{{ $numbering->act($act) }}</td>
-                        <td class="px-4 py-3">
+                        <x-table-cell muted nowrap>{{ $numbering->act($act) }}</x-table-cell>
+                        <x-table-cell>
                             <a href="{{ route('acts.edit', $act) }}" class="font-semibold text-content hover:text-link">{{ $act->name }}</a>
                             @if ($act->description)
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$act->description" /></div>
                             @endif
-                        </td>
-                        <td class="px-4 py-3 text-sm text-content-muted">{{ $act->chapters_count }}</td>
-                        <td class="px-4 py-3 text-right text-sm text-content-muted whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell muted>{{ $act->chapters_count }}</x-table-cell>
+                        <x-table-cell align="right" muted nowrap>
                             <x-word-count :count="$act->word_count" variant="inline" />
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                        </x-table-cell>
+                        <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 @if ($sort === 'position')
                                     <x-icon-move-button direction="up" :action="route('acts.move-up', $act)" :disabled="$loop->first" />
@@ -48,7 +48,7 @@
                                     <x-icon-delete-button :action="route('acts.destroy', $act)" :confirm="__('Are you sure you want to delete this act?')" />
                                 @endif
                             </div>
-                        </td>
+                        </x-table-cell>
                     </x-table-row>
                 @empty
                     <x-table-empty
@@ -62,12 +62,12 @@
 
                 @if ($acts->isNotEmpty())
                     <x-slot:foot>
-                        <td colspan="2" class="px-4 py-3 text-sm font-semibold text-table-header-content">{{ __('Total') }}</td>
-                        <td class="px-4 py-3 text-sm font-semibold text-table-header-content">{{ $acts->sum('chapters_count') }}</td>
-                        <td class="px-4 py-3 text-right text-sm font-semibold text-table-header-content whitespace-nowrap">
+                        <x-table-cell colspan="2" total>{{ __('Total') }}</x-table-cell>
+                        <x-table-cell total>{{ $acts->sum('chapters_count') }}</x-table-cell>
+                        <x-table-cell align="right" total nowrap>
                             <x-word-count :count="$acts->sum('word_count')" variant="inline" />
-                        </td>
-                        <td class="px-4 py-3"></td>
+                        </x-table-cell>
+                        <x-table-cell></x-table-cell>
                     </x-slot:foot>
                 @endif
             </x-table>

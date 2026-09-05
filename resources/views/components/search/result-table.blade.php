@@ -30,14 +30,14 @@
 
             @if ($rows->count() > config('search.cap'))
                 <x-slot:foot>
-                    <td colspan="4" class="px-4 py-3 text-right text-sm">
+                    <x-table-cell colspan="4" align="right" sm>
                         <a
                             href="{{ route('projects.search.domain', ['project' => $project, 'domain' => $domain->value, 'q' => $query, 'mode' => $mode->value]) }}"
                             class="text-link underline hover:text-link-hover"
                         >
                             {{ __('See all :count results', ['count' => $rows->count()]) }}
                         </a>
-                    </td>
+                    </x-table-cell>
                 </x-slot:foot>
             @endif
         </x-table>
