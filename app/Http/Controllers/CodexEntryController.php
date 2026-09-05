@@ -19,6 +19,7 @@ use App\Services\CodexEntryDuplicator;
 use App\Services\CodexEntrySaver;
 use App\Support\CodexMediaUploads;
 use App\Support\DuplicateName;
+use App\Support\EventWindow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -110,6 +111,9 @@ class CodexEntryController extends Controller
         $project = $codexEntry->project;
         $startEvent = $project->startEvent();
 
+        // The inline inception/termination fields always make a regular event.
+        [$windowMin, $windowMax] = EventWindow::forRegularEvent($project);
+
         return view('codex.edit', [
             'project' => $project,
             'type' => $codexEntry->type,
@@ -120,8 +124,8 @@ class CodexEntryController extends Controller
             // Inception/termination pickers offer regular events only — Start/End are
             // fixed project bookends, not events an entity's lifespan can attach to.
             'regularEvents' => $project->events()->where('is_fixed', false)->orderBy('event_datetime')->orderBy('id')->get(),
-            'windowMin' => $startEvent->event_datetime->format('Y-m-d\TH:i'),
-            'windowMax' => $project->endEvent()->event_datetime->format('Y-m-d\TH:i'),
+            'windowMin' => $windowMin,
+            'windowMax' => $windowMax,
             'projectTags' => $project->tags()->orderBy('name')->get(),
             'referencingScenes' => $this->referencingScenesInTimelineOrder($codexEntry),
             'duplicateSuggestion' => DuplicateName::suggest(

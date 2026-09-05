@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
 use App\Models\Project;
 use App\Services\CodexAsOfResolver;
+use App\Support\EventWindow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -48,7 +49,7 @@ class EventController extends Controller
     {
         $this->authorize('update', $project);
 
-        [$windowMin, $windowMax] = $this->datetimeBounds($project, null);
+        [$windowMin, $windowMax] = EventWindow::forRegularEvent($project);
 
         return view('events.create', [
             'project' => $project->load('plotlines'),
@@ -72,7 +73,7 @@ class EventController extends Controller
 
         $event->load('plotlines', 'scenes', 'mentioningScenes');
 
-        [$windowMin, $windowMax] = $this->datetimeBounds($event->project, $event);
+        [$windowMin, $windowMax] = EventWindow::forEvent($event->project, $event);
 
         return view('events.edit', [
             'event' => $event,
@@ -110,31 +111,5 @@ class EventController extends Controller
         $event->delete();
 
         return redirect()->route('projects.events.index', $project);
-    }
-
-    /**
-     * datetime-local min/max hints for the event's editable window — the UI mirror of
-     * WithinEventWindow. A regular event (or a new one, $event === null) sits inside
-     * [Start, End]; a bookend is instead capped by the nearest regular event, falling
-     * back to the opposite bookend when the project holds only its two bookends. The
-     * server rule stays authoritative; these attributes are only a browser hint.
-     *
-     * @return array{0: ?string, 1: ?string} [min, max], each 'Y-m-d\TH:i' or null
-     */
-    private function datetimeBounds(Project $project, ?Event $event): array
-    {
-        $format = fn (?Event $bound) => $bound?->event_datetime->format('Y-m-d\TH:i');
-        $start = $project->startEvent();
-        $end = $project->endEvent();
-
-        if ($event?->is_fixed && $event->is($start)) {
-            return [null, $format($project->earliestRegularEvent() ?? $end)];
-        }
-
-        if ($event?->is_fixed && $event->is($end)) {
-            return [$format($project->latestRegularEvent() ?? $start), null];
-        }
-
-        return [$format($start), $format($end)];
     }
 }
