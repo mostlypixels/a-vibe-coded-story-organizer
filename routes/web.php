@@ -198,6 +198,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
             ->name('projects.codex.store');
     });
     Route::get('/codex/{codexEntry}/edit', [CodexEntryController::class, 'edit'])->name('codex.edit');
+    Route::get('/codex/{codexEntry}', [CodexEntryController::class, 'show'])->name('codex.show');
     Route::put('/codex/{codexEntry}', [CodexEntryController::class, 'update'])->name('codex.update');
     Route::delete('/codex/{codexEntry}', [CodexEntryController::class, 'destroy'])->name('codex.destroy');
     Route::post('/codex/{codexEntry}/duplicate', [CodexEntryController::class, 'duplicate'])->name('codex.duplicate');

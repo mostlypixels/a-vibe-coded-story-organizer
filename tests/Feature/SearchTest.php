@@ -385,7 +385,7 @@ class SearchTest extends TestCase
         $response->assertDontSee('<div class="text-xs text-content-muted">', false);
     }
 
-    public function test_codex_result_links_to_its_edit_page(): void
+    public function test_codex_result_links_to_its_show_page(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -396,7 +396,25 @@ class SearchTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Zephyrqux the Bold');
-        $response->assertSee(route('codex.edit', $entry), false);
+        $response->assertSee(route('codex.show', $entry), false);
+    }
+
+    /**
+     * Only the Codex domains have a read page; every other domain's row still
+     * links to its edit route, proving the {@see SearchDomain::viewRoute()}
+     * fall-through.
+     */
+    public function test_a_scene_result_still_links_to_its_edit_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $scene = $this->sceneFor($project, ['name' => 'Zephyrqux scene', 'contents' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        $response->assertSee(route('scenes.edit', $scene), false);
     }
 
     public function test_mode_control_is_a_fieldset_and_section_headings_are_h2(): void

@@ -33,7 +33,7 @@
                 @forelse ($entries as $entry)
                     <x-table-row :striped="$loop->even">
                         <x-table-cell>
-                            <a href="{{ route('codex.edit', $entry) }}">
+                            <a href="{{ route('codex.show', $entry) }}">
                                 @if ($entry->cover)
                                     <img src="{{ $entry->cover->url() }}" alt="{{ $entry->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
                                 @else
@@ -42,7 +42,7 @@
                             </a>
                         </x-table-cell>
                         <x-table-cell>
-                            <a href="{{ route('codex.edit', $entry) }}" class="font-semibold text-content hover:text-link">{{ $entry->name }}</a>
+                            <a href="{{ route('codex.show', $entry) }}" class="font-semibold text-content hover:text-link">{{ $entry->name }}</a>
                         </x-table-cell>
                         <x-table-cell muted>
                             {{ $entry->aliases->pluck('alias')->join(', ') ?: '—' }}

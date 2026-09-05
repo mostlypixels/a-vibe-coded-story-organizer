@@ -24,7 +24,7 @@
                 <div x-show="activeTab === '{{ $group['type']->value }}'" class="mt-4 space-y-3">
                     @foreach ($group['entries'] as $row)
                         <div>
-                            <a href="{{ route('codex.edit', $row['entry']) }}" class="text-sm font-medium text-link hover:text-link-hover">{{ $row['entry']->name }}</a>
+                            <a href="{{ route('codex.show', $row['entry']) }}" class="text-sm font-medium text-link hover:text-link-hover">{{ $row['entry']->name }}</a>
                             @if ($row['age'] !== null)
                                 <p class="text-sm text-content-muted">{{ __('Age :years', ['years' => $row['age']->years]) }}</p>
                             @endif

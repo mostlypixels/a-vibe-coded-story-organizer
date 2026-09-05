@@ -57,6 +57,23 @@ class SearchDomainTest extends TestCase
     }
 
     /**
+     * Only the three Codex domains have a read page; every other domain falls
+     * through to its edit route.
+     */
+    public function test_view_route_is_codex_show_for_codex_domains_and_falls_through_elsewhere(): void
+    {
+        $this->assertSame('codex.show', SearchDomain::Characters->viewRoute());
+        $this->assertSame('codex.show', SearchDomain::Locations->viewRoute());
+        $this->assertSame('codex.show', SearchDomain::Organizations->viewRoute());
+
+        $this->assertSame('plotlines.edit', SearchDomain::Plotlines->viewRoute());
+        $this->assertSame('events.edit', SearchDomain::Events->viewRoute());
+        $this->assertSame('acts.edit', SearchDomain::Acts->viewRoute());
+        $this->assertSame('chapters.edit', SearchDomain::Chapters->viewRoute());
+        $this->assertSame('scenes.edit', SearchDomain::Scenes->viewRoute());
+    }
+
+    /**
      * Regression guard: only Events used `name-field="title"` before the
      * refactor — every other domain relied on the "name" default.
      */

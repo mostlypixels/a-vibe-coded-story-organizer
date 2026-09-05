@@ -32,7 +32,7 @@
                 @foreach ($paginator as $row)
                     <x-search.result-row
                         :row="$row"
-                        :edit-route="$domain->editRoute()"
+                        :view-route="$domain->viewRoute()"
                         :name-field="$domain->nameField()"
                         :striped="$loop->even"
                     />
