@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-05 — One owner for the event date bounds
+
+### Changed
+
+- Every date picker that offers an event moment now reads its limits from one place.
+
 ## 2026-09-05 — Codex saving moved out of the controller (#136)
 
 ### Changed

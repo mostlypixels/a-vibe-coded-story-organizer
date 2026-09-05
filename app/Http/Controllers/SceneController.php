@@ -17,6 +17,7 @@ use App\Services\Concerns\CreatesInlineEvents;
 use App\Services\SceneDuplicator;
 use App\Services\SceneReferenceMatcher;
 use App\Support\DuplicateName;
+use App\Support\EventWindow;
 use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -103,16 +104,17 @@ class SceneController extends Controller
 
         $this->authorize('update', $project);
 
+        // The inline "New event" field always makes a regular event.
+        [$windowMin, $windowMax] = EventWindow::forRegularEvent($project);
+
         return view('scenes.create', [
             'book' => $book,
             'chapters' => $this->chaptersFor($book),
             // The timeline is shared by every book in the project, so the event
             // list and its bounds stay project-wide.
             'events' => $this->eventsFor($project),
-            // Bounds for the inline "New event" datetime — always a regular event, so it
-            // sits inside [Start, End] (mirrors WithinEventWindow; server stays authoritative).
-            'windowMin' => $project->startEvent()->event_datetime->format('Y-m-d\TH:i'),
-            'windowMax' => $project->endEvent()->event_datetime->format('Y-m-d\TH:i'),
+            'windowMin' => $windowMin,
+            'windowMax' => $windowMax,
         ]);
     }
 
@@ -155,14 +157,16 @@ class SceneController extends Controller
         // level deep.
         $siblingIds = $scene->chapter->scenes()->orderBy('position')->orderBy('id')->pluck('id');
 
+        [$windowMin, $windowMax] = EventWindow::forRegularEvent($project);
+
         return view('scenes.edit', [
             'scene' => $scene,
             'project' => $project,
             'book' => $book,
             'chapters' => $this->chaptersFor($book),
             'events' => $this->eventsFor($project),
-            'windowMin' => $project->startEvent()->event_datetime->format('Y-m-d\TH:i'),
-            'windowMax' => $project->endEvent()->event_datetime->format('Y-m-d\TH:i'),
+            'windowMin' => $windowMin,
+            'windowMax' => $windowMax,
             'numbering' => StoryNumbering::forBook($book),
             'positionInChapter' => $siblingIds->search($scene->id) + 1,
             'totalInChapter' => $siblingIds->count(),
