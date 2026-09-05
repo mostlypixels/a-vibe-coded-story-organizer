@@ -43,6 +43,18 @@ class CodexEntryTest extends TestCase
         $locations->assertDontSee('Melusine');
     }
 
+    public function test_the_index_links_an_entry_name_to_the_show_page_and_keeps_the_edit_icon_on_the_edit_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $response = $this->actingAs($user)->get(route('projects.codex.index', [$project, 'characters']));
+
+        $response->assertSee(route('codex.show', $entry), false);
+        $response->assertSee(route('codex.edit', $entry), false);
+    }
+
     public function test_index_search_matches_name_and_alias(): void
     {
         $user = User::factory()->create();
@@ -194,12 +206,28 @@ class CodexEntryTest extends TestCase
             'tags' => ['Reworked'],
         ]);
 
-        $response->assertRedirect(route('projects.codex.index', [$project, 'characters']));
+        $response->assertRedirect(route('codex.show', $entry));
 
         $entry->refresh();
         $this->assertSame('New Name', $entry->name);
         $this->assertSame(['Fresh Alias'], $entry->aliases()->pluck('alias')->all());
         $this->assertSame(['Reworked'], $entry->tags->pluck('name')->all());
+    }
+
+    public function test_save_and_stay_redirects_to_the_edit_form_and_flashes_saved(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Old Name']);
+
+        $response = $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'New Name',
+            'description' => 'Updated.',
+            'stay' => '1',
+        ]);
+
+        $response->assertRedirect(route('codex.edit', $entry));
+        $response->assertSessionHas('status', 'saved');
     }
 
     public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_the_changed_description(): void
@@ -538,6 +566,221 @@ class CodexEntryTest extends TestCase
                 'href="'.route('revisions.index', ['entity' => 'codex', 'id' => $entry->id]).'"',
                 false,
             );
+    }
+
+    // ---------------------------------------------------------------------
+    // Read page
+    // ---------------------------------------------------------------------
+
+    public function test_show_page_renders_name_alias_tag_and_description(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create([
+            'name' => 'Melusine',
+            'description' => 'A serpent from the waist down.',
+        ]);
+        $entry->aliases()->create(['alias' => 'The Serpent Lady']);
+        $tag = Tag::factory()->for($project)->create(['name' => 'Fae']);
+        $entry->tags()->attach($tag);
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertSee('Melusine')
+            ->assertSee('The Serpent Lady')
+            ->assertSee('Fae')
+            ->assertSee('A serpent from the waist down.', false);
+    }
+
+    public function test_show_page_renders_the_lifespan_only_when_an_event_is_set(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $inception = Event::factory()->for($project)->create(['title' => 'The Binding']);
+        $withLifespan = CodexEntry::factory()->for($project)->character()->create([
+            'inception_event_id' => $inception->id,
+        ]);
+        $withoutLifespan = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($user)->get(route('codex.show', $withLifespan))
+            ->assertOk()
+            ->assertSee('The Binding')
+            ->assertSee(__('Lifespan'));
+
+        $this->actingAs($user)->get(route('codex.show', $withoutLifespan))
+            ->assertOk()
+            ->assertDontSee(__('Lifespan'));
+    }
+
+    public function test_show_page_renders_reference_images_and_files(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $image = CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create(['original_name' => 'portrait.jpg']);
+        $file = CodexMedia::factory()->for($entry, 'entry')->referenceFile()->create(['original_name' => 'notes.pdf']);
+        Storage::disk('public')->put($image->path, 'bytes');
+        Storage::disk('public')->put($file->path, 'bytes');
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertSee('portrait.jpg', false)
+            ->assertSee('notes.pdf');
+    }
+
+    public function test_show_page_renders_without_media_sections_for_a_media_less_entry(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Bare Bones']);
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertSee('Bare Bones')
+            ->assertDontSee(__('Reference images'))
+            ->assertDontSee(__('Reference files'));
+    }
+
+    public function test_show_page_has_no_form_input_or_autosave_field(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $content = $this->actingAs($user)->get(route('codex.show', $entry))->assertOk()->getContent();
+
+        // The duplicate dialog legitimately carries a "name" input for the copy;
+        // the read page must not carry the entry's own editable name field.
+        $this->assertStringNotContainsString('id="name"', $content);
+        $this->assertStringNotContainsString('<textarea', $content);
+        $this->assertStringNotContainsString('data-autosave-field', $content);
+    }
+
+    public function test_show_page_renders_the_full_attribute_timeline_baseline_first(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Hair color']);
+
+        $laterEvent = Event::factory()->for($project)->create([
+            'title' => 'The Coronation',
+            'event_datetime' => now()->addDays(10),
+        ]);
+        $earlierEvent = Event::factory()->for($project)->create([
+            'title' => 'The Betrothal',
+            'event_datetime' => now()->addDays(2),
+        ]);
+
+        // Values are created out of chronological order, so a creation-order render
+        // would fail — only the (event_datetime, id) timeline order passes.
+        CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+            'start_event_id' => $laterEvent->id,
+            'value' => 'White',
+        ]);
+        CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+            'start_event_id' => $project->startEvent()->id,
+            'value' => 'Black',
+        ]);
+        CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+            'start_event_id' => $earlierEvent->id,
+            'value' => 'Grey',
+        ]);
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertSee('Hair color')
+            ->assertSeeInOrder(['Black', 'Grey', 'White']);
+    }
+
+    public function test_show_page_omits_an_attribute_the_entry_never_set(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Unset Attribute']);
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertDontSee('Unset Attribute');
+    }
+
+    public function test_show_page_lists_referencing_scenes_in_event_timeline_order(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+
+        $laterEvent = Event::factory()->for($project)->create([
+            'title' => 'The Coronation',
+            'event_datetime' => now()->addDays(10),
+        ]);
+        $earlierEvent = Event::factory()->for($project)->create([
+            'title' => 'The Betrothal',
+            'event_datetime' => now()->addDays(2),
+        ]);
+
+        $laterScene = $this->sceneIn($project, 'Contents.', 'Scene at the coronation', $laterEvent);
+        $earlierScene = $this->sceneIn($project, 'Contents.', 'Scene at the betrothal', $earlierEvent);
+        $entry->referencingScenes()->attach([$laterScene->id, $earlierScene->id]);
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertSeeInOrder(['Scene at the betrothal', 'Scene at the coronation']);
+    }
+
+    public function test_show_page_omits_the_referencing_scenes_section_when_none_reference_the_entry(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertDontSee(__('Referenced in scenes'));
+    }
+
+    public function test_show_page_caps_referencing_scenes_at_twenty_with_a_show_all_toggle(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $scenes = collect(range(1, 25))->map(
+            fn (int $i) => $this->sceneIn($project, 'Contents.', "Scene {$i}")
+        );
+        $entry->referencingScenes()->attach($scenes->pluck('id'));
+
+        $content = $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertSee(__('Show all :count', ['count' => 25]))
+            ->getContent();
+
+        // The cap is display-only: every row is present in the response, just hidden
+        // beyond the 20th until the toggle reveals it client-side.
+        foreach ($scenes as $scene) {
+            $this->assertStringContainsString($scene->name, $content);
+        }
+    }
+
+    public function test_non_owner_is_forbidden_from_the_show_page(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($other)->get(route('codex.show', $entry))->assertForbidden();
+    }
+
+    public function test_guest_is_redirected_to_login_from_the_show_page(): void
+    {
+        $project = Project::factory()->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->get(route('codex.show', $entry))->assertRedirect(route('login'));
     }
 
     // ---------------------------------------------------------------------

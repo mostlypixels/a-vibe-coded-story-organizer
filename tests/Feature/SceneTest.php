@@ -713,7 +713,7 @@ class SceneTest extends TestCase
 
     // --- "Codex references" sidebar on the scene edit page ---------------
 
-    public function test_the_edit_page_lists_referenced_codex_entries_linking_to_their_edit_pages(): void
+    public function test_the_edit_page_lists_referenced_codex_entries_linking_to_their_show_pages(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
@@ -730,7 +730,7 @@ class SceneTest extends TestCase
             ->assertSee('Codex references')
             ->assertSee('Melchior')
             ->assertSee($entry->type->label())
-            ->assertSee(route('codex.edit', $entry), escape: false);
+            ->assertSee(route('codex.show', $entry), escape: false);
     }
 
     public function test_the_edit_page_shows_the_last_save_caption(): void

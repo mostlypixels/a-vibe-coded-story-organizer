@@ -8,21 +8,17 @@ use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Requests\DuplicateEntityRequest;
 use App\Http\Requests\StoreCodexEntryRequest;
 use App\Http\Requests\UpdateCodexEntryRequest;
-use App\Models\CodexAttribute;
-use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
-use App\Models\Event;
 use App\Models\Project;
-use App\Models\Scene;
-use App\Services\AttributeTimeline;
+use App\Services\CodexAttributeSheets;
 use App\Services\CodexEntryDuplicator;
 use App\Services\CodexEntrySaver;
+use App\Services\ReferencingScenes;
 use App\Support\CodexMediaUploads;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
@@ -102,7 +98,23 @@ class CodexEntryController extends Controller
         return redirect()->route('projects.codex.index', [$project, $entryType->routeKey()]);
     }
 
-    public function edit(CodexEntry $codexEntry): View
+    public function show(CodexEntry $codexEntry, CodexAttributeSheets $sheets, ReferencingScenes $referencingScenes): View
+    {
+        $this->authorize('view', $codexEntry->project);
+
+        $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent', 'inceptionEvent', 'terminationEvent');
+
+        $project = $codexEntry->project;
+
+        return view('codex.show', [
+            'project' => $project,
+            'entry' => $codexEntry,
+            'sheets' => $sheets->setOnly($codexEntry, $project->startEvent()),
+            'referencingScenes' => $referencingScenes->forEntry($codexEntry),
+        ]);
+    }
+
+    public function edit(CodexEntry $codexEntry, CodexAttributeSheets $sheets, ReferencingScenes $referencingScenes): View
     {
         $this->authorize('update', $codexEntry->project);
 
@@ -118,7 +130,7 @@ class CodexEntryController extends Controller
             'project' => $project,
             'type' => $codexEntry->type,
             'entry' => $codexEntry,
-            'sheets' => $this->timelineSheets($codexEntry, $startEvent),
+            'sheets' => $sheets->forEntry($codexEntry, $startEvent),
             'startEvent' => $startEvent,
             'events' => $project->events()->orderBy('event_datetime')->orderBy('id')->get(),
             // Inception/termination pickers offer regular events only — Start/End are
@@ -127,7 +139,7 @@ class CodexEntryController extends Controller
             'windowMin' => $windowMin,
             'windowMax' => $windowMax,
             'projectTags' => $project->tags()->orderBy('name')->get(),
-            'referencingScenes' => $this->referencingScenesInTimelineOrder($codexEntry),
+            'referencingScenes' => $referencingScenes->forEntry($codexEntry),
             'duplicateSuggestion' => DuplicateName::suggest(
                 $codexEntry->name,
                 $project->codexEntries()->where('type', $codexEntry->type->value)->pluck('name')
@@ -147,7 +159,7 @@ class CodexEntryController extends Controller
         return $this->redirectAfterSave(
             $request,
             ['codex.edit', $codexEntry],
-            ['projects.codex.index', [$codexEntry->project, $codexEntry->type->routeKey()]],
+            ['codex.show', $codexEntry],
         );
     }
 
@@ -169,41 +181,5 @@ class CodexEntryController extends Controller
         $copy = $duplicator->duplicate($codexEntry, $request->validated('name'));
 
         return redirect()->route('codex.edit', $copy)->with('status', 'duplicated');
-    }
-
-    /**
-     * Orders assigned scenes by event and unassigned scenes by manuscript position.
-     *
-     * @return Collection<int, Scene>
-     */
-    private function referencingScenesInTimelineOrder(CodexEntry $codexEntry): Collection
-    {
-        return $codexEntry->referencingScenes()
-            ->with('chapter.act', 'event')
-            ->get()
-            ->sortBy(fn (Scene $scene) => [
-                $scene->event === null ? 1 : 0,
-                $scene->event?->event_datetime?->timestamp ?? 0,
-                $scene->event?->id ?? 0,
-                $scene->chapter->act->position,
-                $scene->chapter->position,
-                $scene->position,
-            ])
-            ->values();
-    }
-
-    /** @return Collection<int, array{attribute: CodexAttribute, baseline: ?CodexAttributeValue, periods: Collection}> */
-    private function timelineSheets(CodexEntry $entry, Event $startEvent): Collection
-    {
-        return $entry->project->codexAttributesFor($entry->type)
-            ->map(function (CodexAttribute $attribute) use ($entry, $startEvent) {
-                $periods = (new AttributeTimeline($entry, $attribute))->periods();
-
-                return [
-                    'attribute' => $attribute,
-                    'baseline' => $periods->firstWhere('start_event_id', $startEvent->id),
-                    'periods' => $periods->reject(fn ($period) => $period->start_event_id === $startEvent->id)->values(),
-                ];
-            });
     }
 }

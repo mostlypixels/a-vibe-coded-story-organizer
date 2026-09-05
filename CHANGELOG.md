@@ -17,6 +17,20 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-05 — A page for reading a codex entry
+
+### Added
+
+- A codex entry has its own page. Opening one from a list, a search result or a scene shows
+  what you wrote, with editing behind a button.
+- The page lists every value an attribute has held, in timeline order, and the scenes that
+  mention the entry.
+
+### Changed
+
+- Saving a codex entry returns to that entry's page instead of the list. "Save and stay"
+  still returns to the form.
+
 ## 2026-09-05 — One search bar for every list (#140)
 
 ### Fixed
