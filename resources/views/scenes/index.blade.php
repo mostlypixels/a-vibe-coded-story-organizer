@@ -4,27 +4,22 @@
     </x-page-heading>
 
     <div class="space-y-6">
-            <div class="flex items-center justify-between gap-4">
-                <form method="GET" class="flex items-center gap-2">
-                    <input type="hidden" name="sort" value="{{ $sort }}">
-                    <input type="hidden" name="direction" value="{{ $direction }}">
-                    <x-text-input type="text" name="search" placeholder="{{ __('Search by name...') }}" class="text-sm" :value="request('search')" />
-
-                    <x-select name="chapter" class="text-sm">
-                        <option value="">{{ __('All chapters') }}</option>
-                        @foreach ($chapters as $chapter)
-                            <option value="{{ $chapter->id }}" @selected(request('chapter') == $chapter->id)>{{ $chapter->act->name }} &mdash; {{ $chapter->name }}</option>
-                        @endforeach
-                    </x-select>
-
-                    <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
-                    @if (request()->filled('search') || request()->filled('chapter'))
-                        <a href="{{ route('books.scenes.index', $book) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
-                    @endif
-                </form>
-
-                <x-button variant="primary" :href="route('books.scenes.create', $book)">{{ __('New Scene') }}</x-button>
-            </div>
+            <x-index-toolbar
+                :sort="$sort"
+                :direction="$direction"
+                :search-placeholder="__('Search by name...')"
+                :clear-url="route('books.scenes.index', $book)"
+                :create-url="route('books.scenes.create', $book)"
+                :create-label="__('New Scene')"
+                :filters="['search', 'chapter']"
+            >
+                <x-select name="chapter" class="text-sm">
+                    <option value="">{{ __('All chapters') }}</option>
+                    @foreach ($chapters as $chapter)
+                        <option value="{{ $chapter->id }}" @selected(request('chapter') == $chapter->id)>{{ $chapter->act->name }} &mdash; {{ $chapter->name }}</option>
+                    @endforeach
+                </x-select>
+            </x-index-toolbar>
 
             <x-table>
                 <x-slot:head>

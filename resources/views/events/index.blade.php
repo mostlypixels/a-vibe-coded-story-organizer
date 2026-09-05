@@ -4,27 +4,22 @@
     </x-page-heading>
 
     <div class="space-y-6">
-            <div class="flex items-center justify-between gap-4">
-                <form method="GET" class="flex items-center gap-2">
-                    <input type="hidden" name="sort" value="{{ $sort }}">
-                    <input type="hidden" name="direction" value="{{ $direction }}">
-                    <x-text-input type="text" name="search" placeholder="{{ __('Search by title...') }}" class="text-sm" :value="request('search')" />
-
-                    <x-select name="plotline" class="text-sm">
-                        <option value="">{{ __('All plotlines') }}</option>
-                        @foreach ($project->plotlines as $plotline)
-                            <option value="{{ $plotline->id }}" @selected(request('plotline') == $plotline->id)>{{ $plotline->name }}</option>
-                        @endforeach
-                    </x-select>
-
-                    <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
-                    @if (request()->filled('search') || request()->filled('plotline'))
-                        <a href="{{ route('projects.events.index', $project) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
-                    @endif
-                </form>
-
-                <x-button variant="primary" :href="route('projects.events.create', $project)">{{ __('New Event') }}</x-button>
-            </div>
+            <x-index-toolbar
+                :sort="$sort"
+                :direction="$direction"
+                :search-placeholder="__('Search by title...')"
+                :clear-url="route('projects.events.index', $project)"
+                :create-url="route('projects.events.create', $project)"
+                :create-label="__('New Event')"
+                :filters="['search', 'plotline']"
+            >
+                <x-select name="plotline" class="text-sm">
+                    <option value="">{{ __('All plotlines') }}</option>
+                    @foreach ($project->plotlines as $plotline)
+                        <option value="{{ $plotline->id }}" @selected(request('plotline') == $plotline->id)>{{ $plotline->name }}</option>
+                    @endforeach
+                </x-select>
+            </x-index-toolbar>
 
             <x-table>
                 <x-slot:head>

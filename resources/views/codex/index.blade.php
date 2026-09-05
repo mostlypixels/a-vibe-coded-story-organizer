@@ -4,26 +4,22 @@
     </x-page-heading>
 
     <div class="space-y-6">
-            <div class="flex items-center justify-between gap-4">
-                <form method="GET" class="flex items-center gap-2">
-                    <input type="hidden" name="direction" value="{{ $direction }}">
-                    <x-text-input type="text" name="search" placeholder="{{ __('Search by name or alias…') }}" class="text-sm" :value="request('search')" />
-
-                    <x-select name="tag" class="text-sm">
-                        <option value="">{{ __('All tags') }}</option>
-                        @foreach ($tags as $tag)
-                            <option value="{{ $tag->id }}" @selected(request('tag') == $tag->id)>{{ $tag->name }}</option>
-                        @endforeach
-                    </x-select>
-
-                    <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
-                    @if (request()->filled('search') || request()->filled('tag'))
-                        <a href="{{ route('projects.codex.index', [$project, $type->routeKey()]) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
-                    @endif
-                </form>
-
-                <x-button variant="primary" :href="route('projects.codex.create', [$project, $type->routeKey()])">{{ __('New :label', ['label' => $type->label()]) }}</x-button>
-            </div>
+            <x-index-toolbar
+                :sort="$sort"
+                :direction="$direction"
+                :search-placeholder="__('Search by name or alias…')"
+                :clear-url="route('projects.codex.index', [$project, $type->routeKey()])"
+                :create-url="route('projects.codex.create', [$project, $type->routeKey()])"
+                :create-label="__('New :label', ['label' => $type->label()])"
+                :filters="['search', 'tag']"
+            >
+                <x-select name="tag" class="text-sm">
+                    <option value="">{{ __('All tags') }}</option>
+                    @foreach ($tags as $tag)
+                        <option value="{{ $tag->id }}" @selected(request('tag') == $tag->id)>{{ $tag->name }}</option>
+                    @endforeach
+                </x-select>
+            </x-index-toolbar>
 
             <x-table>
                 <x-slot:head>

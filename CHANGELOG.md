@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-05 — One search bar for every list (#140)
+
+### Fixed
+
+- Filtering a codex list no longer drops the sort order you chose.
+
 ## 2026-09-05 — The same event picker on both scene screens (#139)
 
 ### Fixed

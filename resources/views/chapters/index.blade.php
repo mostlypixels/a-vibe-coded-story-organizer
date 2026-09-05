@@ -4,27 +4,22 @@
     </x-page-heading>
 
     <div class="space-y-6">
-            <div class="flex items-center justify-between gap-4">
-                <form method="GET" class="flex items-center gap-2">
-                    <input type="hidden" name="sort" value="{{ $sort }}">
-                    <input type="hidden" name="direction" value="{{ $direction }}">
-                    <x-text-input type="text" name="search" placeholder="{{ __('Search by name...') }}" class="text-sm" :value="request('search')" />
-
-                    <x-select name="act" class="text-sm">
-                        <option value="">{{ __('All acts') }}</option>
-                        @foreach ($acts as $act)
-                            <option value="{{ $act->id }}" @selected(request('act') == $act->id)>{{ $act->name }}</option>
-                        @endforeach
-                    </x-select>
-
-                    <x-button variant="secondary" type="submit">{{ __('Filter') }}</x-button>
-                    @if (request()->filled('search') || request()->filled('act'))
-                        <a href="{{ route('books.chapters.index', $book) }}" class="text-sm text-content-muted hover:text-content">{{ __('Clear') }}</a>
-                    @endif
-                </form>
-
-                <x-button variant="primary" :href="route('books.chapters.create', $book)">{{ __('New Chapter') }}</x-button>
-            </div>
+            <x-index-toolbar
+                :sort="$sort"
+                :direction="$direction"
+                :search-placeholder="__('Search by name...')"
+                :clear-url="route('books.chapters.index', $book)"
+                :create-url="route('books.chapters.create', $book)"
+                :create-label="__('New Chapter')"
+                :filters="['search', 'act']"
+            >
+                <x-select name="act" class="text-sm">
+                    <option value="">{{ __('All acts') }}</option>
+                    @foreach ($acts as $act)
+                        <option value="{{ $act->id }}" @selected(request('act') == $act->id)>{{ $act->name }}</option>
+                    @endforeach
+                </x-select>
+            </x-index-toolbar>
 
             <x-table>
                 <x-slot:head>
