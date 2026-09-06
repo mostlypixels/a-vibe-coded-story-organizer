@@ -7,6 +7,7 @@ use App\Models\Book;
 use App\Models\Project;
 use ArrayIterator;
 use Countable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use IteratorAggregate;
@@ -148,18 +149,18 @@ class Breadcrumbs implements Countable, IteratorAggregate
 
         if ($request->routeIs('books.acts.*', 'acts.*')) {
             return [...$bookCrumb, $section, ...$this->entityTrail(
-                $book, $request, __('Acts'), 'books.acts.index', 'books.acts.create', 'acts.edit', 'act', __('act')
+                $book, $request, __('Acts'), 'books.acts.index', 'books.acts.create', 'acts.edit', 'acts.show', 'act', __('act')
             )];
         }
 
         if ($request->routeIs('books.chapters.*', 'chapters.*')) {
             return [...$bookCrumb, $section, ...$this->entityTrail(
-                $book, $request, __('Chapters'), 'books.chapters.index', 'books.chapters.create', 'chapters.edit', 'chapter', __('chapter')
+                $book, $request, __('Chapters'), 'books.chapters.index', 'books.chapters.create', 'chapters.edit', 'chapters.show', 'chapter', __('chapter')
             )];
         }
 
         return [...$bookCrumb, $section, ...$this->entityTrail(
-            $book, $request, __('Scenes'), 'books.scenes.index', 'books.scenes.create', 'scenes.edit', 'scene', __('scene')
+            $book, $request, __('Scenes'), 'books.scenes.index', 'books.scenes.create', 'scenes.edit', 'scenes.show', 'scene', __('scene')
         )];
     }
 
@@ -176,12 +177,12 @@ class Breadcrumbs implements Countable, IteratorAggregate
 
         if ($request->routeIs('projects.plotlines.*', 'plotlines.*')) {
             return [$section, ...$this->entityTrail(
-                $project, $request, __('Plotlines'), 'projects.plotlines.index', 'projects.plotlines.create', 'plotlines.edit', 'plotline', __('plotline')
+                $project, $request, __('Plotlines'), 'projects.plotlines.index', 'projects.plotlines.create', 'plotlines.edit', 'plotlines.show', 'plotline', __('plotline')
             )];
         }
 
         return [$section, ...$this->entityTrail(
-            $project, $request, __('Events'), 'projects.events.index', 'projects.events.create', 'events.edit', 'event', __('event')
+            $project, $request, __('Events'), 'projects.events.index', 'projects.events.create', 'events.edit', 'events.show', 'event', __('event')
         )];
     }
 
@@ -198,7 +199,7 @@ class Breadcrumbs implements Countable, IteratorAggregate
 
         if ($navigation->attributesActive) {
             return [$section, ...$this->entityTrail(
-                $project, $request, __('Attributes'), 'projects.codex-attributes.index', 'projects.codex-attributes.create', 'codex-attributes.edit', 'codexAttribute', __('attribute')
+                $project, $request, __('Attributes'), 'projects.codex-attributes.index', 'projects.codex-attributes.create', 'codex-attributes.edit', null, 'codexAttribute', __('attribute')
             )];
         }
 
@@ -222,6 +223,14 @@ class Breadcrumbs implements Countable, IteratorAggregate
                 $section,
                 new Crumb($type->pluralLabel(), $indexUrl),
                 new Crumb(__('New :thing', ['thing' => Str::lower($type->label())]), current: true),
+            ];
+        }
+
+        if ($request->routeIs('codex.show')) {
+            return [
+                $section,
+                new Crumb($type->pluralLabel(), $indexUrl),
+                $this->readCrumb($request->route('codexEntry')),
             ];
         }
 
@@ -289,12 +298,29 @@ class Breadcrumbs implements Countable, IteratorAggregate
     }
 
     /**
+     * The leaf of a read page: the saved name, plus the id in parentheses.
+     *
+     * Two entities can share a name, so the name alone does not identify the
+     * page. The id is parenthesised and hashed rather than leading, because a
+     * leading number reads as the story number the act/chapter/scene headings
+     * show, and the two are not the same value.
+     */
+    private function readCrumb(Model $model): Crumb
+    {
+        return new Crumb(
+            __(':name (#:id)', ['name' => $model->revisionDisplayName(), 'id' => $model->getKey()]),
+            current: true,
+        );
+    }
+
+    /**
      * The Section → sub-index(linked) → leaf pattern shared by every project
      * entity that follows the index/create/edit convention. The *.index
      * route IS the current leaf — no duplicate crumb — while create/edit
      * append an action-precise leaf that names the operation: "New <thing>" /
      * "Edit <thing> <id>". The id is the bound model's primary key, which
-     * matches the URL — not the model's name.
+     * matches the URL — not the model's name, which the form can change under
+     * the trail. A read page names the entity instead (see {@see readCrumb()}).
      *
      * @param  Project|Book  $parent  Whatever the index route nests under.
      * @param  string  $thing  Lowercase singular, mid-sentence after the verb
@@ -308,6 +334,7 @@ class Breadcrumbs implements Countable, IteratorAggregate
         string $indexRoute,
         string $createRoute,
         string $editRoute,
+        ?string $showRoute,
         string $routeParam,
         string $thing,
     ): array {
@@ -315,6 +342,13 @@ class Breadcrumbs implements Countable, IteratorAggregate
             return [
                 new Crumb($indexLabel, route($indexRoute, $parent)),
                 new Crumb(__('New :thing', ['thing' => $thing]), current: true),
+            ];
+        }
+
+        if ($showRoute !== null && $request->routeIs($showRoute)) {
+            return [
+                new Crumb($indexLabel, route($indexRoute, $parent)),
+                $this->readCrumb($request->route($routeParam)),
             ];
         }
 

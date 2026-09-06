@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-06 — Name the page you are on
+
+### Added
+
+- A read page names itself in the breadcrumb trail, with its id, so two entries with one
+  name stay apart.
+
+### Fixed
+
+- The project page opened a book's edit form instead of the book.
+
 ## 2026-09-06 — Pages for reading the rest of the story (#145)
 
 ### Added
