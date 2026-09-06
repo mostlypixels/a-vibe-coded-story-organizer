@@ -57,20 +57,22 @@ class SearchDomainTest extends TestCase
     }
 
     /**
-     * Only the three Codex domains have a read page; every other domain falls
-     * through to its edit route.
+     * Every domain has its own read page, distinct from its edit route.
      */
-    public function test_view_route_is_codex_show_for_codex_domains_and_falls_through_elsewhere(): void
+    public function test_view_route_is_a_distinct_show_route_for_every_domain(): void
     {
+        $this->assertSame('plotlines.show', SearchDomain::Plotlines->viewRoute());
+        $this->assertSame('events.show', SearchDomain::Events->viewRoute());
+        $this->assertSame('acts.show', SearchDomain::Acts->viewRoute());
+        $this->assertSame('chapters.show', SearchDomain::Chapters->viewRoute());
+        $this->assertSame('scenes.show', SearchDomain::Scenes->viewRoute());
         $this->assertSame('codex.show', SearchDomain::Characters->viewRoute());
         $this->assertSame('codex.show', SearchDomain::Locations->viewRoute());
         $this->assertSame('codex.show', SearchDomain::Organizations->viewRoute());
 
-        $this->assertSame('plotlines.edit', SearchDomain::Plotlines->viewRoute());
-        $this->assertSame('events.edit', SearchDomain::Events->viewRoute());
-        $this->assertSame('acts.edit', SearchDomain::Acts->viewRoute());
-        $this->assertSame('chapters.edit', SearchDomain::Chapters->viewRoute());
-        $this->assertSame('scenes.edit', SearchDomain::Scenes->viewRoute());
+        foreach (SearchDomain::cases() as $domain) {
+            $this->assertNotSame($domain->editRoute(), $domain->viewRoute());
+        }
     }
 
     /**

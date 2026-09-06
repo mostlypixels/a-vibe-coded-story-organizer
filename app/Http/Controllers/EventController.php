@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
 use App\Models\Project;
 use App\Services\CodexAsOfResolver;
+use App\Services\EventLifespanEntries;
 use App\Support\EventWindow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,6 +66,27 @@ class EventController extends Controller
         $event->plotlines()->sync($request->validated('plotlines'));
 
         return redirect()->route('projects.events.index', $project);
+    }
+
+    public function show(Event $event, EventLifespanEntries $lifespanEntries): View
+    {
+        $this->authorize('view', $event->project);
+
+        $event->load('plotlines', 'scenes.chapter.act', 'mentioningScenes.chapter.act');
+
+        // Scenes come back in insertion order; readers expect manuscript order.
+        $byManuscriptOrder = fn ($scenes) => $scenes->sortBy(fn ($scene) => [
+            $scene->chapter->act->position,
+            $scene->chapter->position,
+            $scene->position,
+        ])->values();
+
+        return view('events.show', [
+            'event' => $event,
+            'scenesOnEvent' => $byManuscriptOrder($event->scenes),
+            'mentioningScenes' => $byManuscriptOrder($event->mentioningScenes),
+            'lifespanEntries' => $lifespanEntries->forEvent($event),
+        ]);
     }
 
     public function edit(Event $event, CodexAsOfResolver $codexAsOf): View

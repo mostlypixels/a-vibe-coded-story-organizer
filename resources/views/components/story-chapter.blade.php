@@ -45,13 +45,12 @@
                             onclick="moveScene(this, '{{ route('scenes.move-down', $scene) }}', 'down')"
                             :disabled="$loop->last"
                         />
+                        <x-icon-view-link :href="route('scenes.show', $scene)" />
                         <x-icon-edit-link :href="route('scenes.edit', $scene)" />
                     </div>
                 </div>
 
-                <div x-show="open" x-transition class="prose prose-sm max-w-none text-content-muted text-justify text-[0.8125rem] [&_p]:my-4">
-                    {!! $scene->renderedContents !!}
-                </div>
+                <x-scene-prose :scene="$scene" x-show="open" x-transition class="text-[0.8125rem]" />
             </section>
         @empty
             <p class="text-sm text-content-muted">{{ __('No scenes in this chapter yet.') }}</p>

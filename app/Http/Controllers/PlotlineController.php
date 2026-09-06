@@ -52,6 +52,15 @@ class PlotlineController extends Controller
         return redirect()->route('projects.plotlines.index', $project);
     }
 
+    public function show(Plotline $plotline): View
+    {
+        $this->authorize('view', $plotline->project);
+
+        $plotline->load(['events' => fn ($query) => $query->orderBy('event_datetime')]);
+
+        return view('plotlines.show', ['plotline' => $plotline]);
+    }
+
     public function edit(Plotline $plotline): View
     {
         $this->authorize('update', $plotline->project);

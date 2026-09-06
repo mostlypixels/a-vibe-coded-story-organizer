@@ -17,6 +17,23 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-06 — Pages for reading the rest of the story (#145)
+
+### Added
+
+- Plotlines, acts, chapters, scenes and events each have their own page. Opening one shows
+  what you wrote, with editing behind a button.
+- Every list row has a view button beside its edit button.
+- A scene page shows its prose in full, plus its notes, its codex references and its events.
+- An act page lists its chapters and their scenes; a chapter page lists its scenes.
+- A plotline page lists its events; an event page lists its scenes and the codex entries it
+  starts or ends.
+
+### Changed
+
+- List names, search results and the scenes on a codex entry now open the read page instead
+  of the edit form.
+
 ## 2026-09-05 — A page for reading a codex entry (#144)
 
 ### Added

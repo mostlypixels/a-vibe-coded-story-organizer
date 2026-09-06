@@ -2,11 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CodexEntryType;
 use App\Enums\RevisionOrigin;
+use App\Models\Act;
+use App\Models\Book;
+use App\Models\Chapter;
+use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Models\User;
+use App\Services\EventLifespanEntries;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -88,6 +95,148 @@ class EventTest extends TestCase
         $project = Project::factory()->for($owner)->create();
 
         $this->actingAs($other)->get(route('projects.events.index', $project))->assertForbidden();
+    }
+
+    // --- Show ----------------------------------------------------------------
+
+    public function test_the_show_page_renders_title_datetime_description_and_plotlines(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create(['name' => 'The Main Plot']);
+        $event = Event::factory()->for($project)->create([
+            'title' => 'The Battle',
+            'description' => 'An account of the battle',
+            'event_datetime' => '1247-03-15 14:30:00',
+        ]);
+        $event->plotlines()->attach($plotline);
+
+        $this->actingAs($user)->get(route('events.show', $event))
+            ->assertOk()
+            ->assertSee('The Battle')
+            ->assertSee('An account of the battle')
+            ->assertSee('The Main Plot');
+    }
+
+    public function test_the_show_page_lists_scenes_on_the_event_and_scenes_mentioning_it_separately(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = Book::factory()->for($project)->create();
+        $act = Act::factory()->for($book)->create();
+        $chapterOne = Chapter::factory()->for($act)->create();
+        $chapterTwo = Chapter::factory()->for($act)->create();
+        $event = Event::factory()->for($project)->create();
+
+        $onEventLater = Scene::factory()->for($chapterTwo)->create(['name' => 'Later On-Event Scene', 'event_id' => $event->id]);
+        $onEventEarlier = Scene::factory()->for($chapterOne)->create(['name' => 'Earlier On-Event Scene', 'event_id' => $event->id]);
+        $mentioningScene = Scene::factory()->for($chapterOne)->create(['name' => 'Mentioning Scene']);
+        $mentioningScene->mentionedEvents()->attach($event);
+
+        $response = $this->actingAs($user)->get(route('events.show', $event))->assertOk();
+
+        $response->assertSeeInOrder(['Earlier On-Event Scene', 'Later On-Event Scene']);
+        $response->assertSee('Mentioning Scene');
+    }
+
+    public function test_the_show_page_lists_the_codex_entries_it_starts_or_ends(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create();
+        $started = CodexEntry::factory()->for($project)->create(['type' => CodexEntryType::Character, 'name' => 'Started Entry', 'inception_event_id' => $event->id]);
+        $ended = CodexEntry::factory()->for($project)->create(['type' => CodexEntryType::Character, 'name' => 'Ended Entry', 'termination_event_id' => $event->id]);
+
+        $this->actingAs($user)->get(route('events.show', $event))
+            ->assertOk()
+            ->assertSee('Started Entry')
+            ->assertSee('Ended Entry');
+    }
+
+    public function test_event_lifespan_entries_groups_by_role_and_returns_empty_collections_when_neither_applies(): void
+    {
+        $project = Project::factory()->create();
+        $starts = Event::factory()->for($project)->create();
+        $ends = Event::factory()->for($project)->create();
+        $unrelated = Event::factory()->for($project)->create();
+        $entry = CodexEntry::factory()->for($project)->create([
+            'inception_event_id' => $starts->id,
+            'termination_event_id' => $ends->id,
+        ]);
+
+        $lifespanEntries = app(EventLifespanEntries::class);
+
+        $startGroups = $lifespanEntries->forEvent($starts);
+        $this->assertTrue($startGroups['inceptions']->contains($entry));
+        $this->assertTrue($startGroups['terminations']->isEmpty());
+
+        $endGroups = $lifespanEntries->forEvent($ends);
+        $this->assertTrue($endGroups['terminations']->contains($entry));
+        $this->assertTrue($endGroups['inceptions']->isEmpty());
+
+        $unrelatedGroups = $lifespanEntries->forEvent($unrelated);
+        $this->assertTrue($unrelatedGroups['inceptions']->isEmpty());
+        $this->assertTrue($unrelatedGroups['terminations']->isEmpty());
+    }
+
+    public function test_the_show_page_omits_every_section_with_no_content(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create(['description' => null]);
+
+        $this->actingAs($user)->get(route('events.show', $event))
+            ->assertOk()
+            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Description\n</h3>", false)
+            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Plotlines\n</h3>", false)
+            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Scenes\n</h3>", false)
+            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Codex entries\n</h3>", false);
+    }
+
+    public function test_the_show_page_has_no_form_input_or_autosave_field(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create();
+
+        $content = $this->actingAs($user)->get(route('events.show', $event))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('id="title"', $content);
+        $this->assertStringNotContainsString('<textarea', $content);
+        $this->assertStringNotContainsString('data-autosave-field', $content);
+    }
+
+    public function test_a_non_owner_cannot_view_the_show_page(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+        $event = Event::factory()->for($project)->create();
+
+        $this->actingAs($other)->get(route('events.show', $event))->assertForbidden();
+    }
+
+    public function test_the_index_links_the_name_to_the_show_page_and_keeps_the_edit_icon(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create();
+
+        $this->actingAs($user)->get(route('projects.events.index', $project))
+            ->assertOk()
+            ->assertSee('href="'.route('events.show', $event).'"', false)
+            ->assertSee('href="'.route('events.edit', $event).'"', false);
+    }
+
+    public function test_a_fixed_event_show_page_offers_no_delete_control(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create(['is_fixed' => true]);
+
+        $this->actingAs($user)->get(route('events.show', $event))
+            ->assertOk()
+            ->assertDontSee('value="DELETE"', false);
     }
 
     // --- Create / store ----------------------------------------------------

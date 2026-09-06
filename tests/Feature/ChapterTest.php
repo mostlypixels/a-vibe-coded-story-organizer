@@ -95,6 +95,87 @@ class ChapterTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_the_show_page_renders_name_act_description_word_count_and_the_story_number_from_the_whole_book(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['name' => 'The Rising Action']);
+        Chapter::factory()->for($act)->create();
+        $chapter = Chapter::factory()->for($act)->create(['name' => 'A Quiet Reprieve', 'description' => 'A description of the chapter']);
+        $this->sceneWithWordCount($chapter, 40);
+
+        $this->actingAs($user)->get(route('chapters.show', $chapter))
+            ->assertOk()
+            ->assertSee('A Quiet Reprieve')
+            ->assertSee('The Rising Action')
+            ->assertSee('A description of the chapter')
+            ->assertSee(__('Chapter :number', ['number' => 2]), false);
+    }
+
+    public function test_the_show_page_lists_scenes_in_position_order(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        Scene::factory()->for($chapter)->create(['name' => 'Later Scene', 'position' => 2]);
+        Scene::factory()->for($chapter)->create(['name' => 'Earlier Scene', 'position' => 1]);
+
+        $this->actingAs($user)->get(route('chapters.show', $chapter))
+            ->assertOk()
+            ->assertSeeInOrder(['Earlier Scene', 'Later Scene']);
+    }
+
+    public function test_the_show_page_omits_the_scenes_card_for_an_empty_chapter(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        $this->actingAs($user)->get(route('chapters.show', $chapter))
+            ->assertOk()
+            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Scenes\n</h3>", false);
+    }
+
+    public function test_the_show_page_has_no_form_input_or_autosave_field(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        $content = $this->actingAs($user)->get(route('chapters.show', $chapter))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('id="name"', $content);
+        $this->assertStringNotContainsString('<textarea', $content);
+        $this->assertStringNotContainsString('data-autosave-field', $content);
+    }
+
+    public function test_a_non_owner_cannot_view_the_show_page(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [, $book] = $this->projectWithBook($owner);
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        $this->actingAs($other)->get(route('chapters.show', $chapter))->assertForbidden();
+    }
+
+    public function test_the_index_links_the_name_to_the_show_page_and_keeps_the_edit_icon(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        $this->actingAs($user)->get(route('books.chapters.index', $book))
+            ->assertOk()
+            ->assertSee('href="'.route('chapters.show', $chapter).'"', false)
+            ->assertSee('href="'.route('chapters.edit', $chapter).'"', false);
+    }
+
     public function test_a_user_can_create_a_chapter(): void
     {
         $user = User::factory()->create();

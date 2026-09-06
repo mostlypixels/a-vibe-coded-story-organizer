@@ -127,7 +127,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->name('projects.codex-references.sync');
 
     Route::resource('projects.plotlines', PlotlineController::class)
-        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->shallow();
 
     // No index: the Progress page lists challenges.
@@ -136,7 +136,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->shallow();
 
     Route::resource('projects.events', EventController::class)
-        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->shallow();
 
     Route::resource('projects.books', BookController::class)
@@ -166,20 +166,20 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
     // Manuscript resources nest for creation and use shallow member routes.
     Route::resource('books.acts', ActController::class)
-        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->shallow();
     Route::patch('/acts/{act}/move-up', [ActController::class, 'moveUp'])->name('acts.move-up');
     Route::patch('/acts/{act}/move-down', [ActController::class, 'moveDown'])->name('acts.move-down');
     Route::patch('/acts/{act}/move-to-book', [ActController::class, 'moveToBook'])->name('acts.move-to-book');
 
     Route::resource('books.chapters', ChapterController::class)
-        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->shallow();
     Route::patch('/chapters/{chapter}/move-up', [ChapterController::class, 'moveUp'])->name('chapters.move-up');
     Route::patch('/chapters/{chapter}/move-down', [ChapterController::class, 'moveDown'])->name('chapters.move-down');
 
     Route::resource('books.scenes', SceneController::class)
-        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->shallow();
     Route::patch('/scenes/{scene}/move-up', [SceneController::class, 'moveUp'])->name('scenes.move-up');
     Route::patch('/scenes/{scene}/move-down', [SceneController::class, 'moveDown'])->name('scenes.move-down');

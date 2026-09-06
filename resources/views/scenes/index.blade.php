@@ -37,7 +37,7 @@
                     <x-table-row :striped="$loop->even">
                         <x-table-cell :title="$scene->event ? null : __('This scene has no “happens during” event yet.')" muted nowrap class="{{ $scene->event ? '' : 'border-l-4 border-danger' }}">{{ $numbering->scene($scene) }}</x-table-cell>
                         <x-table-cell>
-                            <a href="{{ route('scenes.edit', $scene) }}" class="font-semibold text-content hover:text-link">{{ $scene->name }}</a>
+                            <a href="{{ route('scenes.show', $scene) }}" class="font-semibold text-content hover:text-link">{{ $scene->name }}</a>
                             @if ($scene->description)
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$scene->description" /></div>
                             @endif
@@ -62,6 +62,7 @@
                                     <x-icon-move-button direction="down" :action="route('scenes.move-down', $scene)" :disabled="$loop->last" />
                                 @endif
                                 <x-icon-dialog-button icon="copy" variant="outline-solid" :modal="'duplicate-scene-'.$scene->id" :label="__('Duplicate')" />
+                                <x-icon-view-link :href="route('scenes.show', $scene)" />
                                 <x-icon-edit-link :href="route('scenes.edit', $scene)" />
                                 <x-icon-delete-button :action="route('scenes.destroy', $scene)" :confirm="__('Are you sure you want to delete this scene?')" />
                             </div>

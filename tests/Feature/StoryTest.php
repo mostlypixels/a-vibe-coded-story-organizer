@@ -728,6 +728,20 @@ class StoryTest extends TestCase
             ->assertSee(__('Story overview display'));
     }
 
+    public function test_a_scene_row_links_to_its_read_page(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $scene = Scene::factory()->for($chapter)->create(['name' => 'Zephyrqux Scene']);
+
+        $this->actingAs($user)
+            ->get(route('books.story.overview', $book))
+            ->assertOk()
+            ->assertSee(route('scenes.show', $scene), false);
+    }
+
     public function test_whole_mode_still_renders_every_chapters_scenes(): void
     {
         $user = User::factory()->create();

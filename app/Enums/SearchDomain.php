@@ -62,15 +62,17 @@ enum SearchDomain: string
     }
 
     /**
-     * The named route a row's entity links to for reading. The three Codex
-     * domains have a read page; every other domain has none, so it falls
-     * through to {@see editRoute()}.
+     * The named route a row's entity links to for reading.
      */
     public function viewRoute(): string
     {
         return match ($this) {
+            self::Plotlines => 'plotlines.show',
+            self::Events => 'events.show',
+            self::Acts => 'acts.show',
+            self::Chapters => 'chapters.show',
+            self::Scenes => 'scenes.show',
             self::Characters, self::Locations, self::Organizations => 'codex.show',
-            default => $this->editRoute(),
         };
     }
 

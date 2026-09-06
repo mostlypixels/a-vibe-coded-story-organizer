@@ -35,7 +35,7 @@
                     <x-table-row :striped="$loop->even">
                         <x-table-cell muted nowrap>{{ $numbering->chapter($chapter) }}</x-table-cell>
                         <x-table-cell>
-                            <a href="{{ route('chapters.edit', $chapter) }}" class="font-semibold text-content hover:text-link">{{ $chapter->name }}</a>
+                            <a href="{{ route('chapters.show', $chapter) }}" class="font-semibold text-content hover:text-link">{{ $chapter->name }}</a>
                             @if ($chapter->description)
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$chapter->description" /></div>
                             @endif
@@ -51,6 +51,7 @@
                                     <x-icon-move-button direction="up" :action="route('chapters.move-up', $chapter)" :disabled="$loop->first" />
                                     <x-icon-move-button direction="down" :action="route('chapters.move-down', $chapter)" :disabled="$loop->last" />
                                 @endif
+                                <x-icon-view-link :href="route('chapters.show', $chapter)" />
                                 <x-icon-edit-link :href="route('chapters.edit', $chapter)" />
                                 @if ($chapter->scenes_count > 0)
                                     <x-icon-dialog-button :modal="'delete-chapter-'.$chapter->id" />

@@ -69,6 +69,127 @@ class ActTest extends TestCase
             ->assertSee('100 words');
     }
 
+    // --- Show ----------------------------------------------------------------
+
+    public function test_the_show_page_renders_name_description_and_the_story_number_from_the_whole_book(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        Act::factory()->for($book)->create();
+        $act = Act::factory()->for($book)->create(['name' => 'The Gathering Storm', 'description' => 'A description of the storm']);
+
+        $this->actingAs($user)->get(route('acts.show', $act))
+            ->assertOk()
+            ->assertSee('The Gathering Storm')
+            ->assertSee('A description of the storm')
+            ->assertSee(__('Act :number', ['number' => 2]), false);
+    }
+
+    public function test_the_show_page_lists_chapters_in_position_order_with_their_scenes_nested_in_order(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapterTwo = Chapter::factory()->for($act)->create(['name' => 'Chapter Two', 'position' => 2]);
+        $chapterOne = Chapter::factory()->for($act)->create(['name' => 'Chapter One', 'position' => 1]);
+        Scene::factory()->for($chapterOne)->create(['name' => 'Later Scene', 'position' => 2]);
+        Scene::factory()->for($chapterOne)->create(['name' => 'Earlier Scene', 'position' => 1]);
+
+        $this->actingAs($user)->get(route('acts.show', $act))
+            ->assertOk()
+            ->assertSeeInOrder(['Chapter One', 'Earlier Scene', 'Later Scene', 'Chapter Two']);
+    }
+
+    public function test_the_show_page_caps_chapters_at_twenty_with_a_show_all_toggle(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        Chapter::factory()->for($act)->count(25)->create();
+
+        $this->actingAs($user)->get(route('acts.show', $act))
+            ->assertOk()
+            ->assertSee(__('Show all :count', ['count' => 25]));
+    }
+
+    public function test_the_show_page_omits_the_chapters_card_for_an_empty_act(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+
+        $this->actingAs($user)->get(route('acts.show', $act))
+            ->assertOk()
+            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Chapters\n</h3>", false);
+    }
+
+    public function test_the_show_page_has_no_form_input_or_autosave_field(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+
+        $content = $this->actingAs($user)->get(route('acts.show', $act))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('id="name"', $content);
+        $this->assertStringNotContainsString('<textarea', $content);
+        $this->assertStringNotContainsString('data-autosave-field', $content);
+    }
+
+    public function test_a_non_owner_cannot_view_the_show_page(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [, $book] = $this->projectWithBook($owner);
+        $act = Act::factory()->for($book)->create();
+
+        $this->actingAs($other)->get(route('acts.show', $act))->assertForbidden();
+    }
+
+    public function test_the_index_links_the_name_to_the_show_page_and_keeps_the_edit_icon(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+
+        $this->actingAs($user)->get(route('books.acts.index', $book))
+            ->assertOk()
+            ->assertSee('href="'.route('acts.show', $act).'"', false)
+            ->assertSee('href="'.route('acts.edit', $act).'"', false);
+    }
+
+    /**
+     * The act, chapters and scenes trees load through one eager-load path
+     * (chapters.scenes); a per-chapter scene query would show up here as one
+     * "scenes" query per chapter instead of a single "chapters.scenes" batch.
+     */
+    public function test_the_show_page_has_no_n_plus_one_across_chapters_and_scenes(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+
+        foreach (range(1, 5) as $chapterNumber) {
+            $chapter = Chapter::factory()->for($act)->create();
+            Scene::factory()->for($chapter)->count(3)->create();
+        }
+
+        $sceneQueries = [];
+        DB::listen(function ($query) use (&$sceneQueries) {
+            if (str_contains($query->sql, '"scenes"')) {
+                $sceneQueries[] = $query->sql;
+            }
+        });
+
+        $this->actingAs($user)->get(route('acts.show', $act))->assertOk();
+
+        // 1 for the chapters.scenes eager load, 1 for the loadCount('scenes')
+        // aggregate, 1 for the scenes()->sum('word_count') total, 1 more for
+        // StoryNumbering::forBook()'s own tree load. All four stay O(1) per
+        // page load, not O(chapters).
+        $this->assertCount(4, $sceneQueries);
+    }
+
     public function test_a_user_can_create_an_act(): void
     {
         $user = User::factory()->create();
