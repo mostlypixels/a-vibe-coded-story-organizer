@@ -212,6 +212,52 @@ class BreadcrumbsTest extends TestCase
         );
     }
 
+    public function test_a_read_page_leaf_names_the_entity_and_its_id(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $event = Event::factory()->for($project)->create(['title' => 'The Siege Begins']);
+
+        $rows = $this->summarize($this->breadcrumbsFor('events.show', [$event]));
+
+        $this->assertSame(
+            [__('Events'), route('projects.events.index', $project), false],
+            $rows[2],
+        );
+        $this->assertSame(
+            [__(':name (#:id)', ['name' => 'The Siege Begins', 'id' => $event->id]), null, true],
+            end($rows),
+        );
+    }
+
+    public function test_two_read_pages_with_one_name_get_different_leaves(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $first = Event::factory()->for($project)->create(['title' => 'The Siege Begins']);
+        $second = Event::factory()->for($project)->create(['title' => 'The Siege Begins']);
+
+        $firstRows = $this->summarize($this->breadcrumbsFor('events.show', [$first]));
+        $secondRows = $this->summarize($this->breadcrumbsFor('events.show', [$second]));
+
+        $this->assertNotSame(end($firstRows)[0], end($secondRows)[0]);
+    }
+
+    public function test_a_codex_read_page_keeps_its_type_crumb(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $entry = CodexEntry::factory()->for($project)->organization()->create(['name' => 'The Silver Table']);
+
+        $rows = $this->summarize($this->breadcrumbsFor('codex.show', [$entry]));
+
+        $this->assertSame(
+            [CodexEntryType::Organization->pluralLabel(), route('projects.codex.index', [$project, 'organizations']), false],
+            $rows[2],
+        );
+        $this->assertSame(
+            [__(':name (#:id)', ['name' => 'The Silver Table', 'id' => $entry->id]), null, true],
+            $rows[3],
+        );
+    }
+
     public function test_codex_index_leaf_uses_the_active_types_plural_label(): void
     {
         $project = Project::factory()->for($this->user)->create();

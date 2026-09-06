@@ -40,7 +40,7 @@
                 <ul class="divide-y divide-border">
                     @foreach ($books as $book)
                         <li class="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
-                            <a href="{{ route('books.edit', $book) }}" class="text-sm font-medium text-content hover:text-link">
+                            <a href="{{ route('books.show', $book) }}" class="text-sm font-medium text-content hover:text-link">
                                 {{ $book->displayName() }}
                             </a>
                             <span class="text-xs text-content-muted">
