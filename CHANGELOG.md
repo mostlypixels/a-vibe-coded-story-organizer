@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-06 — Pages for reading the rest of the story
+## 2026-09-06 — Pages for reading the rest of the story (#145)
 
 ### Added
 
