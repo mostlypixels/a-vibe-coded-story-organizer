@@ -117,7 +117,7 @@
                         @foreach ($referencingScenes as $scene)
                             <x-table-row :striped="$loop->even" x-show="{{ $loop->index < 20 ? 'true' : 'showAll' }}">
                                 <x-table-cell>
-                                    <a href="{{ route('scenes.edit', $scene) }}" class="text-link hover:text-link-hover">{{ $scene->name }}</a>
+                                    <a href="{{ route('scenes.show', $scene) }}" class="text-link hover:text-link-hover">{{ $scene->name }}</a>
                                 </x-table-cell>
                                 <x-table-cell muted>{{ $scene->chapter->name }}</x-table-cell>
                                 <x-table-cell muted>{{ $scene->chapter->act->name }}</x-table-cell>

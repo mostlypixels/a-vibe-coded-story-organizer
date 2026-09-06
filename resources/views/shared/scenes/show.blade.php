@@ -18,8 +18,6 @@
             </div>
         @endif
 
-        <article class="prose prose-sm max-w-none text-content-muted text-justify [&_p]:my-4">
-            {!! $scene->renderedContents !!}
-        </article>
+        <x-scene-prose :scene="$scene" />
     </div>
 </x-public-layout>

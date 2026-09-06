@@ -32,7 +32,7 @@
                 @forelse ($events as $event)
                     <x-table-row :striped="$loop->even">
                         <x-table-cell>
-                            <a href="{{ route('events.edit', $event) }}" class="flex items-center gap-2 font-semibold text-content hover:text-link">
+                            <a href="{{ route('events.show', $event) }}" class="flex items-center gap-2 font-semibold text-content hover:text-link">
                                 {{ $event->title }}
                                 @if ($event->is_fixed)
                                     <x-badge>{{ __('Fixed') }}</x-badge>
@@ -55,6 +55,7 @@
                         </x-table-cell>
                         <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
+                                <x-icon-view-link :href="route('events.show', $event)" />
                                 <x-icon-edit-link :href="route('events.edit', $event)" />
                                 @unless ($event->is_fixed)
                                     <x-icon-delete-button :action="route('events.destroy', $event)" :confirm="__('Are you sure you want to delete this event?')" />

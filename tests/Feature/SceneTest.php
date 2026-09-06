@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CodexEntryType;
 use App\Enums\RevisionOrigin;
 use App\Enums\SceneStatus;
 use App\Models\Act;
@@ -113,6 +114,121 @@ class SceneTest extends TestCase
             ->assertOk()
             ->assertSee('Total')
             ->assertSee('1,062 words'); // sum, distinct from either scene's own count
+    }
+
+    // --- Show ----------------------------------------------------------------
+
+    public function test_the_show_page_renders_name_status_word_count_chapter_act_description_and_prose(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $chapter->update(['name' => 'A Quiet Chapter']);
+        $scene = Scene::factory()->for($chapter)->create([
+            'name' => 'The Fountain Scene',
+            'description' => 'A description of the scene',
+            'contents' => 'Some **rendered** prose.',
+            'status' => SceneStatus::ToEdit,
+        ]);
+
+        $this->actingAs($user)->get(route('scenes.show', $scene))
+            ->assertOk()
+            ->assertSee('The Fountain Scene')
+            ->assertSee($chapter->act->name)
+            ->assertSee('A Quiet Chapter')
+            ->assertSee('A description of the scene')
+            ->assertSee(SceneStatus::ToEdit->label())
+            ->assertSee('<strong>rendered</strong>', false);
+    }
+
+    public function test_the_show_page_renders_the_notes_card_and_omits_it_when_notes_are_empty(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $withNotes = Scene::factory()->for($chapter)->create(['notes' => 'Remember the foreshadowing.']);
+        $withoutNotes = Scene::factory()->for($chapter)->create(['notes' => null]);
+
+        $this->actingAs($user)->get(route('scenes.show', $withNotes))
+            ->assertOk()
+            ->assertSee('Remember the foreshadowing.');
+
+        $this->actingAs($user)->get(route('scenes.show', $withoutNotes))
+            ->assertOk()
+            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Notes\n</h3>", false);
+    }
+
+    public function test_the_show_page_lists_referenced_codex_entries_ordered_by_type_then_name(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->book->project;
+        $scene = Scene::factory()->for($chapter)->create();
+        $location = CodexEntry::factory()->for($project)->create(['type' => CodexEntryType::Location, 'name' => 'A Ruin']);
+        $characterB = CodexEntry::factory()->for($project)->create(['type' => CodexEntryType::Character, 'name' => 'Zeta']);
+        $characterA = CodexEntry::factory()->for($project)->create(['type' => CodexEntryType::Character, 'name' => 'Alpha']);
+        $scene->codexReferences()->attach([$location->id, $characterB->id, $characterA->id]);
+
+        $response = $this->actingAs($user)->get(route('scenes.show', $scene))->assertOk();
+
+        $response->assertSeeInOrder(['Alpha', 'Zeta', 'A Ruin']);
+    }
+
+    public function test_the_show_page_renders_when_the_scene_has_no_event_and_omits_the_happens_during_line(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['event_id' => null]);
+
+        $this->actingAs($user)->get(route('scenes.show', $scene))
+            ->assertOk()
+            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Happens during\n</h3>", false);
+    }
+
+    public function test_the_show_page_shows_the_happens_during_event_when_assigned(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->book->project;
+        $event = Event::factory()->for($project)->create(['title' => 'The Coronation']);
+        $scene = Scene::factory()->for($chapter)->create(['event_id' => $event->id]);
+
+        $this->actingAs($user)->get(route('scenes.show', $scene))
+            ->assertOk()
+            ->assertSee('The Coronation');
+    }
+
+    public function test_the_show_page_has_no_form_input_or_autosave_field(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $content = $this->actingAs($user)->get(route('scenes.show', $scene))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('id="name"', $content);
+        $this->assertStringNotContainsString('<textarea', $content);
+        $this->assertStringNotContainsString('data-autosave-field', $content);
+    }
+
+    public function test_a_non_owner_cannot_view_the_show_page(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $chapter = $this->chapterFor($owner);
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($other)->get(route('scenes.show', $scene))->assertForbidden();
+    }
+
+    public function test_the_index_links_the_name_to_the_show_page_and_keeps_the_edit_icon(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($user)->get(route('books.scenes.index', $chapter->act->book))
+            ->assertOk()
+            ->assertSee('href="'.route('scenes.show', $scene).'"', false)
+            ->assertSee('href="'.route('scenes.edit', $scene).'"', false);
     }
 
     public function test_a_user_can_create_a_scene(): void

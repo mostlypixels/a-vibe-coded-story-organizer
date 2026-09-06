@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\RevisionOrigin;
+use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\User;
@@ -65,6 +66,86 @@ class PlotlineTest extends TestCase
         $project = Project::factory()->for($owner)->create();
 
         $this->actingAs($other)->get(route('projects.plotlines.index', $project))->assertForbidden();
+    }
+
+    // --- Show ----------------------------------------------------------------
+
+    public function test_the_show_page_renders_name_description_and_events_in_date_order(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create(['name' => 'Readable Plotline', 'description' => 'A plot description']);
+        $later = Event::factory()->for($project)->create(['title' => 'Later Event', 'event_datetime' => now()->addDays(5)]);
+        $earlier = Event::factory()->for($project)->create(['title' => 'Earlier Event', 'event_datetime' => now()->addDay()]);
+        $plotline->events()->attach([$later->id, $earlier->id]);
+
+        $this->actingAs($user)->get(route('plotlines.show', $plotline))
+            ->assertOk()
+            ->assertSee('Readable Plotline')
+            ->assertSee('A plot description')
+            ->assertSeeInOrder(['Earlier Event', 'Later Event']);
+    }
+
+    public function test_the_show_page_omits_the_events_card_when_the_plotline_has_none(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create(['description' => null]);
+
+        $this->actingAs($user)->get(route('plotlines.show', $plotline))
+            ->assertOk()
+            // The project navigation and the "Unsaved changes" dialog both say
+            // "Events"/reuse the card heading class, so match the card's own markup.
+            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Events\n</h3>", false);
+    }
+
+    public function test_the_show_page_has_no_form_input_or_autosave_field(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create();
+
+        $content = $this->actingAs($user)->get(route('plotlines.show', $plotline))->assertOk()->getContent();
+
+        // The delete button legitimately posts a form; the read page must not carry
+        // the plotline's own editable name field or a textarea.
+        $this->assertStringNotContainsString('id="name"', $content);
+        $this->assertStringNotContainsString('<textarea', $content);
+        $this->assertStringNotContainsString('data-autosave-field', $content);
+    }
+
+    public function test_a_user_cannot_view_another_users_plotline(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+        $plotline = Plotline::factory()->for($project)->create();
+
+        $this->actingAs($other)->get(route('plotlines.show', $plotline))->assertForbidden();
+    }
+
+    public function test_the_index_links_the_name_to_show_and_keeps_the_edit_icon(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = Plotline::factory()->for($project)->create();
+
+        $this->actingAs($user)->get(route('projects.plotlines.index', $project))
+            ->assertOk()
+            ->assertSee('href="'.route('plotlines.show', $plotline).'"', false)
+            ->assertSee('href="'.route('plotlines.edit', $plotline).'"', false);
+    }
+
+    public function test_the_main_plotline_show_page_has_its_badge_and_no_delete_control(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $mainPlotline = $project->plotlines()->first();
+
+        $this->actingAs($user)->get(route('plotlines.show', $mainPlotline))
+            ->assertOk()
+            ->assertSee(__('Main'))
+            ->assertDontSee('value="DELETE"', false);
     }
 
     // --- Create / store ----------------------------------------------------

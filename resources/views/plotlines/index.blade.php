@@ -22,7 +22,7 @@
                 @forelse ($plotlines as $plotline)
                     <x-table-row :striped="$loop->even">
                         <x-table-cell>
-                            <a href="{{ route('plotlines.edit', $plotline) }}" class="font-semibold text-content hover:text-link flex items-center gap-2">
+                            <a href="{{ route('plotlines.show', $plotline) }}" class="font-semibold text-content hover:text-link flex items-center gap-2">
                                 <span class="inline-block h-3 w-3 rounded-full" style="background-color: {{ $plotline->color }}"></span>
                                 {{ $plotline->name }}
                                 @if ($plotline->is_main)
@@ -35,6 +35,7 @@
                         </x-table-cell>
                         <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
+                                <x-icon-view-link :href="route('plotlines.show', $plotline)" />
                                 <x-icon-edit-link :href="route('plotlines.edit', $plotline)" />
                                 @unless ($plotline->is_main)
                                     <x-icon-delete-button :action="route('plotlines.destroy', $plotline)" :confirm="__('Are you sure you want to delete this plotline?')" />

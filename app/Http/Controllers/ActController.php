@@ -64,6 +64,23 @@ class ActController extends Controller
         ]);
     }
 
+    public function show(Act $act): View
+    {
+        $this->authorize('view', $act->book->project);
+
+        $act->load('chapters.scenes')->loadCount(['chapters', 'scenes']);
+
+        return view('acts.show', [
+            'act' => $act,
+            'wordCount' => (int) $act->scenes()->sum('word_count'),
+            'numbering' => StoryNumbering::forBook($act->book),
+            'destinationActs' => $act->book->acts()
+                ->whereKeyNot($act->getKey())
+                ->orderBy('position')
+                ->get(),
+        ]);
+    }
+
     public function create(Book $book): View
     {
         $this->authorize('update', $book->project);

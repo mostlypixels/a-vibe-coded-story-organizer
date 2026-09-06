@@ -93,6 +93,26 @@ class ChapterController extends Controller
         ]);
     }
 
+    public function show(Chapter $chapter): View
+    {
+        $book = $chapter->act->book;
+
+        $this->authorize('view', $book->project);
+
+        $chapter->load(['scenes', 'act'])->loadCount('scenes')->loadSum('scenes as word_count', 'word_count');
+
+        return view('chapters.show', [
+            'chapter' => $chapter,
+            'numbering' => StoryNumbering::forBook($book),
+            // Same move-destinations set the index's delete-with-move dialog offers.
+            'destinationChapters' => $book->chapterQuery()
+                ->whereKeyNot($chapter->getKey())
+                ->orderBy('act_id')
+                ->orderBy('position')
+                ->get(['id', 'name', 'act_id']),
+        ]);
+    }
+
     public function create(Book $book): View
     {
         $this->authorize('update', $book->project);

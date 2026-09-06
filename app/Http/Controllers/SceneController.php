@@ -98,6 +98,23 @@ class SceneController extends Controller
         ]);
     }
 
+    public function show(Scene $scene): View
+    {
+        $book = $scene->chapter->act->book;
+
+        $this->authorize('view', $book->project);
+
+        $scene->load('chapter.act', 'event', 'mentionedEvents');
+
+        return view('scenes.show', [
+            'scene' => $scene,
+            'numbering' => StoryNumbering::forBook($book),
+            // Same query the edit page runs, ordered for a stable read (type, name).
+            'referencedEntries' => $scene->codexReferences()->with('cover')->orderBy('type')->orderBy('name')->get(),
+            'duplicateSuggestion' => DuplicateName::suggest($scene->name, $book->project->sceneQuery()->pluck('name')),
+        ]);
+    }
+
     public function create(Book $book): View
     {
         $project = $book->project;

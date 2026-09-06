@@ -148,8 +148,8 @@ class SearchTest extends TestCase
         // The pre-built highlight HTML — proves the {!! !!} snippet renders raw and
         // carries the highlight role tokens the active theme paints.
         $response->assertSeeHtml('<mark class="bg-highlight text-highlight-content">zephyrqux</mark>');
-        // Link points at the scene's existing edit page.
-        $response->assertSee(route('scenes.edit', $scene), false);
+        // Link points at the scene's read page.
+        $response->assertSee(route('scenes.show', $scene), false);
     }
 
     public function test_an_unaccented_query_matches_accented_content_and_highlights_the_accented_text(): void
@@ -209,12 +209,11 @@ class SearchTest extends TestCase
         $response->assertOk();
         $response->assertSee('Name, Contents');
         // The trailing actions cell holds a view button pointing at the same
-        // edit page as the name link (entities have no separate show page), so
-        // the edit URL appears twice in the row.
+        // read page as the name link, so the show URL appears twice in the row.
         $response->assertSee(__('View'));
         $this->assertSame(
             2,
-            substr_count($response->getContent(), route('scenes.edit', $scene)),
+            substr_count($response->getContent(), route('scenes.show', $scene)),
         );
     }
 
@@ -399,12 +398,7 @@ class SearchTest extends TestCase
         $response->assertSee(route('codex.show', $entry), false);
     }
 
-    /**
-     * Only the Codex domains have a read page; every other domain's row still
-     * links to its edit route, proving the {@see SearchDomain::viewRoute()}
-     * fall-through.
-     */
-    public function test_a_scene_result_still_links_to_its_edit_page(): void
+    public function test_a_scene_result_links_to_its_show_page(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -414,7 +408,7 @@ class SearchTest extends TestCase
             ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
 
         $response->assertOk();
-        $response->assertSee(route('scenes.edit', $scene), false);
+        $response->assertSee(route('scenes.show', $scene), false);
     }
 
     public function test_mode_control_is_a_fieldset_and_section_headings_are_h2(): void

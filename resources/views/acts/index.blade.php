@@ -26,7 +26,7 @@
                     <x-table-row :striped="$loop->even">
                         <x-table-cell muted nowrap>{{ $numbering->act($act) }}</x-table-cell>
                         <x-table-cell>
-                            <a href="{{ route('acts.edit', $act) }}" class="font-semibold text-content hover:text-link">{{ $act->name }}</a>
+                            <a href="{{ route('acts.show', $act) }}" class="font-semibold text-content hover:text-link">{{ $act->name }}</a>
                             @if ($act->description)
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$act->description" /></div>
                             @endif
@@ -41,6 +41,7 @@
                                     <x-icon-move-button direction="up" :action="route('acts.move-up', $act)" :disabled="$loop->first" />
                                     <x-icon-move-button direction="down" :action="route('acts.move-down', $act)" :disabled="$loop->last" />
                                 @endif
+                                <x-icon-view-link :href="route('acts.show', $act)" />
                                 <x-icon-edit-link :href="route('acts.edit', $act)" />
                                 @if ($act->chapters_count > 0)
                                     <x-icon-dialog-button :modal="'delete-act-'.$act->id" />
