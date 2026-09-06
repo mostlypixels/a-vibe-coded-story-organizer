@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-06 — Name the page you are on
+## 2026-09-06 — Name the page you are on (#146)
 
 ### Added
 
