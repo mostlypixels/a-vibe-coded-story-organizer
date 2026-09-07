@@ -17,6 +17,15 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-07 — Theme the pagination controls (#149)
+
+### Fixed
+
+- Page links follow your chosen theme instead of a fixed grey, and the page you are on
+  is marked clearly under every theme.
+- The row count above a list of search results or saved revisions no longer hides itself
+  on a narrow screen.
+
 ## 2026-09-07 — List pagination (#148)
 
 ### Added

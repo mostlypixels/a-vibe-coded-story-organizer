@@ -86,7 +86,10 @@
                 @endforeach
             </ul>
 
-            {{ $savePoints->links() }}
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <x-row-range :paginator="$savePoints" />
+                <div>{{ $savePoints->links() }}</div>
+            </div>
         @endif
     </div>
 </x-revisions-layout>

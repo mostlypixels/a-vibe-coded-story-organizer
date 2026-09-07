@@ -502,8 +502,8 @@ class ListPaginationTest extends TestCase
     }
 
     /**
-     * The bar's own row range fills in only where Laravel's paginator view stays
-     * silent, so a multi-page list never prints the range twice.
+     * The published paginator view drops the row range Laravel ships, so the bar's
+     * own line is the only one, on a one-page list and a many-page list alike.
      */
     public function test_the_row_range_is_printed_once(): void
     {
@@ -511,12 +511,12 @@ class ListPaginationTest extends TestCase
 
         $onePage = $this->actingAs($user)->get(route('books.acts.index', $book));
         $onePage->assertOk();
-        $onePage->assertSee('Showing 1-1 of 1');
+        $this->assertSame(1, substr_count($onePage->getContent(), 'Showing 1-1 of 1'));
 
         $twoPages = $this->actingAs($user)->get(route('books.scenes.index', $book));
         $twoPages->assertOk();
-        $twoPages->assertDontSee('Showing 1-100 of 120');
-        $twoPages->assertSee('120');
+        $this->assertSame(1, substr_count($twoPages->getContent(), 'Showing 1-100 of 120'));
+        $twoPages->assertDontSee('results');
     }
 
     private function bookWithScenes(int $count): array
