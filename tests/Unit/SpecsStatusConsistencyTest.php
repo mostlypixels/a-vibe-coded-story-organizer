@@ -7,7 +7,10 @@ use PHPUnit\Framework\TestCase;
 /** Keep specification paths, lifecycle dates, and names consistent. */
 class SpecsStatusConsistencyTest extends TestCase
 {
-    private const KNOWN_STATUSES = ['draft', 'expanded', 'planned', 'shipped'];
+    private const KNOWN_STATUSES = ['draft', 'shelved', 'expanded', 'planned', 'shipped'];
+
+    /** Statuses with no lifecycle date, whose features sit directly under the status folder. */
+    private const FLAT_STATUSES = ['draft', 'shelved'];
 
     private const BUCKETED_STATUSES = ['expanded', 'planned', 'shipped'];
 
@@ -28,7 +31,7 @@ class SpecsStatusConsistencyTest extends TestCase
                 self::KNOWN_STATUSES,
                 ".specs/$name/ is not a valid status folder. The root may hold only "
                 .implode(', ', self::KNOWN_STATUSES)
-                .' (feature folders go deeper: .specs/draft/<name>/ or .specs/<status>/<YYYY-MM>/<name>/).'
+                .' (feature folders go deeper: .specs/draft/<name>/, .specs/shelved/<name>/, or .specs/<status>/<YYYY-MM>/<name>/).'
             );
         }
     }
@@ -40,7 +43,7 @@ class SpecsStatusConsistencyTest extends TestCase
         foreach (glob($this->specsRoot().'/*/spec.md') as $misplaced) {
             $this->fail(
                 'Feature folder '.dirname($misplaced).' sits directly under .specs/; '
-                .'move it under a status subfolder (.specs/draft/<name>/ or .specs/<status>/<YYYY-MM>/<name>/).'
+                .'move it under a status subfolder (.specs/draft/<name>/, .specs/shelved/<name>/, or .specs/<status>/<YYYY-MM>/<name>/).'
             );
         }
 
@@ -68,32 +71,38 @@ class SpecsStatusConsistencyTest extends TestCase
         }
     }
 
-    public function test_draft_features_are_not_bucketed(): void
+    public function test_flat_status_features_are_not_bucketed(): void
     {
-        // Drafts have no lifecycle date yet, so draft/ holds feature folders directly.
-        // A spec.md two levels under draft/ means someone bucketed a draft by hand.
-        foreach (glob($this->specsRoot().'/draft/*/*/spec.md') as $misplaced) {
-            $this->fail(
-                'Draft feature '.dirname($misplaced).' is nested too deep; drafts are not '
-                .'bucketed — file it at .specs/draft/<name>/ (a draft has no stage date to bucket by).'
-            );
+        // draft/ and shelved/ hold feature folders directly: neither has a lifecycle
+        // date to bucket by (shelving is a place, not a stage a feature passed
+        // through). A spec.md two levels down means someone bucketed one by hand.
+        foreach (self::FLAT_STATUSES as $status) {
+            foreach (glob($this->specsRoot()."/$status/*/*/spec.md") as $misplaced) {
+                $this->fail(
+                    'Feature '.dirname($misplaced)." is nested too deep; '$status' features are not "
+                    ."bucketed — file it at .specs/$status/<name>/ (it has no stage date to bucket by)."
+                );
+            }
         }
 
-        $this->assertTrue(true, 'No bucketed draft features.');
+        $this->assertTrue(true, 'No bucketed flat-status features.');
     }
 
     public function test_no_feature_name_is_reused_anywhere_in_the_tree(): void
     {
-        // A feature is located by name with the globs `.specs/draft/<name>/` and
-        // `.specs/*/*/<name>/`, so a name must resolve to exactly one folder. The
+        // A feature is located by name with the globs `.specs/draft/<name>/`,
+        // `.specs/shelved/<name>/` and `.specs/*/*/<name>/` (App\Support\SpecTree
+        // does this once), so a name must resolve to exactly one folder. The
         // collision happens when new work reuses a name that already shipped (e.g. a
         // fresh `draft/foo` beside an existing `shipped/2026-07/foo`): the lookup then
         // matches two folders and every skill that locates by name silently picks the
         // wrong one — or clobbers the shipped spec on the next `git mv`. Catch it here.
         $foldersByName = [];
 
-        foreach (glob($this->specsRoot().'/draft/*', GLOB_ONLYDIR) as $dir) {
-            $foldersByName[basename($dir)][] = 'draft';
+        foreach (self::FLAT_STATUSES as $status) {
+            foreach (glob($this->specsRoot()."/$status/*", GLOB_ONLYDIR) as $dir) {
+                $foldersByName[basename($dir)][] = $status;
+            }
         }
 
         foreach (self::BUCKETED_STATUSES as $status) {
@@ -120,16 +129,18 @@ class SpecsStatusConsistencyTest extends TestCase
     {
         $checked = 0;
 
-        // Drafts: .specs/draft/<name>/spec.md — status must be 'draft', no date required.
-        foreach (glob($this->specsRoot().'/draft/*/spec.md') as $spec) {
-            $checked++;
-            $relative = '.specs/draft/'.basename(dirname($spec)).'/spec.md';
+        // Flat statuses: .specs/<status>/<name>/spec.md — status must match, no date.
+        foreach (self::FLAT_STATUSES as $status) {
+            foreach (glob($this->specsRoot()."/$status/*/spec.md") as $spec) {
+                $checked++;
+                $relative = ".specs/$status/".basename(dirname($spec)).'/spec.md';
 
-            $this->assertSame(
-                'draft',
-                $this->frontmatterValue($spec, 'status'),
-                "$relative lives under draft/ but does not declare `status: draft`."
-            );
+                $this->assertSame(
+                    $status,
+                    $this->frontmatterValue($spec, 'status'),
+                    "$relative lives under $status/ but does not declare `status: $status`."
+                );
+            }
         }
 
         // Bucketed stages: .specs/<status>/<YYYY-MM>/<name>/spec.md — status must match,
