@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-07 — List pagination
+## 2026-09-07 — List pagination (#148)
 
 ### Added
 
