@@ -33,6 +33,7 @@ class User extends Authenticatable
         'manuscript_scale',
         'manuscript_leading',
         'ui_leading',
+        'page_size',
     ];
 
     /**

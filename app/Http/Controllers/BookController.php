@@ -14,7 +14,9 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CoverImageService;
 use App\Services\RecentlyEdited;
+use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Throwable;
@@ -28,11 +30,14 @@ class BookController extends Controller
 
     public function __construct(private CoverImageService $coverImageService) {}
 
-    public function index(Project $project): View
+    public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
 
-        $books = $project->books()->withCount('acts')->get();
+        $books = $project->books()
+            ->withCount('acts')
+            ->paginate(PageSize::resolve($request->user()?->page_size))
+            ->withQueryString();
 
         // One grouped query for every book's word total. Book has no direct
         // scenes relation of its own — a three-level hasManyThrough (book ->

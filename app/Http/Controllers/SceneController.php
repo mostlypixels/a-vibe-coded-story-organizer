@@ -18,6 +18,7 @@ use App\Services\SceneDuplicator;
 use App\Services\SceneReferenceMatcher;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
+use App\Support\PageSize;
 use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -39,7 +40,18 @@ class SceneController extends Controller
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
-        $scenes = $book->sceneQuery()
+        // The filtered set before any select, join or ordering. The footer's "Full
+        // total" is the total of the list on screen across all its pages, so it is
+        // built from this same filtered query, not from the book.
+        $filtered = $book->sceneQuery()
+            ->when($request->filled('search'), fn ($query) => $query->where('scenes.name', 'like', '%'.$request->query('search').'%'))
+            ->when($request->filled('chapter'), fn ($query) => $query->where('scenes.chapter_id', $request->query('chapter')));
+
+        // A query, never a hydrated collection: summing in PHP is the cost this
+        // pagination removes.
+        $fullWordCount = (int) (clone $filtered)->sum('scenes.word_count');
+
+        $scenes = $filtered
             // Only the scene columns: the two joins below are there to sort by, not to
             // select from, and without this the joined `chapters`/`acts` columns would
             // overwrite same-named scene attributes on the hydrated models. Safe here
@@ -54,8 +66,6 @@ class SceneController extends Controller
             ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
             ->join('acts', 'acts.id', '=', 'chapters.act_id')
             ->with('chapter.act', 'event')
-            ->when($request->filled('search'), fn ($query) => $query->where('scenes.name', 'like', '%'.$request->query('search').'%'))
-            ->when($request->filled('chapter'), fn ($query) => $query->where('scenes.chapter_id', $request->query('chapter')))
             ->when(
                 $sort === 'position',
                 // $direction is applied to every key, so descending reads as the story
@@ -72,7 +82,8 @@ class SceneController extends Controller
                 // $sort is allow-listed by resolveSorting(), so it is safe to qualify.
                 fn ($query) => $query->orderBy('scenes.'.$sort, $direction)
             )
-            ->get();
+            ->paginate(PageSize::resolve($request->user()?->page_size))
+            ->withQueryString();
 
         // One project-wide name list backs every row's suggestion, so this stays a
         // single query instead of one per row. Project-wide, not book-wide: a
@@ -91,6 +102,7 @@ class SceneController extends Controller
             'sort' => $sort,
             'direction' => $direction,
             'duplicateNames' => $duplicateNames,
+            'fullWordCount' => $fullWordCount,
             // Built from the whole book, never the filtered/paginated $scenes
             // above — a scenes list filtered to one chapter must still start
             // counting from that chapter's true book-wide number.

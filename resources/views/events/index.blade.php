@@ -73,5 +73,7 @@
                     />
                 @endforelse
             </x-table>
+
+            <x-pagination-bar :paginator="$events" />
     </div>
 </x-app-layout>

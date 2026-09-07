@@ -1,5 +1,6 @@
 @php
-    $isLastBook = $books->count() === 1;
+    // total(), not count(): the project has one book, not one book on this page.
+    $isLastBook = $books->total() === 1;
 @endphp
 
 <x-app-layout>
@@ -23,7 +24,7 @@
 
                 @foreach ($books as $book)
                     <x-table-row :striped="$loop->even">
-                        <x-table-cell muted nowrap>{{ $loop->iteration }}</x-table-cell>
+                        <x-table-cell muted nowrap>{{ $books->firstItem() + $loop->index }}</x-table-cell>
                         <x-table-cell>
                             <a href="{{ route('books.edit', $book) }}" class="font-semibold text-content hover:text-link">{{ $book->displayName() }}</a>
                         </x-table-cell>
@@ -33,8 +34,8 @@
                         </x-table-cell>
                         <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
-                                <x-icon-move-button direction="up" :action="route('books.move-up', $book)" :disabled="$loop->first" />
-                                <x-icon-move-button direction="down" :action="route('books.move-down', $book)" :disabled="$loop->last" />
+                                <x-icon-move-button direction="up" :action="route('books.move-up', $book)" :disabled="$loop->first && $books->onFirstPage()" />
+                                <x-icon-move-button direction="down" :action="route('books.move-down', $book)" :disabled="$loop->last && $books->onLastPage()" />
                                 <x-icon-edit-link :href="route('books.edit', $book)" />
                                 @unless ($isLastBook)
                                     @if ($book->acts_count > 0)
@@ -48,6 +49,8 @@
                     </x-table-row>
                 @endforeach
             </x-table>
+
+            <x-pagination-bar :paginator="$books" />
 
             @unless ($isLastBook)
                 @foreach ($books as $book)

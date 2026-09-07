@@ -58,8 +58,8 @@
                         <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 @if ($sort === 'position' && request()->filled('chapter'))
-                                    <x-icon-move-button direction="up" :action="route('scenes.move-up', $scene)" :disabled="$loop->first" />
-                                    <x-icon-move-button direction="down" :action="route('scenes.move-down', $scene)" :disabled="$loop->last" />
+                                    <x-icon-move-button direction="up" :action="route('scenes.move-up', $scene)" :disabled="$loop->first && $scenes->onFirstPage()" />
+                                    <x-icon-move-button direction="down" :action="route('scenes.move-down', $scene)" :disabled="$loop->last && $scenes->onLastPage()" />
                                 @endif
                                 <x-icon-dialog-button icon="copy" variant="outline-solid" :modal="'duplicate-scene-'.$scene->id" :label="__('Duplicate')" />
                                 <x-icon-view-link :href="route('scenes.show', $scene)" />
@@ -80,14 +80,25 @@
 
                 @if ($scenes->isNotEmpty())
                     <x-slot:foot>
-                        <x-table-cell colspan="6" total>{{ __('Total') }}</x-table-cell>
-                        <x-table-cell align="right" total nowrap>
-                            <x-word-count :count="$scenes->sum('word_count')" variant="inline" />
-                        </x-table-cell>
-                        <x-table-cell></x-table-cell>
+                        <tr>
+                            <x-table-cell colspan="6" total>{{ __('Page total') }}</x-table-cell>
+                            <x-table-cell align="right" total nowrap>
+                                <x-word-count :count="$scenes->sum('word_count')" variant="inline" />
+                            </x-table-cell>
+                            <x-table-cell></x-table-cell>
+                        </tr>
+                        <tr>
+                            <x-table-cell colspan="6" total>{{ __('Full total') }}</x-table-cell>
+                            <x-table-cell align="right" total nowrap>
+                                <x-word-count :count="$fullWordCount" variant="inline" />
+                            </x-table-cell>
+                            <x-table-cell></x-table-cell>
+                        </tr>
                     </x-slot:foot>
                 @endif
             </x-table>
+
+            <x-pagination-bar :paginator="$scenes" />
 
             @foreach ($scenes as $scene)
                 <x-duplicate-dialog

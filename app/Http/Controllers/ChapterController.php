@@ -12,7 +12,9 @@ use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Models\Book;
 use App\Models\Chapter;
+use App\Models\Scene;
 use App\Services\CoverImageService;
+use App\Support\PageSize;
 use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
@@ -37,7 +39,21 @@ class ChapterController extends Controller
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
-        $chapters = $book->chapterQuery()
+        // The filtered set before the joins, aggregates and ordering. The footer's
+        // "Full total" is the total of the list on screen across all its pages, so it
+        // is built from this same filtered query, not from the book. Cloned *before*
+        // withCount/withSum: those add `chapters.*` and a later select() would drop
+        // their aliases (see the comment on the aggregates below).
+        $filtered = $book->chapterQuery()
+            ->when($request->filled('search'), fn ($query) => $query->where('chapters.name', 'like', '%'.$request->query('search').'%'))
+            ->when($request->filled('act'), fn ($query) => $query->where('chapters.act_id', $request->query('act')));
+
+        // Two aggregate queries over the scenes of those chapters, never a hydrated
+        // collection: summing in PHP is the cost this pagination removes.
+        $fullSceneCount = Scene::whereIn('chapter_id', (clone $filtered)->select('chapters.id'))->count();
+        $fullWordCount = (int) Scene::whereIn('chapter_id', (clone $filtered)->select('chapters.id'))->sum('word_count');
+
+        $chapters = $filtered
             // Joined so the `#` column can sort by story order (act order, then
             // position within the act). Grouping by `act_id` instead — as this did —
             // only matches story order until someone reorders an act. Because `acts`
@@ -53,8 +69,6 @@ class ChapterController extends Controller
             // select() *after* them: that resets the column list and drops their
             // aliases.
             ->withSum('scenes as word_count', 'word_count')
-            ->when($request->filled('search'), fn ($query) => $query->where('chapters.name', 'like', '%'.$request->query('search').'%'))
-            ->when($request->filled('act'), fn ($query) => $query->where('chapters.act_id', $request->query('act')))
             ->when(
                 $sort === 'position',
                 // $direction is applied to every key, so descending reads as the story
@@ -69,7 +83,8 @@ class ChapterController extends Controller
                 // $sort is allow-listed by resolveSorting(), so it is safe to qualify.
                 fn ($query) => $query->orderBy('chapters.'.$sort, $direction)
             )
-            ->get();
+            ->paginate(PageSize::resolve($request->user()?->page_size))
+            ->withQueryString();
 
         // The delete-with-move dialog on each row needs the full set of the book's
         // chapters as move destinations, independent of the current search/act filter
@@ -84,6 +99,8 @@ class ChapterController extends Controller
             'acts' => $this->actsFor($book),
             'chapters' => $chapters,
             'destinationChapters' => $destinationChapters,
+            'fullSceneCount' => $fullSceneCount,
+            'fullWordCount' => $fullWordCount,
             'sort' => $sort,
             'direction' => $direction,
             // Built from the whole book, never the filtered/paginated $chapters

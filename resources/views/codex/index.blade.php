@@ -75,6 +75,8 @@
                 @endforelse
             </x-table>
 
+            <x-pagination-bar :paginator="$entries" />
+
             @foreach ($entries as $entry)
                 <x-duplicate-dialog
                     name="duplicate-codex-entry-{{ $entry->id }}"

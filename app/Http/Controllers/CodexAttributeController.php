@@ -8,21 +8,25 @@ use App\Http\Requests\StoreCodexAttributeRequest;
 use App\Http\Requests\UpdateCodexAttributeRequest;
 use App\Models\CodexAttribute;
 use App\Models\Project;
+use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class CodexAttributeController extends Controller
 {
     use RedirectsAfterSave;
 
-    public function index(Project $project): View
+    public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
 
         return view('codex-attributes.index', [
             'project' => $project,
             // Attributes render on the sheet in their stored display order.
-            'attributes' => $project->codexAttributes()->orderBy('position')->get(),
+            'attributes' => $project->codexAttributes()->orderBy('position')
+                ->paginate(PageSize::resolve($request->user()?->page_size))
+                ->withQueryString(),
         ]);
     }
 

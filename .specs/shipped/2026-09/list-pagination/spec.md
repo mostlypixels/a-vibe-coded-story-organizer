@@ -1,5 +1,8 @@
 ---
-status: draft
+status: shipped
+shipped: 2026-09-07
+planned: 2026-09-07
+expanded: 2026-09-06
 ---
 
 # List pagination

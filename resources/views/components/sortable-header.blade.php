@@ -3,7 +3,9 @@
 @php
     $isActive = $sort === $field;
     $nextDirection = $isActive && $direction === 'asc' ? 'desc' : 'asc';
-    $href = request()->fullUrlWithQuery(['sort' => $field, 'direction' => $nextDirection]);
+    // Sorting reshuffles every row, so the old page number points at different
+    // rows afterwards. Drop it and land on page 1, as a filter change does.
+    $href = request()->fullUrlWithQuery(['sort' => $field, 'direction' => $nextDirection, 'page' => null]);
 @endphp
 
 <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-table-header-content uppercase tracking-wider">

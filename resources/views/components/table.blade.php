@@ -13,8 +13,10 @@
         </tbody>
 
         @isset($foot)
+            {{-- The slot supplies its own `<tr>` rows: a footer can carry more
+                 than one, such as a page total above a full total. --}}
             <tfoot class="bg-table-header border-t border-border">
-                <tr>{{ $foot }}</tr>
+                {{ $foot }}
             </tfoot>
         @endisset
     </table>

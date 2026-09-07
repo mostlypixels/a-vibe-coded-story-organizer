@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Services\CodexAsOfResolver;
 use App\Services\EventLifespanEntries;
 use App\Support\EventWindow;
+use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -36,7 +37,8 @@ class EventController extends Controller
                 fn ($plotlineQuery) => $plotlineQuery->where('plotlines.id', $request->query('plotline'))
             ))
             ->orderBy($sort, $direction)
-            ->get();
+            ->paginate(PageSize::resolve($request->user()?->page_size))
+            ->withQueryString();
 
         return view('events.index', [
             'project' => $project->load('plotlines'),

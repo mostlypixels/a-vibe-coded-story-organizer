@@ -50,5 +50,7 @@
                 <x-table-empty :colspan="3">{{ __('No tags yet. Add one above, or tag an entry on its page.') }}</x-table-empty>
             @endforelse
         </x-table>
+
+        <x-pagination-bar :paginator="$tags" />
     </div>
 </x-app-layout>
