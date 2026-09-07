@@ -40,5 +40,7 @@
                     <x-table-empty :colspan="3">{{ __('No attributes yet.') }}</x-table-empty>
                 @endforelse
             </x-table>
+
+            <x-pagination-bar :paginator="$attributes" />
     </div>
 </x-app-layout>

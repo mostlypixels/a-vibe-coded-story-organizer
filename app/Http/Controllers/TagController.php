@@ -6,7 +6,9 @@ use App\Http\Requests\StoreTagRequest;
 use App\Http\Requests\UpdateTagRequest;
 use App\Models\Project;
 use App\Models\Tag;
+use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -16,13 +18,15 @@ use Illuminate\View\View;
  */
 class TagController extends Controller
 {
-    public function index(Project $project): View
+    public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
 
         return view('tags.index', [
             'project' => $project,
-            'tags' => $project->tags()->withCount('entries')->orderBy('name')->get(),
+            'tags' => $project->tags()->withCount('entries')->orderBy('name')
+                ->paginate(PageSize::resolve($request->user()?->page_size))
+                ->withQueryString(),
         ]);
     }
 

@@ -13,6 +13,9 @@ use App\Http\Requests\StoreActRequest;
 use App\Http\Requests\UpdateActRequest;
 use App\Models\Act;
 use App\Models\Book;
+use App\Models\Chapter;
+use App\Models\Scene;
+use App\Support\PageSize;
 use App\Support\StoryNumbering;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,17 +36,32 @@ class ActController extends Controller
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
-        $acts = $book->acts()
+        // The filtered set before the aggregates and ordering. The footer's "Full
+        // total" is the total of the list on screen across all its pages, so it is
+        // built from this same filtered query, not from the book. Cloned *before*
+        // withCount/withSum, whose aliases a later select() would drop.
+        $filtered = $book->acts()
+            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'));
+
+        // Aggregate queries down the tree, never a hydrated collection: summing in
+        // PHP is the cost this pagination removes.
+        $fullChapterCount = Chapter::whereIn('act_id', (clone $filtered)->select('acts.id'))->count();
+        $fullWordCount = (int) Scene::whereIn(
+            'chapter_id',
+            Chapter::whereIn('act_id', (clone $filtered)->select('acts.id'))->select('id')
+        )->sum('word_count');
+
+        $acts = $filtered
             ->withCount('chapters')
             // One grouped query for the whole page, via the act's own scenes()
             // HasManyThrough — a dot-nested relation path like 'chapters.scenes'
             // is not a real relation name and throws BadMethodCallException, so
             // it must go through that relation directly.
             ->withSum('scenes as word_count', 'word_count')
-            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
             // $sort is allow-listed by resolveSorting().
             ->orderBy($sort, $direction)
-            ->get();
+            ->paginate(PageSize::resolve($request->user()?->page_size))
+            ->withQueryString();
 
         // The delete-with-move dialog on each row needs the full set of sibling acts as
         // move destinations, independent of the current search filter above (moving is
@@ -56,6 +74,8 @@ class ActController extends Controller
             'book' => $book,
             'acts' => $acts,
             'destinationActs' => $destinationActs,
+            'fullChapterCount' => $fullChapterCount,
+            'fullWordCount' => $fullWordCount,
             'sort' => $sort,
             'direction' => $direction,
             // Built from the whole book, never the (possibly search-filtered)

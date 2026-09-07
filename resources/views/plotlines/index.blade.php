@@ -47,5 +47,7 @@
                     <x-table-empty :colspan="2">{{ __('No plotlines match.') }}</x-table-empty>
                 @endforelse
             </x-table>
+
+            <x-pagination-bar :paginator="$plotlines" />
     </div>
 </x-app-layout>

@@ -38,8 +38,8 @@
                         <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
                                 @if ($sort === 'position')
-                                    <x-icon-move-button direction="up" :action="route('acts.move-up', $act)" :disabled="$loop->first" />
-                                    <x-icon-move-button direction="down" :action="route('acts.move-down', $act)" :disabled="$loop->last" />
+                                    <x-icon-move-button direction="up" :action="route('acts.move-up', $act)" :disabled="$loop->first && $acts->onFirstPage()" />
+                                    <x-icon-move-button direction="down" :action="route('acts.move-down', $act)" :disabled="$loop->last && $acts->onLastPage()" />
                                 @endif
                                 <x-icon-view-link :href="route('acts.show', $act)" />
                                 <x-icon-edit-link :href="route('acts.edit', $act)" />
@@ -63,15 +63,27 @@
 
                 @if ($acts->isNotEmpty())
                     <x-slot:foot>
-                        <x-table-cell colspan="2" total>{{ __('Total') }}</x-table-cell>
-                        <x-table-cell total>{{ $acts->sum('chapters_count') }}</x-table-cell>
-                        <x-table-cell align="right" total nowrap>
-                            <x-word-count :count="$acts->sum('word_count')" variant="inline" />
-                        </x-table-cell>
-                        <x-table-cell></x-table-cell>
+                        <tr>
+                            <x-table-cell colspan="2" total>{{ __('Page total') }}</x-table-cell>
+                            <x-table-cell total>{{ $acts->sum('chapters_count') }}</x-table-cell>
+                            <x-table-cell align="right" total nowrap>
+                                <x-word-count :count="$acts->sum('word_count')" variant="inline" />
+                            </x-table-cell>
+                            <x-table-cell></x-table-cell>
+                        </tr>
+                        <tr>
+                            <x-table-cell colspan="2" total>{{ __('Full total') }}</x-table-cell>
+                            <x-table-cell total>{{ $fullChapterCount }}</x-table-cell>
+                            <x-table-cell align="right" total nowrap>
+                                <x-word-count :count="$fullWordCount" variant="inline" />
+                            </x-table-cell>
+                            <x-table-cell></x-table-cell>
+                        </tr>
                     </x-slot:foot>
                 @endif
             </x-table>
+
+            <x-pagination-bar :paginator="$acts" />
 
             @foreach ($acts as $act)
                 @if ($act->chapters_count > 0)

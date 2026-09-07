@@ -949,7 +949,8 @@ class ChapterTest extends TestCase
         $this->actingAs($user)
             ->get(route('books.chapters.index', $book))
             ->assertOk()
-            ->assertSee('Total')
+            ->assertSee('Page total')
+            ->assertSee('Full total')
             ->assertSee('1,062 words');
     }
 
@@ -995,10 +996,11 @@ class ChapterTest extends TestCase
             ->get(route('books.chapters.index', $book))
             ->assertOk();
 
-        // 1 for the withSum() word-count aggregate, 1 more for StoryNumbering::
-        // forBook()'s own eager load of the whole act -> chapter -> scene tree.
-        // Both stay O(1) per page load, not O(chapters), so the N+1 this test
-        // guards against is still absent.
-        $this->assertCount(2, $sceneQueries);
+        // 1 for the withSum() word-count aggregate over the page, 2 for the
+        // footer's "Full total" scene count and word sum over every page, 1 more
+        // for StoryNumbering::forBook()'s own eager load of the whole act ->
+        // chapter -> scene tree. All stay O(1) per page load, not O(chapters),
+        // so the N+1 this test guards against is still absent.
+        $this->assertCount(4, $sceneQueries);
     }
 }

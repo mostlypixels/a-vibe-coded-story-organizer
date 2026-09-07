@@ -112,7 +112,8 @@ class SceneTest extends TestCase
         $this->actingAs($user)
             ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
-            ->assertSee('Total')
+            ->assertSee('Page total')
+            ->assertSee('Full total')
             ->assertSee('1,062 words'); // sum, distinct from either scene's own count
     }
 

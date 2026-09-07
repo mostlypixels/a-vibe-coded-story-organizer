@@ -21,6 +21,7 @@ use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportSettingController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\PageSizeController;
 use App\Http\Controllers\PlotlineController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgressController;
@@ -78,6 +79,9 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::patch('/preferences/page-size', [PageSizeController::class, 'update'])
+        ->name('preferences.page-size.update');
 
     // Global settings use one gate because they do not belong to a project.
     Route::middleware('can:access-admin')->prefix('admin')->name('admin.')->group(function () {

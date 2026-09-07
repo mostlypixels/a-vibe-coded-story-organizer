@@ -17,6 +17,20 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-07 — List pagination (#148)
+
+### Added
+
+- Every list of scenes, chapters, acts, books, codex entries, events, plotlines, tags and
+  codex attributes now shows one page at a time.
+- A rows-per-page control under each list offers 50, 100, 250 or 500, and remembers your
+  choice across every list and every session.
+- Lists that total their words or children show the page's total and the whole list's total.
+
+### Fixed
+
+- Sorting a list from a later page now returns you to the first page.
+
 ## 2026-09-06 — Name the page you are on (#146)
 
 ### Added

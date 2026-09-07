@@ -9,6 +9,7 @@ use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\UpdatePlotlineRequest;
 use App\Models\Plotline;
 use App\Models\Project;
+use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -28,7 +29,8 @@ class PlotlineController extends Controller
         $plotlines = $project->plotlines()
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
             ->orderBy($sort, $direction)
-            ->get();
+            ->paginate(PageSize::resolve($request->user()?->page_size))
+            ->withQueryString();
 
         return view('plotlines.index', [
             'project' => $project,

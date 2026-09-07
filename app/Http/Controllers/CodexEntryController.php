@@ -17,6 +17,7 @@ use App\Services\ReferencingScenes;
 use App\Support\CodexMediaUploads;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
+use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -56,7 +57,8 @@ class CodexEntryController extends Controller
                 fn ($tags) => $tags->where('tags.id', $request->query('tag'))
             ))
             ->orderBy($sort, $direction)
-            ->get();
+            ->paginate(PageSize::resolve($request->user()?->page_size))
+            ->withQueryString();
 
         // Share one type-scoped name list with all rows.
         $names = $project->codexEntries()->where('type', $entryType->value)->pluck('name');
