@@ -20,13 +20,15 @@ return [
     | Domain-page pagination
     |--------------------------------------------------------------------------
     |
-    | How many rows one page of a single-domain "see all" page shows.
-    | Pagination is built by hand in the controller from ProjectSearch's full
-    | matched collection, mirroring App\Services\RevisionHistory::forEntity —
-    | matching runs in PHP, so a SQL LIMIT/OFFSET would page over the wrong set.
+    | There is no `per_page` here any more. The "see all" page uses the reader's
+    | own rows-per-page (App\Support\PageSize), like every entity list, so one
+    | preference governs every paginated screen.
+    |
+    | The paging itself is still built by hand in the controller from
+    | ProjectSearch's full matched collection, mirroring
+    | App\Services\RevisionHistory::forEntity — matching runs in PHP, so a SQL
+    | LIMIT/OFFSET would page over the wrong set.
     |
     */
-
-    'per_page' => 20, // rows
 
 ];
