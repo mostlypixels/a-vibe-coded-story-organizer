@@ -51,6 +51,21 @@ Cheaper fixes to weigh against queuing, both of which also help a queued job:
 > books and re-measure before this spec is expanded — that decides whether the threshold is
 > ever reached in practice.
 
+## Also in scope: references nobody ever scanned
+
+A 2026-09-07 persona audit found the gap this spec's framing misses. The rescan runs when an
+entry is saved. A project that arrives any other way — an import, a seeder, a restore — has
+never had one, so its pivot is empty. Every entry then reports zero referencing scenes, and
+the read page renders nothing at all.
+
+Zero and never-scanned look identical, and the writer has no reason to suspect the second.
+The manual **Resync codex references** action fixes it in one press, but nothing points at it.
+
+- Scan once when a project is created by import or restore, not only on entry save.
+- Record when a project was last scanned, and say so where the count is shown, so an empty
+  list can distinguish "no scenes mention her" from "nobody has looked yet".
+- These belong here because both answers depend on the job this spec introduces.
+
 ## Open questions to work through when this is expanded
 
 - Precedent to reuse: `ImportSetting` (`app/Models/ImportSetting.php`) is a singleton exactly
@@ -67,6 +82,11 @@ Cheaper fixes to weigh against queuing, both of which also help a queued job:
 - Should this reuse a general job-queue dispatch pattern already in the app (`ProjectImportJob`
   is the only existing queued job — check `app/Jobs` for its shape) rather than inventing a new
   one?
+- Is "last scanned at" per project or per entry? Per entry is honest after a partial rescan
+  and is one more column on a hot table.
+- Should an import scan automatically, or offer the button with an explanation? Automatic is
+  kinder; on a large import it also makes the first thing the writer does after importing a
+  wait.
 - **Regex size safety.** v1's `SceneReferenceMatcher` builds one combined regex per project
   (alternation of every eligible entry name + alias). For a project with a very large cast, this
   regex could grow large enough to hit PHP/PCRE practical limits (`pcre.backtrack_limit`,

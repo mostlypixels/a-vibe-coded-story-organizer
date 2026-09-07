@@ -9,6 +9,11 @@ status: draft
 `alias_references_v1` (shipped) added the derived `scene_codex_entry` pivot and two read-only
 cards that render it in full, with no cap:
 
+- **Codex entry read page** — the same "Referenced in scenes" list, in
+  `resources/views/codex/show.blade.php`, fed by the same `ReferencingScenes::forEntry()`
+  (`CodexEntryController::show()`). Added after this spec was drafted, and now the page a
+  writer actually opens to ask "where does she appear" — so it is the primary case, not
+  an afterthought.
 - **Codex entry edit page** — "Referenced in scenes", full-width below the attribute timeline
   (`resources/views/codex/edit.blade.php`), fed by
   `CodexEntryController::referencingScenesInTimelineOrder()`.
