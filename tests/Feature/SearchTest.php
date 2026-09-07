@@ -459,29 +459,67 @@ class SearchTest extends TestCase
 
     public function test_a_domain_page_second_page_slices_correctly_and_carries_q_and_mode(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['page_size' => 50]);
         $project = Project::factory()->for($user)->create();
-        Plotline::factory()->for($project)->count(25)->sequence(
-            fn ($sequence) => ['name' => "Zephyrqux {$sequence->index}", 'description' => '']
+        Event::factory()->for($project)->count(60)->sequence(
+            fn ($sequence) => ['title' => "Zephyrqux {$sequence->index}", 'description' => '']
         )->create();
 
         $response = $this->actingAs($user)
             ->get(route('projects.search.domain', [
                 'project' => $project,
-                'domain' => 'plotlines',
+                'domain' => 'events',
                 'q' => 'zephyrqux',
                 'mode' => 'any',
                 'page' => 2,
             ]));
 
         $response->assertOk();
-        // Plotlines are ordered by name (alphabetically, not numerically), so
-        // page 1 (20 rows) ends at "…19" and page 2 holds "…4" through "…9".
-        $response->assertSee('Zephyrqux 5');
-        $response->assertDontSee('Zephyrqux 19');
+        $paginator = $response->viewData('paginator');
+        $this->assertSame(60, $paginator->total());
+        $this->assertCount(10, $paginator);
         // Page links carry q/mode onward.
         $response->assertSee('q=zephyrqux', false);
         $response->assertSee('mode=any', false);
+    }
+
+    /** The "see all" page honours the same rows-per-page as every entity list. */
+    public function test_a_domain_page_uses_the_readers_rows_per_page(): void
+    {
+        $user = User::factory()->create(['page_size' => 50]);
+        $project = Project::factory()->for($user)->create();
+        Event::factory()->for($project)->count(60)->sequence(
+            fn ($sequence) => ['title' => "Zephyrqux {$sequence->index}", 'description' => '']
+        )->create();
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', [
+                'project' => $project,
+                'domain' => 'events',
+                'q' => 'zephyrqux',
+                'mode' => 'any',
+            ]));
+
+        $response->assertOk();
+        $this->assertSame(50, $response->viewData('paginator')->perPage());
+    }
+
+    /** A reader who has never chosen one gets the configured default, not a search setting. */
+    public function test_a_domain_page_falls_back_to_the_default_rows_per_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Plotline::factory()->for($project)->create(['name' => 'Zephyrqux arc', 'description' => '']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', [
+                'project' => $project,
+                'domain' => 'plotlines',
+                'q' => 'zephyrqux',
+            ]));
+
+        $response->assertOk();
+        $this->assertSame(config('pagination.default'), $response->viewData('paginator')->perPage());
     }
 
     public function test_a_domain_page_overshoot_page_shows_an_empty_state_not_a_500(): void

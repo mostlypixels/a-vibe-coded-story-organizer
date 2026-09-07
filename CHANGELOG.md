@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-07 — Rows per page everywhere, chapters in story order (#151)
+
+### Changed
+
+- Search results now use your chosen rows per page, like every other list, instead of a
+  fixed 20.
+- The chapter filter on the scene list is ordered by the story, not by chapter title.
+
 ## 2026-09-07 — Theme the pagination controls (#149)
 
 ### Fixed

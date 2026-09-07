@@ -7,6 +7,7 @@ use App\Enums\SearchMode;
 use App\Http\Requests\SearchRequest;
 use App\Models\Project;
 use App\Services\ProjectSearch;
+use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
@@ -73,7 +74,10 @@ class SearchController extends Controller
         $matches = app(ProjectSearch::class)->searchDomain($project, $domain, $query, $mode);
 
         $page = max(1, $request->integer('page', 1));
-        $perPage = config('search.per_page');
+        // The reader's own rows-per-page, the same one every entity list honours.
+        // This page used to keep a separate `search.per_page`, which meant one screen
+        // in ten quietly disagreed with the preference set on all the others.
+        $perPage = PageSize::resolve($request->user()?->page_size);
 
         // PHP-side slice of the already-matched collection — never a SQL
         // LIMIT/OFFSET, which would page over fetched rows before PHP matching

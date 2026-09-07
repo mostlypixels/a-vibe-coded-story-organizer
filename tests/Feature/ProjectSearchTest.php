@@ -537,6 +537,7 @@ class ProjectSearchTest extends TestCase
     public function test_search_config_keys_load(): void
     {
         $this->assertSame(5, config('search.cap'));
-        $this->assertSame(20, config('search.per_page'));
+        // Row count per page is the reader's preference now, not a search setting.
+        $this->assertNull(config('search.per_page'));
     }
 }

@@ -1039,6 +1039,34 @@ class SceneTest extends TestCase
     // --- Continuous numbering --------------------------------------------
 
     /**
+     * The chapter filter is how a writer reaches a chapter in a long book, so its
+     * options follow story order. Alphabetical puts chapter 200 above chapter 3.
+     */
+    public function test_the_chapter_filter_lists_chapters_in_story_order(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = Book::factory()->for($project)->create();
+
+        $second = Act::factory()->for($book)->create(['name' => 'Act two', 'position' => 2]);
+        $first = Act::factory()->for($book)->create(['name' => 'Act one', 'position' => 1]);
+
+        // Names deliberately disagree with position: alphabetical order would be
+        // Alpha, Omega, Zulu — story order is Zulu, Omega, Alpha.
+        Chapter::factory()->for($first)->create(['name' => 'Zulu', 'position' => 1]);
+        Chapter::factory()->for($first)->create(['name' => 'Omega', 'position' => 2]);
+        Chapter::factory()->for($second)->create(['name' => 'Alpha', 'position' => 1]);
+
+        $response = $this->actingAs($user)->get(route('books.scenes.index', $book));
+
+        $response->assertOk();
+        $this->assertSame(
+            ['Zulu', 'Omega', 'Alpha'],
+            $response->viewData('chapters')->pluck('name')->all()
+        );
+    }
+
+    /**
      * The trimmed, tag-stripped text of the `$index`-th `<td>` (0-based) in the row
      * whose name is `$rowName` — scoped to a single `<tr>...</tr>` block so it
      * can't be fooled by an id or word count elsewhere on the page matching.
