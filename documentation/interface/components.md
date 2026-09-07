@@ -35,6 +35,8 @@ Reuse a component before adding local Blade and Tailwind markup.
 | `x-badge`, `x-scene-status-badge` | Compact state labels |
 | `x-alert` | Contextual feedback |
 | `x-word-count` | Shared count formatting |
+| `x-pagination-bar` | Row range, page links and the rows-per-page control under a list |
+| `x-row-range` | The "Showing x-y of z" line, on its own for pages with no size control |
 
 ## Forms and actions
 

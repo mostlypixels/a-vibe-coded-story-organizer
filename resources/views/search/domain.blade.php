@@ -39,7 +39,10 @@
                 @endforeach
             </x-table>
 
-            {{ $paginator->links() }}
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <x-row-range :paginator="$paginator" />
+                <div>{{ $paginator->links() }}</div>
+            </div>
         @endif
     </div>
 </x-app-layout>

@@ -85,6 +85,11 @@ chrome. Weigh that before retuning them.
 
 There is no Tailwind `dark:` branch. Runtime tokens supply the complete palette for every preset.
 
+This is why `resources/views/vendor/pagination/tailwind.blade.php` is published: Laravel's
+stock paginator paints itself with fixed greys and a `dark:` branch, so it follows no preset.
+A published vendor view is the place to fix that — retheming it in a wrapper is not possible,
+since `->links()` renders the vendor view directly.
+
 ## Related documentation
 
 - [Components](components.md)
