@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-07 — Rows per page everywhere, chapters in story order
+## 2026-09-07 — Rows per page everywhere, chapters in story order (#151)
 
 ### Changed
 
