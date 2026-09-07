@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-07 — A shelved stage for specs (#153)
+
+### Added
+
+- A `shelved` stage for specs, with `php artisan spec:shelve` and `spec:unshelve`, so a
+  parked draft leaves the drafting queue without being deleted.
+
 ## 2026-09-07 — Rows per page everywhere, chapters in story order (#151)
 
 ### Changed

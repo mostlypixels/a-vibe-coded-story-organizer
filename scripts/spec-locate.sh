@@ -3,12 +3,12 @@
 # spec-locate.sh — locate a feature folder under .specs/ by name.
 #
 # Implements the folder-location rule shared by the whole spec pipeline: a feature
-# sits either flat under draft/ (.specs/draft/<name>/) or in a month bucket
+# sits flat under draft/ or shelved/ (.specs/<status>/<name>/) or in a month bucket
 # (.specs/<status>/<YYYY-MM>/<name>/). Prints one line per match:
 #
 #     <status><TAB><absolute-path>
 #
-# ordered earliest-lifecycle-first (draft < expanded < planned < shipped), so a
+# ordered earliest-lifecycle-first (draft < shelved < expanded < planned < shipped), so a
 # caller hitting a name collision can take the FIRST line as "the active feature"
 # (the newest, least-advanced work — the collision is resolved by the auto-suffix
 # rule when that folder next moves; see .specs/README.md → Name-collision handling).
@@ -31,11 +31,15 @@ specs="$root/.specs"
 
 found=0
 
-# The four lifecycle stages, in order — draft is flat, the rest are month-bucketed.
-if [ -d "$specs/draft/$name" ]; then
-    printf 'draft\t%s\n' "$specs/draft/$name"
-    found=1
-fi
+# draft/ and shelved/ are flat; the stages past draft are month-bucketed. A shelved
+# feature is reported, not hidden: the callers that only advance a draft then refuse
+# it by name and say where it is, which beats "no feature named".
+for status in draft shelved; do
+    if [ -d "$specs/$status/$name" ]; then
+        printf '%s\t%s\n' "$status" "$specs/$status/$name"
+        found=1
+    fi
+done
 
 for status in expanded planned shipped; do
     for dir in "$specs/$status"/*/"$name"; do
@@ -47,6 +51,6 @@ for status in expanded planned shipped; do
 done
 
 if [ "$found" -eq 0 ]; then
-    echo "spec-locate.sh: no feature named '$name' under .specs/ (looked in .specs/draft/$name/ and .specs/*/*/$name/)" >&2
+    echo "spec-locate.sh: no feature named '$name' under .specs/ (looked in .specs/draft/$name/, .specs/shelved/$name/ and .specs/*/*/$name/)" >&2
     exit 1
 fi

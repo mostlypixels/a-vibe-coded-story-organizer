@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\SpecTree;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
 use Illuminate\Support\Facades\File;
@@ -44,23 +45,17 @@ class SpecDraftCommand extends Command implements PromptsForMissingInput
     {
         $name = (string) $this->argument('name');
 
-        // Kebab-case keeps folder names glob- and URL-safe, and matches every
-        // existing feature under .specs/ (e.g. `plotline-merge`).
-        if (! preg_match('/^[a-z0-9]+(-[a-z0-9]+)*$/', $name)) {
+        if (! SpecTree::isValidName($name)) {
             $this->error("'$name' is not a valid spec name: use kebab-case (lowercase letters, digits and single hyphens, e.g. 'plotline-merge').");
 
             return self::FAILURE;
         }
 
         // Feature names must be unique across the WHOLE tree, not just under
-        // draft/ — a duplicate anywhere fails SpecsStatusConsistencyTest. The
-        // two globs are the canonical lookup from .specs/README.md: drafts sit
-        // at draft/<name>/, later stages at <status>/<YYYY-MM>/<name>/.
-        $specsRoot = config('specs.path');
-        $existing = array_merge(
-            File::isDirectory("$specsRoot/draft/$name") ? ["$specsRoot/draft/$name"] : [],
-            File::glob("$specsRoot/*/*/$name", GLOB_ONLYDIR)
-        );
+        // draft/ — a duplicate anywhere fails SpecsStatusConsistencyTest, and a
+        // shelved spec is the easiest one to forget.
+        $specsRoot = SpecTree::root();
+        $existing = SpecTree::locate($name);
 
         if ($existing !== []) {
             $this->error(

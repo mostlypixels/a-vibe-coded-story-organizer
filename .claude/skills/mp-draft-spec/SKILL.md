@@ -48,6 +48,20 @@ the pipeline — this skill exists so that never happens.
 4. **Report** the created path and a one-line summary, then point the user at the next stage:
    `/mp-expand-spec <name>` to expand it into design docs.
 
+## Shelving
+
+A draft nobody will pick up for a while goes to `.specs/shelved/<name>/`, so the drafting
+queue reads as work that is queued:
+
+```
+php artisan spec:shelve <name> --reason="why it waits"
+php artisan spec:unshelve <name>
+```
+
+Both commands move the folder and re-stamp `status:`. Only a draft shelves, and the
+pipeline stages refuse a shelved feature by name — unshelve it first. See
+`.specs/README.md` → Shelving.
+
 ## Writing style
 
 Same rules as `.claude/rules/documentation.md` → Verbosity. A draft captures intent, nothing more —

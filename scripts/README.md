@@ -19,6 +19,13 @@ secrets from env, `set -euo pipefail`, header naming its callers) is documented 
 | `claude-usage.sh [--text\|--raw]` | Report Claude Code session/week limit usage as JSON (default); failures print one word (`unavailable`, `unparseable`) and exit 1 | plan-implementer |
 | `pr-land.sh <title> <body-file>` | Land the current feature branch on master: push, open PR, stamp the PR number onto the changelog heading, arm squash auto-merge, watch CI, merge, confirm MERGED, update local master | ship-pr |
 
-There is also one artisan command extracted from the skills: `php artisan spec:draft`
-(scaffolds a stage-1 draft spec; prompts for missing input when run interactively) —
-see `app/Console/Commands/SpecDraftCommand.php` and the mp-draft-spec skill.
+There are also three artisan commands for the `.specs/` tree, each prompting for missing
+input when run interactively:
+
+| Command | Does |
+|---|---|
+| `php artisan spec:draft <name>` | Scaffolds a stage-1 draft (`app/Console/Commands/SpecDraftCommand.php`, and the mp-draft-spec skill) |
+| `php artisan spec:shelve <name> [--reason=]` | Parks a draft at `.specs/shelved/<name>/` |
+| `php artisan spec:unshelve <name>` | Brings it back to `.specs/draft/<name>/` |
+
+Shelving is `app/Services/SpecShelf.php`; see `.specs/README.md` → Shelving.
