@@ -7,6 +7,7 @@
     'placeholder' => '',
     'disabled' => false,
     'markdown' => false,
+    'quickCodexEntry' => false,
 ])
 
 @php
@@ -26,6 +27,7 @@
         linkPrompt: @js(__('Enter a URL (http:// or https://)')),
         imagePrompt: @js(__('Enter an image URL (http:// or https://)')),
         imageAltPrompt: @js(__('Alt text (optional, for accessibility)')),
+        quickCodexEntry: {{ $quickCodexEntry ? 'true' : 'false' }},
     })"
     data-format="{{ $format }}"
     class="mt-1"

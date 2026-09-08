@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-08 — Make a codex entry without leaving the scene
+
+### Added
+
+- A "New codex entry" button on the scene editor's codex references, and a matching
+  slash-menu item, which take a name and a type and nothing else.
+- Text selected in the editor fills in the name.
+
+### Changed
+
+- The scene's codex references update as soon as an entry is made, instead of on the next
+  save.
+
 ## 2026-09-08 — Ask for the attributes you have, not all fifteen (#157)
 
 ### Added

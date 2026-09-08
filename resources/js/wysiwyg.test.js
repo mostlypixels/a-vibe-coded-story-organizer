@@ -667,3 +667,53 @@ describe('smart punctuation', () => {
         expect(editor.getText()).toBe('a \u2014 b');
     });
 });
+
+describe('slash menu — New codex entry', () => {
+    /** A chain recorder standing in for the TipTap editor. */
+    function fakeEditor() {
+        const deleted = [];
+        const chain = {
+            focus: () => chain,
+            deleteRange: (range) => {
+                deleted.push(range);
+
+                return chain;
+            },
+            run: () => true,
+        };
+
+        return { editor: { chain: () => chain }, deleted };
+    }
+
+    function codexItem(onCodexEntry) {
+        return buildSlashItems('markdown', () => {}, () => {}, onCodexEntry).find(
+            (item) => item.title === 'New codex entry'
+        );
+    }
+
+    it('offers the item when the editor supplies the callback, and nowhere else', () => {
+        expect(codexItem(() => {})).toBeDefined();
+        expect(codexItem(null)).toBeUndefined();
+        expect(buildSlashItems('markdown', () => {}, () => {})).not.toContainEqual(
+            expect.objectContaining({ title: 'New codex entry' })
+        );
+    });
+
+    it('removes the typed /… range, so the command never survives into the prose', () => {
+        const { editor, deleted } = fakeEditor();
+        const range = { from: 3, to: 9 };
+
+        codexItem(() => {}).run({ editor, range });
+
+        expect(deleted).toEqual([range]);
+    });
+
+    it('asks for the dialog exactly once', () => {
+        const onCodexEntry = vi.fn();
+        const { editor } = fakeEditor();
+
+        codexItem(onCodexEntry).run({ editor, range: { from: 1, to: 5 } });
+
+        expect(onCodexEntry).toHaveBeenCalledTimes(1);
+    });
+});

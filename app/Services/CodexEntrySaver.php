@@ -46,10 +46,13 @@ class CodexEntrySaver
 
     /**
      * @param  array<string, mixed>  $validated
+     * @param  bool  $rescanProject  Skip when the caller resyncs a narrower scope itself
+     *                               right after — a project-wide rescan is the cost that skip exists to avoid.
+     *                               Existing callers keep the old behaviour by leaving this at its default.
      */
-    public function create(Project $project, CodexEntryType $type, array $validated, CodexMediaUploads $uploads): CodexEntry
+    public function create(Project $project, CodexEntryType $type, array $validated, CodexMediaUploads $uploads, bool $rescanProject = true): CodexEntry
     {
-        [$entry, $pathsToDelete] = DB::transaction(function () use ($project, $type, $validated, $uploads) {
+        [$entry, $pathsToDelete] = DB::transaction(function () use ($project, $type, $validated, $uploads, $rescanProject) {
             $entry = $project->codexEntries()->create([
                 'type' => $type,
                 'name' => $validated['name'],
@@ -61,7 +64,9 @@ class CodexEntrySaver
             $this->seedAttributeBaselines($entry, $validated['attribute_baselines'] ?? []);
 
             // A new name and aliases always add matching terms.
-            $this->matcher->syncProject($project);
+            if ($rescanProject) {
+                $this->matcher->syncProject($project);
+            }
 
             return [$entry, $this->queueMediaRemovals($entry, $uploads)];
         });
