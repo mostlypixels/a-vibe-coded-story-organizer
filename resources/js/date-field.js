@@ -199,6 +199,15 @@ export function registerDateField(Alpine) {
             this.showTime = true;
         },
 
+        /** Empty every box. The quick-event save calls this after a success. */
+        clear() {
+            this.year = '';
+            this.month = '';
+            this.day = '';
+            this.showTime = false;
+            this.clearTime();
+        },
+
         clearTime() {
             this.showTime = false;
             this.hour = this.twelveHour ? '12' : '0';

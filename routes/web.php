@@ -27,6 +27,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PublicationSettingController;
+use App\Http\Controllers\QuickEventController;
 use App\Http\Controllers\RevisionBrowserController;
 use App\Http\Controllers\RevisionController;
 use App\Http\Controllers\RevisionSettingController;
@@ -138,6 +139,10 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::resource('projects.challenges', ChallengeController::class)
         ->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->shallow();
+
+    // Registered before the resource below, or "/quick" reads as an {event} segment.
+    Route::post('/projects/{project}/events/quick', [QuickEventController::class, 'store'])
+        ->name('projects.events.quick-store');
 
     Route::resource('projects.events', EventController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])

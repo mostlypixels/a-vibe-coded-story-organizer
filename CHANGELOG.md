@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-08 — Save an inline event without saving the page
+
+### Added
+
+- A "Save event" button beside the inline new-event fields on the scene and codex forms,
+  which creates the event and selects it without saving the page.
+
+### Changed
+
+- Creating an event from a codex entry's Born picker now offers it in the Died picker too.
+
 ## 2026-09-08 — Jump to a chapter on a long list (#154)
 
 ### Added

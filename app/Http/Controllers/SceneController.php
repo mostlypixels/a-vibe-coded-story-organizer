@@ -174,12 +174,11 @@ class SceneController extends Controller
         $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
 
         $scene = $chapter->scenes()->create(
-            $this->sceneAttributes($validated) + ['event_id' => $this->resolveInlineEvent(
+            $this->sceneAttributes($validated) + ['event_id' => $this->createInlineEvent(
                 $book->project,
                 $validated['new_event_title'] ?? null,
                 $validated['new_event_datetime'] ?? null,
-                $validated['event_id'] ?? null,
-            )]
+            )?->id ?? $validated['event_id'] ?? null]
         );
 
         $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
@@ -244,12 +243,11 @@ class SceneController extends Controller
 
         $scene->update(
             $sceneAttributes
-            + ['chapter_id' => $chapter->id, 'event_id' => $this->resolveInlineEvent(
+            + ['chapter_id' => $chapter->id, 'event_id' => $this->createInlineEvent(
                 $project,
                 $validated['new_event_title'] ?? null,
                 $validated['new_event_datetime'] ?? null,
-                $validated['event_id'] ?? null,
-            )]
+            )?->id ?? $validated['event_id'] ?? null]
         );
 
         $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);

@@ -12,6 +12,7 @@ import { registerFontPreview } from './font-preview';
 import { registerSettingTrack } from './setting-track';
 import { registerDateField } from './date-field';
 import { moveScene } from './scene-reorder';
+import { saveQuickEvent } from './quick-event';
 
 window.Alpine = Alpine;
 
@@ -33,3 +34,7 @@ Alpine.start();
 // onclick (see scene-reorder.js's docblock for why it isn't an Alpine
 // component), so it must stay reachable on window.
 window.moveScene = moveScene;
+
+// The Save event button in x-single-event-field calls this from an Alpine
+// x-on:click, which reads globals rather than module imports.
+window.saveQuickEvent = saveQuickEvent;
