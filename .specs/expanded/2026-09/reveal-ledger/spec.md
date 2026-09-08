@@ -1,5 +1,6 @@
 ---
-status: draft
+status: expanded
+expanded: 2026-09-08
 ---
 
 # Reveal Ledger
