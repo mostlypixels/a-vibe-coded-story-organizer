@@ -146,6 +146,26 @@ class ListPaginationTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * `range` is scene- and chapter-list-only. Every other index passes
+     * none, so its bar must render exactly as it did before this prop
+     * existed — the regression this task's place in the plan guards against.
+     */
+    #[DataProvider('indexes')]
+    public function test_the_bar_renders_with_no_range_line_on_other_indexes(string $route, string $factory, string $viewKey): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $this->clearExisting($factory, $project);
+        $factory::factory()->for($project)->count(3)->create();
+
+        $response = $this->actingAs($user)->get($this->indexUrl($route, $project));
+
+        $response->assertOk();
+        $response->assertViewHas($viewKey);
+        $response->assertDontSee('basis-full', false);
+    }
+
     public function test_setting_the_size_on_one_list_applies_to_another(): void
     {
         $user = User::factory()->create();

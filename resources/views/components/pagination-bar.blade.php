@@ -1,6 +1,10 @@
-@props(['paginator'])
+@props(['paginator', 'range' => null])
 
 <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+    @if ($range)
+        <p class="basis-full text-content font-semibold">{{ $range }}</p>
+    @endif
+
     <x-row-range :paginator="$paginator" />
 
     {{-- onEachSide(1) puts the ellipsis in from 11 pages instead of 15, so a long

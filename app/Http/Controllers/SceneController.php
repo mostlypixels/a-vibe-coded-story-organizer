@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\JumpsToListPosition;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
@@ -24,19 +25,36 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
 class SceneController extends Controller
 {
     use CreatesInlineEvents;
+    use JumpsToListPosition;
     use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ReordersSiblings;
     use ResolvesIndexSorting;
 
-    public function index(Request $request, Book $book): View
+    public function index(Request $request, Book $book): View|RedirectResponse
     {
         $this->authorize('view', $book->project);
+
+        // The dropdown's own list, which is also the story-ordered id list the jump
+        // arithmetic needs — one query serves both.
+        $chapters = $this->chaptersFor($book);
+        $perPage = PageSize::resolve($request->user()?->page_size);
+
+        // Before any filtering or pagination work: a Go-to request answers with a
+        // redirect and renders nothing.
+        $jump = $this->jumpRedirect(
+            $request, 'books.scenes.index', $book, $book->sceneQuery(), 'scenes.chapter_id', $chapters, $perPage, 'chapter'
+        );
+
+        if ($jump) {
+            return $jump;
+        }
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
@@ -82,7 +100,7 @@ class SceneController extends Controller
                 // $sort is allow-listed by resolveSorting(), so it is safe to qualify.
                 fn ($query) => $query->orderBy('scenes.'.$sort, $direction)
             )
-            ->paginate(PageSize::resolve($request->user()?->page_size))
+            ->paginate($perPage)
             ->withQueryString();
 
         // One project-wide name list backs every row's suggestion, so this stays a
@@ -95,9 +113,11 @@ class SceneController extends Controller
             fn (Scene $scene) => [$scene->id => DuplicateName::suggest($scene->name, $names)]
         );
 
+        $numbering = StoryNumbering::forBook($book);
+
         return view('scenes.index', [
             'book' => $book,
-            'chapters' => $this->chaptersFor($book),
+            'chapters' => $chapters,
             'scenes' => $scenes,
             'sort' => $sort,
             'direction' => $direction,
@@ -106,7 +126,8 @@ class SceneController extends Controller
             // Built from the whole book, never the filtered/paginated $scenes
             // above — a scenes list filtered to one chapter must still start
             // counting from that chapter's true book-wide number.
-            'numbering' => StoryNumbering::forBook($book),
+            'numbering' => $numbering,
+            'pageRange' => $this->pageRange($scenes, $sort, $numbering),
         ]);
     }
 
@@ -305,6 +326,36 @@ class SceneController extends Controller
     private function eventsFor(Project $project): Collection
     {
         return $project->events()->orderBy('event_datetime')->get();
+    }
+
+    /**
+     * "Chapter 214 — Ash and Rust to Chapter 231 — Salt and Thorn": the
+     * chapters holding the page's first and last scene, for the range line
+     * above the pagination bar.
+     *
+     * Reads `chapter` off the already-eager-loaded `$scenes` — no extra
+     * query. Null on an empty page, and on any sort but story order: a
+     * name-sorted page does not cover a contiguous range.
+     */
+    private function pageRange(LengthAwarePaginator $scenes, string $sort, StoryNumbering $numbering): ?string
+    {
+        if ($sort !== 'position' || $scenes->isEmpty()) {
+            return null;
+        }
+
+        $first = $scenes->first()->chapter;
+        $last = $scenes->last()->chapter;
+
+        $firstLabel = __('Chapter :number — :name', ['number' => $numbering->chapter($first), 'name' => $first->name]);
+
+        if ($first->is($last)) {
+            return $firstLabel;
+        }
+
+        return __(':first to :last', [
+            'first' => $firstLabel,
+            'last' => __('Chapter :number — :name', ['number' => $numbering->chapter($last), 'name' => $last->name]),
+        ]);
     }
 
     /**
