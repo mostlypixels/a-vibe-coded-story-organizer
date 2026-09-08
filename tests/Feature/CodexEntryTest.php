@@ -695,6 +695,69 @@ class CodexEntryTest extends TestCase
             ->assertSeeInOrder(['Black', 'Grey', 'White']);
     }
 
+    public function test_create_attaches_only_the_picked_attributes(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $attributes = CodexAttribute::factory()->count(5)->for($project)->appliesTo(CodexEntryType::Character)->create();
+
+        $this->actingAs($user)
+            ->post(route('projects.codex.store', [$project, 'characters']), [
+                'name' => 'Melusine',
+                'attribute_baselines' => [
+                    $attributes[0]->id => 'Blonde',
+                    $attributes[1]->id => 'Tall',
+                ],
+            ])
+            ->assertRedirect(route('projects.codex.index', [$project, 'characters']));
+
+        $entry = CodexEntry::where('name', 'Melusine')->firstOrFail();
+
+        $this->assertSame(2, $entry->attributeValues()->count());
+        $this->assertEqualsCanonicalizing(
+            [$attributes[0]->id, $attributes[1]->id],
+            $entry->attributeValues()->pluck('codex_attribute_id')->all(),
+        );
+    }
+
+    public function test_create_attaches_a_picked_but_blank_attribute(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create();
+
+        $this->actingAs($user)
+            ->post(route('projects.codex.store', [$project, 'characters']), [
+                'name' => 'Melusine',
+                'attribute_baselines' => [$attribute->id => ''],
+            ])
+            ->assertRedirect(route('projects.codex.index', [$project, 'characters']));
+
+        $entry = CodexEntry::where('name', 'Melusine')->firstOrFail();
+
+        $this->assertDatabaseHas('codex_attribute_values', [
+            'codex_entry_id' => $entry->id,
+            'codex_attribute_id' => $attribute->id,
+            'start_event_id' => $project->startEvent()->id,
+            'value' => '',
+        ]);
+    }
+
+    public function test_create_page_offers_attributes_to_pick_without_a_value_box_each(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Hair color']);
+
+        $content = $this->actingAs($user)
+            ->get(route('projects.codex.create', [$project, 'characters']))
+            ->assertOk()
+            ->assertSee('Hair color')
+            ->getContent();
+
+        $this->assertStringNotContainsString('name="attribute_baselines[', $content);
+    }
+
     public function test_show_page_omits_an_attribute_the_entry_never_set(): void
     {
         $user = User::factory()->create();
@@ -705,6 +768,120 @@ class CodexEntryTest extends TestCase
         $this->actingAs($user)->get(route('codex.show', $entry))
             ->assertOk()
             ->assertDontSee('Unset Attribute');
+    }
+
+    public function test_show_page_omits_an_attribute_whose_every_row_is_blank(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Blank Attribute']);
+        $laterEvent = Event::factory()->for($project)->create(['event_datetime' => now()->addDays(3)]);
+
+        // Attached, so rows exist — but nothing a reader can be shown.
+        CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+            'start_event_id' => $project->startEvent()->id,
+            'value' => '',
+        ]);
+        CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+            'start_event_id' => $laterEvent->id,
+            'value' => '',
+        ]);
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertDontSee('Blank Attribute');
+    }
+
+    public function test_edit_page_renders_only_the_attached_attributes(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $attached = CodexAttribute::factory()->count(3)->for($project)->appliesTo(CodexEntryType::Character)
+            ->sequence(['name' => 'Hair color'], ['name' => 'Height'], ['name' => 'Allegiance'])
+            ->create();
+        $unattached = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Never Attached']);
+
+        foreach ($attached as $attribute) {
+            CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+                'start_event_id' => $project->startEvent()->id,
+                'value' => '',
+            ]);
+        }
+
+        $content = $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('Hair color')
+            ->assertSee('Height')
+            ->assertSee('Allegiance')
+            ->getContent();
+
+        // A block renders one baseline input per attached attribute, and no more.
+        $this->assertSame(3, substr_count($content, 'id="baseline_'));
+        // The unattached one is a picker option only, never a timeline block.
+        $this->assertStringNotContainsString('id="baseline_'.$unattached->id.'"', $content);
+    }
+
+    public function test_edit_page_renders_the_attach_form_when_no_attribute_is_attached(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Hair color']);
+
+        $content = $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('Attribute timeline')
+            ->assertSee('No attributes are attached to this entry yet.')
+            ->getContent();
+
+        $this->assertStringContainsString(route('codex.attributes.attach', $entry), $content);
+        $this->assertStringNotContainsString('id="baseline_', $content);
+    }
+
+    public function test_attaching_an_attribute_makes_its_block_appear_on_the_edit_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Hair color']);
+
+        $this->actingAs($user)
+            ->post(route('codex.attributes.attach', $entry), ['codex_attribute_id' => $attribute->id])
+            ->assertRedirect(route('codex.edit', $entry));
+
+        $content = $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('id="baseline_'.$attribute->id.'"', $content);
+        $this->assertStringContainsString(route('codex.attributes.detach', [$entry, $attribute]), $content);
+    }
+
+    public function test_removing_the_start_baseline_is_still_refused_while_later_periods_exist(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create();
+        $laterEvent = Event::factory()->for($project)->create(['event_datetime' => now()->addDays(3)]);
+
+        $baseline = CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+            'start_event_id' => $project->startEvent()->id,
+            'value' => 'Black',
+        ]);
+        CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+            'start_event_id' => $laterEvent->id,
+            'value' => 'White',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('codex.attribute-values.destroy', $baseline))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('codex_attribute_values', ['id' => $baseline->id]);
     }
 
     public function test_show_page_lists_referencing_scenes_in_event_timeline_order(): void

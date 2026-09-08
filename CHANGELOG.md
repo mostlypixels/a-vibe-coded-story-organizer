@@ -17,6 +17,24 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-08 — Ask for the attributes you have, not all fifteen
+
+### Added
+
+- A picker on the codex create and edit forms that adds one attribute at a time, with a
+  link to the project's attribute list.
+- A Remove control on each attribute of a codex entry, which deletes its values and leaves
+  the project attribute in place.
+
+### Changed
+
+- The codex create form no longer asks for every attribute of the entry's type.
+- The codex edit form shows only the attributes an entry has been given.
+
+### Fixed
+
+- A codex entry's read page listed attributes that had never been given a value.
+
 ## 2026-09-08 — Save an inline event without saving the page (#156)
 
 ### Added

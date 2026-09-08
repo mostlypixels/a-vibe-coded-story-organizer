@@ -19,22 +19,51 @@ class CodexAttributeSheets
      *
      * @return Collection<int, array{attribute: CodexAttribute, baseline: ?CodexAttributeValue, periods: Collection}>
      */
-    public function forEntry(CodexEntry $entry, Event $startEvent): Collection
+    private function forEntry(CodexEntry $entry, Event $startEvent): Collection
     {
         return $entry->project->codexAttributesFor($entry->type)
             ->map(fn (CodexAttribute $attribute) => $this->sheetFor($entry, $attribute, $startEvent));
     }
 
     /**
-     * Only attributes with a baseline or at least one period — the read page
-     * has nothing to show for an attribute the entry has never been given.
+     * Only attributes attached to the entry — a baseline row or at least one period,
+     * blank values included. Row presence, not content, decides "attached".
+     *
+     * @return Collection<int, array{attribute: CodexAttribute, baseline: ?CodexAttributeValue, periods: Collection}>
+     */
+    public function attached(CodexEntry $entry, Event $startEvent): Collection
+    {
+        return $this->forEntry($entry, $startEvent)
+            ->reject(fn (array $sheet) => $sheet['baseline'] === null && $sheet['periods']->isEmpty())
+            ->values();
+    }
+
+    /**
+     * Only attributes with something to show a reader — the baseline or a period
+     * carries a filled value. Matches {@see CodexAsOfResolver}'s own filter.
      *
      * @return Collection<int, array{attribute: CodexAttribute, baseline: ?CodexAttributeValue, periods: Collection}>
      */
     public function setOnly(CodexEntry $entry, Event $startEvent): Collection
     {
         return $this->forEntry($entry, $startEvent)
-            ->reject(fn (array $sheet) => $sheet['baseline'] === null && $sheet['periods']->isEmpty())
+            ->filter(fn (array $sheet) => filled($sheet['baseline']?->value)
+                || $sheet['periods']->contains(fn (CodexAttributeValue $period) => filled($period->value)))
+            ->values();
+    }
+
+    /**
+     * The entry's project attributes not yet attached, in picker order.
+     *
+     * @return Collection<int, CodexAttribute>
+     */
+    public function unattachedFor(CodexEntry $entry): Collection
+    {
+        $attachedIds = $this->attached($entry, $entry->project->startEvent())
+            ->pluck('attribute.id');
+
+        return $entry->project->codexAttributesFor($entry->type)
+            ->reject(fn (CodexAttribute $attribute) => $attachedIds->contains($attribute->id))
             ->values();
     }
 

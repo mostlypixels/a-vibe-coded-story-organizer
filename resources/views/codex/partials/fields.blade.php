@@ -81,27 +81,93 @@
     @endif
 
     @if ($entry === null && $attributes->isNotEmpty())
-        <x-card :title="__('Attributes')">
-            <p class="text-sm text-content-muted">{{ __('Starting value for each attribute (from the Start of the timeline). You can add later changes after saving.') }}</p>
+        @php
+            $attributeOptions = $attributes
+                ->map(fn ($attribute) => ['id' => (string) $attribute->id, 'name' => $attribute->name])
+                ->values()
+                ->all();
 
-            <div class="mt-4 space-y-4">
-                @foreach ($attributes as $attribute)
-                    <div>
-                        <x-input-label
-                            for="attribute_baselines_{{ $attribute->id }}"
-                            :value="__(':name (from Start)', ['name' => $attribute->name])"
-                        />
-                        <x-text-input
-                            id="attribute_baselines_{{ $attribute->id }}"
-                            name="attribute_baselines[{{ $attribute->id }}]"
-                            type="text"
-                            class="mt-1 block w-full"
-                            :value="old('attribute_baselines.'.$attribute->id)"
-                        />
-                        <x-input-error :messages="$errors->get('attribute_baselines.'.$attribute->id)" class="mt-2" />
-                    </div>
-                @endforeach
+            // A pick survives a failed validation: old() keeps the ids and the typed values.
+            $pickedAttributes = collect(old('attribute_baselines', []))
+                ->map(fn ($value) => (string) $value)
+                ->filter(fn ($value, $id) => $attributes->contains('id', (int) $id))
+                ->map(fn ($value, $id) => [
+                    'id' => (string) $id,
+                    'name' => $attributes->firstWhere('id', (int) $id)->name,
+                    'value' => $value,
+                ])
+                ->values()
+                ->all();
+        @endphp
+
+        <x-card :title="__('Attributes')">
+            <div
+                x-data="{
+                    options: {{ Illuminate\Support\Js::from($attributeOptions) }},
+                    picked: {{ Illuminate\Support\Js::from($pickedAttributes) }},
+                    choice: '',
+                    get available() {
+                        return this.options.filter((option) => ! this.picked.some((pick) => pick.id === option.id));
+                    },
+                    add() {
+                        const option = this.options.find((option) => option.id === this.choice);
+
+                        if (option) {
+                            this.picked.push({ id: option.id, name: option.name, value: '' });
+                        }
+
+                        this.choice = '';
+                    },
+                }"
+            >
+                <div class="space-y-4" x-show="picked.length > 0" style="display: none">
+                    <template x-for="(pick, index) in picked" :key="pick.id">
+                        <div class="flex items-end gap-2">
+                            <div class="flex-1">
+                                <label
+                                    class="block font-medium text-sm text-content-muted"
+                                    :for="'attribute_baselines_' + pick.id"
+                                ><span x-text="pick.name"></span> {{ __('(from Start)') }}</label>
+                                <x-text-input
+                                    type="text"
+                                    class="mt-1 block w-full"
+                                    ::id="'attribute_baselines_' + pick.id"
+                                    ::name="'attribute_baselines[' + pick.id + ']'"
+                                    x-model="pick.value"
+                                />
+                            </div>
+                            <x-button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                @click="picked.splice(index, 1)"
+                            >{{ __('Remove') }}</x-button>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="flex items-center gap-2" :class="picked.length > 0 && 'mt-4'">
+                    <x-input-label for="codex-attribute-pick" :value="__('Add an attribute')" class="sr-only" />
+                    <x-select id="codex-attribute-pick" x-model="choice" class="text-sm">
+                        <option value="">{{ __('Add an attribute…') }}</option>
+                        <template x-for="option in available" :key="option.id">
+                            <option :value="option.id" x-text="option.name"></option>
+                        </template>
+                    </x-select>
+                    <x-button type="button" variant="secondary" size="sm" ::disabled="choice === ''" @click="add()">
+                        {{ __('Add') }}
+                    </x-button>
+                </div>
             </div>
+
+            @foreach ($attributes as $attribute)
+                <x-input-error :messages="$errors->get('attribute_baselines.'.$attribute->id)" class="mt-2" />
+            @endforeach
+
+            <p class="mt-3 text-sm text-content-muted">
+                {{ __('These come from your project\'s attributes.') }}
+                <a href="{{ route('projects.codex-attributes.index', $project) }}" class="text-link hover:text-link-hover">{{ __('Add or remove attributes') }}</a>
+            </p>
         </x-card>
     @endif
 

@@ -10,6 +10,7 @@ use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\CodexAttributeController;
 use App\Http\Controllers\CodexAttributeValueController;
 use App\Http\Controllers\CodexController;
+use App\Http\Controllers\CodexEntryAttributeController;
 use App\Http\Controllers\CodexEntryController;
 use App\Http\Controllers\DatabaseConfigurationController;
 use App\Http\Controllers\DataTransferController;
@@ -228,6 +229,11 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->name('codex.attribute-values.store');
     Route::delete('/codex-attribute-values/{codexAttributeValue}', [CodexAttributeValueController::class, 'destroy'])
         ->name('codex.attribute-values.destroy');
+
+    Route::post('/codex/{codexEntry}/attributes', [CodexEntryAttributeController::class, 'store'])
+        ->name('codex.attributes.attach');
+    Route::delete('/codex/{codexEntry}/attributes/{codexAttribute}', [CodexEntryAttributeController::class, 'destroy'])
+        ->name('codex.attributes.detach');
 
     // Gate autosave by its registry and allow concurrent two-second debounces.
     Route::whereIn('entity', AutosavableFields::slugs())->middleware('throttle:120,1')->group(function () {

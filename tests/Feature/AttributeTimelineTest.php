@@ -499,12 +499,10 @@ class AttributeTimelineTest extends TestCase
             'value' => 'blonde',
         ]);
 
-        // ...and applicable attributes not submitted still get an empty Start baseline.
-        $this->assertDatabaseHas('codex_attribute_values', [
+        // ...and an attribute the writer did not pick stays unattached.
+        $this->assertDatabaseMissing('codex_attribute_values', [
             'codex_entry_id' => $entry->id,
             'codex_attribute_id' => $blank->id,
-            'start_event_id' => $start->id,
-            'value' => '',
         ]);
     }
 

@@ -17,6 +17,8 @@ Tasks 01 and 04.
 
 ## Key decisions already made
 
+* **`CodexAttributeSheets::forEntry()` becomes private here.** Task 01 had to leave it
+  public because `edit()` was still its only caller; this task is what removes that caller.
 * `edit()` passes `sheets` => `$sheets->attached(...)` and adds
   `unattachedAttributes` => `$sheets->unattachedFor($codexEntry)`. `show()` is unchanged.
 * The partial's `@if ($sheets->isNotEmpty())` guard **goes**. The card must render for an

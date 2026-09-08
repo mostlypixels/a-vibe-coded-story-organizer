@@ -132,7 +132,8 @@ class CodexEntryController extends Controller
             'project' => $project,
             'type' => $codexEntry->type,
             'entry' => $codexEntry,
-            'sheets' => $sheets->forEntry($codexEntry, $startEvent),
+            'sheets' => $sheets->attached($codexEntry, $startEvent),
+            'unattachedAttributes' => $sheets->unattachedFor($codexEntry),
             'startEvent' => $startEvent,
             'events' => $project->events()->orderBy('event_datetime')->orderBy('id')->get(),
             // Inception/termination pickers offer regular events only — Start/End are
