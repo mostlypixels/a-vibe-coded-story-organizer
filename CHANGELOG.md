@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-08 — Ask for the attributes you have, not all fifteen
+## 2026-09-08 — Ask for the attributes you have, not all fifteen (#157)
 
 ### Added
 
