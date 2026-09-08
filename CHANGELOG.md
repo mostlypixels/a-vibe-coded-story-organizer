@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-08 — Save an inline event without saving the page
+## 2026-09-08 — Save an inline event without saving the page (#156)
 
 ### Added
 
