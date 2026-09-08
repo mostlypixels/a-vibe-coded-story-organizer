@@ -15,14 +15,26 @@
     $base = str_ends_with($name, '_id') ? substr($name, 0, -3) : $name;
     $newTitleName = 'new_'.$base.'_title';
     $newDatetimeName = 'new_'.$base.'_datetime';
+
+    // The four call sites do not pass a project, and two of them sit on a
+    // shallow route (/scenes/{scene}/edit, /codex/{codexEntry}/edit). The same
+    // walk the navigation uses answers which project the page belongs to.
+    $quickProject = \App\Support\RouteContext::resolve(request())->project;
 @endphp
 
-<div x-data="{ newEvent: {{ old($newTitleName) ? 'true' : 'false' }} }">
+<div
+    x-data="{ newEvent: {{ old($newTitleName) ? 'true' : 'false' }}, quickSaving: false }"
+    @if ($quickProject)
+        data-quick-event-url="{{ route('projects.events.quick-store', $quickProject) }}"
+        data-quick-event-success="{{ __('Saved to the timeline: :title') }}"
+        data-quick-event-failure="{{ __('The event was not saved. It is created when you save this page.') }}"
+    @endif
+>
     <x-input-label :for="$name" :value="$label" />
-    <x-select :id="$name" :name="$name" x-bind:disabled="newEvent" class="mt-1 block w-full disabled:bg-surface-sunken disabled:text-content-subtle">
+    <x-select :id="$name" :name="$name" data-event-picker x-bind:disabled="newEvent" class="mt-1 block w-full disabled:bg-surface-sunken disabled:text-content-subtle">
         <option value="">{{ $emptyLabel }}</option>
         @foreach ($events as $event)
-            <option value="{{ $event->id }}" @selected(old($name, $selected) == $event->id)>{{ $event->title }} &mdash; {{ \App\Support\DateFormat::date($event->event_datetime, $locale) }}</option>
+            <option value="{{ $event->id }}" data-datetime="{{ $event->event_datetime->format('Y-m-d\TH:i') }}" @selected(old($name, $selected) == $event->id)>{{ $event->title }} &mdash; {{ \App\Support\DateFormat::date($event->event_datetime, $locale) }}</option>
         @endforeach
     </x-select>
     <x-input-error :messages="$errors->get($name)" class="mt-2" />
@@ -34,21 +46,42 @@
     <div x-show="newEvent" style="{{ old($newTitleName) ? '' : 'display: none;' }}" class="mt-3 space-y-3 border-l-2 border-border pl-4">
         <div>
             <x-input-label :for="$newTitleName" :value="__('New event title')" />
-            <x-text-input :id="$newTitleName" :name="$newTitleName" type="text" class="mt-1 block w-full" :value="old($newTitleName)" />
+            <x-text-input :id="$newTitleName" :name="$newTitleName" type="text" class="mt-1 block w-full" :value="old($newTitleName)" data-quick-event-title />
             <x-input-error :messages="$errors->get($newTitleName)" class="mt-2" />
+            {{-- Empty twin of the slot above: a quick-save 422 renders here, so a
+                 client-side and a server-side error look the same. --}}
+            <ul data-quick-event-error="title" class="mt-2 text-sm text-danger-surface-content space-y-1"></ul>
         </div>
         <div>
             <x-input-label :for="$newDatetimeName" :value="__('New event date & time')" />
-            <x-date-field :id="$newDatetimeName" :name="$newDatetimeName" :value="old($newDatetimeName)" :min="$windowMin" :max="$windowMax" />
+            <x-date-field :id="$newDatetimeName" :name="$newDatetimeName" :value="old($newDatetimeName)" :min="$windowMin" :max="$windowMax" data-quick-event-datetime x-on:quick-event-clear="clear()" />
             <x-input-error :messages="$errors->get($newDatetimeName)" class="mt-2" />
+            <ul data-quick-event-error="event_datetime" class="mt-2 text-sm text-danger-surface-content space-y-1"></ul>
         </div>
 
-        <p class="text-sm text-content-muted">{{ __('The event is created and joins the Main plotline when you save this page.') }}</p>
+        <p class="text-sm text-content-muted">{{ __('The event joins the Main plotline.') }}</p>
 
-        <button type="button" @click="newEvent = false" class="text-sm text-link hover:text-link-hover">
-            {{ __('Cancel new event') }}
-        </button>
+        <div class="flex flex-wrap items-center gap-3">
+            @if ($quickProject)
+                <x-button
+                    type="button"
+                    size="sm"
+                    x-bind:disabled="quickSaving"
+                    x-on:click="quickSaving = true; window.saveQuickEvent($root).then((saved) => { quickSaving = false; newEvent = ! saved; })"
+                >
+                    {{ __('Save event') }}
+                </x-button>
+            @endif
+
+            <button type="button" @click="newEvent = false" class="text-sm text-link hover:text-link-hover">
+                {{ __('Cancel new event') }}
+            </button>
+        </div>
     </div>
+
+    {{-- Outside the collapsible section: a success closes that section, and a
+         status hidden by x-show announces nothing to a screen reader. --}}
+    <p data-quick-event-status aria-live="polite" class="mt-2 text-sm text-content-muted"></p>
 
     {{ $slot }}
 </div>

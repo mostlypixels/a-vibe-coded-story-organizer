@@ -82,18 +82,16 @@ class CodexEntrySaver
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             // Plain saves, not autosaved fields — no revision snapshot for these.
-            'inception_event_id' => $this->resolveInlineEvent(
+            'inception_event_id' => $this->createInlineEvent(
                 $project,
                 $validated['new_inception_event_title'] ?? null,
                 $validated['new_inception_event_datetime'] ?? null,
-                $validated['inception_event_id'] ?? null,
-            ),
-            'termination_event_id' => $this->resolveInlineEvent(
+            )?->id ?? $validated['inception_event_id'] ?? null,
+            'termination_event_id' => $this->createInlineEvent(
                 $project,
                 $validated['new_termination_event_title'] ?? null,
                 $validated['new_termination_event_datetime'] ?? null,
-                $validated['termination_event_id'] ?? null,
-            ),
+            )?->id ?? $validated['termination_event_id'] ?? null,
         ];
 
         $pathsToDelete = DB::transaction(function () use ($project, $entry, $validated, $data, $uploads, $user) {

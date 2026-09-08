@@ -1,5 +1,7 @@
 ---
-status: draft
+status: planned
+planned: 2026-09-08
+expanded: 2026-09-07
 ---
 
 # Codex attributes on demand
