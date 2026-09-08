@@ -5,6 +5,7 @@
     'label' => null,
     'rows' => 4,
     'form' => null,
+    'quickCodexEntry' => false,
 ])
 
 @php
@@ -74,6 +75,7 @@
                 :rows="$rows"
                 :markdown="$kind === FieldKind::Markdown"
                 :form="$form"
+                :quick-codex-entry="$quickCodexEntry"
             />
         @endif
 

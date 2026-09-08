@@ -401,7 +401,7 @@ const TextColor = Mark.create({
 });
 
 /** Build commands that both editor formats can serialize without loss. */
-export function buildSlashItems(format, onLink, onImage) {
+export function buildSlashItems(format, onLink, onImage, onCodexEntry = null) {
     const at = (editor, range) => editor.chain().focus().deleteRange(range);
 
     const items = [
@@ -428,6 +428,15 @@ export function buildSlashItems(format, onLink, onImage) {
         { title: 'Task list', keywords: ['todo', 'checklist', 'checkbox'], run: ({ editor, range }) => at(editor, range).toggleTaskList().run() },
         { title: 'Callout', keywords: ['note', 'tip', 'warning', 'alert', 'callout'], run: ({ editor, range }) => at(editor, range).setCallout({ type: 'note' }).run() },
     ];
+
+    // Only the scene editor supplies this callback, so no other editor offers the item.
+    if (onCodexEntry) {
+        items.push({
+            title: 'New codex entry',
+            keywords: ['codex', 'entry', 'character', 'place', 'item'],
+            run: ({ editor, range }) => { at(editor, range).run(); onCodexEntry(); },
+        });
+    }
 
     // Decoration is HTML-only: Markdown scene text stays structural.
     if (format !== 'markdown') {
@@ -545,8 +554,8 @@ function slashRenderer() {
     };
 }
 
-function slashExtension(format, onLink, onImage) {
-    const menuItems = buildSlashItems(format, onLink, onImage);
+function slashExtension(format, onLink, onImage, onCodexEntry) {
+    const menuItems = buildSlashItems(format, onLink, onImage, onCodexEntry);
 
     return Extension.create({
         name: 'slashCommands',
@@ -573,7 +582,7 @@ function slashExtension(format, onLink, onImage) {
     });
 }
 
-export function buildExtensions(format, { placeholder = '', onLink = () => {}, onImage = () => {} } = {}) {
+export function buildExtensions(format, { placeholder = '', onLink = () => {}, onImage = () => {}, onCodexEntry = null } = {}) {
     const isMarkdown = format === 'markdown';
 
     const extensions = [
@@ -605,7 +614,7 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
         TaskItem,
         TaskList,
         Callout,
-        slashExtension(format, onLink, onImage),
+        slashExtension(format, onLink, onImage, onCodexEntry),
     ];
 
     if (!isMarkdown) {
@@ -654,6 +663,13 @@ export function registerWysiwyg(Alpine) {
                     placeholder: config.placeholder || '',
                     onLink: () => this.setLink(),
                     onImage: () => this.setImage(),
+                    // An event, so this generic editor never imports the scene dialog.
+                    // The name matches OPEN_EVENT in resources/js/quick-codex-entry.js.
+                    onCodexEntry: config.quickCodexEntry
+                        ? () => this.$el.dispatchEvent(
+                            new CustomEvent('quick-codex-entry:open', { bubbles: true })
+                        )
+                        : null,
                 });
 
                 editor = new Editor({

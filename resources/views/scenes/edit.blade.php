@@ -56,7 +56,7 @@
                     </div>
 
                     <div>
-                        <x-autosave-field entity="scene" :model="$scene" field="contents" :label="__('Contents (Markdown)')" :rows="12" />
+                        <x-autosave-field entity="scene" :model="$scene" field="contents" :label="__('Contents (Markdown)')" :rows="12" :quick-codex-entry="true" />
                     </div>
 
                     <div>
@@ -174,23 +174,25 @@
 
         <div class="lg:col-span-3">
             <x-collapsible-card :title="__('Codex references')">
-                <p class="text-sm text-content-muted">{{ __('Detected from the scene contents on last save.') }}</p>
+                <p class="text-sm text-content-muted">{{ __('Detected from the scene contents each time it autosaves.') }}</p>
 
-                @if ($referencedEntries->isEmpty())
-                    <p class="mt-2 text-sm text-content-muted">{{ __('No codex entries referenced yet.') }}</p>
-                @else
-                    <ul class="mt-2 space-y-1">
-                        @foreach ($referencedEntries as $entry)
-                            <li>
-                                <a href="{{ route('codex.show', $entry) }}" class="text-sm text-link hover:text-link-hover">
-                                    {{ $entry->name }}
-                                </a>
-                                <span class="text-xs text-content-subtle">({{ $entry->type->label() }})</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
+                <x-button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    class="mt-2"
+                    x-data
+                    x-on:click="$dispatch('quick-codex-entry:open')"
+                >{{ __('+ New codex entry') }}</x-button>
+
+                <p class="mt-2 text-sm text-success" data-codex-entry-created role="status" aria-live="polite"></p>
+
+                <div data-codex-references-list>
+                    @include('codex.partials.referenced-entries', ['referencedEntries' => $referencedEntries])
+                </div>
             </x-collapsible-card>
         </div>
     </div>
+
+    @include('scenes.partials.quick-codex-entry', ['scene' => $scene])
 </x-app-layout>

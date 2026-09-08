@@ -33,6 +33,7 @@ use App\Http\Controllers\RevisionBrowserController;
 use App\Http\Controllers\RevisionController;
 use App\Http\Controllers\RevisionSettingController;
 use App\Http\Controllers\RobotsTxtController;
+use App\Http\Controllers\SceneCodexEntryController;
 use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SceneShareController;
 use App\Http\Controllers\SearchController;
@@ -194,6 +195,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::patch('/scenes/{scene}/move-up', [SceneController::class, 'moveUp'])->name('scenes.move-up');
     Route::patch('/scenes/{scene}/move-down', [SceneController::class, 'moveDown'])->name('scenes.move-down');
     Route::post('/scenes/{scene}/duplicate', [SceneController::class, 'duplicate'])->name('scenes.duplicate');
+    Route::post('/scenes/{scene}/codex-entries', [SceneCodexEntryController::class, 'store'])->name('scenes.codex-entries.store');
 
     Route::post('/scenes/{scene}/share', [SceneShareController::class, 'store'])->name('scenes.share.store');
     Route::delete('/scenes/{scene}/share', [SceneShareController::class, 'destroy'])->name('scenes.share.destroy');

@@ -13,6 +13,7 @@ import { registerSettingTrack } from './setting-track';
 import { registerDateField } from './date-field';
 import { moveScene } from './scene-reorder';
 import { saveQuickEvent } from './quick-event';
+import { registerQuickCodexEntry } from './quick-codex-entry';
 
 window.Alpine = Alpine;
 
@@ -27,6 +28,7 @@ registerChallengeChart(Alpine);
 registerFontPreview(Alpine);
 registerSettingTrack(Alpine);
 registerDateField(Alpine);
+registerQuickCodexEntry(Alpine);
 
 Alpine.start();
 

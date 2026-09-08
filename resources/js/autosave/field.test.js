@@ -271,6 +271,75 @@ describe('registerAutosaveField store dirty tracking', () => {
         expect(Alpine.store('autosave').elements).not.toHaveProperty(field.key);
     });
 
+    it('flush() resolves once the PATCH resolves', async () => {
+        let respond;
+        window.axios = {
+            patch: vi.fn(() => new Promise((resolve) => {
+                respond = () => resolve({ status: 200, headers: {}, data: { hash: 'new-hash' } });
+            })),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const flushed = field.flush({});
+        respond();
+
+        await expect(flushed).resolves.toBeUndefined();
+    });
+
+    it('flush() resolves, not undefined-by-accident, when the field is clean', async () => {
+        window.axios = { patch: vi.fn() };
+
+        const { field } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        await expect(field.flush({})).resolves.toBeUndefined();
+        expect(window.axios.patch).not.toHaveBeenCalled();
+    });
+
+    it('store.flush(key) saves that field and resolves', async () => {
+        let respond;
+        window.axios = {
+            patch: vi.fn(() => new Promise((resolve) => {
+                respond = () => resolve({ status: 200, headers: {}, data: { hash: 'new-hash' } });
+            })),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const flushed = Alpine.store('autosave').flush(field.key);
+        respond();
+
+        await flushed;
+
+        expect(window.axios.patch).toHaveBeenCalledTimes(1);
+        expect(Alpine.store('autosave').dirty[field.key]).toBe(false);
+    });
+
+    it('store.flush(key) resolves without error when the key is unknown', async () => {
+        await expect(Alpine.store('autosave').flush('scene:999:contents')).resolves.toBeUndefined();
+    });
+
+    it('store.flush(key, { runMatcher: false }) posts run_matcher: false', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        await Alpine.store('autosave').flush(field.key, { runMatcher: false });
+
+        expect(window.axios.patch.mock.calls[0][1]).toMatchObject({ run_matcher: false });
+    });
+
     it('isDirty() is true when any registered field is dirty and false once none are', async () => {
         window.axios = {
             patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),

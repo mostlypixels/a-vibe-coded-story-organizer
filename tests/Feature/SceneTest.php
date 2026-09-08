@@ -15,6 +15,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Js;
 use Tests\TestCase;
 
 class SceneTest extends TestCase
@@ -464,6 +465,29 @@ class SceneTest extends TestCase
             ->assertDontSee('name="new_event_id_title"', false);
     }
 
+    public function test_the_edit_page_offers_the_quick_codex_entry_dialog_outside_the_scene_form(): void
+    {
+        // A dialog inside the scene <form> would let a stray Enter submit the whole scene
+        // instead of creating the entry.
+        $user = User::factory()->create();
+        $scene = Scene::factory()->for($this->chapterFor($user))->create();
+
+        $response = $this->actingAs($user)->get(route('scenes.edit', $scene))->assertOk();
+
+        $html = $response->getContent();
+
+        $response->assertSee('+ New codex entry')
+            ->assertSee('quickCodexEntry(', false)
+            ->assertSee('data-codex-references-list', false)
+            ->assertSee('data-codex-entry-created', false)
+            // The URL sits in an `x-data` object, so it is JSON- then attribute-escaped.
+            ->assertSee(Js::from(route('scenes.codex-entries.store', $scene))->toHtml(), false);
+
+        $sceneFormEnd = strpos($html, '</form>', strpos($html, 'id="scene-edit-form"'));
+
+        $this->assertGreaterThan($sceneFormEnd, strpos($html, 'quickCodexEntry('));
+    }
+
     public function test_the_inline_new_event_form_creates_an_event_attached_to_the_main_plotline(): void
     {
         $user = User::factory()->create();
@@ -850,14 +874,14 @@ class SceneTest extends TestCase
             ->assertSee(route('codex.show', $entry), escape: false);
     }
 
-    public function test_the_edit_page_shows_the_last_save_caption(): void
+    public function test_the_edit_page_caption_names_the_autosave(): void
     {
         $user = User::factory()->create();
         $scene = Scene::factory()->for($this->chapterFor($user))->create();
 
         $this->actingAs($user)->get(route('scenes.edit', $scene))
             ->assertOk()
-            ->assertSee('Detected from the scene contents on last save.');
+            ->assertSee('Detected from the scene contents each time it autosaves.');
     }
 
     /**

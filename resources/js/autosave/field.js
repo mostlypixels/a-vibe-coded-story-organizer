@@ -22,6 +22,7 @@ export function registerAutosaveField(Alpine) {
             fields: {},
             elements: {},
             dirty: {},
+            flushers: {},
 
             worstState() {
                 return worstState(Object.values(this.fields));
@@ -29,6 +30,13 @@ export function registerAutosaveField(Alpine) {
 
             isDirty() {
                 return Object.values(this.dirty).some(Boolean);
+            },
+
+            /** Force a specific field's pending save and await it, without reaching into the field. */
+            flush(key, options = {}) {
+                const flusher = this.flushers[key];
+
+                return flusher ? flusher(options) : Promise.resolve();
             },
         });
     }
@@ -46,6 +54,7 @@ export function registerAutosaveField(Alpine) {
             const store = Alpine.store('autosave');
             store.fields[this.key] = this.state;
             store.elements[this.key] = this.$el;
+            store.flushers[this.key] = (options) => this.flush(options);
 
             this._onInput = () => this.onInput();
             this._onFocusOut = () => this.flush();
@@ -73,6 +82,7 @@ export function registerAutosaveField(Alpine) {
             delete store.fields[this.key];
             delete store.elements[this.key];
             delete store.dirty[this.key];
+            delete store.flushers[this.key];
         },
 
         setState(next) {
@@ -124,10 +134,10 @@ export function registerAutosaveField(Alpine) {
             clearTimeout(this.pendingTimer);
 
             if (!shouldAutosave(this.dirty, config.id)) {
-                return;
+                return Promise.resolve();
             }
 
-            this.save(options);
+            return this.save(options);
         },
 
         async save({ runMatcher = false } = {}) {
