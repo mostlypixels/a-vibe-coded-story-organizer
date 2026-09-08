@@ -58,7 +58,7 @@ class CodexEntrySaver
 
             $this->syncAliases($entry, $validated['aliases'] ?? []);
             $entry->tags()->sync($this->resolveTags($project, $validated['tags'] ?? []));
-            $this->seedAttributeBaselines($entry, $type, $validated['attribute_baselines'] ?? []);
+            $this->seedAttributeBaselines($entry, $validated['attribute_baselines'] ?? []);
 
             // A new name and aliases always add matching terms.
             $this->matcher->syncProject($project);
@@ -173,14 +173,20 @@ class CodexEntrySaver
             ->all();
     }
 
-    /** @param array<int|string, string|null> $baselines */
-    private function seedAttributeBaselines(CodexEntry $entry, CodexEntryType $type, array $baselines): void
+    /**
+     * Attaches the picked attributes only. A row means "attached to this entry", so a
+     * blank posted value still writes one: the writer picked it and has not filled it in.
+     * The form posts only picked attributes, and StoreCodexEntryRequest already rejects a
+     * foreign-project or wrong-type id.
+     *
+     * @param  array<int|string, string|null>  $baselines
+     */
+    private function seedAttributeBaselines(CodexEntry $entry, array $baselines): void
     {
-        foreach ($entry->project->codexAttributesFor($type) as $attribute) {
-            /** @var CodexAttribute $attribute */
-            $value = (string) ($baselines[$attribute->id] ?? '');
+        $attributes = CodexAttribute::whereIn('id', array_keys($baselines))->get();
 
-            (new AttributeTimeline($entry, $attribute))->ensureBaseline($value);
+        foreach ($attributes as $attribute) {
+            (new AttributeTimeline($entry, $attribute))->ensureBaseline((string) ($baselines[$attribute->id] ?? ''));
         }
     }
 

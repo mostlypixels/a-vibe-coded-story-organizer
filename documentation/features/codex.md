@@ -39,6 +39,23 @@ An empty string is a valid recorded value. The request accepts `present`, `nulla
 > [!IMPORTANT]
 > Keep the invariant in `AttributeTimeline`, not a model hook. Seeders use `WithoutModelEvents` and call the service directly.
 
+### Attached attributes
+
+A `codex_attribute_values` row carries two meanings. There is no attach column.
+
+- **A row exists** for the pair: the attribute is attached to the entry.
+- **A row has a filled value**: the attribute has something to show a reader.
+
+`App\Services\CodexAttributeSheets` holds one predicate for each question. Do not derive them again in a caller.
+
+| Method | Purpose |
+| --- | --- |
+| `attached()` | Sheets for the attached attributes, blank values included — the edit form |
+| `setOnly()` | Sheets that have at least one filled value — the read pages |
+| `unattachedFor()` | Project attributes for the type that are not attached — the picker |
+
+An attribute becomes attached when the writer picks it on the create form or adds it on the edit form. Both write a Start baseline through `ensureBaseline()`, blank or not. The Remove button on the edit form is the only way to detach: it deletes every row of the pair. Clearing a value to blank keeps the attribute attached.
+
 ## Media
 
 `App\Services\CodexMediaService` owns paths, names, positions, cover replacement, and file deletion.
