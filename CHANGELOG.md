@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-08 — Jump to a chapter on a long list
+
+### Added
+
+- A "Go to" button on the scene and chapter lists that opens the page holding a chosen
+  chapter or act, and marks its rows.
+- A line above the pagination controls naming the chapters or acts the current page covers.
+
+### Fixed
+
+- Acts sharing a position could sort differently in the chapter list than in its act filter.
+
 ## 2026-09-07 — A shelved stage for specs (#153)
 
 ### Added

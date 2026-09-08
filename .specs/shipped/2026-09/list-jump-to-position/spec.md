@@ -1,5 +1,8 @@
 ---
-status: draft
+status: shipped
+shipped: 2026-09-08
+planned: 2026-09-08
+expanded: 2026-09-08
 ---
 
 # List jump to position
@@ -40,18 +43,33 @@ chapter titles, which is no order at all to someone looking for the next one she
 - A "go to" control that takes a chapter (or act) and lands on the page holding its first
   row, rather than filtering the list down to it. Filtering hides the neighbours, and the
   writer's next question is usually "and what came after".
-- Remembering the last place is a stored preference, like the page size. Where it lives —
-  per user, per book, or per list — is open.
+- Say which chapters the current page covers, on a line above the pagination bar: "Page 3
+  — Chapter 214 to Chapter 231". One chapter name when the page holds only one. This is
+  the standing answer to "where am I" and it costs no screen width.
 - Reuse `x-index-toolbar`; it already submits without a `page`, so a jump resets cleanly.
+
+## Settled by prototype
+
+Four variants, one static page:
+`prototype-jump-to-position.html` — filter, jump, jump plus resume, and a standing
+chapter rail. Decision: **jump, and keep the whole list**.
+
+- Filter or jump? Jump. Filtering hides the neighbours, and "what came after" is the next
+  question every time. The chapter dropdown stays for the cases where narrowing is the
+  point; the jump is a separate control beside it.
+- A chapter rail was the strongest of the four for orientation, and it is still wrong at
+  serial scale: 400 chapters in a sidebar is the same long scroll as the dropdown, plus a
+  permanent 230px off a table that already has eight columns. It also only works on lists
+  with story order, so it cannot be the one pattern for every list. Its good part — always
+  knowing where you are — is now the page range line, for one line of Blade.
+- Remembering the last place is **out of this spec**. The prototype showed that landing
+  mid-list without asking is as likely to confuse as to help, and the meaning of "where I
+  left off" is still unsettled. Ship the jump, watch how it is used, and revisit.
 
 ## Open ends
 
-- Filter to a chapter, or jump to it and keep scrolling? The scene list does the first
-  today. The serial writer asked for the second and the two are different features
-  wearing one control.
 - Whether "where I left off" means the last list position, the last scene edited, or the
-  chapter holding it. The three disagree the moment she edits out of order.
-- Whether a remembered filter is a surprise. Coming back to a list that is not showing
-  everything, with no memory of setting it, is its own support question.
+  chapter holding it. The three disagree the moment she edits out of order. Deferred with
+  the resume behaviour above.
 - Whether this belongs on every list or only the ones with story order. Tags and codex
   attributes have no position to jump to.

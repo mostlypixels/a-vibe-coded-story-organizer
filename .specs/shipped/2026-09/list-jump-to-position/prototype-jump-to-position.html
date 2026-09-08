@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE — List jump to position</title>
+<style>
+:root{
+  --surface:oklch(96.7% 0.003 264.542);--raised:#fff;--sunken:oklch(98.5% 0.002 247.839);
+  --content:#023047;--muted:oklch(44.6% 0.03 256.802);--border:oklch(92.8% 0.006 264.531);
+  --border-strong:oklch(62% 0.024 261.325);--focus:#1e93af;
+  --primary:#023047;--primary-content:#fff;--link:#18697e;
+  --accent:#1b809a;--accent-surface:#cfeaf2;--accent-content:#185767;
+  --highlight:#ffe494;--table-header:#ffc933;--nav:#011f2f;--nav-content:#ddeff7;
+  --warning-surface:oklch(98.7% 0.026 102.212);--warning-surface-content:oklch(47.6% 0.114 61.907);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface);color:var(--content);
+  font:14px/1.5 "Atkinson Hyperlegible Next",ui-sans-serif,system-ui,sans-serif}
+.banner{background:var(--warning-surface);color:var(--warning-surface-content);
+  padding:6px 16px;font-size:12px;border-bottom:1px solid var(--border)}
+.nav{background:var(--nav);color:var(--nav-content);padding:10px 16px;font-weight:600}
+.wrap{max-width:1200px;margin:0 auto;padding:20px 16px 120px}
+h1{font-size:20px;margin:0 0 20px}
+.note{background:var(--accent-surface);color:var(--accent-content);border-radius:6px;
+  padding:10px 14px;margin-bottom:16px;font-size:13px}
+.layout{display:flex;gap:16px;align-items:flex-start}
+.main{flex:1;min-width:0}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.toolbar form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+input[type=text],select{border:1px solid var(--border-strong);border-radius:6px;padding:6px 10px;
+  font:inherit;font-size:13px;background:var(--raised);color:var(--content)}
+input:focus,select:focus{outline:2px solid var(--focus);outline-offset:1px}
+.btn{border:1px solid var(--border-strong);background:var(--raised);color:var(--content);
+  border-radius:6px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.btn-primary{background:var(--primary);color:var(--primary-content);border-color:var(--primary)}
+.lbl{font-size:12px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;background:var(--raised);
+  border:1px solid var(--border);border-radius:8px;overflow:hidden}
+th{background:var(--table-header);color:var(--content);text-align:left;
+  padding:8px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+td{padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+tr.striped td{background:var(--sunken)}
+tr.hit td{background:var(--highlight)}
+tr.hit td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.title{font-weight:600;color:var(--content);text-decoration:none}
+.title:hover{color:var(--link)}
+.mut{color:var(--muted)}
+.num{text-align:right;white-space:nowrap}
+.badge{display:inline-block;border-radius:5px;padding:1px 7px;font-size:11px;
+  background:var(--accent-surface);color:var(--accent-content)}
+.pag{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;flex-wrap:wrap;font-size:13px}
+.pages{display:flex;gap:4px}
+.pages button{border:1px solid var(--border-strong);background:var(--raised);
+  border-radius:6px;padding:4px 9px;font:inherit;font-size:13px;cursor:pointer;color:var(--content)}
+.pages button.on{background:var(--primary);color:var(--primary-content);border-color:var(--primary)}
+.pages span{padding:4px 2px;color:var(--muted)}
+.range{flex-basis:100%;order:-1;font-weight:600;color:var(--accent-content)}
+.rail{width:230px;flex:none;background:var(--raised);border:1px solid var(--border);
+  border-radius:8px;max-height:70vh;overflow-y:auto}
+.rail h2{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+  margin:0;padding:10px 12px;position:sticky;top:0;background:var(--raised);border-bottom:1px solid var(--border)}
+.rail .act{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+  padding:8px 12px 4px;background:var(--sunken)}
+.rail a{display:block;padding:5px 12px;color:var(--content);text-decoration:none;font-size:13px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rail a:hover{background:var(--accent-surface)}
+.rail a.on{background:var(--accent);color:#fff;font-weight:600}
+.resume{display:flex;align-items:center;gap:12px;background:var(--accent-surface);
+  color:var(--accent-content);border-radius:6px;padding:8px 14px;margin-bottom:16px;font-size:13px}
+.resume .btn{margin-left:auto}
+.state{margin-top:24px;background:var(--nav);color:var(--nav-content);border-radius:8px;
+  padding:12px 14px;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--nav);color:var(--nav-content);
+  display:flex;gap:8px;align-items:center;padding:10px 16px;flex-wrap:wrap;z-index:10;
+  box-shadow:0 -2px 10px rgba(0,0,0,.2)}
+.bar strong{font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-right:6px}
+.bar button{border:1px solid rgba(255,255,255,.3);background:transparent;color:var(--nav-content);
+  border-radius:6px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.bar button.on{background:var(--nav-content);color:var(--nav);font-weight:600}
+.bar .why{font-size:12px;opacity:.85;margin-left:auto;max-width:46ch}
+</style>
+</head>
+<body>
+<div class="banner">PROTOTYPE — throwaway. Fake data, no server, nothing saves. Spec: <code>.specs/draft/list-jump-to-position/spec.md</code></div>
+<div class="nav">imagoldfish</div>
+
+<div class="wrap">
+  <h1>The Long Serial — Scenes</h1>
+  <div class="note" id="variantNote"></div>
+
+  <div id="resumeSlot"></div>
+
+  <div class="layout">
+    <aside class="rail" id="rail" hidden></aside>
+    <div class="main">
+      <div class="toolbar" id="toolbar"></div>
+      <table>
+        <thead><tr>
+          <th style="width:70px">#</th><th>Title</th><th>Chapter</th>
+          <th style="width:80px">In ch.</th><th style="width:90px">Status</th><th class="num" style="width:80px">Words</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="pag" id="pag"></div>
+    </div>
+  </div>
+
+  <div class="state" id="state"></div>
+</div>
+
+<div class="bar" id="bar"></div>
+
+<script>
+/* ---------- fake data: 6 acts, 400 chapters, ~1600 scenes ---------- */
+const ACTS = ["Arc I — The Well","Arc II — Salt Roads","Arc III — The Long Winter",
+              "Arc IV — Marnborne","Arc V — Debts","Arc VI — What the River Kept"];
+const WORDS = ["Ash","Bell","Cinder","Dust","Ember","Frost","Glass","Harrow","Iron","Kite",
+               "Lantern","Marrow","Nettle","Oath","Pitch","Quarry","Rust","Salt","Thorn","Vellum"];
+const STATUS = ["Draft","Revised","Final","Outline"];
+let seed = 7;
+const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+
+const chapters = [], scenes = [];
+for (let c = 1; c <= 400; c++) {
+  chapters.push({ id:c, name:"Chapter " + c + " — " + WORDS[c % 20] + " and " + WORDS[(c * 7) % 20],
+                  act: ACTS[Math.floor((c - 1) / 67)] });
+}
+let n = 0;
+for (const ch of chapters) {
+  const count = 3 + Math.floor(rnd() * 3);
+  for (let p = 1; p <= count; p++) {
+    scenes.push({ global: ++n, chapter: ch, pos: p,
+      name: WORDS[Math.floor(rnd() * 20)] + " " + WORDS[Math.floor(rnd() * 20)].toLowerCase(),
+      status: STATUS[Math.floor(rnd() * 4)], words: 600 + Math.floor(rnd() * 2600) });
+  }
+}
+const firstRowOf = {};
+scenes.forEach((s, i) => { if (firstRowOf[s.chapter.id] === undefined) firstRowOf[s.chapter.id] = i + 1; });
+
+/* ---------- state ---------- */
+const PER = 100;
+const LAST_PLACE = { chapterId: 218 };   // pretend: a stored preference
+const S = { variant:"a", page:1, chapter:"", jumped:null, resumeDismissed:false };
+
+const params = new URLSearchParams(location.search);
+if (params.get("v") && ["a","b","c","d"].includes(params.get("v"))) S.variant = params.get("v");
+
+const VARIANTS = {
+  a: { label:"A · Filter (today, ordered)",
+       note:"What ships today, plus the one-line fix: chapter options in story order, grouped by act, instead of alphabetical. Picking a chapter <b>filters</b> the list down to it. The neighbours are gone.",
+       why:"Cheapest change. But it hides what came next — usually the writer's very next question." },
+  b: { label:"B · Jump, keep the list",
+       note:"Same control, opposite action. Picking a chapter <b>jumps</b> to the page holding its first scene and marks those rows. The full list stays, so you can read on into the next chapter. A line above the pager says which chapters the page covers — variant D's answer to <i>where am I</i>, without D's sidebar.",
+       why:"What the serial writer asked for. The page number becomes an outcome, not an input." },
+  c: { label:"C · Jump + resume",
+       note:"Variant B plus memory. The list opens where you left off and says so, with one click back to the top. This is the open question 'is a remembered place a surprise?' made visible.",
+       why:"Tests whether landing mid-list feels helpful or disorienting." },
+  d: { label:"D · Chapter rail",
+       note:"No dropdown at all. A standing chapter index beside the list; a click jumps. The rail also answers 'where am I' — the current chapter stays marked as you page.",
+       why:"Most screen cost, least aiming. Only works on lists that have story order." }
+};
+
+/* ---------- render ---------- */
+const pageOf = row => Math.ceil(row / PER);
+const chapterById = id => chapters.find(c => c.id == id);
+
+function render(){
+  const v = S.variant;
+  document.getElementById("variantNote").innerHTML = VARIANTS[v].note;
+
+  if (v === "c" && S.page === 1 && S.jumped === null && !S.resumeDismissed) {
+    S.jumped = LAST_PLACE.chapterId;
+    S.page = pageOf(firstRowOf[S.jumped]);
+  }
+
+  drawResume(v);
+  drawToolbar(v);
+  drawRail(v);
+
+  let list = scenes;
+  if (v === "a" && S.chapter) list = scenes.filter(s => s.chapter.id == S.chapter);
+  const pages = Math.max(1, Math.ceil(list.length / PER));
+  if (S.page > pages) S.page = pages;
+  const slice = list.slice((S.page - 1) * PER, S.page * PER);
+
+  const tb = document.getElementById("rows");
+  tb.innerHTML = "";
+  slice.forEach((s, i) => {
+    const tr = document.createElement("tr");
+    tr.className = (i % 2 ? "striped " : "") + (S.jumped && s.chapter.id == S.jumped ? "hit" : "");
+    tr.innerHTML =
+      '<td class="mut">' + s.global + '</td>' +
+      '<td><a class="title" href="#">' + s.name + '</a></td>' +
+      '<td class="mut">' + s.chapter.name + '</td>' +
+      '<td class="mut">' + s.pos + '</td>' +
+      '<td><span class="badge">' + s.status + '</span></td>' +
+      '<td class="num mut">' + s.words.toLocaleString() + '</td>';
+    tb.appendChild(tr);
+  });
+
+  drawPager(list.length, pages, slice);
+  drawState(v, list.length, pages);
+  const hit = tb.querySelector("tr.hit");
+  if (hit) hit.scrollIntoView({ block:"center", behavior:"smooth" });
+}
+
+function drawResume(v){
+  const rs = document.getElementById("resumeSlot");
+  rs.innerHTML = "";
+  if (v !== "c" || S.resumeDismissed) return;
+  const ch = chapterById(LAST_PLACE.chapterId);
+  const d = document.createElement("div");
+  d.className = "resume";
+  d.innerHTML = "<span>Picked up where you left off — <b>" + ch.name + "</b>, page " +
+                pageOf(firstRowOf[ch.id]) + " of " + Math.ceil(scenes.length / PER) + ".</span>";
+  d.appendChild(mk("button", "btn", "Start from the top", () => {
+    S.resumeDismissed = true; S.page = 1; S.jumped = null; render();
+  }));
+  rs.appendChild(d);
+}
+
+function chapterOptions(sel, blank){
+  let act = null, html = '<option value="">' + blank + '</option>';
+  for (const c of chapters) {                       // already in story order
+    if (c.act !== act) { if (act) html += "</optgroup>"; act = c.act; html += '<optgroup label="' + act + '">'; }
+    html += '<option value="' + c.id + '"' + (c.id == sel ? " selected" : "") + '>' + c.name + '</option>';
+  }
+  return html + "</optgroup>";
+}
+
+function drawToolbar(v){
+  const t = document.getElementById("toolbar");
+  t.innerHTML = "";
+  const form = document.createElement("form");
+  form.onsubmit = e => e.preventDefault();
+  form.innerHTML = '<input type="text" placeholder="Search by name…">';
+
+  if (v === "a") {
+    const sel = document.createElement("select");
+    sel.innerHTML = chapterOptions(S.chapter, "All chapters");
+    sel.onchange = () => { S.chapter = sel.value; S.page = 1; S.jumped = null; render(); };
+    form.append(sel, mk("button", "btn", "Filter"));
+    if (S.chapter) form.appendChild(mk("button", "btn", "Clear", () => { S.chapter = ""; S.page = 1; render(); }));
+  }
+  if (v === "b" || v === "c") {
+    form.appendChild(mk("span", "lbl", "Go to"));
+    const sel = document.createElement("select");
+    sel.innerHTML = chapterOptions(S.jumped, "Pick a chapter…");
+    sel.onchange = () => {
+      if (!sel.value) return;
+      S.jumped = +sel.value; S.page = pageOf(firstRowOf[S.jumped]); S.resumeDismissed = true; render();
+    };
+    form.append(sel, mk("button", "btn", "Go"));
+    if (S.jumped) form.appendChild(mk("button", "btn", "Clear highlight", () => { S.jumped = null; render(); }));
+  }
+  if (v === "d") form.appendChild(mk("button", "btn", "Filter"));
+
+  t.appendChild(form);
+  t.appendChild(mk("button", "btn btn-primary", "New Scene"));
+}
+
+function drawRail(v){
+  const r = document.getElementById("rail");
+  if (v !== "d") { r.hidden = true; return; }
+  r.hidden = false;
+  const current = scenes[(S.page - 1) * PER].chapter.id;
+  let act = null, html = "<h2>Chapters</h2>";
+  for (const c of chapters) {
+    if (c.act !== act) { act = c.act; html += '<div class="act">' + act + "</div>"; }
+    html += '<a href="#" data-ch="' + c.id + '"' + (c.id === current ? ' class="on"' : "") + ">" + c.name + "</a>";
+  }
+  r.innerHTML = html;
+  r.querySelectorAll("a").forEach(a => a.onclick = e => {
+    e.preventDefault();
+    S.jumped = +a.dataset.ch; S.page = pageOf(firstRowOf[S.jumped]); render();
+  });
+  const on = r.querySelector("a.on");
+  if (on) on.scrollIntoView({ block:"center" });
+}
+
+/* The rail's best part, without the rail: say which chapters this page covers. */
+function pageRange(slice){
+  if (!slice.length) return "";
+  const a = slice[0].chapter, b = slice[slice.length - 1].chapter;
+  return a === b ? a.name : a.name + " to " + b.name;
+}
+
+function drawPager(total, pages, slice){
+  const p = document.getElementById("pag");
+  const from = total ? (S.page - 1) * PER + 1 : 0, to = Math.min(S.page * PER, total);
+  p.innerHTML = '<span class="mut">Showing ' + from + "–" + to + " of " + total.toLocaleString() + "</span>";
+  if ((S.variant === "b" || S.variant === "c") && slice.length) {
+    p.insertAdjacentHTML("afterbegin",
+      '<div class="range">Page ' + S.page + " — " + pageRange(slice) + "</div>");
+  }
+  const nav = document.createElement("div");
+  nav.className = "pages";
+  const nums = new Set([1, 2, pages - 1, pages, S.page - 1, S.page, S.page + 1]);
+  let prev = 0;
+  [...nums].filter(x => x >= 1 && x <= pages).sort((a, b) => a - b).forEach(x => {
+    if (x - prev > 1) nav.appendChild(mk("span", "", "…"));
+    nav.appendChild(mk("button", x === S.page ? "on" : "", x, () => { S.page = x; render(); }));
+    prev = x;
+  });
+  p.appendChild(nav);
+  p.insertAdjacentHTML("beforeend", '<span class="mut">' + PER + " rows per page</span>");
+}
+
+function drawState(v, total, pages){
+  document.getElementById("state").textContent =
+    "variant      " + v + " — " + VARIANTS[v].label + "\n" +
+    "rows in list " + total.toLocaleString() + " of " + scenes.length.toLocaleString() + " scenes\n" +
+    "page         " + S.page + " / " + pages + "\n" +
+    "filter       " + (S.chapter ? chapterById(S.chapter).name : "(none)") + "\n" +
+    "jumped to    " + (S.jumped ? chapterById(S.jumped).name + "  → first row " + firstRowOf[S.jumped] : "(none)") + "\n" +
+    "remembered   " + (v === "c" ? (S.resumeDismissed ? "dismissed this session" : "Chapter " + LAST_PLACE.chapterId) : "not in this variant") + "\n" +
+    "sort         position asc     search (empty)     page size 100";
+}
+
+function mk(tag, cls, text, fn){
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  e.textContent = text;
+  if (tag === "button") { e.type = "button"; e.onclick = fn || (() => {}); }
+  return e;
+}
+
+/* ---------- variant bar ---------- */
+const bar = document.getElementById("bar");
+bar.appendChild(mk("strong", "", "Variant"));
+const why = document.createElement("div");
+why.className = "why";
+for (const k of Object.keys(VARIANTS)) {
+  const b = mk("button", S.variant === k ? "on" : "", VARIANTS[k].label, () => {
+    S.variant = k; S.page = 1; S.chapter = ""; S.jumped = null; S.resumeDismissed = false;
+    history.replaceState(null, "", "?v=" + k);
+    bar.querySelectorAll("button").forEach(x => { x.className = ""; });
+    b.className = "on";
+    why.textContent = VARIANTS[k].why;
+    render();
+  });
+  bar.appendChild(b);
+}
+why.textContent = VARIANTS[S.variant].why;
+bar.appendChild(why);
+
+render();
+</script>
+</body>
+</html>

@@ -31,11 +31,11 @@ Reuse a component before adding local Blade and Tailwind markup.
 | `x-card` | Surface with optional header and footer |
 | `x-table` | Responsive table shell |
 | `x-table-heading`, `x-sortable-header` | Static or sortable table header |
-| `x-table-row`, `x-table-empty` | Standard rows and empty states |
+| `x-table-row`, `x-table-empty` | Standard rows and empty states; `highlighted` marks a jumped-to group |
 | `x-badge`, `x-scene-status-badge` | Compact state labels |
 | `x-alert` | Contextual feedback |
 | `x-word-count` | Shared count formatting |
-| `x-pagination-bar` | Row range, page links and the rows-per-page control under a list |
+| `x-pagination-bar` | Row range, page links and the rows-per-page control under a list; optional `range` prints the page's group span above it |
 | `x-row-range` | The "Showing x-y of z" line, on its own for pages with no size control |
 
 ## Forms and actions

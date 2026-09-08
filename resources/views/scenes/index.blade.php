@@ -13,13 +13,31 @@
                 :create-label="__('New Scene')"
                 :filters="['search', 'chapter']"
             >
+                {{-- The form's default button: it submits without `jump`, so the Enter
+                     key in the search box still filters instead of jumping. --}}
+                <button type="submit" class="hidden" tabindex="-1" aria-hidden="true"></button>
+
                 <x-select name="chapter" class="text-sm">
                     <option value="">{{ __('All chapters') }}</option>
-                    @foreach ($chapters as $chapter)
-                        <option value="{{ $chapter->id }}" @selected(request('chapter') == $chapter->id)>{{ $chapter->act->name }} &mdash; {{ $chapter->name }}</option>
+                    @foreach ($chapters->groupBy('act_id') as $actChapters)
+                        <optgroup label="{{ $actChapters->first()->act->name }}">
+                            @foreach ($actChapters as $chapter)
+                                <option value="{{ $chapter->id }}" @selected(request('chapter') == $chapter->id)>{{ $chapter->name }}</option>
+                            @endforeach
+                        </optgroup>
                     @endforeach
                 </x-select>
+
+                <x-button variant="secondary" type="submit" name="jump" value="1">{{ __('Go to') }}</x-button>
             </x-index-toolbar>
+
+            @php
+                // The jumped-to chapter, and the first of its rows on this page: that
+                // row carries the `#chapter-<id>` anchor the redirect points at, and an
+                // id must stay unique in the document.
+                $highlightId = filled(request('highlight')) ? (int) request('highlight') : null;
+                $anchorSceneId = $highlightId ? $scenes->firstWhere('chapter_id', $highlightId)?->id : null;
+            @endphp
 
             <x-table>
                 <x-slot:head>
@@ -34,8 +52,18 @@
                 </x-slot:head>
 
                 @forelse ($scenes as $scene)
-                    <x-table-row :striped="$loop->even">
-                        <x-table-cell :title="$scene->event ? null : __('This scene has no “happens during” event yet.')" muted nowrap class="{{ $scene->event ? '' : 'border-l-4 border-danger' }}">{{ $numbering->scene($scene) }}</x-table-cell>
+                    @php
+                        $highlighted = $highlightId !== null && $scene->chapter_id === $highlightId;
+                        // The missing-event marker wins: it reports a problem in the data,
+                        // while the highlight only reports where you landed.
+                        $markerClass = match (true) {
+                            ! $scene->event => 'border-l-4 border-danger',
+                            $highlighted => 'border-l-4 border-accent',
+                            default => '',
+                        };
+                    @endphp
+                    <x-table-row :striped="$loop->even" :highlighted="$highlighted" :id="$scene->id === $anchorSceneId ? 'chapter-'.$highlightId : null">
+                        <x-table-cell :title="$scene->event ? null : __('This scene has no “happens during” event yet.')" muted nowrap class="{{ $markerClass }}">{{ $numbering->scene($scene) }}</x-table-cell>
                         <x-table-cell>
                             <a href="{{ route('scenes.show', $scene) }}" class="font-semibold text-content hover:text-link">{{ $scene->name }}</a>
                             @if ($scene->description)
@@ -98,7 +126,7 @@
                 @endif
             </x-table>
 
-            <x-pagination-bar :paginator="$scenes" />
+            <x-pagination-bar :paginator="$scenes" :range="$pageRange" />
 
             @foreach ($scenes as $scene)
                 <x-duplicate-dialog

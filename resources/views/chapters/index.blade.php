@@ -13,13 +13,27 @@
                 :create-label="__('New Chapter')"
                 :filters="['search', 'act']"
             >
+                {{-- The form's default button: it submits without `jump`, so the Enter
+                     key in the search box still filters instead of jumping. --}}
+                <button type="submit" class="hidden" tabindex="-1" aria-hidden="true"></button>
+
                 <x-select name="act" class="text-sm">
                     <option value="">{{ __('All acts') }}</option>
                     @foreach ($acts as $act)
                         <option value="{{ $act->id }}" @selected(request('act') == $act->id)>{{ $act->name }}</option>
                     @endforeach
                 </x-select>
+
+                <x-button variant="secondary" type="submit" name="jump" value="1">{{ __('Go to') }}</x-button>
             </x-index-toolbar>
+
+            @php
+                // The jumped-to act, and the first of its rows on this page: that
+                // row carries the `#act-<id>` anchor the redirect points at, and an
+                // id must stay unique in the document.
+                $highlightId = filled(request('highlight')) ? (int) request('highlight') : null;
+                $anchorChapterId = $highlightId ? $chapters->firstWhere('act_id', $highlightId)?->id : null;
+            @endphp
 
             <x-table>
                 <x-slot:head>
@@ -32,8 +46,11 @@
                 </x-slot:head>
 
                 @forelse ($chapters as $chapter)
-                    <x-table-row :striped="$loop->even">
-                        <x-table-cell muted nowrap>{{ $numbering->chapter($chapter) }}</x-table-cell>
+                    @php
+                        $highlighted = $highlightId !== null && $chapter->act_id === $highlightId;
+                    @endphp
+                    <x-table-row :striped="$loop->even" :highlighted="$highlighted" :id="$chapter->id === $anchorChapterId ? 'act-'.$highlightId : null">
+                        <x-table-cell muted nowrap class="{{ $highlighted ? 'border-l-4 border-accent' : '' }}">{{ $numbering->chapter($chapter) }}</x-table-cell>
                         <x-table-cell>
                             <a href="{{ route('chapters.show', $chapter) }}" class="font-semibold text-content hover:text-link">{{ $chapter->name }}</a>
                             @if ($chapter->description)
@@ -93,7 +110,7 @@
                 @endif
             </x-table>
 
-            <x-pagination-bar :paginator="$chapters" />
+            <x-pagination-bar :paginator="$chapters" :range="$pageRange" />
 
             @foreach ($chapters as $chapter)
                 @if ($chapter->scenes_count > 0)

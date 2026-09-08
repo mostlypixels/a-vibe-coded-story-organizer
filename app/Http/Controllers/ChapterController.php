@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\JumpsToListPosition;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
@@ -14,17 +15,20 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Scene;
 use App\Services\CoverImageService;
+use App\Support\ListJump;
 use App\Support\PageSize;
 use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Throwable;
 
 class ChapterController extends Controller
 {
+    use JumpsToListPosition;
     use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ReordersSiblings;
@@ -33,9 +37,24 @@ class ChapterController extends Controller
 
     public function __construct(private CoverImageService $coverImageService) {}
 
-    public function index(Request $request, Book $book): View
+    public function index(Request $request, Book $book): View|RedirectResponse
     {
         $this->authorize('view', $book->project);
+
+        // The dropdown's own list, which is also the story-ordered id list the jump
+        // arithmetic needs — one query serves both.
+        $acts = $this->actsFor($book);
+        $perPage = PageSize::resolve($request->user()?->page_size);
+
+        // Before any filtering or pagination work: a Go-to request answers with a
+        // redirect and renders nothing.
+        $jump = $this->jumpRedirect(
+            $request, 'books.chapters.index', $book, $book->chapterQuery(), 'chapters.act_id', $acts, $perPage, 'act'
+        );
+
+        if ($jump) {
+            return $jump;
+        }
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
@@ -83,7 +102,7 @@ class ChapterController extends Controller
                 // $sort is allow-listed by resolveSorting(), so it is safe to qualify.
                 fn ($query) => $query->orderBy('chapters.'.$sort, $direction)
             )
-            ->paginate(PageSize::resolve($request->user()?->page_size))
+            ->paginate($perPage)
             ->withQueryString();
 
         // The delete-with-move dialog on each row needs the full set of the book's
@@ -94,9 +113,11 @@ class ChapterController extends Controller
             ->orderBy('position')
             ->get(['id', 'name', 'act_id']);
 
+        $numbering = StoryNumbering::forBook($book);
+
         return view('chapters.index', [
             'book' => $book,
-            'acts' => $this->actsFor($book),
+            'acts' => $acts,
             'chapters' => $chapters,
             'destinationChapters' => $destinationChapters,
             'fullSceneCount' => $fullSceneCount,
@@ -106,7 +127,8 @@ class ChapterController extends Controller
             // Built from the whole book, never the filtered/paginated $chapters
             // above — a chapters list filtered to one act must still start counting
             // from that act's true book-wide number.
-            'numbering' => StoryNumbering::forBook($book),
+            'numbering' => $numbering,
+            'pageRange' => $this->pageRange($chapters, $sort, $numbering),
         ]);
     }
 
@@ -274,10 +296,46 @@ class ChapterController extends Controller
     }
 
     /**
-     * The book's acts, for the "which act?" select on the create and edit forms.
+     * The book's acts, for the "which act?" select on the create and edit
+     * forms and the jump target list on the index.
+     *
+     * > [!WARNING]
+     * > Must match `index()`'s own ordering exactly, `id` tie-break included:
+     * > {@see ListJump} relies on this list matching the index's
+     * > `orderBy` chain, or a jump lands a page off.
      */
     private function actsFor(Book $book): EloquentCollection
     {
-        return $book->acts()->orderBy('position')->get();
+        return $book->acts()->orderBy('position')->orderBy('id')->get();
+    }
+
+    /**
+     * "Act 3 — Ash and Rust to Act 5 — Salt and Thorn": the acts holding the
+     * page's first and last chapter, for the range line above the
+     * pagination bar.
+     *
+     * Reads `act` off the already-eager-loaded `$chapters` — no extra query.
+     * Null on an empty page, and on any sort but story order: a name-sorted
+     * page does not cover a contiguous range.
+     */
+    private function pageRange(LengthAwarePaginator $chapters, string $sort, StoryNumbering $numbering): ?string
+    {
+        if ($sort !== 'position' || $chapters->isEmpty()) {
+            return null;
+        }
+
+        $first = $chapters->first()->act;
+        $last = $chapters->last()->act;
+
+        $firstLabel = __('Act :number — :name', ['number' => $numbering->act($first), 'name' => $first->name]);
+
+        if ($first->is($last)) {
+            return $firstLabel;
+        }
+
+        return __(':first to :last', [
+            'first' => $firstLabel,
+            'last' => __('Act :number — :name', ['number' => $numbering->act($last), 'name' => $last->name]),
+        ]);
     }
 }
