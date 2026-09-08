@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-08 — Make a codex entry without leaving the scene
+## 2026-09-08 — Make a codex entry without leaving the scene (#161)
 
 ### Added
 
