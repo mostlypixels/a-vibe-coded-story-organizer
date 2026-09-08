@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-08 — Jump to a chapter on a long list
+## 2026-09-08 — Jump to a chapter on a long list (#154)
 
 ### Added
 
