@@ -31,8 +31,10 @@ if [[ "$mode" == "--raw" ]]; then
   exit 0
 fi
 
+# A just-reset window reads "0% used" with no reset clause yet, so the clause
+# is optional — requiring it made a fresh session look like a parse failure.
 parse() { # $1 = line prefix
-  printf '%s\n' "$raw" | sed -n "s/^$1: \([0-9]*\)% used · resets \(.*\)$/\1|\2/p"
+  printf '%s\n' "$raw" | sed -n "s/^$1: \([0-9]*\)% used\( · resets \(.*\)\)\?$/\1|\3/p"
 }
 
 session=$(parse "Current session")
