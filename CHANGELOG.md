@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-09 — See every reference, not the first twenty
+## 2026-09-09 — See every reference, not the first twenty (#162)
 
 ### Added
 
