@@ -70,14 +70,7 @@
 
         @if ($referencedEntries->isNotEmpty())
             <x-card :title="__('Codex references')">
-                <ul class="space-y-1">
-                    @foreach ($referencedEntries as $entry)
-                        <li>
-                            <a href="{{ route('codex.show', $entry) }}" class="text-sm text-link hover:text-link-hover">{{ $entry->name }}</a>
-                            <span class="text-xs text-content-subtle">({{ $entry->type->label() }})</span>
-                        </li>
-                    @endforeach
-                </ul>
+                @include('codex.partials.referenced-entries', ['referencedEntries' => $referencedEntries, 'scene' => $scene])
             </x-card>
         @endif
     </div>

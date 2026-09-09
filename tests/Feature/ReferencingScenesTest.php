@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
@@ -75,5 +76,71 @@ class ReferencingScenesTest extends TestCase
         $ordered = (new ReferencingScenes)->forEntry($entry);
 
         $this->assertSame(['First scene', 'Second scene'], $ordered->pluck('name')->all());
+    }
+
+    public function test_unassigned_scenes_are_ordered_by_book_before_act(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        // The project's first book already holds position 1.
+        $secondBook = Book::factory()->for($project)->create();
+
+        $actInBookOne = Act::factory()->for($project->books()->first())->create(['position' => 2]);
+        $chapterInBookOne = Chapter::factory()->for($actInBookOne)->create(['position' => 1]);
+        $sceneInBookOne = Scene::factory()->for($chapterInBookOne)->create(['name' => 'Scene in book one', 'position' => 1]);
+
+        $actInBookTwo = Act::factory()->for($secondBook)->create(['position' => 1]);
+        $chapterInBookTwo = Chapter::factory()->for($actInBookTwo)->create(['position' => 1]);
+        $sceneInBookTwo = Scene::factory()->for($chapterInBookTwo)->create(['name' => 'Scene in book two', 'position' => 1]);
+
+        $entry->referencingScenes()->attach([$sceneInBookTwo->id, $sceneInBookOne->id]);
+
+        $ordered = (new ReferencingScenes)->forEntry($entry);
+
+        $this->assertSame(['Scene in book one', 'Scene in book two'], $ordered->pluck('name')->all());
+    }
+
+    public function test_unassigned_scenes_still_sort_after_every_evented_scene(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $secondBook = Book::factory()->for($project)->create();
+        $event = Event::factory()->for($project)->create(['event_datetime' => now()]);
+
+        $eventedScene = $this->sceneIn($project, 'Scene with an event', $event);
+
+        $actInBookTwo = Act::factory()->for($secondBook)->create(['position' => 1]);
+        $chapterInBookTwo = Chapter::factory()->for($actInBookTwo)->create(['position' => 1]);
+        $unassignedScene = Scene::factory()->for($chapterInBookTwo)->create(['name' => 'Unassigned scene in book two', 'position' => 1]);
+
+        $entry->referencingScenes()->attach([$unassignedScene->id, $eventedScene->id]);
+
+        $ordered = (new ReferencingScenes)->forEntry($entry);
+
+        $this->assertSame(
+            ['Scene with an event', 'Unassigned scene in book two'],
+            $ordered->pluck('name')->all(),
+        );
+    }
+
+    public function test_for_scene_orders_referenced_entries_by_type_then_name(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $scene = $this->sceneIn($project, 'A scene');
+
+        $zebraLocation = CodexEntry::factory()->for($project)->location()->create(['name' => 'Zebra Plains']);
+        $ashCharacter = CodexEntry::factory()->for($project)->character()->create(['name' => 'Ash']);
+        $bellCharacter = CodexEntry::factory()->for($project)->character()->create(['name' => 'Bell']);
+
+        $scene->codexReferences()->attach([$zebraLocation->id, $bellCharacter->id, $ashCharacter->id]);
+
+        $ordered = (new ReferencingScenes)->forScene($scene);
+
+        $this->assertSame(['Ash', 'Bell', 'Zebra Plains'], $ordered->pluck('name')->all());
     }
 }

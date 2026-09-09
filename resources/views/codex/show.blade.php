@@ -106,36 +106,12 @@
 
         @if ($referencingScenes->isNotEmpty())
             <x-card :title="__('Referenced in scenes')">
-                <div x-data="{ showAll: false }">
-                    <x-table>
-                        <x-slot:head>
-                            <x-table-heading>{{ __('Scene') }}</x-table-heading>
-                            <x-table-heading>{{ __('Chapter') }}</x-table-heading>
-                            <x-table-heading>{{ __('Act') }}</x-table-heading>
-                        </x-slot:head>
-
-                        @foreach ($referencingScenes as $scene)
-                            <x-table-row :striped="$loop->even" x-show="{{ $loop->index < 20 ? 'true' : 'showAll' }}">
-                                <x-table-cell>
-                                    <a href="{{ route('scenes.show', $scene) }}" class="text-link hover:text-link-hover">{{ $scene->name }}</a>
-                                </x-table-cell>
-                                <x-table-cell muted>{{ $scene->chapter->name }}</x-table-cell>
-                                <x-table-cell muted>{{ $scene->chapter->act->name }}</x-table-cell>
-                            </x-table-row>
-                        @endforeach
-                    </x-table>
-
-                    @if ($referencingScenes->count() > 20)
-                        <button
-                            type="button"
-                            x-show="! showAll"
-                            x-on:click="showAll = true"
-                            class="mt-2 text-sm text-link hover:text-link-hover"
-                        >
-                            {{ __('Show all :count', ['count' => $referencingScenes->count()]) }}
-                        </button>
-                    @endif
-                </div>
+                <x-references.scene-table
+                    :scenes="$referencingScenes->take(config('search.cap'))"
+                    :show-book="$showBook"
+                    :see-all-route="$referencingScenes->count() > config('search.cap') ? route('codex.scenes.index', $entry) : null"
+                    :see-all-count="$referencingScenes->count()"
+                />
             </x-card>
         @endif
     </div>

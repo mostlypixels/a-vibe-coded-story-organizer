@@ -34,20 +34,12 @@
             @if ($referencingScenes->isEmpty())
                 <p class="text-sm text-content-muted">{{ __('No scenes reference this entry yet.') }}</p>
             @else
-                <ul class="space-y-2">
-                    @foreach ($referencingScenes as $scene)
-                        <li>
-                            <a href="{{ route('scenes.edit', $scene) }}" class="text-sm text-link hover:text-link-hover">
-                                {{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }} &mdash; {{ $scene->name }}
-                            </a>
-                            @if ($scene->event)
-                                <span class="block text-xs text-content-subtle">{{ $scene->event->title }} &mdash; <x-date :value="$scene->event->event_datetime" /></span>
-                            @else
-                                <span class="block text-xs text-content-subtle">{{ __('No event assigned') }}</span>
-                            @endif
-                        </li>
-                    @endforeach
-                </ul>
+                <x-references.scene-table
+                    :scenes="$referencingScenes->take(config('search.cap'))"
+                    :show-book="$showBook"
+                    :see-all-route="$referencingScenes->count() > config('search.cap') ? route('codex.scenes.index', $entry) : null"
+                    :see-all-count="$referencingScenes->count()"
+                />
             @endif
         </x-card>
     </div>

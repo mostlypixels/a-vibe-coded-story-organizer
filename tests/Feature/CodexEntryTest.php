@@ -499,7 +499,7 @@ class CodexEntryTest extends TestCase
             ->assertSee('15 mars 1247');
     }
 
-    public function test_edit_page_lists_scenes_without_an_event_last_and_labelled(): void
+    public function test_edit_page_lists_scenes_without_an_event_last(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -518,8 +518,7 @@ class CodexEntryTest extends TestCase
 
         $this->actingAs($user)->get(route('codex.edit', $entry))
             ->assertOk()
-            ->assertSeeInOrder(['Scene with an event', 'Scene without an event'])
-            ->assertSee('No event assigned');
+            ->assertSeeInOrder(['Scene with an event', 'Scene without an event']);
     }
 
     public function test_edit_page_shows_empty_state_when_no_scenes_reference_the_entry(): void
@@ -531,6 +530,42 @@ class CodexEntryTest extends TestCase
         $this->actingAs($user)->get(route('codex.edit', $entry))
             ->assertOk()
             ->assertSee('No scenes reference this entry yet.');
+    }
+
+    public function test_edit_page_caps_referencing_scenes_and_links_to_the_full_list(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $cap = config('search.cap');
+
+        $scenes = collect(range(1, $cap + 1))->map(
+            fn (int $i) => $this->sceneIn($project, 'Contents.', "Scene {$i}")
+        );
+        $entry->referencingScenes()->attach($scenes->pluck('id'));
+
+        $response = $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee(__('See all :count results', ['count' => $cap + 1]));
+
+        $response->assertDontSee($scenes->last()->name);
+    }
+
+    public function test_edit_page_shows_no_see_all_link_at_exactly_the_cap(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $cap = config('search.cap');
+
+        $scenes = collect(range(1, $cap))->map(
+            fn (int $i) => $this->sceneIn($project, 'Contents.', "Scene {$i}")
+        );
+        $entry->referencingScenes()->attach($scenes->pluck('id'));
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertDontSee('See all');
     }
 
     public function test_non_owner_is_forbidden_from_every_action(): void
@@ -919,27 +954,41 @@ class CodexEntryTest extends TestCase
             ->assertDontSee(__('Referenced in scenes'));
     }
 
-    public function test_show_page_caps_referencing_scenes_at_twenty_with_a_show_all_toggle(): void
+    public function test_show_page_caps_referencing_scenes_and_links_to_the_full_list(): void
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $entry = CodexEntry::factory()->for($project)->character()->create();
+        $cap = config('search.cap');
 
-        $scenes = collect(range(1, 25))->map(
+        $scenes = collect(range(1, $cap + 1))->map(
             fn (int $i) => $this->sceneIn($project, 'Contents.', "Scene {$i}")
         );
         $entry->referencingScenes()->attach($scenes->pluck('id'));
 
-        $content = $this->actingAs($user)->get(route('codex.show', $entry))
+        $response = $this->actingAs($user)->get(route('codex.show', $entry))
             ->assertOk()
-            ->assertSee(__('Show all :count', ['count' => 25]))
-            ->getContent();
+            ->assertSee(__('See all :count results', ['count' => $cap + 1]));
 
-        // The cap is display-only: every row is present in the response, just hidden
-        // beyond the 20th until the toggle reveals it client-side.
-        foreach ($scenes as $scene) {
-            $this->assertStringContainsString($scene->name, $content);
-        }
+        // The uncapped row is truly absent, not hidden by Alpine.
+        $response->assertDontSee($scenes->last()->name);
+    }
+
+    public function test_show_page_shows_no_see_all_link_at_exactly_the_cap(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $cap = config('search.cap');
+
+        $scenes = collect(range(1, $cap))->map(
+            fn (int $i) => $this->sceneIn($project, 'Contents.', "Scene {$i}")
+        );
+        $entry->referencingScenes()->attach($scenes->pluck('id'));
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertDontSee('See all');
     }
 
     public function test_non_owner_is_forbidden_from_the_show_page(): void

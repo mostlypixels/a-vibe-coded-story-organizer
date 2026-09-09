@@ -11,6 +11,9 @@ return [
     | rest behind a "See all N results" link to the domain's own page. Read by
     | the view layer; App\Services\ProjectSearch itself never caps a collection.
     |
+    | The codex ↔ scene reference cards (codex/show, codex/edit, scenes/show)
+    | read this same cap for their own "See all" links.
+    |
     */
 
     'cap' => 5, // rows per column
