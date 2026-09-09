@@ -196,6 +196,8 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::patch('/scenes/{scene}/move-down', [SceneController::class, 'moveDown'])->name('scenes.move-down');
     Route::post('/scenes/{scene}/duplicate', [SceneController::class, 'duplicate'])->name('scenes.duplicate');
     Route::post('/scenes/{scene}/codex-entries', [SceneCodexEntryController::class, 'store'])->name('scenes.codex-entries.store');
+    Route::get('/scenes/{scene}/codex-references', [SceneController::class, 'codexReferences'])
+        ->name('scenes.codex-references.index');
 
     Route::post('/scenes/{scene}/share', [SceneShareController::class, 'store'])->name('scenes.share.store');
     Route::delete('/scenes/{scene}/share', [SceneShareController::class, 'destroy'])->name('scenes.share.destroy');
@@ -211,6 +213,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     });
     Route::get('/codex/{codexEntry}/edit', [CodexEntryController::class, 'edit'])->name('codex.edit');
     Route::get('/codex/{codexEntry}', [CodexEntryController::class, 'show'])->name('codex.show');
+    Route::get('/codex/{codexEntry}/scenes', [CodexEntryController::class, 'scenes'])->name('codex.scenes.index');
     Route::put('/codex/{codexEntry}', [CodexEntryController::class, 'update'])->name('codex.update');
     Route::delete('/codex/{codexEntry}', [CodexEntryController::class, 'destroy'])->name('codex.destroy');
     Route::post('/codex/{codexEntry}/duplicate', [CodexEntryController::class, 'duplicate'])->name('codex.duplicate');

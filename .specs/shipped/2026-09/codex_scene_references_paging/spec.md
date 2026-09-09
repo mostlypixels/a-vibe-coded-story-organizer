@@ -1,6 +1,8 @@
 ---
-status: expanded
+status: shipped
+planned: 2026-09-08
 expanded: 2026-09-07
+shipped: 2026-09-09
 ---
 
 # Codex ↔ scene references: capped lists with a "see all" page

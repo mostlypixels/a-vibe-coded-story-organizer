@@ -15,6 +15,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CodexAsOfResolver;
 use App\Services\Concerns\CreatesInlineEvents;
+use App\Services\ReferencingScenes;
 use App\Services\SceneDuplicator;
 use App\Services\SceneReferenceMatcher;
 use App\Support\DuplicateName;
@@ -131,7 +132,7 @@ class SceneController extends Controller
         ]);
     }
 
-    public function show(Scene $scene): View
+    public function show(Scene $scene, ReferencingScenes $referencingScenes): View
     {
         $book = $scene->chapter->act->book;
 
@@ -143,8 +144,26 @@ class SceneController extends Controller
             'scene' => $scene,
             'numbering' => StoryNumbering::forBook($book),
             // Same query the edit page runs, ordered for a stable read (type, name).
-            'referencedEntries' => $scene->codexReferences()->with('cover')->orderBy('type')->orderBy('name')->get(),
+            'referencedEntries' => $referencingScenes->forScene($scene),
             'duplicateSuggestion' => DuplicateName::suggest($scene->name, $book->project->sceneQuery()->pluck('name')),
+        ]);
+    }
+
+    /**
+     * The capped "Codex references" card's "see all" destination.
+     *
+     * The order is SQL (type, name), so the relation pages itself with
+     * ->paginate(). The codex direction sorts in PHP and must hand-build its
+     * paginator; the two are meant to differ.
+     */
+    public function codexReferences(Request $request, Scene $scene, ReferencingScenes $referencingScenes): View
+    {
+        $this->authorize('view', $scene->chapter->act->book->project);
+
+        return view('references.entries', [
+            'scene' => $scene,
+            'paginator' => $referencingScenes->queryForScene($scene)
+                ->paginate(PageSize::resolve($request->user()?->page_size)),
         ]);
     }
 
@@ -191,7 +210,7 @@ class SceneController extends Controller
         return redirect()->route('books.scenes.index', $book);
     }
 
-    public function edit(Scene $scene, CodexAsOfResolver $codexAsOf): View
+    public function edit(Scene $scene, CodexAsOfResolver $codexAsOf, ReferencingScenes $referencingScenes): View
     {
         $book = $scene->chapter->act->book;
         $project = $book->project;
@@ -226,7 +245,7 @@ class SceneController extends Controller
             // Codex entries whose name/alias whole-word-matches this scene's contents, as of
             // the last save. A read-only view of the scene_codex_entry pivot maintained by
             // SceneReferenceMatcher — the sidebar renders this flat list ordered by (type, name).
-            'referencedEntries' => $scene->codexReferences()->with('cover')->orderBy('type')->orderBy('name')->get(),
+            'referencedEntries' => $referencingScenes->forScene($scene),
             'duplicateSuggestion' => DuplicateName::suggest($scene->name, $project->sceneQuery()->pluck('name')),
         ]);
     }

@@ -17,6 +17,22 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-09 — See every reference, not the first twenty
+
+### Added
+
+- A full page that lists every scene which references a codex entry, in timeline order.
+- A full page that lists every codex entry a scene references.
+
+### Changed
+
+- Reference lists on codex and scene pages now show a few rows and link to the full page.
+- Scenes referenced by a codex entry are ordered by book as well as act and chapter.
+
+### Removed
+
+- The "Show all" button on a codex entry's scene list.
+
 ## 2026-09-08 — Make a codex entry without leaving the scene (#161)
 
 ### Added

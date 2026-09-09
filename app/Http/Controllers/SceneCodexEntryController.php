@@ -6,6 +6,7 @@ use App\Enums\CodexEntryType;
 use App\Http\Requests\StoreQuickCodexEntryRequest;
 use App\Models\Scene;
 use App\Services\CodexEntrySaver;
+use App\Services\ReferencingScenes;
 use App\Services\SceneReferenceMatcher;
 use App\Support\CodexMediaUploads;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,7 @@ class SceneCodexEntryController extends Controller
         Scene $scene,
         CodexEntrySaver $saver,
         SceneReferenceMatcher $matcher,
+        ReferencingScenes $referencingScenes,
     ): JsonResponse {
         $project = $scene->chapter->act->book->project;
 
@@ -35,7 +37,7 @@ class SceneCodexEntryController extends Controller
 
         $matcher->syncScene($scene);
 
-        $referencedEntries = $scene->codexReferences()->with('cover')->orderBy('type')->orderBy('name')->get();
+        $referencedEntries = $referencingScenes->forScene($scene);
 
         return response()->json([
             'entry' => [
@@ -47,6 +49,7 @@ class SceneCodexEntryController extends Controller
             ],
             'referenced_entries_html' => view('codex.partials.referenced-entries', [
                 'referencedEntries' => $referencedEntries,
+                'scene' => $scene,
             ])->render(),
         ]);
     }

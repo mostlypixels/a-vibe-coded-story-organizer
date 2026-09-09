@@ -20,6 +20,8 @@ use App\Support\EventWindow;
 use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\View\View;
 
 /**
@@ -113,6 +115,43 @@ class CodexEntryController extends Controller
             'entry' => $codexEntry,
             'sheets' => $sheets->setOnly($codexEntry, $project->startEvent()),
             'referencingScenes' => $referencingScenes->forEntry($codexEntry),
+            'showBook' => $project->books()->count() > 1,
+        ]);
+    }
+
+    /**
+     * The capped "Referenced in scenes" card's "see all" destination.
+     *
+     * {@see ReferencingScenes::forEntry()} sorts in PHP (by event, then by
+     * manuscript position), so a SQL LIMIT/OFFSET would page over the wrong
+     * set. Slice the already-sorted collection by hand instead, the same way
+     * {@see SearchController::domain()} pages a PHP-matched result set.
+     */
+    public function scenes(Request $request, CodexEntry $codexEntry, ReferencingScenes $referencingScenes): View
+    {
+        $this->authorize('view', $codexEntry->project);
+
+        $scenes = $referencingScenes->forEntry($codexEntry);
+
+        $page = max(1, $request->integer('page', 1));
+        $perPage = PageSize::resolve($request->user()?->page_size);
+
+        // A PHP-side slice, never a SQL LIMIT/OFFSET: forEntry() sorts the loaded
+        // collection, so the database does not know this order and would page the
+        // wrong set. The scene direction orders in SQL and does use ->paginate();
+        // the two are meant to differ.
+        $paginator = new LengthAwarePaginator(
+            $scenes->forPage($page, $perPage)->values(),
+            $scenes->count(),
+            $perPage,
+            $page,
+            ['path' => Paginator::resolveCurrentPath()],
+        );
+
+        return view('references.scenes', [
+            'entry' => $codexEntry,
+            'paginator' => $paginator,
+            'showBook' => $codexEntry->project->books()->count() > 1,
         ]);
     }
 
@@ -143,6 +182,7 @@ class CodexEntryController extends Controller
             'windowMax' => $windowMax,
             'projectTags' => $project->tags()->orderBy('name')->get(),
             'referencingScenes' => $referencingScenes->forEntry($codexEntry),
+            'showBook' => $project->books()->count() > 1,
             'duplicateSuggestion' => DuplicateName::suggest(
                 $codexEntry->name,
                 $project->codexEntries()->where('type', $codexEntry->type->value)->pluck('name')

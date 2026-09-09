@@ -188,7 +188,7 @@
                 <p class="mt-2 text-sm text-success" data-codex-entry-created role="status" aria-live="polite"></p>
 
                 <div data-codex-references-list>
-                    @include('codex.partials.referenced-entries', ['referencedEntries' => $referencedEntries])
+                    @include('codex.partials.referenced-entries', ['referencedEntries' => $referencedEntries, 'scene' => $scene])
                 </div>
             </x-collapsible-card>
         </div>
