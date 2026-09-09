@@ -12,6 +12,7 @@ The manual for this feature's tasks. Never implemented, never moved.
 | 4 | `04-project-search-filters.md` | `ProjectSearch` applies the scope: book, range, skipped domains, codex types. |
 | 5 | `05-controller-wiring.md` | Both actions build the scope; filters ride every link and the paginator. |
 | 6 | `06-narrow-panel.md` | The book, range and domain controls inside the existing GET form. |
+| 6b | `06b-search-sections.md` | One definition of the Timeline/Story/Codex grouping, read by the panel, the results and task 07. |
 | 7 | `07-hidden-sections-and-summary.md` | Sections a book filter makes meaningless, the explanatory line, the filter summary. |
 
 Service before controller before view: each layer's tests need the one below it.

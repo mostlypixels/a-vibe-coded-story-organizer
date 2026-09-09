@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Enums\SearchDomain;
+use App\Enums\SearchSection;
 use App\Support\SearchResults;
 use PHPUnit\Framework\TestCase;
 
@@ -115,5 +116,36 @@ class SearchDomainTest extends TestCase
             ['plotlines', 'events', 'acts', 'chapters', 'scenes', 'characters', 'locations', 'organizations'],
             SearchDomain::routeKeys(),
         );
+    }
+
+    /**
+     * Every domain belongs to exactly one section, and every section's domain
+     * list is non-empty. Together, the union of every section's domains must
+     * be all eight — the grouping has one definition, not three.
+     */
+    public function test_section_covers_every_domain_exactly_once(): void
+    {
+        $this->assertSame(SearchSection::Timeline, SearchDomain::Plotlines->section());
+        $this->assertSame(SearchSection::Timeline, SearchDomain::Events->section());
+        $this->assertSame(SearchSection::Story, SearchDomain::Acts->section());
+        $this->assertSame(SearchSection::Story, SearchDomain::Chapters->section());
+        $this->assertSame(SearchSection::Story, SearchDomain::Scenes->section());
+        $this->assertSame(SearchSection::Codex, SearchDomain::Characters->section());
+        $this->assertSame(SearchSection::Codex, SearchDomain::Locations->section());
+        $this->assertSame(SearchSection::Codex, SearchDomain::Organizations->section());
+
+        $union = collect(SearchSection::cases())
+            ->flatMap(fn (SearchSection $section) => $section->domains())
+            ->all();
+
+        $this->assertEmpty(array_udiff(
+            SearchDomain::cases(),
+            $union,
+            fn (SearchDomain $a, SearchDomain $b) => $a === $b ? 0 : 1,
+        ));
+
+        foreach (SearchSection::cases() as $section) {
+            $this->assertNotEmpty($section->domains());
+        }
     }
 }

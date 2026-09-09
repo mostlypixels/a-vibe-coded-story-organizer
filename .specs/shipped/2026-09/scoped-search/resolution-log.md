@@ -34,8 +34,25 @@ implementing this feature. Read it before extending the feature.
 
 ## Deviations from the spec/plan
 
-_None yet._
+- Task 06b inserted after 06. The panel wrote the Timeline/Story/Codex grouping a second
+  time and task 07 needed it a third, so the grouping moves to a `SearchSection` enum
+  before 07 reads it.
+
+- Task 04 asked for a test that a book filter leaves Plotlines, Events and codex rows
+  "untouched". It cannot: `includes()` is `selects() && ! hiddenByBook()`, so a book
+  filter skips those domains and their queries never run. The test asserts the skip
+  (query count 4: acts, chapters, scenes, `booksById()`) and a second test proves a
+  chapter range alone, with no book, leaves them full.
+- Codex no longer builds its query in `queryFor()`. One `searchCodex()` builds it with
+  `whereIn('type', …)`; `queryFor()`'s codex arm throws, so no second definition can
+  drift. `searchDomain()` for a codex domain filters the type in SQL instead of
+  splitting rows after hydration.
 
 ## Issues → resolutions
 
-_None yet._
+- The filter summary read "Filtered to 1 domains" and built itself in a `@php` block in
+  `search/index.blade.php` — the presentation logic task 06b had just removed from the
+  panel. `App\Support\SearchScopeSummary` now builds the parts: it names the domains one
+  by one up to three, and counts them with a plural rule beyond that. Found by driving the
+  page in a browser; no test caught it, because every test asserted the summary existed
+  rather than what it said.
