@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-09 — Narrow a search before it searches everything
+## 2026-09-09 — Narrow a search before it searches everything (#164)
 
 ### Added
 
