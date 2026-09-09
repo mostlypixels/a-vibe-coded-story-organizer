@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\Enums\SearchDomain;
 use App\Enums\SearchMode;
 use App\Http\Requests\SearchRequest;
+use App\Models\Book;
 use App\Models\Project;
 use App\Services\ProjectSearch;
 use App\Support\PageSize;
+use App\Support\SearchScope;
+use App\Support\SearchScopeFactory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
@@ -34,18 +38,29 @@ class SearchController extends Controller
         // Validation guarantees any present value is a valid SearchMode by the
         // time we get here.
         $mode = $request->enum('mode', SearchMode::class) ?? SearchMode::AllTerms;
+        $scope = SearchScopeFactory::fromRequest($request, $project);
 
         // blank() trims, so null, '' and whitespace-only queries all count as "no
         // search yet": render the form with no results and NO validation error.
         $results = blank($query)
             ? null
-            : app(ProjectSearch::class)->search($project, $query, $mode);
+            : app(ProjectSearch::class)->search($project, $query, $mode, $scope);
+
+        $books = $this->booksFor($project);
+        $book = $this->resolvedBook($scope, $books);
 
         return view('search.index', [
             'project' => $project,
             'query' => $query,
             'mode' => $mode,
             'results' => $results,
+            'scope' => $scope,
+            'books' => $books,
+            'book' => $book,
+            // The whole picker exists only once a book is resolved (the chosen one,
+            // or the project's only one) — a multi-book project with none chosen
+            // runs no chapter query.
+            'chapters' => $book?->chaptersInStoryOrder() ?? collect(),
         ]);
     }
 
@@ -63,15 +78,27 @@ class SearchController extends Controller
 
         $query = $request->validated('q');
         $mode = $request->enum('mode', SearchMode::class) ?? SearchMode::AllTerms;
+        $scope = SearchScopeFactory::fromRequest($request, $project);
 
         if (blank($query)) {
             return redirect()->route('projects.search.index', [
                 'project' => $project,
                 'mode' => $mode,
-            ]);
+            ] + $scope->toQuery());
         }
 
-        $matches = app(ProjectSearch::class)->searchDomain($project, $domain, $query, $mode);
+        // The URL names the domain; a stale domains[] checkbox from the main page
+        // does not override it. Only a book that makes this domain meaningless
+        // sends the reader back — there is nothing here for it to filter.
+        if ($scope->hiddenByBook($domain)) {
+            return redirect()->route('projects.search.index', [
+                'project' => $project,
+                'q' => $query,
+                'mode' => $mode,
+            ] + $scope->toQuery());
+        }
+
+        $matches = app(ProjectSearch::class)->searchDomain($project, $domain, $query, $mode, $scope);
 
         $page = max(1, $request->integer('page', 1));
         // The reader's own rows-per-page, the same one every entity list honours.
@@ -89,14 +116,38 @@ class SearchController extends Controller
             $page,
             ['path' => Paginator::resolveCurrentPath()],
         );
-        $paginator->appends($request->only('q', 'mode'));
+        $paginator->appends($scope->toQuery() + $request->only('q', 'mode'));
 
         return view('search.domain', [
             'project' => $project,
             'domain' => $domain,
             'query' => $query,
             'mode' => $mode,
+            'scope' => $scope,
             'paginator' => $paginator,
         ]);
+    }
+
+    /** @return Collection<int, Book> The project's books, ready for {@see Book::displayName()}. */
+    private function booksFor(Project $project): Collection
+    {
+        return $project->books()->get()
+            ->each(fn (Book $book) => $book->setRelation('project', $project));
+    }
+
+    /**
+     * The book the chapter-range picker reads: the one the scope names, or the
+     * project's only one. Numbering restarts per book, so the picker needs
+     * exactly one to make sense of "chapter 3".
+     *
+     * @param  Collection<int, Book>  $books
+     */
+    private function resolvedBook(SearchScope $scope, Collection $books): ?Book
+    {
+        if ($scope->bookId !== null) {
+            return $books->firstWhere('id', $scope->bookId);
+        }
+
+        return $books->count() === 1 ? $books->first() : null;
     }
 }

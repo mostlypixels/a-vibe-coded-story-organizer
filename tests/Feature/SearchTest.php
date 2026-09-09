@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\SearchDomain;
 use App\Enums\SearchMode;
 use App\Models\Act;
 use App\Models\Book;
@@ -14,6 +15,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Support\SearchResults;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -73,6 +75,76 @@ class SearchTest extends TestCase
         $this->actingAs($user)
             ->get(route('projects.search.index', ['project' => $project, 'q' => 'dragon', 'mode' => 'not-a-mode']))
             ->assertSessionHasErrors('mode');
+    }
+
+    public function test_a_book_from_another_project_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $otherBook = Book::factory()->for(Project::factory()->for($user))->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'book' => $otherBook->id]))
+            ->assertSessionHasErrors('book');
+    }
+
+    public function test_a_chapter_from_another_book_in_the_same_project_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $otherBook = Book::factory()->for($project)->create();
+        $otherChapter = Chapter::factory()->for(Act::factory()->for($otherBook))->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.search.index', [
+                'project' => $project,
+                'q' => 'zephyrqux',
+                'book' => $book->id,
+                'from_chapter' => $otherChapter->id,
+            ]))
+            ->assertSessionHasErrors('from_chapter');
+    }
+
+    public function test_a_from_chapter_with_no_book_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $chapter = Chapter::factory()->for(Act::factory()->for($project->books()->first()))->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.search.index', [
+                'project' => $project,
+                'q' => 'zephyrqux',
+                'from_chapter' => $chapter->id,
+            ]))
+            ->assertSessionHasErrors('from_chapter');
+    }
+
+    public function test_an_unknown_domain_value_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.search.index', [
+                'project' => $project,
+                'q' => 'zephyrqux',
+                'domains' => ['not-a-domain'],
+            ]))
+            ->assertSessionHasErrors('domains.0');
+    }
+
+    public function test_a_bare_search_with_no_filters_still_renders(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        $response->assertSessionHasNoErrors();
     }
 
     public function test_a_query_wires_the_search_service_into_the_view(): void
@@ -637,5 +709,324 @@ class SearchTest extends TestCase
         $response->assertOk();
         // The small Events column is untouched by the Plotlines cap.
         $response->assertSee('Zephyrqux event');
+    }
+
+    public function test_filters_round_trip_through_the_url(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $this->sceneFor($project, ['name' => 'plain', 'contents' => 'zephyrqux', 'description' => 'x']);
+        Plotline::factory()->for($project)->create(['name' => 'zephyrqux plot', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', [
+                'project' => $project,
+                'q' => 'zephyrqux',
+                'book' => $book->id,
+                'domains' => ['scenes'],
+            ]));
+
+        $response->assertOk();
+
+        $scope = $response->viewData('scope');
+        $this->assertSame($book->id, $scope->bookId);
+        $this->assertSame([SearchDomain::Scenes], $scope->domains);
+
+        $results = $response->viewData('results');
+        $this->assertTrue($results->scenes->isNotEmpty());
+        // The book filter makes Plotlines meaningless, so it never runs.
+        $this->assertTrue($results->plotlines->isEmpty());
+    }
+
+    public function test_see_all_link_carries_book_range_and_domains(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+        $cap = config('search.cap');
+        Scene::factory()->for($chapter)->count($cap + 2)->sequence(
+            fn ($sequence) => ['name' => "Zephyrqux {$sequence->index}", 'contents' => 'x', 'description' => 'x']
+        )->create();
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', [
+                'project' => $project,
+                'q' => 'zephyrqux',
+                'book' => $book->id,
+                'from_chapter' => $chapter->id,
+                'to_chapter' => $chapter->id,
+                'domains' => ['scenes'],
+            ]));
+
+        $response->assertOk();
+
+        $expectedHref = route('projects.search.domain', [
+            'project' => $project,
+            'domain' => 'scenes',
+            'q' => 'zephyrqux',
+            'mode' => 'all',
+            'book' => $book->id,
+            'from_chapter' => $chapter->id,
+            'to_chapter' => $chapter->id,
+            'domains' => ['scenes'],
+        ]);
+        $response->assertSee(e($expectedHref), false);
+    }
+
+    public function test_the_domain_page_honours_book_and_range_across_page_2(): void
+    {
+        $user = User::factory()->create(['page_size' => 50]);
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        Scene::factory()->for($chapter)->count(60)->sequence(
+            fn ($sequence) => ['name' => "Zephyrqux {$sequence->index}", 'contents' => 'x', 'description' => 'x']
+        )->create();
+        // A different book's match must be excluded by the book filter.
+        $otherBook = Book::factory()->for($project)->create();
+        $otherAct = Act::factory()->for($otherBook)->create();
+        $otherChapter = Chapter::factory()->for($otherAct)->create();
+        Scene::factory()->for($otherChapter)->create(['name' => 'Zephyrqux other', 'contents' => 'x', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', [
+                'project' => $project,
+                'domain' => 'scenes',
+                'q' => 'zephyrqux',
+                'mode' => 'any',
+                'book' => $book->id,
+                'from_chapter' => $chapter->id,
+                'to_chapter' => $chapter->id,
+                'page' => 2,
+            ]));
+
+        $response->assertOk();
+        $paginator = $response->viewData('paginator');
+        $this->assertSame(60, $paginator->total());
+        $this->assertCount(10, $paginator);
+        // Page links carry the book and range onward.
+        $response->assertSee("book={$book->id}", false);
+        $response->assertSee("from_chapter={$chapter->id}", false);
+        $response->assertSee("to_chapter={$chapter->id}", false);
+    }
+
+    public function test_a_book_filter_plus_a_project_wide_domain_page_redirects_to_the_index(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        Plotline::factory()->for($project)->create(['name' => 'Zephyrqux plot', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', [
+                'project' => $project,
+                'domain' => 'plotlines',
+                'q' => 'zephyrqux',
+                'book' => $book->id,
+            ]));
+
+        $response->assertRedirect(route('projects.search.index', [
+            'project' => $project,
+            'q' => 'zephyrqux',
+            'mode' => 'all',
+            'book' => $book->id,
+        ]));
+    }
+
+    public function test_an_unchecked_domains_own_page_still_renders(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Plotline::factory()->for($project)->create(['name' => 'Zephyrqux plot', 'description' => 'x']);
+
+        // domains[] names only Events; the URL still asks for the Plotlines page directly.
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', [
+                'project' => $project,
+                'domain' => 'plotlines',
+                'q' => 'zephyrqux',
+                'domains' => ['events'],
+            ]));
+
+        $response->assertOk();
+        $response->assertSee('Zephyrqux plot');
+    }
+
+    public function test_a_multi_book_project_with_no_book_chosen_loads_no_chapters(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Book::factory()->for($project)->create();
+
+        DB::connection()->enableQueryLog();
+
+        $response = $this->actingAs($user)->get(route('projects.search.index', $project));
+
+        $queries = DB::connection()->getQueryLog();
+        DB::connection()->disableQueryLog();
+
+        $response->assertOk();
+        $this->assertTrue($response->viewData('chapters')->isEmpty());
+
+        foreach ($queries as $executed) {
+            $this->assertStringNotContainsStringIgnoringCase('chapters', $executed['query']);
+        }
+    }
+
+    public function test_a_single_book_project_renders_no_book_select(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+
+        $response = $this->actingAs($user)->get(route('projects.search.index', $project));
+
+        $response->assertOk();
+        $response->assertDontSee('id="narrow-book"', false);
+        $response->assertSee('name="book" value="'.$book->id.'"', false);
+    }
+
+    public function test_a_multi_book_project_with_no_book_chosen_renders_the_note_not_the_range(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        Book::factory()->for($project)->create();
+
+        $response = $this->actingAs($user)->get(route('projects.search.index', $project));
+
+        $response->assertOk();
+        $response->assertSee('id="narrow-book"', false);
+        $response->assertSee('Choose a book first to narrow by chapter range.');
+        $response->assertDontSee('id="narrow-from-chapter"', false);
+        $response->assertDontSee('id="narrow-to-chapter"', false);
+    }
+
+    public function test_a_chosen_book_lists_its_chapters_in_story_order(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+
+        $laterAct = Act::factory()->for($book)->create(['position' => 2]);
+        $earlierAct = Act::factory()->for($book)->create(['position' => 1]);
+        Chapter::factory()->for($laterAct)->create(['name' => 'Zephyrqux second chapter', 'position' => 1]);
+        Chapter::factory()->for($earlierAct)->create(['name' => 'Zephyrqux first chapter', 'position' => 1]);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'book' => $book->id]));
+
+        $response->assertOk();
+        $response->assertSeeInOrder([
+            '1. Zephyrqux first chapter',
+            '2. Zephyrqux second chapter',
+        ]);
+    }
+
+    public function test_submitted_filters_come_back_selected_and_the_panel_renders_open(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create(['name' => 'Zephyrqux chapter']);
+
+        $response = $this->actingAs($user)->get(route('projects.search.index', [
+            'project' => $project,
+            'q' => 'zephyrqux',
+            'book' => $book->id,
+            'from_chapter' => $chapter->id,
+            'to_chapter' => $chapter->id,
+            'domains' => [SearchDomain::Scenes->value],
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('<details  open', false);
+        $response->assertSee('value="'.$chapter->id.'" selected', false);
+        $response->assertSee('value="scenes"', false);
+        $this->assertMatchesRegularExpression(
+            '/value="scenes"\s+checked/',
+            $response->getContent()
+        );
+    }
+
+    public function test_an_unnamed_book_shows_the_project_name_never_the_id(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'Zephyrqux Project']);
+        $project->books()->first()->update(['name' => null]);
+        Book::factory()->for($project)->create();
+
+        $response = $this->actingAs($user)->get(route('projects.search.index', $project));
+
+        $response->assertOk();
+        $response->assertSee('Zephyrqux Project');
+        $response->assertDontSee('#'.$project->books()->first()->id);
+    }
+
+    public function test_a_book_filter_hides_timeline_and_codex_with_the_explanatory_line(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $this->sceneFor($project, ['name' => 'Zephyrqux scene', 'contents' => 'x', 'description' => 'x']);
+        Plotline::factory()->for($project)->create(['name' => 'Zephyrqux plot', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'book' => $book->id]));
+
+        $response->assertOk();
+        $response->assertSee('Zephyrqux scene');
+        $response->assertDontSee('Zephyrqux plot');
+        $response->assertSee('Plotlines, events and the codex belong to the whole project. Clear the book filter to search them.');
+    }
+
+    public function test_unchecking_a_domain_renders_no_table_and_no_explanatory_line(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $this->sceneFor($project, ['name' => 'Zephyrqux scene', 'contents' => 'x', 'description' => 'x']);
+        Plotline::factory()->for($project)->create(['name' => 'Zephyrqux plot', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'domains' => ['scenes']]));
+
+        $response->assertOk();
+        $response->assertSee('Zephyrqux scene');
+        $response->assertDontSee('Zephyrqux plot');
+        $response->assertDontSee('Plotlines, events and the codex belong to the whole project.');
+    }
+
+    public function test_the_filter_summary_names_an_active_book_filter_and_clear_drops_every_filter(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first()->fresh();
+        $book->update(['name' => 'Zephyrqux Volume']);
+        $this->sceneFor($project, ['name' => 'Zephyrqux scene', 'contents' => 'x', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'book' => $book->id]));
+
+        $response->assertOk();
+        $response->assertSee('Filtered to Zephyrqux Volume.');
+        $response->assertSee(e(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'mode' => 'all'])), false);
+    }
+
+    public function test_an_unfiltered_search_renders_no_summary(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $this->sceneFor($project, ['name' => 'Zephyrqux scene', 'contents' => 'x', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        $response->assertDontSee('Filtered to');
     }
 }

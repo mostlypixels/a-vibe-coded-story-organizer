@@ -7,6 +7,7 @@ use App\Enums\SearchDomain;
 use App\Enums\SearchMode;
 use App\Models\Act;
 use App\Models\Book;
+use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Plotline;
@@ -16,10 +17,12 @@ use App\Support\RichText;
 use App\Support\RichTextFields;
 use App\Support\SearchResultRow;
 use App\Support\SearchResults;
+use App\Support\SearchScope;
 use App\Support\SearchSnippet;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 /**
  * Searches stored text across one project's story, timeline, and codex entities.
@@ -54,8 +57,10 @@ class ProjectSearch
      * @param  Project  $project  the already-authorized project to search within
      * @param  string  $query  the raw query string from the search box
      * @param  SearchMode  $mode  how the terms combine (AND / OR / exact phrase)
+     * @param  SearchScope  $scope  the book, chapter range and domain filters; the
+     *                              default scope filters nothing
      */
-    public function search(Project $project, string $query, SearchMode $mode): SearchResults
+    public function search(Project $project, string $query, SearchMode $mode, SearchScope $scope = new SearchScope): SearchResults
     {
         $terms = $this->terms($query, $mode);
 
@@ -63,16 +68,19 @@ class ProjectSearch
             return $this->emptyResults();
         }
 
-        // Search codex entries once and split their result rows by type.
+        // Search codex entries once for every included type and split the rows after.
         $books = $this->booksById($project);
-        $codexRows = $this->searchEntityFor(SearchDomain::Characters, $project, $terms, $mode, $books);
+        $codexTypes = $this->includedCodexTypes($scope);
+        $codexRows = $codexTypes === []
+            ? collect()
+            : $this->searchCodex($project, $terms, $mode, $codexTypes);
 
         return new SearchResults(
-            plotlines: $this->searchEntityFor(SearchDomain::Plotlines, $project, $terms, $mode, $books),
-            events: $this->searchEntityFor(SearchDomain::Events, $project, $terms, $mode, $books),
-            acts: $this->searchEntityFor(SearchDomain::Acts, $project, $terms, $mode, $books),
-            chapters: $this->searchEntityFor(SearchDomain::Chapters, $project, $terms, $mode, $books),
-            scenes: $this->searchEntityFor(SearchDomain::Scenes, $project, $terms, $mode, $books),
+            plotlines: $this->rowsFor(SearchDomain::Plotlines, $project, $terms, $mode, $books, $scope),
+            events: $this->rowsFor(SearchDomain::Events, $project, $terms, $mode, $books, $scope),
+            acts: $this->rowsFor(SearchDomain::Acts, $project, $terms, $mode, $books, $scope),
+            chapters: $this->rowsFor(SearchDomain::Chapters, $project, $terms, $mode, $books, $scope),
+            scenes: $this->rowsFor(SearchDomain::Scenes, $project, $terms, $mode, $books, $scope),
             characters: $this->codexRowsOfType($codexRows, CodexEntryType::Character),
             locations: $this->codexRowsOfType($codexRows, CodexEntryType::Location),
             organizations: $this->codexRowsOfType($codexRows, CodexEntryType::Organization),
@@ -80,7 +88,7 @@ class ProjectSearch
     }
 
     /** @return Collection<int, SearchResultRow> Callers paginate this in memory. */
-    public function searchDomain(Project $project, SearchDomain $domain, string $query, SearchMode $mode): Collection
+    public function searchDomain(Project $project, SearchDomain $domain, string $query, SearchMode $mode, SearchScope $scope = new SearchScope): Collection
     {
         $terms = $this->terms($query, $mode);
 
@@ -88,36 +96,100 @@ class ProjectSearch
             return collect();
         }
 
-        $books = $domain->carriesBook() ? $this->booksById($project) : collect();
-        $rows = $this->searchEntityFor($domain, $project, $terms, $mode, $books);
+        $codexType = $this->codexType($domain);
 
+        if ($codexType !== null) {
+            return $this->searchCodex($project, $terms, $mode, [$codexType]);
+        }
+
+        $books = $domain->carriesBook() ? $this->booksById($project) : collect();
+
+        return $this->searchEntityFor($domain, $project, $terms, $mode, $books, $scope);
+    }
+
+    /**
+     * A domain's rows, or an empty collection when the scope excludes it. An
+     * excluded domain must run no query at all — that is the saving.
+     *
+     * @param  array<int, string>  $terms
+     * @param  Collection<int, Book>  $books
+     * @return Collection<int, SearchResultRow>
+     */
+    private function rowsFor(SearchDomain $domain, Project $project, array $terms, SearchMode $mode, Collection $books, SearchScope $scope): Collection
+    {
+        if (! $scope->includes($domain)) {
+            return collect();
+        }
+
+        return $this->searchEntityFor($domain, $project, $terms, $mode, $books, $scope);
+    }
+
+    /**
+     * The codex query for exactly the requested types. One query serves all
+     * three codex domains, so the types it must hydrate come in as a list.
+     *
+     * @param  array<int, string>  $terms
+     * @param  array<int, CodexEntryType>  $types
+     * @return Collection<int, SearchResultRow>
+     */
+    private function searchCodex(Project $project, array $terms, SearchMode $mode, array $types): Collection
+    {
+        $query = CodexEntry::query()
+            ->where('project_id', $project->id)
+            ->whereIn('type', array_map(fn (CodexEntryType $type) => $type->value, $types))
+            ->orderBy('name');
+
+        return $this->searchEntity($query, self::CODEX_ENTRY_FIELDS, $terms, $mode, null);
+    }
+
+    /**
+     * The codex types the scope asks for, so no type nobody wants is hydrated.
+     *
+     * @return array<int, CodexEntryType>
+     */
+    private function includedCodexTypes(SearchScope $scope): array
+    {
+        $types = [];
+
+        foreach ([SearchDomain::Characters, SearchDomain::Locations, SearchDomain::Organizations] as $domain) {
+            if ($scope->includes($domain)) {
+                $types[] = $this->codexType($domain);
+            }
+        }
+
+        return $types;
+    }
+
+    /** The codex type a domain reads, or null when the domain is not a codex one. */
+    private function codexType(SearchDomain $domain): ?CodexEntryType
+    {
         return match ($domain) {
-            SearchDomain::Characters => $this->codexRowsOfType($rows, CodexEntryType::Character),
-            SearchDomain::Locations => $this->codexRowsOfType($rows, CodexEntryType::Location),
-            SearchDomain::Organizations => $this->codexRowsOfType($rows, CodexEntryType::Organization),
-            default => $rows,
+            SearchDomain::Characters => CodexEntryType::Character,
+            SearchDomain::Locations => CodexEntryType::Location,
+            SearchDomain::Organizations => CodexEntryType::Organization,
+            default => null,
         };
     }
 
     /**
-     * Run one domain's base query through {@see searchEntity}. Characters,
-     * Locations, and Organizations all read the same CodexEntry query and fields
-     * — the type split happens after, in {@see codexRowsOfType}.
+     * Run one domain's base query through {@see searchEntity}. Codex domains
+     * do not come through here: one query serves all three (see searchCodex()).
      *
      * @param  array<int, string>  $terms
      * @param  Collection<int, Book>  $books  the project's books, keyed by id (see booksById()) — passed
      *                                        through even for domains that never carry one; only a
      *                                        domain whose {@see SearchDomain::carriesBook()} is true reads it
+     * @return Collection<int, SearchResultRow>
      */
-    private function searchEntityFor(SearchDomain $domain, Project $project, array $terms, SearchMode $mode, Collection $books): Collection
+    private function searchEntityFor(SearchDomain $domain, Project $project, array $terms, SearchMode $mode, Collection $books, SearchScope $scope): Collection
     {
-        [$query, $fields] = $this->queryFor($domain, $project);
+        [$query, $fields] = $this->queryFor($domain, $project, $scope);
 
         return $this->searchEntity($query, $fields, $terms, $mode, $domain->carriesBook() ? $books : null);
     }
 
     /** @return array{0: Builder, 1: array<string, string>} */
-    private function queryFor(SearchDomain $domain, Project $project): array
+    private function queryFor(SearchDomain $domain, Project $project, SearchScope $scope): array
     {
         return match ($domain) {
             SearchDomain::Plotlines => [
@@ -130,30 +202,75 @@ class ProjectSearch
                 self::EVENT_FIELDS,
             ],
             SearchDomain::Acts => [
-                Act::query()->whereHas('book', fn (Builder $query) => $query->where('project_id', $project->id))
-                    ->orderBy('position')->orderBy('id'),
+                $this->scopedActQuery($project, $scope),
                 self::ACT_FIELDS,
             ],
             SearchDomain::Chapters => [
-                $project->chapterQuery()
-                    ->join('acts', 'acts.id', '=', 'chapters.act_id')
-                    ->select('chapters.*', 'acts.book_id as book_id')
-                    ->orderBy('chapters.position')->orderBy('chapters.id'),
+                $this->scopeBookAndRange(
+                    $project->chapterQuery()
+                        ->join('acts', 'acts.id', '=', 'chapters.act_id')
+                        ->select('chapters.*', 'acts.book_id as book_id')
+                        ->orderBy('chapters.position')->orderBy('chapters.id'),
+                    $scope,
+                ),
                 self::CHAPTER_FIELDS,
             ],
             SearchDomain::Scenes => [
-                $project->sceneQuery()
-                    ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
-                    ->join('acts', 'acts.id', '=', 'chapters.act_id')
-                    ->select('scenes.*', 'acts.book_id as book_id')
-                    ->orderBy('scenes.position')->orderBy('scenes.id'),
+                $this->scopeBookAndRange(
+                    $project->sceneQuery()
+                        ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
+                        ->join('acts', 'acts.id', '=', 'chapters.act_id')
+                        ->select('scenes.*', 'acts.book_id as book_id')
+                        ->orderBy('scenes.position')->orderBy('scenes.id'),
+                    $scope,
+                ),
                 self::SCENE_FIELDS,
             ],
-            SearchDomain::Characters, SearchDomain::Locations, SearchDomain::Organizations => [
-                CodexEntry::query()->where('project_id', $project->id)->orderBy('name'),
-                self::CODEX_ENTRY_FIELDS,
-            ],
+            // The three codex domains share one query, built by searchCodex().
+            SearchDomain::Characters, SearchDomain::Locations, SearchDomain::Organizations => throw new InvalidArgumentException(
+                'Codex domains build their query in searchCodex(), not queryFor().'
+            ),
         };
+    }
+
+    /**
+     * Acts filter on their own book_id, and on the acts owning the chapters in
+     * the range — a subquery, so the range still costs no extra round trip.
+     */
+    private function scopedActQuery(Project $project, SearchScope $scope): Builder
+    {
+        $query = Act::query()
+            ->whereHas('book', fn (Builder $query) => $query->where('project_id', $project->id))
+            ->orderBy('position')->orderBy('id');
+
+        if ($scope->bookId !== null) {
+            $query->where('acts.book_id', $scope->bookId);
+        }
+
+        if ($scope->chapterIds !== []) {
+            $query->whereIn('acts.id', Chapter::query()
+                ->whereIn('id', $scope->chapterIds)
+                ->select('act_id'));
+        }
+
+        return $query;
+    }
+
+    /**
+     * Narrow a chapter or scene query to the scope's book and chapter range.
+     * Both queries already join `acts`, so the book column is in reach.
+     */
+    private function scopeBookAndRange(Builder $query, SearchScope $scope): Builder
+    {
+        if ($scope->bookId !== null) {
+            $query->where('acts.book_id', $scope->bookId);
+        }
+
+        if ($scope->chapterIds !== []) {
+            $query->whereIn('chapters.id', $scope->chapterIds);
+        }
+
+        return $query;
     }
 
     /** @return Collection<int, Book> Books prepared for display-name lookup. */

@@ -17,7 +17,9 @@ use App\Services\ProjectSearch;
 use App\Support\RichText;
 use App\Support\SearchResultRow;
 use App\Support\SearchResults;
+use App\Support\SearchScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -532,6 +534,254 @@ class ProjectSearchTest extends TestCase
         $rows = app(ProjectSearch::class)->searchDomain($project, SearchDomain::Plotlines, '   ', SearchMode::AllTerms);
 
         $this->assertTrue($rows->isEmpty());
+    }
+
+    /**
+     * Two books, two acts each, four chapters each. Chapter `position` values are
+     * gappy and the names sort against story order, so a test that passes by
+     * sorting on `position` or `name` alone fails here.
+     *
+     * Every row carries "scopeword", so one search sees all eight domains.
+     *
+     * @return array<string, mixed>
+     */
+    private function twoBookFixture(Project $project): array
+    {
+        $bookOne = $project->books()->first();
+        $bookTwo = Book::factory()->for($project)->create(['name' => 'Book Two']);
+
+        $acts = [];
+        $chapters = [];
+        $names = ['zulu', 'alpha', 'yankee', 'bravo'];
+        $positions = [5, 20, 1, 9];
+
+        foreach (['one' => $bookOne, 'two' => $bookTwo] as $key => $book) {
+            foreach ([1, 2] as $actNumber) {
+                $act = Act::factory()->for($book)->create([
+                    'name' => "scopeword act {$key} {$actNumber}",
+                    'description' => 'x',
+                    'position' => $actNumber,
+                ]);
+                $acts["{$key}{$actNumber}"] = $act;
+
+                foreach ([1, 2] as $chapterNumber) {
+                    $index = ($actNumber - 1) * 2 + $chapterNumber - 1;
+                    $chapter = Chapter::factory()->for($act)->create([
+                        'name' => "scopeword {$names[$index]} {$key}",
+                        'description' => 'x',
+                        'position' => $positions[$index],
+                    ]);
+                    $chapters["{$key}{$index}"] = $chapter;
+
+                    Scene::factory()->for($chapter)->create([
+                        'name' => "scopeword scene {$key}{$index}",
+                        'contents' => 'x',
+                        'description' => 'x',
+                    ]);
+                }
+            }
+        }
+
+        Plotline::factory()->for($project)->create(['name' => 'scopeword plotline', 'description' => 'x']);
+        Event::factory()->for($project)->create(['title' => 'scopeword event', 'description' => 'x']);
+        CodexEntry::factory()->for($project)->character()->create(['name' => 'scopeword hero', 'description' => 'x']);
+        CodexEntry::factory()->for($project)->location()->create(['name' => 'scopeword city', 'description' => 'x']);
+        CodexEntry::factory()->for($project)->organization()->create(['name' => 'scopeword guild', 'description' => 'x']);
+
+        return ['bookOne' => $bookOne, 'bookTwo' => $bookTwo, 'acts' => $acts, 'chapters' => $chapters];
+    }
+
+    /**
+     * @param  Collection<int, SearchResultRow>  $rows
+     * @return array<int, string>
+     */
+    private function rowNames(Collection $rows): array
+    {
+        return $rows->map(fn (SearchResultRow $row) => $row->entity->name)->sort()->values()->all();
+    }
+
+    public function test_book_filter_narrows_acts_chapters_and_scenes_to_that_book(): void
+    {
+        $project = $this->project();
+        $fixture = $this->twoBookFixture($project);
+
+        $results = app(ProjectSearch::class)->search(
+            $project,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(bookId: $fixture['bookTwo']->id),
+        );
+
+        $this->assertCount(2, $results->acts);
+        $this->assertCount(4, $results->chapters);
+        $this->assertCount(4, $results->scenes, 'only the chosen book scenes may be hydrated');
+
+        foreach ($results->chapters as $row) {
+            $this->assertStringContainsString('two', $row->entity->name);
+        }
+    }
+
+    public function test_book_filter_skips_the_project_wide_domains_instead_of_filtering_them(): void
+    {
+        $project = $this->project();
+        $fixture = $this->twoBookFixture($project);
+
+        DB::connection()->enableQueryLog();
+
+        $results = app(ProjectSearch::class)->search(
+            $project,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(bookId: $fixture['bookOne']->id),
+        );
+
+        $queries = DB::connection()->getQueryLog();
+        DB::connection()->disableQueryLog();
+
+        // A book cannot narrow a plotline, an event or a codex entry, so the scope
+        // hides those columns (SearchScope::hiddenByBook()) and their queries never
+        // run. They come back empty because they were skipped, never because a book
+        // filter was applied to them.
+        $this->assertCount(4, $queries, 'acts, chapters, scenes, plus booksById()');
+        $this->assertCount(0, $results->plotlines);
+        $this->assertCount(0, $results->events);
+        $this->assertCount(0, $results->characters);
+        $this->assertCount(0, $results->locations);
+        $this->assertCount(0, $results->organizations);
+    }
+
+    public function test_project_wide_domains_are_never_narrowed_by_a_chapter_range(): void
+    {
+        $project = $this->project();
+        $fixture = $this->twoBookFixture($project);
+        $chapters = $fixture['chapters'];
+
+        // No book, so nothing is hidden; the range ids alone must not touch the
+        // domains that carry no book.
+        $results = app(ProjectSearch::class)->search(
+            $project,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(chapterIds: [$chapters['one0']->id]),
+        );
+
+        $this->assertCount(1, $results->plotlines);
+        $this->assertCount(1, $results->events);
+        $this->assertCount(1, $results->characters);
+        $this->assertCount(1, $results->locations);
+        $this->assertCount(1, $results->organizations);
+    }
+
+    public function test_chapter_range_narrows_chapters_scenes_and_acts(): void
+    {
+        $project = $this->project();
+        $fixture = $this->twoBookFixture($project);
+        $chapters = $fixture['chapters'];
+
+        // Story order in book one is one0, one1, one2, one3 — this range crosses
+        // the act boundary between one1 and one2 and must keep both.
+        $range = [$chapters['one1']->id, $chapters['one2']->id];
+
+        $results = app(ProjectSearch::class)->search(
+            $project,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(bookId: $fixture['bookOne']->id, chapterIds: $range),
+        );
+
+        $this->assertSame(
+            collect([$chapters['one1']->name, $chapters['one2']->name])->sort()->values()->all(),
+            $this->rowNames($results->chapters),
+        );
+        $this->assertCount(2, $results->scenes);
+        $this->assertSame(
+            collect([$fixture['acts']['one1']->name, $fixture['acts']['one2']->name])->sort()->values()->all(),
+            $this->rowNames($results->acts),
+            'a range crossing an act boundary keeps both acts',
+        );
+    }
+
+    public function test_chapter_range_inside_one_act_narrows_acts_to_that_act(): void
+    {
+        $project = $this->project();
+        $fixture = $this->twoBookFixture($project);
+        $chapters = $fixture['chapters'];
+
+        $results = app(ProjectSearch::class)->search(
+            $project,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(
+                bookId: $fixture['bookOne']->id,
+                chapterIds: [$chapters['one0']->id, $chapters['one1']->id],
+            ),
+        );
+
+        $this->assertSame([$fixture['acts']['one1']->name], $this->rowNames($results->acts));
+        $this->assertCount(2, $results->chapters);
+        $this->assertCount(2, $results->scenes);
+    }
+
+    public function test_an_excluded_domain_runs_no_query(): void
+    {
+        $project = $this->project();
+        $this->twoBookFixture($project);
+
+        DB::connection()->enableQueryLog();
+
+        $results = app(ProjectSearch::class)->search(
+            $project,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(domains: [SearchDomain::Plotlines]),
+        );
+
+        $queries = DB::connection()->getQueryLog();
+        DB::connection()->disableQueryLog();
+
+        // The plotline query, plus booksById() — which feeds display, not filtering.
+        $this->assertCount(2, $queries);
+        $this->assertCount(1, $results->plotlines);
+        $this->assertCount(0, $results->scenes);
+    }
+
+    public function test_checking_characters_alone_loads_no_locations_or_organizations(): void
+    {
+        $project = $this->project();
+        $this->twoBookFixture($project);
+
+        DB::connection()->enableQueryLog();
+
+        $results = app(ProjectSearch::class)->search(
+            $project,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(domains: [SearchDomain::Characters]),
+        );
+
+        $queries = DB::connection()->getQueryLog();
+        DB::connection()->disableQueryLog();
+
+        $this->assertCount(2, $queries, 'one codex query, plus booksById()');
+        $this->assertCount(1, $results->characters);
+        $this->assertCount(0, $results->locations);
+        $this->assertCount(0, $results->organizations);
+    }
+
+    public function test_search_domain_applies_the_book_filter(): void
+    {
+        $project = $this->project();
+        $fixture = $this->twoBookFixture($project);
+
+        $rows = app(ProjectSearch::class)->searchDomain(
+            $project,
+            SearchDomain::Scenes,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(bookId: $fixture['bookTwo']->id),
+        );
+
+        $this->assertCount(4, $rows);
     }
 
     public function test_search_config_keys_load(): void

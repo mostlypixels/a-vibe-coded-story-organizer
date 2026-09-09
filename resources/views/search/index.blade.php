@@ -38,9 +38,26 @@
                     @endforeach
                 </div>
             </fieldset>
+
+            <x-search.narrow-panel :project="$project" :books="$books" :book="$book" :chapters="$chapters" :scope="$scope" />
         </form>
 
         @if ($results !== null)
+            @if ($scope->isNarrowed())
+                @php
+                    $summaryParts = \App\Support\SearchScopeSummary::parts($scope, $book, $chapters);
+                @endphp
+                <div class="bg-surface-raised shadow-xs rounded-lg px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm text-content-muted">
+                    <p>{{ __('Filtered to :summary.', ['summary' => implode(', ', $summaryParts)]) }}</p>
+                    <a
+                        href="{{ route('projects.search.index', ['project' => $project, 'q' => $query, 'mode' => $mode->value]) }}"
+                        class="text-link underline hover:text-link-hover shrink-0"
+                    >
+                        {{ __('Clear') }}
+                    </a>
+                </div>
+            @endif
+
             @if ($results->isEmpty())
                 <div class="bg-surface-raised shadow-xs rounded-lg px-6 py-10 text-center text-content-muted">
                     <p class="font-medium text-content-muted">
@@ -50,26 +67,32 @@
                 </div>
             @else
                 <div class="space-y-8">
+                    @if ($scope->bookId !== null)
+                        <p class="text-sm text-content-muted">
+                            {{ __('Plotlines, events and the codex belong to the whole project. Clear the book filter to search them.') }}
+                        </p>
+                    @endif
+
                     @if ($results->hasTimelineMatches())
                         <x-search.section :title="__('Timeline')">
-                            <x-search.result-table :domain="\App\Enums\SearchDomain::Plotlines" :results="$results" :project="$project" :query="$query" :mode="$mode" />
-                            <x-search.result-table :domain="\App\Enums\SearchDomain::Events" :results="$results" :project="$project" :query="$query" :mode="$mode" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Plotlines" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Events" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
                         </x-search.section>
                     @endif
 
                     @if ($results->hasStoryMatches())
                         <x-search.section :title="__('Story')">
-                            <x-search.result-table :domain="\App\Enums\SearchDomain::Acts" :results="$results" :project="$project" :query="$query" :mode="$mode" />
-                            <x-search.result-table :domain="\App\Enums\SearchDomain::Chapters" :results="$results" :project="$project" :query="$query" :mode="$mode" />
-                            <x-search.result-table :domain="\App\Enums\SearchDomain::Scenes" :results="$results" :project="$project" :query="$query" :mode="$mode" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Acts" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Chapters" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Scenes" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
                         </x-search.section>
                     @endif
 
                     @if ($results->hasCodexMatches())
                         <x-search.section :title="__('Codex')">
-                            <x-search.result-table :domain="\App\Enums\SearchDomain::Characters" :results="$results" :project="$project" :query="$query" :mode="$mode" />
-                            <x-search.result-table :domain="\App\Enums\SearchDomain::Locations" :results="$results" :project="$project" :query="$query" :mode="$mode" />
-                            <x-search.result-table :domain="\App\Enums\SearchDomain::Organizations" :results="$results" :project="$project" :query="$query" :mode="$mode" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Characters" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Locations" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Organizations" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
                         </x-search.section>
                     @endif
                 </div>

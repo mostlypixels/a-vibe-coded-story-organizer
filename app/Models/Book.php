@@ -10,6 +10,7 @@ use App\Models\Concerns\SanitizesRichHtml;
 use App\Services\CoverImageService;
 use App\Services\WordCountSnapshotRecorder;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -130,6 +131,27 @@ class Book extends Model
     public function sceneQuery(): Builder
     {
         return Scene::query()->whereHas('chapter.act', fn (Builder $query) => $query->where('book_id', $this->id));
+    }
+
+    /**
+     * Every chapter in this book, in story order, with its act eager-loaded.
+     *
+     * Story order is `(acts.position, acts.id, chapters.position, chapters.id)`,
+     * never `name` or `position` alone — both are per-parent and gappy.
+     */
+    public function chaptersInStoryOrder(): Collection
+    {
+        return $this->chapterQuery()
+            // Only the chapter columns — `acts` carries `name` and `position` too, and
+            // without this they would overwrite the hydrated chapter's own.
+            ->select('chapters.*')
+            ->join('acts', 'acts.id', '=', 'chapters.act_id')
+            ->with('act')
+            ->orderBy('acts.position')
+            ->orderBy('acts.id')
+            ->orderBy('chapters.position')
+            ->orderBy('chapters.id')
+            ->get();
     }
 
     /**

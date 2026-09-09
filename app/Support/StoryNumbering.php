@@ -105,6 +105,29 @@ final class StoryNumbering
     }
 
     /**
+     * Derive chapter numbering from an already story-ordered chapter list.
+     * Fires no queries and loads no acts or scenes.
+     *
+     * Trusts the caller's order and rejects nothing: $chapters must already
+     * be every chapter in the book, in story order (see
+     * {@see Book::chaptersInStoryOrder()}). A filtered or re-sorted list
+     * would compact the numbering around the missing or reordered chapters.
+     *
+     * Act and scene numbers are unavailable on the returned instance — call
+     * {@see self::act()} or {@see self::scene()} on it and it throws.
+     */
+    public static function fromChapters(Collection $chapters): self
+    {
+        $chapterNumbers = [];
+
+        foreach ($chapters as $index => $chapter) {
+            $chapterNumbers[$chapter->id] = $index + 1;
+        }
+
+        return new self([], $chapterNumbers, []);
+    }
+
+    /**
      * The book-wide, 1-based number for this act.
      */
     public function act(Act|int $act): int

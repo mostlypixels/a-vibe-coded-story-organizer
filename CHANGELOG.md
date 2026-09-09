@@ -17,6 +17,21 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-09 — Narrow a search before it searches everything
+
+### Added
+
+- A Narrow panel on the search page: filter by book, by a range of chapters in story
+  order, and by which kinds of thing to search.
+- Filters ride the web address, so a narrowed search can be bookmarked and the back
+  button works.
+
+### Changed
+
+- Result counts and the "see all" pages follow the filters instead of the whole project.
+- A book filter hides plotlines, events and the codex, which belong to the whole project,
+  and says why instead of showing empty tables.
+
 ## 2026-09-09 — See every reference, not the first twenty (#162)
 
 ### Added

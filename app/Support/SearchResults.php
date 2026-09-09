@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\SearchSection;
 use Illuminate\Support\Collection;
 
 /**
@@ -87,7 +88,7 @@ class SearchResults
      */
     public function hasTimelineMatches(): bool
     {
-        return $this->plotlines->isNotEmpty() || $this->events->isNotEmpty();
+        return $this->hasMatchesIn(SearchSection::Timeline);
     }
 
     /**
@@ -95,9 +96,7 @@ class SearchResults
      */
     public function hasStoryMatches(): bool
     {
-        return $this->acts->isNotEmpty()
-            || $this->chapters->isNotEmpty()
-            || $this->scenes->isNotEmpty();
+        return $this->hasMatchesIn(SearchSection::Story);
     }
 
     /**
@@ -105,8 +104,20 @@ class SearchResults
      */
     public function hasCodexMatches(): bool
     {
-        return $this->characters->isNotEmpty()
-            || $this->locations->isNotEmpty()
-            || $this->organizations->isNotEmpty();
+        return $this->hasMatchesIn(SearchSection::Codex);
+    }
+
+    /**
+     * True when any of the section's domains matched.
+     */
+    private function hasMatchesIn(SearchSection $section): bool
+    {
+        foreach ($section->domains() as $domain) {
+            if ($domain->rowsFrom($this)->isNotEmpty()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

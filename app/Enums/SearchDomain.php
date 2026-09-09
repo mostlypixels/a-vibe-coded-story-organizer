@@ -85,6 +85,18 @@ enum SearchDomain: string
     }
 
     /**
+     * The section this domain's column groups under on the search page.
+     */
+    public function section(): SearchSection
+    {
+        return match ($this) {
+            self::Plotlines, self::Events => SearchSection::Timeline,
+            self::Acts, self::Chapters, self::Scenes => SearchSection::Story,
+            self::Characters, self::Locations, self::Organizations => SearchSection::Codex,
+        };
+    }
+
+    /**
      * Whether this domain's rows belong to a book. Acts, Chapters, and Scenes
      * hang off the manuscript; Plotlines, Events, and the three Codex domains
      * stay project-wide and never carry one.

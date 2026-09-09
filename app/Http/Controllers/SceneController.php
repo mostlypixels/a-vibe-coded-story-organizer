@@ -325,19 +325,7 @@ class SceneController extends Controller
 
     private function chaptersFor(Book $book): Collection
     {
-        return $book->chapterQuery()
-            // Story order, not alphabetical: a chapter has a position, and a reader
-            // looking for the one after chapter 200 will not find it under its title.
-            // Only the chapter columns — `acts` carries `name` and `position` too, and
-            // without this they would overwrite the hydrated chapter's own.
-            ->select('chapters.*')
-            ->join('acts', 'acts.id', '=', 'chapters.act_id')
-            ->with('act')
-            ->orderBy('acts.position')
-            ->orderBy('acts.id')
-            ->orderBy('chapters.position')
-            ->orderBy('chapters.id')
-            ->get();
+        return $book->chaptersInStoryOrder();
     }
 
     private function eventsFor(Project $project): Collection

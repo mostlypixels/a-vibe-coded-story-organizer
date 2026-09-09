@@ -9,7 +9,7 @@
                 {{ __(':label matching “:query”.', ['label' => $domain->label(), 'query' => $query]) }}
             </p>
             <a
-                href="{{ route('projects.search.index', ['project' => $project, 'q' => $query, 'mode' => $mode->value]) }}"
+                href="{{ route('projects.search.index', ['project' => $project, 'q' => $query, 'mode' => $mode->value] + $scope->toQuery()) }}"
                 class="text-sm text-content-muted hover:text-content shrink-0"
             >
                 {{ __('← Back to search') }}

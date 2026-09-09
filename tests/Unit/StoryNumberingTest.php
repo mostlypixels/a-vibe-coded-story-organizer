@@ -213,6 +213,59 @@ class StoryNumberingTest extends TestCase
         $numbering->scene(999999);
     }
 
+    public function test_from_chapters_numbers_continuously_across_an_act_boundary(): void
+    {
+        [$project, $book] = $this->projectWithBook();
+
+        $actOne = Act::factory()->for($book)->create();
+        $actTwo = Act::factory()->for($book)->create();
+
+        $chapters = collect([
+            Chapter::factory()->for($actOne)->create(),
+            Chapter::factory()->for($actOne)->create(),
+            Chapter::factory()->for($actOne)->create(),
+            Chapter::factory()->for($actOne)->create(),
+            Chapter::factory()->for($actTwo)->create(),
+        ]);
+
+        $numbering = StoryNumbering::fromChapters($chapters);
+
+        $this->assertSame(4, $numbering->chapter($chapters[3]));
+        $this->assertSame(5, $numbering->chapter($chapters[4]));
+    }
+
+    public function test_from_chapters_agrees_with_for_book(): void
+    {
+        [$project, $book] = $this->projectWithBook();
+
+        $actOne = Act::factory()->for($book)->create();
+        $actTwo = Act::factory()->for($book)->create();
+
+        $chapterOne = Chapter::factory()->for($actOne)->create();
+        $chapterTwo = Chapter::factory()->for($actOne)->create();
+        $chapterThree = Chapter::factory()->for($actTwo)->create();
+
+        $viaForBook = StoryNumbering::forBook($book);
+        $viaFromChapters = StoryNumbering::fromChapters($book->chaptersInStoryOrder());
+
+        $this->assertSame($viaForBook->chapter($chapterOne), $viaFromChapters->chapter($chapterOne));
+        $this->assertSame($viaForBook->chapter($chapterTwo), $viaFromChapters->chapter($chapterTwo));
+        $this->assertSame($viaForBook->chapter($chapterThree), $viaFromChapters->chapter($chapterThree));
+    }
+
+    public function test_chapters_in_story_order_ignores_gappy_positions_and_names(): void
+    {
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
+
+        $chapterA = Chapter::factory()->for($act)->create(['name' => 'Zeta', 'position' => 10]);
+        $chapterB = Chapter::factory()->for($act)->create(['name' => 'Alpha', 'position' => 20]);
+
+        $ordered = $book->chaptersInStoryOrder();
+
+        $this->assertSame([$chapterA->id, $chapterB->id], $ordered->pluck('id')->all());
+    }
+
     public function test_two_books_in_one_project_number_independently(): void
     {
         [$project, $bookOne] = $this->projectWithBook();
