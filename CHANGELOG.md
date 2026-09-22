@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-22 — Import reads only files inside the archive
+
+### Fixed
+
+- A project import rejects an archive whose descriptors link a text file outside the archive.
+
 ## 2026-09-22 — Agent instructions refreshed for the Claude 5 models (#165)
 
 ### Changed

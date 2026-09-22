@@ -392,6 +392,29 @@ class ProjectGraphImporterTest extends TestCase
         $this->importer()->importProject($this->fixtureRoot, User::factory()->create());
     }
 
+    public function test_a_linked_field_file_outside_the_extraction_folder_is_never_read(): void
+    {
+        // Defence in depth: this runs without ArchiveValidator in front.
+        $outside = dirname($this->fixtureRoot).'/graph-importer-secret-'.uniqid().'.txt';
+        file_put_contents($outside, 'APP_KEY=secret');
+
+        $this->mutateFixtureJson('data/project/project.json', function (array $data) use ($outside): array {
+            $data['description_file'] = '../../../'.basename($outside);
+
+            return $data;
+        });
+
+        try {
+            $this->importer()->importProject($this->fixtureRoot, User::factory()->create());
+            $this->fail('a path outside the extraction folder should have thrown');
+        } catch (ImportValidationException $exception) {
+            $this->assertStringContainsString('unsafe path', $exception->getMessage());
+            $this->assertSame(0, Project::count());
+        } finally {
+            @unlink($outside);
+        }
+    }
+
     public function test_a_rejected_import_stores_nothing_because_validation_runs_before_normalization(): void
     {
         file_put_contents(

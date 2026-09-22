@@ -20,6 +20,7 @@ use App\Services\Import\ArchiveValidator;
 use App\Services\StaticSiteExporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -440,6 +441,65 @@ class ArchiveValidatorTest extends TestCase
                 'size' => 68,
                 'file' => '../../../../evil.png',
             ]);
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('unsafe path');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    /** @return array<string, array{0: string, 1: string}> Key and the descriptor that reads it. */
+    public static function linkedFieldFileProvider(): array
+    {
+        $book = 'data/books/1-book/book.json';
+        $scene = self::CHAPTER_DIR.'/scenes/1-scene/scene.json';
+
+        return [
+            'project description_file' => ['description_file', 'data/project/project.json'],
+            'book rights_file' => ['rights_file', $book],
+            'book dedication_file' => ['dedication_file', $book],
+            'book acknowledgements_file' => ['acknowledgements_file', $book],
+            'book preface_file' => ['preface_file', $book],
+            'book postface_file' => ['postface_file', $book],
+            'scene contents_file' => ['contents_file', $scene],
+            'scene notes_file' => ['notes_file', $scene],
+        ];
+    }
+
+    #[DataProvider('linkedFieldFileProvider')]
+    public function test_rejects_a_linked_field_file_that_escapes_its_directory(string $key, string $descriptorPath): void
+    {
+        $descriptors = [
+            'data/project/project.json' => ['id' => 1, 'name' => 'Fixture project'],
+            'data/books/1-book/book.json' => ['id' => 1, 'name' => 'Book', 'position' => 1, 'project_id' => 1],
+            self::CHAPTER_DIR.'/scenes/1-scene/scene.json' => [
+                'id' => 1, 'name' => 'Scene', 'position' => 1, 'status' => 'draft',
+                'chapter_id' => 1, 'event_id' => null, 'mentioned_event_ids' => [],
+            ],
+        ];
+        $descriptors[$descriptorPath][$key] = str_repeat('../', 20).'.env';
+
+        $path = $this->buildZip(function (ZipArchive $zip) use ($descriptors): void {
+            $zip->addFromString('data/manifest.json', json_encode($this->manifest()));
+            foreach ($descriptors as $descriptorPath => $descriptor) {
+                $zip->addFromString($descriptorPath, json_encode($descriptor));
+            }
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('unsafe path');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    public function test_rejects_a_linked_field_file_that_is_not_a_string(): void
+    {
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $zip->addFromString('data/manifest.json', json_encode($this->manifest()));
+            $zip->addFromString('data/project/project.json', json_encode([
+                'id' => 1, 'name' => 'Fixture project', 'description_file' => ['../.env'],
+            ]));
         });
 
         $this->expectException(ImportValidationException::class);

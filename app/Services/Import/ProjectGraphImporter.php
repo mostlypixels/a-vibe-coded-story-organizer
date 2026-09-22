@@ -737,7 +737,15 @@ class ProjectGraphImporter
         }
 
         $relative = "{$directory}/{$descriptor[$key]}";
-        $contents = @file_get_contents("{$dataPath}/{$relative}");
+        $absolute = realpath("{$dataPath}/{$relative}");
+        $root = realpath($dataPath);
+
+        // Defence in depth behind ArchiveValidator: never read outside the extraction folder.
+        if ($absolute !== false && ($root === false || ! str_starts_with($absolute, $root.DIRECTORY_SEPARATOR))) {
+            throw ImportValidationException::unsafeEntryPath((string) $descriptor[$key]);
+        }
+
+        $contents = $absolute === false ? false : @file_get_contents($absolute);
 
         if ($contents === false) {
             throw ImportValidationException::missingDescriptor($relative);

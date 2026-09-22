@@ -239,6 +239,20 @@ class ImportTest extends TestCase
         $this->assertSame(0, Import::count());
     }
 
+    public function test_an_archive_that_links_a_server_file_is_rejected_before_any_row_is_written(): void
+    {
+        $upload = $this->makeValidUpload(projectOverrides: [
+            'description_file' => str_repeat('../', 20).ltrim(str_replace('\\', '/', base_path('composer.json')), '/'),
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('admin.data.import'), ['archive' => $upload])
+            ->assertSessionHasErrors('archive');
+
+        $this->assertSame(0, Project::count());
+        $this->assertSame(0, Import::count());
+    }
+
     // ---------------------------------------------------------------------
     // A book's publication config is untrusted input, never fatal
     // ---------------------------------------------------------------------
@@ -502,7 +516,8 @@ class ImportTest extends TestCase
      * gate); $publicationSetting adds a raw {bookDir}/publication-setting.json
      * so a test can hand the importer a malformed config.
      */
-    private function makeValidUpload(int $manifestVersion = 4, ?string $publicationSetting = null): UploadedFile
+    /** @param array<string, mixed> $projectOverrides */
+    private function makeValidUpload(int $manifestVersion = 4, ?string $publicationSetting = null, array $projectOverrides = []): UploadedFile
     {
         $zipPath = tempnam(sys_get_temp_dir(), 'import-http-test');
         $this->tempFiles[] = $zipPath;
@@ -517,9 +532,9 @@ class ImportTest extends TestCase
             'exported_at' => '2026-07-13T00:00:00+00:00', 'includes_media' => true,
         ]));
 
-        $zip->addFromString('data/project/project.json', json_encode([
+        $zip->addFromString('data/project/project.json', json_encode(array_merge([
             'id' => 900, 'name' => 'Fixture project', 'description_file' => 'description.html',
-        ]));
+        ], $projectOverrides)));
         $zip->addFromString('data/project/description.html', '<p>A <strong>bold</strong> project.</p>');
 
         $zip->addFromString('data/timeline/plotlines/700-central-arc/plotline.json', json_encode([
