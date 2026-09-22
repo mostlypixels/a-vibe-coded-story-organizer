@@ -5,82 +5,57 @@ description: Decompose an already-expanded feature spec (.specs/expanded/<name>/
 
 # mp-plan-tasks
 
-Turn an expanded feature spec into the `00-overview.md` + numbered `NN-*.md` task-file
-plan that `/ship-plan` and the `plan-implementer` agent consume.
+Turn an expanded feature spec into the plan that `/ship-plan` and the `plan-implementer` agent
+run: a `00-overview.md` manual plus numbered `NN-*.md` task files. This skill writes the plan
+only; implementation happens in `plan-implementer`, which serves every feature.
 
 ## Argument
 
-A single argument: the feature name. Locate the feature folder with
-`bash scripts/spec-locate.sh <name>` — after `mp-expand-spec` runs it sits
-at `.specs/expanded/<YYYY-MM>/<name>/` (stages past draft bucket features by month) —
-and it must contain an `expanded/` subfolder holding whichever of `overview.md`,
-`data-model.md`, `architecture.md`, `ui.md`, `testing.md`, `open-questions.md` are
-relevant. If the script finds no folder, or the folder has no `expanded/`, tell the user to run
-`/mp-expand-spec <name>` first (on a `.specs/draft/<name>/spec.md` source spec) and stop.
-If it prints more than one line (a name collision), take the *first* — matches are ordered
-earliest-lifecycle-first, and that's the active feature; the collision is auto-resolved by the
-suffix rule when this folder moves in step 8. Below, **`<dir>`** means the matched feature folder.
+The feature name. Find its folder with `bash scripts/spec-locate.sh <name>` — after
+`mp-expand-spec` it sits at `.specs/expanded/<YYYY-MM>/<name>/`, with an `expanded/` subfolder
+holding some of `overview.md`, `data-model.md`, `architecture.md`, `ui.md`, `testing.md`,
+`open-questions.md`. On several matches, take the first line (the earliest lifecycle stage;
+step 7 resolves the collision). No folder, or no `expanded/` → tell the user to run
+`/mp-expand-spec <name>` first, and stop. Below, `<dir>` is the folder.
 
 ## Steps
 
-1. **Read every doc in `<dir>/expanded/`.** Read `CLAUDE.md` too, so task boundaries
-   match this project's real architecture.
+1. **Read every doc in `<dir>/expanded/`,** and `CLAUDE.md`, so task boundaries match the
+   project's real architecture.
 
-2. **Grill the design before decomposing.** The expanded docs are a design that has
-   never been stress-tested against the user. Invoke the **`grilling`** skill (via the
-   `Skill` tool) on `<dir>/expanded/` — especially `open-questions.md` — and
-   walk the user through it one question at a time until you reach shared understanding.
-   `grilling` is the single source of the grill behavior; don't reimplement it here.
-   Feed the grill from the whole expanded set (data model, architecture, UI, testing),
-   not just the open questions, since a design flaw surfaced here is far cheaper to fix
-   than after tasks are written. Two things to carry forward:
-   - Fold every resolved decision into the plan you're about to write (and, once
-     `resolution-log.md` exists in step 6, record them under **Feedback & decisions**).
-   - Any grill answer that changes *which* tasks exist or their order — not just
-     fine-grained detail within a task — is binding on the decomposition below. Don't
-     guess on plan-shaping questions; that's exactly what the grill is for.
+2. **Grill the design.** Run the **`grilling`** skill over the whole expanded set — data model,
+   architecture, UI and testing, with `open-questions.md` as the agenda. A design flaw costs
+   far less to fix here than after the tasks exist.
+   - Each answer goes into the plan you write next, and into **Feedback & decisions** once
+     `resolution-log.md` exists (step 6).
+   - An answer that changes which tasks exist, or their order, is binding on step 3.
+   - The step is done when every open question has an answer and the user confirms shared
+     understanding.
 
-   Do not proceed to decomposition until the user confirms the grill has reached shared
-   understanding.
+3. **Decompose into ordered tasks.** Each task is independently implementable and verifiable:
+   a `plan-implementer` run can finish it, pass `scripts/verify.sh`, and move on. Order by
+   dependency (data model before the UI that reads it).
 
-3. **Decompose into an ordered sequence of tasks.** Each task should be independently
-   implementable and independently testable — a `plan-implementer` run against it
-   should be able to finish, verify, and move on without needing a task not yet done.
-   Order by dependency, not just narrative flow (data model before the UI that reads
-   it, etc.).
+   Size tasks here. A task with several interacting concerns — the one you would call "the
+   heaviest slice" — becomes two or more ordered tasks now. Neither `ship-plan` nor
+   `plan-implementer` can split a task mid-flight. If the natural boundary is unclear, ask
+   the user while the grill is still open.
 
-   **Split heavy tasks here, not later.** If a task is shaping up as "the big one" —
-   several interacting concerns, or you catch yourself about to write "the heaviest
-   slice" in its scope — that is the signal to break it into two or more ordered task
-   files now, each independently verifiable. Nothing downstream can split it: neither
-   `ship-plan` nor `plan-implementer` has a sub-step protocol, so an oversized task gets
-   split by hand mid-flight, with the caller inventing the boundary and hand-writing
-   "don't do part 2 yet" guardrails into each prompt. Getting granularity right at
-   planning time is far cheaper. If the natural boundary isn't obvious, ask the user
-   while you still have them in the grill (step 2).
+4. **Write `<dir>/plan/00-overview.md`,** the manual (never implemented or moved):
+   - the execution order, one line of purpose per task;
+   - the design defaults already decided, stated as binding;
+   - the invariants every task preserves, taken from `data-model.md` and `architecture.md`
+     (an ordering or uniqueness rule, the authorization pattern for new endpoints).
 
-4. **Write `<dir>/plan/00-overview.md`** — the manual, never itself
-   implemented or moved. Bullets, in the style below. Include:
-   - The execution order and a one-line purpose for each task.
-   - The design defaults already decided in the spec docs, stated as binding (later
-     tasks must not re-litigate them).
-   - The feature's core invariants every task must preserve — pull these out of
-     `data-model.md`/`architecture.md` (e.g. an ordering/uniqueness invariant, an
-     authorization pattern every new endpoint must follow).
+5. **Write one `<dir>/plan/NN-<slug>.md` per task:**
+   - **Scope** — what this task builds, and what it defers, naming the later task that owns it.
+   - **Depends on** — task numbers that must be in `plan/implemented/` first.
+   - **Key decisions already made** — binding choices, so the implementer does not re-decide
+     them.
+   - **Docs** — the `<dir>/expanded/*.md` sections to consult.
+   - **Tests** — what this task adds.
 
-5. **Write one `<dir>/plan/NN-<slug>.md` per task**, each a short bulleted brief
-   (see *Writing style*) containing:
-   - Scope: exactly what this task builds, and what it explicitly does **not** (name
-     the later task that owns the deferred part).
-   - Depends on: task numbers that must be in `plan/implemented/` first.
-   - Key decisions already made: binding choices from the spec docs, so the
-     implementer doesn't re-decide them.
-   - Which `<dir>/expanded/*.md` docs to consult for detail.
-   - The tests this task should add.
-
-6. **Scaffold the resolution log.** Create `<dir>/resolution-log.md` with the
-   three empty headings the pipeline fills in — this fixes *where* issues, resolutions,
-   and feedback get documented so it's the same for every feature:
+6. **Scaffold `<dir>/resolution-log.md`,** so every feature logs in the same place:
 
    ```markdown
    # <Feature> — resolution log
@@ -88,10 +63,8 @@ suffix rule when this folder moves in step 8. Below, **`<dir>`** means the match
    Feedback/decisions, deviations from the spec/plan, and issues → resolutions found while
    implementing this feature. Read it before extending the feature.
 
-   > [!IMPORTANT]
-   > An **exception log, not a work journal**. A task that went to plan gets no entry — the
-   > diff and the task file already record what was built. Bullets under the headings below,
-   > root cause first, no per-task sections.
+   An exception log: a task that went to plan gets no entry, because the diff and the task
+   file already record what was built. Bullets under the headings below, root cause first.
 
    ## Feedback & decisions
 
@@ -106,42 +79,23 @@ suffix rule when this folder moves in step 8. Below, **`<dir>`** means the match
    _None yet._
    ```
 
-7. **Do not generate a per-feature implementer agent.** A generic `plan-implementer`
-   agent (`.claude/agents/plan-implementer.md`) already runs any feature's plan by
-   taking the feature name as an argument — don't recreate a bespoke one.
+7. **Advance the spec** with `bash scripts/spec-advance.sh <name> planned`. It stamps
+   `status: planned` and `planned: <date>` (nothing else in the file), applies the collision
+   suffix rule from `.specs/README.md`, `git mv`s the folder to `.specs/planned/<YYYY-MM>/`, and
+   prints the final path. The printed name is what `ship-plan` takes next.
 
-8. **Stamp the status and move the folder** with
-   `bash scripts/spec-advance.sh <name> planned`. The script owns the mechanics —
-   stamping `status: planned` + `planned: <date>` in the spec's frontmatter (touching
-   nothing else in the file), applying the name-collision suffix rule from
-   `.specs/README.md`, and `git mv`-ing the folder into the `.specs/planned/<YYYY-MM>/`
-   month bucket — and prints the final path; the possibly-suffixed name is what you pass
-   to `ship-plan` next. (Lifecycle: `draft` → `expanded` → `planned` → `shipped`.)
-
-9. **Report** the plan's new location, the task list one line each, and any open question
-   left unresolved because it didn't block decomposition.
+8. **Report** the plan's location, the task list one line each, and any open question left
+   unanswered because it did not block decomposition.
 
 ## Writing style
 
-Same rules as `.claude/rules/documentation.md` → Verbosity. A task file is a brief for an
-implementer agent that will also read the expanded docs — it points, it doesn't re-explain.
-No length budgets; judge by padding, not word count.
+A task file is a brief for an implementer that also reads the expanded docs: it points, and
+states what is binding at its altitude. `.claude/rules/documentation.md` → Verbosity applies.
 
-- **Bullets and tables.** Prose only where a decision needs its *why*, a sentence or two.
-- **Don't copy the expanded docs into the task.** Link the section (`see
-  expanded/data-model.md → Ordering`) and state only what's binding at this altitude.
-- **Don't restate `CLAUDE.md`, Laravel, or the pipeline.** "Add a feature test, owner + 403"
-  is enough; the conventions are already loaded.
-- **No code in task files** beyond a signature or column list that doesn't exist yet. The
-  implementer writes the code; a spelled-out method body just goes stale.
-- **Scope by boundary, not by narration.** What's in, what's explicitly deferred and to which
-  task. No step-by-step walkthrough of the implementation.
-- **No scaffolding** — no preamble under a heading, no recap of the overview, no closing
-  summary.
-
-## Notes
-
-- Don't implement any task's code — this skill only produces the plan folder.
-- Keep task files scoped tightly enough that `plan-implementer` can verify each one
-  with the project's test suite before moving to the next; a task that can't be
-  verified in isolation should be split.
+- **Bullets and tables.** Prose only for a decision's *why*, a sentence or two.
+- **Link, don't copy:** `see expanded/data-model.md → Ordering`.
+- **Assume `CLAUDE.md` and Laravel are loaded.** "Add a feature test, owner + 403" is enough.
+- **Code only for contracts that do not exist yet** — a signature or a column list. The
+  implementer writes the bodies.
+- **Scope by boundary:** what is in, what is deferred and to which task.
+- **Start with content** — each section opens on its first bullet and ends on its last.

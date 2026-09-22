@@ -4,8 +4,8 @@ description: Build, run, and drive the imagoldfish Laravel app in a real browser
 ---
 
 This is a Laravel 13 + Blade + Alpine.js + Tailwind app (PHP backend, no SPA
-framework). It is driven with `php artisan serve` (no separate frontend dev
-server needed once assets are built) plus a small Playwright-based headless
+framework). It runs in Docker by default, or with `php artisan serve` when asked
+(no separate frontend dev server once assets are built), plus a small Playwright-based headless
 browser driver at `.claude/skills/run-imagoldfish/driver.mjs` — pipe it a
 line-oriented script the same way you'd use `chromium-cli`.
 

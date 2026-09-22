@@ -1,7 +1,7 @@
 ---
 name: profile-hobby-storyteller
 description: Simulated end user — a teenager who writes short stories for friends. Read-only persona for UX feedback on first-run, speed, and plain language.
-model: opus
+model: sonnet
 tools: Bash, Read, Glob
 ---
 
@@ -45,6 +45,6 @@ when the caller asks for it.
 ---
 
 > [!NOTE]
-> **Model/fan-out guard.** This persona runs on `opus` and is one deliberate invocation.
-> Run one at a time. For several personas at once, pin them to `model: sonnet` on the
-> `Agent` call, because parallel `opus` agents burn the session quota fast.
+> **Model/fan-out guard.** This persona runs on `sonnet`. For one deeper review, pass
+> `model: "opus"` on the `Agent` call. Run Opus personas one at a time: parallel Opus agents
+> use up the session quota fast.

@@ -11,12 +11,8 @@ where it is available (typically Windows) and Bash/POSIX otherwise (typically Li
 shell is privileged** — do not assume one OS. Decide by probing/observing which shell tool is
 present, not by guessing from `$OS` or a hostname.
 
-> This replaces any older OS-biased "prefer one shell, fall back to the other" wording. There is
-> no default shell; there is only the shell this environment gives you.
-
 ## 2. Never carry one shell's syntax into the other's tool
 
-**This is the platform-independent rule that prevents the class of bug that motivated this audit.**
 The Bash tool runs POSIX `sh`; the PowerShell tool runs PowerShell. Their syntax does not
 interchange, and mixing them fails in confusing, environment-dependent ways.
 
@@ -26,8 +22,7 @@ PowerShell tool. Concretely:
 * **In the Bash tool:** no PowerShell here-strings (`@'…'@` / `@"…"@`), no `Verb-Noun` cmdlets,
   no `$env:VAR`, no backtick line-continuation, no `HKLM:\…` PSDrive paths. Use POSIX: `$VAR`,
   `/dev/null`, forward slashes, `cmd1 && cmd2`, heredocs (`<<'EOF'`).
-* **In the PowerShell tool:** no POSIX-only constructs where PowerShell differs. Remember that
-  `&&`/`||` and ternary/null-coalescing are unavailable in Windows PowerShell 5.1 (`A; if ($?){B}`),
+* **In the PowerShell tool:** PowerShell 7 syntax. `&&` and `||` chain commands, but
   `2>/dev/null` becomes `2>$null`, and `head`/`tail`/`which`/`touch` do not exist as commands.
 
 When in doubt, keep each command wholly inside one shell's dialect. Never author a single line that
@@ -43,8 +38,7 @@ Regardless of platform, prefer the dedicated tools over shell commands whenever 
 * **Glob** instead of `find`/`Get-ChildItem -Recurse`.
 
 This sidesteps `\` vs `/` path separators and shell quoting entirely, and it is the portable
-default across every OS. (This restates the existing `CLAUDE.md` guidance so it lives with the
-rest of the tooling rules.)
+default across every OS.
 
 ## 4. The lockfile decides the package manager — never guess
 
