@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-22 — Import reads only files inside the archive
+## 2026-09-22 — Import reads only files inside the archive (#184)
 
 ### Fixed
 
