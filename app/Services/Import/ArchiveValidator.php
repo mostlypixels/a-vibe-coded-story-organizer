@@ -152,6 +152,7 @@ class ArchiveValidator
             if ($path === 'data/project/project.json') {
                 $descriptor = $this->decodeJson($zip, $path);
                 $this->requireKeys($path, $descriptor, self::PROJECT_REQUIRED_KEYS);
+                $this->validateLinkedFieldFiles($descriptor);
 
                 continue;
             }
@@ -172,6 +173,7 @@ class ArchiveValidator
             if (str_starts_with($path, 'data/') && isset(self::DESCRIPTOR_REQUIRED_KEYS[$basename])) {
                 $descriptor = $this->decodeJson($zip, $path);
                 $this->requireKeys($path, $descriptor, self::DESCRIPTOR_REQUIRED_KEYS[$basename]);
+                $this->validateLinkedFieldFiles($descriptor);
 
                 if ($basename === 'entry.json') {
                     $entryDescriptors[$path] = $descriptor;
@@ -180,6 +182,25 @@ class ArchiveValidator
         }
 
         return $entryDescriptors;
+    }
+
+    /**
+     * The importer reads each `*_file` key as a path next to the descriptor.
+     * Treat these declared JSON paths as untrusted archive entry names.
+     *
+     * @param  array<mixed>  $descriptor
+     */
+    private function validateLinkedFieldFiles(array $descriptor): void
+    {
+        foreach ($descriptor as $key => $file) {
+            if (! is_string($key) || ! str_ends_with($key, '_file') || $file === null) {
+                continue;
+            }
+
+            if (! is_string($file) || $this->isUnsafePath($file) || str_ends_with($file, '/')) {
+                throw ImportValidationException::unsafeEntryPath(is_string($file) ? $file : '');
+            }
+        }
     }
 
     /** @param array<string, array<string, mixed>> $entryDescriptors */
