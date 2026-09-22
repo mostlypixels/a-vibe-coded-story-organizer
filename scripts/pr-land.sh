@@ -190,13 +190,15 @@ main() {
             # the user's unrelated WIP, some of it already staged, and a commit
             # without a pathspec sweeps every staged path into the PR.
             #
-            # No model name in the trailer: this commit is written by whichever
-            # model runs the script, and a hardcoded one silently goes stale.
+            # Reuse the branch commit's Claude trailer: a hardcoded model name goes stale.
+            local coauthor
+            coauthor="$(git log -1 --format='%(trailers:key=Co-Authored-By,valueonly)' \
+                | grep -i -m1 'claude' || true)"
             git commit --only CHANGELOG.md --message "Backfill the PR number on the changelog heading
 
 The number only exists once the PR is open, so pr-land.sh stamps it here.
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
+Co-Authored-By: ${coauthor:-Claude <noreply@anthropic.com>}"
             git push
         else
             echo "pr-land.sh: changelog heading already numbered (or no dated heading) — nothing to stamp."

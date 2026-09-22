@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-22 — Agent instructions refreshed for the Claude 5 models
+
+### Changed
+
+- The plan pipeline instructions (`ship-plan`, `plan-implementer`, `mp-plan-tasks`) are shorter, with fewer warnings.
+- The reader persona agents run on Sonnet by default; Opus is an opt-in for one deeper review.
+- The changelog stamp commit credits the same Claude model as the rest of its pull request.
+
+### Fixed
+
+- Shipping a plan no longer stages unrelated spec folders along with the shipped one.
+
 ## 2026-09-09 — Narrow a search before it searches everything (#164)
 
 ### Added
