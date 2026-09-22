@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-22 — Agent instructions refreshed for the Claude 5 models
+## 2026-09-22 — Agent instructions refreshed for the Claude 5 models (#165)
 
 ### Changed
 
