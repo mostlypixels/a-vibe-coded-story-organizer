@@ -4,8 +4,21 @@ namespace App\Services\Import;
 
 use App\Enums\CodexMediaCollection;
 use App\Exceptions\ImportValidationException;
+use App\Http\Requests\StoreActRequest;
+use App\Http\Requests\StoreChallengeRequest;
+use App\Http\Requests\StoreChapterRequest;
+use App\Http\Requests\StoreCodexAttributeRequest;
+use App\Http\Requests\StoreCodexEntryRequest;
+use App\Http\Requests\StoreEventRequest;
+use App\Http\Requests\StorePlotlineRequest;
+use App\Http\Requests\StoreSceneRequest;
+use App\Http\Requests\StoreTagRequest;
+use App\Http\Requests\UpdateBookRequest;
+use App\Http\Requests\UpdateProjectRequest;
 use App\Support\ImportRules;
 use finfo;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
 use ZipArchive;
 
 /**
@@ -14,6 +27,9 @@ use ZipArchive;
  * It checks ZIP structure, safe paths, allowed locations, the manifest version,
  * descriptor shapes, media sizes, and content-sniffed MIME types. Declared JSON
  * paths receive the same traversal checks as ZIP entry names.
+ *
+ * Descriptor values must obey the rules of the form that writes them. A bad
+ * value rejects the archive, so no phase fails halfway and no page breaks later.
  */
 class ArchiveValidator
 {
@@ -44,6 +60,12 @@ class ArchiveValidator
 
     /** @var array<int, string> */
     private const MEDIA_ITEM_REQUIRED_KEYS = ['id', 'collection', 'position', 'original_name', 'mime_type', 'size', 'file'];
+
+    /** @var array<string, array<int, string>> The app writes snapshots itself, so no form holds these rules. */
+    private const SNAPSHOT_RULES = [
+        'recorded_on' => ['required', 'date'],
+        'word_count' => ['required', 'integer', 'min:0'],
+    ];
 
     /** @var array<int, string> Descriptors that can link a content-sniffed cover. */
     private const COVER_BEARING_DESCRIPTORS = ['project.json', 'book.json', 'chapter.json'];
@@ -201,11 +223,13 @@ class ArchiveValidator
         }
 
         $entryDescriptors = [];
+        $eventDescriptors = [];
 
         foreach ($entries as $path) {
             if ($path === 'data/project/project.json') {
                 $descriptor = $this->decodeJson($zip, $path);
                 $this->requireKeys($path, $descriptor, self::PROJECT_REQUIRED_KEYS);
+                $this->validateFormRules($path, $descriptor);
                 $this->validateLinkedFieldFiles($descriptor);
 
                 continue;
@@ -218,6 +242,7 @@ class ArchiveValidator
                 }
                 foreach ($list as $item) {
                     $this->requireKeys($path, is_array($item) ? $item : [], self::LIST_ITEM_REQUIRED_KEYS[$path]);
+                    $this->validateFormRules($path, $item);
                 }
 
                 continue;
@@ -227,15 +252,91 @@ class ArchiveValidator
             if (str_starts_with($path, 'data/') && isset(self::DESCRIPTOR_REQUIRED_KEYS[$basename])) {
                 $descriptor = $this->decodeJson($zip, $path);
                 $this->requireKeys($path, $descriptor, self::DESCRIPTOR_REQUIRED_KEYS[$basename]);
+                $this->validateFormRules($path, $descriptor);
                 $this->validateLinkedFieldFiles($descriptor);
 
                 if ($basename === 'entry.json') {
                     $entryDescriptors[$path] = $descriptor;
                 }
+
+                if ($basename === 'event.json') {
+                    $eventDescriptors[$path] = $descriptor;
+                }
             }
         }
 
+        $this->validateEventWindow($eventDescriptors);
+
         return $entryDescriptors;
+    }
+
+    /**
+     * Applies the form rules that need no route model.
+     *
+     * @param  array<mixed>  $data
+     */
+    private function validateFormRules(string $path, array $data): void
+    {
+        $validator = Validator::make($data, $this->formRules($path));
+
+        if ($validator->fails()) {
+            throw ImportValidationException::invalidDescriptorValue($path, (string) array_key_first($validator->errors()->messages()));
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function formRules(string $path): array
+    {
+        return match ($path) {
+            'data/project/project.json' => UpdateProjectRequest::fieldRules(),
+            'data/tags.json' => StoreTagRequest::fieldRules(),
+            'data/codex/attributes.json' => StoreCodexAttributeRequest::fieldRules(),
+            'data/challenges.json' => StoreChallengeRequest::fieldRules(),
+            'data/word-count-snapshots.json' => self::SNAPSHOT_RULES,
+            default => match (basename($path)) {
+                'book.json' => UpdateBookRequest::fieldRules(),
+                'act.json' => StoreActRequest::fieldRules(),
+                'chapter.json' => StoreChapterRequest::fieldRules(),
+                'scene.json' => StoreSceneRequest::fieldRules(),
+                'plotline.json' => StorePlotlineRequest::fieldRules(),
+                'event.json' => StoreEventRequest::fieldRules(),
+                'entry.json' => StoreCodexEntryRequest::fieldRules(),
+                default => [],
+            },
+        };
+    }
+
+    /**
+     * Applies the WithinEventWindow limit to each regular event. That rule reads
+     * the bookends from the database, so here they come from the archive.
+     *
+     * @param  array<string, array<string, mixed>>  $events  Event descriptors by archive path.
+     */
+    private function validateEventWindow(array $events): void
+    {
+        $bookends = array_map(
+            fn (array $event): Carbon => Carbon::parse((string) $event['event_datetime']),
+            array_filter($events, fn (array $event): bool => (bool) $event['is_fixed']),
+        );
+
+        // The importer reports a wrong bookend count.
+        if (count($bookends) !== 2) {
+            return;
+        }
+
+        $start = min($bookends);
+        $end = max($bookends);
+
+        foreach ($events as $path => $event) {
+            if ((bool) $event['is_fixed']) {
+                continue;
+            }
+
+            $moment = Carbon::parse((string) $event['event_datetime']);
+            if ($moment->lt($start) || $moment->gt($end)) {
+                throw ImportValidationException::invalidDescriptorValue($path, 'event_datetime');
+            }
+        }
     }
 
     /**

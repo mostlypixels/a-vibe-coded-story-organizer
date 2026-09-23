@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Import checks values with the form rules
+
+### Fixed
+
+- Import rejects an archive whose names, colors, ISBNs, event dates, challenges or snapshots break the form rules.
+- The error names the file and the field, and no project is created.
+
 ## 2026-09-23 — Lists follow story order (#196)
 
 ### Fixed

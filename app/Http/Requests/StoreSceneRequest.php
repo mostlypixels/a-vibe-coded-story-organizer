@@ -31,7 +31,7 @@ class StoreSceneRequest extends FormRequest
                 'integer',
                 Rule::exists('chapters', 'id')->whereIn('act_id', $book->acts()->pluck('id')),
             ],
-            'name' => ['required', 'string', 'max:255'],
+            ...self::fieldRules(),
             'description' => AutosavableFields::validationRule('scene', 'description'),
             'contents' => AutosavableFields::validationRule('scene', 'contents'),
             'notes' => AutosavableFields::validationRule('scene', 'notes'),
@@ -41,6 +41,18 @@ class StoreSceneRequest extends FormRequest
             'new_event_datetime' => ['nullable', 'date', 'required_with:new_event_title', new WithinEventWindow($project)],
             'mentioned_events' => ['nullable', 'array'],
             'mentioned_events.*' => ['integer', Rule::exists('events', 'id')->where('project_id', $project->id)],
+        ];
+    }
+
+    /**
+     * Rules that need no route model, so the archive import can use them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
         ];
     }
 }

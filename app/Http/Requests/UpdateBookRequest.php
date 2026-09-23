@@ -23,21 +23,18 @@ class UpdateBookRequest extends FormRequest
     public function rules(): array
     {
         $book = $this->route('book');
+        $fieldRules = self::fieldRules();
 
         return [
+            ...$fieldRules,
             // Only a project's sole book can use the project name.
             'name' => [
                 Rule::requiredIf(fn () => $book->project->books()->whereKeyNot($book->id)->exists()),
-                'nullable',
-                'string',
-                'max:255',
+                ...$fieldRules['name'],
             ],
             'description' => AutosavableFields::validationRule('book', 'description'),
 
             'language' => ['required', Rule::enum(BookLanguage::class)],
-            'author' => ['nullable', 'string', 'max:255'],
-            'publisher' => ['nullable', 'string', 'max:255'],
-            'isbn' => ['nullable', 'string', new ValidIsbn],
             'cover_image' => CodexMediaRules::coverRules(),
 
             'rights' => AutosavableFields::validationRule('book', 'rights'),
@@ -45,6 +42,21 @@ class UpdateBookRequest extends FormRequest
             'acknowledgements' => AutosavableFields::validationRule('book', 'acknowledgements'),
             'preface' => AutosavableFields::validationRule('book', 'preface'),
             'postface' => AutosavableFields::validationRule('book', 'postface'),
+        ];
+    }
+
+    /**
+     * Rules that need no route model, so the archive import can use them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(): array
+    {
+        return [
+            'name' => ['nullable', 'string', 'max:255'],
+            'author' => ['nullable', 'string', 'max:255'],
+            'publisher' => ['nullable', 'string', 'max:255'],
+            'isbn' => ['nullable', 'string', new ValidIsbn],
         ];
     }
 }

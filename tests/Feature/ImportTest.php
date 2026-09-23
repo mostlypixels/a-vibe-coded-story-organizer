@@ -17,6 +17,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -315,6 +316,91 @@ class ImportTest extends TestCase
         $this->recordFalseSize($upload->getRealPath(), 'books/padding.txt', 10);
 
         $this->assertArchiveRejected($upload, ImportValidationException::entrySizeMismatch('books/padding.txt'));
+    }
+
+    // ---------------------------------------------------------------------
+    // Descriptor values obey the form rules
+    // ---------------------------------------------------------------------
+
+    /**
+     * @param  array<mixed>  $descriptor  The full JSON that replaces the fixture file.
+     */
+    #[DataProvider('invalidDescriptorValueProvider')]
+    public function test_a_descriptor_value_that_breaks_a_form_rule_rejects_the_archive(string $path, array $descriptor, string $field): void
+    {
+        $upload = $this->makeValidUpload(extra: function (ZipArchive $zip) use ($path, $descriptor): void {
+            $zip->addFromString($path, json_encode($descriptor));
+        });
+
+        $this->assertArchiveRejected($upload, ImportValidationException::invalidDescriptorValue($path, $field));
+    }
+
+    /** @return array<string, array{string, array<mixed>, string}> */
+    public static function invalidDescriptorValueProvider(): array
+    {
+        $long = str_repeat('a', 256);
+        $book = 'data/books/50-fixture-book';
+        $act = "{$book}/acts/100-act-one";
+        $chapter = "{$act}/chapters/200-chapter-one";
+        $project = ['id' => 900, 'name' => 'Fixture project'];
+        $plotline = ['id' => 701, 'name' => 'Subplot', 'color' => '#3b82f6', 'is_main' => false, 'project_id' => 900];
+        $event = ['id' => 802, 'title' => 'Battle', 'event_datetime' => '2026-05-01T09:30:00+00:00', 'is_fixed' => false, 'project_id' => 900, 'plotline_ids' => [700]];
+        $bookData = ['id' => 50, 'name' => null, 'position' => 1, 'project_id' => 900];
+        $scene = ['id' => 301, 'name' => 'Scene A', 'position' => 1, 'status' => 'draft', 'chapter_id' => 200, 'event_id' => null, 'mentioned_event_ids' => []];
+        $entry = ['id' => 400, 'name' => 'Alice Harker', 'type' => 'character', 'project_id' => 900, 'aliases' => [], 'tag_ids' => [], 'attribute_values' => [], 'media' => []];
+        $challenge = ['name' => 'Sprint', 'recurrence' => 'none', 'starts_on' => '2026-11-01', 'ends_on' => '2026-11-30', 'target_words' => 50000];
+        $snapshot = ['recorded_on' => '2026-08-01', 'word_count' => 1200];
+
+        return [
+            'project name too long' => ['data/project/project.json', [...$project, 'name' => $long], 'name'],
+            'negative daily goal' => ['data/project/project.json', [...$project, 'daily_word_goal' => -1], 'daily_word_goal'],
+            'negative total goal' => ['data/project/project.json', [...$project, 'total_word_goal' => -1], 'total_word_goal'],
+            'plotline color not a preset' => ['data/timeline/plotlines/701-subplot/plotline.json', [...$plotline, 'color' => '#123456'], 'color'],
+            'plotline name too long' => ['data/timeline/plotlines/701-subplot/plotline.json', [...$plotline, 'name' => $long], 'name'],
+            'event title too long' => ['data/timeline/events/802-battle/event.json', [...$event, 'title' => $long], 'title'],
+            'event datetime not a date' => ['data/timeline/events/802-battle/event.json', [...$event, 'event_datetime' => 'soon'], 'event_datetime'],
+            'event after the End event' => ['data/timeline/events/802-battle/event.json', [...$event, 'event_datetime' => '3001-01-01T00:00:00+00:00'], 'event_datetime'],
+            'book name too long' => ["{$book}/book.json", [...$bookData, 'name' => $long], 'name'],
+            'book author too long' => ["{$book}/book.json", [...$bookData, 'author' => $long], 'author'],
+            'book publisher too long' => ["{$book}/book.json", [...$bookData, 'publisher' => $long], 'publisher'],
+            'book isbn invalid' => ["{$book}/book.json", [...$bookData, 'isbn' => '978-0-00-000000-1'], 'isbn'],
+            'act name too long' => ["{$act}/act.json", ['id' => 100, 'name' => $long, 'position' => 1, 'book_id' => 50], 'name'],
+            'chapter name empty' => ["{$chapter}/chapter.json", ['id' => 200, 'name' => '', 'position' => 1, 'act_id' => 100], 'name'],
+            'scene name too long' => ["{$chapter}/scenes/301-scene-a/scene.json", [...$scene, 'name' => $long], 'name'],
+            'tag name too long' => ['data/tags.json', [['id' => 600, 'name' => $long]], 'name'],
+            'attribute name too long' => ['data/codex/attributes.json', [['id' => 500, 'name' => $long, 'applies_to' => ['character'], 'position' => 1]], 'name'],
+            'attribute applies to nothing' => ['data/codex/attributes.json', [['id' => 500, 'name' => 'Age', 'applies_to' => [], 'position' => 1]], 'applies_to'],
+            'codex entry name too long' => ['data/codex/character/401-bob/entry.json', [...$entry, 'id' => 401, 'name' => $long], 'name'],
+            'codex alias too long' => ['data/codex/character/401-bob/entry.json', [...$entry, 'id' => 401, 'aliases' => [$long]], 'aliases.0'],
+            'challenge recurrence unknown' => ['data/challenges.json', [[...$challenge, 'recurrence' => 'weekly']], 'recurrence'],
+            'challenge start not a date' => ['data/challenges.json', [[...$challenge, 'starts_on' => 'soon']], 'starts_on'],
+            'challenge ends before it starts' => ['data/challenges.json', [[...$challenge, 'ends_on' => '2026-10-01']], 'ends_on'],
+            'challenge window over 366 days' => ['data/challenges.json', [[...$challenge, 'ends_on' => '2027-12-31']], 'ends_on'],
+            'challenge target zero' => ['data/challenges.json', [[...$challenge, 'target_words' => 0]], 'target_words'],
+            'snapshot date not a date' => ['data/word-count-snapshots.json', [[...$snapshot, 'recorded_on' => 'soon']], 'recorded_on'],
+            'snapshot count negative' => ['data/word-count-snapshots.json', [[...$snapshot, 'word_count' => -5]], 'word_count'],
+        ];
+    }
+
+    public function test_a_descriptor_that_obeys_the_form_rules_imports(): void
+    {
+        $upload = $this->makeValidUpload(extra: function (ZipArchive $zip): void {
+            $zip->addFromString('data/challenges.json', json_encode([
+                ['name' => 'Every month', 'recurrence' => 'monthly', 'starts_on' => '2026-01-10', 'ends_on' => null, 'target_words' => 20000],
+            ]));
+            $zip->addFromString('data/timeline/events/802-battle/event.json', json_encode([
+                'id' => 802, 'title' => 'Battle', 'event_datetime' => '3000-01-01T00:00:00+00:00',
+                'is_fixed' => false, 'project_id' => 900, 'plotline_ids' => [700],
+            ]));
+        });
+
+        $this->actingAs($user = User::factory()->create())
+            ->post(route('admin.data.import'), ['archive' => $upload])
+            ->assertSessionHasNoErrors();
+
+        $project = $user->projects()->sole();
+        $this->assertSame(1, $project->challenges()->count());
+        $this->assertSame(3, $project->events()->count());
     }
 
     // ---------------------------------------------------------------------

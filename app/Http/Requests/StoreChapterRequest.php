@@ -24,8 +24,20 @@ class StoreChapterRequest extends FormRequest
                 'integer',
                 Rule::exists('acts', 'id')->where('book_id', $this->route('book')->getKey()),
             ],
-            'name' => ['required', 'string', 'max:255'],
+            ...self::fieldRules(),
             'description' => AutosavableFields::validationRule('chapter', 'description'),
+        ];
+    }
+
+    /**
+     * Rules that need no route model, so the archive import can use them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
         ];
     }
 }

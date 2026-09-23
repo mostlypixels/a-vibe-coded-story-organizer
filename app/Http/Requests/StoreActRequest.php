@@ -18,8 +18,20 @@ class StoreActRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            ...self::fieldRules(),
             'description' => AutosavableFields::validationRule('act', 'description'),
+        ];
+    }
+
+    /**
+     * Rules that need no route model, so the archive import can use them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
         ];
     }
 }
