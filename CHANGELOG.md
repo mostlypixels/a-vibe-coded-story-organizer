@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Non-owner tests for create, edit and reorder pages
+
+### Changed
+
+- Tests now check that another user gets a 403 on the create, edit, delete and move-up routes that had no such check.
+- The login, password and profile tests now call named routes instead of fixed URLs.
+
 ## 2026-09-23 — Translated editor text and clear failure messages (#204)
 
 ### Fixed
