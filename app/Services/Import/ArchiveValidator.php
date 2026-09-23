@@ -63,7 +63,8 @@ class ArchiveValidator
         }
 
         try {
-            $entries = $this->safeEntryNames($zip);          // checks 2 + 3
+            $entries = $this->safeEntryNames($zip);          // checks 2 + 3 + size caps
+            $this->verifyRecordedSizes($zip);                // size caps hold for the real bytes
             $manifest = $this->validateManifest($zip);       // check 4
             $entryDescriptors = $this->validateDescriptors($zip, $entries); // check 5
             $this->validateMedia($zip, $entryDescriptors, (bool) $manifest['includes_media']); // check 6
@@ -73,13 +74,24 @@ class ArchiveValidator
         }
     }
 
-    /** @return array<int, string> Safe, allowed, non-directory entry names. */
+    /**
+     * Checks the recorded sizes before any read, so a small upload cannot fill the disk or memory.
+     *
+     * @return array<int, string> Safe, allowed, non-directory entry names.
+     */
     private function safeEntryNames(ZipArchive $zip): array
     {
+        if ($zip->numFiles > ImportRules::MAX_ENTRY_COUNT) {
+            throw ImportValidationException::tooManyEntries(ImportRules::MAX_ENTRY_COUNT);
+        }
+
+        $maxTotalBytes = ImportRules::maxUncompressedBytes();
+        $totalBytes = 0;
         $entries = [];
 
         for ($index = 0; $index < $zip->numFiles; $index++) {
-            $name = $zip->getNameIndex($index);
+            $stat = $zip->statIndex($index);
+            $name = $stat === false ? false : $stat['name'];
 
             if ($name === false || $this->isUnsafePath($name)) {
                 throw ImportValidationException::unsafeEntryPath((string) $name);
@@ -89,12 +101,54 @@ class ArchiveValidator
                 throw ImportValidationException::disallowedEntryPath($name);
             }
 
+            if ($stat['size'] > ImportRules::MAX_ENTRY_BYTES) {
+                throw ImportValidationException::entryTooLarge($name, ImportRules::MAX_ENTRY_BYTES);
+            }
+
+            $totalBytes += $stat['size'];
+            if ($totalBytes > $maxTotalBytes) {
+                throw ImportValidationException::archiveTooLarge($maxTotalBytes);
+            }
+
             if (! str_ends_with($name, '/')) {
                 $entries[] = $name;
             }
         }
 
         return $entries;
+    }
+
+    /**
+     * Libzip extracts all the real bytes, also when the recorded size is smaller.
+     * Count the real bytes, and stop one byte after the recorded size.
+     */
+    private function verifyRecordedSizes(ZipArchive $zip): void
+    {
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $stat = $zip->statIndex($index);
+            $stream = $zip->getStreamIndex($index);
+
+            if ($stat === false || $stream === false) {
+                throw ImportValidationException::notAZip();
+            }
+
+            $bytesRead = 0;
+            try {
+                while ($bytesRead <= $stat['size'] && ! feof($stream)) {
+                    $chunk = fread($stream, 65536);
+                    if ($chunk === false || $chunk === '') {
+                        break;
+                    }
+                    $bytesRead += strlen($chunk);
+                }
+            } finally {
+                fclose($stream);
+            }
+
+            if ($bytesRead !== $stat['size']) {
+                throw ImportValidationException::entrySizeMismatch($stat['name']);
+            }
+        }
     }
 
     /** Rejects traversal, absolute paths, drive paths, backslashes, and null bytes. */
@@ -252,6 +306,11 @@ class ArchiveValidator
             return;
         }
 
+        $maxBytes = ImportRules::maxMediaBytes($collection);
+        if ($stat['size'] > $maxBytes) {
+            throw ImportValidationException::entryTooLarge($archivePath, $maxBytes);
+        }
+
         if (abs($stat['size'] - (int) $media['size']) > ImportRules::MEDIA_SIZE_TOLERANCE_BYTES) {
             throw ImportValidationException::mediaSizeMismatch($archivePath);
         }
@@ -293,7 +352,14 @@ class ArchiveValidator
             }
 
             $archivePath = dirname($path).'/'.$coverFile;
-            $bytes = $zip->getFromName($archivePath);
+            $stat = $zip->statName($archivePath);
+
+            $maxBytes = ImportRules::maxMediaBytes(CodexMediaCollection::Cover);
+            if ($stat !== false && $stat['size'] > $maxBytes) {
+                throw ImportValidationException::entryTooLarge($archivePath, $maxBytes);
+            }
+
+            $bytes = $stat === false ? false : $zip->getFromName($archivePath);
 
             if ($bytes === false) {
                 if ($includesMedia) {

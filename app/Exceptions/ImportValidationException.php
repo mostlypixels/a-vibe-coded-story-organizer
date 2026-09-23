@@ -46,6 +46,30 @@ class ImportValidationException extends RuntimeException
         return new self("The archive contains an unexpected file \"{$entry}\" that is not part of a project export.");
     }
 
+    public static function tooManyEntries(int $max): self
+    {
+        return new self("The archive contains more than {$max} files and was rejected.");
+    }
+
+    public static function archiveTooLarge(int $maxBytes): self
+    {
+        $megabytes = intdiv($maxBytes, 1024 * 1024);
+
+        return new self("The archive expands to more than {$megabytes} MB and was rejected.");
+    }
+
+    public static function entryTooLarge(string $entry, int $maxBytes): self
+    {
+        $megabytes = intdiv($maxBytes, 1024 * 1024);
+
+        return new self("The archive entry \"{$entry}\" is larger than {$megabytes} MB and was rejected.");
+    }
+
+    public static function entrySizeMismatch(string $entry): self
+    {
+        return new self("The archive entry \"{$entry}\" does not match the size recorded in the archive.");
+    }
+
     /**
      * data/manifest.json is missing from the archive.
      */

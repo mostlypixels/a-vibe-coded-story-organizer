@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\CodexMediaCollection;
 use App\Models\ImportSetting;
 
 /** Defines fixed archive versions, paths, MIME types, and size tolerances. */
@@ -12,6 +13,18 @@ class ImportRules
 
     /** Default archive size in kilobytes. Runtime validation uses {@see ImportSetting}. */
     public const DEFAULT_MAX_ARCHIVE_KILOBYTES = 204800;
+
+    /** Maximum entries in an archive. A long serial export stays far below this value. */
+    public const MAX_ENTRY_COUNT = 50000;
+
+    /**
+     * An archive can expand to this multiple of the upload cap. Text compresses well
+     * and media does not, so real exports stay below this multiple.
+     */
+    public const MAX_EXPANSION_FACTOR = 5;
+
+    /** An export holds only text and uploaded files, so no entry is larger than the largest upload. */
+    public const MAX_ENTRY_BYTES = CodexMediaRules::FILE_MAX_KILOBYTES * 1024;
 
     /** @var array<int, string> Exact paths allowed in an archive. */
     public const ALLOWED_FILES = [
@@ -50,6 +63,22 @@ class ImportRules
 
     /** Maximum difference between declared and actual media size. */
     public const MEDIA_SIZE_TOLERANCE_BYTES = 1024;
+
+    /** The cap follows the live upload cap, so an admin change moves both. */
+    public static function maxUncompressedBytes(): int
+    {
+        return ImportSetting::current()->max_archive_kilobytes * 1024 * self::MAX_EXPANSION_FACTOR;
+    }
+
+    /** Imported media obey the same size limits as uploaded media. */
+    public static function maxMediaBytes(CodexMediaCollection $collection): int
+    {
+        $kilobytes = $collection === CodexMediaCollection::ReferenceFile
+            ? CodexMediaRules::FILE_MAX_KILOBYTES
+            : CodexMediaRules::IMAGE_MAX_KILOBYTES;
+
+        return $kilobytes * 1024;
+    }
 
     /** Allows known paths and their explicit parent-directory entries. */
     public static function isAllowedPath(string $path): bool
