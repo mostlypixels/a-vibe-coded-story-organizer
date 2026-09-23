@@ -12,7 +12,7 @@
                     <x-dropdown align="left" width="w-56" offset-classes="mt-0">
                         <x-slot name="trigger">
                             @if ($navigation->hasBook())
-                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
+                                <x-disclosure-button class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
                                     <span class="flex flex-col items-start leading-tight">
                                         <span>{{ $navigation->book->displayName() }}</span>
                                         @if ($navigation->book->hasOwnName())
@@ -20,12 +20,12 @@
                                         @endif
                                     </span>
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
-                                </button>
+                                </x-disclosure-button>
                             @else
-                                <button type="button" class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
+                                <x-disclosure-button class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
                                     {{ __('Choose a project') }}
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
-                                </button>
+                                </x-disclosure-button>
                             @endif
                         </x-slot>
 
@@ -73,13 +73,13 @@
             <div class="hidden sm:flex sm:items-center sm:ms-6 sm:pe-2">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-nav-content bg-transparent hover:text-nav-content focus:outline-hidden transition ease-in-out duration-150">
+                        <x-disclosure-button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-nav-content bg-transparent hover:text-nav-content focus:outline-hidden transition ease-in-out duration-150">
                             <div>{{ Auth::user()->name }}</div>
 
                             <div class="ms-1">
                                 <x-tabler-chevron-down class="h-4 w-4" />
                             </div>
-                        </button>
+                        </x-disclosure-button>
                     </x-slot>
 
                     <x-slot name="content">
@@ -105,7 +105,14 @@
             </div>
 
             <div class="pe-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-nav-content hover:bg-nav-raised focus:outline-hidden focus:bg-nav-raised transition duration-150 ease-in-out">
+                <button
+                    type="button"
+                    @click="open = ! open"
+                    aria-label="{{ __('Menu') }}"
+                    aria-expanded="false"
+                    :aria-expanded="open.toString()"
+                    aria-controls="mobile-navigation"
+                    class="inline-flex items-center justify-center p-2 rounded-md text-nav-content hover:bg-nav-raised focus:outline-hidden focus:bg-nav-raised transition duration-150 ease-in-out">
                     <x-tabler-menu-2 class="h-6 w-6" x-bind:class="{ 'hidden': open }" />
                     <x-tabler-x class="h-6 w-6" x-bind:class="{ 'hidden': ! open }" />
                 </button>
@@ -113,7 +120,7 @@
         </div>
     </div>
 
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+    <div id="mobile-navigation" :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="px-4 py-3 border-b border-nav-raised">
             <div class="text-xs uppercase tracking-wide text-nav-content-muted mb-2">{{ __('Project') }}</div>
 

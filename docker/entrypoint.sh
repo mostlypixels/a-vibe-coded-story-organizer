@@ -32,6 +32,8 @@ php artisan migrate --force
 echo "Clearing application caches..."
 php artisan config:clear
 php artisan cache:clear
+# A compiled view can keep an old component shape, for example anonymous vs class.
+php artisan view:clear
 
 # public/storage -> storage/app/public, for files that are public on purpose.
 # `storage:link` no-ops if it already exists, so this is safe on every start.

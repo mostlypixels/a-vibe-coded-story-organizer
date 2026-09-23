@@ -8,11 +8,14 @@
         @if (filled($scene->description))
             <div x-data="{ open: false }" class="bg-surface-raised shadow-xs rounded-lg">
                 <button type="button" @click="open = ! open"
+                        aria-expanded="false"
+                        :aria-expanded="open.toString()"
+                        aria-controls="scene-description"
                         class="w-full flex items-center justify-between px-6 py-4 text-left">
                     <span class="font-semibold text-content">{{ __('Description') }}</span>
                     <x-tabler-chevron-down class="h-4 w-4 text-content-muted transition-transform" x-bind:class="{ 'rotate-180': open }" />
                 </button>
-                <div x-show="open" x-transition class="px-6 pb-4">
+                <div id="scene-description" x-show="open" x-transition class="px-6 pb-4">
                     <x-rich-text :html="$scene->description" />
                 </div>
             </div>

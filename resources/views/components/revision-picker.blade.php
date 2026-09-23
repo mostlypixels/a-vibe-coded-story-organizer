@@ -71,6 +71,7 @@
             x-ref="trigger"
             role="combobox"
             aria-haspopup="listbox"
+            aria-expanded="false"
             :aria-expanded="open"
             aria-controls="{{ $listboxId }}"
             aria-labelledby="{{ $labelId }}"

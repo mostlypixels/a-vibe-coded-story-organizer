@@ -35,6 +35,8 @@
             <button
                 type="button"
                 @click="open = ! open"
+                aria-expanded="{{ $startOpen ? 'true' : 'false' }}"
+                aria-controls="revision-group-{{ $group->type }}"
                 :aria-expanded="(filter.trim() !== '' || open) ? 'true' : 'false'"
                 class="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold uppercase tracking-wider text-content-muted hover:text-content"
             >
@@ -45,7 +47,7 @@
                 <x-tabler-chevron-down class="h-4 w-4 transition-transform" x-bind:class="{ '-rotate-90': ! (filter.trim() !== '' || open) }" />
             </button>
 
-            <ul x-show="filter.trim() !== '' || open" class="mt-1 space-y-3">
+            <ul id="revision-group-{{ $group->type }}" x-show="filter.trim() !== '' || open" class="mt-1 space-y-3">
                 @foreach ($group->books as $bookGroup)
                     @php
                         $bookEntityNames = $bookGroup->entities->map(fn ($entity) => \Illuminate\Support\Str::lower($entity->name))->values()->all();

@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Toggle buttons tell screen readers if they are open (#203)
+
+### Fixed
+
+- Menu, project picker, mobile menu and editor toolbar buttons now announce if their panel is open and which panel they control.
+- Scene toggles on the story overview, the shared scene description and revision history groups announce their open state.
+- The mobile menu button now has an accessible name.
+
 ## 2026-09-23 — Faster codex matching and search in large projects (#202)
 
 ### Changed
