@@ -89,6 +89,10 @@ class Act extends Model
             foreach ($act->chapters()->whereNotNull('cover_image')->pluck('cover_image') as $coverPath) {
                 $coverImageService->delete($coverPath);
             }
+
+            // The cascade also skips the HasRevisions hook of each child.
+            Revision::deleteFor($act->chapters());
+            Revision::deleteFor($act->scenes());
         });
 
         // The act's chapters and their scenes cascade at the database level, two

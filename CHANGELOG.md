@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Revisions go with their deleted entity
+
+### Fixed
+
+- Deleting a scene, chapter, act, book, codex entry, event or plotline now deletes its revision history too.
+- Reverting a revision of a deleted entity returns "not found" instead of a server error.
+- Old revisions of already deleted entities are removed.
+
 ## 2026-09-23 — Export with images accepts media without a file (#192)
 
 ### Fixed
