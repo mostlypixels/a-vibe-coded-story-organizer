@@ -527,6 +527,24 @@ file can go missing. With the toggle **on**, such a row keeps its metadata but w
 (`CodexMedia::hasFile()` is false). A string `file` with absent bytes still rejects a media
 archive, so a truncated archive fails loudly.
 
+## Import value rules
+
+Import checks each descriptor value against the rules of the form that writes it, before any
+row is written. A value that breaks a rule rejects the whole archive, with an error that names
+the file and the field.
+
+- Names, titles, author, publisher, tags and aliases: at most 255 characters.
+- Plotline `color`: one of `PlotlineColors::PRESETS`.
+- Book `isbn`: a valid ISBN-13.
+- Event `event_datetime`: a date. A regular event must fall between the two bookends.
+- Challenges: the challenge form rules (`recurrence`, dates, the 366-day window, `target_words`).
+- Word-count snapshots: `recorded_on` is a date, `word_count` is an integer of 0 or more.
+
+Each Form Request's static `fieldRules()` holds the rules. The form and the import both read them.
+Rules that need the database (unique names and colors, the stored bookends) stay in the form only.
+
+`publication-setting.json` is the exception: a bad value falls back to the default settings.
+
 ## Import size limits
 
 Import checks these limits before it reads or extracts a file. `ImportRules` holds the values.

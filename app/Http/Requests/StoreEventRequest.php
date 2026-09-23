@@ -19,15 +19,31 @@ class StoreEventRequest extends FormRequest
      */
     public function rules(): array
     {
+        $fieldRules = self::fieldRules();
+
         return [
-            'title' => ['required', 'string', 'max:255'],
+            ...$fieldRules,
             'description' => AutosavableFields::validationRule('event', 'description'),
-            'event_datetime' => ['required', 'date', new WithinEventWindow($this->route('project'))],
+            'event_datetime' => [...$fieldRules['event_datetime'], new WithinEventWindow($this->route('project'))],
             'plotlines' => ['required', 'array', 'min:1'],
             'plotlines.*' => [
                 'integer',
                 Rule::exists('plotlines', 'id')->where('project_id', $this->route('project')->id),
             ],
+        ];
+    }
+
+    /**
+     * Rules that need no route model, so the archive import can use them.
+     * The import checks the event window against the archive bookends.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(): array
+    {
+        return [
+            'title' => ['required', 'string', 'max:255'],
+            'event_datetime' => ['required', 'date'],
         ];
     }
 }

@@ -19,15 +19,28 @@ class StorePlotlineRequest extends FormRequest
      */
     public function rules(): array
     {
+        $fieldRules = self::fieldRules();
+
         return [
-            'name' => ['required', 'string', 'max:255'],
+            ...$fieldRules,
             'description' => AutosavableFields::validationRule('plotline', 'description'),
             'color' => [
-                'required',
-                'string',
-                Rule::in(PlotlineColors::PRESETS),
+                ...$fieldRules['color'],
                 Rule::unique('plotlines')->where('project_id', $this->route('project')->id),
             ],
+        ];
+    }
+
+    /**
+     * Rules that need no route model, so the archive import can use them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'color' => ['required', 'string', Rule::in(PlotlineColors::PRESETS)],
         ];
     }
 }

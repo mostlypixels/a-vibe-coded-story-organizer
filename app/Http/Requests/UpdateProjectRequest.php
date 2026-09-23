@@ -29,10 +29,22 @@ class UpdateProjectRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            ...self::fieldRules(),
             'description' => AutosavableFields::validationRule('project', 'description'),
 
             'cover_image' => CodexMediaRules::coverRules(),
+        ];
+    }
+
+    /**
+     * Rules that need no route model, so the archive import can use them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
 
             // The daily and total goals are independent targets.
             'daily_word_goal' => ['nullable', 'integer', 'min:0'],

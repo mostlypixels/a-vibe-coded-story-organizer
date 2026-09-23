@@ -21,10 +21,8 @@ class StoreCodexEntryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            ...self::fieldRules(),
             'description' => AutosavableFields::validationRule('codex', 'description'),
-            'aliases' => ['nullable', 'array'],
-            'aliases.*' => ['nullable', 'string', 'max:255'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['nullable', 'string', 'max:255'],
 
@@ -37,6 +35,20 @@ class StoreCodexEntryRequest extends FormRequest
             'reference_images.*' => CodexMediaRules::referenceImageRules(),
             'reference_files' => ['nullable', 'array'],
             'reference_files.*' => CodexMediaRules::referenceFileRules(),
+        ];
+    }
+
+    /**
+     * Rules that need no route model, so the archive import can use them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'aliases' => ['nullable', 'array'],
+            'aliases.*' => ['nullable', 'string', 'max:255'],
         ];
     }
 

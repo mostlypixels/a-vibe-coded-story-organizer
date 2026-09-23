@@ -19,10 +19,22 @@ class StoreTagRequest extends FormRequest
     {
         return [
             'name' => [
-                'required', 'string', 'max:255',
+                ...self::fieldRules()['name'],
                 // Tag names are unique within a project.
                 Rule::unique('tags', 'name')->where('project_id', $this->route('project')->id),
             ],
+        ];
+    }
+
+    /**
+     * Rules that need no route model, so the archive import can use them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
         ];
     }
 }
