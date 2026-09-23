@@ -126,6 +126,42 @@ class EpubExportTest extends TestCase
         }
     }
 
+    /** Regression for #167: XML characters in names broke the package documents. */
+    public function test_names_with_xml_characters_export_escaped_and_intact(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $book->update([
+            'name' => 'Salt & Pepper <Vol. 1>',
+            'author' => 'Ann & "Bo" <Co>',
+            'publisher' => 'Pen & Ink <Press>',
+            'rights' => '© Ann & Bo <2026>',
+        ]);
+
+        $act = Act::factory()->for($book)->create(['position' => 1]);
+        $chapter = Chapter::factory()->for($act)->create(['position' => 1, 'name' => 'Rock & <Roll>']);
+        Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Some prose.']);
+
+        PublicationSetting::factory()->for($book)->create([
+            'chapter_title_format' => ChapterTitleFormat::Title,
+            'include_isbn' => false,
+            'include_book_cover' => false,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('admin.data.export.epub'), [
+            'book_id' => $book->id,
+        ])->assertOk();
+
+        $opf = implode('', $this->packagedFiles($response, '/\.opf$/i'));
+        $this->assertStringContainsString('Salt &amp; Pepper &lt;Vol. 1&gt;', $opf);
+        $this->assertStringContainsString('Ann &amp; ', $opf);
+        $this->assertStringContainsString('Pen &amp; Ink &lt;Press&gt;', $opf);
+        $this->assertStringContainsString('Ann &amp; Bo &lt;2026&gt;', $opf);
+
+        $ncx = implode('', $this->packagedFiles($response, '/\.ncx$/i'));
+        $this->assertStringContainsString('Rock &amp; &lt;Roll&gt;', $ncx);
+    }
+
     /**
      * Scene bodies are narrative, so the exporter cleans them with the Structural
      * profile. Decoration in a book comes from codex descriptions only.
