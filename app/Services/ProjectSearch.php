@@ -209,7 +209,10 @@ class ProjectSearch
                 $this->scopeBookAndRange(
                     $project->chapterQuery()
                         ->join('acts', 'acts.id', '=', 'chapters.act_id')
+                        ->join('books', 'books.id', '=', 'acts.book_id')
                         ->select('chapters.*', 'acts.book_id as book_id')
+                        ->orderBy('books.position')->orderBy('books.id')
+                        ->orderBy('acts.position')->orderBy('acts.id')
                         ->orderBy('chapters.position')->orderBy('chapters.id'),
                     $scope,
                 ),
@@ -220,7 +223,11 @@ class ProjectSearch
                     $project->sceneQuery()
                         ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
                         ->join('acts', 'acts.id', '=', 'chapters.act_id')
+                        ->join('books', 'books.id', '=', 'acts.book_id')
                         ->select('scenes.*', 'acts.book_id as book_id')
+                        ->orderBy('books.position')->orderBy('books.id')
+                        ->orderBy('acts.position')->orderBy('acts.id')
+                        ->orderBy('chapters.position')->orderBy('chapters.id')
                         ->orderBy('scenes.position')->orderBy('scenes.id'),
                     $scope,
                 ),
@@ -241,7 +248,11 @@ class ProjectSearch
     {
         $query = Act::query()
             ->whereHas('book', fn (Builder $query) => $query->where('project_id', $project->id))
-            ->orderBy('position')->orderBy('id');
+            // Only the act columns: `books` has `name` and `position` too.
+            ->select('acts.*')
+            ->join('books', 'books.id', '=', 'acts.book_id')
+            ->orderBy('books.position')->orderBy('books.id')
+            ->orderBy('acts.position')->orderBy('acts.id');
 
         if ($scope->bookId !== null) {
             $query->where('acts.book_id', $scope->bookId);

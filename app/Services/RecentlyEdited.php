@@ -89,7 +89,10 @@ class RecentlyEdited
         // with the chapter page. One numbering table per book the list touches.
         $numbering = [];
 
-        return $scenes->map(function (Scene $scene) use ($withBook, &$numbering) {
+        // Book numbers are gap-free too: a deleted book leaves a gap in `position`.
+        $bookIds = $withBook ? $scope->books()->pluck('id') : collect();
+
+        return $scenes->map(function (Scene $scene) use ($withBook, $bookIds, &$numbering) {
             $chapter = $scene->chapter;
             $book = $chapter->act->book;
             $numbers = $numbering[$book->id] ??= StoryNumbering::forBook($book);
@@ -100,7 +103,7 @@ class RecentlyEdited
             ];
 
             if ($withBook) {
-                array_unshift($segments, __('Book :number', ['number' => $book->position]));
+                array_unshift($segments, __('Book :number', ['number' => $bookIds->search($book->id) + 1]));
             }
 
             return new RecentItem(

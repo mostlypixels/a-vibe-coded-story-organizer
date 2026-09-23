@@ -197,6 +197,24 @@ class RecentlyEditedTest extends TestCase
             ->assertSee('Chapter 1: Chapter two');
     }
 
+    public function test_the_dashboard_scene_breadcrumb_numbers_books_without_gaps(): void
+    {
+        $user = User::factory()->create();
+        [$project, $firstBook] = $this->projectWithBook($user);
+        $secondBook = Book::factory()->for($project)->create();
+        // A gap in the stored positions, as a deleted book leaves behind.
+        $secondBook->forceFill(['position' => 7])->save();
+
+        $chapter = Chapter::factory()->for(Act::factory()->for($secondBook)->create())->create();
+        Scene::factory()->for($chapter)->create(['name' => 'Book-two scene']);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSeeInOrder(['Book-two scene', 'Book 2'])
+            ->assertDontSee('Book 7');
+    }
+
     public function test_the_story_home_scene_breadcrumb_omits_the_book_number(): void
     {
         $user = User::factory()->create();

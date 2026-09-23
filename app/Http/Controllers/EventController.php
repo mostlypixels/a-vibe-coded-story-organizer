@@ -13,6 +13,7 @@ use App\Services\CodexAsOfResolver;
 use App\Services\EventLifespanEntries;
 use App\Support\EventWindow;
 use App\Support\PageSize;
+use App\Support\StoryOrder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -74,14 +75,10 @@ class EventController extends Controller
     {
         $this->authorize('view', $event->project);
 
-        $event->load('plotlines', 'scenes.chapter.act', 'mentioningScenes.chapter.act');
+        $event->load('plotlines', 'scenes.chapter.act.book', 'mentioningScenes.chapter.act.book');
 
         // Scenes come back in insertion order; readers expect manuscript order.
-        $byManuscriptOrder = fn ($scenes) => $scenes->sortBy(fn ($scene) => [
-            $scene->chapter->act->position,
-            $scene->chapter->position,
-            $scene->position,
-        ])->values();
+        $byManuscriptOrder = fn ($scenes) => $scenes->sortBy(StoryOrder::sceneKey(...))->values();
 
         return view('events.show', [
             'event' => $event,

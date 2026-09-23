@@ -305,6 +305,57 @@ class ProjectSearchTest extends TestCase
         $this->assertSame([1, 2, 3], $positions);
     }
 
+    public function test_acts_chapters_and_scenes_are_returned_in_story_order_across_books(): void
+    {
+        $project = $this->project();
+        $bookA = $project->books()->first();
+        $bookB = Book::factory()->for($project)->create();
+        // Book A was made first but now reads second, so id order is not story order.
+        $bookA->forceFill(['position' => 5])->save();
+
+        $actA = Act::factory()->for($bookA)->create(['name' => 'storyword A']);
+        $actX = Act::factory()->for($bookB)->create(['name' => 'storyword X']);
+        $actY = Act::factory()->for($bookB)->create(['name' => 'storyword Y']);
+        // A reordered act: Y now comes before X.
+        $actX->update(['position' => 2]);
+        $actY->update(['position' => 1]);
+
+        foreach ([$actA, $actX, $actY] as $act) {
+            foreach ([1, 2] as $chapterPosition) {
+                $chapter = Chapter::factory()->for($act)->create([
+                    'name' => "storyword {$act->name} c{$chapterPosition}",
+                    'position' => $chapterPosition,
+                ]);
+
+                foreach ([1, 2] as $scenePosition) {
+                    Scene::factory()->for($chapter)->create([
+                        'name' => "{$chapter->name} s{$scenePosition}",
+                        'position' => $scenePosition,
+                    ]);
+                }
+            }
+        }
+
+        $results = $this->search($project, 'storyword');
+        $names = fn (Collection $rows) => $rows->map(fn (SearchResultRow $row) => $row->entity->name)->all();
+
+        $this->assertSame(['storyword Y', 'storyword X', 'storyword A'], $names($results->acts));
+
+        $chapters = [];
+        $scenes = [];
+        foreach (['Y', 'X', 'A'] as $act) {
+            foreach ([1, 2] as $c) {
+                $chapters[] = "storyword storyword {$act} c{$c}";
+                foreach ([1, 2] as $s) {
+                    $scenes[] = "storyword storyword {$act} c{$c} s{$s}";
+                }
+            }
+        }
+
+        $this->assertSame($chapters, $names($results->chapters));
+        $this->assertSame($scenes, $names($results->scenes));
+    }
+
     public function test_search_runs_a_fixed_number_of_queries_regardless_of_match_count(): void
     {
         $project = $this->project();
