@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Import checks values with the form rules
+## 2026-09-23 — Import checks values with the form rules (#197)
 
 ### Fixed
 
