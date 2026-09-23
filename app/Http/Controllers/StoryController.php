@@ -45,6 +45,7 @@ class StoryController extends Controller
     public function index(Book $book, Request $request): View
     {
         $this->authorize('view', $book->project);
+        $request->validate(['chapter' => ['nullable', 'integer']]);
 
         if ($book->overview_render_mode === StoryOverviewMode::Whole) {
             return $this->whole($book);

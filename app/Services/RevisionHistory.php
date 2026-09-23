@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\RevisionOrigin;
 use App\Models\Revision;
 use App\Support\AutosavableFields;
+use App\Support\LikeSearch;
 use App\Support\SaveEntry;
 use App\Support\SavePoint;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
@@ -98,7 +99,7 @@ class RevisionHistory
             ->getQuery()
             ->reorder()
             ->when($field !== null && $field !== '', fn (Builder $query) => $query->where('field', $field))
-            ->when($label !== '', fn (Builder $query) => $query->where('label', 'like', '%'.$label.'%'))
+            ->when($label !== '', fn (Builder $query) => LikeSearch::whereContains($query, 'label', $label))
             ->when($filters['manualOnly'] ?? false, fn (Builder $query) => $query->where('origin', RevisionOrigin::Manual));
     }
 

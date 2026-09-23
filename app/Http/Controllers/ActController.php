@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
 use App\Http\Controllers\Concerns\ReparentsChildren;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
+use App\Http\Controllers\Concerns\ValidatesIndexFilters;
 use App\Http\Requests\DestroyActRequest;
 use App\Http\Requests\MoveActToBookRequest;
 use App\Http\Requests\StoreActRequest;
@@ -15,6 +16,7 @@ use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Scene;
+use App\Support\LikeSearch;
 use App\Support\PageSize;
 use App\Support\StoryNumbering;
 use Illuminate\Http\RedirectResponse;
@@ -29,10 +31,12 @@ class ActController extends Controller
     use ReordersSiblings;
     use ReparentsChildren;
     use ResolvesIndexSorting;
+    use ValidatesIndexFilters;
 
     public function index(Request $request, Book $book): View
     {
         $this->authorize('view', $book->project);
+        $this->validateIndexFilters($request);
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'position'], 'position');
 
@@ -41,7 +45,7 @@ class ActController extends Controller
         // built from this same filtered query, not from the book. Cloned *before*
         // withCount/withSum, whose aliases a later select() would drop.
         $filtered = $book->acts()
-            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'));
+            ->when($request->filled('search'), fn ($query) => LikeSearch::whereContains($query, 'name', $request->query('search')));
 
         // Aggregate queries down the tree, never a hydrated collection: summing in
         // PHP is the cost this pagination removes.

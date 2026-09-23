@@ -33,6 +33,7 @@ class RevisionController extends Controller
     public function index(Request $request, string $entity, int $id, RevisionHistory $history): View
     {
         $model = $this->resolveEntity($entity, $id);
+        $request->validate(['label' => ['nullable', 'string']]);
 
         $filters = [
             'field' => $this->resolveFieldFilter($entity, $request),
@@ -342,6 +343,8 @@ class RevisionController extends Controller
     /** Resolves a registered field filter or returns null for all fields. */
     private function resolveFieldFilter(string $entity, Request $request): ?string
     {
+        $request->validate(['field' => ['nullable', 'string']]);
+
         $field = trim((string) $request->query('field', ''));
 
         if ($field === '') {

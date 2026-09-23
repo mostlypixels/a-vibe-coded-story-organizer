@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\CodexEntryType;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
+use App\Http\Controllers\Concerns\ValidatesIndexFilters;
 use App\Http\Requests\DuplicateEntityRequest;
 use App\Http\Requests\StoreCodexEntryRequest;
 use App\Http\Requests\UpdateCodexEntryRequest;
@@ -17,6 +18,7 @@ use App\Services\ReferencingScenes;
 use App\Support\CodexMediaUploads;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
+use App\Support\LikeSearch;
 use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,10 +35,12 @@ class CodexEntryController extends Controller
 {
     use RedirectsAfterSave;
     use ResolvesIndexSorting;
+    use ValidatesIndexFilters;
 
     public function index(Request $request, Project $project, string $type): View
     {
         $this->authorize('view', $project);
+        $this->validateIndexFilters($request, ['tag']);
 
         $entryType = CodexEntryType::fromRouteKey($type);
 
@@ -50,8 +54,8 @@ class CodexEntryController extends Controller
                 $search = $request->query('search');
 
                 $query->where(function ($nameOrAlias) use ($search) {
-                    $nameOrAlias->where('name', 'like', '%'.$search.'%')
-                        ->orWhereHas('aliases', fn ($aliases) => $aliases->where('alias', 'like', '%'.$search.'%'));
+                    LikeSearch::whereContains($nameOrAlias, 'name', $search)
+                        ->orWhereHas('aliases', fn ($aliases) => LikeSearch::whereContains($aliases, 'alias', $search));
                 });
             })
             ->when($request->filled('tag'), fn ($query) => $query->whereHas(

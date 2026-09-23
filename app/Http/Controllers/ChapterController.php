@@ -8,6 +8,7 @@ use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
 use App\Http\Controllers\Concerns\ReparentsChildren;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
+use App\Http\Controllers\Concerns\ValidatesIndexFilters;
 use App\Http\Requests\DestroyChapterRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\UpdateChapterRequest;
@@ -15,6 +16,7 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Scene;
 use App\Services\CoverImageService;
+use App\Support\LikeSearch;
 use App\Support\ListJump;
 use App\Support\PageSize;
 use App\Support\StoryNumbering;
@@ -34,12 +36,14 @@ class ChapterController extends Controller
     use ReordersSiblings;
     use ReparentsChildren;
     use ResolvesIndexSorting;
+    use ValidatesIndexFilters;
 
     public function __construct(private CoverImageService $coverImageService) {}
 
     public function index(Request $request, Book $book): View|RedirectResponse
     {
         $this->authorize('view', $book->project);
+        $this->validateIndexFilters($request, ['act']);
 
         // The dropdown's own list, which is also the story-ordered id list the jump
         // arithmetic needs — one query serves both.
@@ -64,7 +68,7 @@ class ChapterController extends Controller
         // withCount/withSum: those add `chapters.*` and a later select() would drop
         // their aliases (see the comment on the aggregates below).
         $filtered = $book->chapterQuery()
-            ->when($request->filled('search'), fn ($query) => $query->where('chapters.name', 'like', '%'.$request->query('search').'%'))
+            ->when($request->filled('search'), fn ($query) => LikeSearch::whereContains($query, 'chapters.name', $request->query('search')))
             ->when($request->filled('act'), fn ($query) => $query->where('chapters.act_id', $request->query('act')));
 
         // Two aggregate queries over the scenes of those chapters, never a hydrated

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
+use App\Http\Controllers\Concerns\ValidatesIndexFilters;
 use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
 use App\Models\Event;
@@ -12,6 +13,7 @@ use App\Models\Project;
 use App\Services\CodexAsOfResolver;
 use App\Services\EventLifespanEntries;
 use App\Support\EventWindow;
+use App\Support\LikeSearch;
 use App\Support\PageSize;
 use App\Support\StoryOrder;
 use Illuminate\Http\RedirectResponse;
@@ -23,16 +25,18 @@ class EventController extends Controller
     use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ResolvesIndexSorting;
+    use ValidatesIndexFilters;
 
     public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
+        $this->validateIndexFilters($request, ['plotline']);
 
         [$sort, $direction] = $this->resolveSorting($request, ['title', 'event_datetime'], 'event_datetime');
 
         $events = $project->events()
             ->with('plotlines')
-            ->when($request->filled('search'), fn ($query) => $query->where('title', 'like', '%'.$request->query('search').'%'))
+            ->when($request->filled('search'), fn ($query) => LikeSearch::whereContains($query, 'title', $request->query('search')))
             ->when($request->filled('plotline'), fn ($query) => $query->whereHas(
                 'plotlines',
                 fn ($plotlineQuery) => $plotlineQuery->where('plotlines.id', $request->query('plotline'))

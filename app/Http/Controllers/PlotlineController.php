@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
+use App\Http\Controllers\Concerns\ValidatesIndexFilters;
 use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\UpdatePlotlineRequest;
 use App\Models\Plotline;
 use App\Models\Project;
+use App\Support\LikeSearch;
 use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,15 +21,17 @@ class PlotlineController extends Controller
     use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ResolvesIndexSorting;
+    use ValidatesIndexFilters;
 
     public function index(Request $request, Project $project): View
     {
         $this->authorize('view', $project);
+        $this->validateIndexFilters($request);
 
         [$sort, $direction] = $this->resolveSorting($request, ['name', 'color'], 'name');
 
         $plotlines = $project->plotlines()
-            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->query('search').'%'))
+            ->when($request->filled('search'), fn ($query) => LikeSearch::whereContains($query, 'name', $request->query('search')))
             ->orderBy($sort, $direction)
             ->paginate(PageSize::resolve($request->user()?->page_size))
             ->withQueryString();
