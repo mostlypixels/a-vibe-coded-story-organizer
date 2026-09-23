@@ -7,6 +7,7 @@ use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\CodexMediaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -68,6 +69,34 @@ class CodexMediaTest extends TestCase
         $this->assertNotSame($oldCover->id, $newCover->id);
         Storage::disk('media')->assertMissing($oldPath);
         Storage::disk('media')->assertExists($newCover->path);
+    }
+
+    /** Regression for #169: a metadata-only cover has no file to delete. */
+    public function test_replacing_a_cover_without_a_file_queues_no_null_path(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+        $oldCover = CodexMedia::factory()->cover()->for($entry, 'entry')->create(['path' => null]);
+
+        $this->assertSame([], app(CodexMediaService::class)->queueRemovals($entry, [], replacingCover: true));
+        $this->assertModelMissing($oldCover);
+    }
+
+    public function test_uploading_a_cover_over_a_cover_without_a_file_replaces_it(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Melusine']);
+        $oldCover = CodexMedia::factory()->cover()->for($entry, 'entry')->create(['path' => null]);
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'Melusine',
+            'cover' => UploadedFile::fake()->image('cover.jpg'),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertModelMissing($oldCover);
+        Storage::disk('media')->assertExists($entry->cover()->sole()->path);
     }
 
     public function test_reference_images_and_files_get_independent_positions_per_collection(): void

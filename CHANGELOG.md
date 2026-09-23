@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Export with images accepts media without a file (#192)
+
+### Fixed
+
+- A project export with images no longer fails when a cover or codex file is missing; the archive still imports.
+- Uploading a new codex cover over one without a file no longer fails.
+
 ## 2026-09-23 — Autosave no longer reports a false conflict on a slow network (#191)
 
 ### Fixed
