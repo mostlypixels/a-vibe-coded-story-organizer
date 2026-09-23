@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\DB;
  *
  * A using model declares that scope column via {@see siblingScopeColumn()} (e.g.
  * `project_id` for acts, `act_id` for chapters, `chapter_id` for scenes); the swap
- * is otherwise identical. The two-row update runs in a transaction so the two
- * positions can never be left half-swapped.
+ * is otherwise identical. The renumber and the swap run in one transaction so
+ * the positions can never be left half-written.
  *
  * @property int $position
  */
@@ -30,7 +30,7 @@ trait HasSiblingPosition
      */
     public function moveUp(): void
     {
-        $this->swapWithAdjacentSibling('<', 'desc');
+        $this->swapWithAdjacentSibling(-1);
     }
 
     /**
@@ -38,7 +38,7 @@ trait HasSiblingPosition
      */
     public function moveDown(): void
     {
-        $this->swapWithAdjacentSibling('>', 'asc');
+        $this->swapWithAdjacentSibling(1);
     }
 
     /**
@@ -60,29 +60,42 @@ trait HasSiblingPosition
     }
 
     /**
-     * Swap positions with the nearest sibling on one side. `$operator` selects the
-     * side (`<` = the one just before, `>` = the one just after) and `$direction`
-     * orders the candidates so `first()` returns the *adjacent* one. A no-op when
-     * this model is already at that end of the set.
+     * Swap positions with the adjacent sibling in display order (position, then
+     * id). `$step` is -1 for the one before and +1 for the one after. A no-op
+     * when this model is already at that end of the set.
      */
-    protected function swapWithAdjacentSibling(string $operator, string $direction): void
+    protected function swapWithAdjacentSibling(int $step): void
     {
         $scopeColumn = $this->siblingScopeColumn();
 
-        $sibling = static::query()
-            ->where($scopeColumn, $this->{$scopeColumn})
-            ->where('position', $operator, $this->position)
-            ->orderBy('position', $direction)
-            ->first();
+        DB::transaction(function () use ($scopeColumn, $step) {
+            $siblings = static::query()
+                ->where($scopeColumn, $this->{$scopeColumn})
+                ->orderBy('position')
+                ->orderBy('id')
+                ->get()
+                ->values();
 
-        if ($sibling === null) {
-            return;
-        }
+            // `position` has no unique index, so ties and gaps can occur. A tie
+            // hides the neighbour from a compare on position. Thus, first set
+            // the set to 1..n in display order (#173).
+            foreach ($siblings as $index => $sibling) {
+                $sibling->position = $index + 1;
+                $sibling->save();
+            }
 
-        DB::transaction(function () use ($sibling) {
-            [$this->position, $sibling->position] = [$sibling->position, $this->position];
-            $this->save();
-            $sibling->save();
+            $index = $siblings->search(fn (self $sibling) => $sibling->is($this));
+            $neighbour = $siblings->get($index + $step);
+
+            if ($neighbour !== null) {
+                [$neighbour->position, $siblings[$index]->position] = [$siblings[$index]->position, $neighbour->position];
+                $neighbour->save();
+                $siblings[$index]->save();
+            }
+
+            // The caller reads this instance, for example in the JSON reply.
+            $this->position = $siblings[$index]->position;
+            $this->syncOriginalAttribute('position');
         });
     }
 }

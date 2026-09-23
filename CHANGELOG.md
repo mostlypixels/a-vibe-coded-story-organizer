@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Move up and down work when siblings share a position
+
+### Fixed
+
+- Move up and move down now work for books, acts, chapters and scenes that share a position.
+- The acts list keeps acts with the same position in a stable order.
+
 ## 2026-09-23 — Clean up book covers and abandoned imports (#194)
 
 ### Added
