@@ -60,6 +60,8 @@ class ActController extends Controller
             ->withSum('scenes as word_count', 'word_count')
             // $sort is allow-listed by resolveSorting().
             ->orderBy($sort, $direction)
+            // `position` has no unique index. The id keeps tied rows in a stable order.
+            ->orderBy('id', $direction)
             ->paginate(PageSize::resolve($request->user()?->page_size))
             ->withQueryString();
 
@@ -68,6 +70,7 @@ class ActController extends Controller
         // never limited to what the search happens to match).
         $destinationActs = $book->acts()
             ->orderBy('position')
+            ->orderBy('id')
             ->get(['id', 'name', 'position']);
 
         return view('acts.index', [

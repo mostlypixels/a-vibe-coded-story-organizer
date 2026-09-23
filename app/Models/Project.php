@@ -89,7 +89,8 @@ class Project extends Model
      */
     public function books(): HasMany
     {
-        return $this->hasMany(Book::class)->orderBy('position');
+        // The id keeps tied positions in the same order that move up / down uses.
+        return $this->hasMany(Book::class)->orderBy('position')->orderBy('id');
     }
 
     /**
