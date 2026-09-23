@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Clean up book covers and abandoned imports
+## 2026-09-23 — Clean up book covers and abandoned imports (#194)
 
 ### Added
 
