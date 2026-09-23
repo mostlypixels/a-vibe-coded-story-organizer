@@ -1,7 +1,5 @@
 @php
-    $coverUrl = $chapter->cover_image
-        ? \Illuminate\Support\Facades\Storage::disk('public')->url($chapter->cover_image)
-        : null;
+    $coverUrl = $chapter->coverUrl();
     $scenes = $chapter->scenes->sortBy('position')->values();
 @endphp
 

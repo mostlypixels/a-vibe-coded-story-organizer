@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 /**
- * Manages project and chapter cover image files on the public disk.
+ * Manages project, book, and chapter cover image files on the private media disk.
  *
  * Provides a single source for storing, deleting, and reading cover files
  * — used by the project editor, the chapter editor, and the epub exporter.
@@ -16,35 +16,34 @@ use RuntimeException;
 class CoverImageService
 {
     /**
-     * The disk and directory the cover images live on. Mirrors CodexMediaService::DISK
-     * ('public') so covers are reachable at /storage/... once `php artisan storage:link`
-     * has run.
+     * The disk the cover images live on. It is the same private disk as
+     * CodexMediaService::DISK. MediaFileController serves a cover after a ProjectPolicy check.
      */
-    public const COVER_DISK = 'public';
+    public const COVER_DISK = CodexMediaService::DISK;
 
     /**
-     * The directory under the public disk where project covers are stored.
+     * The directory under the media disk where project covers are stored.
      */
     public const PROJECT_COVER_DIRECTORY = 'project-covers';
 
     /**
-     * The directory under the public disk where book covers (the EPUB cover)
+     * The directory under the media disk where book covers (the EPUB cover)
      * are stored.
      */
     public const BOOK_COVER_DIRECTORY = 'book-covers';
 
     /**
-     * The directory under the public disk where chapter covers are stored.
+     * The directory under the media disk where chapter covers are stored.
      */
     public const CHAPTER_COVER_DIRECTORY = 'chapter-covers';
 
     /**
-     * Store an already-validated cover upload on the public disk and return its path.
+     * Store an already-validated cover upload on the media disk and return its path.
      *
      * A single path column (no tracking row), so this is intentionally thinner than
      * CodexMediaService::store().
      *
-     * @param  string  $directory  The directory under the public disk (e.g., 'project-covers').
+     * @param  string  $directory  The directory under the media disk (e.g., 'project-covers').
      */
     public function store(UploadedFile $file, string $directory): string
     {
@@ -53,12 +52,12 @@ class CoverImageService
 
     /**
      * Copy an already-validated cover file from an extracted import archive onto the
-     * public disk at a freshly generated path, returning that path. Mirrors
+     * media disk at a freshly generated path, returning that path. Mirrors
      * CodexMediaService::storeImportedFile(): the archive's own relative path is never
      * reused, and the disk/naming knowledge stays here so the importer never learns
      * where covers live.
      *
-     * @param  string  $directory  The directory under the public disk (e.g., 'chapter-covers').
+     * @param  string  $directory  The directory under the media disk (e.g., 'chapter-covers').
      */
     public function storeImportedFile(string $absolutePath, string $directory): string
     {
@@ -72,7 +71,7 @@ class CoverImageService
     }
 
     /**
-     * Delete a cover file off the public disk when there is one, so a replaced or
+     * Delete a cover file off the media disk when there is one, so a replaced or
      * removed cover never lingers as an orphan. Null-safe: deleting a null path is a no-op.
      */
     public function delete(?string $path): void
@@ -83,7 +82,7 @@ class CoverImageService
     }
 
     /**
-     * Read the raw bytes of a cover file off the public disk for embedding in exports
+     * Read the raw bytes of a cover file off the media disk for embedding in exports
      * (like the epub). Returns null if the path is null or the file does not exist.
      */
     public function bytes(?string $path): ?string
@@ -102,7 +101,7 @@ class CoverImageService
     }
 
     /**
-     * Read the MIME type of a cover file off the public disk. Returns null if the path
+     * Read the MIME type of a cover file off the media disk. Returns null if the path
      * is null or the file does not exist.
      */
     public function mimeType(?string $path): ?string

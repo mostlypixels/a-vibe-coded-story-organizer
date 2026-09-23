@@ -17,7 +17,6 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Support\RecentItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -331,7 +330,7 @@ class RecentlyEditedTest extends TestCase
         $this->actingAs($user)
             ->get(route('projects.codex.home', $project))
             ->assertOk()
-            ->assertSee(Storage::disk('public')->url('codex/melusine.jpg'));
+            ->assertSee(route('codex-media.show', $entry->cover()->first()));
     }
 
     public function test_the_codex_home_still_shows_a_cover_box_when_no_image_is_saved(): void
@@ -361,7 +360,7 @@ class RecentlyEditedTest extends TestCase
         $this->actingAs($user)
             ->get(route('books.story.home', $chapter->act->book))
             ->assertOk()
-            ->assertSee(Storage::disk('public')->url('chapters/first.jpg'));
+            ->assertSee(route('chapters.cover', $chapter));
     }
 
     public function test_the_codex_home_does_not_list_attribute_definitions(): void

@@ -40,11 +40,11 @@ class ImportRoundTripTest extends TestCase
     {
         parent::setUp();
 
-        // 'local' holds the uploaded archive + its extraction; 'public' holds
+        // 'local' holds the uploaded archive + its extraction; 'media' holds
         // the source media bytes the exporter reads AND the fresh copies the
         // codex import phase writes.
         Storage::fake('local');
-        Storage::fake('public');
+        Storage::fake('media');
     }
 
     // ------------------------------------------------------------------
@@ -78,8 +78,8 @@ class ImportRoundTripTest extends TestCase
         $this->assertNotNull($imported->cover_image);
         $this->assertNotSame($source->cover_image, $imported->cover_image);
         $this->assertSame(
-            Storage::disk('public')->get($source->cover_image),
-            Storage::disk('public')->get($imported->cover_image),
+            Storage::disk('media')->get($source->cover_image),
+            Storage::disk('media')->get($imported->cover_image),
         );
 
         // ---- Books: count, order, and every moved metadata column ------
@@ -106,8 +106,8 @@ class ImportRoundTripTest extends TestCase
         $this->assertNotNull($firstBook->cover_image);
         $this->assertNotSame($sourceBooks[0]->cover_image, $firstBook->cover_image);
         $this->assertSame(
-            Storage::disk('public')->get($sourceBooks[0]->cover_image),
-            Storage::disk('public')->get($firstBook->cover_image),
+            Storage::disk('media')->get($sourceBooks[0]->cover_image),
+            Storage::disk('media')->get($firstBook->cover_image),
         );
 
         // The second book carries its OWN metadata and no name at all: a null
@@ -208,10 +208,10 @@ class ImportRoundTripTest extends TestCase
         $this->assertSame('image/jpeg', $importedCover->mime_type);
         // A brand-new storage path (never the archive's) holding the exact bytes.
         $this->assertNotNull($importedCover->path);
-        Storage::disk('public')->assertExists($importedCover->path);
+        Storage::disk('media')->assertExists($importedCover->path);
         $this->assertSame(
-            Storage::disk('public')->get($source->codexEntries()->sole()->cover()->firstOrFail()->path),
-            Storage::disk('public')->get($importedCover->path),
+            Storage::disk('media')->get($source->codexEntries()->sole()->cover()->firstOrFail()->path),
+            Storage::disk('media')->get($importedCover->path),
         );
 
         // ---- Domain invariants hold on the new project -----------------
@@ -468,8 +468,8 @@ class ImportRoundTripTest extends TestCase
         $book = $project->books()->first();
         $act = Act::factory()->for($book)->create(['name' => 'Act One', 'position' => 1]);
 
-        // A genuine image on the fake public disk, referenced by the chapter's cover.
-        $coverPath = UploadedFile::fake()->image('chapter-cover.jpg', 20, 20)->store('chapter-covers', 'public');
+        // A genuine image on the fake media disk, referenced by the chapter's cover.
+        $coverPath = UploadedFile::fake()->image('chapter-cover.jpg', 20, 20)->store('chapter-covers', 'media');
         Chapter::factory()->for($act)->create([
             'name' => 'Chapter One', 'position' => 1, 'cover_image' => $coverPath,
         ]);
@@ -489,10 +489,10 @@ class ImportRoundTripTest extends TestCase
         // the exact source bytes.
         $this->assertNotNull($importedChapter->cover_image);
         $this->assertNotSame($coverPath, $importedChapter->cover_image);
-        Storage::disk('public')->assertExists($importedChapter->cover_image);
+        Storage::disk('media')->assertExists($importedChapter->cover_image);
         $this->assertSame(
-            Storage::disk('public')->get($coverPath),
-            Storage::disk('public')->get($importedChapter->cover_image),
+            Storage::disk('media')->get($coverPath),
+            Storage::disk('media')->get($importedChapter->cover_image),
         );
     }
 
@@ -503,7 +503,7 @@ class ImportRoundTripTest extends TestCase
         $book = $project->books()->first();
         $act = Act::factory()->for($book)->create(['name' => 'Act One', 'position' => 1]);
 
-        $coverPath = UploadedFile::fake()->image('chapter-cover.jpg', 20, 20)->store('chapter-covers', 'public');
+        $coverPath = UploadedFile::fake()->image('chapter-cover.jpg', 20, 20)->store('chapter-covers', 'media');
         Chapter::factory()->for($act)->create([
             'name' => 'Chapter One', 'position' => 1, 'cover_image' => $coverPath,
         ]);
@@ -584,7 +584,7 @@ class ImportRoundTripTest extends TestCase
             'name' => 'The Round Trip Chronicle',
             'description' => '<p>An <strong>epic</strong> tale.</p>',
             // The dashboard card image, a different image from a book cover.
-            'cover_image' => UploadedFile::fake()->image('card.jpg', 20, 20)->store('project-covers', 'public'),
+            'cover_image' => UploadedFile::fake()->image('card.jpg', 20, 20)->store('project-covers', 'media'),
         ]);
 
         // Book one: named, and carrying every moved publication column.
@@ -601,7 +601,7 @@ class ImportRoundTripTest extends TestCase
             'acknowledgements' => 'Thanks to my **editor**.',
             'preface' => 'A word before we begin.',
             'postface' => 'And so it ends.',
-            'cover_image' => UploadedFile::fake()->image('front.jpg', 20, 20)->store('book-covers', 'public'),
+            'cover_image' => UploadedFile::fake()->image('front.jpg', 20, 20)->store('book-covers', 'media'),
         ]);
 
         // Book two: DIFFERENT metadata and deliberately unnamed, so the
@@ -678,15 +678,15 @@ class ImportRoundTripTest extends TestCase
         // Cover + reference image, both genuine images (so the import security
         // gate's content sniff passes). `size` is set to the ACTUAL byte size so
         // the archive validator's declared-vs-actual size check passes on import.
-        $coverPath = UploadedFile::fake()->image('portrait.jpg', 20, 20)->store('codex-media', 'public');
+        $coverPath = UploadedFile::fake()->image('portrait.jpg', 20, 20)->store('codex-media', 'media');
         CodexMedia::factory()->cover()->for($entry, 'entry')->create([
             'path' => $coverPath, 'original_name' => 'portrait.jpg', 'mime_type' => 'image/jpeg',
-            'size' => Storage::disk('public')->size($coverPath),
+            'size' => Storage::disk('media')->size($coverPath),
         ]);
-        $sketchPath = UploadedFile::fake()->image('sketch.png', 20, 20)->store('codex-media', 'public');
+        $sketchPath = UploadedFile::fake()->image('sketch.png', 20, 20)->store('codex-media', 'media');
         CodexMedia::factory()->referenceImage()->for($entry, 'entry')->create([
             'path' => $sketchPath, 'original_name' => 'sketch.png', 'mime_type' => 'image/png',
-            'size' => Storage::disk('public')->size($sketchPath),
+            'size' => Storage::disk('media')->size($sketchPath),
         ]);
 
         return $project->refresh();

@@ -722,13 +722,13 @@ class ArchiveValidatorTest extends TestCase
      */
     private function exportSeededProject(bool $includeMedia): string
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         // Genuine png bytes behind every cover, so the export copies real
         // images for the validator to content-sniff.
         $pngBytes = base64_decode(self::TINY_PNG_BASE64);
-        Storage::disk('public')->put('project-covers/card.png', $pngBytes);
-        Storage::disk('public')->put('book-covers/front.png', $pngBytes);
+        Storage::disk('media')->put('project-covers/card.png', $pngBytes);
+        Storage::disk('media')->put('book-covers/front.png', $pngBytes);
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create([
@@ -757,7 +757,7 @@ class ArchiveValidatorTest extends TestCase
             ->startingAt($event)
             ->create(['codex_attribute_id' => $attribute->id, 'value' => '29']);
 
-        Storage::disk('public')->put('codex-media/portrait.png', $pngBytes);
+        Storage::disk('media')->put('codex-media/portrait.png', $pngBytes);
         CodexMedia::factory()->cover()->for($entry, 'entry')->create([
             'path' => 'codex-media/portrait.png',
             'original_name' => 'portrait.png',

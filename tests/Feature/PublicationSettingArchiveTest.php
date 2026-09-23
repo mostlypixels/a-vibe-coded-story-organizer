@@ -34,7 +34,7 @@ class PublicationSettingArchiveTest extends TestCase
         parent::setUp();
 
         Storage::fake('local');
-        Storage::fake('public');
+        Storage::fake('media');
     }
 
     protected function tearDown(): void

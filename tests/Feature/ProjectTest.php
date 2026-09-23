@@ -114,7 +114,7 @@ class ProjectTest extends TestCase
 
     public function test_owner_can_update_a_project_with_a_cover(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'Old Name']);
 
@@ -129,7 +129,7 @@ class ProjectTest extends TestCase
         $project = $project->fresh();
         $this->assertSame('My Novel', $project->name);
         $this->assertNotNull($project->cover_image);
-        Storage::disk('public')->assertExists($project->cover_image);
+        Storage::disk('media')->assertExists($project->cover_image);
     }
 
     public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_a_changed_autosaved_field(): void
@@ -287,7 +287,7 @@ class ProjectTest extends TestCase
 
     public function test_updating_a_project_with_an_invalid_cover_fails_validation(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
 
@@ -308,10 +308,10 @@ class ProjectTest extends TestCase
 
     public function test_replacing_the_cover_deletes_the_old_file_and_stores_the_new_one(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
         $user = User::factory()->create();
         $oldPath = 'project-covers/old-cover.jpg';
-        Storage::disk('public')->put($oldPath, 'old contents');
+        Storage::disk('media')->put($oldPath, 'old contents');
         $project = Project::factory()->for($user)->create(['cover_image' => $oldPath]);
 
         $this->actingAs($user)->put(route('projects.update', $project), [
@@ -321,16 +321,16 @@ class ProjectTest extends TestCase
 
         $project = $project->fresh();
         $this->assertNotSame($oldPath, $project->cover_image);
-        Storage::disk('public')->assertMissing($oldPath);
-        Storage::disk('public')->assertExists($project->cover_image);
+        Storage::disk('media')->assertMissing($oldPath);
+        Storage::disk('media')->assertExists($project->cover_image);
     }
 
     public function test_removing_the_cover_clears_the_column_and_deletes_the_file(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
         $user = User::factory()->create();
         $oldPath = 'project-covers/old-cover.jpg';
-        Storage::disk('public')->put($oldPath, 'old contents');
+        Storage::disk('media')->put($oldPath, 'old contents');
         $project = Project::factory()->for($user)->create(['cover_image' => $oldPath]);
 
         $this->actingAs($user)->put(route('projects.update', $project), [
@@ -339,21 +339,21 @@ class ProjectTest extends TestCase
         ])->assertRedirect();
 
         $this->assertNull($project->fresh()->cover_image);
-        Storage::disk('public')->assertMissing($oldPath);
+        Storage::disk('media')->assertMissing($oldPath);
     }
 
     public function test_deleting_a_project_removes_its_cover_file(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
         $user = User::factory()->create();
         $coverPath = 'project-covers/doomed-cover.jpg';
-        Storage::disk('public')->put($coverPath, 'contents');
+        Storage::disk('media')->put($coverPath, 'contents');
         $project = Project::factory()->for($user)->create(['cover_image' => $coverPath]);
 
         $this->actingAs($user)->delete(route('projects.destroy', $project))
             ->assertRedirect(route('projects.index'));
 
-        Storage::disk('public')->assertMissing($coverPath);
+        Storage::disk('media')->assertMissing($coverPath);
     }
 
     // --- Project-creation invariants ---------------------------------------

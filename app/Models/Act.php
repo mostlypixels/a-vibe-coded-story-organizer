@@ -82,7 +82,7 @@ class Act extends Model
         // Deleting an act cascades to its chapters at the DB level, which bypasses
         // Chapter::deleting — so purge the surviving chapters' cover files here before
         // the FK cascade drops their rows, otherwise deleting an act leaks an orphan
-        // cover per chapter on the public disk (media-lifecycle.md pitfall).
+        // cover per chapter on the media disk (media-lifecycle.md pitfall).
         static::deleting(function (Act $act) {
             $coverImageService = app(CoverImageService::class);
 

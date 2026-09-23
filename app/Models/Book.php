@@ -63,6 +63,12 @@ class Book extends Model
         return $this->belongsTo(Project::class);
     }
 
+    /** The cover is on a private disk. The route checks project ownership before it sends the file. */
+    public function coverUrl(): ?string
+    {
+        return $this->cover_image !== null ? route('books.cover', $this) : null;
+    }
+
     public function acts(): HasMany
     {
         return $this->hasMany(Act::class);
@@ -220,7 +226,7 @@ class Book extends Model
         // The cover is a plain path column (not an FK-cascaded row), so deleting
         // a book never removes its file automatically. Delete it here before the
         // row is gone, otherwise a book deletion leaks an orphan cover on the
-        // public disk (media-lifecycle.md pitfall).
+        // media disk (media-lifecycle.md pitfall).
         //
         // book -> acts -> chapters cascades at the database level, which fires
         // neither Act::deleting nor Chapter::deleting — so purge every chapter

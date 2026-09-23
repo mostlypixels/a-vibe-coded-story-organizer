@@ -212,7 +212,7 @@ class ContentSanitizerTest extends TestCase
 
     public function test_a_real_exported_description_notes_and_contents_pass_unchanged(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'Sanitizer round trip']);

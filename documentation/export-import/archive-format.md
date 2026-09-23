@@ -517,8 +517,8 @@ instead — see the field-file convention above.
 > (collection, original name, mime, size, `file`), but the byte files are **absent** from the
 > archive. With the toggle **on**, every collection's bytes (including non-image
 > `reference_file`s like PDFs) are copied verbatim to their `file` path — no thumbnailing,
-> resizing, or transform. Bytes are read straight off the `public` disk, never the `/storage`
-> URL, so the export needs no `php artisan storage:link` (invariant 5).
+> resizing, or transform. Bytes are read straight off the private `media` disk, never a
+> URL, so the export needs no web route or `php artisan storage:link` (invariant 5).
 
 ## The `books/` reading layer
 

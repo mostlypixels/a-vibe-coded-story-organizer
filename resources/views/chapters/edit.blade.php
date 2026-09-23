@@ -1,9 +1,7 @@
 @php
     use App\Support\CodexMediaRules;
 
-    $coverUrl = $chapter->cover_image
-        ? \Illuminate\Support\Facades\Storage::disk('public')->url($chapter->cover_image)
-        : null;
+    $coverUrl = $chapter->coverUrl();
 @endphp
 
 <x-app-layout>

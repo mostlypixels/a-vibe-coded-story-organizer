@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
 {
@@ -40,6 +39,12 @@ class Project extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** The cover is on a private disk. The route checks project ownership before it sends the file. */
+    public function coverUrl(): ?string
+    {
+        return $this->cover_image !== null ? route('projects.cover', $this) : null;
     }
 
     /**
@@ -267,10 +272,8 @@ class Project extends Model
 
             // The cover is a plain path column (not a tracked codex_media row), so the
             // FK cascade never touches its file. Delete it here before the row is gone,
-            // otherwise project deletion leaks an orphan cover on the public disk.
-            if ($project->cover_image !== null) {
-                Storage::disk('public')->delete($project->cover_image);
-            }
+            // otherwise project deletion leaks an orphan cover on the media disk.
+            app(CoverImageService::class)->delete($project->cover_image);
 
             // project → acts → chapters cascades at the DB level, bypassing both
             // Act::deleting and Chapter::deleting — so purge every surviving chapter's

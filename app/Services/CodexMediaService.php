@@ -23,15 +23,15 @@ use Throwable;
 class CodexMediaService
 {
     /**
-     * The disk media is stored on. `public` + `php artisan storage:link` makes files
-     * reachable at /storage/... (v1 accepts publicly reachable URLs).
+     * The private disk media is stored on. MediaFileController serves each file
+     * after a ProjectPolicy check, so a leaked URL does not expose the file.
      */
-    private const DISK = 'public';
+    public const DISK = 'media';
 
     /**
      * Directory (relative to the disk root) all Codex media is stored under.
      */
-    private const DIRECTORY = 'codex-media';
+    public const DIRECTORY = 'codex-media';
 
     /**
      * Store the entry's single cover image (row + file), post-commit.
