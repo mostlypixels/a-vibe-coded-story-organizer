@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Scene edit form moves a scene to another chapter
+## 2026-09-23 — Scene edit form moves a scene to another chapter (#189)
 
 ### Fixed
 
