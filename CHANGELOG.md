@@ -25,6 +25,10 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 - A list filter or search sent as a list value now shows a validation error instead of a server error.
 - The import size setting can no longer exceed the upload size the server accepts, and the page shows that limit.
 
+### Changed
+
+- Docker accepts uploads up to 200 MB, to match the default import size.
+
 ## 2026-09-23 — Ctrl-S during a slow autosave updates scene mentions (#200)
 
 ### Fixed
