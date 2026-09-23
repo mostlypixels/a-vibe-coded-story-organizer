@@ -175,7 +175,9 @@ export function registerAutosaveField(Alpine) {
                 next = null;
 
                 // After a failure, the retry or the next edit sends the latest text.
-                if (queued && state === STATES.SAVED && this.dirty) {
+                // A matcher request goes out with unchanged text too: the server runs
+                // the matcher even when it records no revision (#199).
+                if (queued && state === STATES.SAVED && (this.dirty || queued.runMatcher)) {
                     next = queued;
                 }
             }

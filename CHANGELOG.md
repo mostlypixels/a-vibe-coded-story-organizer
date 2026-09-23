@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Ctrl-S during a slow autosave updates scene mentions (#200)
+
+### Fixed
+
+- Ctrl-S while an autosave is still in flight now updates the scene's codex mentions, also when the text did not change after that save started.
+
 ## 2026-09-23 — pr-land.sh waits for the tests check (#198)
 
 ### Fixed
