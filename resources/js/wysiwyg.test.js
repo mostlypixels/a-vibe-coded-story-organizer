@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Editor } from '@tiptap/core';
-import { buildExtensions, buildSlashItems, registerWysiwyg } from './wysiwyg.js';
+import { EDITOR_MESSAGES, buildExtensions, buildSlashItems, registerWysiwyg, slashRenderer } from './wysiwyg.js';
 
 const projectRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -715,5 +715,111 @@ describe('slash menu — New codex entry', () => {
         codexItem(onCodexEntry).run({ editor, range: { from: 1, to: 5 } });
 
         expect(onCodexEntry).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('translated strings — Laravel supplies the text', () => {
+    const french = {
+        Table: 'Tableau',
+        'Align center': 'Centrer',
+        'No matches': 'Aucun résultat',
+        'Enter a URL (http:// or https://)': 'Saisissez une URL',
+        'Enter an image URL (http:// or https://)': 'Saisissez l’URL d’une image',
+        'Use a web address that starts with http:// or https://.': 'Utilisez une adresse http:// ou https://.',
+    };
+
+    function mount(strings, { inForm = false } = {}) {
+        const el = document.createElement('div');
+        const textarea = document.createElement('textarea');
+        const editorMount = document.createElement('div');
+        el.appendChild(textarea);
+        el.appendChild(editorMount);
+
+        const form = document.createElement('form');
+        (inForm ? form : document.body).appendChild(el);
+        if (inForm) document.body.appendChild(form);
+
+        const factories = {};
+        registerWysiwyg({ data: (name, factory) => { factories[name] = factory; } });
+
+        const component = factories.wysiwyg({ format: 'html', strings });
+        component.$el = el;
+        component.$refs = { textarea, editor: editorMount };
+
+        return { component, form };
+    }
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        document.body.innerHTML = '';
+    });
+
+    it('slash menu titles use the translation', () => {
+        const titles = buildSlashItems('html', () => {}, () => {}, null, french).map((item) => item.title);
+
+        expect(titles).toContain('Tableau');
+        expect(titles).toContain('Centrer');
+        expect(titles).not.toContain('Table');
+    });
+
+    it('the empty slash menu says "No matches" in the translation', () => {
+        const renderer = slashRenderer(french);
+        let menu = null;
+
+        renderer.onStart({ items: [], command: () => {}, mount: (el) => { menu = el; return () => {}; } });
+
+        expect(menu.textContent).toBe('Aucun résultat');
+    });
+
+    it('the link prompt uses the translation', () => {
+        const { component } = mount(french);
+        component.init();
+        const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null);
+
+        component.setLink();
+
+        expect(prompt).toHaveBeenCalledWith('Saisissez une URL', '');
+        component.destroy();
+    });
+
+    it.each([
+        ['setLink'],
+        ['setImage'],
+    ])('%s tells the writer why it refused a URL without http(s)://', (method) => {
+        const { component } = mount(french);
+        component.init();
+        vi.spyOn(window, 'prompt').mockReturnValue('example.com');
+        const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+        component[method]();
+
+        expect(alert).toHaveBeenCalledWith('Utilisez une adresse http:// ou https://.');
+        expect(component.isOn('link') || component.isOn('image')).toBe(false);
+        component.destroy();
+    });
+
+    it('destroy removes the form submit listener', () => {
+        const { component, form } = mount(french, { inForm: true });
+        const add = vi.spyOn(form, 'addEventListener');
+        const remove = vi.spyOn(form, 'removeEventListener');
+
+        component.init();
+        component.destroy();
+
+        const added = add.mock.calls.find(([type]) => type === 'submit');
+        expect(added).toBeDefined();
+        expect(remove).toHaveBeenCalledWith('submit', added[1]);
+    });
+
+    it('ScriptTranslations.php lists every key the editor looks up', () => {
+        const php = readSource('app/Support/ScriptTranslations.php');
+        const keys = [
+            ...buildSlashItems('html', () => {}, () => {}, () => {}).map((item) => item.title),
+            ...Object.values(EDITOR_MESSAGES),
+        ];
+
+        for (const key of keys) {
+            expect(php.includes(`'${key}'`) || php.includes(`"${key}"`), key).toBe(true);
+        }
     });
 });

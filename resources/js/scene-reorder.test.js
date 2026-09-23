@@ -24,6 +24,13 @@ function buildChapter(numbers) {
         down.disabled = index === numbers.length - 1;
         section.appendChild(down);
 
+        // Blade renders the translated text; the script only shows or hides it.
+        const failure = document.createElement('p');
+        failure.setAttribute('data-move-error', '');
+        failure.hidden = true;
+        failure.textContent = 'La scène n’a pas bougé.';
+        section.appendChild(failure);
+
         container.appendChild(section);
     });
 
@@ -72,6 +79,35 @@ describe('moveScene', () => {
 
         expect(Array.from(container.querySelectorAll('section'))).toEqual(Array.from(sections));
         expect(numbersOf(container)).toEqual(['1.', '2.', '3.']);
+    });
+
+    it('shows the failure message of the scene that did not move, and logs the error', async () => {
+        const container = buildChapter(['1.', '2.', '3.']);
+        const error = Object.assign(new Error('CSRF token mismatch'), { response: { status: 419 } });
+        window.axios = { patch: vi.fn().mockRejectedValue(error) };
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const sections = container.querySelectorAll('section');
+        await moveScene(sections[1].querySelector('[data-move="up"]'), '/scenes/2/move-up', 'up');
+
+        expect(sections[1].querySelector('[data-move-error]').hidden).toBe(false);
+        expect(sections[0].querySelector('[data-move-error]').hidden).toBe(true);
+        expect(log).toHaveBeenCalledWith(error);
+    });
+
+    it('hides an earlier failure message once the move succeeds', async () => {
+        const container = buildChapter(['1.', '2.', '3.']);
+        const sections = container.querySelectorAll('section');
+        const upButton = sections[1].querySelector('[data-move="up"]');
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        window.axios = { patch: vi.fn().mockRejectedValue(new Error('network error')) };
+        await moveScene(upButton, '/scenes/2/move-up', 'up');
+
+        window.axios = { patch: vi.fn().mockResolvedValue({}) };
+        await moveScene(upButton, '/scenes/2/move-up', 'up');
+
+        expect(sections[1].querySelector('[data-move-error]').hidden).toBe(true);
     });
 
     it('does nothing when the button is already disabled (an end of the chapter)', async () => {
