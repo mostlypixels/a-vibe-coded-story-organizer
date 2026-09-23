@@ -38,10 +38,13 @@ trait HasRevisions
     /**
      * Every revision ever recorded for this entity, across all of its registered
      * fields, newest first.
+     *
+     * The ID breaks ties between revisions in the same second. Without it, the
+     * database returns tied rows in a random order.
      */
     public function revisions(): MorphMany
     {
-        return $this->morphMany(Revision::class, 'revisionable')->latest('created_at');
+        return $this->morphMany(Revision::class, 'revisionable')->latest('created_at')->latest('id');
     }
 
     /**

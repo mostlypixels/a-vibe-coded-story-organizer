@@ -170,7 +170,7 @@ class RevisionRecorder
     /** Returns the latest revision for a field. */
     public function lastRevisionFor(Model $entity, string $field): ?Revision
     {
-        return $entity->revisions()->where('field', $field)->latest('created_at')->first();
+        return $entity->revisions()->where('field', $field)->latest('created_at')->latest('id')->first();
     }
 
     /** Returns the latest stored value for a field. */
@@ -239,6 +239,7 @@ class RevisionRecorder
             ->where('origin', RevisionOrigin::Automatic)
             ->where('created_at', '>=', now()->subSeconds($window))
             ->latest('created_at')
+            ->latest('id')
             ->first();
     }
 }

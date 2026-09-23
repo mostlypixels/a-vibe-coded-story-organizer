@@ -327,7 +327,7 @@ class EventTest extends TestCase
             'plotlines' => [$plotline->id],
         ]);
 
-        $revision = $event->revisions()->where('field', 'description')->latest('created_at')->first();
+        $revision = $event->revisions()->where('field', 'description')->latest('created_at')->latest('id')->first();
 
         $this->assertNotNull($revision);
         $this->assertSame(RevisionOrigin::Manual, $revision->origin);
