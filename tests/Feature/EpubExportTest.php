@@ -192,6 +192,41 @@ class EpubExportTest extends TestCase
         }
     }
 
+    /** Regression for #168: raw HTML in matter pages skipped the sanitizer. */
+    public function test_matter_pages_are_sanitized_and_export_as_valid_xhtml(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $this->seedExportableContent($project);
+
+        $book->update([
+            'dedication' => 'For <u>Mum</u><br>and <script>alert(1)</script>',
+            'postface' => 'The end.<br>Thanks <script>alert(2)</script>',
+        ]);
+
+        PublicationSetting::factory()->for($book)->create([
+            'include_dedication' => true,
+            'include_postface' => true,
+            'include_isbn' => false,
+            'include_book_cover' => false,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('admin.data.export.epub'), [
+            'book_id' => $book->id,
+        ])->assertOk();
+
+        $pages = $this->packagedFiles($response, '#(dedication|postface)\.xhtml$#');
+        $this->assertCount(2, $pages);
+
+        foreach ($pages as $name => $contents) {
+            $this->assertStringNotContainsString('<script', $contents, $name);
+            $this->assertStringNotContainsString('alert(', $contents, $name);
+            $this->assertStringContainsString('<br', $contents, $name);
+        }
+
+        $this->assertStringContainsString('Mum', implode('', $pages));
+    }
+
     // ---------------------------------------------------------------------
     // Authorization (ownership, not just the admin gate)
     // ---------------------------------------------------------------------
