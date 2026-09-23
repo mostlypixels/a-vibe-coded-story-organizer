@@ -260,14 +260,23 @@ class SceneController extends Controller
 
         $beforeAutosavedFields = $this->snapshotAutosaved($scene, $sceneAttributes);
 
-        $scene->update(
+        $scene->fill(
             $sceneAttributes
-            + ['chapter_id' => $chapter->id, 'event_id' => $this->createInlineEvent(
+            + ['event_id' => $this->createInlineEvent(
                 $project,
                 $validated['new_event_title'] ?? null,
                 $validated['new_event_datetime'] ?? null,
             )?->id ?? $validated['event_id'] ?? null]
         );
+
+        // chapter_id is not fillable, so move through associate(). Put the scene
+        // last in the new chapter so that no two scenes share a position.
+        if ($scene->chapter_id !== $chapter->id) {
+            $scene->position = $chapter->scenes()->max('position') + 1;
+            $scene->chapter()->associate($chapter);
+        }
+
+        $scene->save();
 
         $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
 

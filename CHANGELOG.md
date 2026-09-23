@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Scene edit form moves a scene to another chapter
+
+### Fixed
+
+- The scene edit form now saves a new chapter; the scene moves to the end of that chapter.
+- A chapter moved to another act now goes to the end of that act instead of keeping its old position.
+
 ## 2026-09-23 — EPUB matter pages are sanitized (#188)
 
 ### Fixed

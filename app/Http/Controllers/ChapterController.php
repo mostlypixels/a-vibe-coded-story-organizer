@@ -236,7 +236,12 @@ class ChapterController extends Controller
         // reparent through the relationship rather than the (silently ignored)
         // fillable array — otherwise moving a chapter to another act is a no-op.
         $chapter->fill($data);
-        $chapter->act()->associate($act);
+
+        // Put a moved chapter last in its new act so that no two chapters share a position.
+        if ($chapter->act_id !== $act->id) {
+            $chapter->position = $act->chapters()->max('position') + 1;
+            $chapter->act()->associate($act);
+        }
 
         try {
             $chapter->save();
