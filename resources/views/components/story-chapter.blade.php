@@ -57,6 +57,10 @@
                     </div>
                 </div>
 
+                <p data-move-error role="alert" hidden class="text-sm text-danger">
+                    {{ __('The scene did not move. Reload the page and try again.') }}
+                </p>
+
                 <x-scene-prose :scene="$scene" id="scene-{{ $scene->id }}-prose" x-show="open" x-transition class="text-[0.8125rem]" />
             </section>
         @empty

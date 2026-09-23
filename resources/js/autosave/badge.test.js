@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { STATES } from './store.js';
-import { classesFor, isNavigable, labelFor } from './badge.js';
+import { BADGE_COPY, classesFor, isNavigable, labelFor } from './badge.js';
+
+const projectRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 describe('labelFor', () => {
     it('gives every non-idle state its own dedicated copy', () => {
@@ -24,6 +29,23 @@ describe('labelFor', () => {
     it('idle (and any unrecognized state) has no label — the badge is hidden then anyway', () => {
         expect(labelFor(STATES.IDLE)).toBe('');
         expect(labelFor('made-up-state')).toBe('');
+    });
+
+    it('uses the translation that Laravel supplied', () => {
+        const strings = { 'Saving…': 'Enregistrement…', Saved: 'Enregistré' };
+
+        expect(labelFor(STATES.SAVING, strings)).toBe('Enregistrement…');
+        expect(labelFor(STATES.SAVED, strings)).toBe('Enregistré');
+    });
+});
+
+describe('badge strings — every key has a Laravel translation', () => {
+    it('ScriptTranslations.php lists every label key', () => {
+        const php = readFileSync(path.join(projectRoot, 'app/Support/ScriptTranslations.php'), 'utf8');
+
+        for (const key of Object.values(BADGE_COPY)) {
+            expect(php.includes(`'${key}'`) || php.includes(`"${key}"`), key).toBe(true);
+        }
     });
 });
 

@@ -1,6 +1,8 @@
 import { STATES } from './store';
+import { translate } from '../translate';
 
-const BADGE_COPY = {
+/** Translation keys. `App\Support\ScriptTranslations::autosaveBadge()` supplies the text. */
+export const BADGE_COPY = {
     [STATES.SAVING]: 'Saving…',
     [STATES.SAVED]: 'Saved',
     [STATES.RETRYING]: 'Reconnecting…',
@@ -25,8 +27,10 @@ const DEFAULT_BADGE_STYLE = 'border-border-strong bg-surface-raised text-content
 /** These states need account action instead of field action. */
 const NON_NAVIGABLE_STATES = [STATES.SESSION_EXPIRED, STATES.FORBIDDEN_AFTER_REPLAY];
 
-export function labelFor(state) {
-    return BADGE_COPY[state] ?? '';
+export function labelFor(state, strings = {}) {
+    const key = BADGE_COPY[state];
+
+    return key ? translate(strings, key) : '';
 }
 
 export function classesFor(state) {
@@ -38,7 +42,7 @@ export function isNavigable(state) {
 }
 
 export function registerAutosaveBadge(Alpine) {
-    Alpine.data('autosaveBadge', () => ({
+    Alpine.data('autosaveBadge', (strings = {}) => ({
         get state() {
             return Alpine.store('autosave').worstState();
         },
@@ -48,7 +52,7 @@ export function registerAutosaveBadge(Alpine) {
         },
 
         get label() {
-            return labelFor(this.state);
+            return labelFor(this.state, strings);
         },
 
         get badgeClasses() {

@@ -24,9 +24,7 @@
         format: @js($format),
         placeholder: @js($placeholder),
         minHeight: @js($resolvedMinHeight),
-        linkPrompt: @js(__('Enter a URL (http:// or https://)')),
-        imagePrompt: @js(__('Enter an image URL (http:// or https://)')),
-        imageAltPrompt: @js(__('Alt text (optional, for accessibility)')),
+        strings: @js(\App\Support\ScriptTranslations::wysiwyg()),
         quickCodexEntry: {{ $quickCodexEntry ? 'true' : 'false' }},
     })"
     data-format="{{ $format }}"

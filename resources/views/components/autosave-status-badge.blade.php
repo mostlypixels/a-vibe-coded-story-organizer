@@ -1,5 +1,5 @@
 <div
-    x-data="autosaveBadge()"
+    x-data="autosaveBadge(@js(\App\Support\ScriptTranslations::autosaveBadge()))"
     x-show="visible"
     style="display: none;"
     x-transition.opacity

@@ -10,21 +10,32 @@ export function updateSceneMoveButtons(container) {
     });
 }
 
-/** Move adjacent sections and exchange their continuous-number labels. */
+/**
+ * Move adjacent sections and exchange their continuous-number labels.
+ *
+ * A failed request, for example after the session expires, shows the translated
+ * message that Blade renders hidden in the section.
+ */
 export async function moveScene(button, url, direction) {
     if (button.disabled) return;
 
     const section = button.closest('section');
     const container = section.parentElement;
     const sibling = direction === 'up' ? section.previousElementSibling : section.nextElementSibling;
+    const failure = section.querySelector('[data-move-error]');
 
     if (!sibling || sibling.tagName !== 'SECTION') return;
 
     try {
         await window.axios.patch(url);
-    } catch (e) {
+    } catch (error) {
+        if (failure) failure.hidden = false;
+        console.error(error);
+
         return;
     }
+
+    if (failure) failure.hidden = true;
 
     const sectionNumber = section.querySelector('[data-scene-number]');
     const siblingNumber = sibling.querySelector('[data-scene-number]');

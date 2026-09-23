@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Translated editor text and clear failure messages (#204)
+
+### Fixed
+
+- The autosave badge, slash menu and link and image prompts now use the translated text of the writer's locale.
+- The editor tells the writer why it refused a link or image address without `http://` or `https://`.
+- A scene that cannot move, for example after the session expires, now shows a message instead of doing nothing.
+
 ## 2026-09-23 — Toggle buttons tell screen readers if they are open (#203)
 
 ### Fixed

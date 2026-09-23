@@ -12,6 +12,7 @@ import { Superscript } from '@tiptap/extension-superscript';
 import { Typography } from '@tiptap/extension-typography';
 import { Plugin } from '@tiptap/pm/state';
 import { normalizePunctuation } from './punctuation.js';
+import { translate } from './translate.js';
 
 /** Remove unsupported presentation markup from serialized tables. */
 const PlainTable = Table.extend({
@@ -400,8 +401,20 @@ const TextColor = Mark.create({
     },
 });
 
-/** Build commands that both editor formats can serialize without loss. */
-export function buildSlashItems(format, onLink, onImage, onCodexEntry = null) {
+/** Translation keys. `App\Support\ScriptTranslations::wysiwyg()` supplies the text. */
+export const EDITOR_MESSAGES = {
+    linkPrompt: 'Enter a URL (http:// or https://)',
+    imagePrompt: 'Enter an image URL (http:// or https://)',
+    imageAltPrompt: 'Alt text (optional, for accessibility)',
+    refusedUrl: 'Use a web address that starts with http:// or https://.',
+    noMatches: 'No matches',
+};
+
+/**
+ * Build commands that both editor formats can serialize without loss.
+ * Each title is a translation key, and `strings` holds the text.
+ */
+export function buildSlashItems(format, onLink, onImage, onCodexEntry = null, strings = {}) {
     const at = (editor, range) => editor.chain().focus().deleteRange(range);
 
     const items = [
@@ -457,10 +470,10 @@ export function buildSlashItems(format, onLink, onImage, onCodexEntry = null) {
         }
     }
 
-    return items;
+    return items.map((item) => ({ ...item, title: translate(strings, item.title) }));
 }
 
-function slashRenderer() {
+export function slashRenderer(strings = {}) {
     let el = null;
     let unmount = null;
     let items = [];
@@ -475,7 +488,7 @@ function slashRenderer() {
         if (!items.length) {
             const empty = document.createElement('div');
             empty.className = 'wysiwyg-slash__empty';
-            empty.textContent = 'No matches';
+            empty.textContent = translate(strings, EDITOR_MESSAGES.noMatches);
             el.appendChild(empty);
             return;
         }
@@ -554,8 +567,8 @@ function slashRenderer() {
     };
 }
 
-function slashExtension(format, onLink, onImage, onCodexEntry) {
-    const menuItems = buildSlashItems(format, onLink, onImage, onCodexEntry);
+function slashExtension(format, onLink, onImage, onCodexEntry, strings) {
+    const menuItems = buildSlashItems(format, onLink, onImage, onCodexEntry, strings);
 
     return Extension.create({
         name: 'slashCommands',
@@ -575,14 +588,17 @@ function slashExtension(format, onLink, onImage, onCodexEntry) {
                                 (item.keywords || []).some((keyword) => keyword.includes(q))
                         );
                     },
-                    render: slashRenderer,
+                    render: () => slashRenderer(strings),
                 }),
             ];
         },
     });
 }
 
-export function buildExtensions(format, { placeholder = '', onLink = () => {}, onImage = () => {}, onCodexEntry = null } = {}) {
+export function buildExtensions(
+    format,
+    { placeholder = '', onLink = () => {}, onImage = () => {}, onCodexEntry = null, strings = {} } = {},
+) {
     const isMarkdown = format === 'markdown';
 
     const extensions = [
@@ -614,7 +630,7 @@ export function buildExtensions(format, { placeholder = '', onLink = () => {}, o
         TaskItem,
         TaskList,
         Callout,
-        slashExtension(format, onLink, onImage, onCodexEntry),
+        slashExtension(format, onLink, onImage, onCodexEntry, strings),
     ];
 
     if (!isMarkdown) {
@@ -632,6 +648,12 @@ export function registerWysiwyg(Alpine) {
     Alpine.data('wysiwyg', (config = {}) => {
         // Alpine proxies break ProseMirror state. Keep the editor outside reactive data.
         let editor = null;
+        let form = null;
+        let syncOnSubmit = null;
+        const t = (key) => translate(config.strings, key);
+
+        // Give a reason, so the writer does not think that the click failed.
+        const refuseUrl = () => window.alert(t(EDITOR_MESSAGES.refusedUrl));
 
         return {
             ready: false,
@@ -661,6 +683,7 @@ export function registerWysiwyg(Alpine) {
 
                 const extensions = buildExtensions(config.format || 'html', {
                     placeholder: config.placeholder || '',
+                    strings: config.strings,
                     onLink: () => this.setLink(),
                     onImage: () => this.setImage(),
                     // An event, so this generic editor never imports the scene dialog.
@@ -694,15 +717,17 @@ export function registerWysiwyg(Alpine) {
                 });
 
                 // Include the latest editor transaction in the submitted value.
-                const form = this.$el.closest('form');
+                form = this.$el.closest('form');
                 if (form) {
-                    form.addEventListener('submit', () => syncTextarea(editor));
+                    syncOnSubmit = () => syncTextarea(editor);
+                    form.addEventListener('submit', syncOnSubmit);
                 }
 
                 this.ready = true;
             },
 
             destroy() {
+                form?.removeEventListener('submit', syncOnSubmit);
                 editor?.destroy();
             },
 
@@ -720,14 +745,18 @@ export function registerWysiwyg(Alpine) {
                 }
 
                 const previous = editor.getAttributes('link').href || '';
-                const url = window.prompt(config.linkPrompt || 'Enter a URL (http:// or https://)', previous);
+                const url = window.prompt(t(EDITOR_MESSAGES.linkPrompt), previous);
 
                 if (url === null) return; // cancelled
                 if (url === '') {
                     editor.chain().focus().unsetLink().run();
                     return;
                 }
-                if (!/^https?:\/\//i.test(url)) return; // keep output within the allow-list
+                // Keep output within the allow-list.
+                if (!/^https?:\/\//i.test(url)) {
+                    refuseUrl();
+                    return;
+                }
 
                 editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
             },
@@ -735,12 +764,15 @@ export function registerWysiwyg(Alpine) {
             setImage() {
                 if (!editor) return;
 
-                const url = window.prompt(config.imagePrompt || 'Enter an image URL (http:// or https://)');
+                const url = window.prompt(t(EDITOR_MESSAGES.imagePrompt));
                 if (url === null || url === '') return; // cancelled or empty
 
-                if (!/^https?:\/\//i.test(url)) return; // keep output within the allow-list
+                if (!/^https?:\/\//i.test(url)) {
+                    refuseUrl();
+                    return;
+                }
 
-                const alt = window.prompt(config.imageAltPrompt || 'Alt text (optional, for accessibility)') || '';
+                const alt = window.prompt(t(EDITOR_MESSAGES.imageAltPrompt)) || '';
 
                 editor.chain().focus().setImage({ src: url, alt }).run();
             },
