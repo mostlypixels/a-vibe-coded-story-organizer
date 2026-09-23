@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Non-owner tests for create, edit and reorder pages
+## 2026-09-23 — Non-owner tests for create, edit and reorder pages (#205)
 
 ### Changed
 
