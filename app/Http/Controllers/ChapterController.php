@@ -108,10 +108,7 @@ class ChapterController extends Controller
         // The delete-with-move dialog on each row needs the full set of the book's
         // chapters as move destinations, independent of the current search/act filter
         // above (moving is never limited to what the filter happens to match).
-        $destinationChapters = $book->chapterQuery()
-            ->orderBy('act_id')
-            ->orderBy('position')
-            ->get(['id', 'name', 'act_id']);
+        $destinationChapters = $book->chaptersInStoryOrder();
 
         $numbering = StoryNumbering::forBook($book);
 
@@ -144,11 +141,7 @@ class ChapterController extends Controller
             'chapter' => $chapter,
             'numbering' => StoryNumbering::forBook($book),
             // Same move-destinations set the index's delete-with-move dialog offers.
-            'destinationChapters' => $book->chapterQuery()
-                ->whereKeyNot($chapter->getKey())
-                ->orderBy('act_id')
-                ->orderBy('position')
-                ->get(['id', 'name', 'act_id']),
+            'destinationChapters' => $book->chaptersInStoryOrder()->except($chapter->getKey())->values(),
         ]);
     }
 
@@ -182,11 +175,7 @@ class ChapterController extends Controller
         // Every *other* chapter in the same book is a candidate destination for
         // moving this chapter's scenes. An empty list collapses the dialog to
         // "delete everything".
-        $destinations = $book->chapterQuery()
-            ->whereKeyNot($chapter->getKey())
-            ->orderBy('act_id')
-            ->orderBy('position')
-            ->get();
+        $destinations = $book->chaptersInStoryOrder()->except($chapter->getKey())->values();
 
         // This chapter's rank among its act's siblings, for the "2 of 5" half of the
         // position hint — a gap-free rank, not the raw (possibly gappy) `position`

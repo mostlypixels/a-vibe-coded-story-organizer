@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CodexEntry;
 use App\Models\Scene;
+use App\Support\StoryOrder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
 
@@ -28,10 +29,7 @@ class ReferencingScenes
                 $scene->event === null ? 1 : 0,
                 $scene->event?->event_datetime?->timestamp ?? 0,
                 $scene->event?->id ?? 0,
-                $scene->chapter->act->book->position,
-                $scene->chapter->act->position,
-                $scene->chapter->position,
-                $scene->position,
+                ...StoryOrder::sceneKey($scene),
             ])
             ->values();
     }

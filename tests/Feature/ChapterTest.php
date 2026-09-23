@@ -1032,4 +1032,33 @@ class ChapterTest extends TestCase
         // so the N+1 this test guards against is still absent.
         $this->assertCount(4, $sceneQueries);
     }
+
+    public function test_move_destinations_follow_story_order_after_an_act_reorder(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $firstAct = Act::factory()->for($book)->create();
+        $secondAct = Act::factory()->for($book)->create();
+        // Reorder the acts, so act id order is not story order.
+        $firstAct->update(['position' => 2]);
+        $secondAct->update(['position' => 1]);
+
+        $source = Chapter::factory()->for($firstAct)->create(['name' => 'Source', 'position' => 1]);
+        Chapter::factory()->for($firstAct)->create(['name' => 'Later', 'position' => 2]);
+        Chapter::factory()->for($secondAct)->create(['name' => 'Earlier', 'position' => 1]);
+
+        $names = fn (array $expected) => fn ($chapters) => $chapters->pluck('name')->all() === $expected;
+
+        $this->actingAs($user)->get(route('books.chapters.index', $book))
+            ->assertOk()
+            ->assertViewHas('destinationChapters', $names(['Earlier', 'Source', 'Later']));
+
+        $this->actingAs($user)->get(route('chapters.show', $source))
+            ->assertOk()
+            ->assertViewHas('destinationChapters', $names(['Earlier', 'Later']));
+
+        $this->actingAs($user)->get(route('chapters.edit', $source))
+            ->assertOk()
+            ->assertViewHas('destinations', $names(['Earlier', 'Later']));
+    }
 }

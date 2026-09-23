@@ -17,6 +17,15 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Lists follow story order
+
+### Fixed
+
+- Search results list acts, chapters and scenes in story order, book by book.
+- The event page lists its scenes in story order across books.
+- The chapter move lists follow story order after an act is reordered.
+- Recent scenes on the dashboard number books without gaps.
+
 ## 2026-09-23 — Move up and down work when siblings share a position (#195)
 
 ### Fixed

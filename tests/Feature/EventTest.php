@@ -139,6 +139,30 @@ class EventTest extends TestCase
         $response->assertSee('Mentioning Scene');
     }
 
+    public function test_the_show_page_lists_scenes_in_story_order_across_books(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $bookA = $project->books()->first();
+        $bookB = Book::factory()->for($project)->create();
+        // Book A was made first but now reads second, so id order is not story order.
+        $bookA->forceFill(['position' => 5])->save();
+        $event = Event::factory()->for($project)->create();
+
+        $chapterA = Chapter::factory()->for(Act::factory()->for($bookA)->create())->create();
+        $chapterB = Chapter::factory()->for(Act::factory()->for($bookB)->create())->create();
+
+        Scene::factory()->for($chapterA)->create(['name' => 'Book A On-Event Scene', 'event_id' => $event->id]);
+        Scene::factory()->for($chapterB)->create(['name' => 'Book B On-Event Scene', 'event_id' => $event->id]);
+        Scene::factory()->for($chapterA)->create(['name' => 'Book A Mentioning Scene'])->mentionedEvents()->attach($event);
+        Scene::factory()->for($chapterB)->create(['name' => 'Book B Mentioning Scene'])->mentionedEvents()->attach($event);
+
+        $this->actingAs($user)->get(route('events.show', $event))
+            ->assertOk()
+            ->assertViewHas('scenesOnEvent', fn ($scenes) => $scenes->pluck('name')->all() === ['Book B On-Event Scene', 'Book A On-Event Scene'])
+            ->assertViewHas('mentioningScenes', fn ($scenes) => $scenes->pluck('name')->all() === ['Book B Mentioning Scene', 'Book A Mentioning Scene']);
+    }
+
     public function test_the_show_page_lists_the_codex_entries_it_starts_or_ends(): void
     {
         $user = User::factory()->create();
