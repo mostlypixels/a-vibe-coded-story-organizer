@@ -98,7 +98,8 @@ identical in every branch:
 A `cover_file` link is the one deliberate exception to "the file is always there": the link is
 written whenever a cover is set, but the **bytes** ship only when the export includes media. A
 metadata-only export therefore declares `cover_file` and ships nothing, and the importer
-restores a **null** cover. Cover columns carry no declared mime, so the import security gate
+restores a **null** cover. An export with media omits `cover_file` when the source file is
+missing, because the import rejects a media archive that links to absent bytes. Cover columns carry no declared mime, so the import security gate
 content-sniffs them on **bytes alone** (`finfo` + `getimagesize` must agree on an allowed image
 type) — a forged image rejects the archive.
 
@@ -519,6 +520,12 @@ instead — see the field-file convention above.
 > `reference_file`s like PDFs) are copied verbatim to their `file` path — no thumbnailing,
 > resizing, or transform. Bytes are read straight off the private `media` disk, never a
 > URL, so the export needs no web route or `php artisan storage:link` (invariant 5).
+
+A row can have no bytes: a metadata-only import makes rows with a null `path`, and a stored
+file can go missing. With the toggle **on**, such a row keeps its metadata but writes
+`"file": null`. The import accepts a null `file` and makes the row without a file
+(`CodexMedia::hasFile()` is false). A string `file` with absent bytes still rejects a media
+archive, so a truncated archive fails loudly.
 
 ## Import size limits
 

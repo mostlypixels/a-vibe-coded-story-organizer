@@ -612,10 +612,10 @@ class ProjectGraphImporter
         $collection = CodexMediaCollection::tryFrom((string) $media['collection'])
             ?? throw ImportValidationException::invalidDescriptorValue($item['path'], 'media.collection');
 
-        $absoluteFile = "{$dataPath}/{$item['directory']}/{$media['file']}";
+        $absoluteFile = isset($media['file']) ? "{$dataPath}/{$item['directory']}/{$media['file']}" : null;
 
         $path = null;
-        if (is_file($absoluteFile)) {
+        if ($absoluteFile !== null && is_file($absoluteFile)) {
             $path = $this->codexMediaService->storeImportedFile($absoluteFile);
             $copiedPaths[] = $path;
         }

@@ -524,6 +524,38 @@ class ImportRoundTripTest extends TestCase
         $this->assertNull($importedChapter->cover_image);
     }
 
+    /** Regression for #169: media without a file must not break the export or its import. */
+    public function test_an_export_with_media_rows_and_covers_without_files_still_imports(): void
+    {
+        $owner = User::factory()->create();
+        $project = Project::factory()->for($owner)->create(['cover_image' => 'project-covers/gone.jpg']);
+        $entry = CodexEntry::factory()->for($project)->character()->create(['name' => 'Alice Harker']);
+
+        $sketchPath = UploadedFile::fake()->image('sketch.png', 20, 20)->store('codex-media', 'media');
+        CodexMedia::factory()->referenceImage()->for($entry, 'entry')->create([
+            'path' => $sketchPath, 'original_name' => 'sketch.png', 'mime_type' => 'image/png',
+            'size' => Storage::disk('media')->size($sketchPath),
+        ]);
+        CodexMedia::factory()->cover()->for($entry, 'entry')->create(['path' => null, 'original_name' => 'portrait.jpg']);
+        CodexMedia::factory()->referenceFile()->for($entry, 'entry')->create(['original_name' => 'notes.pdf']);
+
+        $zipPath = $this->exportZip($project->fresh(), includeMedia: true);
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertRedirect(route('projects.show', $importer->projects()->sole()));
+
+        $imported = $importer->projects()->sole();
+        $this->assertNull($imported->cover_image);
+
+        $media = $imported->codexEntries()->sole()->media()->get()->keyBy('original_name');
+        $this->assertCount(3, $media);
+        $this->assertTrue($media['sketch.png']->hasFile());
+        $this->assertFalse($media['portrait.jpg']->hasFile());
+        $this->assertFalse($media['notes.pdf']->hasFile());
+    }
+
     public function test_a_version_4_archive_with_no_challenges_file_imports_cleanly(): void
     {
         $owner = User::factory()->create();

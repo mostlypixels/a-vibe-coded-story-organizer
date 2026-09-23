@@ -1102,6 +1102,51 @@ class ExportTest extends TestCase
         $zip->close();
     }
 
+    /** Regression for #169: a media row without a file returned 500. */
+    public function test_media_rows_without_a_file_export_metadata_with_a_null_file_link(): void
+    {
+        Storage::fake('media');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->create();
+
+        // A metadata-only imported row, and a row whose file is gone from the disk.
+        $withoutPath = CodexMedia::factory()->cover()->for($entry, 'entry')
+            ->create(['path' => null, 'original_name' => 'portrait.jpg']);
+        $missingFile = CodexMedia::factory()->referenceImage()->for($entry, 'entry')
+            ->create(['path' => 'codex-media/gone.png', 'original_name' => 'sketch.png']);
+
+        $zip = $this->exportZipWithMedia($user, $project);
+
+        $entryDir = $this->codexEntryDir($entry);
+        $media = collect(json_decode($zip->getFromName("{$entryDir}/entry.json"), true)['media'])->keyBy('id');
+
+        $this->assertCount(2, $media);
+        $this->assertNull($media[$withoutPath->id]['file']);
+        $this->assertNull($media[$missingFile->id]['file']);
+        $this->assertSame('portrait.jpg', $media[$withoutPath->id]['original_name']);
+        $this->assertNoZipEntryContains($zip, 'portrait.jpg');
+        $this->assertNoZipEntryContains($zip, 'sketch.png');
+
+        $zip->close();
+    }
+
+    public function test_a_cover_whose_file_is_missing_exports_no_cover_link_when_media_included(): void
+    {
+        Storage::fake('media');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['cover_image' => 'project-covers/gone.jpg']);
+
+        $zip = $this->exportZipWithMedia($user, $project);
+
+        $projectJson = json_decode($zip->getFromName('data/project/project.json'), true);
+        $this->assertArrayNotHasKey('cover_file', $projectJson);
+
+        $zip->close();
+    }
+
     public function test_a_project_with_no_codex_still_emits_the_flat_lists_and_no_entry_dirs(): void
     {
         $user = User::factory()->create();

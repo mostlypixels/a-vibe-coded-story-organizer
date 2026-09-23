@@ -321,11 +321,15 @@ class StaticSiteExporter
         $relativePath = 'cover/'.basename($coverImage);
 
         if ($includeMedia) {
-            // Keep the link but do not fail when the source file is missing.
             $bytes = Storage::disk(CoverImageService::COVER_DISK)->get($coverImage);
-            if ($bytes !== null) {
-                $this->addFromString($zip, "{$dir}/{$relativePath}", $bytes);
+
+            // The import rejects a media archive that links to absent bytes.
+            // Without the link, the import restores no cover.
+            if ($bytes === null) {
+                return [];
             }
+
+            $this->addFromString($zip, "{$dir}/{$relativePath}", $bytes);
         }
 
         return ['cover_file' => $relativePath];
@@ -468,6 +472,18 @@ class StaticSiteExporter
         foreach ($entry->media as $media) {
             $relativePath = $this->mediaFilePath($media);
 
+            if ($includeMedia) {
+                $bytes = $media->hasFile() ? Storage::disk(CodexMediaService::DISK)->get($media->path) : null;
+
+                // The import rejects a media archive that links to absent bytes.
+                // A null link keeps the metadata, and the import makes a row without a file.
+                if ($bytes === null) {
+                    $relativePath = null;
+                } else {
+                    $this->addFromString($zip, "{$dir}/{$relativePath}", $bytes);
+                }
+            }
+
             $manifest[] = [
                 'id' => $media->id,
                 'collection' => $media->collection->value,
@@ -477,14 +493,6 @@ class StaticSiteExporter
                 'size' => $media->size,
                 'file' => $relativePath,
             ];
-
-            if ($includeMedia) {
-                // Keep the metadata but do not fail when the source file is missing.
-                $bytes = Storage::disk(CodexMediaService::DISK)->get($media->path);
-                if ($bytes !== null) {
-                    $this->addFromString($zip, "{$dir}/{$relativePath}", $bytes);
-                }
-            }
         }
 
         return $manifest;

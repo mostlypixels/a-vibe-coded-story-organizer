@@ -275,8 +275,13 @@ class ArchiveValidator
                     throw ImportValidationException::invalidDescriptorValue($descriptorPath, 'media.collection');
                 }
 
-                // Treat declared JSON paths as untrusted archive entry names.
+                // A null file is a row without bytes. The source file was missing at export.
                 $file = $media['file'];
+                if ($file === null) {
+                    continue;
+                }
+
+                // Treat declared JSON paths as untrusted archive entry names.
                 if (! is_string($file) || $this->isUnsafePath($file) || str_ends_with($file, '/')) {
                     throw ImportValidationException::unsafeEntryPath(is_string($file) ? $file : '');
                 }

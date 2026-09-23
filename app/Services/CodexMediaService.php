@@ -134,7 +134,9 @@ class CodexMediaService
                 ->first();
 
             if ($existingCover !== null) {
-                $paths[] = $existingCover->path;
+                if ($existingCover->hasFile()) {
+                    $paths[] = $existingCover->path;
+                }
                 $existingCover->delete();
             }
         }
