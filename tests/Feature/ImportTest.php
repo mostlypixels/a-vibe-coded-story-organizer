@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Enums\ImportPhase;
+use App\Exceptions\ImportValidationException;
 use App\Jobs\ProjectImportJob;
 use App\Models\Import;
 use App\Models\ImportSetting;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\ProjectImporter;
+use App\Support\CodexMediaRules;
+use App\Support\ImportRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -251,6 +254,67 @@ class ImportTest extends TestCase
 
         $this->assertSame(0, Project::count());
         $this->assertSame(0, Import::count());
+    }
+
+    // ---------------------------------------------------------------------
+    // Size caps — an archive must not expand past what the server can hold
+    // ---------------------------------------------------------------------
+
+    public function test_an_archive_that_expands_past_the_size_cap_is_rejected_before_extraction(): void
+    {
+        // A small cap keeps the fixture small. Zeros compress to almost nothing.
+        ImportSetting::current()->update(['max_archive_kilobytes' => 64]);
+        $cap = 64 * 1024 * ImportRules::MAX_EXPANSION_FACTOR;
+
+        $upload = $this->makeValidUpload(extra: function (ZipArchive $zip) use ($cap): void {
+            $zip->addFromString('books/padding.txt', str_repeat("\0", $cap + 1));
+        });
+
+        $this->assertArchiveRejected($upload, ImportValidationException::archiveTooLarge($cap));
+    }
+
+    public function test_an_archive_with_too_many_entries_is_rejected_before_extraction(): void
+    {
+        $upload = $this->makeValidUpload(extra: function (ZipArchive $zip): void {
+            for ($index = 0; $index <= ImportRules::MAX_ENTRY_COUNT; $index++) {
+                $zip->addFromString("books/many/{$index}.txt", '');
+            }
+        });
+
+        $this->assertArchiveRejected($upload, ImportValidationException::tooManyEntries(ImportRules::MAX_ENTRY_COUNT));
+    }
+
+    public function test_a_media_file_over_the_upload_limit_is_rejected_before_extraction(): void
+    {
+        // A real PNG header keeps the content sniff happy, so only the size cap can refuse it.
+        $bytes = base64_decode(self::TINY_PNG_BASE64);
+        $bytes .= str_repeat("\0", CodexMediaRules::IMAGE_MAX_KILOBYTES * 1024 + 1 - strlen($bytes));
+        $file = 'data/codex/character/401-bob/reference-images/big.png';
+
+        $upload = $this->makeValidUpload(extra: function (ZipArchive $zip) use ($bytes, $file): void {
+            $zip->addFromString('data/codex/character/401-bob/entry.json', json_encode([
+                'id' => 401, 'name' => 'Bob', 'type' => 'character', 'project_id' => 900,
+                'aliases' => [], 'tag_ids' => [], 'attribute_values' => [],
+                'media' => [[
+                    'id' => 72, 'collection' => 'reference_image', 'position' => 1,
+                    'original_name' => 'big.png', 'mime_type' => 'image/png',
+                    'size' => strlen($bytes), 'file' => 'reference-images/big.png',
+                ]],
+            ]));
+            $zip->addFromString($file, $bytes);
+        });
+
+        $this->assertArchiveRejected($upload, ImportValidationException::entryTooLarge($file, CodexMediaRules::IMAGE_MAX_KILOBYTES * 1024));
+    }
+
+    public function test_an_entry_larger_than_its_recorded_size_is_rejected_before_extraction(): void
+    {
+        $upload = $this->makeValidUpload(extra: function (ZipArchive $zip): void {
+            $zip->addFromString('books/padding.txt', str_repeat('A', 200_000));
+        });
+        $this->recordFalseSize($upload->getRealPath(), 'books/padding.txt', 10);
+
+        $this->assertArchiveRejected($upload, ImportValidationException::entrySizeMismatch('books/padding.txt'));
     }
 
     // ---------------------------------------------------------------------
@@ -514,10 +578,11 @@ class ImportTest extends TestCase
      *
      * $manifestVersion writes a version other than the current one (the version
      * gate); $publicationSetting adds a raw {bookDir}/publication-setting.json
-     * so a test can hand the importer a malformed config.
+     * so a test can hand the importer a malformed config. $extra adds entries
+     * before the zip closes.
      */
     /** @param array<string, mixed> $projectOverrides */
-    private function makeValidUpload(int $manifestVersion = 4, ?string $publicationSetting = null, array $projectOverrides = []): UploadedFile
+    private function makeValidUpload(int $manifestVersion = 4, ?string $publicationSetting = null, array $projectOverrides = [], ?callable $extra = null): UploadedFile
     {
         $zipPath = tempnam(sys_get_temp_dir(), 'import-http-test');
         $this->tempFiles[] = $zipPath;
@@ -594,9 +659,47 @@ class ImportTest extends TestCase
         ]));
         $zip->addFromString('data/codex/character/400-alice-harker/cover/portrait.png', $pngBytes);
 
+        if ($extra !== null) {
+            $extra($zip);
+        }
+
         $zip->close();
 
         return new UploadedFile($zipPath, 'my-export.zip', 'application/zip', null, true);
+    }
+
+    /** Posts the upload and asserts the exact error, with no row and no stored file. */
+    private function assertArchiveRejected(UploadedFile $upload, ImportValidationException $expected): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->post(route('admin.data.import'), ['archive' => $upload])
+            ->assertSessionHasErrors(['archive' => $expected->getMessage()]);
+
+        $this->assertSame(0, Project::count());
+        $this->assertSame(0, Import::count());
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    /**
+     * Rewrites the uncompressed size of one entry in both ZIP headers.
+     * The data stays the same, so the real size no longer matches the record.
+     */
+    private function recordFalseSize(string $zipPath, string $entry, int $size): void
+    {
+        $bytes = (string) file_get_contents($zipPath);
+
+        $offset = 0;
+        while (($position = strpos($bytes, $entry, $offset)) !== false) {
+            // The name starts 30 bytes into a local header and 46 bytes into a central header.
+            if (substr($bytes, $position - 30, 4) === "PK\x03\x04") {
+                $bytes = substr_replace($bytes, pack('V', $size), $position - 30 + 22, 4);
+            } elseif (substr($bytes, $position - 46, 4) === "PK\x01\x02") {
+                $bytes = substr_replace($bytes, pack('V', $size), $position - 46 + 24, 4);
+            }
+            $offset = $position + 1;
+        }
+
+        file_put_contents($zipPath, $bytes);
     }
 
     /**

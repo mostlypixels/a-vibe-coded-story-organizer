@@ -18,6 +18,7 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Services\Import\ArchiveValidator;
 use App\Services\StaticSiteExporter;
+use App\Support\CodexMediaRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -578,6 +579,23 @@ class ArchiveValidatorTest extends TestCase
         (new ArchiveValidator)->validate($path);
 
         $this->addToAssertionCount(1); // no exception thrown
+    }
+
+    public function test_rejects_a_chapter_cover_over_the_image_upload_limit(): void
+    {
+        $maxBytes = CodexMediaRules::IMAGE_MAX_KILOBYTES * 1024;
+        $bytes = base64_decode(self::TINY_PNG_BASE64);
+        $bytes .= str_repeat("\0", $maxBytes + 1 - strlen($bytes));
+
+        $path = $this->buildZip(function (ZipArchive $zip) use ($bytes): void {
+            $this->addValidBaseline($zip);
+            $this->addChapterWithCover($zip, 'cover/portrait.png');
+            $zip->addFromString(self::CHAPTER_DIR.'/cover/portrait.png', $bytes);
+        });
+
+        $this->expectExceptionObject(ImportValidationException::entryTooLarge(self::CHAPTER_DIR.'/cover/portrait.png', $maxBytes));
+
+        (new ArchiveValidator)->validate($path);
     }
 
     public function test_accepts_a_metadata_only_archive_whose_chapter_cover_bytes_are_absent(): void

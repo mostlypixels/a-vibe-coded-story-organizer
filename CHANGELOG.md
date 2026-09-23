@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Import limits how large an archive can expand (#186)
+
+### Fixed
+
+- A project import rejects an archive that expands too large, holds too many files, or has an oversized media file.
+
 ## 2026-09-23 — Private media, scoped revision purges, safer page-size redirect (#185)
 
 ### Changed

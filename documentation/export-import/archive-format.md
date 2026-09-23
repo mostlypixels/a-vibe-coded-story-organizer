@@ -520,6 +520,19 @@ instead — see the field-file convention above.
 > resizing, or transform. Bytes are read straight off the private `media` disk, never a
 > URL, so the export needs no web route or `php artisan storage:link` (invariant 5).
 
+## Import size limits
+
+Import checks these limits before it reads or extracts a file. `ImportRules` holds the values.
+
+- At most `MAX_ENTRY_COUNT` entries.
+- Total uncompressed size at most `MAX_EXPANSION_FACTOR` × the live upload cap (import settings).
+- Each entry at most the largest upload limit (`CodexMediaRules::FILE_MAX_KILOBYTES`).
+- Each cover, reference image or reference file at most its upload limit in `CodexMediaRules`.
+- The real bytes of each entry must match its recorded size.
+
+Why: a small compressed upload can expand to fill the disk. The limits follow the upload
+limits, so a real export always fits.
+
 ## The `books/` reading layer
 
 `books/` is the **human reading version** of the manuscript: deliberately narrow — just the
