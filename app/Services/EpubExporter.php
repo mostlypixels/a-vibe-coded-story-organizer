@@ -474,12 +474,12 @@ class EpubExporter
         $this->addPage($epub, $config['heading'], $config['file'], $xhtml);
     }
 
-    /** Renders book matter with the same private Markdown converter as scenes. */
+    /** Renders book matter with the same Markdown pipeline as scenes. */
     public function renderMatterPage(string $heading, string $markdown, Book $book): string
     {
         return view('exports.epub.matter', [
             'heading' => $heading,
-            'body' => (string) $this->converter()->convert($markdown),
+            'body' => $this->renderAuthorMarkdown($markdown),
             'language' => $this->language($book),
         ])->render();
     }
@@ -897,19 +897,24 @@ class EpubExporter
         return $directory.DIRECTORY_SEPARATOR.Str::uuid().'.epub';
     }
 
+    /** Scene Markdown already holds canonical punctuation. */
+    private function renderSceneContents(Scene $scene): string
+    {
+        return $this->renderAuthorMarkdown($scene->contents ?? '');
+    }
+
     /**
-     * Converts scene Markdown, already holding canonical punctuation, then
-     * sanitizes it.
+     * Converts author Markdown, then sanitizes it.
      *
      * Markdown carries raw HTML through, and a reading system may run scripts,
      * so the shipped body needs the same allow-list as every on-screen render
      * ({@see AuthorMarkdown::render()}). The sanitizer's XHTML-style output also
      * helps the well-formedness gate in {@see validatePackage()}.
      */
-    private function renderSceneContents(Scene $scene): string
+    private function renderAuthorMarkdown(string $markdown): string
     {
         return app(HtmlSanitizer::class)->clean(
-            (string) $this->converter()->convert($scene->contents ?? ''),
+            (string) $this->converter()->convert($markdown),
             RichTextProfile::Structural,
         );
     }
