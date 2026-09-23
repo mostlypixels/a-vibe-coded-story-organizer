@@ -37,6 +37,7 @@ The `revisions` table stores one immutable row for each field and moment. `save_
 - A manual save records only changed fields.
 - The first change can create a baseline with the previous value and entity timestamp.
 - Every row stores `project_id` explicitly so project cascades remain valid.
+- Deleting an entity deletes its revisions. A database cascade skips model events, so Book, Act and Chapter delete the revisions of their children in `deleting`. There is no "restore deleted" feature to keep them for.
 
 ## Retention
 

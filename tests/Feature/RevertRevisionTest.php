@@ -188,6 +188,46 @@ class RevertRevisionTest extends TestCase
         $this->assertSame('<p>Current text</p>', $act->description);
     }
 
+    /** Returns a revision whose act row is gone, as old data can hold. */
+    private function orphanRevisionFor(User $owner): Revision
+    {
+        $act = $this->actFor($owner);
+        $revision = $this->revisionFor($act, ['user_id' => $owner->id]);
+
+        // A raw delete skips the model hooks that delete revisions.
+        DB::table('acts')->where('id', $act->id)->delete();
+
+        return $revision;
+    }
+
+    public function test_reverting_a_revision_of_a_deleted_entity_returns_404(): void
+    {
+        $user = User::factory()->create();
+        $revision = $this->orphanRevisionFor($user);
+
+        $this->actingAs($user)->post(route('revisions.revert', $revision), [
+            'base_hash' => $this->hashOf(null),
+        ])->assertNotFound();
+    }
+
+    public function test_a_non_owner_reverting_a_revision_of_a_deleted_entity_gets_403(): void
+    {
+        $revision = $this->orphanRevisionFor(User::factory()->create());
+
+        $this->actingAs(User::factory()->create())->post(route('revisions.revert', $revision), [
+            'base_hash' => $this->hashOf(null),
+        ])->assertForbidden();
+    }
+
+    public function test_a_non_owner_reverting_a_save_of_a_deleted_entity_gets_403(): void
+    {
+        $revision = $this->orphanRevisionFor(User::factory()->create());
+
+        $this->actingAs(User::factory()->create())->post(route('revisions.saves.revert', $revision->save_id), [
+            'base_hashes' => ['description' => $this->hashOf(null)],
+        ])->assertForbidden();
+    }
+
     /**
      * Every conflict test above asserts the app *decided* to flash a message.
      * None asserts that a page renders it. Without this test the alert could sit

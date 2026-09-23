@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * One immutable snapshot of a single revisionable field, at a single point in
@@ -68,6 +69,23 @@ class Revision extends Model
     public function revisionable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * Deletes the revisions of each entity that the query selects.
+     *
+     * A database cascade fires no model events. Thus a parent's `deleting`
+     * hook calls this for its children before the cascade removes them.
+     */
+    public static function deleteFor(Builder|Relation $entities): void
+    {
+        $query = $entities instanceof Relation ? $entities->getQuery() : $entities;
+        $model = $query->getModel();
+
+        static::query()
+            ->where('revisionable_type', $model->getMorphClass())
+            ->whereIn('revisionable_id', $query->select($model->getQualifiedKeyName()))
+            ->delete();
     }
 
     /**

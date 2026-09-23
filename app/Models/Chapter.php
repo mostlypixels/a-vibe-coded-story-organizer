@@ -76,6 +76,9 @@ class Chapter extends Model
         // surviving chapters' covers themselves (media-lifecycle.md pitfall).
         static::deleting(function (Chapter $chapter) {
             app(CoverImageService::class)->delete($chapter->cover_image);
+
+            // The cascade to scenes skips their HasRevisions hook.
+            Revision::deleteFor($chapter->scenes());
         });
 
         // The chapter's scenes cascade at the database level, which fires no

@@ -36,6 +36,21 @@ trait HasRevisions
     abstract public function revisionProject(): Project;
 
     /**
+     * Revisions of a deleted entity cannot be shown or reverted, and prune
+     * always keeps the newest row. Thus they stay forever if we do not delete
+     * them here. `deleted`, not `deleting`: a failed delete keeps the history.
+     *
+     * A database cascade skips this hook. Book, Act and Chapter delete the
+     * revisions of their cascaded children themselves.
+     */
+    public static function bootHasRevisions(): void
+    {
+        static::deleted(function (self $entity): void {
+            $entity->revisions()->reorder()->delete();
+        });
+    }
+
+    /**
      * Every revision ever recorded for this entity, across all of its registered
      * fields, newest first.
      *

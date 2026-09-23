@@ -256,9 +256,7 @@ class RevisionController extends Controller
     /** Reverts one field and returns conflicts to the page as an actionable alert. */
     public function revert(Request $request, Revision $revision, RevisionReverter $reverter): RedirectResponse
     {
-        $entity = $revision->revisionable;
-
-        $this->authorize('update', $entity->revisionProject());
+        $entity = $this->revisionableOrFail($revision);
 
         $validated = $request->validate([
             'base_hash' => ['required', 'string'],
@@ -282,16 +280,12 @@ class RevisionController extends Controller
         // Do not select revision values for the save-point lookup.
         $group = Revision::query()
             ->where('save_id', $save)
-            ->select(['id', 'save_id', 'field', 'created_at', 'origin', 'revisionable_type', 'revisionable_id'])
+            ->select(['id', 'save_id', 'field', 'created_at', 'origin', 'revisionable_type', 'revisionable_id', 'project_id'])
             ->get();
 
         abort_if($group->isEmpty(), 404);
 
-        $entity = $group->first()->revisionable;
-
-        abort_if($entity === null, 404);
-
-        $this->authorize('update', $entity->revisionProject());
+        $entity = $this->revisionableOrFail($group->first());
 
         $validated = $request->validate([
             'base_hashes' => ['required', 'array'],
@@ -313,6 +307,26 @@ class RevisionController extends Controller
             ->route(AutosavableFields::editRouteFor(AutosavableFields::slugFor($entity::class)), $entity)
             ->with('status', 'reverted-save')
             ->with('restored_fields', array_map(Str::headline(...), $restored));
+    }
+
+    /**
+     * Returns the revision's entity after the update check on its project.
+     * Old rows can refer to a deleted entity. They get a 404, but only after
+     * the check on the stored project, so a non-owner cannot probe for IDs.
+     */
+    private function revisionableOrFail(Revision $revision): Model
+    {
+        $entity = $revision->revisionable;
+
+        if ($entity === null) {
+            $this->authorize('update', Project::findOrFail($revision->project_id));
+
+            abort(404);
+        }
+
+        $this->authorize('update', $entity->revisionProject());
+
+        return $entity;
     }
 
     /** Resolves the entity and authorizes history access through its project. */

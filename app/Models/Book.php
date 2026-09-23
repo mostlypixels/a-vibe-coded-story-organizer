@@ -243,6 +243,11 @@ class Book extends Model
             foreach ($chapterCovers as $coverPath) {
                 $coverImageService->delete($coverPath);
             }
+
+            // The cascade also skips the HasRevisions hook of each child.
+            Revision::deleteFor($book->acts());
+            Revision::deleteFor($book->chapterQuery());
+            Revision::deleteFor($book->sceneQuery());
         });
 
         // The book's manuscript cascades at the database level, several levels
