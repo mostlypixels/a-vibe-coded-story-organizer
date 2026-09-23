@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Clean up book covers and abandoned imports
+
+### Added
+
+- A daily `imports:purge` removes unfinished imports and their files after 7 days.
+
+### Fixed
+
+- Deleting a project or an account now deletes its book cover files.
+
 ## 2026-09-23 — Revisions go with their deleted entity (#193)
 
 ### Fixed

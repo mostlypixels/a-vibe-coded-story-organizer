@@ -43,4 +43,17 @@ return [
 
     'default_run_in_background' => (bool) env('IMPORT_RUN_IN_BACKGROUND', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Retention window for unfinished imports (days)
+    |--------------------------------------------------------------------------
+    |
+    | How long an unfinished import keeps its ZIP and extracted folder before
+    | `imports:purge` removes them with the import row. After that, the writer
+    | cannot resume it. The window also protects an import that runs now.
+    |
+    */
+
+    'purge_after_days' => (int) env('IMPORT_PURGE_AFTER_DAYS', 7),
+
 ];
