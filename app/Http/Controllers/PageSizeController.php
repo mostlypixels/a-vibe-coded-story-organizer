@@ -15,8 +15,8 @@ class PageSizeController extends Controller
 {
     /**
      * Persist the picked size, then return to the list the request came
-     * from. The previous URL comes from the session, not user input, so
-     * there is no open-redirect check to write.
+     * from. The previous URL can come from the Referer header, so it is
+     * checked before use.
      */
     public function update(UpdatePageSizeRequest $request): RedirectResponse
     {
@@ -28,13 +28,20 @@ class PageSizeController extends Controller
     /** Strips `page` so the writer lands on page 1 of the same sorted, filtered list. */
     private function previousUrlWithoutPage(): string
     {
-        $previous = url()->previous();
-        $parts = parse_url($previous);
+        $parts = parse_url(url()->previous()) ?: [];
+        $path = $parts['path'] ?? '/';
+
+        // A browser reads `//host` or `/\host` as a different site. Send these, and URLs of a different host, to home.
+        if (($parts['host'] ?? null) !== request()->getHost()
+            || ! str_starts_with($path, '/')
+            || in_array(substr($path, 1, 1), ['/', '\\'], true)) {
+            return '/';
+        }
 
         parse_str($parts['query'] ?? '', $query);
         unset($query['page']);
 
-        $url = ($parts['path'] ?? '/');
+        $url = $path;
 
         if ($query !== []) {
             $url .= '?'.http_build_query($query);

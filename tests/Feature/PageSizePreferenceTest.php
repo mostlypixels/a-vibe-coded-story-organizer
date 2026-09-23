@@ -39,6 +39,31 @@ class PageSizePreferenceTest extends TestCase
         $response->assertRedirect('/projects?sort=title');
     }
 
+    public function test_a_protocol_relative_previous_path_stays_on_this_host(): void
+    {
+        $user = User::factory()->create(['page_size' => null]);
+
+        $response = $this
+            ->actingAs($user)
+            ->from(url('/').'//evil.example/x')
+            ->patch(route('preferences.page-size.update'), ['page_size' => 250]);
+
+        // A Location of `//host/...` leaves the app. assertRedirect() normalizes it, so read the raw header.
+        $this->assertSame(url('/'), $response->headers->get('Location'));
+    }
+
+    public function test_a_previous_url_on_another_host_redirects_to_home(): void
+    {
+        $user = User::factory()->create(['page_size' => null]);
+
+        $response = $this
+            ->actingAs($user)
+            ->from('https://evil.example/projects')
+            ->patch(route('preferences.page-size.update'), ['page_size' => 250]);
+
+        $this->assertSame(url('/'), $response->headers->get('Location'));
+    }
+
     public function test_an_unlisted_size_fails_validation_and_leaves_the_column_unchanged(): void
     {
         $user = User::factory()->create(['page_size' => 100]);
