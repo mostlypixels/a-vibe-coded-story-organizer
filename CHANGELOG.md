@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Translated editor text and clear failure messages
+## 2026-09-23 — Translated editor text and clear failure messages (#204)
 
 ### Fixed
 
