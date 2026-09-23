@@ -289,6 +289,15 @@ class Project extends Model
             foreach ($chapterCovers as $coverPath) {
                 $coverImageService->delete($coverPath);
             }
+
+            // project → books cascades at the DB level too and skips Book::deleting.
+            $bookCovers = $project->books()
+                ->whereNotNull('cover_image')
+                ->pluck('cover_image');
+
+            foreach ($bookCovers as $coverPath) {
+                $coverImageService->delete($coverPath);
+            }
         });
     }
 }

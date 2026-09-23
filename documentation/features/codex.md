@@ -62,6 +62,7 @@ An attribute becomes attached when the writer picks it on the create form or add
 
 - Delete files before a database cascade removes the path rows.
 - `Project::deleting` purges project media because database cascades do not fire entry hooks.
+- `Project::deleting` also deletes the project, book, and chapter cover files. The cascade does not fire the book, act, or chapter hooks.
 - `User::deleting` deletes projects through Eloquent so project cleanup runs.
 - Keep disk I/O outside database transactions.
 - Media and covers (project, book, chapter) live on the private `media` disk. They have no public URL.

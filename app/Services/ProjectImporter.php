@@ -8,6 +8,7 @@ use App\Models\Import;
 use App\Models\User;
 use App\Services\Import\ArchiveValidator;
 use App\Services\Import\ProjectGraphImporter;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -130,6 +131,60 @@ class ProjectImporter
         $this->deleteWorkingFiles($import);
 
         $import->delete();
+    }
+
+    /**
+     * Deletes the working files and row of each unfinished import unchanged since $before.
+     * Keeps a partial project because the writer can have edited it.
+     */
+    public function purgeStale(CarbonInterface $before): int
+    {
+        $staleImports = Import::query()
+            ->where('phase', '!=', ImportPhase::Completed)
+            ->where('updated_at', '<', $before)
+            ->get();
+
+        foreach ($staleImports as $import) {
+            $this->deleteWorkingFiles($import);
+            $import->delete();
+        }
+
+        return $staleImports->count();
+    }
+
+    /**
+     * Deletes working files older than $before that no unfinished import owns.
+     * Account deletion drops import rows at the DB level, so no model hook removes them.
+     */
+    public function purgeOrphanedFiles(CarbonInterface $before): int
+    {
+        $ownedDirectories = Import::query()
+            ->where('phase', '!=', ImportPhase::Completed)
+            ->pluck('archive_path')
+            ->map(fn (string $archivePath) => Str::beforeLast($archivePath, '.zip'))
+            ->all();
+
+        $entries = [
+            ...$this->disk()->files(self::DIRECTORY),
+            ...$this->disk()->directories(self::DIRECTORY),
+        ];
+        $count = 0;
+
+        foreach ($entries as $path) {
+            // The age check protects an upload that has files but no row yet.
+            if (in_array(Str::beforeLast($path, '.zip'), $ownedDirectories, true)
+                || filemtime($this->disk()->path($path)) >= $before->getTimestamp()) {
+                continue;
+            }
+
+            is_dir($this->disk()->path($path))
+                ? $this->disk()->deleteDirectory($path)
+                : $this->disk()->delete($path);
+
+            $count++;
+        }
+
+        return $count;
     }
 
     /** @param array<string, array<int, int>> $idMaps */

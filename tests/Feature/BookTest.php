@@ -187,6 +187,34 @@ class BookTest extends TestCase
         Storage::disk('media')->assertMissing($coverPath);
     }
 
+    public function test_deleting_a_project_removes_its_book_cover_files(): void
+    {
+        Storage::fake('media');
+        [$project] = $this->projectWithBook();
+        $coverPath = 'book-covers/cascade-project-cover.jpg';
+        Storage::disk('media')->put($coverPath, 'contents');
+        Book::factory()->for($project)->create(['cover_image' => $coverPath]);
+
+        // The project cascade drops the book rows without Book::deleting.
+        $project->delete();
+
+        Storage::disk('media')->assertMissing($coverPath);
+    }
+
+    public function test_deleting_a_user_removes_their_book_cover_files(): void
+    {
+        Storage::fake('media');
+        $user = User::factory()->create();
+        [$project] = $this->projectWithBook($user);
+        $coverPath = 'book-covers/cascade-user-cover.jpg';
+        Storage::disk('media')->put($coverPath, 'contents');
+        Book::factory()->for($project)->create(['cover_image' => $coverPath]);
+
+        $user->delete();
+
+        Storage::disk('media')->assertMissing($coverPath);
+    }
+
     public function test_deleting_a_project_cascades_to_its_books(): void
     {
         [$project, $book] = $this->projectWithBook();
