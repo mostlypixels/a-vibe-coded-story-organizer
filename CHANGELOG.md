@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Safer scene and codex saves, less code in templates
+## 2026-09-23 — Safer scene and codex saves, less code in templates (#206)
 
 ### Fixed
 
