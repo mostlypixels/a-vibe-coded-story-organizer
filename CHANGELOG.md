@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Faster codex matching and search in large projects
+## 2026-09-23 — Faster codex matching and search in large projects (#202)
 
 ### Changed
 
