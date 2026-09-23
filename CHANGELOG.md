@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Ctrl-S during a slow autosave updates scene mentions
+## 2026-09-23 — Ctrl-S during a slow autosave updates scene mentions (#200)
 
 ### Fixed
 
