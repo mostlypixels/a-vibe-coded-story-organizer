@@ -295,6 +295,35 @@ class ChapterTest extends TestCase
         $this->assertSame($targetAct->id, $chapter->fresh()->act_id);
     }
 
+    public function test_a_chapter_moved_to_another_act_lands_last_with_a_unique_position(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $sourceAct = Act::factory()->for($book)->create();
+        $targetAct = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($sourceAct)->create();
+        Chapter::factory()->for($targetAct)->count(2)->create();
+
+        $this->actingAs($user)->put(route('chapters.update', $chapter), $this->validPayload($targetAct));
+
+        $this->assertSame(3, $chapter->fresh()->position);
+        $positions = Chapter::where('act_id', $targetAct->id)->pluck('position')->all();
+        $this->assertSame($positions, array_values(array_unique($positions)));
+    }
+
+    public function test_saving_a_chapter_in_its_own_act_keeps_its_position(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $first = Chapter::factory()->for($act)->create();
+        Chapter::factory()->for($act)->create();
+
+        $this->actingAs($user)->put(route('chapters.update', $first), $this->validPayload($act));
+
+        $this->assertSame(1, $first->fresh()->position);
+    }
+
     public function test_a_user_cannot_update_another_users_chapter(): void
     {
         $owner = User::factory()->create();

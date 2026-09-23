@@ -341,6 +341,65 @@ class SceneTest extends TestCase
         $this->assertSame(SceneStatus::Final, $scene->status);
     }
 
+    public function test_the_edit_form_moves_a_scene_to_the_end_of_another_chapter(): void
+    {
+        $user = User::factory()->create();
+        $source = $this->chapterFor($user);
+        $target = Chapter::factory()->for($source->act)->create();
+        $scene = Scene::factory()->for($source)->create();
+        Scene::factory()->for($target)->count(2)->create();
+
+        $this->actingAs($user)
+            ->put(route('scenes.update', $scene), $this->validPayload($target))
+            ->assertRedirect(route('books.scenes.index', $source->act->book));
+
+        $scene = $scene->fresh();
+        $this->assertSame($target->id, $scene->chapter_id);
+        $this->assertSame(3, $scene->position);
+        $positions = Scene::where('chapter_id', $target->id)->pluck('position')->all();
+        $this->assertSame($positions, array_values(array_unique($positions)));
+    }
+
+    public function test_saving_a_scene_in_its_own_chapter_keeps_its_position(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $first = Scene::factory()->for($chapter)->create();
+        Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($user)->put(route('scenes.update', $first), $this->validPayload($chapter));
+
+        $this->assertSame(1, $first->fresh()->position);
+    }
+
+    public function test_the_edit_form_rejects_a_chapter_from_another_project(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $foreignChapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($user)
+            ->put(route('scenes.update', $scene), $this->validPayload($foreignChapter))
+            ->assertSessionHasErrors('chapter_id');
+
+        $this->assertSame($chapter->id, $scene->fresh()->chapter_id);
+    }
+
+    public function test_a_non_owner_cannot_move_a_scene_into_their_own_chapter(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $scene = Scene::factory()->for($this->chapterFor($owner))->create();
+        $otherChapter = $this->chapterFor($other);
+
+        $this->actingAs($other)
+            ->put(route('scenes.update', $scene), $this->validPayload($otherChapter))
+            ->assertForbidden();
+
+        $this->assertNotSame($otherChapter->id, $scene->fresh()->chapter_id);
+    }
+
     public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_the_changed_contents(): void
     {
         $user = User::factory()->create();
