@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Autosave no longer reports a false conflict on a slow network
+## 2026-09-23 — Autosave no longer reports a false conflict on a slow network (#191)
 
 ### Fixed
 
