@@ -298,6 +298,30 @@ describe('registerAutosaveField store dirty tracking', () => {
         expect(field.dirty).toBe(false);
     });
 
+    it('Ctrl-S during a slow save still runs the matcher when the text did not change (#199)', async () => {
+        const server = slowServer();
+        window.axios = { patch: server.patch };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'h0' });
+
+        textarea.value = 'first';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        field.flush({});
+
+        // No more typing: only the matcher request is new.
+        const second = field.flush({ runMatcher: true });
+
+        server.respondNext();
+        await vi.waitFor(() => expect(server.patch).toHaveBeenCalledTimes(2));
+        expect(server.patch.mock.calls[1][1]).toMatchObject({ value: 'first', base_hash: 'h1', run_matcher: true });
+
+        server.respondNext();
+        await second;
+
+        expect(field.state).toBe('saved');
+        expect(field.dirty).toBe(false);
+    });
+
     it('a new save cancels the pending retry, so only one retry chain runs', async () => {
         vi.useFakeTimers();
         const patch = vi.fn()
