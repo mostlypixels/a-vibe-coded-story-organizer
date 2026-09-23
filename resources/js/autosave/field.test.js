@@ -207,6 +207,136 @@ describe('registerAutosaveField store dirty tracking', () => {
         expect(field.baseHash).toBe('new-hash');
     });
 
+    /** A fake server that stores one value and answers 409 to a stale base_hash, like the real one. */
+    function slowServer({ initialHash = 'h0' } = {}) {
+        let storedHash = initialHash;
+        let version = 0;
+        const pending = [];
+
+        const patch = vi.fn((url, body) => new Promise((resolve, reject) => {
+            pending.push(() => {
+                if (body.base_hash !== storedHash) {
+                    reject({ response: { status: 409, headers: {} } });
+
+                    return;
+                }
+
+                version += 1;
+                storedHash = `h${version}`;
+                resolve({ status: 200, headers: {}, data: { hash: storedHash } });
+            });
+        }));
+
+        return {
+            patch,
+            respondNext: () => pending.shift()(),
+            pendingCount: () => pending.length,
+        };
+    }
+
+    it('typing during a slow save queues one follow-up with the new hash, not a false conflict', async () => {
+        vi.useFakeTimers();
+        const server = slowServer();
+        window.axios = { patch: server.patch };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'h0' });
+
+        textarea.value = 'first';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+        expect(server.pendingCount()).toBe(1);
+
+        // The first PATCH is still in flight when two more debounced saves fire.
+        textarea.value = 'first and second';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+        textarea.value = 'first and second and third';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+        expect(server.patch).toHaveBeenCalledTimes(1);
+
+        server.respondNext();
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(server.patch).toHaveBeenCalledTimes(2);
+        expect(server.patch.mock.calls[1][1]).toMatchObject({ value: 'first and second and third', base_hash: 'h1' });
+
+        server.respondNext();
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(field.state).not.toBe('conflict');
+        expect(field.state).toBe('saved');
+        expect(field.dirty).toBe(false);
+        expect(field.baseHash).toBe('h2');
+    });
+
+    it('flush() during a slow save resolves only after the queued follow-up lands', async () => {
+        const server = slowServer();
+        window.axios = { patch: server.patch };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'h0' });
+
+        textarea.value = 'first';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        field.flush({});
+
+        textarea.value = 'first and more';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        let flushed = false;
+        const second = field.flush({ runMatcher: true }).then(() => { flushed = true; });
+
+        server.respondNext();
+        await vi.waitFor(() => expect(server.patch).toHaveBeenCalledTimes(2));
+        expect(flushed).toBe(false);
+        expect(server.patch.mock.calls[1][1]).toMatchObject({ value: 'first and more', base_hash: 'h1', run_matcher: true });
+
+        server.respondNext();
+        await second;
+
+        expect(field.state).toBe('saved');
+        expect(field.dirty).toBe(false);
+    });
+
+    it('a new save cancels the pending retry, so only one retry chain runs', async () => {
+        vi.useFakeTimers();
+        const patch = vi.fn()
+            .mockRejectedValueOnce(new Error('offline'))
+            .mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } });
+        window.axios = { patch };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'hello';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        await field.save({});
+        expect(field.state).toBe('retrying');
+
+        await field.flush({});
+        expect(patch).toHaveBeenCalledTimes(2);
+
+        await vi.advanceTimersByTimeAsync(60_000);
+
+        expect(patch).toHaveBeenCalledTimes(2);
+    });
+
+    it('destroy() cancels a pending retry', async () => {
+        vi.useFakeTimers();
+        const patch = vi.fn().mockRejectedValue(new Error('offline'));
+        window.axios = { patch };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc' });
+
+        // No input event: this test is about the retry timer, not the debounce timer.
+        textarea.value = 'hello';
+        await field.save({});
+
+        field.destroy();
+        await vi.advanceTimersByTimeAsync(60_000);
+
+        expect(patch).toHaveBeenCalledTimes(1);
+    });
+
     it('a save whose text is unchanged on arrival still clears dirty', async () => {
         window.axios = {
             patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),

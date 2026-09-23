@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Autosave no longer reports a false conflict on a slow network (#191)
+
+### Fixed
+
+- Autosave sends one save at a time per field, so typing during a slow save no longer shows "Save conflict".
+- A failed autosave keeps one retry, and a closed field stops retrying.
+
 ## 2026-09-23 — Revisions from the same second keep a stable order (#190)
 
 ### Fixed

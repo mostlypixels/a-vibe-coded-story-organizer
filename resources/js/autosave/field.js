@@ -47,6 +47,9 @@ export function registerAutosaveField(Alpine) {
         state: STATES.IDLE,
         attempt: 0,
         pendingTimer: null,
+        retryTimer: null,
+        inFlight: null,
+        queuedSave: null,
         wasReplay: false,
         baseHash: config.baseHash,
 
@@ -71,6 +74,7 @@ export function registerAutosaveField(Alpine) {
         },
 
         destroy() {
+            clearTimeout(this.retryTimer);
             this.$root.removeEventListener('input', this._onInput);
             this.$root.removeEventListener('wysiwyg:text-changed', this._onInput);
             this.$root.removeEventListener('focusout', this._onFocusOut);
@@ -140,7 +144,44 @@ export function registerAutosaveField(Alpine) {
             return this.save(options);
         },
 
-        async save({ runMatcher = false } = {}) {
+        /**
+         * Send one request at a time. A second request would send the old
+         * base_hash and get a false 409 after the first request succeeds.
+         */
+        save({ runMatcher = false } = {}) {
+            clearTimeout(this.retryTimer);
+            this.retryTimer = null;
+
+            if (this.inFlight) {
+                this.queuedSave = { runMatcher: runMatcher || (this.queuedSave?.runMatcher ?? false) };
+
+                return this.inFlight;
+            }
+
+            this.inFlight = this.sendUntilSettled({ runMatcher }).finally(() => {
+                this.inFlight = null;
+            });
+
+            return this.inFlight;
+        },
+
+        async sendUntilSettled(options) {
+            let next = options;
+
+            while (next) {
+                this.queuedSave = null;
+                const state = await this.send(next);
+                const queued = this.queuedSave;
+                next = null;
+
+                // After a failure, the retry or the next edit sends the latest text.
+                if (queued && state === STATES.SAVED && this.dirty) {
+                    next = queued;
+                }
+            }
+        },
+
+        async send({ runMatcher = false }) {
             const value = this.fieldValue();
 
             this.setState(STATES.SAVING);
@@ -191,15 +232,22 @@ export function registerAutosaveField(Alpine) {
                     }
                 }, SAVED_FADE_MS);
 
-                return;
+                return state;
             }
 
             this.setState(state);
 
             if (state === STATES.RETRYING) {
                 this.attempt += 1;
-                scheduleRetry(() => this.save({ runMatcher }), retryDelayMs(this.attempt, retryAfterMs));
+                // Keep a matcher request that arrived during this request.
+                const retryMatcher = runMatcher || (this.queuedSave?.runMatcher ?? false);
+                this.retryTimer = scheduleRetry(
+                    () => this.save({ runMatcher: retryMatcher }),
+                    retryDelayMs(this.attempt, retryAfterMs),
+                );
             }
+
+            return state;
         },
 
         replayIfQueued() {
