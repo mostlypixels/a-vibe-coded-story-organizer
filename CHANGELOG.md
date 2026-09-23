@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Private media, scoped revision purges, safer page-size redirect
+
+### Changed
+
+- Covers and codex files are private: only the project owner can open them.
+- `php artisan media:move-to-private` moves existing covers and codex files; Docker runs it on start.
+- The revision storage panel counts and deletes revisions of your own projects only.
+
+### Fixed
+
+- Changing the page size always returns you to a page of this site.
+
 ## 2026-09-22 — Import reads only files inside the archive (#184)
 
 ### Fixed
