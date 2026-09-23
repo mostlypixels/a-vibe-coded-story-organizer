@@ -39,12 +39,16 @@ class ProjectRevisionsBrowser
      * @return Collection<int, object{
      *     type: string,
      *     label: string,
+     *     entityCount: int,
+     *     filterNames: list<string>,
      *     books: Collection<int, object{
      *         id: ?int,
      *         name: ?string,
+     *         filterNames: list<string>,
      *         entities: Collection<int, object{
      *             id: int,
      *             name: string,
+     *             filterName: string,
      *             url: string,
      *             fields: Collection<int, object{field: string, label: string, count: int, url: string, entity: string}>
      *         }>
@@ -71,10 +75,15 @@ class ProjectRevisionsBrowser
                     return null;
                 }
 
+                $books = $this->booksFor($slug, $modelClass, $rows, $project);
+                $filterNames = $books->flatMap(fn (object $bookGroup) => $bookGroup->filterNames)->values()->all();
+
                 return (object) [
                     'type' => $slug,
                     'label' => $label,
-                    'books' => $this->booksFor($slug, $modelClass, $rows, $project),
+                    'entityCount' => count($filterNames),
+                    'filterNames' => $filterNames,
+                    'books' => $books,
                 ];
             })
             ->filter()
@@ -87,7 +96,12 @@ class ProjectRevisionsBrowser
         $entities = $this->entitiesFor($slug, $modelClass, $rows, $project);
 
         if (! in_array($slug, self::MANUSCRIPT_GROUPS, true)) {
-            return collect([(object) ['id' => null, 'name' => null, 'entities' => $entities]]);
+            return collect([(object) [
+                'id' => null,
+                'name' => null,
+                'filterNames' => $entities->pluck('filterName')->all(),
+                'entities' => $entities,
+            ]]);
         }
 
         $bookIdByEntity = $this->bookIdsFor($slug, $entities->pluck('id'));
@@ -104,6 +118,7 @@ class ProjectRevisionsBrowser
             ->map(fn (Collection $bookEntities, int $bookId) => (object) [
                 'id' => $bookId,
                 'name' => $booksById->get($bookId)?->displayName() ?? '#'.$bookId,
+                'filterNames' => $bookEntities->pluck('filterName')->all(),
                 'entities' => $bookEntities->values(),
             ])
             ->sortBy(fn (object $bookGroup) => $booksById->get($bookGroup->id)?->position)
@@ -134,7 +149,7 @@ class ProjectRevisionsBrowser
     /**
      * @param  class-string  $modelClass
      * @param  Collection<int, object>  $rows
-     * @return Collection<int, object{id: int, name: string, url: string, fields: Collection}>
+     * @return Collection<int, object{id: int, name: string, filterName: string, url: string, fields: Collection}>
      */
     private function entitiesFor(string $slug, string $modelClass, Collection $rows, Project $project): Collection
     {
@@ -151,9 +166,13 @@ class ProjectRevisionsBrowser
         return $rows
             ->groupBy('revisionable_id')
             ->map(function (Collection $fieldRows, int $id) use ($slug, $names) {
+                $name = $names->get($id)?->revisionDisplayName() ?? '#'.$id;
+
                 return (object) [
                     'id' => $id,
-                    'name' => $names->get($id)?->revisionDisplayName() ?? '#'.$id,
+                    'name' => $name,
+                    // The sidebar filter compares lowercase names on the client.
+                    'filterName' => Str::lower($name),
                     'url' => route('revisions.index', ['entity' => $slug, 'id' => $id]),
                     'fields' => $this->fieldsFor($slug, $id, $fieldRows),
                 ];

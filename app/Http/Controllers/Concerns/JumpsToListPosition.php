@@ -6,8 +6,10 @@ use App\Models\Book;
 use App\Support\ListJump;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * Turns a Go-to request into a redirect, following {@see ResolvesIndexSorting}'s
@@ -66,5 +68,22 @@ trait JumpsToListPosition
         ]).'#'.$fragmentPrefix.'-'.$targetId;
 
         return redirect($url);
+    }
+
+    /**
+     * The group the redirect above landed on, and the first of its rows on
+     * this page. That row carries the `#<prefix>-<id>` anchor, and an id must
+     * stay unique in the document.
+     *
+     * @param  Collection<int, Model>  $rows  The rows on this page.
+     * @param  string  $groupAttribute  'chapter_id' | 'act_id'.
+     * @return array{highlightId: ?int, anchorRowId: ?int}
+     */
+    protected function landedHighlight(Request $request, Collection $rows, string $groupAttribute): array
+    {
+        $highlightId = $request->filled('highlight') ? (int) $request->query('highlight') : null;
+        $anchorRowId = $highlightId ? $rows->firstWhere($groupAttribute, $highlightId)?->id : null;
+
+        return ['highlightId' => $highlightId, 'anchorRowId' => $anchorRowId];
     }
 }

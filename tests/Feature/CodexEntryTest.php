@@ -16,9 +16,11 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Tests\TestCase;
 
 class CodexEntryTest extends TestCase
@@ -1191,7 +1193,7 @@ class CodexEntryTest extends TestCase
         // so this exercises the cleanup in the duplicator's catch.
         CodexMedia::creating(function (CodexMedia $row) use ($media) {
             if ($row->path !== $media->path) {
-                throw new \RuntimeException('Insert failed on purpose.');
+                throw new RuntimeException('Insert failed on purpose.');
             }
         });
 
@@ -1365,6 +1367,27 @@ class CodexEntryTest extends TestCase
         $event = Event::where('title', 'A Death')->firstOrFail();
         $this->assertSame($event->id, $entry->termination_event_id);
         $this->assertTrue($event->plotlines()->where('is_main', true)->exists());
+    }
+
+    public function test_a_failed_update_leaves_no_orphan_inline_event(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $eventCount = Event::count();
+
+        // The last write of the save fails after the inline event exists.
+        $this->mock(RevisionRecorder::class, fn ($mock) => $mock
+            ->shouldReceive('recordManualChanges')->andThrow(new RuntimeException('Save failed.')));
+
+        $this->actingAs($user)->put(route('codex.update', $entry), [
+            'name' => 'A new name',
+            'new_inception_event_title' => 'A Birth',
+            'new_inception_event_datetime' => $project->startEvent()->event_datetime->addDay()->format('Y-m-d\TH:i'),
+        ])->assertServerError();
+
+        $this->assertSame($eventCount, Event::count());
+        $this->assertNull($entry->fresh()->inception_event_id);
     }
 
     public function test_edit_form_names_inline_event_fields_to_match_the_controller(): void

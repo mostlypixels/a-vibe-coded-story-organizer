@@ -21,7 +21,7 @@ class SecondUserSeeder extends Seeder
     public function run(): void
     {
         // The factory, not firstOrCreate: email_verified_at is not fillable, so
-        // firstOrCreate would drop it and lock the user out of the `verified` routes.
+        // firstOrCreate would drop it and leave the user unverified.
         $user = User::where('email', 'writer@example.com')->first()
             ?? User::factory()->create([
                 'name' => 'Writer',

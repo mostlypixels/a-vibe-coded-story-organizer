@@ -23,12 +23,10 @@
 
     @forelse ($tree as $group)
         @php
-            $groupEntities = $group->books->flatMap(fn ($bookGroup) => $bookGroup->entities);
-            $entityNames = $groupEntities->map(fn ($entity) => \Illuminate\Support\Str::lower($entity->name))->values()->all();
             $startOpen = $activeEntity === $group->type;
         @endphp
         <div
-            x-data="{ open: {{ $startOpen ? 'true' : 'false' }}, names: {{ \Illuminate\Support\Js::from($entityNames) }} }"
+            x-data="{ open: {{ $startOpen ? 'true' : 'false' }}, names: {{ \Illuminate\Support\Js::from($group->filterNames) }} }"
             x-show="filter.trim() === '' || names.some(name => name.includes(filter.trim().toLowerCase()))"
             class="mt-4"
         >
@@ -42,24 +40,21 @@
             >
                 <span class="flex items-center gap-2">
                     <span>{{ __($group->label) }}</span>
-                    <x-badge>{{ $groupEntities->count() }}</x-badge>
+                    <x-badge>{{ $group->entityCount }}</x-badge>
                 </span>
                 <x-tabler-chevron-down class="h-4 w-4 transition-transform" x-bind:class="{ '-rotate-90': ! (filter.trim() !== '' || open) }" />
             </button>
 
             <ul id="revision-group-{{ $group->type }}" x-show="filter.trim() !== '' || open" class="mt-1 space-y-3">
                 @foreach ($group->books as $bookGroup)
-                    @php
-                        $bookEntityNames = $bookGroup->entities->map(fn ($entity) => \Illuminate\Support\Str::lower($entity->name))->values()->all();
-                    @endphp
-                    <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from($bookEntityNames) }}.some(name => name.includes(filter.trim().toLowerCase()))">
+                    <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from($bookGroup->filterNames) }}.some(name => name.includes(filter.trim().toLowerCase()))">
                         @if ($bookGroup->name !== null)
                             <p class="px-2 text-xs font-medium text-content-muted truncate">{{ $bookGroup->name }}</p>
                         @endif
 
                         <ul class="space-y-2">
                             @foreach ($bookGroup->entities as $treeEntity)
-                                <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from(\Illuminate\Support\Str::lower($treeEntity->name)) }}.includes(filter.trim().toLowerCase())">
+                                <li x-show="filter.trim() === '' || {{ \Illuminate\Support\Js::from($treeEntity->filterName) }}.includes(filter.trim().toLowerCase())">
                                     @php
                                         $entityIsActive = $activeEntity === $group->type
                                             && $activeId === $treeEntity->id

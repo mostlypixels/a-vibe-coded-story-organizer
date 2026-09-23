@@ -14,8 +14,11 @@ use App\Models\Event;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
+use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Js;
+use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Tests\TestCase;
 
 class SceneTest extends TestCase
@@ -565,6 +568,88 @@ class SceneTest extends TestCase
 
         $mainPlotline = $project->plotlines()->where('is_main', true)->first();
         $this->assertTrue($event->plotlines->contains($mainPlotline));
+    }
+
+    public function test_a_failed_create_leaves_no_orphan_inline_event(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $eventCount = Event::count();
+
+        // The last write of the save fails after the inline event exists.
+        $this->mock(SceneReferenceMatcher::class, fn ($mock) => $mock
+            ->shouldReceive('syncScene')->andThrow(new RuntimeException('Save failed.')));
+
+        $this->actingAs($user)->post(route('books.scenes.store', $chapter->act->book), $this->validPayload($chapter, [
+            'new_event_title' => 'A brand new event',
+            'new_event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
+        ]))->assertServerError();
+
+        $this->assertSame($eventCount, Event::count());
+        $this->assertSame(0, Scene::count());
+    }
+
+    public function test_a_failed_update_leaves_no_orphan_inline_event(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['name' => 'Old name']);
+        $eventCount = Event::count();
+
+        $this->mock(SceneReferenceMatcher::class, fn ($mock) => $mock
+            ->shouldReceive('syncScene')->andThrow(new RuntimeException('Save failed.')));
+
+        $this->actingAs($user)->put(route('scenes.update', $scene), $this->validPayload($chapter, [
+            'name' => 'New name',
+            'new_event_title' => 'A brand new event',
+            'new_event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
+        ]))->assertServerError();
+
+        $this->assertSame($eventCount, Event::count());
+        $this->assertSame('Old name', $scene->fresh()->name);
+    }
+
+    /**
+     * The edit form shares its rules with the create form. These cases pin
+     * each rule on the update side.
+     *
+     * @return array<string, array{0: callable(Chapter): array<string, mixed>, 1: string}>
+     */
+    public static function invalidUpdatePayloads(): array
+    {
+        return [
+            'blank name' => [fn (Chapter $chapter) => ['name' => ''], 'name'],
+            'name over 255 characters' => [fn (Chapter $chapter) => ['name' => str_repeat('a', 256)], 'name'],
+            'unknown status' => [fn (Chapter $chapter) => ['status' => 'not-a-status'], 'status'],
+            'chapter from another book' => [
+                fn (Chapter $chapter) => ['chapter_id' => Chapter::factory()->for(Act::factory()->for(Book::factory()->for($chapter->act->book->project)))->create()->id],
+                'chapter_id',
+            ],
+            'event from another project' => [
+                fn (Chapter $chapter) => ['event_id' => Event::factory()->for(Project::factory()->for($chapter->act->book->project->user))->create()->id],
+                'event_id',
+            ],
+            'mentioned event from another project' => [
+                fn (Chapter $chapter) => ['mentioned_events' => [Event::factory()->for(Project::factory()->for($chapter->act->book->project->user))->create()->id]],
+                'mentioned_events.0',
+            ],
+            'new event title without a date' => [fn (Chapter $chapter) => ['new_event_title' => 'A new event'], 'new_event_datetime'],
+            'new event date without a title' => [fn (Chapter $chapter) => ['new_event_datetime' => now()->addWeek()->format('Y-m-d H:i:s')], 'new_event_title'],
+        ];
+    }
+
+    #[DataProvider('invalidUpdatePayloads')]
+    public function test_the_edit_form_rejects_invalid_input(callable $overrides, string $field): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create(['name' => 'Old name']);
+
+        $this->actingAs($user)
+            ->put(route('scenes.update', $scene), $this->validPayload($chapter, $overrides($chapter)))
+            ->assertSessionHasErrors($field);
+
+        $this->assertSame('Old name', $scene->fresh()->name);
     }
 
     public function test_a_scene_cannot_happen_during_an_event_from_another_project(): void

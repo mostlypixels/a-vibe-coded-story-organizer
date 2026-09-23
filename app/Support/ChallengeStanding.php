@@ -42,4 +42,10 @@ final readonly class ChallengeStanding
         public Collection $dailyTotals,
         public Collection $parTotals,
     ) {}
+
+    /** The even daily pace that reaches the target on the last day. */
+    public function parPerDay(): int
+    {
+        return (int) round($this->target / $this->totalDays);
+    }
 }

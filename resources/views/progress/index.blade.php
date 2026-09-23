@@ -47,7 +47,6 @@
                                 @php
                                     $challenge = $pair['challenge'];
                                     $standing = $pair['standing'];
-                                    $parPerDay = (int) round($standing->target / $standing->totalDays);
                                 @endphp
                                 <li class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                                     <div>
@@ -57,7 +56,7 @@
                                     <span class="text-content-muted">
                                         {{ __(':target words · :par a day', [
                                             'target' => number_format($standing->target),
-                                            'par' => number_format($parPerDay),
+                                            'par' => number_format($standing->parPerDay()),
                                         ]) }}
                                     </span>
                                 </li>

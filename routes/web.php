@@ -63,19 +63,19 @@ Route::get('/robots.txt', RobotsTxtController::class)->name('robots.txt');
 // so every path here (the logo, the auth redirects, a project delete) sends a
 // new writer to the same first-project prompt.
 Route::get('/projects', [ProjectController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware('auth')
     ->name('projects.index');
 
 Route::get('/onboarding', [OnboardingController::class, 'show'])
-    ->middleware(['auth', 'verified'])
+    ->middleware('auth')
     ->name('onboarding');
 
 Route::post('/onboarding', [OnboardingController::class, 'store'])
-    ->middleware(['auth', 'verified'])
+    ->middleware('auth')
     ->name('onboarding.store');
 
 Route::post('/onboarding/demo', [OnboardingController::class, 'installDemo'])
-    ->middleware(['auth', 'verified'])
+    ->middleware('auth')
     ->name('onboarding.demo');
 
 // Only authenticated project pages update users.active_project_id.
