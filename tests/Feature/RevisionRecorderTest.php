@@ -127,7 +127,7 @@ class RevisionRecorderTest extends TestCase
         $this->assertSame(0, $scene->revisions()->where('field', 'description')->count());
         $this->assertSame(0, $scene->revisions()->where('field', 'contents')->count());
 
-        $notesRevision = $scene->revisions()->where('field', 'notes')->latest('created_at')->first();
+        $notesRevision = $scene->revisions()->where('field', 'notes')->latest('created_at')->latest('id')->first();
         $this->assertNotNull($notesRevision);
         $this->assertSame(RevisionOrigin::Manual, $notesRevision->origin);
         $this->assertSame('New notes', $notesRevision->value);
@@ -147,7 +147,7 @@ class RevisionRecorderTest extends TestCase
         $revisions = $scene->revisions()
             ->where('field', 'contents')
             ->whereIn('origin', [RevisionOrigin::Automatic, RevisionOrigin::Manual])
-            ->orderBy('id')
+            ->reorder('id')
             ->get();
 
         $this->assertCount(2, $revisions);
@@ -257,5 +257,58 @@ class RevisionRecorderTest extends TestCase
                 ->where('field', 'notes')
                 ->count(),
         );
+    }
+
+    // ---------------------------------------------------------------------
+    // Same-second ties: the higher ID is the newer row
+    // ---------------------------------------------------------------------
+
+    public function test_the_revisions_relation_puts_the_higher_id_first_in_a_same_second_tie(): void
+    {
+        $this->freezeTime();
+        $scene = Scene::factory()->create();
+
+        // The older row has the field that sorts first, so a timestamp-only order returns it first.
+        $older = $this->sceneRevision($scene, 'contents');
+        $newer = $this->sceneRevision($scene, 'notes');
+
+        $this->assertTrue($scene->revisions()->first()->is($newer));
+        $this->assertSame([$newer->id, $older->id], $scene->revisions()->pluck('id')->all());
+    }
+
+    public function test_last_revision_for_returns_the_higher_id_in_a_same_second_tie(): void
+    {
+        $this->freezeTime();
+        $scene = Scene::factory()->create();
+
+        $this->sceneRevision($scene, 'contents');
+        $newer = $this->sceneRevision($scene, 'contents');
+
+        $this->assertTrue($this->recorder->lastRevisionFor($scene, 'contents')->is($newer));
+    }
+
+    public function test_record_coalesces_into_the_higher_id_in_a_same_second_tie(): void
+    {
+        $this->freezeTime();
+        $scene = Scene::factory()->create();
+        $user = User::factory()->create();
+
+        $this->sceneRevision($scene, 'contents');
+        $newer = $this->sceneRevision($scene, 'contents');
+
+        $revision = $this->recorder->record($scene, 'contents', 'next draft', $user, RevisionOrigin::Automatic);
+
+        $this->assertTrue($revision->is($newer));
+    }
+
+    private function sceneRevision(Scene $scene, string $field): Revision
+    {
+        return Revision::factory()->create([
+            'revisionable_type' => Scene::class,
+            'revisionable_id' => $scene->id,
+            'project_id' => $scene->revisionProject()->id,
+            'field' => $field,
+            'origin' => RevisionOrigin::Automatic,
+        ]);
     }
 }

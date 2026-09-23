@@ -273,7 +273,7 @@ class ChapterTest extends TestCase
         $this->actingAs($user)
             ->put(route('chapters.update', $chapter), $this->validPayload($act, ['description' => 'New description']));
 
-        $revision = $chapter->revisions()->where('field', 'description')->latest('created_at')->first();
+        $revision = $chapter->revisions()->where('field', 'description')->latest('created_at')->latest('id')->first();
 
         $this->assertNotNull($revision);
         $this->assertSame(RevisionOrigin::Manual, $revision->origin);

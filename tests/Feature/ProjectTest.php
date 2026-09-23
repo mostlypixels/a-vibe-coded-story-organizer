@@ -142,7 +142,7 @@ class ProjectTest extends TestCase
             'description' => 'New description',
         ]);
 
-        $revision = $project->revisions()->where('field', 'description')->latest('created_at')->first();
+        $revision = $project->revisions()->where('field', 'description')->latest('created_at')->latest('id')->first();
 
         $this->assertNotNull($revision);
         $this->assertSame(RevisionOrigin::Manual, $revision->origin);

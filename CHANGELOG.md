@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Revisions from the same second keep a stable order
+
+### Fixed
+
+- Revisions saved in the same second now always list newest first, and autosave picks the newest one.
+
 ## 2026-09-23 — Scene edit form moves a scene to another chapter (#189)
 
 ### Fixed

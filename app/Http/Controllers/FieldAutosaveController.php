@@ -109,10 +109,7 @@ class FieldAutosaveController extends Controller
             'word_count' => $wordCount,
             // record() already returned the row it wrote or coalesced into, so the
             // lookup is only needed for the no-op branch, where the client still
-            // wants to know which revision its text currently corresponds to. Reusing
-            // it is also the more precise answer: lastRevisionFor() breaks a
-            // same-second tie by `created_at` alone, and an autosave burst plus the
-            // Save that follows it land in the same second.
+            // wants to know which revision its text currently corresponds to.
             'revision_id' => ($recorded ?? $recorder->lastRevisionFor($model, $field))?->id,
             'saved_at' => now()->toIso8601String(),
         ]);
