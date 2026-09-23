@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Revisions go with their deleted entity
+## 2026-09-23 — Revisions go with their deleted entity (#193)
 
 ### Fixed
 
