@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\ProjectImporter;
 use App\Support\CodexMediaRules;
 use App\Support\ImportRules;
+use App\Support\ServerUploadLimit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -43,6 +44,9 @@ class ImportTest extends TestCase
         // the codex phase copies media bytes to.
         Storage::fake('local');
         Storage::fake('media');
+
+        // CI and Docker use small php.ini upload limits. Settings tests must not depend on them.
+        $this->app->instance(ServerUploadLimit::class, new ServerUploadLimit('1G', '1G'));
     }
 
     protected function tearDown(): void
@@ -558,6 +562,43 @@ class ImportTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->patch(route('admin.data.import-settings'), ['max_archive_megabytes' => 0])
             ->assertSessionHasErrors('max_archive_megabytes');
+    }
+
+    public function test_import_settings_reject_a_size_above_the_server_upload_limit(): void
+    {
+        // post_max_size is the smaller limit here, so it wins.
+        $this->app->instance(ServerUploadLimit::class, new ServerUploadLimit('20M', '8M'));
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->patch(route('admin.data.import-settings'), ['max_archive_megabytes' => 9])
+            ->assertSessionHasErrors('max_archive_megabytes');
+
+        $this->actingAs($user)
+            ->patch(route('admin.data.import-settings'), ['max_archive_megabytes' => 8])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(8 * 1024, ImportSetting::current()->max_archive_kilobytes);
+    }
+
+    public function test_import_settings_have_no_upper_limit_when_php_sets_none(): void
+    {
+        $this->app->instance(ServerUploadLimit::class, new ServerUploadLimit('0', '0'));
+
+        $this->actingAs(User::factory()->create())
+            ->patch(route('admin.data.import-settings'), ['max_archive_megabytes' => 100000])
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_the_import_page_shows_the_server_upload_limit(): void
+    {
+        $this->app->instance(ServerUploadLimit::class, new ServerUploadLimit('20M', '8M'));
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('admin.data.import.index'))
+            ->assertOk()
+            ->assertSee(__('The server accepts uploads up to :size MB.', ['size' => 8]))
+            ->assertSee('max="8"', escape: false);
     }
 
     // ---------------------------------------------------------------------

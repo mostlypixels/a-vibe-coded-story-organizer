@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
+use App\Http\Controllers\Concerns\ValidatesIndexFilters;
 use App\Http\Requests\DuplicateEntityRequest;
 use App\Http\Requests\StoreSceneRequest;
 use App\Http\Requests\UpdateSceneRequest;
@@ -20,6 +21,7 @@ use App\Services\SceneDuplicator;
 use App\Services\SceneReferenceMatcher;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
+use App\Support\LikeSearch;
 use App\Support\PageSize;
 use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection;
@@ -37,10 +39,12 @@ class SceneController extends Controller
     use RedirectsAfterSave;
     use ReordersSiblings;
     use ResolvesIndexSorting;
+    use ValidatesIndexFilters;
 
     public function index(Request $request, Book $book): View|RedirectResponse
     {
         $this->authorize('view', $book->project);
+        $this->validateIndexFilters($request, ['chapter']);
 
         // The dropdown's own list, which is also the story-ordered id list the jump
         // arithmetic needs — one query serves both.
@@ -63,7 +67,7 @@ class SceneController extends Controller
         // total" is the total of the list on screen across all its pages, so it is
         // built from this same filtered query, not from the book.
         $filtered = $book->sceneQuery()
-            ->when($request->filled('search'), fn ($query) => $query->where('scenes.name', 'like', '%'.$request->query('search').'%'))
+            ->when($request->filled('search'), fn ($query) => LikeSearch::whereContains($query, 'scenes.name', $request->query('search')))
             ->when($request->filled('chapter'), fn ($query) => $query->where('scenes.chapter_id', $request->query('chapter')));
 
         // A query, never a hydrated collection: summing in PHP is the cost this

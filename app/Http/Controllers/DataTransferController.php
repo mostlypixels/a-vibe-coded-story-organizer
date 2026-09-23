@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ImportPhase;
 use App\Models\ImportSetting;
+use App\Support\ServerUploadLimit;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -62,7 +63,7 @@ class DataTransferController extends Controller
      * The import page: upload form + the global ImportSetting singleton (size
      * cap + background toggle) + the user's still-in-progress imports.
      */
-    public function import(Request $request): View
+    public function import(Request $request, ServerUploadLimit $serverUploadLimit): View
     {
         // Only imports that are NOT completed are actionable (resume/discard);
         // a completed import has nothing left to show here.
@@ -74,6 +75,7 @@ class DataTransferController extends Controller
         return view('admin.data.import', [
             'importSetting' => ImportSetting::current(),
             'imports' => $imports,
+            'serverUploadMegabytes' => $serverUploadLimit->megabytes(),
         ]);
     }
 }

@@ -29,12 +29,17 @@
             @csrf
             @method('patch')
 
-            <x-field name="max_archive_megabytes" :label="__('Maximum archive size (MB)')">
+            <x-field
+                name="max_archive_megabytes"
+                :label="__('Maximum archive size (MB)')"
+                :hint="$serverUploadMegabytes === null ? null : __('The server accepts uploads up to :size MB.', ['size' => $serverUploadMegabytes])"
+            >
                 <x-text-input
                     id="max_archive_megabytes"
                     type="number"
                     name="max_archive_megabytes"
                     min="1"
+                    :max="$serverUploadMegabytes"
                     :value="old('max_archive_megabytes', intdiv($importSetting->max_archive_kilobytes, 1024))"
                     class="mt-1 block w-32"
                 />
