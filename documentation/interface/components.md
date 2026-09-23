@@ -58,9 +58,15 @@ Reuse a component before adding local Blade and Tailwind markup.
 | --- | --- |
 | `x-dropdown` | Anchored menu |
 | `x-popover` | Small contextual panel |
+| `x-disclosure-button` | Trigger button for `x-dropdown` and `x-popover` |
 | `x-tooltip` | Hover and focus hint |
 | `x-dialog` | Application dialog built on `x-modal` |
 | `x-modal` | Low-level focus-trapped modal shell |
+
+Put an `x-disclosure-button` in the `trigger` slot of `x-dropdown` or `x-popover`. It reads the panel id through `@aware` and sets `aria-expanded` and `aria-controls`. A plain `<button>` there gets neither.
+
+> [!NOTE]
+> A one-off toggle outside these components needs the same attributes by hand: a static `aria-expanded` for the first render, an Alpine `:aria-expanded` binding, and an `aria-controls` that names a unique panel id.
 
 `x-modal` owns focus trapping, Escape handling, scroll locking, and its scrim. Use `x-dialog` for normal confirmation and message dialogs.
 

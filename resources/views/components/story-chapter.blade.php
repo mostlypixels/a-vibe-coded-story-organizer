@@ -14,7 +14,14 @@
         @forelse ($chapter->scenes as $scene)
             <section x-data="{ open: true }" @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="space-y-2 pb-4 border-b border-border last:border-b-0 last:pb-0 {{ $scene->event ? '' : 'border-l-4 border-l-danger pl-4' }}">
                 <div class="flex items-center justify-between">
-                    <button type="button" @click="open = ! open" class="flex items-center gap-2 text-sm font-light text-content-muted">
+                    <button
+                        type="button"
+                        @click="open = ! open"
+                        aria-expanded="true"
+                        :aria-expanded="open.toString()"
+                        aria-controls="scene-{{ $scene->id }}-prose"
+                        class="flex items-center gap-2 text-sm font-light text-content-muted"
+                    >
                         <x-tabler-chevron-down class="h-4 w-4 text-content-muted transition-transform" x-bind:class="{ 'rotate-180': open }" />
                         <span data-scene-number class="text-content-subtle">{{ $numbering->scene($scene) }}.</span>
                         {{ $scene->name }}
@@ -50,7 +57,7 @@
                     </div>
                 </div>
 
-                <x-scene-prose :scene="$scene" x-show="open" x-transition class="text-[0.8125rem]" />
+                <x-scene-prose :scene="$scene" id="scene-{{ $scene->id }}-prose" x-show="open" x-transition class="text-[0.8125rem]" />
             </section>
         @empty
             <p class="text-sm text-content-muted">{{ __('No scenes in this chapter yet.') }}</p>

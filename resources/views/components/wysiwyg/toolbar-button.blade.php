@@ -9,6 +9,8 @@
     'dropdown' => false,
 ])
 
+@aware(['disclosureId' => null])
+
 @php
     $clickExpression = $action ?? ($command
         ? 'cmd('.Illuminate\Support\Js::from($command)
@@ -28,6 +30,15 @@
 
     if ($clickExpression) {
         $buttonAttributes = $buttonAttributes->merge(['@click' => $clickExpression]);
+    }
+
+    // A menu trigger names the menu it opens. The id comes from the parent x-dropdown.
+    if ($dropdown && $disclosureId) {
+        $buttonAttributes = $buttonAttributes->merge([
+            'aria-expanded' => 'false',
+            ':aria-expanded' => 'open.toString()',
+            'aria-controls' => $disclosureId,
+        ]);
     }
 
     if ($isActiveExpression) {

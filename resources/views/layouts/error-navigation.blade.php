@@ -10,10 +10,10 @@
             @auth
                 <x-dropdown align="left" width="w-56" offset-classes="mt-0">
                     <x-slot name="trigger">
-                        <button type="button" class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
+                        <x-disclosure-button class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
                             {{ $navigation->hasProject() ? $navigation->project->name : __('Choose a project') }}
                             <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />
-                        </button>
+                        </x-disclosure-button>
                     </x-slot>
 
                     <x-slot name="content">
@@ -35,13 +35,13 @@
             <div class="flex items-center pe-2">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-nav-content bg-transparent focus:outline-hidden transition ease-in-out duration-150">
+                        <x-disclosure-button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-nav-content bg-transparent focus:outline-hidden transition ease-in-out duration-150">
                             <div>{{ Auth::user()->name }}</div>
 
                             <div class="ms-1">
                                 <x-tabler-chevron-down class="h-4 w-4" />
                             </div>
-                        </button>
+                        </x-disclosure-button>
                     </x-slot>
 
                     <x-slot name="content">
