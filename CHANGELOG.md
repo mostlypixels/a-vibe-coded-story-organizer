@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — Toggle buttons tell screen readers if they are open
+## 2026-09-23 — Toggle buttons tell screen readers if they are open (#203)
 
 ### Fixed
 
