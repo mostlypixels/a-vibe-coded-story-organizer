@@ -32,6 +32,15 @@ class SceneReferenceMatcher
     private const MINIMUM_ALIAS_LENGTH = 3;
 
     /**
+     * PCRE refuses to compile a pattern much above 60 KB. Terms go into batches of
+     * this many pattern bytes, so a codex with thousands of names still compiles.
+     */
+    private const MAXIMUM_PATTERN_BYTES = 20_000;
+
+    /** A project resync reads scenes in batches of this size to keep memory low. */
+    private const SCENE_BATCH_SIZE = 100;
+
+    /**
      * Recompute one scene's full reference set against every codex entry in its project.
      * Full resync: replaces the scene's entire pivot set, dropping any stale rows.
      */
@@ -55,7 +64,11 @@ class SceneReferenceMatcher
 
         // Scenes hang off the project via chapter → act; Project::sceneQuery() owns
         // that walk (see its docblock for why it is a Builder, not a relation).
-        $scenes = $project->sceneQuery()->get();
+        // Matching needs only the id and the contents. Batches keep a long
+        // manuscript out of memory.
+        $scenes = $project->sceneQuery()
+            ->select(['id', 'contents'])
+            ->lazyById(self::SCENE_BATCH_SIZE);
 
         foreach ($scenes as $scene) {
             $scene->codexReferences()->sync($this->matchScene($scene, $candidates));
@@ -71,15 +84,20 @@ class SceneReferenceMatcher
      * legitimately share an identical name/alias, and per the "both link independently"
      * decision each must resolve when that term matches.
      *
-     * Returns ['pattern' => ?string, 'map' => array<string, array<int, int>>]. `pattern`
-     * is null when the project has no eligible terms (nothing can match → sync to empty).
+     * Returns ['patterns' => list<string>, 'map' => array<string, array<int, int>>].
+     * `patterns` is empty when the project has no eligible terms (nothing can match →
+     * sync to empty).
      *
-     * @return array{pattern: ?string, map: array<string, array<int, int>>}
+     * @return array{patterns: list<string>, map: array<string, array<int, int>>}
      */
     private function buildCandidates(Project $project): array
     {
         // One query for the entries, one for all their aliases (no N+1 in the loop).
-        $entries = $project->codexEntries()->with('aliases')->get();
+        // Only the matched columns: a description can be long.
+        $entries = $project->codexEntries()
+            ->select(['id', 'name'])
+            ->with('aliases:id,codex_entry_id,alias')
+            ->get();
 
         /** @var array<string, array<int, int>> $map */
         $map = [];
@@ -93,11 +111,7 @@ class SceneReferenceMatcher
             }
         }
 
-        if ($map === []) {
-            return ['pattern' => null, 'map' => []];
-        }
-
-        // Single combined regex: an alternation of all quoted terms wrapped in one
+        // Combined regex: an alternation of all quoted terms wrapped in one
         // capturing group, bounded by Unicode-aware whole-word lookaround. Order of the
         // alternatives is irrelevant — the boundaries alone stop a short term (e.g. "Mel")
         // matching inside a longer one (e.g. "Melody"), so no length-sorting is needed.
@@ -105,14 +119,38 @@ class SceneReferenceMatcher
         // Hyphen is part of the word, not a boundary: it is included in the boundary class
         // so "Jean" never matches inside "Jean-Luc". The `u` modifier makes \p{L}/\p{N}
         // Unicode-aware; there is deliberately NO `i` flag — matching is case-sensitive.
-        $quotedTerms = array_map(
-            fn (string $term): string => preg_quote($term, '/'),
-            array_keys($map),
-        );
+        $patterns = [];
+        $batch = [];
+        $batchBytes = 0;
 
-        $pattern = '/(?<![\p{L}\p{N}\-])('.implode('|', $quotedTerms).')(?![\p{L}\p{N}\-])/u';
+        foreach (array_keys($map) as $term) {
+            $quoted = preg_quote((string) $term, '/');
 
-        return ['pattern' => $pattern, 'map' => $map];
+            if ($batch !== [] && $batchBytes + strlen($quoted) > self::MAXIMUM_PATTERN_BYTES) {
+                $patterns[] = $this->patternFor($batch);
+                $batch = [];
+                $batchBytes = 0;
+            }
+
+            $batch[] = $quoted;
+            $batchBytes += strlen($quoted) + 1;
+        }
+
+        if ($batch !== []) {
+            $patterns[] = $this->patternFor($batch);
+        }
+
+        return ['patterns' => $patterns, 'map' => $map];
+    }
+
+    /**
+     * One whole-word regex over a batch of quoted terms.
+     *
+     * @param  list<string>  $quotedTerms
+     */
+    private function patternFor(array $quotedTerms): string
+    {
+        return '/(?<![\p{L}\p{N}\-])('.implode('|', $quotedTerms).')(?![\p{L}\p{N}\-])/u';
     }
 
     /**
@@ -150,12 +188,12 @@ class SceneReferenceMatcher
      * Empty/null contents, a project with no eligible terms, or malformed UTF-8 all yield
      * an empty set with no error — a bad scene must never block its own save.
      *
-     * @param  array{pattern: ?string, map: array<string, array<int, int>>}  $candidates
+     * @param  array{patterns: list<string>, map: array<string, array<int, int>>}  $candidates
      * @return array<int, int>
      */
     private function matchScene(Scene $scene, array $candidates): array
     {
-        if ($candidates['pattern'] === null) {
+        if ($candidates['patterns'] === []) {
             return [];
         }
 
@@ -175,24 +213,27 @@ class SceneReferenceMatcher
             return [];
         }
 
-        // preg_match_all with the `u` modifier returns false (a hard failure, not "zero
-        // matches") on invalid UTF-8 that survived normalization — check for it explicitly.
-        $result = preg_match_all($candidates['pattern'], $normalized, $matches, PREG_OFFSET_CAPTURE);
-
-        if ($result === false) {
-            $this->logUnmatchable($scene);
-
-            return [];
-        }
-
         // Each matched substring is, by case-sensitivity, the term's exact stored (NFC)
         // text — look it up directly in the candidate map. A set keyed by id dedupes an
         // entry that matched via several of its terms.
         $matchedIds = [];
 
-        foreach ($matches[1] as [$matchedText]) {
-            foreach ($candidates['map'][$matchedText] ?? [] as $entryId) {
-                $matchedIds[$entryId] = $entryId;
+        // > [!WARNING]
+        // > Inside one pattern, the first alternative that fits wins, so "Mel" can hide
+        // > "Mel Gibson". Two batches both report their own match. Only a very large
+        // > codex has more than one batch.
+        foreach ($candidates['patterns'] as $pattern) {
+            // false is a hard failure, not "zero matches": for example, a PCRE limit.
+            if (preg_match_all($pattern, $normalized, $matches) === false) {
+                $this->logMatchFailure($scene, preg_last_error_msg());
+
+                return [];
+            }
+
+            foreach ($matches[1] as $matchedText) {
+                foreach ($candidates['map'][$matchedText] ?? [] as $entryId) {
+                    $matchedIds[$entryId] = $entryId;
+                }
             }
         }
 
@@ -217,6 +258,18 @@ class SceneReferenceMatcher
     {
         Log::warning('Scene contents were not valid UTF-8; skipped codex reference matching.', [
             'scene_id' => $scene->id,
+        ]);
+    }
+
+    /**
+     * The regex failed on valid text. Like a UTF-8 failure, it must not block a
+     * save. The log names the real PCRE error so the cause is visible.
+     */
+    private function logMatchFailure(Scene $scene, string $error): void
+    {
+        Log::warning('Codex reference matching failed; the scene keeps no references.', [
+            'scene_id' => $scene->id,
+            'error' => $error,
         ]);
     }
 }

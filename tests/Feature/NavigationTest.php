@@ -520,9 +520,10 @@ class NavigationTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('Bbb', $html);
-        $this->assertStringContainsString('Fff', $html);
-        $this->assertStringNotContainsString('Ggg', $html);
+        // Match the link text: a bare name can occur by chance in the random CSRF token.
+        $this->assertStringContainsString('>Bbb</a>', $html);
+        $this->assertStringContainsString('>Fff</a>', $html);
+        $this->assertStringNotContainsString('>Ggg</a>', $html);
     }
 
     public function test_the_picker_asks_for_a_project_when_none_is_open(): void

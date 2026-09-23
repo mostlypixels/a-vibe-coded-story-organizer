@@ -174,10 +174,15 @@ class Project extends Model
      * Every scene in this project, as a query to build on. The two-level twin of
      * {@see self::chapterQuery()} — scenes reach the project through
      * chapter → act — and a Builder for the same reason.
+     *
+     * Nested `whereIn` subqueries, not `whereHas`: SQLite then walks the parent-key
+     * indexes down from the project. `whereHas` reads every scene of every project.
      */
     public function sceneQuery(): Builder
     {
-        return Scene::query()->whereHas('chapter.act.book', fn (Builder $query) => $query->where('project_id', $this->id));
+        return Scene::query()->whereIn('scenes.chapter_id', Chapter::query()->select('chapters.id')
+            ->whereIn('chapters.act_id', Act::query()->select('acts.id')
+                ->whereIn('acts.book_id', Book::query()->select('books.id')->where('books.project_id', $this->id))));
     }
 
     /**
