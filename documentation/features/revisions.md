@@ -44,8 +44,9 @@ Prune and purge have different safety rules.
 
 | Operation | Scope |
 | --- | --- |
-| Prune | Old, automatic, unlabeled rows; never the newest row for a field |
-| Purge | Explicit categories selected by the user |
+| Prune | Old, automatic, unlabeled rows of all projects; never the newest row for a field |
+| Purge (admin page) | Explicit categories selected by the user, in that user's projects only |
+| Purge (`revisions:purge`) | Explicit categories; all projects unless `--project` narrows it |
 
 Newest means the greatest `(created_at, id)`. `Revision::prunable()` uses a newer-sibling check instead of `MAX(id)` because backdated baselines can have a newer ID and an older timestamp.
 

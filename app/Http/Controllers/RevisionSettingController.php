@@ -8,6 +8,7 @@ use App\Models\RevisionSetting;
 use App\Services\RevisionPurger;
 use App\Support\RevisionPurgeResult;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -20,6 +21,9 @@ use Illuminate\View\View;
  * `revisions:purge` artisan command (App\Console\Commands\PurgeRevisions).
  * Both go through the same service so the deletion rules can never drift
  * between the CLI and this page. This controller owns no purge rules itself.
+ *
+ * The page is open to every signed-in user, so the storage panel and its purges
+ * touch only the projects of that user. The retention window stays global.
  */
 class RevisionSettingController extends Controller
 {
@@ -30,11 +34,11 @@ class RevisionSettingController extends Controller
      */
     private const OLD_AUTOMATIC_THRESHOLD_DAYS = 365;
 
-    public function edit(RevisionPurger $purger): View
+    public function edit(Request $request, RevisionPurger $purger): View
     {
         return view('admin.revisions.edit', [
             'retentionDays' => RevisionSetting::current()->retention_days,
-            'storage' => $this->storageBreakdown($purger),
+            'storage' => $this->storageBreakdown($purger, $request->user()->id),
         ]);
     }
 
@@ -77,9 +81,9 @@ class RevisionSettingController extends Controller
      * router to RevisionPurger::CATEGORIES, so an unknown value never
      * reaches here.
      */
-    public function purgeCategory(string $category, RevisionPurger $purger): RedirectResponse
+    public function purgeCategory(Request $request, string $category, RevisionPurger $purger): RedirectResponse
     {
-        $result = $purger->purge($category);
+        $result = $purger->purge($category, userId: $request->user()->id);
 
         return redirect()
             ->route('admin.revisions.edit')
@@ -93,11 +97,12 @@ class RevisionSettingController extends Controller
      * Unlike prune, this is explicitly allowed to remove the last remaining
      * automatic revision for a field, since the user asked for it directly.
      */
-    public function purgeOldAutomatic(RevisionPurger $purger): RedirectResponse
+    public function purgeOldAutomatic(Request $request, RevisionPurger $purger): RedirectResponse
     {
         $result = $purger->purge(
             RevisionPurger::CATEGORY_AUTOMATIC,
             before: now()->subDays(self::OLD_AUTOMATIC_THRESHOLD_DAYS),
+            userId: $request->user()->id,
         );
 
         return redirect()
@@ -115,12 +120,12 @@ class RevisionSettingController extends Controller
      *
      * @return array<string, RevisionPurgeResult>
      */
-    private function storageBreakdown(RevisionPurger $purger): array
+    private function storageBreakdown(RevisionPurger $purger, int $userId): array
     {
         $breakdown = [];
 
         foreach (RevisionPurger::CATEGORIES as $category) {
-            $breakdown[$category] = $purger->purge($category, dryRun: true);
+            $breakdown[$category] = $purger->purge($category, dryRun: true, userId: $userId);
         }
 
         return $breakdown;

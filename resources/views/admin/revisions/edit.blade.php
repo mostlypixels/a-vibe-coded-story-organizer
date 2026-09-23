@@ -62,7 +62,7 @@
         <x-slot name="header">
             <x-heading level="3">{{ __('Revision storage') }}</x-heading>
             <p class="mt-1 text-sm text-content-muted">
-                {{ __('Bulk-delete revisions by category or age. Unlike the nightly cleanup above, this can remove labeled, manual, and reverted revisions — use it deliberately.') }}
+                {{ __('Bulk-delete revisions of your projects by category or age. Unlike the nightly cleanup above, this can remove labeled, manual, and reverted revisions — use it deliberately.') }}
             </p>
         </x-slot>
 

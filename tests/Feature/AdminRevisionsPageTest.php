@@ -171,7 +171,7 @@ class AdminRevisionsPageTest extends TestCase
     public function test_purge_category_removes_exactly_the_targeted_category(): void
     {
         $user = User::factory()->create();
-        $rows = $this->seedOneRevisionPerCategory();
+        $rows = $this->seedOneRevisionPerCategory(Project::factory()->for($user)->create());
 
         $response = $this->actingAs($user)->delete(route('admin.revisions.purge-category', 'automatic'));
 
@@ -179,6 +179,40 @@ class AdminRevisionsPageTest extends TestCase
         $this->assertModelMissing($rows['automatic']);
         $this->assertModelExists($rows['manual']);
         $this->assertModelExists($rows['labeled']);
+    }
+
+    public function test_purge_category_leaves_another_users_revisions_alone(): void
+    {
+        $user = User::factory()->create();
+        $mine = $this->seedOneRevisionPerCategory(Project::factory()->for($user)->create());
+        $theirs = $this->seedOneRevisionPerCategory();
+
+        $this->actingAs($user)->delete(route('admin.revisions.purge-category', 'automatic'));
+
+        $this->assertModelMissing($mine['automatic']);
+        $this->assertModelExists($theirs['automatic']);
+    }
+
+    public function test_purge_old_automatic_leaves_another_users_revisions_alone(): void
+    {
+        $user = User::factory()->create();
+        $mine = $this->seedAutomaticRevision(project: Project::factory()->for($user)->create(), daysOld: 400);
+        $theirs = $this->seedAutomaticRevision(daysOld: 400);
+
+        $this->actingAs($user)->delete(route('admin.revisions.purge-old-automatic'));
+
+        $this->assertModelMissing($mine);
+        $this->assertModelExists($theirs);
+    }
+
+    public function test_storage_panel_counts_only_the_signed_in_users_revisions(): void
+    {
+        $user = User::factory()->create();
+        $this->seedOneRevisionPerCategory();
+
+        $response = $this->actingAs($user)->get(route('admin.revisions.edit'));
+
+        $this->assertSame(0, $response->viewData('storage')['automatic']->count);
     }
 
     public function test_purge_category_rejects_an_unregistered_category_at_the_router(): void
@@ -193,15 +227,16 @@ class AdminRevisionsPageTest extends TestCase
     public function test_purge_old_automatic_removes_only_automatic_revisions_older_than_one_year(): void
     {
         $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
 
-        $old = $this->seedAutomaticRevision(daysOld: 400);
-        $recent = $this->seedAutomaticRevision(daysOld: 5);
+        $old = $this->seedAutomaticRevision(project: $project, daysOld: 400);
+        $recent = $this->seedAutomaticRevision(project: $project, daysOld: 5);
         // The "automatic" category matches on origin alone (RevisionPurger's own
         // rule) — a label does not exempt a row from an explicit,
         // deliberate purge the way it exempts one from the daily prune sweep.
-        $labeledOld = $this->seedAutomaticRevision(daysOld: 400, label: 'Keep me');
+        $labeledOld = $this->seedAutomaticRevision(project: $project, daysOld: 400, label: 'Keep me');
         // Different origin entirely: never touched by the "automatic" category.
-        $manualOld = $this->seedAutomaticRevision(daysOld: 400, origin: RevisionOrigin::Manual);
+        $manualOld = $this->seedAutomaticRevision(project: $project, daysOld: 400, origin: RevisionOrigin::Manual);
 
         $response = $this->actingAs($user)->delete(route('admin.revisions.purge-old-automatic'));
 
@@ -218,8 +253,9 @@ class AdminRevisionsPageTest extends TestCase
         // purge is allowed to remove even the only/newest automatic revision
         // left for a field.
         $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
 
-        $onlyRevision = $this->seedAutomaticRevision(daysOld: 400);
+        $onlyRevision = $this->seedAutomaticRevision(project: $project, daysOld: 400);
 
         $this->assertEmpty((new Revision)->prunable()->pluck('id'));
 
@@ -255,9 +291,9 @@ class AdminRevisionsPageTest extends TestCase
     /**
      * @return array<string, Revision>
      */
-    private function seedOneRevisionPerCategory(): array
+    private function seedOneRevisionPerCategory(?Project $project = null): array
     {
-        $project = Project::factory()->create();
+        $project ??= Project::factory()->create();
 
         $base = [
             'revisionable_type' => Project::class,
