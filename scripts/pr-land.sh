@@ -37,6 +37,10 @@ MERGE_POLL_INTERVAL_SECONDS=5   # 24 * 5s = 2 min cap
 ARM_ATTEMPTS=6
 ARM_INTERVAL_SECONDS=5
 
+# The check that must pass before a merge (CLAUDE.md). CodeQL checks register
+# first, so a watch that starts before this one is listed can end without it.
+REQUIRED_CHECK=tests
+
 usage() {
     echo "usage: pr-land.sh <title> <body-file>" >&2
 }
@@ -217,17 +221,18 @@ Co-Authored-By: ${coauthor:-Claude <noreply@anthropic.com>}"
         echo "pr-land.sh: continuing — the PR will be merged directly once checks are green." >&2
     fi
 
-    # Checks take a few seconds to register after the PR opens; "no checks
-    # reported" from `gh pr checks` at this point means "not yet", not "failed".
-    # Wait (bounded) for at least one check to appear before watching.
-    echo "pr-land.sh: waiting for CI checks to register on PR #$pr_number..."
+    # Checks take a few seconds to register after the PR opens. Wait (bounded)
+    # until `gh pr checks` itself lists the required check. The status rollup
+    # can fill first, and then `--watch` fails with "no checks reported".
+    echo "pr-land.sh: waiting for the '$REQUIRED_CHECK' check to register on PR #$pr_number..."
     local wait_attempt
     for wait_attempt in $(seq 1 18); do
-        if gh pr checks "$pr_number" >/dev/null 2>&1 || [ "$(gh pr view "$pr_number" --json statusCheckRollup --jq '.statusCheckRollup | length')" -gt 0 ]; then
+        # The exit code is non-zero while checks are pending, so read the check names.
+        if gh pr checks "$pr_number" --json name --jq '.[].name' 2>/dev/null | grep -qx "$REQUIRED_CHECK"; then
             break
         fi
         if [ "$wait_attempt" -eq 18 ]; then
-            echo "pr-land.sh: FAILED: no CI checks appeared on PR #$pr_number after ~90s." >&2
+            echo "pr-land.sh: FAILED: the '$REQUIRED_CHECK' check did not appear on PR #$pr_number after ~90s." >&2
             echo "pr-land.sh: PR: $pr_url" >&2
             exit 1
         fi
