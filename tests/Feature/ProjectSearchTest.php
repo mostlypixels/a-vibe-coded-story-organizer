@@ -841,4 +841,70 @@ class ProjectSearchTest extends TestCase
         // Row count per page is the reader's preference now, not a search setting.
         $this->assertNull(config('search.per_page'));
     }
+
+    /**
+     * Pins how scene contents match: case and accents fold both ways, and a
+     * character with a LIKE meaning is literal. The SQL pre-filter must keep this.
+     */
+    public function test_contents_match_ignores_case_and_accents_and_reads_like_characters_literally(): void
+    {
+        $project = $this->project();
+        $chapter = $this->chapterIn($project);
+
+        $accented = Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'Ève met MÉLUSINE by the sea', 'description' => 'x']);
+        $plain = Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'eve met melusine here', 'description' => 'x']);
+        $bang = Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'she cried stop!now', 'description' => 'x']);
+        Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'nobody at all', 'description' => 'x']);
+
+        $ids = fn (string $query, SearchMode $mode = SearchMode::AllTerms) => $this->search($project, $query, $mode)
+            ->scenes->map(fn (SearchResultRow $row) => $row->entity->id)->all();
+
+        $this->assertSame([$accented->id, $plain->id], $ids('melusine'));
+        $this->assertSame([$accented->id, $plain->id], $ids('ÉVE Mélusine'));
+        $this->assertSame([$accented->id], $ids('eve met mélusine by', SearchMode::ExactPhrase));
+        $this->assertSame([$bang->id], $ids('stop!now'));
+        $this->assertSame([$plain->id, $bang->id], $ids('here stop!', SearchMode::AnyTerm));
+        $this->assertSame([], $ids('st_p'));
+    }
+
+    /** Pins AND across contents and another field, with the snippet from contents. */
+    public function test_and_mode_combines_a_contents_term_with_a_name_term(): void
+    {
+        $project = $this->project();
+        $chapter = $this->chapterIn($project);
+
+        Scene::factory()->for($chapter)->create(['name' => 'Harbour', 'contents' => 'the ship docks at night', 'description' => 'x']);
+        Scene::factory()->for($chapter)->create(['name' => 'Harbour', 'contents' => 'nothing moves', 'description' => 'x']);
+
+        $rows = $this->search($project, 'harbour ship')->scenes;
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(['Name', 'Contents'], $rows->first()->fieldLabels);
+        $this->assertStringContainsString('Harbour', $rows->first()->snippet);
+    }
+
+    /**
+     * Search must not read the contents of a scene that cannot match. A long
+     * manuscript then stays in the database.
+     */
+    public function test_search_does_not_load_the_contents_of_scenes_that_cannot_match(): void
+    {
+        $project = $this->project();
+        $chapter = $this->chapterIn($project);
+
+        $match = Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'the lantern glows', 'description' => 'x']);
+        $other = Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => str_repeat('a long quiet chapter ', 50), 'description' => 'x']);
+
+        $loadedContents = [];
+        \Illuminate\Support\Facades\Event::listen('eloquent.retrieved: '.Scene::class, function (Scene $scene) use (&$loadedContents) {
+            $loadedContents[$scene->id] = $scene->getAttributes()['contents'] ?? null;
+        });
+
+        $results = $this->search($project, 'lantern');
+
+        $this->assertCount(1, $results->scenes);
+        $this->assertSame('the lantern glows', $loadedContents[$match->id]);
+        $this->assertArrayHasKey($other->id, $loadedContents);
+        $this->assertNull($loadedContents[$other->id], 'the contents of a scene that cannot match must stay in the database');
+    }
 }

@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Faster codex matching and search in large projects
+
+### Changed
+
+- Search reads the text of a scene only when that scene can contain a search word.
+- Codex mention matching reads scenes in small batches and loads only the columns it needs.
+- New database indexes speed up the walk from a project to its scenes and codex aliases.
+
+### Fixed
+
+- Saving a codex entry no longer fails when the project has thousands of names and aliases.
+- A failed codex mention match logs the real cause instead of a wrong UTF-8 message.
+
 ## 2026-09-23 — Small input gaps in list searches and import settings (#201)
 
 ### Fixed

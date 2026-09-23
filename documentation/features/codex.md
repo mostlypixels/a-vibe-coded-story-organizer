@@ -83,6 +83,9 @@ Post-commit upload failure can save an entry with fewer files than requested. Th
 - Normalize both sides to Unicode NFC.
 - Replace the complete pivot set with `sync()`.
 - Log malformed UTF-8 and return no matches. Do not block a save.
+- Log any other regex failure with its PCRE error. Do not block a save.
+- Split the terms into several regexes when one regex gets too large for PCRE.
+- Read scenes in batches, with only the id and the contents.
 
 Entry search is different. It uses a case-insensitive SQL substring match to help users find entries.
 

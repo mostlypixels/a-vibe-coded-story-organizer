@@ -13,6 +13,7 @@ use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Support\AccentFolder;
+use App\Support\LikeSearch;
 use App\Support\RichText;
 use App\Support\RichTextFields;
 use App\Support\SearchResultRow;
@@ -30,6 +31,7 @@ use InvalidArgumentException;
  * Matching runs in PHP for portable accent folding. It is case-insensitive and
  * accent-insensitive. AND terms can match different fields on the same entity.
  * Rich HTML becomes plain text before matching. Every query remains project-scoped.
+ * SQL only skips the scene contents that cannot match; PHP makes every decision.
  */
 class ProjectSearch
 {
@@ -183,13 +185,16 @@ class ProjectSearch
      */
     private function searchEntityFor(SearchDomain $domain, Project $project, array $terms, SearchMode $mode, Collection $books, SearchScope $scope): Collection
     {
-        [$query, $fields] = $this->queryFor($domain, $project, $scope);
+        [$query, $fields] = $this->queryFor($domain, $project, $scope, $terms);
 
         return $this->searchEntity($query, $fields, $terms, $mode, $domain->carriesBook() ? $books : null);
     }
 
-    /** @return array{0: Builder, 1: array<string, string>} */
-    private function queryFor(SearchDomain $domain, Project $project, SearchScope $scope): array
+    /**
+     * @param  array<int, string>  $terms
+     * @return array{0: Builder, 1: array<string, string>}
+     */
+    private function queryFor(SearchDomain $domain, Project $project, SearchScope $scope, array $terms): array
     {
         return match ($domain) {
             SearchDomain::Plotlines => [
@@ -220,11 +225,16 @@ class ProjectSearch
             ],
             SearchDomain::Scenes => [
                 $this->scopeBookAndRange(
-                    $project->sceneQuery()
+                    $this->selectContentsThatMayMatch($project->sceneQuery(), $terms)
                         ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
                         ->join('acts', 'acts.id', '=', 'chapters.act_id')
                         ->join('books', 'books.id', '=', 'acts.book_id')
-                        ->select('scenes.*', 'acts.book_id as book_id')
+                        // Only what matching and the result row read. `contents` comes
+                        // from selectContentsThatMayMatch().
+                        ->addSelect([
+                            'scenes.id', 'scenes.chapter_id', 'scenes.name', 'scenes.description',
+                            'scenes.notes', 'scenes.position', 'acts.book_id as book_id',
+                        ])
                         ->orderBy('books.position')->orderBy('books.id')
                         ->orderBy('acts.position')->orderBy('acts.id')
                         ->orderBy('chapters.position')->orderBy('chapters.id')
@@ -238,6 +248,37 @@ class ProjectSearch
                 'Codex domains build their query in searchCodex(), not queryFor().'
             ),
         };
+    }
+
+    /**
+     * Select a scene's contents only when SQL finds that it can contain a term.
+     * Other scenes get null, so the manuscript text stays in the database.
+     *
+     * The LIKE pattern accepts every value that the PHP match accepts. PHP still
+     * decides, so the results do not change. Scene contents are Markdown, not rich
+     * HTML, so the stored text is the text that PHP matches.
+     *
+     * @param  array<int, string>  $terms
+     */
+    private function selectContentsThatMayMatch(Builder $query, array $terms): Builder
+    {
+        // The pattern walks characters; invalid UTF-8 has none to walk.
+        if (! mb_check_encoding(implode('', $terms), 'UTF-8')) {
+            return $query->addSelect('scenes.contents');
+        }
+
+        $conditions = [];
+        $bindings = [];
+
+        foreach ($terms as $term) {
+            $conditions[] = 'scenes.contents like ? escape ?';
+            array_push($bindings, LikeSearch::accentInsensitivePattern($term), LikeSearch::ESCAPE);
+        }
+
+        return $query->selectRaw(
+            'case when '.implode(' or ', $conditions).' then scenes.contents end as contents',
+            $bindings,
+        );
     }
 
     /**

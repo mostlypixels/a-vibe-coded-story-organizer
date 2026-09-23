@@ -70,4 +70,13 @@ class AccentFolder
     {
         return strtolower(strtr($value, self::MAP));
     }
+
+    /**
+     * True when an accented character folds to the same letter as this one. A SQL
+     * pre-filter must then accept any character in that place.
+     */
+    public static function hasAccentedForms(string $character): bool
+    {
+        return in_array(self::fold($character), self::MAP, true);
+    }
 }

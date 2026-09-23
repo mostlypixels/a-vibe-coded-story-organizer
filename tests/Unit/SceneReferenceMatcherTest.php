@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Normalizer;
 use Tests\TestCase;
@@ -259,5 +260,112 @@ class SceneReferenceMatcherTest extends TestCase
 
         $this->assertSame(0, $scene->codexReferences()->count());
         $this->assertFalse($scene->codexReferences()->where('codex_entries.id', $entry->id)->exists());
+    }
+
+    /** Pins the result for a project with more scenes than one read batch holds. */
+    public function test_sync_project_matches_every_scene_of_a_large_project(): void
+    {
+        $project = Project::factory()->create();
+        $entry = $this->entryIn($project, 'Beacon');
+        $chapter = Chapter::factory()->for(Act::factory()->for($project->books()->first()))->create();
+
+        $scenes = Scene::factory()->count(105)->for($chapter)->create(['contents' => 'The Beacon burned.']);
+        $unrelated = Scene::factory()->for($chapter)->create(['contents' => 'Nothing here.']);
+
+        $this->matcher->syncProject($project);
+
+        $linked = $entry->referencingScenes()->pluck('scenes.id')->sort()->values()->all();
+        $this->assertSame($scenes->pluck('id')->sort()->values()->all(), $linked);
+        $this->assertSame(0, $unrelated->codexReferences()->count());
+    }
+
+    /** A project resync reads only what matching needs, not whole rows. */
+    public function test_sync_project_loads_only_the_columns_that_matching_needs(): void
+    {
+        $project = Project::factory()->create();
+        $this->entryIn($project, 'Beacon', ['The Light']);
+        $this->sceneIn($project, 'The Beacon burned bright.');
+
+        $sceneColumns = [];
+        $entryColumns = [];
+        Event::listen('eloquent.retrieved: '.Scene::class, function (Scene $scene) use (&$sceneColumns) {
+            $sceneColumns = array_keys($scene->getAttributes());
+        });
+        Event::listen('eloquent.retrieved: '.CodexEntry::class, function (CodexEntry $entry) use (&$entryColumns) {
+            $entryColumns = array_keys($entry->getAttributes());
+        });
+
+        $this->matcher->syncProject($project);
+
+        $this->assertEqualsCanonicalizing(['id', 'contents'], $sceneColumns);
+        $this->assertEqualsCanonicalizing(['id', 'name'], $entryColumns);
+    }
+
+    /**
+     * One regex cannot hold thousands of names: PCRE refuses to compile it. The
+     * matcher must still link every scene.
+     */
+    public function test_sync_project_handles_more_names_than_one_regex_can_hold(): void
+    {
+        $project = Project::factory()->create();
+        $now = now();
+        $rows = [];
+
+        for ($i = 0; $i < 4000; $i++) {
+            $rows[] = [
+                'project_id' => $project->id,
+                'type' => 'character',
+                'name' => "Wanderer{$i} of the Northern Reach",
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            CodexEntry::query()->insert($chunk);
+        }
+
+        $first = CodexEntry::query()->where('name', 'Wanderer0 of the Northern Reach')->firstOrFail();
+        $last = CodexEntry::query()->where('name', 'Wanderer3999 of the Northern Reach')->firstOrFail();
+        $scene = $this->sceneIn($project, 'Wanderer0 of the Northern Reach met Wanderer3999 of the Northern Reach.');
+
+        $this->matcher->syncProject($project);
+
+        $this->assertEqualsCanonicalizing([$first->id, $last->id], $scene->codexReferences()->pluck('codex_entries.id')->all());
+    }
+
+    /** A regex failure logs the real PCRE error, not a false UTF-8 claim. */
+    public function test_a_regex_failure_logs_the_real_pcre_error(): void
+    {
+        $project = Project::factory()->create();
+        $scene = $this->sceneIn($project, 'Anyone can see this text.');
+
+        // Each alternative is one backtrack point, so many near-misses exhaust a low limit.
+        CodexEntry::query()->insert(array_map(fn (int $i) => [
+            'project_id' => $project->id,
+            'type' => 'character',
+            'name' => "Anyone{$i}",
+            'created_at' => now(),
+            'updated_at' => now(),
+        ], range(1, 300)));
+
+        // The backtrack limit applies only without JIT.
+        $jit = ini_set('pcre.jit', '0');
+        $limit = ini_set('pcre.backtrack_limit', '100');
+
+        Log::shouldReceive('warning')
+            ->once()
+            ->withArgs(fn (string $message, array $context) => ($context['scene_id'] ?? null) === $scene->id
+                && ($context['error'] ?? null) === 'Backtrack limit exhausted'
+                && ! str_contains($message, 'UTF-8'));
+
+        try {
+            $this->matcher->syncScene($scene);
+        } finally {
+            ini_set('pcre.jit', $jit);
+            ini_set('pcre.backtrack_limit', $limit);
+        }
+
+        $this->assertSame(0, $scene->codexReferences()->count());
     }
 }
