@@ -375,7 +375,7 @@ class EpubExporter
     }
 
     /**
-     * Adds an enabled book cover from the public disk through the library cover API.
+     * Adds an enabled book cover from the media disk through the library cover API.
      *
      * A missing file does not fail the export. The export does not need a storage link.
      */

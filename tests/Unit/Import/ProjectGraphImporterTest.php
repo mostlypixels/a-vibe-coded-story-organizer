@@ -36,7 +36,7 @@ class ProjectGraphImporterTest extends TestCase
     {
         parent::setUp();
 
-        Storage::fake('public');
+        Storage::fake('media');
 
         $this->fixtureRoot = sys_get_temp_dir().DIRECTORY_SEPARATOR.'graph-importer-test-'.uniqid();
         $this->writeFixture();
@@ -306,10 +306,10 @@ class ProjectGraphImporterTest extends TestCase
         // A fresh storage path — never the archive's own relative path.
         $this->assertNotSame('cover/portrait.png', $cover->path);
         $this->assertStringStartsWith('codex-media/', $cover->path);
-        Storage::disk('public')->assertExists($cover->path);
+        Storage::disk('media')->assertExists($cover->path);
         $this->assertSame(
             base64_decode(self::TINY_PNG_BASE64),
-            Storage::disk('public')->get($cover->path),
+            Storage::disk('media')->get($cover->path),
         );
 
         // original_name is re-derived via basename() — the fixture declares a

@@ -38,6 +38,15 @@ return [
             'report' => false,
         ],
 
+        // Covers and codex media. No `url` and no web path: the app serves each file after a ProjectPolicy check.
+        'media' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/media'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

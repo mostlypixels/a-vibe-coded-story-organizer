@@ -6,7 +6,6 @@ use App\Enums\CodexMediaCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class CodexMedia extends Model
 {
@@ -47,15 +46,14 @@ class CodexMedia extends Model
     }
 
     /**
-     * Public URL of the stored file (needs `php artisan storage:link` locally),
-     * or null for a metadata-only imported row with no backing file — gate on
-     * hasFile() before rendering. Kept on the model so views/index thumbnails
-     * don't build the path by hand.
+     * URL of the stored file, or null for a metadata-only imported row with no
+     * backing file — gate on hasFile() before rendering. The route checks that
+     * the viewer owns the project, because the file is on a private disk.
      */
     public function url(): ?string
     {
         return $this->path !== null
-            ? Storage::disk('public')->url($this->path)
+            ? route('codex-media.show', $this)
             : null;
     }
 

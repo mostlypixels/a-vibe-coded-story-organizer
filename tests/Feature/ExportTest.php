@@ -631,7 +631,7 @@ class ExportTest extends TestCase
 
     public function test_book_cover_is_written_with_bytes_when_media_included(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -639,7 +639,7 @@ class ExportTest extends TestCase
 
         // store() names the file with a random hash, not 'book-cover.jpg' —
         // the exporter uses that stored basename verbatim (basename-guarded).
-        $coverPath = UploadedFile::fake()->image('book-cover.jpg', 20, 20)->store('book-covers', 'public');
+        $coverPath = UploadedFile::fake()->image('book-cover.jpg', 20, 20)->store('book-covers', 'media');
         $book->update(['cover_image' => $coverPath]);
 
         $zip = $this->exportZipWithMedia($user, $project);
@@ -648,7 +648,7 @@ class ExportTest extends TestCase
         $bookJson = json_decode($zip->getFromName("{$bookDir}/book.json"), true);
         $this->assertSame('cover/'.basename($coverPath), $bookJson['cover_file']);
         $this->assertSame(
-            Storage::disk('public')->get($coverPath),
+            Storage::disk('media')->get($coverPath),
             $zip->getFromName("{$bookDir}/cover/".basename($coverPath))
         );
 
@@ -657,12 +657,12 @@ class ExportTest extends TestCase
 
     public function test_project_cover_is_written_with_bytes_when_media_included(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
 
-        $coverPath = UploadedFile::fake()->image('project-cover.jpg', 20, 20)->store('project-covers', 'public');
+        $coverPath = UploadedFile::fake()->image('project-cover.jpg', 20, 20)->store('project-covers', 'media');
         $project->update(['cover_image' => $coverPath]);
 
         $zip = $this->exportZipWithMedia($user, $project);
@@ -670,7 +670,7 @@ class ExportTest extends TestCase
         $projectJson = json_decode($zip->getFromName('data/project/project.json'), true);
         $this->assertSame('cover/'.basename($coverPath), $projectJson['cover_file']);
         $this->assertSame(
-            Storage::disk('public')->get($coverPath),
+            Storage::disk('media')->get($coverPath),
             $zip->getFromName('data/project/cover/'.basename($coverPath))
         );
 
@@ -1018,13 +1018,13 @@ class ExportTest extends TestCase
 
     public function test_media_metadata_is_written_but_bytes_are_absent_when_toggle_off(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $entry = CodexEntry::factory()->for($project)->create();
 
-        $path = UploadedFile::fake()->image('portrait.jpg', 20, 20)->store('codex-media', 'public');
+        $path = UploadedFile::fake()->image('portrait.jpg', 20, 20)->store('codex-media', 'media');
         $media = CodexMedia::factory()->cover()->for($entry, 'entry')->create([
             'path' => $path,
             'original_name' => 'portrait.jpg',
@@ -1058,15 +1058,15 @@ class ExportTest extends TestCase
 
     public function test_media_bytes_are_copied_for_every_collection_when_toggle_on(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $entry = CodexEntry::factory()->for($project)->create();
 
-        $coverPath = UploadedFile::fake()->image('portrait.jpg', 20, 20)->store('codex-media', 'public');
-        $imagePath = UploadedFile::fake()->image('sketch.png', 20, 20)->store('codex-media', 'public');
-        $filePath = UploadedFile::fake()->create('notes.pdf', 12, 'application/pdf')->store('codex-media', 'public');
+        $coverPath = UploadedFile::fake()->image('portrait.jpg', 20, 20)->store('codex-media', 'media');
+        $imagePath = UploadedFile::fake()->image('sketch.png', 20, 20)->store('codex-media', 'media');
+        $filePath = UploadedFile::fake()->create('notes.pdf', 12, 'application/pdf')->store('codex-media', 'media');
 
         $cover = CodexMedia::factory()->cover()->for($entry, 'entry')
             ->create(['path' => $coverPath, 'original_name' => 'portrait.jpg', 'mime_type' => 'image/jpeg']);
@@ -1082,16 +1082,16 @@ class ExportTest extends TestCase
 
         // Each collection's bytes land at their `file` path and equal the stored bytes verbatim.
         $this->assertSame(
-            Storage::disk('public')->get($coverPath),
+            Storage::disk('media')->get($coverPath),
             $zip->getFromName("{$entryDir}/cover/portrait.jpg")
         );
         $this->assertSame(
-            Storage::disk('public')->get($imagePath),
+            Storage::disk('media')->get($imagePath),
             $zip->getFromName(sprintf('%s/reference-images/%02d-sketch.png', $entryDir, $image->position))
         );
         // A non-image reference file is included too.
         $this->assertSame(
-            Storage::disk('public')->get($filePath),
+            Storage::disk('media')->get($filePath),
             $zip->getFromName(sprintf('%s/reference-files/%02d-notes.pdf', $entryDir, $document->position))
         );
 

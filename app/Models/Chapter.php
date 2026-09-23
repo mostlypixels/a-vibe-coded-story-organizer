@@ -46,6 +46,12 @@ class Chapter extends Model
         return $this->act->book->project;
     }
 
+    /** The cover is on a private disk. The route checks project ownership before it sends the file. */
+    public function coverUrl(): ?string
+    {
+        return $this->cover_image !== null ? route('chapters.cover', $this) : null;
+    }
+
     /**
      * Chapters are ordered within their act (see HasSiblingPosition).
      */
@@ -65,7 +71,7 @@ class Chapter extends Model
         // The cover is a plain path column (not an FK-cascaded row), so deleting a
         // single chapter never removes its file automatically. Delete it here before
         // the row is gone, otherwise a chapter deletion leaks an orphan cover on the
-        // public disk. The project/act cascade paths bypass THIS hook (they delete
+        // media disk. The project/act cascade paths bypass THIS hook (they delete
         // chapter rows via the DB FK), so Project::deleting and Act::deleting purge
         // surviving chapters' covers themselves (media-lifecycle.md pitfall).
         static::deleting(function (Chapter $chapter) {

@@ -159,24 +159,24 @@ class BookTest extends TestCase
 
     public function test_deleting_a_book_removes_its_cover_file(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
         [$project] = $this->projectWithBook();
         $coverPath = 'book-covers/doomed-cover.jpg';
-        Storage::disk('public')->put($coverPath, 'contents');
+        Storage::disk('media')->put($coverPath, 'contents');
         $book = Book::factory()->for($project)->create(['cover_image' => $coverPath]);
 
         $book->delete();
 
-        Storage::disk('public')->assertMissing($coverPath);
+        Storage::disk('media')->assertMissing($coverPath);
     }
 
     public function test_deleting_a_book_removes_its_chapters_cover_files(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
         [$project, $book] = $this->projectWithBook();
         $act = Act::factory()->for($book)->create();
         $coverPath = 'chapter-covers/cascade-book-cover.jpg';
-        Storage::disk('public')->put($coverPath, 'contents');
+        Storage::disk('media')->put($coverPath, 'contents');
         Chapter::factory()->for($act)->create(['cover_image' => $coverPath]);
 
         // Deleting the book cascades to its acts and their chapters at the DB
@@ -184,7 +184,7 @@ class BookTest extends TestCase
         // cover files itself.
         $book->delete();
 
-        Storage::disk('public')->assertMissing($coverPath);
+        Storage::disk('media')->assertMissing($coverPath);
     }
 
     public function test_deleting_a_project_cascades_to_its_books(): void

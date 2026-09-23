@@ -20,7 +20,7 @@ class CoverImageServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Storage::fake('public');
+        Storage::fake('media');
         $this->service = app(CoverImageService::class);
     }
 
@@ -31,7 +31,7 @@ class CoverImageServiceTest extends TestCase
         $path = $this->service->store($file, 'project-covers');
 
         $this->assertStringStartsWith('project-covers/', $path);
-        Storage::disk('public')->assertExists($path);
+        Storage::disk('media')->assertExists($path);
     }
 
     public function test_store_preserves_the_file_extension(): void
@@ -53,11 +53,11 @@ class CoverImageServiceTest extends TestCase
     public function test_delete_removes_an_existing_file(): void
     {
         $path = 'project-covers/test-cover.jpg';
-        Storage::disk('public')->put($path, 'test contents');
+        Storage::disk('media')->put($path, 'test contents');
 
         $this->service->delete($path);
 
-        Storage::disk('public')->assertMissing($path);
+        Storage::disk('media')->assertMissing($path);
     }
 
     public function test_bytes_returns_null_when_path_is_null(): void
@@ -78,7 +78,7 @@ class CoverImageServiceTest extends TestCase
     {
         $path = 'project-covers/test-cover.jpg';
         $contents = 'test file contents';
-        Storage::disk('public')->put($path, $contents);
+        Storage::disk('media')->put($path, $contents);
 
         $result = $this->service->bytes($path);
 

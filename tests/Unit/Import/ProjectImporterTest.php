@@ -45,10 +45,10 @@ class ProjectImporterTest extends TestCase
     {
         parent::setUp();
 
-        // 'local' holds the uploaded archive + its extraction; 'public' is
+        // 'local' holds the uploaded archive + its extraction; 'media' is
         // where the codex phase copies media bytes to.
         Storage::fake('local');
-        Storage::fake('public');
+        Storage::fake('media');
     }
 
     protected function tearDown(): void

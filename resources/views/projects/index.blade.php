@@ -45,7 +45,7 @@
                             <x-table-cell>
                                 <a href="{{ route('projects.edit', $project) }}">
                                     @if ($project->cover_image)
-                                        <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
+                                        <img src="{{ $project->coverUrl() }}" alt="{{ $project->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
                                     @else
                                         <div class="h-10 w-10 rounded-sm bg-surface border border-border" aria-hidden="true"></div>
                                     @endif
@@ -91,7 +91,7 @@
                     <div class="overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xs hover:shadow-md transition-shadow">
                         <a href="{{ route('projects.edit', $project) }}" class="block">
                             @if ($project->cover_image)
-                                <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($project->cover_image) }}" alt="{{ $project->name }}" class="h-24 w-full object-cover">
+                                <img src="{{ $project->coverUrl() }}" alt="{{ $project->name }}" class="h-24 w-full object-cover">
                             @else
                                 <div class="h-24 w-full bg-surface" aria-hidden="true"></div>
                             @endif

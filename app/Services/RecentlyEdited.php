@@ -17,7 +17,6 @@ use App\Support\RecentItem;
 use App\Support\StoryNumbering;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * The entities of one project, newest write first, as view-ready
@@ -67,9 +66,7 @@ class RecentlyEdited
                 url: route('chapters.edit', $chapter),
                 updatedAt: $chapter->updated_at,
                 context: $chapter->act->name,
-                imageUrl: $chapter->cover_image
-                    ? Storage::disk('public')->url($chapter->cover_image)
-                    : null,
+                imageUrl: $chapter->coverUrl(),
             ));
     }
 

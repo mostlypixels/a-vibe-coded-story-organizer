@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\RevisionOrigin;
+use App\Models\Project;
 use App\Models\Revision;
 use App\Support\RevisionPurgeResult;
 use Illuminate\Database\Eloquent\Builder;
@@ -50,8 +51,8 @@ class RevisionPurger
 
     /**
      * Delete (or, in dry-run mode, merely count) the revisions matching one
-     * category, optionally narrowed to a single project and/or an age
-     * cutoff.
+     * category, optionally narrowed to a single project, the projects of one
+     * user, and/or an age cutoff.
      *
      * Dry-run and a real run compute the exact same query (`queryFor()`), so
      * calling this with `dryRun: true` immediately followed by `dryRun:
@@ -63,8 +64,9 @@ class RevisionPurger
         ?int $projectId = null,
         ?Carbon $before = null,
         bool $dryRun = false,
+        ?int $userId = null,
     ): RevisionPurgeResult {
-        $query = $this->queryFor($category, $projectId, $before);
+        $query = $this->queryFor($category, $projectId, $before, $userId);
 
         // Snapshot the count/size before any delete() call below empties
         // the query's result set out from under it.
@@ -83,7 +85,7 @@ class RevisionPurger
      * columns only (`count()`/`sum('size_bytes')` in purge(), a bulk
      * `delete()` that never hydrates a model) — never hydrates `value`.
      */
-    private function queryFor(string $category, ?int $projectId, ?Carbon $before): Builder
+    private function queryFor(string $category, ?int $projectId, ?Carbon $before, ?int $userId): Builder
     {
         if (! in_array($category, self::CATEGORIES, true)) {
             throw new InvalidArgumentException("Unknown revision purge category [{$category}].");
@@ -99,6 +101,10 @@ class RevisionPurger
 
         if ($projectId !== null) {
             $query->where('project_id', $projectId);
+        }
+
+        if ($userId !== null) {
+            $query->whereIn('project_id', Project::query()->where('user_id', $userId)->select('id'));
         }
 
         if ($before !== null) {

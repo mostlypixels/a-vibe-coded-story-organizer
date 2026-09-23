@@ -649,15 +649,15 @@ class CodexEntryTest extends TestCase
 
     public function test_show_page_renders_reference_images_and_files(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $entry = CodexEntry::factory()->for($project)->character()->create();
         $image = CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create(['original_name' => 'portrait.jpg']);
         $file = CodexMedia::factory()->for($entry, 'entry')->referenceFile()->create(['original_name' => 'notes.pdf']);
-        Storage::disk('public')->put($image->path, 'bytes');
-        Storage::disk('public')->put($file->path, 'bytes');
+        Storage::disk('media')->put($image->path, 'bytes');
+        Storage::disk('media')->put($file->path, 'bytes');
 
         $this->actingAs($user)->get(route('codex.show', $entry))
             ->assertOk()
@@ -1084,7 +1084,7 @@ class CodexEntryTest extends TestCase
 
     public function test_duplicating_an_entry_copies_aliases_media_and_attribute_values_as_new_rows(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -1096,7 +1096,7 @@ class CodexEntryTest extends TestCase
             'value' => 'Winged',
         ]);
         $media = CodexMedia::factory()->for($entry, 'entry')->create(['position' => 3]);
-        Storage::disk('public')->put($media->path, 'bytes');
+        Storage::disk('media')->put($media->path, 'bytes');
 
         $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Melusine (2)']);
         $copy = CodexEntry::where('name', 'Melusine (2)')->firstOrFail();
@@ -1109,7 +1109,7 @@ class CodexEntryTest extends TestCase
         $this->assertSame(3, $copiedMedia->position);
         $this->assertSame($media->original_name, $copiedMedia->original_name);
         $this->assertNotSame($media->path, $copiedMedia->path);
-        Storage::disk('public')->assertExists($copiedMedia->path);
+        Storage::disk('media')->assertExists($copiedMedia->path);
 
         // The original keeps exactly one of each: nothing was moved onto the copy.
         $this->assertSame(1, $entry->aliases()->count());
@@ -1134,26 +1134,26 @@ class CodexEntryTest extends TestCase
 
     public function test_deleting_the_original_leaves_the_copys_media_file_on_disk(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $entry = CodexEntry::factory()->for($project)->character()->create();
         $media = CodexMedia::factory()->for($entry, 'entry')->create();
-        Storage::disk('public')->put($media->path, 'bytes');
+        Storage::disk('media')->put($media->path, 'bytes');
 
         $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Copy']);
         $copiedPath = CodexEntry::where('name', 'Copy')->firstOrFail()->media()->first()->path;
 
         $this->actingAs($user)->delete(route('codex.destroy', $entry));
 
-        Storage::disk('public')->assertMissing($media->path);
-        Storage::disk('public')->assertExists($copiedPath);
+        Storage::disk('media')->assertMissing($media->path);
+        Storage::disk('media')->assertExists($copiedPath);
     }
 
     public function test_duplicating_an_entry_keeps_a_metadata_only_media_row_pathless(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
@@ -1179,13 +1179,13 @@ class CodexEntryTest extends TestCase
 
     public function test_a_failed_duplication_leaves_no_copied_media_file_behind(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
 
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
         $entry = CodexEntry::factory()->for($project)->character()->create();
         $media = CodexMedia::factory()->for($entry, 'entry')->create();
-        Storage::disk('public')->put($media->path, 'bytes');
+        Storage::disk('media')->put($media->path, 'bytes');
 
         // Fail the insert of the copied media row: the file copies already happened,
         // so this exercises the cleanup in the duplicator's catch.
@@ -1198,7 +1198,7 @@ class CodexEntryTest extends TestCase
         $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Copy']);
 
         $this->assertNull(CodexEntry::where('name', 'Copy')->first());
-        $this->assertSame([$media->path], Storage::disk('public')->allFiles());
+        $this->assertSame([$media->path], Storage::disk('media')->allFiles());
     }
 
     // ---------------------------------------------------------------------

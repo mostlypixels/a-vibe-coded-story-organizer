@@ -68,6 +68,7 @@ Routes use shallow resources.
 
 - `Scene::renderedContents` is the Markdown render path for the app, public scene links, and static reading exports.
 - Public scene links use a random token and remain read-only.
+- Covers and codex media are private files. Only the project owner can load them. See [Codex media](../features/codex.md#media).
 - Rich HTML uses the rules in [Rich text](../features/rich-text.md).
 - Global crawler visibility uses the dynamic `/robots.txt` route and `x-robots-meta`. The default is hidden.
 

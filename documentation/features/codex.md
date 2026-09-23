@@ -64,6 +64,10 @@ An attribute becomes attached when the writer picks it on the create form or add
 - `Project::deleting` purges project media because database cascades do not fire entry hooks.
 - `User::deleting` deletes projects through Eloquent so project cleanup runs.
 - Keep disk I/O outside database transactions.
+- Media and covers (project, book, chapter) live on the private `media` disk. They have no public URL.
+- `MediaFileController` sends a file only after `ProjectPolicy@view` on the owning project. Use `CodexMedia::url()` or the model `coverUrl()`; never build a `/storage` URL.
+- Exports read the disk directly, so EPUB and static-site output keep their images.
+- `php artisan media:move-to-private` moves files from an older install's `public` disk. Docker runs it on start.
 
 Post-commit upload failure can save an entry with fewer files than requested. This is safer than rolling back the database after disk changes.
 

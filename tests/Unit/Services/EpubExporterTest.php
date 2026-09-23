@@ -460,9 +460,9 @@ class EpubExporterTest extends TestCase
 
     public function test_full_metadata_epub_opf_contains_every_field_and_both_identifiers(): void
     {
-        Storage::fake('public');
-        // A tiny but valid PNG so the cover embed reads real bytes off the public disk.
-        Storage::disk('public')->put('book-covers/cover.png', base64_decode(
+        Storage::fake('media');
+        // A tiny but valid PNG so the cover embed reads real bytes off the media disk.
+        Storage::disk('media')->put('book-covers/cover.png', base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
@@ -544,8 +544,8 @@ class EpubExporterTest extends TestCase
     /** Keep lazy and explicit publication defaults content-identical. */
     public function test_defaults_v1_regression_lazy_default_and_explicit_default_row_produce_byte_identical_epubs(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('book-covers/cover.png', base64_decode(
+        Storage::fake('media');
+        Storage::disk('media')->put('book-covers/cover.png', base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
@@ -678,8 +678,8 @@ class EpubExporterTest extends TestCase
 
     public function test_include_book_cover_false_omits_cover_but_keeps_title_urn_and_accessibility(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('book-covers/cover.png', base64_decode(
+        Storage::fake('media');
+        Storage::disk('media')->put('book-covers/cover.png', base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
@@ -1593,8 +1593,8 @@ class EpubExporterTest extends TestCase
      */
     public function test_chapter_cover_page_is_inserted_immediately_before_its_chapter_when_enabled(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('chapter-covers/cover.png', base64_decode(
+        Storage::fake('media');
+        Storage::disk('media')->put('chapter-covers/cover.png', base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
@@ -1633,8 +1633,8 @@ class EpubExporterTest extends TestCase
      */
     public function test_chapter_cover_page_is_absent_when_the_toggle_is_off(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('chapter-covers/cover.png', base64_decode(
+        Storage::fake('media');
+        Storage::disk('media')->put('chapter-covers/cover.png', base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
         ));
 
@@ -1660,7 +1660,7 @@ class EpubExporterTest extends TestCase
      */
     public function test_chapter_with_a_missing_cover_file_is_skipped_and_the_export_still_succeeds(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
         // Deliberately never written to the fake disk.
 
         [, $book] = $this->projectWithBook();
@@ -1881,7 +1881,7 @@ class EpubExporterTest extends TestCase
     // --- Codex appendix images ---
 
     /**
-     * A 1x1 PNG on the fake public disk, standing in for a codex media image file.
+     * A 1x1 PNG on the fake media disk, standing in for a codex media image file.
      */
     private function fakeImageBytes(): string
     {
@@ -1893,9 +1893,9 @@ class EpubExporterTest extends TestCase
     /** Embed only the first available image for each appendix entry. */
     public function test_appendix_embeds_only_the_first_media_image_when_include_images_is_on(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('codex-media/first.png', $this->fakeImageBytes());
-        Storage::disk('public')->put('codex-media/second.png', $this->fakeImageBytes());
+        Storage::fake('media');
+        Storage::disk('media')->put('codex-media/first.png', $this->fakeImageBytes());
+        Storage::disk('media')->put('codex-media/second.png', $this->fakeImageBytes());
 
         $project = Project::factory()->create();
         [$book, $scene] = $this->seedMinimalStory($project);
@@ -1949,7 +1949,7 @@ class EpubExporterTest extends TestCase
      */
     public function test_appendix_entry_with_a_missing_image_file_is_skipped_and_export_still_validates(): void
     {
-        Storage::fake('public');
+        Storage::fake('media');
         // The media path below is deliberately never written to the fake disk.
 
         $project = Project::factory()->create();
@@ -1993,8 +1993,8 @@ class EpubExporterTest extends TestCase
      */
     public function test_appendix_packages_no_image_bytes_when_include_images_is_off(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('codex-media/first.png', $this->fakeImageBytes());
+        Storage::fake('media');
+        Storage::disk('media')->put('codex-media/first.png', $this->fakeImageBytes());
 
         $project = Project::factory()->create();
         [$book, $scene] = $this->seedMinimalStory($project);

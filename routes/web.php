@@ -21,6 +21,7 @@ use App\Http\Controllers\FieldAutosaveController;
 use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportSettingController;
+use App\Http\Controllers\MediaFileController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PageSizeController;
 use App\Http\Controllers\PlotlineController;
@@ -198,6 +199,12 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::post('/scenes/{scene}/codex-entries', [SceneCodexEntryController::class, 'store'])->name('scenes.codex-entries.store');
     Route::get('/scenes/{scene}/codex-references', [SceneController::class, 'codexReferences'])
         ->name('scenes.codex-references.index');
+
+    // Covers and codex media sit on a private disk. These routes check project ownership.
+    Route::get('/projects/{project}/cover', [MediaFileController::class, 'projectCover'])->name('projects.cover');
+    Route::get('/books/{book}/cover', [MediaFileController::class, 'bookCover'])->name('books.cover');
+    Route::get('/chapters/{chapter}/cover', [MediaFileController::class, 'chapterCover'])->name('chapters.cover');
+    Route::get('/codex-media/{codexMedia}', [MediaFileController::class, 'codexMedia'])->name('codex-media.show');
 
     Route::post('/scenes/{scene}/share', [SceneShareController::class, 'store'])->name('scenes.share.store');
     Route::delete('/scenes/{scene}/share', [SceneShareController::class, 'destroy'])->name('scenes.share.destroy');

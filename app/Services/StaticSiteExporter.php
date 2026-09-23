@@ -29,7 +29,7 @@ use ZipArchive;
  * Builds a project archive with a lossless data layer and a readable books layer.
  *
  * The data layer stores raw project, story, timeline, codex, and media data. The
- * books layer converts scene Markdown to HTML. Media reads use the public disk
+ * books layer converts scene Markdown to HTML. Media reads use the private media disk
  * and do not require a storage link.
  */
 class StaticSiteExporter
@@ -322,7 +322,7 @@ class StaticSiteExporter
 
         if ($includeMedia) {
             // Keep the link but do not fail when the source file is missing.
-            $bytes = Storage::disk('public')->get($coverImage);
+            $bytes = Storage::disk(CoverImageService::COVER_DISK)->get($coverImage);
             if ($bytes !== null) {
                 $this->addFromString($zip, "{$dir}/{$relativePath}", $bytes);
             }
@@ -457,7 +457,7 @@ class StaticSiteExporter
     }
 
     /**
-     * Builds the media manifest and optionally copies bytes from the public disk.
+     * Builds the media manifest and optionally copies bytes from the media disk.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -480,7 +480,7 @@ class StaticSiteExporter
 
             if ($includeMedia) {
                 // Keep the metadata but do not fail when the source file is missing.
-                $bytes = Storage::disk('public')->get($media->path);
+                $bytes = Storage::disk(CodexMediaService::DISK)->get($media->path);
                 if ($bytes !== null) {
                     $this->addFromString($zip, "{$dir}/{$relativePath}", $bytes);
                 }

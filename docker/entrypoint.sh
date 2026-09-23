@@ -33,13 +33,16 @@ echo "Clearing application caches..."
 php artisan config:clear
 php artisan cache:clear
 
-# public/storage -> storage/app/public, so uploaded files (cover images,
-# codex media) are reachable by nginx. `storage:link` no-ops if it already
-# exists, so this is safe to run on every start.
+# public/storage -> storage/app/public, for files that are public on purpose.
+# `storage:link` no-ops if it already exists, so this is safe on every start.
 if [ ! -e public/storage ]; then
     echo "Linking storage..."
     php artisan storage:link
 fi
+
+# Covers and codex media are private. Older installs kept them on the public
+# disk; this moves them. It does nothing when no old files remain.
+php artisan media:move-to-private
 
 # This entrypoint runs as root (needed for the migrate/key-generate steps
 # above), but php-fpm's workers run as laravel — anything just created here

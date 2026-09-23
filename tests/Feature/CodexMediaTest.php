@@ -20,8 +20,8 @@ class CodexMediaTest extends TestCase
     {
         parent::setUp();
 
-        // Every media test writes to a faked public disk so nothing touches real storage.
-        Storage::fake('public');
+        // Every media test writes to a faked media disk so nothing touches real storage.
+        Storage::fake('media');
     }
 
     public function test_uploading_a_cover_creates_the_single_cover_row(): void
@@ -39,7 +39,7 @@ class CodexMediaTest extends TestCase
         $this->assertNotNull($cover);
         $this->assertSame(CodexMediaCollection::Cover, $cover->collection);
         $this->assertSame(1, $entry->media()->where('collection', CodexMediaCollection::Cover)->count());
-        Storage::disk('public')->assertExists($cover->path);
+        Storage::disk('media')->assertExists($cover->path);
     }
 
     public function test_uploading_a_new_cover_replaces_the_row_and_deletes_the_old_file(): void
@@ -66,8 +66,8 @@ class CodexMediaTest extends TestCase
         // Still exactly one Cover row, and it is a different, freshly stored file.
         $this->assertSame(1, $entry->media()->where('collection', CodexMediaCollection::Cover)->count());
         $this->assertNotSame($oldCover->id, $newCover->id);
-        Storage::disk('public')->assertMissing($oldPath);
-        Storage::disk('public')->assertExists($newCover->path);
+        Storage::disk('media')->assertMissing($oldPath);
+        Storage::disk('media')->assertExists($newCover->path);
     }
 
     public function test_reference_images_and_files_get_independent_positions_per_collection(): void
@@ -169,7 +169,7 @@ class CodexMediaTest extends TestCase
         ]);
 
         $image = $entry->media()->firstOrFail();
-        Storage::disk('public')->assertExists($image->path);
+        Storage::disk('media')->assertExists($image->path);
 
         $this->actingAs($user)->put(route('codex.update', $entry), [
             'name' => 'Melusine',
@@ -177,7 +177,7 @@ class CodexMediaTest extends TestCase
         ])->assertRedirect();
 
         $this->assertNull(CodexMedia::find($image->id));
-        Storage::disk('public')->assertMissing($image->path);
+        Storage::disk('media')->assertMissing($image->path);
     }
 
     public function test_remove_media_id_from_another_entry_is_rejected(): void
@@ -219,7 +219,7 @@ class CodexMediaTest extends TestCase
         $this->assertSame(0, CodexMedia::where('codex_entry_id', $entry->id)->count());
 
         foreach ($paths as $path) {
-            Storage::disk('public')->assertMissing($path);
+            Storage::disk('media')->assertMissing($path);
         }
     }
 
@@ -252,7 +252,7 @@ class CodexMediaTest extends TestCase
         $this->assertSame(0, CodexMedia::count());
 
         foreach ($paths as $path) {
-            Storage::disk('public')->assertMissing($path);
+            Storage::disk('media')->assertMissing($path);
         }
     }
 
@@ -287,7 +287,7 @@ class CodexMediaTest extends TestCase
         $this->assertSame(0, CodexMedia::count());
 
         foreach ($paths as $path) {
-            Storage::disk('public')->assertMissing($path);
+            Storage::disk('media')->assertMissing($path);
         }
     }
 
@@ -304,7 +304,7 @@ class CodexMediaTest extends TestCase
         ]);
 
         $old = $entry->media()->firstOrFail();
-        Storage::disk('public')->assertExists($old->path);
+        Storage::disk('media')->assertExists($old->path);
 
         $this->actingAs($user)->put(route('codex.update', $entry), [
             'name' => 'Melusine',
@@ -317,9 +317,9 @@ class CodexMediaTest extends TestCase
         // Removal took effect (old row + file gone), the upload landed, and every
         // surviving row still points at a file that exists on disk.
         $this->assertNull(CodexMedia::find($old->id));
-        Storage::disk('public')->assertMissing($old->path);
+        Storage::disk('media')->assertMissing($old->path);
         $this->assertSame(1, $entry->media()->count());
-        Storage::disk('public')->assertExists($new->path);
+        Storage::disk('media')->assertExists($new->path);
     }
 
     public function test_rollback_after_upload_failure_leaves_no_dangling_media_row(): void
@@ -335,7 +335,7 @@ class CodexMediaTest extends TestCase
         ]);
 
         $imageA = $entry->media()->firstOrFail();
-        Storage::disk('public')->assertExists($imageA->path);
+        Storage::disk('media')->assertExists($imageA->path);
 
         // Arm a failure on the *next* media row creation — i.e. the upload of image B.
         CodexMedia::creating(function () {
@@ -353,7 +353,7 @@ class CodexMediaTest extends TestCase
         // that is missing on disk. Pre-fix the rollback restored A's row while A's file
         // was already deleted inside the transaction, so this loop would find a dangling row.
         foreach (CodexMedia::all() as $row) {
-            Storage::disk('public')->assertExists($row->path);
+            Storage::disk('media')->assertExists($row->path);
         }
     }
 
@@ -376,7 +376,7 @@ class CodexMediaTest extends TestCase
         // The service's store() must unlink the just-written file on a row-insert
         // failure: no row persisted, and no orphan file left behind.
         $this->assertSame(0, CodexMedia::count());
-        $this->assertSame([], Storage::disk('public')->allFiles('codex-media'));
+        $this->assertSame([], Storage::disk('media')->allFiles('codex-media'));
     }
 
     public function test_non_owner_cannot_upload_or_remove_media(): void
