@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-23 — EPUB matter pages are sanitized
+## 2026-09-23 — EPUB matter pages are sanitized (#188)
 
 ### Fixed
 
