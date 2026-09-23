@@ -346,32 +346,47 @@ class EpubExporter
      */
     private function applyMetadata(EPub $epub, Book $book, PublicationSetting $settings): void
     {
-        $epub->setTitle($book->displayName());
+        $epub->setTitle($this->xmlText($book->displayName()));
         $epub->setLanguage($this->language($book));
         $epub->setIdentifier($this->primaryIdentifier($book), EPub::IDENTIFIER_URI);
 
         if ($settings->include_author && filled($book->author)) {
-            $epub->setAuthor($book->author, $book->author);
+            $epub->setAuthor($this->xmlText($book->author), $this->xmlText($book->author));
         }
 
         if ($settings->include_publisher && filled($book->publisher)) {
             // The app stores no publisher URL.
-            $epub->setPublisher($book->publisher, '');
+            $epub->setPublisher($this->xmlText($book->publisher), '');
         }
 
         if ($settings->include_rights && filled($book->rights)) {
-            $epub->setRights($book->rights);
+            $epub->setRights($this->xmlText($book->rights));
         }
 
         if ($settings->include_isbn && filled($book->isbn)) {
             // EPUB 3 expresses the ISBN scheme in the identifier URI.
-            $epub->addCustomMetaValue(new DublinCore(DublinCore::IDENTIFIER, 'urn:isbn:'.$book->isbn));
+            $epub->addCustomMetaValue(new DublinCore(DublinCore::IDENTIFIER, 'urn:isbn:'.$this->xmlText($book->isbn)));
         }
 
         // Use the library API so accessibility data stays consistent with the package.
         $epub->setAccessibilitySummary(self::ACCESSIBILITY_SUMMARY);
         $epub->addAccessMode(self::ACCESS_MODE);
         $epub->addAccessibilityFeature(self::ACCESSIBILITY_FEATURE);
+    }
+
+    /** Adds a spine page whose navigation label is safe for the package XML. */
+    private function addPage(EPub $epub, string $label, string $file, ?string $xhtml): void
+    {
+        $epub->addChapter($this->xmlText($label), $file, $xhtml);
+    }
+
+    /**
+     * Escapes a value for PHPePub. The library writes some values raw into XML
+     * and removes tags from others, so a raw `&` or `<` breaks the package (#167).
+     */
+    private function xmlText(string $value): string
+    {
+        return htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 
     /**
@@ -426,7 +441,7 @@ class EpubExporter
     {
         $titleXhtml = $this->renderTitlePage($book);
         $this->assertXmlWellFormed($titleXhtml, self::TITLE_FILE);
-        $epub->addChapter($book->displayName(), self::TITLE_FILE, $titleXhtml);
+        $this->addPage($epub, $book->displayName(), self::TITLE_FILE, $titleXhtml);
     }
 
     /** @param Collection<int, Act> $tree */
@@ -434,7 +449,7 @@ class EpubExporter
     {
         $tocXhtml = $this->renderToc($book, $tree, $settings, $numbering);
         $this->assertXmlWellFormed($tocXhtml, self::TOC_FILE);
-        $epub->addChapter('Table of Contents', self::TOC_FILE, $tocXhtml);
+        $this->addPage($epub, 'Table of Contents', self::TOC_FILE, $tocXhtml);
     }
 
     /** Adds enabled, non-empty Markdown matter as a root navigation entry. */
@@ -456,7 +471,7 @@ class EpubExporter
 
         $xhtml = $this->renderMatterPage($config['heading'], $markdown, $book);
         $this->assertXmlWellFormed($xhtml, $config['file']);
-        $epub->addChapter($config['heading'], $config['file'], $xhtml);
+        $this->addPage($epub, $config['heading'], $config['file'], $xhtml);
     }
 
     /** Renders book matter with the same private Markdown converter as scenes. */
@@ -533,7 +548,7 @@ class EpubExporter
 
         $headingXhtml = $this->renderAppendixHeading($book);
         $this->assertXmlWellFormed($headingXhtml, self::APPENDIX_FILE);
-        $epub->addChapter(self::APPENDIX_HEADING, self::APPENDIX_FILE, $headingXhtml);
+        $this->addPage($epub, self::APPENDIX_HEADING, self::APPENDIX_FILE, $headingXhtml);
 
         $epub->subLevel();
 
@@ -545,7 +560,7 @@ class EpubExporter
             $entryFile = $this->appendixEntryFileName($entry);
             $entryXhtml = $this->renderAppendixEntry($entry, $book, $imagePath);
             $this->assertXmlWellFormed($entryXhtml, $entryFile);
-            $epub->addChapter($entry->name, $entryFile, $entryXhtml);
+            $this->addPage($epub, $entry->name, $entryFile, $entryXhtml);
         }
 
         $epub->backLevel();
@@ -602,7 +617,7 @@ class EpubExporter
 
                 $actXhtml = $this->renderActWithChapters($act, $book, $settings, $numbering);
                 $this->assertXmlWellFormed($actXhtml, $actFile);
-                $epub->addChapter($this->actNavTitle($act, $numbering), $actFile, $actXhtml);
+                $this->addPage($epub, $this->actNavTitle($act, $numbering), $actFile, $actXhtml);
 
                 continue;
             }
@@ -610,7 +625,7 @@ class EpubExporter
             // Validate each act page before it enters the package.
             $actXhtml = $this->renderAct($act, $book, $settings, $numbering);
             $this->assertXmlWellFormed($actXhtml, $actFile);
-            $epub->addChapter($this->actNavTitle($act, $numbering), $actFile, $actXhtml);
+            $this->addPage($epub, $this->actNavTitle($act, $numbering), $actFile, $actXhtml);
 
             $epub->subLevel();
 
@@ -621,14 +636,15 @@ class EpubExporter
                 $chapterFile = $this->chapterFileName($chapter);
                 $chapterXhtml = $this->renderChapter($chapter, $book, $settings, $numbering);
                 $this->assertXmlWellFormed($chapterXhtml, $chapterFile);
-                $epub->addChapter($this->chapterNavTitle($chapter, $format, $numbering), $chapterFile, $chapterXhtml);
+                $this->addPage($epub, $this->chapterNavTitle($chapter, $format, $numbering), $chapterFile, $chapterXhtml);
 
                 // Null content adds an anchor link without another spine page.
                 if ($depth->includesScenes()) {
                     $epub->subLevel();
 
                     foreach ($chapter->scenes as $scene) {
-                        $epub->addChapter(
+                        $this->addPage(
+                            $epub,
                             $this->sceneNavTitle($scene),
                             $this->sceneAnchorHref($chapter, $scene),
                             null
@@ -672,7 +688,7 @@ class EpubExporter
         $this->assertXmlWellFormed($coverXhtml, $coverFile);
 
         $epub->addFile($imagePath, 'chapter_cover_'.$chapter->id, $bytes, $mimeType);
-        $epub->addChapter('Cover', $coverFile, $coverXhtml);
+        $this->addPage($epub, 'Cover', $coverFile, $coverXhtml);
     }
 
     /**

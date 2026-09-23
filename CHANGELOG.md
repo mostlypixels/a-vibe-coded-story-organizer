@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — EPUB export accepts & and < in names (#187)
+
+### Fixed
+
+- An EPUB export no longer fails when a book name, author, publisher, rights or heading contains `&` or `<`.
+
 ## 2026-09-23 — Import limits how large an archive can expand (#186)
 
 ### Fixed
