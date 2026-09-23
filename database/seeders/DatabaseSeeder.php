@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
         // doesn't hit the users.email UNIQUE constraint. The factory is kept rather
         // than a plain firstOrCreate because its defaults mark the email verified —
         // email_verified_at is not fillable, so firstOrCreate would silently drop it
-        // and lock the admin out of the `verified` dashboard route.
+        // and leave the admin unverified.
         if (User::where('email', 'admin@example.com')->doesntExist()) {
             User::factory()->create([
                 'name' => 'Admin',

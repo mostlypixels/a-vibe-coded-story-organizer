@@ -160,6 +160,18 @@ class OnboardingTest extends TestCase
         $this->assertSame(0, Project::where('user_id', $otherUser->id)->count());
     }
 
+    public function test_a_second_demo_install_adds_no_projects(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('onboarding.demo'));
+        $this->actingAs($user)
+            ->post(route('onboarding.demo'))
+            ->assertRedirect(route('projects.index'));
+
+        $this->assertSame(3, Project::where('user_id', $user->id)->count());
+    }
+
     public function test_the_project_page_shows_the_post_seed_hint_once(): void
     {
         $user = User::factory()->create();

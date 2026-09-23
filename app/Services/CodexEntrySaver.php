@@ -83,23 +83,24 @@ class CodexEntrySaver
     public function update(CodexEntry $entry, array $validated, CodexMediaUploads $uploads, User $user): void
     {
         $project = $entry->project;
-        $data = [
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            // Plain saves, not autosaved fields — no revision snapshot for these.
-            'inception_event_id' => $this->createInlineEvent(
-                $project,
-                $validated['new_inception_event_title'] ?? null,
-                $validated['new_inception_event_datetime'] ?? null,
-            )?->id ?? $validated['inception_event_id'] ?? null,
-            'termination_event_id' => $this->createInlineEvent(
-                $project,
-                $validated['new_termination_event_title'] ?? null,
-                $validated['new_termination_event_datetime'] ?? null,
-            )?->id ?? $validated['termination_event_id'] ?? null,
-        ];
 
-        $pathsToDelete = DB::transaction(function () use ($project, $entry, $validated, $data, $uploads, $user) {
+        $pathsToDelete = DB::transaction(function () use ($project, $entry, $validated, $uploads, $user) {
+            $data = [
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                // Plain saves, not autosaved fields — no revision snapshot for these.
+                'inception_event_id' => $this->createInlineEvent(
+                    $project,
+                    $validated['new_inception_event_title'] ?? null,
+                    $validated['new_inception_event_datetime'] ?? null,
+                )?->id ?? $validated['inception_event_id'] ?? null,
+                'termination_event_id' => $this->createInlineEvent(
+                    $project,
+                    $validated['new_termination_event_title'] ?? null,
+                    $validated['new_termination_event_datetime'] ?? null,
+                )?->id ?? $validated['termination_event_id'] ?? null,
+            ];
+
             $termsBefore = $this->referenceTerms($entry->name, $entry->aliases()->pluck('alias')->all());
 
             // A first-ever save seeds its baseline with the timestamp the entry

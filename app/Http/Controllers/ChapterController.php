@@ -130,6 +130,7 @@ class ChapterController extends Controller
             // from that act's true book-wide number.
             'numbering' => $numbering,
             'pageRange' => $this->pageRange($chapters, $sort, $numbering),
+            ...$this->landedHighlight($request, $chapters->getCollection(), 'act_id'),
         ]);
     }
 

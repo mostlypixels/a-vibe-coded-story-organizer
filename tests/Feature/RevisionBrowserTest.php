@@ -12,6 +12,7 @@ use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Js;
 use Tests\TestCase;
 
 /**
@@ -138,6 +139,26 @@ class RevisionBrowserTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('x-model="filter"', false);
+    }
+
+    public function test_the_sidebar_filter_matches_lowercase_names_per_group_book_and_entity(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $first = Scene::factory()->for($chapter)->create(['name' => 'Beta Scene']);
+        $second = Scene::factory()->for($chapter)->create(['name' => 'Ärger']);
+
+        $this->revisionFor(Scene::class, $first->id, $project->id, 'notes');
+        $this->revisionFor(Scene::class, $second->id, $project->id, 'notes');
+
+        $response = $this->actingAs($user)->get(route('projects.revisions.index', $project));
+
+        $names = Js::from(['beta scene', 'ärger'])->toHtml();
+        $response->assertOk();
+        $response->assertSee('names: '.$names.' }', false);
+        $response->assertSee("filter.trim() === '' || ".$names.'.some(', false);
+        $response->assertSee("filter.trim() === '' || ".Js::from('ärger')->toHtml().'.includes(', false);
     }
 
     public function test_only_the_active_entitys_group_starts_open(): void

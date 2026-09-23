@@ -29,10 +29,9 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         // A bare login lands on the active project rather than the dashboard.
-        // `intended()` still wins for a user bounced off a deep link. Project
-        // routes carry only `auth` (the dashboard also carries `verified`), so
-        // this bypasses that check today — inert while `User` does not
-        // implement `MustVerifyEmail`.
+        // `intended()` still wins for a user bounced off a deep link. No route
+        // carries `verified`, because `User` does not implement
+        // `MustVerifyEmail`. Add it to every auth route if that changes.
         $activeProject = $request->user()->activeProject;
 
         $fallback = $activeProject

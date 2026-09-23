@@ -61,16 +61,8 @@ class ImportController extends Controller
         // between attempts). When on, only the graph-import phases are deferred;
         // validation above already ran synchronously, so a bad archive never
         // reaches the queue.
-        if (ImportSetting::current()->run_in_background) {
-            // Mark the row as queued so the Import tab can distinguish "queued,
-            // maybe still running" from "ran inline and crashed". A queue worker
-            // (`php artisan queue:work`) must be running for it to progress.
-            $import->update(['queued' => true]);
-
-            ProjectImportJob::dispatch($import);
-
-            return redirect()->route('admin.data.import.index')
-                ->with('status', __('Import queued.'));
+        if ($queued = $this->queueInBackground($import)) {
+            return $queued;
         }
 
         try {
@@ -99,13 +91,8 @@ class ImportController extends Controller
 
         // Follow the CURRENT toggle value, not whatever it was when the import
         // was first started — the setting may have changed between attempts.
-        if (ImportSetting::current()->run_in_background) {
-            $import->update(['queued' => true]);
-
-            ProjectImportJob::dispatch($import);
-
-            return redirect()->route('admin.data.import.index')
-                ->with('status', __('Import queued.'));
+        if ($queued = $this->queueInBackground($import)) {
+            return $queued;
         }
 
         try {
@@ -130,5 +117,26 @@ class ImportController extends Controller
 
         return redirect()->route('admin.data.import.index')
             ->with('status', __('Import discarded.'));
+    }
+
+    /**
+     * Queues the import when the background toggle is on, and returns the
+     * redirect for that case. Returns null when the caller must run it inline.
+     */
+    private function queueInBackground(Import $import): ?RedirectResponse
+    {
+        if (! ImportSetting::current()->run_in_background) {
+            return null;
+        }
+
+        // Mark the row as queued so the Import tab can distinguish "queued,
+        // maybe still running" from "ran inline and crashed". A queue worker
+        // (`php artisan queue:work`) must be running for it to progress.
+        $import->update(['queued' => true]);
+
+        ProjectImportJob::dispatch($import);
+
+        return redirect()->route('admin.data.import.index')
+            ->with('status', __('Import queued.'));
     }
 }

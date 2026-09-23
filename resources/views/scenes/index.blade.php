@@ -31,14 +31,6 @@
                 <x-button variant="secondary" type="submit" name="jump" value="1">{{ __('Go to') }}</x-button>
             </x-index-toolbar>
 
-            @php
-                // The jumped-to chapter, and the first of its rows on this page: that
-                // row carries the `#chapter-<id>` anchor the redirect points at, and an
-                // id must stay unique in the document.
-                $highlightId = filled(request('highlight')) ? (int) request('highlight') : null;
-                $anchorSceneId = $highlightId ? $scenes->firstWhere('chapter_id', $highlightId)?->id : null;
-            @endphp
-
             <x-table>
                 <x-slot:head>
                     <x-sortable-header field="position" :sort="$sort" :direction="$direction">{{ __('#') }}</x-sortable-header>
@@ -62,7 +54,7 @@
                             default => '',
                         };
                     @endphp
-                    <x-table-row :striped="$loop->even" :highlighted="$highlighted" :id="$scene->id === $anchorSceneId ? 'chapter-'.$highlightId : null">
+                    <x-table-row :striped="$loop->even" :highlighted="$highlighted" :id="$scene->id === $anchorRowId ? 'chapter-'.$highlightId : null">
                         <x-table-cell :title="$scene->event ? null : __('This scene has no “happens during” event yet.')" muted nowrap class="{{ $markerClass }}">{{ $numbering->scene($scene) }}</x-table-cell>
                         <x-table-cell>
                             <a href="{{ route('scenes.show', $scene) }}" class="font-semibold text-content hover:text-link">{{ $scene->name }}</a>

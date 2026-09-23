@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\SceneStatus;
+use App\Models\Book;
 use App\Rules\WithinEventWindow;
 use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
@@ -20,7 +21,16 @@ class StoreSceneRequest extends FormRequest
      */
     public function rules(): array
     {
-        $book = $this->route('book');
+        return self::rulesFor($this->route('book'));
+    }
+
+    /**
+     * UpdateSceneRequest uses the same rules.
+     *
+     * @return array<string, mixed>
+     */
+    public static function rulesFor(Book $book): array
+    {
         // Events, and the window they must fall in, are shared by every book in
         // the project — only the chapter list is book-scoped.
         $project = $book->project;

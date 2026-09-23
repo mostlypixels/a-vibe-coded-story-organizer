@@ -27,14 +27,6 @@
                 <x-button variant="secondary" type="submit" name="jump" value="1">{{ __('Go to') }}</x-button>
             </x-index-toolbar>
 
-            @php
-                // The jumped-to act, and the first of its rows on this page: that
-                // row carries the `#act-<id>` anchor the redirect points at, and an
-                // id must stay unique in the document.
-                $highlightId = filled(request('highlight')) ? (int) request('highlight') : null;
-                $anchorChapterId = $highlightId ? $chapters->firstWhere('act_id', $highlightId)?->id : null;
-            @endphp
-
             <x-table>
                 <x-slot:head>
                     <x-sortable-header field="position" :sort="$sort" :direction="$direction">{{ __('#') }}</x-sortable-header>
@@ -49,7 +41,7 @@
                     @php
                         $highlighted = $highlightId !== null && $chapter->act_id === $highlightId;
                     @endphp
-                    <x-table-row :striped="$loop->even" :highlighted="$highlighted" :id="$chapter->id === $anchorChapterId ? 'act-'.$highlightId : null">
+                    <x-table-row :striped="$loop->even" :highlighted="$highlighted" :id="$chapter->id === $anchorRowId ? 'act-'.$highlightId : null">
                         <x-table-cell muted nowrap class="{{ $highlighted ? 'border-l-4 border-accent' : '' }}">{{ $numbering->chapter($chapter) }}</x-table-cell>
                         <x-table-cell>
                             <a href="{{ route('chapters.show', $chapter) }}" class="font-semibold text-content hover:text-link">{{ $chapter->name }}</a>

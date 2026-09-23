@@ -17,6 +17,21 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-23 — Safer scene and codex saves, less code in templates (#206)
+
+### Fixed
+
+- A scene or codex entry save that fails no longer leaves behind the new event typed in its form.
+
+### Changed
+
+- The scene edit form now checks input with the same rules as the create form.
+- List highlights, challenge daily pace and revision filter names are now worked out before the page renders.
+
+### Removed
+
+- The unused sign-up page code and the email check on the project list, which never applied to any account.
+
 ## 2026-09-23 — Non-owner tests for create, edit and reorder pages (#205)
 
 ### Changed

@@ -29,6 +29,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class SceneController extends Controller
@@ -133,6 +134,7 @@ class SceneController extends Controller
             // counting from that chapter's true book-wide number.
             'numbering' => $numbering,
             'pageRange' => $this->pageRange($scenes, $sort, $numbering),
+            ...$this->landedHighlight($request, $scenes->getCollection(), 'chapter_id'),
         ]);
     }
 
@@ -196,20 +198,23 @@ class SceneController extends Controller
         $validated = $request->validated();
         $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
 
-        $scene = $chapter->scenes()->create(
-            $this->sceneAttributes($validated) + ['event_id' => $this->createInlineEvent(
-                $book->project,
-                $validated['new_event_title'] ?? null,
-                $validated['new_event_datetime'] ?? null,
-            )?->id ?? $validated['event_id'] ?? null]
-        );
+        // A failure after the inline event insert must not leave an orphan event.
+        DB::transaction(function () use ($validated, $chapter, $book, $matcher) {
+            $scene = $chapter->scenes()->create(
+                $this->sceneAttributes($validated) + ['event_id' => $this->createInlineEvent(
+                    $book->project,
+                    $validated['new_event_title'] ?? null,
+                    $validated['new_event_datetime'] ?? null,
+                )?->id ?? $validated['event_id'] ?? null]
+            );
 
-        $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
+            $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
 
-        // Recompute which codex entries this scene's contents reference. A save always
-        // resyncs the single scene (no "did contents change" skip — contents changing is
-        // the point), mirroring the mentionedEvents()->sync() call above.
-        $matcher->syncScene($scene);
+            // Recompute which codex entries this scene's contents reference. A save always
+            // resyncs the single scene (no "did contents change" skip — contents changing is
+            // the point), mirroring the mentionedEvents()->sync() call above.
+            $matcher->syncScene($scene);
+        });
 
         return redirect()->route('books.scenes.index', $book);
     }
@@ -264,30 +269,33 @@ class SceneController extends Controller
 
         $beforeAutosavedFields = $this->snapshotAutosaved($scene, $sceneAttributes);
 
-        $scene->fill(
-            $sceneAttributes
-            + ['event_id' => $this->createInlineEvent(
-                $project,
-                $validated['new_event_title'] ?? null,
-                $validated['new_event_datetime'] ?? null,
-            )?->id ?? $validated['event_id'] ?? null]
-        );
+        // A failure after the inline event insert must not leave an orphan event.
+        DB::transaction(function () use ($scene, $sceneAttributes, $project, $validated, $chapter, $matcher, $beforeAutosavedFields) {
+            $scene->fill(
+                $sceneAttributes
+                + ['event_id' => $this->createInlineEvent(
+                    $project,
+                    $validated['new_event_title'] ?? null,
+                    $validated['new_event_datetime'] ?? null,
+                )?->id ?? $validated['event_id'] ?? null]
+            );
 
-        // chapter_id is not fillable, so move through associate(). Put the scene
-        // last in the new chapter so that no two scenes share a position.
-        if ($scene->chapter_id !== $chapter->id) {
-            $scene->position = $chapter->scenes()->max('position') + 1;
-            $scene->chapter()->associate($chapter);
-        }
+            // chapter_id is not fillable, so move through associate(). Put the scene
+            // last in the new chapter so that no two scenes share a position.
+            if ($scene->chapter_id !== $chapter->id) {
+                $scene->position = $chapter->scenes()->max('position') + 1;
+                $scene->chapter()->associate($chapter);
+            }
 
-        $scene->save();
+            $scene->save();
 
-        $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
+            $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
 
-        // Recompute references against the scene's now-saved contents (see store()).
-        $matcher->syncScene($scene);
+            // Recompute references against the scene's now-saved contents (see store()).
+            $matcher->syncScene($scene);
 
-        $this->recordManualSave($scene, $beforeAutosavedFields);
+            $this->recordManualSave($scene, $beforeAutosavedFields);
+        });
 
         return $this->redirectAfterSave($request, ['scenes.edit', $scene], ['books.scenes.index', $book]);
     }

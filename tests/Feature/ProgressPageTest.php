@@ -243,6 +243,28 @@ class ProgressPageTest extends TestCase
         CarbonImmutable::setTestNow();
     }
 
+    public function test_an_upcoming_challenge_shows_its_target_and_even_daily_pace(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        CarbonImmutable::setTestNow('2026-10-15');
+
+        // 50,000 words over the 30 days of November rounds to 1,667 a day.
+        Challenge::factory()->for($project)->create([
+            'name' => 'November Novel',
+            'starts_on' => '2026-11-01',
+            'ends_on' => '2026-11-30',
+            'target_words' => 50000,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('projects.progress', $project))
+            ->assertOk()
+            ->assertSee(__(':target words · :par a day', ['target' => '50,000', 'par' => '1,667']));
+
+        CarbonImmutable::setTestNow();
+    }
+
     public function test_the_past_table_caps_at_twelve_rows_across_challenges(): void
     {
         $user = User::factory()->create();

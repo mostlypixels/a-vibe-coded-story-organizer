@@ -684,7 +684,8 @@ class ImportTest extends TestCase
 
         $this->actingAs($owner)
             ->post(route('admin.data.imports.resume', $import))
-            ->assertRedirect(route('admin.data.import.index'));
+            ->assertRedirect(route('admin.data.import.index'))
+            ->assertSessionHas('status', __('Import queued.'));
 
         // Resume honored the CURRENT (background) value: it queued rather than
         // running inline, so the import is still pending and now flagged queued.
