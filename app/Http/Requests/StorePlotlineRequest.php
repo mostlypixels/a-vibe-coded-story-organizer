@@ -32,7 +32,7 @@ class StorePlotlineRequest extends FormRequest
     }
 
     /**
-     * Rules that need no route model, so the archive import can use them.
+     * Rules that need no route model, so the Update request and the archive import can use them.
      *
      * @return array<string, mixed>
      */

@@ -26,7 +26,7 @@ class UpdateChapterRequest extends FormRequest
                 // A chapter cannot move outside its current book.
                 Rule::exists('acts', 'id')->where('book_id', $this->route('chapter')->act->book_id),
             ],
-            'name' => ['required', 'string', 'max:255'],
+            ...StoreChapterRequest::fieldRules(),
             'description' => AutosavableFields::validationRule('chapter', 'description'),
 
             'cover_image' => CodexMediaRules::coverRules(),

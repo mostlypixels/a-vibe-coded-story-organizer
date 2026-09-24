@@ -21,7 +21,7 @@ class UpdateTagRequest extends FormRequest
 
         return [
             'name' => [
-                'required', 'string', 'max:255',
+                ...StoreTagRequest::fieldRules()['name'],
                 // Tag names are unique within a project; the tag keeps its own name.
                 Rule::unique('tags', 'name')->where('project_id', $tag->project_id)->ignore($tag->id),
             ],

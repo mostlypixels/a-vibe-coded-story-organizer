@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Edit forms share rules with create forms (#208)
+
+### Changed
+
+- Edit forms for plotlines, events, acts, chapters, tags and codex entries now check input with the same rules as their create forms.
+
 ## 2026-09-24 — Note on projects from an unfinished import (#207)
 
 ### Added
