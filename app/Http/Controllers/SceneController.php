@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\JumpsToListPosition;
-use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
@@ -15,10 +14,9 @@ use App\Models\Book;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CodexAsOfResolver;
-use App\Services\Concerns\CreatesInlineEvents;
 use App\Services\ReferencingScenes;
 use App\Services\SceneDuplicator;
-use App\Services\SceneReferenceMatcher;
+use App\Services\SceneSaver;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
 use App\Support\LikeSearch;
@@ -29,14 +27,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class SceneController extends Controller
 {
-    use CreatesInlineEvents;
     use JumpsToListPosition;
-    use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ReordersSiblings;
     use ResolvesIndexSorting;
@@ -193,28 +188,12 @@ class SceneController extends Controller
         ]);
     }
 
-    public function store(StoreSceneRequest $request, Book $book, SceneReferenceMatcher $matcher): RedirectResponse
+    public function store(StoreSceneRequest $request, Book $book, SceneSaver $saver): RedirectResponse
     {
         $validated = $request->validated();
         $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
 
-        // A failure after the inline event insert must not leave an orphan event.
-        DB::transaction(function () use ($validated, $chapter, $book, $matcher) {
-            $scene = $chapter->scenes()->create(
-                $this->sceneAttributes($validated) + ['event_id' => $this->createInlineEvent(
-                    $book->project,
-                    $validated['new_event_title'] ?? null,
-                    $validated['new_event_datetime'] ?? null,
-                )?->id ?? $validated['event_id'] ?? null]
-            );
-
-            $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
-
-            // Recompute which codex entries this scene's contents reference. A save always
-            // resyncs the single scene (no "did contents change" skip — contents changing is
-            // the point), mirroring the mentionedEvents()->sync() call above.
-            $matcher->syncScene($scene);
-        });
+        $saver->create($chapter, $validated);
 
         return redirect()->route('books.scenes.index', $book);
     }
@@ -259,40 +238,13 @@ class SceneController extends Controller
         ]);
     }
 
-    public function update(UpdateSceneRequest $request, Scene $scene, SceneReferenceMatcher $matcher): RedirectResponse
+    public function update(UpdateSceneRequest $request, Scene $scene, SceneSaver $saver): RedirectResponse
     {
         $book = $scene->book();
-        $project = $book->project;
         $validated = $request->validated();
         $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
-        $sceneAttributes = $this->sceneAttributes($validated);
 
-        $beforeAutosavedFields = $this->snapshotAutosaved($scene, $sceneAttributes);
-
-        // A failure after the inline event insert must not leave an orphan event.
-        DB::transaction(function () use ($scene, $sceneAttributes, $project, $validated, $chapter, $matcher, $beforeAutosavedFields) {
-            $scene->fill(
-                $sceneAttributes
-                + ['event_id' => $this->createInlineEvent(
-                    $project,
-                    $validated['new_event_title'] ?? null,
-                    $validated['new_event_datetime'] ?? null,
-                )?->id ?? $validated['event_id'] ?? null]
-            );
-
-            if ($scene->chapter_id !== $chapter->id) {
-                $scene->moveToEndOf($chapter, 'chapter');
-            }
-
-            $scene->save();
-
-            $scene->mentionedEvents()->sync($validated['mentioned_events'] ?? []);
-
-            // Recompute references against the scene's now-saved contents (see store()).
-            $matcher->syncScene($scene);
-
-            $this->recordManualSave($scene, $beforeAutosavedFields);
-        });
+        $saver->update($scene, $chapter, $validated, $request->user());
 
         return $this->redirectAfterSave($request, ['scenes.edit', $scene], ['books.scenes.index', $book]);
     }
@@ -379,18 +331,5 @@ class SceneController extends Controller
             'first' => $firstLabel,
             'last' => __('Chapter :number — :name', ['number' => $numbering->chapter($last), 'name' => $last->name]),
         ]);
-    }
-
-    /**
-     * Scene column values, stripped of the relationship/form-only keys handled separately.
-     *
-     * @param  array<string, mixed>  $validated
-     * @return array<string, mixed>
-     */
-    private function sceneAttributes(array $validated): array
-    {
-        return collect($validated)
-            ->except(['chapter_id', 'event_id', 'new_event_title', 'new_event_datetime', 'mentioned_events'])
-            ->all();
     }
 }

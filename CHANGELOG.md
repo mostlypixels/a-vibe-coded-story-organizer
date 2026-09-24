@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Scene saves move into one service (#246)
+
+### Changed
+
+- Creating and saving a scene from its form runs through one shared service; behaviour is unchanged.
+
 ## 2026-09-24 — One code path for moving acts, chapters and scenes (#245)
 
 ### Changed
