@@ -1519,4 +1519,33 @@ class CodexEntryTest extends TestCase
             ->assertOk()
             ->assertDontSee('Termination is before inception');
     }
+
+    public function test_the_create_form_keeps_a_picked_attribute_after_a_failed_save(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Eye colour']);
+
+        $this->actingAs($user)
+            ->withSession(['_old_input' => ['attribute_baselines' => [$attribute->id => 'Sea green']]])
+            ->get(route('projects.codex.create', [$project, 'characters']))
+            ->assertOk()
+            ->assertSee('Eye colour')
+            ->assertSee('Sea green');
+    }
+
+    public function test_the_edit_form_shows_the_cover_and_reference_files(): void
+    {
+        $user = User::factory()->create();
+        $entry = CodexEntry::factory()->for(Project::factory()->for($user))->character()->create();
+        $cover = CodexMedia::factory()->cover()->create(['codex_entry_id' => $entry->id]);
+        CodexMedia::factory()->referenceFile()->create(['codex_entry_id' => $entry->id, 'original_name' => 'family-tree.pdf']);
+
+        $this->actingAs($user)
+            ->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('Replace cover')
+            ->assertSee('value="'.$cover->id.'"', false)
+            ->assertSee('family-tree.pdf');
+    }
 }

@@ -100,6 +100,22 @@ class PublicationSetting extends Model
     }
 
     /**
+     * The saved section order, or the default reading order when none is saved.
+     *
+     * @return list<string>
+     */
+    public function sectionOrder(): array
+    {
+        return $this->section_order ?? self::SECTION_KEYS;
+    }
+
+    /** @return list<string> The codex entry types in the appendix. */
+    public function appendixEntryTypes(): array
+    {
+        return $this->appendix_entry_types ?? [];
+    }
+
+    /**
      * Move a front/back-matter section one step earlier in `section_order`.
      * A no-op for the pinned `title` section, an unknown key, or a section
      * already at the front of the reorderable range (index 1).
@@ -128,7 +144,7 @@ class PublicationSetting extends Model
             return;
         }
 
-        $order = $this->section_order ?? self::SECTION_KEYS;
+        $order = $this->sectionOrder();
         $index = array_search($section, $order, true);
 
         if ($index === false) {

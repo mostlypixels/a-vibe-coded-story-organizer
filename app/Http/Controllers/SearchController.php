@@ -11,6 +11,7 @@ use App\Services\ProjectSearch;
 use App\Support\PageSize;
 use App\Support\SearchScope;
 use App\Support\SearchScopeFactory;
+use App\Support\SearchScopeSummary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
@@ -49,6 +50,8 @@ class SearchController extends Controller
         $books = $this->booksFor($project);
         $book = $this->resolvedBook($scope, $books);
 
+        $chapters = $book?->chaptersInStoryOrder() ?? collect();
+
         return view('search.index', [
             'project' => $project,
             'query' => $query,
@@ -60,7 +63,10 @@ class SearchController extends Controller
             // The whole picker exists only once a book is resolved (the chosen one,
             // or the project's only one) — a multi-book project with none chosen
             // runs no chapter query.
-            'chapters' => $book?->chaptersInStoryOrder() ?? collect(),
+            'chapters' => $chapters,
+            'scopeSummary' => $results !== null && $scope->isNarrowed()
+                ? implode(', ', SearchScopeSummary::parts($scope, $book, $chapters))
+                : null,
         ]);
     }
 

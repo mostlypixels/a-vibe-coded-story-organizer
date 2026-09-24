@@ -43,12 +43,9 @@
         </form>
 
         @if ($results !== null)
-            @if ($scope->isNarrowed())
-                @php
-                    $summaryParts = \App\Support\SearchScopeSummary::parts($scope, $book, $chapters);
-                @endphp
+            @if ($scopeSummary !== null)
                 <div class="bg-surface-raised shadow-xs rounded-lg px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm text-content-muted">
-                    <p>{{ __('Filtered to :summary.', ['summary' => implode(', ', $summaryParts)]) }}</p>
+                    <p>{{ __('Filtered to :summary.', ['summary' => $scopeSummary]) }}</p>
                     <a
                         href="{{ route('projects.search.index', ['project' => $project, 'q' => $query, 'mode' => $mode->value]) }}"
                         class="text-link underline hover:text-link-hover shrink-0"

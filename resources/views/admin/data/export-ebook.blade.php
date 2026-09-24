@@ -56,7 +56,6 @@
             </form>
 
             @if ($selectedBook)
-                @php $sectionOrder = $setting->section_order ?? \App\Models\PublicationSetting::SECTION_KEYS; @endphp
 
                 <fieldset class="mt-8 border border-border rounded-md px-4 pb-4">
                     <legend class="px-2 text-sm font-semibold text-content">{{ $selectedBook->displayName() }}</legend>
@@ -65,7 +64,7 @@
                     @csrf
                     @method('patch')
 
-                    @foreach ($sectionOrder as $sectionKey)
+                    @foreach ($setting->sectionOrder() as $sectionKey)
                         <input type="hidden" name="section_order[]" value="{{ $sectionKey }}">
                     @endforeach
 
@@ -222,7 +221,6 @@
                         <div x-show="appendixOpen" class="ms-7 space-y-3">
                             <p class="text-sm font-medium text-content-muted">{{ __('Which entry types') }}</p>
 
-                            @php $checkedTypes = old('appendix_entry_types', $setting->appendix_entry_types ?? []); @endphp
                             @foreach (\App\Enums\CodexEntryType::cases() as $type)
                                 <label for="appendix_entry_type_{{ $type->value }}" class="flex items-center gap-3">
                                     <input
@@ -230,7 +228,7 @@
                                         id="appendix_entry_type_{{ $type->value }}"
                                         name="appendix_entry_types[]"
                                         value="{{ $type->value }}"
-                                        @checked(in_array($type->value, $checkedTypes, true))
+                                        @checked(in_array($type->value, old('appendix_entry_types', $setting->appendixEntryTypes()), true))
                                         class="rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
                                     >
                                     <span class="text-sm text-content-muted">{{ $type->pluralLabel() }}</span>
@@ -263,7 +261,7 @@
                     </p>
 
                     <ul class="mt-3 divide-y divide-border border border-border rounded-md">
-                        @foreach ($sectionOrder as $sectionKey)
+                        @foreach ($setting->sectionOrder() as $sectionKey)
                             <li class="flex items-center justify-between px-4 py-2">
                                 <span class="text-sm text-content-muted">{{ ucfirst(str_replace('_', ' ', $sectionKey)) }}</span>
                                 <div class="flex gap-1">

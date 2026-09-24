@@ -3,12 +3,6 @@
         {{ __('Edit Scene') }}
     </x-page-heading>
 
-    @php
-        $shareDurations = config('sharing.scene_link_durations');
-        $shareDefaultKey = config('sharing.scene_link_default_duration');
-        $shareDefaultDuration = $shareDurations[$shareDefaultKey] ?? reset($shareDurations);
-    @endphp
-
     <x-edit-layout>
         <x-card>
                 <form id="scene-edit-form" method="POST" action="{{ route('scenes.update', $scene) }}" class="space-y-6">

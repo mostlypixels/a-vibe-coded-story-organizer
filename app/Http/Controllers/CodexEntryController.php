@@ -15,6 +15,7 @@ use App\Services\CodexAttributeSheets;
 use App\Services\CodexEntryDuplicator;
 use App\Services\CodexEntrySaver;
 use App\Services\ReferencingScenes;
+use App\Support\CodexEntryForm;
 use App\Support\CodexMediaUploads;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
@@ -92,7 +93,8 @@ class CodexEntryController extends Controller
         return view('codex.create', [
             'project' => $project,
             'type' => $entryType,
-            'attributes' => $project->codexAttributesFor($entryType),
+            'entry' => null,
+            'form' => CodexEntryForm::forCreate($project->codexAttributesFor($entryType)),
             'projectTags' => $project->tags()->orderBy('name')->get(),
         ]);
     }
@@ -175,6 +177,7 @@ class CodexEntryController extends Controller
             'project' => $project,
             'type' => $codexEntry->type,
             'entry' => $codexEntry,
+            'form' => CodexEntryForm::forEdit($codexEntry),
             'sheets' => $sheets->attached($codexEntry, $startEvent),
             'unattachedAttributes' => $sheets->unattachedFor($codexEntry),
             'startEvent' => $startEvent,
