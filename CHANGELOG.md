@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Scene text box label reads "Contents"
+## 2026-09-24 — Scene text box label reads "Contents" (#228)
 
 ### Changed
 
