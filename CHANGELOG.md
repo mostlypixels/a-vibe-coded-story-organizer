@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Autosave in one service
+## 2026-09-24 — Autosave in one service (#251)
 
 ### Changed
 
