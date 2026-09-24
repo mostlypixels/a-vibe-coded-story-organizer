@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Rotating SQLite backups
+
+### Added
+
+- `php artisan db:backup` writes a named SQLite snapshot and keeps only the newest snapshots of that name.
+- The scheduler takes a database snapshot every hour and keeps two days; both values are configurable.
+
+### Fixed
+
+- The Docker stack and `composer dev` now run the scheduler, so daily clean-ups and backups actually run.
+
 ## 2026-09-24 — Faster chapter and scene lists in a book (#210)
 
 ### Changed

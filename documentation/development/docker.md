@@ -61,7 +61,7 @@ docker compose -f docker-compose.dev.yml exec app npm run build
 
 ## Services
 
-- **app** runs PHP-FPM and Nginx through Supervisor. `Dockerfile.dev` also adds Node, Vite, Xdebug, and source mounts.
+- **app** runs PHP-FPM, Nginx, the queue worker, and the scheduler (`schedule:work`) through Supervisor. `Dockerfile.dev` also adds Node, Vite, Xdebug, and source mounts.
 - **mailpit** catches development email.
 
 The stack uses SQLite. The database directory is mounted so data survives restarts. `make clean` removes it.

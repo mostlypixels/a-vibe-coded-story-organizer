@@ -6,7 +6,8 @@ Config files consumed by the images defined in the root `Dockerfile` /
 - `entrypoint.sh` — container boot: generates `APP_KEY` if unset, runs pending
   migrations, clears config/cache.
 - `nginx.conf` — serves the Laravel app (production image only).
-- `supervisord.conf` — runs PHP-FPM and Nginx as sibling processes.
+- `supervisord.conf` — runs PHP-FPM, Nginx, the queue worker, and the scheduler
+  as sibling processes.
 - `php.ini` — upload limits, memory limits, logging.
 
 For everything else — quick start, `make` commands, services, troubleshooting,
