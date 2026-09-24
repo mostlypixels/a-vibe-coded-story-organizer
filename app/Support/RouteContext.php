@@ -33,8 +33,8 @@ final class RouteContext
     {
         $book = $request->route('book')
             ?? $request->route('act')?->book
-            ?? $request->route('chapter')?->act?->book
-            ?? $request->route('scene')?->chapter?->act?->book;
+            ?? $request->route('chapter')?->book()
+            ?? $request->route('scene')?->book();
 
         if ($book !== null) {
             return new self($book->project, $book);

@@ -140,7 +140,7 @@ class SceneController extends Controller
 
     public function show(Scene $scene, ReferencingScenes $referencingScenes): View
     {
-        $book = $scene->chapter->act->book;
+        $book = $scene->book();
 
         $this->authorize('view', $book->project);
 
@@ -164,7 +164,7 @@ class SceneController extends Controller
      */
     public function codexReferences(Request $request, Scene $scene, ReferencingScenes $referencingScenes): View
     {
-        $this->authorize('view', $scene->chapter->act->book->project);
+        $this->authorize('view', $scene->project());
 
         return view('references.entries', [
             'scene' => $scene,
@@ -221,7 +221,7 @@ class SceneController extends Controller
 
     public function edit(Scene $scene, CodexAsOfResolver $codexAsOf, ReferencingScenes $referencingScenes): View
     {
-        $book = $scene->chapter->act->book;
+        $book = $scene->book();
         $project = $book->project;
 
         $this->authorize('update', $project);
@@ -261,7 +261,7 @@ class SceneController extends Controller
 
     public function update(UpdateSceneRequest $request, Scene $scene, SceneReferenceMatcher $matcher): RedirectResponse
     {
-        $book = $scene->chapter->act->book;
+        $book = $scene->book();
         $project = $book->project;
         $validated = $request->validated();
         $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
@@ -309,7 +309,7 @@ class SceneController extends Controller
 
     public function destroy(Scene $scene): RedirectResponse
     {
-        $book = $scene->chapter->act->book;
+        $book = $scene->book();
 
         $this->authorize('update', $book->project);
 
@@ -320,14 +320,14 @@ class SceneController extends Controller
 
     public function moveUp(Request $request, Scene $scene): RedirectResponse|JsonResponse
     {
-        $this->reorderSibling($scene, $scene->chapter->act->book->project, up: true);
+        $this->reorderSibling($scene, $scene->project(), up: true);
 
         return $this->reorderResponse($request, $scene);
     }
 
     public function moveDown(Request $request, Scene $scene): RedirectResponse|JsonResponse
     {
-        $this->reorderSibling($scene, $scene->chapter->act->book->project, up: false);
+        $this->reorderSibling($scene, $scene->project(), up: false);
 
         return $this->reorderResponse($request, $scene);
     }

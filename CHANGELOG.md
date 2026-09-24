@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Scenes and chapters find their book in one place (#244)
+
+### Changed
+
+- Scenes and chapters look up their book and project through one shared method; behaviour is unchanged.
+
 ## 2026-09-24 — Scene text box label reads "Contents" (#228)
 
 ### Changed

@@ -9,7 +9,7 @@ class UpdateSceneRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('scene')->chapter->act->book->project);
+        return $this->user()->can('update', $this->route('scene')->project());
     }
 
     /**
@@ -17,6 +17,6 @@ class UpdateSceneRequest extends FormRequest
      */
     public function rules(): array
     {
-        return StoreSceneRequest::rulesFor($this->route('scene')->chapter->act->book);
+        return StoreSceneRequest::rulesFor($this->route('scene')->book());
     }
 }

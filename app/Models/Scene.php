@@ -44,11 +44,28 @@ class Scene extends Model
     }
 
     /**
+     * The book this scene belongs to, through its chapter and act.
+     *
+     * > [!WARNING]
+     * > A plain method, not a relation. Call `book()`; the `$scene->book` property throws.
+     */
+    public function book(): Book
+    {
+        return $this->chapter->act->book;
+    }
+
+    /** The project this scene belongs to. A plain method, like {@see book()}. */
+    public function project(): Project
+    {
+        return $this->book()->project;
+    }
+
+    /**
      * The project that owns this scene's revisions (see HasRevisions).
      */
     public function revisionProject(): Project
     {
-        return $this->chapter->act->book->project;
+        return $this->project();
     }
 
     /**
@@ -176,13 +193,13 @@ class Scene extends Model
                 : $scene->wasChanged('word_count');
 
             if ($movedTheTotal) {
-                app(WordCountSnapshotRecorder::class)->record($scene->chapter->act->book->project);
+                app(WordCountSnapshotRecorder::class)->record($scene->project());
             }
         });
 
         // Deleting is writing: the total drops.
         static::deleted(function (Scene $scene): void {
-            app(WordCountSnapshotRecorder::class)->record($scene->chapter->act->book->project);
+            app(WordCountSnapshotRecorder::class)->record($scene->project());
         });
     }
 }

@@ -10,7 +10,7 @@ class DestroyChapterRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('chapter')->act->book->project);
+        return $this->user()->can('update', $this->route('chapter')->project());
     }
 
     /**
@@ -23,7 +23,7 @@ class DestroyChapterRequest extends FormRequest
         return [
             'move_children_to' => [
                 'nullable',
-                Rule::exists('chapters', 'id')->whereIn('act_id', $chapter->act->book->acts()->pluck('id')),
+                Rule::exists('chapters', 'id')->whereIn('act_id', $chapter->book()->acts()->pluck('id')),
                 Rule::notIn([$chapter->id]),
             ],
         ];
