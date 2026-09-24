@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Note on projects from an unfinished import
+## 2026-09-24 — Note on projects from an unfinished import (#207)
 
 ### Added
 
