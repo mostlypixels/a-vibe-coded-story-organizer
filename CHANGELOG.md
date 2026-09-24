@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Edit forms share rules with create forms
+## 2026-09-24 — Edit forms share rules with create forms (#208)
 
 ### Changed
 
