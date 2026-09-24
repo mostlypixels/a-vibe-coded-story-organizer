@@ -123,10 +123,12 @@ class Book extends Model
      * of {@see Project::chapterQuery()}, and a Builder for the same reason: a
      * relation would join `acts`, whose own `name`/`position` columns make every
      * caller's `orderBy()` ambiguous.
+     *
+     * Nested `whereIn` subqueries, for the same reason as {@see Project::sceneQuery()}.
      */
     public function chapterQuery(): Builder
     {
-        return Chapter::query()->whereHas('act', fn (Builder $query) => $query->where('book_id', $this->id));
+        return Chapter::query()->whereIn('chapters.act_id', Act::query()->select('acts.id')->where('acts.book_id', $this->id));
     }
 
     /**
@@ -136,7 +138,7 @@ class Book extends Model
      */
     public function sceneQuery(): Builder
     {
-        return Scene::query()->whereHas('chapter.act', fn (Builder $query) => $query->where('book_id', $this->id));
+        return Scene::query()->whereIn('scenes.chapter_id', $this->chapterQuery()->select('chapters.id'));
     }
 
     /**
