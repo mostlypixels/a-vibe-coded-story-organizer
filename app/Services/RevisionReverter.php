@@ -7,6 +7,7 @@ use App\Exceptions\RevisionConflictException;
 use App\Models\Revision;
 use App\Models\User;
 use App\Support\AutosavableFields;
+use App\Support\FieldHash;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -93,9 +94,7 @@ class RevisionReverter
      */
     public function assertUnchanged(Model $entity, string $field, string $baseHash): void
     {
-        $currentValue = (string) ($entity->getAttribute($field) ?? '');
-
-        if ($baseHash !== hash('sha256', $currentValue)) {
+        if ($baseHash !== FieldHash::of($entity->getAttribute($field))) {
             throw RevisionConflictException::valueChangedElsewhere($field);
         }
     }
@@ -108,12 +107,12 @@ class RevisionReverter
      */
     private function assertStillUnchanged(Model $entity, string $field, string $baseHash): void
     {
-        $storedValue = (string) ($entity->newQuery()
+        $storedValue = $entity->newQuery()
             ->whereKey($entity->getKey())
             ->lockForUpdate()
-            ->value($field) ?? '');
+            ->value($field);
 
-        if ($baseHash !== hash('sha256', $storedValue)) {
+        if ($baseHash !== FieldHash::of($storedValue)) {
             throw RevisionConflictException::valueChangedElsewhere($field);
         }
     }

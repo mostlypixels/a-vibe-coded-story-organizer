@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Services\FieldAutosaver;
 use App\Services\RevisionReverter;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -9,6 +10,7 @@ use RuntimeException;
 /**
  * Thrown by {@see RevisionReverter} when a revert is asked to overwrite a value
  * that has moved since the page the request came from was rendered.
+ * {@see FieldAutosaver} throws it for the same reason during an autosave.
  *
  * Like {@see ImportValidationException}, this is a **user situation, not a bug**:
  * two tabs, or a still-running autosave, wrote the field after the history page

@@ -111,7 +111,7 @@ class AutosavableFields
         $hashes = [];
 
         foreach (array_keys(self::fieldsForModel($model::class)) as $field) {
-            $hashes[$field] = hash('sha256', (string) ($model->getAttribute($field) ?? ''));
+            $hashes[$field] = FieldHash::of($model->getAttribute($field));
         }
 
         return $hashes;

@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Autosave in one service
+
+### Changed
+
+- Autosave, restore buttons and revert checks share one conflict check; saving works as before.
+
 ## 2026-09-24 — Thinner revision controller (#250)
 
 ### Changed
