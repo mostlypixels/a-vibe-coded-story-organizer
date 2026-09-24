@@ -11,7 +11,7 @@
             @endif
 
             <div>
-                <x-heading level="1">{{ __('Chapter :number', ['number' => $numbering->chapter($chapter)]) }} &mdash; {{ $chapter->name }}</x-heading>
+                <x-heading level="1">{{ $numbering->chapterLabel($chapter) }}</x-heading>
                 <p class="text-sm text-content-muted">
                     {{ $chapter->act->name }}
                     &middot;

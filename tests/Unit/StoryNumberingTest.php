@@ -287,4 +287,33 @@ class StoryNumberingTest extends TestCase
         $this->assertSame(1, $numbering->chapter($bookTwoChapter));
         $this->assertSame(1, $numbering->scene($bookTwoScene));
     }
+
+    public function test_labels_and_range_labels(): void
+    {
+        [, $book] = $this->projectWithBook();
+        $actOne = Act::factory()->for($book)->create(['name' => 'Ash']);
+        $actTwo = Act::factory()->for($book)->create(['name' => 'Salt']);
+        $chapter = Chapter::factory()->for($actTwo)->create(['name' => 'Thorn']);
+        $scene = Scene::factory()->for($chapter)->create(['name' => 'Well']);
+
+        $numbering = StoryNumbering::forBook($book);
+
+        $this->assertSame('Act 2 — Salt', $numbering->actLabel($actTwo));
+        $this->assertSame('Act 2', $numbering->actLabel($actTwo, withName: false));
+        $this->assertSame('Chapter 1 — Thorn', $numbering->chapterLabel($chapter));
+        $this->assertSame('Scene 1 — Well', $numbering->sceneLabel($scene));
+        $this->assertSame('Act 1 — Ash', $numbering->rangeLabel($actOne, $actOne));
+        $this->assertSame('Act 1 — Ash to Act 2 — Salt', $numbering->rangeLabel($actOne, $actTwo));
+    }
+
+    public function test_sibling_rank_ignores_gaps_in_position(): void
+    {
+        [, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
+        Chapter::factory()->for($act)->create(['position' => 3]);
+        $second = Chapter::factory()->for($act)->create(['position' => 10]);
+        Chapter::factory()->for($act)->create(['position' => 20]);
+
+        $this->assertSame([2, 3], $second->siblingRank());
+    }
 }

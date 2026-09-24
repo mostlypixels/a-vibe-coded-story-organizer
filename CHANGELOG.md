@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Story-order helpers for list and edit pages
+
+### Changed
+
+- Act, chapter and scene numbers, page ranges and "2 of 5" hints come from shared helpers; the text on screen is unchanged.
+
 ## 2026-09-24 — Cover files handled in one place (#247)
 
 ### Changed

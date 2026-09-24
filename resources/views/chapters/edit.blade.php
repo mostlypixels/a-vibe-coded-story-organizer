@@ -29,7 +29,7 @@
                         'number' => $numbering->chapter($chapter),
                         'position' => $positionInAct,
                         'total' => $totalInAct,
-                        'act' => __('Act :number', ['number' => $numbering->act($chapter->act)]),
+                        'act' => $numbering->actLabel($chapter->act, withName: false),
                     ]) }}</p>
                 </x-field>
 

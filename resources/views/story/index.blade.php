@@ -18,7 +18,7 @@
                         @foreach ($acts as $act)
                             <div>
                                 <a href="#act-{{ $act->id }}" class="font-semibold text-content hover:text-content-muted">
-                                    {{ __('Act :number', ['number' => $numbering->act($act)]) }} &mdash; {{ $act->name }}
+                                    {{ $numbering->actLabel($act) }}
                                 </a>
 
                                 @if ($act->chapters->isNotEmpty())
@@ -26,7 +26,7 @@
                                         @foreach ($act->chapters as $chapter)
                                             <li>
                                                 <a href="#chapter-{{ $chapter->id }}" class="text-sm text-content-muted hover:text-content">
-                                                    {{ __('Chapter :number', ['number' => $numbering->chapter($chapter)]) }} &mdash; {{ $chapter->name }}
+                                                    {{ $numbering->chapterLabel($chapter) }}
                                                 </a>
                                             </li>
                                         @endforeach
@@ -43,7 +43,7 @@
                     <div class="space-y-6">
                         <div class="flex items-center justify-between gap-4 text-nav-content bg-nav rounded-md px-4 py-2">
                             <h2 id="act-{{ $act->id }}" class="text-2xl font-bold scroll-mt-16">
-                                {{ __('Act :number', ['number' => $numbering->act($act)]) }} &mdash; {{ $act->name }}
+                                {{ $numbering->actLabel($act) }}
                             </h2>
                             <x-word-count
                                 :count="$act->chapters->sum(fn ($chapter) => $chapter->scenes->sum('word_count'))"

@@ -7,7 +7,7 @@
             class="inline-flex items-center gap-1 text-link hover:text-link-hover hover:underline"
         >
             <x-tabler-chevron-left class="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{{ __('Chapter :number', ['number' => $numbering->chapter($previous)]) }} &mdash; {{ $previous->name }}</span>
+            <span>{{ $numbering->chapterLabel($previous) }}</span>
         </a>
     @else
         <span aria-disabled="true" class="inline-flex items-center gap-1 text-content-subtle cursor-not-allowed">
@@ -21,7 +21,7 @@
             href="{{ route('books.story.overview', ['book' => $book, 'chapter' => $next->id]) }}#chapter-{{ $next->id }}"
             class="inline-flex items-center gap-1 text-link hover:text-link-hover hover:underline text-right"
         >
-            <span>{{ __('Chapter :number', ['number' => $numbering->chapter($next)]) }} &mdash; {{ $next->name }}</span>
+            <span>{{ $numbering->chapterLabel($next) }}</span>
             <x-tabler-chevron-right class="h-4 w-4 shrink-0" aria-hidden="true" />
         </a>
     @else

@@ -153,6 +153,46 @@ final class StoryNumbering
         return $this->lookup($this->sceneNumbers, $scene, 'scene');
     }
 
+    /** "Act 3 — Ash and Rust", or "Act 3" without the name. */
+    public function actLabel(Act $act, bool $withName = true): string
+    {
+        return $this->label(__('Act :number', ['number' => $this->act($act)]), $withName ? $act->name : null);
+    }
+
+    /** "Chapter 12 — Salt and Thorn", or "Chapter 12" without the name. */
+    public function chapterLabel(Chapter $chapter, bool $withName = true): string
+    {
+        return $this->label(__('Chapter :number', ['number' => $this->chapter($chapter)]), $withName ? $chapter->name : null);
+    }
+
+    /** "Scene 40 — The Well", or "Scene 40" without the name. */
+    public function sceneLabel(Scene $scene, bool $withName = true): string
+    {
+        return $this->label(__('Scene :number', ['number' => $this->scene($scene)]), $withName ? $scene->name : null);
+    }
+
+    /**
+     * "Act 3 — Ash and Rust to Act 5 — Salt and Thorn", or one label when both ends are the same.
+     * The list pages show it above the pagination bar.
+     */
+    public function rangeLabel(Act|Chapter $first, Act|Chapter $last): string
+    {
+        $labelOf = fn (Act|Chapter $model): string => $model instanceof Act
+            ? $this->actLabel($model)
+            : $this->chapterLabel($model);
+
+        if ($first->is($last)) {
+            return $labelOf($first);
+        }
+
+        return __(':first to :last', ['first' => $labelOf($first), 'last' => $labelOf($last)]);
+    }
+
+    private function label(string $numbered, ?string $name): string
+    {
+        return $name === null ? $numbered : $numbered.' — '.$name;
+    }
+
     /**
      * @param  array<int, int>  $numbers
      */

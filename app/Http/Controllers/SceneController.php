@@ -22,11 +22,11 @@ use App\Support\EventWindow;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
 use App\Support\StoryNumbering;
+use App\Support\StoryOrder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
 class SceneController extends Controller
@@ -91,13 +91,7 @@ class SceneController extends Controller
                 // backwards rather than acts ascending with scenes reversed inside them.
                 // The id tie-breaks are part of the contract: `position` has no unique
                 // constraint, so two siblings can share one and must still order stably.
-                fn ($query) => $query
-                    ->orderBy('acts.position', $direction)
-                    ->orderBy('acts.id', $direction)
-                    ->orderBy('chapters.position', $direction)
-                    ->orderBy('chapters.id', $direction)
-                    ->orderBy('scenes.position', $direction)
-                    ->orderBy('scenes.id', $direction),
+                fn ($query) => StoryOrder::orderQuery($query, ['acts', 'chapters', 'scenes'], $direction),
                 // $sort is allow-listed by resolveSorting(), so it is safe to qualify.
                 fn ($query) => $query->orderBy('scenes.'.$sort, $direction)
             )
@@ -128,7 +122,10 @@ class SceneController extends Controller
             // above — a scenes list filtered to one chapter must still start
             // counting from that chapter's true book-wide number.
             'numbering' => $numbering,
-            'pageRange' => $this->pageRange($scenes, $sort, $numbering),
+            // A name-sorted page covers no continuous range.
+            'pageRange' => $sort === 'position' && $scenes->isNotEmpty()
+                ? $numbering->rangeLabel($scenes->first()->chapter, $scenes->last()->chapter)
+                : null,
             ...$this->landedHighlight($request, $scenes->getCollection(), 'chapter_id'),
         ]);
     }
@@ -207,11 +204,7 @@ class SceneController extends Controller
 
         $scene->load('event', 'mentionedEvents');
 
-        // This scene's rank among its chapter's siblings, for the "2 of 5" half of
-        // the position hint — a gap-free rank, not the raw (possibly gappy)
-        // `position` column. Same (position, id) tie-break as StoryNumbering, one
-        // level deep.
-        $siblingIds = $scene->chapter->scenes()->orderBy('position')->orderBy('id')->pluck('id');
+        [$positionInChapter, $totalInChapter] = $scene->siblingRank();
 
         [$windowMin, $windowMax] = EventWindow::forRegularEvent($project);
 
@@ -224,8 +217,8 @@ class SceneController extends Controller
             'windowMin' => $windowMin,
             'windowMax' => $windowMax,
             'numbering' => StoryNumbering::forBook($book),
-            'positionInChapter' => $siblingIds->search($scene->id) + 1,
-            'totalInChapter' => $siblingIds->count(),
+            'positionInChapter' => $positionInChapter,
+            'totalInChapter' => $totalInChapter,
             // Codex values resolved as of the scene's "happens during" event (null when the
             // scene is unassigned → the panel shows the undetermined state). Pre-computed here
             // so no timeline math or N+1 resolution happens in Blade.
@@ -301,35 +294,5 @@ class SceneController extends Controller
     private function eventsFor(Project $project): Collection
     {
         return $project->events()->orderBy('event_datetime')->get();
-    }
-
-    /**
-     * "Chapter 214 — Ash and Rust to Chapter 231 — Salt and Thorn": the
-     * chapters holding the page's first and last scene, for the range line
-     * above the pagination bar.
-     *
-     * Reads `chapter` off the already-eager-loaded `$scenes` — no extra
-     * query. Null on an empty page, and on any sort but story order: a
-     * name-sorted page does not cover a contiguous range.
-     */
-    private function pageRange(LengthAwarePaginator $scenes, string $sort, StoryNumbering $numbering): ?string
-    {
-        if ($sort !== 'position' || $scenes->isEmpty()) {
-            return null;
-        }
-
-        $first = $scenes->first()->chapter;
-        $last = $scenes->last()->chapter;
-
-        $firstLabel = __('Chapter :number — :name', ['number' => $numbering->chapter($first), 'name' => $first->name]);
-
-        if ($first->is($last)) {
-            return $firstLabel;
-        }
-
-        return __(':first to :last', [
-            'first' => $firstLabel,
-            'last' => __('Chapter :number — :name', ['number' => $numbering->chapter($last), 'name' => $last->name]),
-        ]);
     }
 }

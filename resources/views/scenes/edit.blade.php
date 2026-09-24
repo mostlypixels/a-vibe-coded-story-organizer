@@ -39,7 +39,7 @@
                             'number' => $numbering->scene($scene),
                             'position' => $positionInChapter,
                             'total' => $totalInChapter,
-                            'chapter' => __('Chapter :number', ['number' => $numbering->chapter($scene->chapter)]),
+                            'chapter' => $numbering->chapterLabel($scene->chapter, withName: false),
                         ]) }}</p>
                     </x-field>
 

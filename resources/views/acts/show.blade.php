@@ -1,7 +1,7 @@
 <x-app-layout>
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-            <x-heading level="1">{{ __('Act :number', ['number' => $numbering->act($act)]) }} &mdash; {{ $act->name }}</x-heading>
+            <x-heading level="1">{{ $numbering->actLabel($act) }}</x-heading>
             <p class="text-sm text-content-muted">
                 {{ $act->book->displayName() }}
                 &middot;

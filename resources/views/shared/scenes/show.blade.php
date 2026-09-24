@@ -1,7 +1,7 @@
 <x-public-layout>
     <div class="max-w-3xl mx-auto px-4 py-10 space-y-6">
         <x-heading level="1">
-            {{ __('Chapter :number', ['number' => $numbering->chapter($scene->chapter)]) }}
+            {{ $numbering->chapterLabel($scene->chapter, withName: false) }}
             &mdash; {{ $scene->chapter->name }}: {{ $scene->name }}
         </x-heading>
 

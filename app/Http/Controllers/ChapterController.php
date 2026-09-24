@@ -20,10 +20,10 @@ use App\Support\LikeSearch;
 use App\Support\ListJump;
 use App\Support\PageSize;
 use App\Support\StoryNumbering;
+use App\Support\StoryOrder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -97,11 +97,7 @@ class ChapterController extends Controller
                 // backwards rather than acts ascending with chapters reversed inside them.
                 // The id tie-breaks are part of the contract: `position` has no unique
                 // constraint, so two siblings can share one and must still order stably.
-                fn ($query) => $query
-                    ->orderBy('acts.position', $direction)
-                    ->orderBy('acts.id', $direction)
-                    ->orderBy('chapters.position', $direction)
-                    ->orderBy('chapters.id', $direction),
+                fn ($query) => StoryOrder::orderQuery($query, ['acts', 'chapters'], $direction),
                 // $sort is allow-listed by resolveSorting(), so it is safe to qualify.
                 fn ($query) => $query->orderBy('chapters.'.$sort, $direction)
             )
@@ -128,7 +124,10 @@ class ChapterController extends Controller
             // above — a chapters list filtered to one act must still start counting
             // from that act's true book-wide number.
             'numbering' => $numbering,
-            'pageRange' => $this->pageRange($chapters, $sort, $numbering),
+            // A name-sorted page covers no continuous range.
+            'pageRange' => $sort === 'position' && $chapters->isNotEmpty()
+                ? $numbering->rangeLabel($chapters->first()->act, $chapters->last()->act)
+                : null,
             ...$this->landedHighlight($request, $chapters->getCollection(), 'act_id'),
         ]);
     }
@@ -181,10 +180,7 @@ class ChapterController extends Controller
         // "delete everything".
         $destinations = $book->chaptersInStoryOrder()->except($chapter->getKey())->values();
 
-        // This chapter's rank among its act's siblings, for the "2 of 5" half of the
-        // position hint — a gap-free rank, not the raw (possibly gappy) `position`
-        // column. Same (position, id) tie-break as StoryNumbering, one level deep.
-        $siblingIds = $chapter->act->chapters()->orderBy('position')->orderBy('id')->pluck('id');
+        [$positionInAct, $totalInAct] = $chapter->siblingRank();
 
         return view('chapters.edit', [
             'chapter' => $chapter,
@@ -192,8 +188,8 @@ class ChapterController extends Controller
             'acts' => $this->actsFor($book),
             'destinations' => $destinations,
             'numbering' => StoryNumbering::forBook($book),
-            'positionInAct' => $siblingIds->search($chapter->id) + 1,
-            'totalInAct' => $siblingIds->count(),
+            'positionInAct' => $positionInAct,
+            'totalInAct' => $totalInAct,
         ]);
     }
 
@@ -276,35 +272,5 @@ class ChapterController extends Controller
     private function actsFor(Book $book): EloquentCollection
     {
         return $book->acts()->orderBy('position')->orderBy('id')->get();
-    }
-
-    /**
-     * "Act 3 — Ash and Rust to Act 5 — Salt and Thorn": the acts holding the
-     * page's first and last chapter, for the range line above the
-     * pagination bar.
-     *
-     * Reads `act` off the already-eager-loaded `$chapters` — no extra query.
-     * Null on an empty page, and on any sort but story order: a name-sorted
-     * page does not cover a contiguous range.
-     */
-    private function pageRange(LengthAwarePaginator $chapters, string $sort, StoryNumbering $numbering): ?string
-    {
-        if ($sort !== 'position' || $chapters->isEmpty()) {
-            return null;
-        }
-
-        $first = $chapters->first()->act;
-        $last = $chapters->last()->act;
-
-        $firstLabel = __('Act :number — :name', ['number' => $numbering->act($first), 'name' => $first->name]);
-
-        if ($first->is($last)) {
-            return $firstLabel;
-        }
-
-        return __(':first to :last', [
-            'first' => $firstLabel,
-            'last' => __('Act :number — :name', ['number' => $numbering->act($last), 'name' => $last->name]),
-        ]);
     }
 }
