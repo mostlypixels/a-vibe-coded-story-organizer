@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Faster project-wide chapter lookups
+## 2026-09-24 — Faster project-wide chapter lookups (#209)
 
 ### Changed
 
