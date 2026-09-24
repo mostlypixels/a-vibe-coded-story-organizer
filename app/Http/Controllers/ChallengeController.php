@@ -7,6 +7,7 @@ use App\Http\Requests\StoreChallengeRequest;
 use App\Http\Requests\UpdateChallengeRequest;
 use App\Models\Challenge;
 use App\Models\Project;
+use App\Support\Flash;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -58,6 +59,6 @@ class ChallengeController extends Controller
         $project = $challenge->project;
         $challenge->delete();
 
-        return redirect()->route('projects.progress', $project);
+        return redirect()->route('projects.progress', $project)->with(Flash::SUCCESS, __('Challenge deleted.'));
     }
 }

@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Delete messages (#254)
+
+### Added
+
+- Deleting a scene, chapter, act, book, project, codex entry, event, plotline, tag, challenge or attribute now shows a confirmation message.
+
 ## 2026-09-24 — Tables scroll on phones (#253)
 
 ### Fixed

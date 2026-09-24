@@ -48,6 +48,10 @@
                             </x-alert>
                         @endif
 
+                        @if (session(\App\Support\Flash::SUCCESS))
+                            <x-alert variant="success" dismissible class="mb-6">{{ session(\App\Support\Flash::SUCCESS) }}</x-alert>
+                        @endif
+
                         {{ $slot }}
                     </div>
                 </div>

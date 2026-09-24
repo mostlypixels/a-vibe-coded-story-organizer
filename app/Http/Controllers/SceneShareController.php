@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSceneShareRequest;
 use App\Models\Scene;
+use App\Support\Flash;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
 
@@ -45,6 +46,6 @@ class SceneShareController extends Controller
         $scene->share_expires_at = null;
         $scene->save();
 
-        return redirect()->route('scenes.edit', $scene);
+        return redirect()->route('scenes.edit', $scene)->with(Flash::SUCCESS, __('Share link turned off.'));
     }
 }

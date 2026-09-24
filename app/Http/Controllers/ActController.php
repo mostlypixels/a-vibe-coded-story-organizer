@@ -16,6 +16,7 @@ use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Scene;
+use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
 use App\Support\StoryNumbering;
@@ -200,7 +201,7 @@ class ActController extends Controller
             $act->delete();
         });
 
-        return redirect()->route('books.acts.index', $book);
+        return redirect()->route('books.acts.index', $book)->with(Flash::SUCCESS, __('Act deleted.'));
     }
 
     public function moveUp(Act $act): RedirectResponse

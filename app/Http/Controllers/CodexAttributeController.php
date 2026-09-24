@@ -8,6 +8,7 @@ use App\Http\Requests\StoreCodexAttributeRequest;
 use App\Http\Requests\UpdateCodexAttributeRequest;
 use App\Models\CodexAttribute;
 use App\Models\Project;
+use App\Support\Flash;
 use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,6 +81,6 @@ class CodexAttributeController extends Controller
         // attribute — the UI confirm warns the writer that timeline data is lost.
         $codexAttribute->delete();
 
-        return redirect()->route('projects.codex-attributes.index', $project);
+        return redirect()->route('projects.codex-attributes.index', $project)->with(Flash::SUCCESS, __('Attribute deleted.'));
     }
 }

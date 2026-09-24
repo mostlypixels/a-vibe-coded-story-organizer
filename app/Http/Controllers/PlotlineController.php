@@ -10,6 +10,7 @@ use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\UpdatePlotlineRequest;
 use App\Models\Plotline;
 use App\Models\Project;
+use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
@@ -99,6 +100,6 @@ class PlotlineController extends Controller
         $project = $plotline->project;
         $plotline->delete();
 
-        return redirect()->route('projects.plotlines.index', $project);
+        return redirect()->route('projects.plotlines.index', $project)->with(Flash::SUCCESS, __('Plotline deleted.'));
     }
 }

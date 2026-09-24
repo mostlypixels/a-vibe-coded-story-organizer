@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Services\CodexAsOfResolver;
 use App\Services\EventLifespanEntries;
 use App\Support\EventWindow;
+use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
 use App\Support\StoryOrder;
@@ -135,6 +136,6 @@ class EventController extends Controller
         $project = $event->project;
         $event->delete();
 
-        return redirect()->route('projects.events.index', $project);
+        return redirect()->route('projects.events.index', $project)->with(Flash::SUCCESS, __('Event deleted.'));
     }
 }

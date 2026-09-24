@@ -14,6 +14,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CoverImageService;
 use App\Services\RecentlyEdited;
+use App\Support\Flash;
 use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -176,7 +177,7 @@ class BookController extends Controller
             $book->delete();
         });
 
-        return redirect()->route('projects.books.index', $project);
+        return redirect()->route('projects.books.index', $project)->with(Flash::SUCCESS, __('Book deleted.'));
     }
 
     /**
