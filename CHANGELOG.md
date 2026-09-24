@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Delete messages
+## 2026-09-24 — Delete messages (#254)
 
 ### Added
 
