@@ -148,7 +148,7 @@
                 duplicate-modal="duplicate-codex-entry-{{ $entry->id }}"
             >
                 <x-slot:delete>
-                    <x-button variant="danger" type="submit" form="codex-entry-delete-form" :icon="true" class="w-full">
+                    <x-button variant="danger" type="button" :icon="true" class="w-full" x-data="" x-on:click.prevent="$dispatch('open-modal', 'delete-codex-entry-{{ $entry->id }}')">
                         {{ __('Delete :label', ['label' => $type->label()]) }}
                     </x-button>
                 </x-slot:delete>
