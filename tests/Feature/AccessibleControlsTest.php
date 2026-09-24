@@ -30,6 +30,18 @@ class AccessibleControlsTest extends TestCase
         $this->assertNotNull($document->querySelector('main#main-content'));
     }
 
+    public function test_the_logo_link_and_the_list_search_have_a_name(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $html = $this->actingAs($user)->get(route('books.scenes.index', $book))->assertOk()->getContent();
+        $document = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+
+        $this->assertSame('Dashboard', $document->querySelector('nav a:has(svg)')->getAttribute('aria-label'));
+        $this->assertSame('Search by name...', $document->querySelector('input[name=search]')->getAttribute('aria-label'));
+    }
+
     public function test_the_tag_and_event_picker_inputs_have_a_name(): void
     {
         $tags = HTMLDocument::createFromString(Blade::render('<x-tag-picker :tags="[]" />'), LIBXML_NOERROR);
@@ -47,6 +59,8 @@ class AccessibleControlsTest extends TestCase
         $classes = explode(' ', $wrapper->getAttribute('class'));
 
         $this->assertContains('overflow-x-auto', $classes);
+        // Absolute children such as sr-only text escape a scroller that is not positioned.
+        $this->assertContains('relative', $classes);
         $this->assertNotContains('overflow-hidden', $classes);
     }
 

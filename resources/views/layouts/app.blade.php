@@ -38,7 +38,7 @@
 
             <main id="main-content" tabindex="-1" class="focus:outline-hidden">
                 <div class="py-12">
-                    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         @if (session('status') === 'reverted-save')
                             <x-alert variant="success" dismissible class="mb-6">
                                 {{ __('Save undone.') }}

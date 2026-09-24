@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Fixes from a site check (#257)
+
+### Fixed
+
+- `/robots.txt` follows the crawler settings under Docker; nginx used to answer it with a 404.
+- List pages and the story overview fit a phone screen without sideways page scrolling.
+- Screen readers name the logo link, the list search boxes and the cover image upload fields.
+
 ## 2026-09-24 — Link and image dialog in the editor (#256)
 
 ### Changed

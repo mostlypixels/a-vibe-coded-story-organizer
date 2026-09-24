@@ -8,11 +8,12 @@
     'filters' => ['search'],
 ])
 
-<div class="flex items-center justify-between gap-4">
-    <form method="GET" class="flex items-center gap-2">
+{{-- Wrap, so a phone does not push the buttons off the screen. --}}
+<div class="flex flex-wrap items-center justify-between gap-4">
+    <form method="GET" class="flex flex-wrap items-center gap-2">
         <input type="hidden" name="sort" value="{{ $sort }}">
         <input type="hidden" name="direction" value="{{ $direction }}">
-        <x-text-input type="text" name="search" placeholder="{{ $searchPlaceholder }}" class="text-sm" :value="request('search')" />
+        <x-text-input type="text" name="search" placeholder="{{ $searchPlaceholder }}" aria-label="{{ $searchPlaceholder }}" class="text-sm" :value="request('search')" />
 
         {{ $slot }}
 
