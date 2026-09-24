@@ -226,15 +226,10 @@ class ChapterController extends Controller
             $data['cover_image'] = null;
         }
 
-        // act_id is intentionally not mass-assignable (see Chapter::$fillable), so
-        // reparent through the relationship rather than the (silently ignored)
-        // fillable array — otherwise moving a chapter to another act is a no-op.
         $chapter->fill($data);
 
-        // Put a moved chapter last in its new act so that no two chapters share a position.
         if ($chapter->act_id !== $act->id) {
-            $chapter->position = $act->chapters()->max('position') + 1;
-            $chapter->act()->associate($act);
+            $chapter->moveToEndOf($act, 'act');
         }
 
         try {

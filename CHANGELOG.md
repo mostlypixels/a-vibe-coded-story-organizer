@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — One code path for moving acts, chapters and scenes
+
+### Changed
+
+- Moving an act, chapter or scene to a new parent, and the delete-with-move choice, share one code path; behaviour is unchanged.
+
 ## 2026-09-24 — Scenes and chapters find their book in one place (#244)
 
 ### Changed

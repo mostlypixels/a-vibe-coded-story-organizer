@@ -583,7 +583,7 @@ class BookTest extends TestCase
 
         $this->assertNotNull($book->fresh());
 
-        // The book's own id as a destination is rejected (Rule::notIn).
+        // The book's own id as a destination is rejected.
         $this->actingAs($user)
             ->delete(route('books.destroy', $book), ['move_children_to' => $book->id])
             ->assertSessionHasErrors('move_children_to');

@@ -3,8 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Models\Book;
+use App\Rules\SiblingDestination;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /** The destination book must belong to the act's current project. */
 class MoveActToBookRequest extends FormRequest
@@ -35,8 +35,7 @@ class MoveActToBookRequest extends FormRequest
             'book_id' => [
                 'required',
                 'integer',
-                Rule::exists('books', 'id')->where('project_id', $act->book->project_id),
-                Rule::notIn([$act->book_id]),
+                new SiblingDestination($act->book->project->books(), except: $act->book),
             ],
         ];
     }

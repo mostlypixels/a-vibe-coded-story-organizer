@@ -537,7 +537,7 @@ class ActTest extends TestCase
 
         $this->assertNotNull($act->fresh());
 
-        // The act's own id as a destination is rejected (Rule::notIn).
+        // The act's own id as a destination is rejected.
         $this->actingAs($user)
             ->delete(route('acts.destroy', $act), ['move_children_to' => $act->id])
             ->assertSessionHasErrors('move_children_to');
