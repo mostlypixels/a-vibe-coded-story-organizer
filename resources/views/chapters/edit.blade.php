@@ -90,7 +90,7 @@
                     </label>
                 @endif
 
-                <input id="cover_image" name="cover_image" type="file" form="chapter-edit-form" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-2 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
+                <input id="cover_image" name="cover_image" type="file" aria-label="{{ __('Cover image') }}" form="chapter-edit-form" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-2 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
                 <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::imageHint() }}</p>
                 <x-input-error :messages="$errors->get('cover_image')" class="mt-2" />
             </x-card>

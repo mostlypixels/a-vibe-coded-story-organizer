@@ -3,7 +3,7 @@
         <div class="flex justify-between h-12">
             <div class="flex">
                 <div class="shrink-0 flex items-center bg-nav-raised px-2">
-                    <a href="{{ $navigation->homeUrl() }}">
+                    <a href="{{ $navigation->homeUrl() }}" aria-label="{{ __('Dashboard') }}">
                         <x-application-logo class="block h-6 w-auto fill-current text-nav-content" />
                     </a>
                 </div>

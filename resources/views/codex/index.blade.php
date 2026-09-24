@@ -33,7 +33,8 @@
                 @forelse ($entries as $entry)
                     <x-table-row :striped="$loop->even">
                         <x-table-cell>
-                            <a href="{{ route('codex.show', $entry) }}">
+                            {{-- The name link next to it is the one that screen readers and the keyboard use. --}}
+                            <a href="{{ route('codex.show', $entry) }}" tabindex="-1" aria-hidden="true">
                                 @if ($entry->cover)
                                     <img src="{{ $entry->cover->url() }}" alt="{{ $entry->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
                                 @else

@@ -43,7 +43,8 @@
                     @forelse ($projects as $project)
                         <x-table-row :striped="$loop->even">
                             <x-table-cell>
-                                <a href="{{ route('projects.edit', $project) }}">
+                                {{-- The name link next to it is the one that screen readers and the keyboard use. --}}
+                                <a href="{{ route('projects.edit', $project) }}" tabindex="-1" aria-hidden="true">
                                     @if ($project->cover_image)
                                         <img src="{{ $project->coverUrl() }}" alt="{{ $project->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
                                     @else

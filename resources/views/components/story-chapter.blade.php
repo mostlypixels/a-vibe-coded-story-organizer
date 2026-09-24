@@ -13,7 +13,7 @@
     <div class="space-y-4">
         @forelse ($chapter->scenes as $scene)
             <section x-data="{ open: true }" @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="space-y-2 pb-4 border-b border-border last:border-b-0 last:pb-0 {{ $scene->event ? '' : 'border-l-4 border-l-danger pl-4' }}">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center justify-between gap-2">
                     <button
                         type="button"
                         @click="open = ! open"
@@ -27,7 +27,7 @@
                         {{ $scene->name }}
                     </button>
 
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         @if ($scene->event)
                             <span class="text-xs text-content-muted">{{ __('Set during') }} {{ $scene->event->title }}</span>
                         @else
