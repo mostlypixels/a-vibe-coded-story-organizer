@@ -170,18 +170,12 @@ class ActController extends Controller
         return $this->redirectAfterSave($request, ['acts.edit', $act], ['books.acts.index', $act->book]);
     }
 
-    /**
-     * Reparents a whole act, with its chapters and scenes, onto another book in
-     * the same project. Position is set explicitly: the `creating()` hook only
-     * fires on insert, and `book_id` is not mass-assignable, so the move goes
-     * through `associate()` (the two pitfalls ReparentsChildren documents).
-     */
+    /** Moves a whole act, with its chapters and scenes, onto another book in the same project. */
     public function moveToBook(MoveActToBookRequest $request, Act $act): RedirectResponse
     {
         $destination = Book::findOrFail($request->validated('book_id'));
 
-        $act->position = $destination->acts()->max('position') + 1;
-        $act->book()->associate($destination);
+        $act->moveToEndOf($destination, 'book');
         $act->save();
 
         return redirect()->route('acts.edit', $act);

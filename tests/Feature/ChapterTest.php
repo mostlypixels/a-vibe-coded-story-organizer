@@ -521,10 +521,27 @@ class ChapterTest extends TestCase
 
         $this->assertNotNull($chapter->fresh());
 
-        // The chapter's own id as a destination is rejected (Rule::notIn).
+        // The chapter's own id as a destination is rejected.
         $this->actingAs($user)
             ->delete(route('chapters.destroy', $chapter), ['move_children_to' => $chapter->id])
             ->assertSessionHasErrors('move_children_to');
+
+        $this->assertNotNull($chapter->fresh());
+    }
+
+    public function test_move_children_to_rejects_another_book_and_a_list_of_ids(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $sibling = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $otherBookChapter = Chapter::factory()->for(Act::factory()->for(Book::factory()->for($project)))->create();
+
+        foreach ([$otherBookChapter->id, [$sibling->id]] as $destination) {
+            $this->actingAs($user)
+                ->delete(route('chapters.destroy', $chapter), ['move_children_to' => $destination])
+                ->assertSessionHasErrors('move_children_to');
+        }
 
         $this->assertNotNull($chapter->fresh());
     }

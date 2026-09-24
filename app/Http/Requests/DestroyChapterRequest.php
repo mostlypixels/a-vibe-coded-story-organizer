@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\SiblingDestination;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /** The destination must be a different chapter in the same book. */
 class DestroyChapterRequest extends FormRequest
@@ -23,8 +23,7 @@ class DestroyChapterRequest extends FormRequest
         return [
             'move_children_to' => [
                 'nullable',
-                Rule::exists('chapters', 'id')->whereIn('act_id', $chapter->book()->acts()->pluck('id')),
-                Rule::notIn([$chapter->id]),
+                new SiblingDestination($chapter->book()->chapterQuery(), except: $chapter),
             ],
         ];
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  * Scene controllers, differing only in the column that scopes the sibling set.
  *
  * A using model declares that scope column via {@see siblingScopeColumn()} (e.g.
- * `project_id` for acts, `act_id` for chapters, `chapter_id` for scenes); the swap
+ * `book_id` for acts, `act_id` for chapters, `chapter_id` for scenes); the swap
  * is otherwise identical. The renumber and the swap run in one transaction so
  * the positions can never be left half-written.
  *
@@ -39,6 +40,24 @@ trait HasSiblingPosition
     public function moveDown(): void
     {
         $this->swapWithAdjacentSibling(1);
+    }
+
+    /**
+     * Put this model last among the children of `$parent`. The caller saves.
+     *
+     * > [!WARNING]
+     * > The parent key is not fillable, so `update(['act_id' => …])` does nothing.
+     * > The `creating()` hook sets `position` only on insert, so a move must set it.
+     *
+     * @param  string  $parentRelation  The BelongsTo on this model, for example `act`.
+     */
+    public function moveToEndOf(Model $parent, string $parentRelation): void
+    {
+        $this->position = static::query()
+            ->where($this->siblingScopeColumn(), $parent->getKey())
+            ->max('position') + 1;
+
+        $this->{$parentRelation}()->associate($parent);
     }
 
     /**

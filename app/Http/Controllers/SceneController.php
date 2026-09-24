@@ -280,11 +280,8 @@ class SceneController extends Controller
                 )?->id ?? $validated['event_id'] ?? null]
             );
 
-            // chapter_id is not fillable, so move through associate(). Put the scene
-            // last in the new chapter so that no two scenes share a position.
             if ($scene->chapter_id !== $chapter->id) {
-                $scene->position = $chapter->scenes()->max('position') + 1;
-                $scene->chapter()->associate($chapter);
+                $scene->moveToEndOf($chapter, 'chapter');
             }
 
             $scene->save();

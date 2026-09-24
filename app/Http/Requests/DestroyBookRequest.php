@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\SiblingDestination;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /** The destination must be a different book in the same project. */
 class DestroyBookRequest extends FormRequest
@@ -23,8 +23,7 @@ class DestroyBookRequest extends FormRequest
         return [
             'move_children_to' => [
                 'nullable',
-                Rule::exists('books', 'id')->where('project_id', $book->project_id),
-                Rule::notIn([$book->id]),
+                new SiblingDestination($book->project->books(), except: $book),
             ],
         ];
     }

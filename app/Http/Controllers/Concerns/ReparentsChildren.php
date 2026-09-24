@@ -35,14 +35,12 @@ trait ReparentsChildren
      */
     protected function reparentChildren(Model $from, Model $to, string $childrenRelation, string $parentRelation): void
     {
-        $nextPosition = $to->{$childrenRelation}()->max('position') + 1;
-
+        // Each save raises the destination maximum, so the next child lands after it.
         $from->{$childrenRelation}()
             ->orderBy('position')
             ->get()
-            ->each(function (Model $child) use ($to, $parentRelation, &$nextPosition) {
-                $child->position = $nextPosition++;
-                $child->{$parentRelation}()->associate($to);
+            ->each(function (Model $child) use ($to, $parentRelation) {
+                $child->moveToEndOf($to, $parentRelation);
                 $child->save();
             });
     }
