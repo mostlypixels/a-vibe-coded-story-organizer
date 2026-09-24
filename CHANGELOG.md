@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Share link Regenerate button works (#227)
+
+### Fixed
+
+- The Regenerate button in a scene's share panel now creates a new share link.
+
 ## 2026-09-24 — Rotating SQLite backups (#226)
 
 ### Added

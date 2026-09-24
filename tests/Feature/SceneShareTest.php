@@ -482,6 +482,33 @@ class SceneShareTest extends TestCase
         $response->assertDontSee('Generate share link');
     }
 
+    public function test_the_regenerate_button_submits_the_share_form(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user);
+        $scene->forceFill([
+            'share_token' => 'edit-regen-token',
+            'share_expires_at' => now()->addWeek(),
+        ])->save();
+
+        $html = $this->actingAs($user)
+            ->get(route('scenes.edit', $scene->fresh()))
+            ->assertOk()
+            ->getContent();
+
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($html);
+        $action = route('scenes.share.store', $scene);
+        $buttons = (new \DOMXPath($dom))->query(
+            "//form[@method='POST'][@action='{$action}']//button[normalize-space()='Regenerate']"
+        );
+
+        $this->assertSame(1, $buttons->length);
+        // A missing type attribute also submits, so only reject a non-submit value.
+        $type = $buttons->item(0)->getAttribute('type');
+        $this->assertContains($type, ['', 'submit']);
+    }
+
     public function test_the_copy_button_has_an_accessible_label_when_shared(): void
     {
         $user = User::factory()->create();
