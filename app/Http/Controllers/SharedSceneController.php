@@ -54,7 +54,7 @@ class SharedSceneController extends Controller
             // One extra query (two indexed columns, over one book) to derive
             // the continuous chapter number — accepted per expanded/ui.md; measure
             // before adding a cache.
-            'numbering' => StoryNumbering::forBook($scene->chapter->act->book),
+            'numbering' => StoryNumbering::forBook($scene->book()),
         ]);
     }
 }

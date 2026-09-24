@@ -46,7 +46,7 @@ class SceneReferenceMatcher
      */
     public function syncScene(Scene $scene): void
     {
-        $project = $scene->chapter->act->book->project;
+        $project = $scene->project();
 
         $candidates = $this->buildCandidates($project);
 

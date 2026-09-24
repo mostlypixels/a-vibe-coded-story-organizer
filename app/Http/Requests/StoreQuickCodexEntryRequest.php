@@ -20,7 +20,7 @@ class StoreQuickCodexEntryRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('scene')->chapter->act->book->project);
+        return $this->user()->can('update', $this->route('scene')->project());
     }
 
     protected function prepareForValidation(): void
@@ -53,7 +53,7 @@ class StoreQuickCodexEntryRequest extends FormRequest
                 return;
             }
 
-            $project = $this->route('scene')->chapter->act->book->project;
+            $project = $this->route('scene')->project();
 
             $this->duplicateEntry = $project->codexEntries()
                 ->where('type', $type)

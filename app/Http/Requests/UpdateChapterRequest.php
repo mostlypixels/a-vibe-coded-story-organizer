@@ -11,7 +11,7 @@ class UpdateChapterRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('chapter')->act->book->project);
+        return $this->user()->can('update', $this->route('chapter')->project());
     }
 
     /**

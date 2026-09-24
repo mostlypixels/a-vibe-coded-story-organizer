@@ -11,7 +11,7 @@
     <x-table-cell top muted>{{ $scene->chapter->name }}</x-table-cell>
     <x-table-cell top muted>{{ $scene->chapter->act->name }}</x-table-cell>
     @if ($showBook)
-        <x-table-cell top muted>{{ $scene->chapter->act->book->displayName() }}</x-table-cell>
+        <x-table-cell top muted>{{ $scene->book()->displayName() }}</x-table-cell>
     @endif
     <x-table-cell top muted>
         @if ($scene->event)

@@ -136,7 +136,7 @@ class ChapterController extends Controller
 
     public function show(Chapter $chapter): View
     {
-        $book = $chapter->act->book;
+        $book = $chapter->book();
 
         $this->authorize('view', $book->project);
 
@@ -169,7 +169,7 @@ class ChapterController extends Controller
 
     public function edit(Chapter $chapter): View
     {
-        $book = $chapter->act->book;
+        $book = $chapter->book();
 
         $this->authorize('update', $book->project);
 
@@ -200,7 +200,7 @@ class ChapterController extends Controller
 
     public function update(UpdateChapterRequest $request, Chapter $chapter): RedirectResponse
     {
-        $book = $chapter->act->book;
+        $book = $chapter->book();
         $act = $book->acts()->findOrFail($request->validated()['act_id']);
 
         // The cover is a file, not a mass-assignable column value, so keep it (and its
@@ -262,7 +262,7 @@ class ChapterController extends Controller
     {
         // Authorization is handled by DestroyChapterRequest::authorize() (mirrors the
         // walk-up-to-project check the other actions perform).
-        $book = $chapter->act->book;
+        $book = $chapter->book();
 
         // Reassignment and deletion must succeed or fail together.
         DB::transaction(function () use ($request, $chapter, $book) {
@@ -282,14 +282,14 @@ class ChapterController extends Controller
 
     public function moveUp(Chapter $chapter): RedirectResponse
     {
-        $this->reorderSibling($chapter, $chapter->act->book->project, up: true);
+        $this->reorderSibling($chapter, $chapter->project(), up: true);
 
         return redirect()->back();
     }
 
     public function moveDown(Chapter $chapter): RedirectResponse
     {
-        $this->reorderSibling($chapter, $chapter->act->book->project, up: false);
+        $this->reorderSibling($chapter, $chapter->project(), up: false);
 
         return redirect()->back();
     }

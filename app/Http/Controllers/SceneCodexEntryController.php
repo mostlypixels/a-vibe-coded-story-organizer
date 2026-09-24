@@ -25,7 +25,7 @@ class SceneCodexEntryController extends Controller
         SceneReferenceMatcher $matcher,
         ReferencingScenes $referencingScenes,
     ): JsonResponse {
-        $project = $scene->chapter->act->book->project;
+        $project = $scene->project();
 
         $entry = $saver->create(
             $project,

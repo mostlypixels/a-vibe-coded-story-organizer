@@ -94,7 +94,7 @@ class RecentlyEdited
 
         return $scenes->map(function (Scene $scene) use ($withBook, $bookIds, &$numbering) {
             $chapter = $scene->chapter;
-            $book = $chapter->act->book;
+            $book = $chapter->book();
             $numbers = $numbering[$book->id] ??= StoryNumbering::forBook($book);
 
             $segments = [

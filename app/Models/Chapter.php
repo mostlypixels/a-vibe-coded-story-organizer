@@ -33,6 +33,23 @@ class Chapter extends Model
         return $this->belongsTo(Act::class);
     }
 
+    /**
+     * The book this chapter belongs to, through its act.
+     *
+     * > [!WARNING]
+     * > A plain method, not a relation. Call `book()`; the `$chapter->book` property throws.
+     */
+    public function book(): Book
+    {
+        return $this->act->book;
+    }
+
+    /** The project this chapter belongs to. A plain method, like {@see book()}. */
+    public function project(): Project
+    {
+        return $this->book()->project;
+    }
+
     public function scenes(): HasMany
     {
         return $this->hasMany(Scene::class);
@@ -43,7 +60,7 @@ class Chapter extends Model
      */
     public function revisionProject(): Project
     {
-        return $this->act->book->project;
+        return $this->project();
     }
 
     /** The cover is on a private disk. The route checks project ownership before it sends the file. */
@@ -85,7 +102,7 @@ class Chapter extends Model
         // Scene::deleted — so record the project's new total here. The
         // controller deletes inside a transaction, so this upsert joins it.
         static::deleted(function (Chapter $chapter): void {
-            app(WordCountSnapshotRecorder::class)->record($chapter->act->book->project);
+            app(WordCountSnapshotRecorder::class)->record($chapter->project());
         });
     }
 }

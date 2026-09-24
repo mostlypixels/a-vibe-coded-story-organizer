@@ -9,7 +9,7 @@ class StoreSceneShareRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('scene')->chapter->act->book->project);
+        return $this->user()->can('update', $this->route('scene')->project());
     }
 
     /** @return array<string, mixed> */
