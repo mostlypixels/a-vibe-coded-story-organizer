@@ -237,14 +237,7 @@ class Book extends Model
             $coverImageService = app(CoverImageService::class);
 
             $coverImageService->delete($book->cover_image);
-
-            $chapterCovers = $book->chapterQuery()
-                ->whereNotNull('cover_image')
-                ->pluck('cover_image');
-
-            foreach ($chapterCovers as $coverPath) {
-                $coverImageService->delete($coverPath);
-            }
+            $coverImageService->deleteAll($book->chapterQuery());
 
             // The cascade also skips the HasRevisions hook of each child.
             Revision::deleteFor($book->acts());

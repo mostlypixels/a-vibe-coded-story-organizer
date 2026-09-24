@@ -2,10 +2,14 @@
 
 namespace App\Services;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Throwable;
 
 /**
  * Manages project, book, and chapter cover image files on the private media disk.
@@ -78,6 +82,50 @@ class CoverImageService
     {
         if ($path !== null) {
             Storage::disk(self::COVER_DISK)->delete($path);
+        }
+    }
+
+    /**
+     * Save `$model` with a new cover, no cover, or the same cover. The caller fills the other columns first.
+     *
+     * The old file goes only after a successful save, so a failed save never points at a deleted file.
+     * A failed save deletes the new file, so it leaves no orphan.
+     *
+     * @param  string  $directory  The directory under the media disk (e.g., 'book-covers').
+     */
+    public function saveWithCover(Model $model, ?UploadedFile $upload, bool $remove, string $directory): void
+    {
+        $previous = $model->cover_image;
+        $stored = $upload !== null ? $this->store($upload, $directory) : null;
+
+        if ($stored !== null) {
+            $model->cover_image = $stored;
+        } elseif ($remove) {
+            $model->cover_image = null;
+        }
+
+        try {
+            $model->save();
+        } catch (Throwable $exception) {
+            $this->delete($stored);
+
+            throw $exception;
+        }
+
+        if ($stored !== null || $remove) {
+            $this->delete($previous);
+        }
+    }
+
+    /**
+     * Delete the cover file of every row in `$query`.
+     *
+     * A database cascade skips the `deleting()` hooks of the child rows, so a parent calls this for them.
+     */
+    public function deleteAll(Builder|Relation $query): void
+    {
+        foreach ($query->whereNotNull('cover_image')->pluck('cover_image') as $path) {
+            $this->delete($path);
         }
     }
 

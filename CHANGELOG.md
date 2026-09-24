@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Cover files handled in one place
+
+### Changed
+
+- Project, book and chapter covers are replaced, removed and cleaned up through one shared code path; behaviour is unchanged.
+
 ## 2026-09-24 — Scene saves move into one service (#246)
 
 ### Changed

@@ -16,7 +16,6 @@ use App\Support\WriterDay;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Throwable;
 
 class ProjectController extends Controller
 {
@@ -141,37 +140,13 @@ class ProjectController extends Controller
         // RecordsManualRevisions::snapshotAutosaved()'s docblock.
         $beforeAutosavedFields = $this->snapshotAutosaved($project, $data);
 
-        // The previous file is only unlinked *after* a successful save, so a failed
-        // write never leaves the row pointing at a file we already deleted.
-        $previousCover = $project->cover_image;
-        $storedCover = null;
-
-        if ($request->hasFile('cover_image')) {
-            $storedCover = $this->coverImageService->store(
-                $request->file('cover_image'),
-                CoverImageService::PROJECT_COVER_DIRECTORY
-            );
-            $data['cover_image'] = $storedCover;
-        } elseif ($request->boolean('remove_cover_image')) {
-            $data['cover_image'] = null;
-        }
-
-        try {
-            $project->update($data);
-        } catch (Throwable $exception) {
-            // The row write failed after the new file landed — unlink it before
-            // rethrowing so the failure never leaves an orphan file behind
-            // (mirrors CodexMediaService::store()'s store-then-unlink pattern).
-            $this->coverImageService->delete($storedCover);
-
-            throw $exception;
-        }
-
-        // A new upload replaces the old file; the remove checkbox clears it. Either way
-        // the previous file is now safe to delete post-commit.
-        if ($storedCover !== null || $request->boolean('remove_cover_image')) {
-            $this->coverImageService->delete($previousCover);
-        }
+        $project->fill($data);
+        $this->coverImageService->saveWithCover(
+            $project,
+            $request->file('cover_image'),
+            $request->boolean('remove_cover_image'),
+            CoverImageService::PROJECT_COVER_DIRECTORY,
+        );
 
         $this->recordManualSave($project, $beforeAutosavedFields);
 
