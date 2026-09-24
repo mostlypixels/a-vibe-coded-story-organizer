@@ -1611,4 +1611,16 @@ class SceneTest extends TestCase
             ->assertSee('duplicate-scene-'.$scene->id, false)
             ->assertSee('value="Arrival (2)"', false);
     }
+
+    public function test_the_edit_form_preselects_the_default_share_duration(): void
+    {
+        $user = User::factory()->create();
+        $scene = Scene::factory()->for($this->chapterFor($user))->create();
+
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertSee('<option value="7 days" selected', false)
+            ->assertSee('Choose how long it stays valid: 24 hours, 7 days, 30 days.');
+    }
 }

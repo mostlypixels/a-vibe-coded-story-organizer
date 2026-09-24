@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Page data leaves the templates
+
+### Changed
+
+- The codex entry form, scene share panel, search filter summary and ebook export page get their data from the server code, not the template; pages look the same.
+
 ## 2026-09-24 — Story-order helpers for list and edit pages (#248)
 
 ### Changed

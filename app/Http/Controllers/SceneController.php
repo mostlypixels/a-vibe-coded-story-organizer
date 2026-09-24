@@ -205,6 +205,7 @@ class SceneController extends Controller
         $scene->load('event', 'mentionedEvents');
 
         [$positionInChapter, $totalInChapter] = $scene->siblingRank();
+        $shareDurations = config('sharing.scene_link_durations');
 
         [$windowMin, $windowMax] = EventWindow::forRegularEvent($project);
 
@@ -228,6 +229,8 @@ class SceneController extends Controller
             // SceneReferenceMatcher — the sidebar renders this flat list ordered by (type, name).
             'referencedEntries' => $referencingScenes->forScene($scene),
             'duplicateSuggestion' => DuplicateName::suggest($scene->name, $project->sceneQuery()->pluck('name')),
+            'shareDurations' => $shareDurations,
+            'shareDefaultDuration' => $shareDurations[config('sharing.scene_link_default_duration')] ?? reset($shareDurations),
         ]);
     }
 

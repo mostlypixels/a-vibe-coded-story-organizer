@@ -1,19 +1,3 @@
-@php
-    use App\Enums\CodexMediaCollection;
-    use App\Support\CodexMediaRules;
-
-    $entry = $entry ?? null;
-    $attributes = $attributes ?? collect();
-    $projectTags = $projectTags ?? collect();
-    $aliasValues = old('aliases', $entry?->aliases->pluck('alias')->values()->all() ?? []);
-    $tagValues = old('tags', $entry?->tags->pluck('name')->values()->all() ?? []);
-
-    $mediaItems = $entry?->media ?? collect();
-    $cover = $mediaItems->firstWhere('collection', CodexMediaCollection::Cover);
-    $referenceImages = $mediaItems->where('collection', CodexMediaCollection::ReferenceImage)->sortBy('position')->values();
-    $referenceFiles = $mediaItems->where('collection', CodexMediaCollection::ReferenceFile)->sortBy('position')->values();
-@endphp
-
 <x-edit-layout>
     <x-card>
         <div class="space-y-6">
@@ -38,7 +22,7 @@
 
                 <x-string-list
                     name="aliases"
-                    :values="$aliasValues"
+                    :values="$form->aliasValues"
                     :placeholder="__('e.g. The Serpent Lady')"
                     :add-label="__('+ Add alias')"
                     :remove-label="__('Remove alias')"
@@ -80,31 +64,12 @@
         </x-card>
     @endif
 
-    @if ($entry === null && $attributes->isNotEmpty())
-        @php
-            $attributeOptions = $attributes
-                ->map(fn ($attribute) => ['id' => (string) $attribute->id, 'name' => $attribute->name])
-                ->values()
-                ->all();
-
-            // A pick survives a failed validation: old() keeps the ids and the typed values.
-            $pickedAttributes = collect(old('attribute_baselines', []))
-                ->map(fn ($value) => (string) $value)
-                ->filter(fn ($value, $id) => $attributes->contains('id', (int) $id))
-                ->map(fn ($value, $id) => [
-                    'id' => (string) $id,
-                    'name' => $attributes->firstWhere('id', (int) $id)->name,
-                    'value' => $value,
-                ])
-                ->values()
-                ->all();
-        @endphp
-
-        <x-card :title="__('Attributes')">
+    @if ($entry === null && $form->attributes->isNotEmpty())
+                <x-card :title="__('Attributes')">
             <div
                 x-data="{
-                    options: {{ Illuminate\Support\Js::from($attributeOptions) }},
-                    picked: {{ Illuminate\Support\Js::from($pickedAttributes) }},
+                    options: {{ Illuminate\Support\Js::from($form->attributeOptions) }},
+                    picked: {{ Illuminate\Support\Js::from($form->pickedAttributes) }},
                     choice: '',
                     get available() {
                         return this.options.filter((option) => ! this.picked.some((pick) => pick.id === option.id));
@@ -160,7 +125,7 @@
                 </div>
             </div>
 
-            @foreach ($attributes as $attribute)
+            @foreach ($form->attributes as $attribute)
                 <x-input-error :messages="$errors->get('attribute_baselines.'.$attribute->id)" class="mt-2" />
             @endforeach
 
@@ -191,23 +156,23 @@
         @endif
 
         <x-card :title="__('Cover')">
-            @if ($cover)
-                <img src="{{ $cover->url() }}" alt="{{ $entry->name }}" class="w-full rounded-md border border-border object-cover">
+            @if ($form->cover)
+                <img src="{{ $form->cover->url() }}" alt="{{ $entry->name }}" class="w-full rounded-md border border-border object-cover">
 
                 <label class="mt-2 flex items-center gap-2 text-sm text-content-muted">
-                    <input type="checkbox" name="remove_media[]" value="{{ $cover->id }}" class="rounded-sm border-border-strong text-link focus:ring-focus">
+                    <input type="checkbox" name="remove_media[]" value="{{ $form->cover->id }}" class="rounded-sm border-border-strong text-link focus:ring-focus">
                     {{ __('Remove cover') }}
                 </label>
             @endif
 
-            <x-field name="cover" :label="$cover ? __('Replace cover') : __('Upload cover')" class="mt-3">
-                <input id="cover" name="cover" type="file" accept="{{ CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
-                <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::imageHint() }}</p>
+            <x-field name="cover" :label="$form->cover ? __('Replace cover') : __('Upload cover')" class="mt-3">
+                <input id="cover" name="cover" type="file" accept="{{ \App\Support\CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
+                <p class="mt-1 text-xs text-content-subtle">{{ \App\Support\CodexMediaRules::imageHint() }}</p>
             </x-field>
         </x-card>
 
         <x-card :title="__('Tags')" overflow="visible">
-            <x-tag-picker name="tags" :tags="$projectTags" :selected="$tagValues" />
+            <x-tag-picker name="tags" :tags="$projectTags" :selected="$form->tagValues" />
             <x-input-error :messages="$errors->get('tags')" class="mt-2" />
         </x-card>
     </x-slot:sidebar>
@@ -265,9 +230,9 @@
             x-show="activeTab === 'images'"
             class="mt-6 focus:outline-hidden"
         >
-            @if ($referenceImages->isNotEmpty())
+            @if ($form->referenceImages->isNotEmpty())
                 <ul class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                    @foreach ($referenceImages as $image)
+                    @foreach ($form->referenceImages as $image)
                         <li>
                             <button
                                 type="button"
@@ -287,8 +252,8 @@
 
             <div class="mt-3">
                 <x-input-label for="reference_images" :value="__('Add images')" />
-                <input id="reference_images" name="reference_images[]" type="file" multiple accept="{{ CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
-                <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::imageHint() }}</p>
+                <input id="reference_images" name="reference_images[]" type="file" multiple accept="{{ \App\Support\CodexMediaRules::imageAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
+                <p class="mt-1 text-xs text-content-subtle">{{ \App\Support\CodexMediaRules::imageHint() }}</p>
                 <x-input-error :messages="$errors->get('reference_images')" class="mt-2" />
                 <x-input-error :messages="$errors->get('reference_images.*')" class="mt-2" />
             </div>
@@ -303,9 +268,9 @@
             style="display: none"
             class="mt-6 focus:outline-hidden"
         >
-            @if ($referenceFiles->isNotEmpty())
+            @if ($form->referenceFiles->isNotEmpty())
                 <ul class="space-y-2">
-                    @foreach ($referenceFiles as $file)
+                    @foreach ($form->referenceFiles as $file)
                         <li class="flex items-center justify-between gap-2 text-sm">
                             <span class="flex min-w-0 items-center gap-3">
                                 <button
@@ -328,8 +293,8 @@
 
             <div class="mt-3">
                 <x-input-label for="reference_files" :value="__('Add files')" />
-                <input id="reference_files" name="reference_files[]" type="file" multiple accept="{{ CodexMediaRules::fileAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
-                <p class="mt-1 text-xs text-content-subtle">{{ CodexMediaRules::fileHint() }}</p>
+                <input id="reference_files" name="reference_files[]" type="file" multiple accept="{{ \App\Support\CodexMediaRules::fileAccept() }}" class="mt-1 block w-full text-sm text-content-muted file:mr-3 file:rounded-md file:border-0 file:bg-neutral file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-content hover:file:bg-neutral/80">
+                <p class="mt-1 text-xs text-content-subtle">{{ \App\Support\CodexMediaRules::fileHint() }}</p>
                 <x-input-error :messages="$errors->get('reference_files')" class="mt-2" />
                 <x-input-error :messages="$errors->get('reference_files.*')" class="mt-2" />
             </div>

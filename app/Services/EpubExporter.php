@@ -422,7 +422,7 @@ class EpubExporter
      */
     private function addSections(EPub $epub, Book $book, Collection $tree, PublicationSetting $settings, StoryNumbering $numbering): void
     {
-        $order = $settings->section_order ?? PublicationSetting::SECTION_KEYS;
+        $order = $settings->sectionOrder();
 
         foreach ($order as $section) {
             match ($section) {
@@ -522,7 +522,7 @@ class EpubExporter
             return;
         }
 
-        $types = $settings->appendix_entry_types ?? [];
+        $types = $settings->appendixEntryTypes();
         if ($types === []) {
             return;
         }
