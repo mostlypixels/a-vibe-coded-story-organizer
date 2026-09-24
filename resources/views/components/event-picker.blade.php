@@ -14,5 +14,6 @@
     :options="$options"
     :selected="$selected"
     :allow-free-text="false"
+    :label="__('Mentions events')"
     :placeholder="__('Search events by name or date…')"
 />

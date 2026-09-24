@@ -758,3 +758,19 @@ blockquote[data-callout-type='caution']::before {
     white-space: nowrap;
     color: var(--color-content-muted);
 }
+
+/*
+ * Some readers get sick from motion. Alpine x-transition sets its timing as an
+ * inline style, so these rules need !important to win. The duration is very
+ * short, not zero, so code that waits for a transition to end still runs.
+ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

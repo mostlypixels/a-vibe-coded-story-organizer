@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Accessibility fixes (#252)
+
+### Added
+
+- A "Skip to content" link lets keyboard users jump past the top menu.
+
+### Fixed
+
+- Screen readers now name the rich-text editors and the tag and event search boxes.
+- Editor toolbar buttons tell screen readers if they are on or off.
+- Fades and slides stop when the system asks for reduced motion.
+
 ## 2026-09-24 — Autosave in one service (#251)
 
 ### Changed

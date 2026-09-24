@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Editor } from '@tiptap/core';
-import { EDITOR_MESSAGES, buildExtensions, buildSlashItems, registerWysiwyg, slashRenderer } from './wysiwyg.js';
+import { EDITOR_MESSAGES, accessibleNameAttributes, buildExtensions, buildSlashItems, registerWysiwyg, slashRenderer } from './wysiwyg.js';
 
 const projectRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -821,5 +821,32 @@ describe('translated strings — Laravel supplies the text', () => {
         for (const key of keys) {
             expect(php.includes(`'${key}'`) || php.includes(`"${key}"`), key).toBe(true);
         }
+    });
+});
+
+describe('accessibleNameAttributes', () => {
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('names the editable area after the textarea label', () => {
+        document.body.innerHTML = '<label for="contents">Contents</label><textarea id="contents"></textarea>';
+
+        const attributes = accessibleNameAttributes(document.getElementById('contents'));
+
+        expect(attributes).toEqual({ role: 'textbox', 'aria-multiline': 'true', 'aria-labelledby': 'contents-label' });
+        expect(document.getElementById('contents-label').textContent).toBe('Contents');
+    });
+
+    it('keeps an id that the label already has', () => {
+        document.body.innerHTML = '<label id="own" for="notes">Notes</label><textarea id="notes"></textarea>';
+
+        expect(accessibleNameAttributes(document.getElementById('notes'))['aria-labelledby']).toBe('own');
+    });
+
+    it('falls back to the textarea aria-label', () => {
+        document.body.innerHTML = '<textarea id="x" aria-label="Description"></textarea>';
+
+        expect(accessibleNameAttributes(document.getElementById('x'))['aria-label']).toBe('Description');
     });
 });
