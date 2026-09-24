@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Thinner revision controller
+## 2026-09-24 — Thinner revision controller (#250)
 
 ### Changed
 
