@@ -98,8 +98,8 @@ class RecentlyEdited
             $numbers = $numbering[$book->id] ??= StoryNumbering::forBook($book);
 
             $segments = [
-                __('Act :number', ['number' => $numbers->act($chapter->act)]),
-                __('Chapter :number', ['number' => $numbers->chapter($chapter)]).': '.$chapter->name,
+                $numbers->actLabel($chapter->act, withName: false),
+                $numbers->chapterLabel($chapter, withName: false).': '.$chapter->name,
             ];
 
             if ($withBook) {

@@ -2,7 +2,7 @@
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
             <x-heading level="1" class="flex items-center gap-2">
-                {{ __('Scene :number', ['number' => $numbering->scene($scene)]) }} &mdash; {{ $scene->name }}
+                {{ $numbering->sceneLabel($scene) }}
                 <x-scene-status-badge :status="$scene->status" />
             </x-heading>
             <p class="text-sm text-content-muted">

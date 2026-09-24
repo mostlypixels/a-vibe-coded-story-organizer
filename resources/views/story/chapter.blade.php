@@ -20,21 +20,21 @@
                                 @if ($act->chapters->isNotEmpty())
                                     @php($firstChapter = $act->chapters->first())
                                     <a href="{{ route('books.story.overview', ['book' => $book, 'chapter' => $firstChapter->id]) }}#chapter-{{ $firstChapter->id }}" class="font-semibold text-content hover:text-content-muted">
-                                        {{ __('Act :number', ['number' => $numbering->act($act)]) }} &mdash; {{ $act->name }}
+                                        {{ $numbering->actLabel($act) }}
                                     </a>
 
                                     <ul class="mt-1 ml-4 space-y-1">
                                         @foreach ($act->chapters as $chapter)
                                             <li>
                                                 <a href="{{ route('books.story.overview', ['book' => $book, 'chapter' => $chapter->id]) }}#chapter-{{ $chapter->id }}" class="text-sm text-content-muted hover:text-content">
-                                                    {{ __('Chapter :number', ['number' => $numbering->chapter($chapter)]) }} &mdash; {{ $chapter->name }}
+                                                    {{ $numbering->chapterLabel($chapter) }}
                                                 </a>
                                             </li>
                                         @endforeach
                                     </ul>
                                 @else
                                     <span class="font-semibold text-content">
-                                        {{ __('Act :number', ['number' => $numbering->act($act)]) }} &mdash; {{ $act->name }}
+                                        {{ $numbering->actLabel($act) }}
                                     </span>
                                 @endif
                             </div>
@@ -50,7 +50,7 @@
 
                         <div class="flex items-center justify-between gap-4 text-nav-content bg-nav rounded-md px-4 py-2">
                             <h2 id="act-{{ $currentChapter->act->id }}" class="text-2xl font-bold scroll-mt-16">
-                                {{ __('Act :number', ['number' => $numbering->act($currentChapter->act)]) }} &mdash; {{ $currentChapter->act->name }}
+                                {{ $numbering->actLabel($currentChapter->act) }}
                             </h2>
                             <x-word-count
                                 :count="$actWordCount"

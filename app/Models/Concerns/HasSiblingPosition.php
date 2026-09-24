@@ -43,6 +43,23 @@ trait HasSiblingPosition
     }
 
     /**
+     * The gap-free rank of this model among its siblings, and the sibling count, for a "2 of 5" hint.
+     * The raw `position` can have gaps and ties, so it is not the rank.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public function siblingRank(): array
+    {
+        $ids = static::query()
+            ->where($this->siblingScopeColumn(), $this->{$this->siblingScopeColumn()})
+            ->orderBy('position')
+            ->orderBy('id')
+            ->pluck('id');
+
+        return [$ids->search($this->getKey()) + 1, $ids->count()];
+    }
+
+    /**
      * Put this model last among the children of `$parent`. The caller saves.
      *
      * > [!WARNING]

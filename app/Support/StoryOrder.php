@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Scene;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The sort key for scenes that are already in memory, in story order.
@@ -16,6 +17,20 @@ use App\Models\Scene;
  */
 final class StoryOrder
 {
+    /**
+     * Order a joined query in story order, outermost level first.
+     *
+     * @param  list<string>  $tables  The joined tables, for example `['acts', 'chapters']`.
+     */
+    public static function orderQuery(Builder $query, array $tables, string $direction = 'asc'): Builder
+    {
+        foreach ($tables as $table) {
+            $query->orderBy($table.'.position', $direction)->orderBy($table.'.id', $direction);
+        }
+
+        return $query;
+    }
+
     /** @return list<int> */
     public static function sceneKey(Scene $scene): array
     {

@@ -4,7 +4,7 @@
     <x-slot:header>
         <div class="flex items-center justify-between gap-4">
             <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-content scroll-mt-16">
-                {{ __('Chapter :number', ['number' => $numbering->chapter($chapter)]) }} &mdash; {{ $chapter->name }}
+                {{ $numbering->chapterLabel($chapter) }}
             </h3>
             <x-word-count :count="$chapter->scenes->sum('word_count')" class="shrink-0" />
         </div>
