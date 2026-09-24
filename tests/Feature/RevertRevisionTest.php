@@ -420,4 +420,17 @@ class RevertRevisionTest extends TestCase
         $this->assertNotNull($versionB->fresh());
         $this->assertNotNull($revisionOfA->fresh());
     }
+
+    public function test_a_revert_without_a_base_hash_fails_validation_and_writes_nothing(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user, ['description' => '<p>Current text</p>']);
+        $old = $this->revisionFor($act, ['user_id' => $user->id, 'value' => '<p>Older text</p>']);
+
+        $this->actingAs($user)
+            ->post(route('revisions.revert', $old), [])
+            ->assertSessionHasErrors('base_hash');
+
+        $this->assertSame('<p>Current text</p>', $act->fresh()->description);
+    }
 }

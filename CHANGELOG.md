@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Thinner revision controller
+
+### Changed
+
+- The revision history, compare and revert pages check their input in one place; the pages work as before.
+
 ## 2026-09-24 — Page data leaves the templates (#249)
 
 ### Changed

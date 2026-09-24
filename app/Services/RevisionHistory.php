@@ -15,6 +15,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * Reads revision history and folds rows into {@see SavePoint} values.
@@ -60,6 +61,26 @@ class RevisionHistory
         $groups = $this->groupQuery($entity, $filters)->get();
 
         return $this->foldGroups($entity, $groups, $filters, $groups->count());
+    }
+
+    /**
+     * The field filter offers only fields that have history.
+     *
+     * @return array<string, string> Headline by field, in registry order.
+     */
+    public function fieldOptions(Model $entity): array
+    {
+        $withHistory = $entity->revisions()->getQuery()->reorder()->distinct()->pluck('field')->all();
+
+        $options = [];
+
+        foreach (array_keys(AutosavableFields::fieldsForModel($entity::class)) as $field) {
+            if (in_array($field, $withHistory, true)) {
+                $options[$field] = Str::headline($field);
+            }
+        }
+
+        return $options;
     }
 
     /**

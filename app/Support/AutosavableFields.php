@@ -101,6 +101,22 @@ class AutosavableFields
         return self::fieldsFor(self::slugFor($modelClass));
     }
 
+    /**
+     * Revert forms send these hashes so the reverter can detect a conflict.
+     *
+     * @return array<string, string> Current hash by registered field.
+     */
+    public static function currentHashes(Model $model): array
+    {
+        $hashes = [];
+
+        foreach (array_keys(self::fieldsForModel($model::class)) as $field) {
+            $hashes[$field] = hash('sha256', (string) ($model->getAttribute($field) ?? ''));
+        }
+
+        return $hashes;
+    }
+
     /** The name of the route that edits one slug's entity. */
     public static function editRouteFor(string $slug): string
     {

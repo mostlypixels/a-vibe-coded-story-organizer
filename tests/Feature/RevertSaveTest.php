@@ -338,4 +338,16 @@ class RevertSaveTest extends TestCase
             'base_hashes' => ['description' => 'x'],
         ])->assertNotFound();
     }
+
+    public function test_a_save_revert_without_base_hashes_fails_validation_and_writes_nothing(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->withHistory($this->sceneFor($user));
+
+        $this->actingAs($user)
+            ->post(route('revisions.saves.revert', $this->saveB), [])
+            ->assertSessionHasErrors('base_hashes');
+
+        $this->assertSame('<p>D2</p>', $scene->fresh()->description);
+    }
 }
