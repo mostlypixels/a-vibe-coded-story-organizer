@@ -403,9 +403,6 @@ const TextColor = Mark.create({
 
 /** Translation keys. `App\Support\ScriptTranslations::wysiwyg()` supplies the text. */
 export const EDITOR_MESSAGES = {
-    linkPrompt: 'Enter a URL (http:// or https://)',
-    imagePrompt: 'Enter an image URL (http:// or https://)',
-    imageAltPrompt: 'Alt text (optional, for accessibility)',
     refusedUrl: 'Use a web address that starts with http:// or https://.',
     noMatches: 'No matches',
 };
@@ -670,13 +667,12 @@ export function registerWysiwyg(Alpine) {
         let syncOnSubmit = null;
         const t = (key) => translate(config.strings, key);
 
-        // Give a reason, so the writer does not think that the click failed.
-        const refuseUrl = () => window.alert(t(EDITOR_MESSAGES.refusedUrl));
-
         return {
             ready: false,
             // Make toolbar active states reactive.
             tick: 0,
+            // The link and image dialog. `kind` is 'link' or 'image'.
+            urlForm: { kind: null, url: '', alt: '', error: '' },
 
             init() {
                 const textarea = this.$refs.textarea;
@@ -763,37 +759,47 @@ export function registerWysiwyg(Alpine) {
                     return;
                 }
 
-                const previous = editor.getAttributes('link').href || '';
-                const url = window.prompt(t(EDITOR_MESSAGES.linkPrompt), previous);
-
-                if (url === null) return; // cancelled
-                if (url === '') {
-                    editor.chain().focus().unsetLink().run();
-                    return;
-                }
-                // Keep output within the allow-list.
-                if (!/^https?:\/\//i.test(url)) {
-                    refuseUrl();
-                    return;
-                }
-
-                editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+                this.openUrlForm('link', editor.getAttributes('link').href || '');
             },
 
             setImage() {
                 if (!editor) return;
 
-                const url = window.prompt(t(EDITOR_MESSAGES.imagePrompt));
-                if (url === null || url === '') return; // cancelled or empty
+                this.openUrlForm('image', '');
+            },
 
-                if (!/^https?:\/\//i.test(url)) {
-                    refuseUrl();
+            // ProseMirror keeps the selection while the dialog has focus,
+            // so focus() in applyUrl() puts the link on the selected text.
+            openUrlForm(kind, url) {
+                this.urlForm = { kind, url, alt: '', error: '' };
+                this.$dispatch('open-modal', config.urlDialog);
+            },
+
+            applyUrl() {
+                if (!editor) return;
+
+                const url = this.urlForm.url.trim();
+
+                if (url === '') {
+                    if (this.urlForm.kind === 'link') editor.chain().focus().unsetLink().run();
+                    this.$dispatch('close-modal', config.urlDialog);
                     return;
                 }
 
-                const alt = window.prompt(t(EDITOR_MESSAGES.imageAltPrompt)) || '';
+                // Keep output within the allow-list. Give a reason, so the writer
+                // does not think that the click failed.
+                if (!/^https?:\/\//i.test(url)) {
+                    this.urlForm.error = t(EDITOR_MESSAGES.refusedUrl);
+                    return;
+                }
 
-                editor.chain().focus().setImage({ src: url, alt }).run();
+                if (this.urlForm.kind === 'link') {
+                    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+                } else {
+                    editor.chain().focus().setImage({ src: url, alt: this.urlForm.alt.trim() }).run();
+                }
+
+                this.$dispatch('close-modal', config.urlDialog);
             },
 
             setCalloutType(type) {

@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Link and image dialog in the editor
+
+### Changed
+
+- The editor asks for link and image addresses in the app's own dialog, which keeps the selected text visible.
+
 ## 2026-09-24 — Delete confirmations in the app's own dialog (#255)
 
 ### Changed
