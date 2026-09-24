@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Scene text box label reads "Contents"
+
+### Changed
+
+- The scene text box label reads "Contents" instead of "Contents (Markdown)".
+
 ## 2026-09-24 — Share link Regenerate button works (#227)
 
 ### Fixed

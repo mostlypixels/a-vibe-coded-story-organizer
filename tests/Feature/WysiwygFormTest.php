@@ -93,12 +93,18 @@ class WysiwygFormTest extends TestCase
         // works) AND be flagged data-format="markdown" (Underline/Strike dropped, value
         // serialized to CommonMark). This is distinct from the HTML-mode fields above.
         foreach ([route('books.scenes.create', $book), route('scenes.edit', $scene)] as $url) {
-            $this->actingAs($user)
+            $response = $this->actingAs($user)
                 ->get($url)
                 ->assertOk()
-                ->assertSee('Contents (Markdown)')
+                ->assertDontSee('Contents (Markdown)')
                 ->assertSee('name="contents"', false)
                 ->assertSee('data-format="markdown"', false);
+
+            // The label must still point at the editor textarea for screen readers.
+            $this->assertMatchesRegularExpression(
+                '#<label[^>]*\bfor="contents"[^>]*>\s*Contents\s*</label>#',
+                $response->getContent(),
+            );
         }
     }
 
