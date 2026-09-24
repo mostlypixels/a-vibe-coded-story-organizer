@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Faster chapter and scene lists in a book
+## 2026-09-24 — Faster chapter and scene lists in a book (#210)
 
 ### Changed
 
