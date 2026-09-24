@@ -11,15 +11,11 @@
             @include('codex.partials.fields')
         </form>
 
-        <form
-            id="codex-entry-delete-form"
-            method="POST"
-            action="{{ route('codex.destroy', $entry) }}"
-            onsubmit="return confirm('{{ __('Are you sure you want to delete this entry?') }}')"
-        >
-            @csrf
-            @method('DELETE')
-        </form>
+        <x-confirm-delete-dialog
+            name="delete-codex-entry-{{ $entry->id }}"
+            :action="route('codex.destroy', $entry)"
+            :message="__('Are you sure you want to delete this entry?')"
+        />
 
         <x-duplicate-dialog
             name="duplicate-codex-entry-{{ $entry->id }}"

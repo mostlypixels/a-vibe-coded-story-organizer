@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Delete confirmations in the app's own dialog (#255)
+
+### Changed
+
+- Delete confirmations open in the app's own dialog, in the app's theme and fonts, not the browser's pop-up.
+
 ## 2026-09-24 — Delete messages (#254)
 
 ### Added

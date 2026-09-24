@@ -93,15 +93,17 @@ class IconButtonComponentTest extends TestCase
         $this->assertStringContainsString('absolute', $rendered);
     }
 
-    public function test_the_delete_button_posts_a_delete_behind_a_confirm(): void
+    public function test_the_delete_button_posts_a_delete_behind_the_app_dialog(): void
     {
         $rendered = $this->render('<x-icon-delete-button action="/acts/1" :confirm="$confirm" />', [
-            'confirm' => 'Are you sure?',
+            'confirm' => "Delete l'entrée?",
         ]);
 
         $this->assertStringContainsString('action="/acts/1"', $rendered);
         $this->assertStringContainsString('name="_method" value="DELETE"', $rendered);
-        $this->assertStringContainsString('return confirm(', $rendered);
+        $this->assertMatchesRegularExpression("/\\\$dispatch\\('open-modal', '(confirm-delete-[a-z0-9]{8})'\\)/", $rendered);
+        $this->assertStringContainsString('Delete l&#039;entrée?', $rendered);
+        $this->assertStringNotContainsString('confirm(', $rendered);
         // Destructive, so danger rather than the default outline.
         $this->assertStringContainsString('border-danger', $rendered);
     }
