@@ -11,6 +11,7 @@ use App\Services\Import\ProjectGraphImporter;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -118,7 +119,10 @@ class ProjectImporter
         // Rebuild the derived scene-reference cache after story and codex exist.
         $this->matcher->syncProject($import->project);
 
-        $import->update(['phase' => ImportPhase::Completed]);
+        DB::transaction(function () use ($import): void {
+            $import->project->update(['import_unfinished' => false]);
+            $import->update(['phase' => ImportPhase::Completed]);
+        });
 
         $this->deleteWorkingFiles($import);
     }

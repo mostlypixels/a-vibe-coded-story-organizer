@@ -336,6 +336,13 @@ class ProjectGraphImporterTest extends TestCase
     // Naming collisions
     // ------------------------------------------------------------------
 
+    public function test_the_project_phase_marks_the_project_as_an_unfinished_import(): void
+    {
+        $project = $this->importer()->importProject($this->fixtureRoot, User::factory()->create());
+
+        $this->assertTrue($project->refresh()->import_unfinished);
+    }
+
     public function test_importing_the_same_archive_twice_suffixes_the_second_name(): void
     {
         $this->freezeTime();
