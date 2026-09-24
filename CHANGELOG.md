@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Cover files handled in one place
+## 2026-09-24 — Cover files handled in one place (#247)
 
 ### Changed
 
