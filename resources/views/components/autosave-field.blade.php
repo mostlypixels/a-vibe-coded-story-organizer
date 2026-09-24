@@ -11,12 +11,13 @@
 @php
     use App\Enums\FieldKind;
     use App\Support\AutosavableFields;
+    use App\Support\FieldHash;
     use App\Support\WordCounter;
     use App\Support\WordCountFormat;
 
     $kind = AutosavableFields::kindOf($entity, $field);
     $currentValue = (string) ($model->{$field} ?? '');
-    $hash = hash('sha256', $currentValue);
+    $hash = FieldHash::of($currentValue);
     $autosaveUrl = route('autosave.update', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
 
     $historyUrl = route('revisions.index', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);

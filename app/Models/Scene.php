@@ -167,7 +167,7 @@ class Scene extends Model
         // Keeps word_count true to contents on every write path that goes through
         // $model->save() — autosave, manual save, revert/undo (RevisionReverter),
         // import, and seeders/factories. A controller-level implementation would
-        // miss RevisionReverter, which never touches FieldAutosaveController, so
+        // miss RevisionReverter, which never touches FieldAutosaver, so
         // the count would go stale the moment someone uses Undo (word-count spec,
         // expanded/architecture.md "The write path").
         //

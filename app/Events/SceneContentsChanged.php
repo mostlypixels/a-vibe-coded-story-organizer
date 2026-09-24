@@ -2,14 +2,14 @@
 
 namespace App\Events;
 
-use App\Http\Controllers\FieldAutosaveController;
 use App\Models\Scene;
+use App\Services\FieldAutosaver;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Fired by {@see FieldAutosaveController} whenever a coarse
+ * Fired by {@see FieldAutosaver} whenever a coarse
  * trigger (blur / Ctrl-S / form submit — never a bare debounce tick) saves
  * `Scene.contents`, alongside the same condition that runs
  * {@see SceneReferenceMatcher::syncScene()}.
