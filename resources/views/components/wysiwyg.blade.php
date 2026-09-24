@@ -16,6 +16,8 @@
     $resolvedMinHeight = $minHeight ?? (($rows * 1.5) + 1).'rem';
 
     $toolbar = new \App\Support\WysiwygToolbar($markdown);
+    // A random name, because one page can show several editors.
+    $urlDialog = 'url-dialog-'.Str::lower(Str::random(8));
 @endphp
 
 <div
@@ -26,6 +28,7 @@
         minHeight: @js($resolvedMinHeight),
         strings: @js(\App\Support\ScriptTranslations::wysiwyg()),
         quickCodexEntry: {{ $quickCodexEntry ? 'true' : 'false' }},
+        urlDialog: @js($urlDialog),
     })"
     data-format="{{ $format }}"
     class="mt-1"
@@ -138,4 +141,44 @@
             <div x-ref="editor"></div>
         </div>
     </div>
+
+    @unless ($disabled)
+        {{-- The app dialog, not a browser prompt: it keeps the theme and does not hide the selected text. --}}
+        <x-dialog :name="$urlDialog" max-width="md">
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-content" x-text="urlForm.kind === 'image' ? @js(__('Image')) : @js(__('Link'))"></h3>
+
+                <div>
+                    <x-input-label :for="$urlDialog.'-url'" :value="__('Web address (http:// or https://)')" />
+                    <x-text-input
+                        :id="$urlDialog.'-url'"
+                        type="text"
+                        inputmode="url"
+                        autocomplete="off"
+                        class="mt-1 block w-full"
+                        x-model="urlForm.url"
+                        x-on:keydown.enter.prevent="applyUrl()"
+                    />
+                    <p x-show="urlForm.error" x-text="urlForm.error" role="alert" class="mt-2 text-sm text-danger-surface-content"></p>
+                </div>
+
+                <div x-show="urlForm.kind === 'image'">
+                    <x-input-label :for="$urlDialog.'-alt'" :value="__('Alt text (optional, for accessibility)')" />
+                    <x-text-input
+                        :id="$urlDialog.'-alt'"
+                        type="text"
+                        autocomplete="off"
+                        class="mt-1 block w-full"
+                        x-model="urlForm.alt"
+                        x-on:keydown.enter.prevent="applyUrl()"
+                    />
+                </div>
+            </div>
+
+            <x-slot name="footer">
+                <x-button variant="secondary" type="button" x-on:click="$dispatch('close')">{{ __('Cancel') }}</x-button>
+                <x-button type="button" x-on:click="applyUrl()">{{ __('Apply') }}</x-button>
+            </x-slot>
+        </x-dialog>
+    @endunless
 </div>

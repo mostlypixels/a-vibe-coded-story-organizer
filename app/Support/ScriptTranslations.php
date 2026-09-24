@@ -25,11 +25,8 @@ final class ScriptTranslations
         "Couldn't save — check your connection.",
     ];
 
-    /** Prompts, messages and slash menu titles of `resources/js/wysiwyg.js`. */
+    /** Messages and slash menu titles of `resources/js/wysiwyg.js`. */
     private const WYSIWYG = [
-        'Enter a URL (http:// or https://)',
-        'Enter an image URL (http:// or https://)',
-        'Alt text (optional, for accessibility)',
         'Use a web address that starts with http:// or https://.',
         'No matches',
         'Text',

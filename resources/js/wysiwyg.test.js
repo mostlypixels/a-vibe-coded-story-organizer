@@ -723,8 +723,6 @@ describe('translated strings — Laravel supplies the text', () => {
         Table: 'Tableau',
         'Align center': 'Centrer',
         'No matches': 'Aucun résultat',
-        'Enter a URL (http:// or https://)': 'Saisissez une URL',
-        'Enter an image URL (http:// or https://)': 'Saisissez l’URL d’une image',
         'Use a web address that starts with http:// or https://.': 'Utilisez une adresse http:// ou https://.',
     };
 
@@ -742,9 +740,10 @@ describe('translated strings — Laravel supplies the text', () => {
         const factories = {};
         registerWysiwyg({ data: (name, factory) => { factories[name] = factory; } });
 
-        const component = factories.wysiwyg({ format: 'html', strings });
+        const component = factories.wysiwyg({ format: 'html', strings, urlDialog: 'url-dialog-test' });
         component.$el = el;
         component.$refs = { textarea, editor: editorMount };
+        component.$dispatch = vi.fn();
 
         return { component, form };
     }
@@ -771,30 +770,62 @@ describe('translated strings — Laravel supplies the text', () => {
         expect(menu.textContent).toBe('Aucun résultat');
     });
 
-    it('the link prompt uses the translation', () => {
+    it('the link button opens the app dialog, not a browser prompt', () => {
         const { component } = mount(french);
         component.init();
-        const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null);
+        const prompt = vi.spyOn(window, 'prompt');
 
         component.setLink();
 
-        expect(prompt).toHaveBeenCalledWith('Saisissez une URL', '');
+        expect(prompt).not.toHaveBeenCalled();
+        expect(component.urlForm.kind).toBe('link');
+        expect(component.$dispatch).toHaveBeenCalledWith('open-modal', 'url-dialog-test');
         component.destroy();
     });
 
     it.each([
         ['setLink'],
         ['setImage'],
-    ])('%s tells the writer why it refused a URL without http(s)://', (method) => {
+    ])('%s tells the writer in the dialog why it refused a URL without http(s)://', (method) => {
         const { component } = mount(french);
         component.init();
-        vi.spyOn(window, 'prompt').mockReturnValue('example.com');
-        const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
         component[method]();
+        component.urlForm.url = 'example.com';
+        component.applyUrl();
 
-        expect(alert).toHaveBeenCalledWith('Utilisez une adresse http:// ou https://.');
-        expect(component.isOn('link') || component.isOn('image')).toBe(false);
+        expect(component.urlForm.error).toBe('Utilisez une adresse http:// ou https://.');
+        expect(component.$dispatch).not.toHaveBeenCalledWith('close-modal', 'url-dialog-test');
+        expect(component.$refs.textarea.value).not.toContain('example.com');
+        component.destroy();
+    });
+
+    it('applies a link to the selected text and closes the dialog', () => {
+        const { component } = mount(french);
+        component.$refs.textarea.value = '<p>Hello</p>';
+        component.init();
+        component.cmd('selectAll');
+
+        component.setLink();
+        component.urlForm.url = ' https://example.com ';
+        component.applyUrl();
+
+        expect(component.$refs.textarea.value).toContain('<a href="https://example.com">Hello</a>');
+        expect(component.$dispatch).toHaveBeenCalledWith('close-modal', 'url-dialog-test');
+        component.destroy();
+    });
+
+    it('inserts an image with its alt text', () => {
+        const { component } = mount(french);
+        component.init();
+
+        component.setImage();
+        component.urlForm.url = 'https://example.com/a.png';
+        component.urlForm.alt = 'A fountain';
+        component.applyUrl();
+
+        expect(component.$refs.textarea.value).toContain('src="https://example.com/a.png"');
+        expect(component.$refs.textarea.value).toContain('alt="A fountain"');
         component.destroy();
     });
 
