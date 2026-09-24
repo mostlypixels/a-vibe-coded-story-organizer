@@ -19,9 +19,12 @@ final readonly class Age
     /**
      * Whole years between inception and the moment, floored (no birthday yet
      * this year does not round up).
+     *
+     * Carbon returns a float. The cast cuts toward zero, so a moment just before
+     * inception gives 0, not -1.
      */
     public static function between(CarbonInterface $inception, CarbonInterface $moment): self
     {
-        return new self($inception->diffInYears($moment));
+        return new self((int) $inception->diffInYears($moment));
     }
 }

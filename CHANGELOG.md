@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Tables scroll on phones (#253)
+
+### Fixed
+
+- Wide tables scroll sideways on a phone instead of hiding their right-hand columns.
+- Codex ages no longer trigger a PHP deprecation warning.
+
 ## 2026-09-24 — Accessibility fixes (#252)
 
 ### Added

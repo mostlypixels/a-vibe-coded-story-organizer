@@ -1,6 +1,7 @@
 @props(['head' => null, 'foot' => null])
 
-<div class="bg-surface-raised overflow-hidden shadow-xs sm:rounded-lg">
+{{-- Scroll sideways, so a phone does not cut off the right-hand columns. --}}
+<div class="bg-surface-raised overflow-x-auto shadow-xs sm:rounded-lg">
     <table {{ $attributes->merge(['class' => 'min-w-full divide-y divide-border']) }}>
         @isset($head)
             <thead class="bg-table-header">

@@ -27,4 +27,19 @@ class AgeTest extends TestCase
 
         $this->assertSame(19, $age->years);
     }
+
+    public function test_a_moment_before_inception_cuts_toward_zero(): void
+    {
+        $justBefore = Age::between(
+            CarbonImmutable::parse('2000-06-01'),
+            CarbonImmutable::parse('2000-01-01'),
+        );
+        $wellBefore = Age::between(
+            CarbonImmutable::parse('2000-06-01'),
+            CarbonImmutable::parse('1998-01-01'),
+        );
+
+        $this->assertSame(0, $justBefore->years);
+        $this->assertSame(-2, $wellBefore->years);
+    }
 }
