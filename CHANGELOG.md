@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Scenes and chapters find their book in one place
+## 2026-09-24 — Scenes and chapters find their book in one place (#244)
 
 ### Changed
 
