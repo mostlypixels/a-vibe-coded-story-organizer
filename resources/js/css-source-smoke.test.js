@@ -51,4 +51,12 @@ describe('built CSS contains utilities from every source the app depends on', ()
     it('emits a utility for an @theme static role token', () => {
         expect(css).toContain('.border-accent');
     });
+
+    it('keeps the reduced-motion override', () => {
+        expect(css).toContain('prefers-reduced-motion:reduce');
+    });
+
+    it('emits the skip link focus utilities', () => {
+        expect(css).toContain('.focus\\:not-sr-only');
+    });
 });

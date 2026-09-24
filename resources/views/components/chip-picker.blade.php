@@ -4,6 +4,8 @@
     'selected' => [],
     'allowFreeText' => false,
     'placeholder' => '',
+    // The input has no visible label of its own.
+    'label',
 ])
 
 @php
@@ -84,6 +86,7 @@
             @keydown.enter.prevent="addFromInput()"
             @keydown.escape="query = ''"
             placeholder="{{ $placeholder }}"
+            aria-label="{{ $label }}"
             class="block w-full"
             autocomplete="off"
         />

@@ -644,6 +644,24 @@ export function buildExtensions(
     return extensions;
 }
 
+/**
+ * The editable area hides the textarea, so it takes over the textarea's name.
+ * Without it, a screen reader announces an unnamed edit area.
+ */
+export function accessibleNameAttributes(textarea) {
+    const attributes = { role: 'textbox', 'aria-multiline': 'true' };
+    const label = textarea.labels?.[0];
+
+    if (label) {
+        label.id ||= `${textarea.id}-label`;
+        attributes['aria-labelledby'] = label.id;
+    } else if (textarea.hasAttribute('aria-label')) {
+        attributes['aria-label'] = textarea.getAttribute('aria-label');
+    }
+
+    return attributes;
+}
+
 export function registerWysiwyg(Alpine) {
     Alpine.data('wysiwyg', (config = {}) => {
         // Alpine proxies break ProseMirror state. Keep the editor outside reactive data.
@@ -703,7 +721,8 @@ export function registerWysiwyg(Alpine) {
                     extensions,
                     editorProps: {
                         attributes: {
-                            class: 'prose prose-sm font-manuscript max-w-none focus:outline-hidden px-3 py-2',
+                            ...accessibleNameAttributes(textarea),
+                            class:'prose prose-sm font-manuscript max-w-none focus:outline-hidden px-3 py-2',
                             style: config.minHeight ? `min-height: ${config.minHeight}` : '',
                         },
                     },

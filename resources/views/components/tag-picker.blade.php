@@ -17,5 +17,6 @@
     :options="$options"
     :selected="$selected"
     :allow-free-text="true"
+    :label="__('Tags')"
     :placeholder="__('Search or add a tag…')"
 />

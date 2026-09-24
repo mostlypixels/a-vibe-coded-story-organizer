@@ -47,6 +47,14 @@
                 '('.e($isActiveExpression).") ? 'bg-accent-surface text-accent-content' : 'text-content-muted hover:bg-neutral'"
             ),
         ]);
+
+        // A toggle announces its state. A menu trigger uses aria-expanded instead.
+        if (! $dropdown) {
+            $buttonAttributes = $buttonAttributes->merge([
+                'aria-pressed' => 'false',
+                ':aria-pressed' => new \Illuminate\Support\HtmlString('('.e($isActiveExpression).').toString()'),
+            ]);
+        }
     }
 @endphp
 

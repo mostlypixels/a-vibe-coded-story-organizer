@@ -14,10 +14,11 @@
         <x-theme-style />
     </head>
     <body class="font-sans text-content antialiased">
+        <x-skip-link />
         <div class="min-h-screen bg-surface">
             @include('layouts.error-navigation')
 
-            <main>
+            <main id="main-content" tabindex="-1" class="focus:outline-hidden">
                 <div class="max-w-3xl mx-auto px-4 py-20 text-center space-y-4">
                     <x-application-logo class="mx-auto w-16 h-16 fill-current text-content-subtle" />
 

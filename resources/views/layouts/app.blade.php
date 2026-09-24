@@ -15,6 +15,7 @@
     </head>
     {{-- The default text color prevents unreadable browser-black text in dark themes. --}}
     <body class="font-sans text-content antialiased">
+        <x-skip-link />
         <div class="min-h-screen bg-surface">
             @include('layouts.navigation')
 
@@ -35,7 +36,7 @@
                 </header>
             @endif
 
-            <main>
+            <main id="main-content" tabindex="-1" class="focus:outline-hidden">
                 <div class="py-12">
                     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                         @if (session('status') === 'reverted-save')
