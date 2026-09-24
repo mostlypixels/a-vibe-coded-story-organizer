@@ -87,6 +87,8 @@ class ProjectGraphImporter
                     'cover_image' => $cover,
                     'daily_word_goal' => isset($descriptor['daily_word_goal']) ? (int) $descriptor['daily_word_goal'] : null,
                     'total_word_goal' => isset($descriptor['total_word_goal']) ? (int) $descriptor['total_word_goal'] : null,
+                    // ProjectImporter::run() clears it when the last phase commits.
+                    'import_unfinished' => true,
                 ]);
 
                 $this->importWordCountSnapshots($project, $snapshots);

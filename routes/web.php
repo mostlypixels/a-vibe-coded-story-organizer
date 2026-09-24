@@ -133,6 +133,8 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::post('/projects/{project}/codex-references/sync', [ProjectController::class, 'syncCodexReferences'])
         ->name('projects.codex-references.sync');
+    Route::delete('/projects/{project}/import-note', [ProjectController::class, 'dismissImportNote'])
+        ->name('projects.import-note.dismiss');
 
     Route::resource('projects.plotlines', PlotlineController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])

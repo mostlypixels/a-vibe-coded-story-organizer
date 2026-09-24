@@ -5,6 +5,24 @@
         </x-alert>
     @endif
 
+    @if ($project->import_unfinished)
+        <x-alert variant="warning" :title="__('This import did not finish')" class="mb-6">
+            <p>
+                {{ __('Some books, scenes, or codex entries may be missing.') }}
+                @can('access-admin')
+                    {{ __('You can resume or discard the import on the') }}
+                    <a href="{{ route('admin.data.import.index') }}" class="underline">{{ __('Import page') }}</a>.
+                    {{ __('Unfinished imports are removed after :days days.', ['days' => config('import.purge_after_days')]) }}
+                @endcan
+            </p>
+            <form method="POST" action="{{ route('projects.import-note.dismiss', $project) }}" class="mt-3">
+                @csrf
+                @method('DELETE')
+                <x-button variant="secondary" size="sm">{{ __('Keep the project as it is') }}</x-button>
+            </form>
+        </x-alert>
+    @endif
+
     <div class="mb-6">
         <x-heading level="1">{{ $project->name }}</x-heading>
     </div>

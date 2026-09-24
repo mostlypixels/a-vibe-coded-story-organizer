@@ -203,4 +203,16 @@ class ProjectController extends Controller
 
         return redirect()->route('projects.edit', $project)->with('status', 'codex-references-synced');
     }
+
+    /**
+     * The writer keeps the partial project and removes the "import did not finish" note.
+     */
+    public function dismissImportNote(Project $project): RedirectResponse
+    {
+        $this->authorize('update', $project);
+
+        $project->update(['import_unfinished' => false]);
+
+        return redirect()->route('projects.show', $project);
+    }
 }

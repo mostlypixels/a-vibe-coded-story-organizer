@@ -91,6 +91,7 @@ class ImportTest extends TestCase
 
         // The import ran inline to completion within the request.
         $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
+        $this->assertFalse($project->import_unfinished);
     }
 
     // ---------------------------------------------------------------------

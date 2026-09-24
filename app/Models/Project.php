@@ -30,10 +30,12 @@ class Project extends Model
         'daily_word_goal',
         'total_word_goal',
         'genre',
+        'import_unfinished',
     ];
 
     protected $casts = [
         'genre' => Genre::class,
+        'import_unfinished' => 'boolean',
     ];
 
     public function user(): BelongsTo
