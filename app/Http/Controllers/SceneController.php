@@ -19,6 +19,7 @@ use App\Services\SceneDuplicator;
 use App\Services\SceneSaver;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
+use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
 use App\Support\StoryNumbering;
@@ -260,7 +261,7 @@ class SceneController extends Controller
 
         $scene->delete();
 
-        return redirect()->route('books.scenes.index', $book);
+        return redirect()->route('books.scenes.index', $book)->with(Flash::SUCCESS, __('Scene deleted.'));
     }
 
     public function moveUp(Request $request, Scene $scene): RedirectResponse|JsonResponse

@@ -6,6 +6,7 @@ use App\Http\Requests\AttachCodexAttributeRequest;
 use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
 use App\Services\AttributeTimeline;
+use App\Support\Flash;
 use Illuminate\Http\RedirectResponse;
 
 /**
@@ -47,6 +48,6 @@ class CodexEntryAttributeController extends Controller
             ->where('codex_attribute_id', $codexAttribute->id)
             ->delete();
 
-        return redirect()->route('codex.edit', $codexEntry);
+        return redirect()->route('codex.edit', $codexEntry)->with(Flash::SUCCESS, __('Attribute removed from this entry.'));
     }
 }

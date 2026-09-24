@@ -11,6 +11,7 @@ use App\Services\CoverImageService;
 use App\Services\RecentlyEdited;
 use App\Services\SceneReferenceMatcher;
 use App\Services\WordCountHistory;
+use App\Support\Flash;
 use App\Support\ProjectDeleteWarning;
 use App\Support\WriterDay;
 use Illuminate\Http\RedirectResponse;
@@ -159,7 +160,7 @@ class ProjectController extends Controller
 
         $project->delete();
 
-        return redirect()->route('projects.index');
+        return redirect()->route('projects.index')->with(Flash::SUCCESS, __('Project deleted.'));
     }
 
     /**

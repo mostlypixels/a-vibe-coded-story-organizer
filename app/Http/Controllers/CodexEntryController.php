@@ -19,6 +19,7 @@ use App\Support\CodexEntryForm;
 use App\Support\CodexMediaUploads;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
+use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
@@ -223,7 +224,7 @@ class CodexEntryController extends Controller
         // The model hook removes files before database cascades remove media rows.
         $codexEntry->delete();
 
-        return redirect()->route('projects.codex.index', [$project, $type->routeKey()]);
+        return redirect()->route('projects.codex.index', [$project, $type->routeKey()])->with(Flash::SUCCESS, __('Codex entry deleted.'));
     }
 
     public function duplicate(DuplicateEntityRequest $request, CodexEntry $codexEntry, CodexEntryDuplicator $duplicator): RedirectResponse

@@ -470,6 +470,19 @@ class SceneTest extends TestCase
         $this->assertNull($scene->fresh());
     }
 
+    public function test_deleting_a_scene_says_so_on_the_next_page(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create();
+
+        $this->actingAs($user)
+            ->followingRedirects()
+            ->delete(route('scenes.destroy', $scene))
+            ->assertOk()
+            ->assertSee('Scene deleted.');
+    }
+
     public function test_a_user_cannot_delete_another_users_scene(): void
     {
         $owner = User::factory()->create();

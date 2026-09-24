@@ -6,6 +6,7 @@ use App\Http\Requests\StoreTagRequest;
 use App\Http\Requests\UpdateTagRequest;
 use App\Models\Project;
 use App\Models\Tag;
+use App\Support\Flash;
 use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,6 +55,6 @@ class TagController extends Controller
         // every entry that carries it.
         $tag->delete();
 
-        return redirect()->route('projects.tags.index', $project);
+        return redirect()->route('projects.tags.index', $project)->with(Flash::SUCCESS, __('Tag deleted.'));
     }
 }

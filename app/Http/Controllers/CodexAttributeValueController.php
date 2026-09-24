@@ -7,6 +7,7 @@ use App\Models\CodexAttribute;
 use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
 use App\Services\AttributeTimeline;
+use App\Support\Flash;
 use Illuminate\Http\RedirectResponse;
 
 class CodexAttributeValueController extends Controller
@@ -53,6 +54,6 @@ class CodexAttributeValueController extends Controller
 
         $timeline->removeAt($codexAttributeValue->startEvent);
 
-        return redirect()->route('codex.edit', $entry);
+        return redirect()->route('codex.edit', $entry)->with(Flash::SUCCESS, __('Value removed.'));
     }
 }

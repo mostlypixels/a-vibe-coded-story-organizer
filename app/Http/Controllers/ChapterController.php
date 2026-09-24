@@ -16,6 +16,7 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Scene;
 use App\Services\CoverImageService;
+use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\ListJump;
 use App\Support\PageSize;
@@ -243,7 +244,7 @@ class ChapterController extends Controller
             $chapter->delete();
         });
 
-        return redirect()->route('books.chapters.index', $book);
+        return redirect()->route('books.chapters.index', $book)->with(Flash::SUCCESS, __('Chapter deleted.'));
     }
 
     public function moveUp(Chapter $chapter): RedirectResponse
