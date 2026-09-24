@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\BackupDatabase;
 use App\Models\Revision;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -23,3 +24,7 @@ Schedule::command('exports:purge')->daily();
 // An abandoned import keeps its ZIP and extracted folder until someone resumes
 // or discards it. Account deletion leaves them with no import row at all.
 Schedule::command('imports:purge')->daily();
+
+// The whole app is one SQLite file. A snapshot every few hours limits what a bad
+// migration or a corrupt write can take. A failed run exits non-zero, so it is visible.
+Schedule::command('db:backup')->cron(BackupDatabase::cronEvery((int) config('backup.every_hours')));
