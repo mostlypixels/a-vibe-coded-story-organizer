@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Share link Regenerate button works
+## 2026-09-24 — Share link Regenerate button works (#227)
 
 ### Fixed
 
