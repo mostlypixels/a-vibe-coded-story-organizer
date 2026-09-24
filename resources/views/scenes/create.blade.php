@@ -42,7 +42,7 @@
                         <x-wysiwyg id="description" name="description" :value="old('description')" :rows="4" />
                     </x-field>
 
-                    <x-field name="contents" :label="__('Contents (Markdown)')">
+                    <x-field name="contents" :label="__('Contents')">
                         <x-wysiwyg id="contents" name="contents" :value="old('contents')" :rows="12" markdown />
                     </x-field>
 

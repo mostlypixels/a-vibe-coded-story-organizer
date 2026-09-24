@@ -56,7 +56,7 @@
                     </div>
 
                     <div>
-                        <x-autosave-field entity="scene" :model="$scene" field="contents" :label="__('Contents (Markdown)')" :rows="12" :quick-codex-entry="true" />
+                        <x-autosave-field entity="scene" :model="$scene" field="contents" :label="__('Contents')" :rows="12" :quick-codex-entry="true" />
                     </div>
 
                     <div>
