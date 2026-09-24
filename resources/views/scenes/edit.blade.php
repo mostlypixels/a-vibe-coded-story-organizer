@@ -147,7 +147,7 @@
                             <form method="POST" action="{{ route('scenes.share.store', $scene) }}" class="flex-1">
                                 @csrf
                                 <input type="hidden" name="duration" value="{{ $shareDefaultDuration }}">
-                                <x-button variant="secondary" type="button" icon="tabler-refresh" class="w-full">{{ __('Regenerate') }}</x-button>
+                                <x-button variant="secondary" icon="tabler-refresh" class="w-full">{{ __('Regenerate') }}</x-button>
                             </form>
 
                             <x-icon-delete-button
