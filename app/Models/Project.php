@@ -292,23 +292,10 @@ class Project extends Model
             // their acts) before the cascade drops the rows, otherwise a project
             // deletion leaks an orphan cover per chapter (media-lifecycle.md pitfall).
             $coverImageService = app(CoverImageService::class);
-
-            $chapterCovers = $project->chapterQuery()
-                ->whereNotNull('cover_image')
-                ->pluck('cover_image');
-
-            foreach ($chapterCovers as $coverPath) {
-                $coverImageService->delete($coverPath);
-            }
+            $coverImageService->deleteAll($project->chapterQuery());
 
             // project → books cascades at the DB level too and skips Book::deleting.
-            $bookCovers = $project->books()
-                ->whereNotNull('cover_image')
-                ->pluck('cover_image');
-
-            foreach ($bookCovers as $coverPath) {
-                $coverImageService->delete($coverPath);
-            }
+            $coverImageService->deleteAll($project->books());
         });
     }
 }

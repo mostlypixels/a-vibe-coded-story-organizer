@@ -26,7 +26,6 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
-use Throwable;
 
 class ChapterController extends Controller
 {
@@ -211,42 +210,18 @@ class ChapterController extends Controller
         // RecordsManualRevisions::snapshotAutosaved()'s docblock.
         $beforeAutosavedFields = $this->snapshotAutosaved($chapter, $data);
 
-        // The previous file is only unlinked *after* a successful save, so a failed
-        // write never leaves the row pointing at a file we already deleted.
-        $previousCover = $chapter->cover_image;
-        $storedCover = null;
-
-        if ($request->hasFile('cover_image')) {
-            $storedCover = $this->coverImageService->store(
-                $request->file('cover_image'),
-                CoverImageService::CHAPTER_COVER_DIRECTORY
-            );
-            $data['cover_image'] = $storedCover;
-        } elseif ($request->boolean('remove_cover_image')) {
-            $data['cover_image'] = null;
-        }
-
         $chapter->fill($data);
 
         if ($chapter->act_id !== $act->id) {
             $chapter->moveToEndOf($act, 'act');
         }
 
-        try {
-            $chapter->save();
-        } catch (Throwable $exception) {
-            // The row write failed after the new file landed — unlink it before
-            // rethrowing so the failure never leaves an orphan file behind.
-            $this->coverImageService->delete($storedCover);
-
-            throw $exception;
-        }
-
-        // A new upload replaces the old file; the remove checkbox clears it. Either way
-        // the previous file is now safe to delete post-commit.
-        if ($storedCover !== null || $request->boolean('remove_cover_image')) {
-            $this->coverImageService->delete($previousCover);
-        }
+        $this->coverImageService->saveWithCover(
+            $chapter,
+            $request->file('cover_image'),
+            $request->boolean('remove_cover_image'),
+            CoverImageService::CHAPTER_COVER_DIRECTORY,
+        );
 
         $this->recordManualSave($chapter, $beforeAutosavedFields);
 

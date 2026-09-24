@@ -84,11 +84,7 @@ class Act extends Model
         // the FK cascade drops their rows, otherwise deleting an act leaks an orphan
         // cover per chapter on the media disk (media-lifecycle.md pitfall).
         static::deleting(function (Act $act) {
-            $coverImageService = app(CoverImageService::class);
-
-            foreach ($act->chapters()->whereNotNull('cover_image')->pluck('cover_image') as $coverPath) {
-                $coverImageService->delete($coverPath);
-            }
+            app(CoverImageService::class)->deleteAll($act->chapters());
 
             // The cascade also skips the HasRevisions hook of each child.
             Revision::deleteFor($act->chapters());
