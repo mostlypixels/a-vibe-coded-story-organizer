@@ -166,10 +166,13 @@ class Project extends Model
      * filtering on top, which is exactly what a single-table query gives them
      * safely. Nothing eager-loads it, which is the only thing a relation would
      * have bought.
+     *
+     * Nested `whereIn` subqueries, for the same reason as {@see self::sceneQuery()}.
      */
     public function chapterQuery(): Builder
     {
-        return Chapter::query()->whereHas('act.book', fn (Builder $query) => $query->where('project_id', $this->id));
+        return Chapter::query()->whereIn('chapters.act_id', Act::query()->select('acts.id')
+            ->whereIn('acts.book_id', Book::query()->select('books.id')->where('books.project_id', $this->id)));
     }
 
     /**

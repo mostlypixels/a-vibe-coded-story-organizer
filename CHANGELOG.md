@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-24 — Faster project-wide chapter lookups (#209)
+
+### Changed
+
+- Project-wide chapter lookups, such as search and recently edited chapters, are faster in large projects.
+
 ## 2026-09-24 — Edit forms share rules with create forms (#208)
 
 ### Changed
