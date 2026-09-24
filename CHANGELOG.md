@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Rotating SQLite backups
+## 2026-09-24 — Rotating SQLite backups (#226)
 
 ### Added
 
