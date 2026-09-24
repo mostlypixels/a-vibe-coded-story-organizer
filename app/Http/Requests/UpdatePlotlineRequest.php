@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Support\AutosavableFields;
-use App\Support\PlotlineColors;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,13 +18,13 @@ class UpdatePlotlineRequest extends FormRequest
      */
     public function rules(): array
     {
+        $fieldRules = StorePlotlineRequest::fieldRules();
+
         return [
-            'name' => ['required', 'string', 'max:255'],
+            ...$fieldRules,
             'description' => AutosavableFields::validationRule('plotline', 'description'),
             'color' => [
-                'required',
-                'string',
-                Rule::in(PlotlineColors::PRESETS),
+                ...$fieldRules['color'],
                 Rule::unique('plotlines')
                     ->where('project_id', $this->route('plotline')->project_id)
                     ->ignore($this->route('plotline')),

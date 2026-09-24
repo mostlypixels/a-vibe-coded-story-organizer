@@ -29,10 +29,8 @@ class UpdateCodexEntryRequest extends FormRequest
             ->where('is_fixed', 0);
 
         return [
-            'name' => ['required', 'string', 'max:255'],
+            ...StoreCodexEntryRequest::fieldRules(),
             'description' => AutosavableFields::validationRule('codex', 'description'),
-            'aliases' => ['nullable', 'array'],
-            'aliases.*' => ['nullable', 'string', 'max:255'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['nullable', 'string', 'max:255'],
 
