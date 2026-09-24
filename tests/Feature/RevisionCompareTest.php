@@ -506,4 +506,14 @@ class RevisionCompareTest extends TestCase
         $response->assertSee('<ins>**</ins>', escape: false);
         $response->assertSee('<strong>world</strong>', escape: false);
     }
+
+    public function test_a_save_id_that_is_not_a_string_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $this->actingAs($user)
+            ->get($this->compareUrl($act, ['from' => ['a'], 'to' => 'b']))
+            ->assertSessionHasErrors('from');
+    }
 }

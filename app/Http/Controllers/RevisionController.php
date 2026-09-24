@@ -4,20 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Enums\RevisionOrigin;
 use App\Exceptions\RevisionConflictException;
+use App\Http\Requests\RevertRevisionRequest;
+use App\Http\Requests\RevertSaveRequest;
+use App\Http\Requests\ShowRevisionsRequest;
 use App\Models\Project;
 use App\Models\Revision;
-use App\Services\RevisionComparison;
+use App\Services\RevisionComparePage;
 use App\Services\RevisionHistory;
 use App\Services\RevisionReverter;
 use App\Support\AutosavableFields;
 use App\Support\Crumb;
-use App\Support\FieldComparison;
 use App\Support\SavePoint;
 use App\View\Components\RevisionsLayout;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -30,14 +31,15 @@ use Illuminate\View\View;
 class RevisionController extends Controller
 {
     /** Shows one entity's filtered, bookmarkable save-point history. */
-    public function index(Request $request, string $entity, int $id, RevisionHistory $history): View
+    public function index(ShowRevisionsRequest $request, string $entity, int $id, RevisionHistory $history): View
     {
-        $model = $this->resolveEntity($entity, $id);
-        $request->validate(['label' => ['nullable', 'string']]);
+        $model = $request->revisionable();
+        $project = $model->revisionProject();
+        $this->authorize('view', $project);
 
         $filters = [
-            'field' => $this->resolveFieldFilter($entity, $request),
-            'label' => trim((string) $request->query('label', '')),
+            'field' => $request->fieldFilter(),
+            'label' => trim((string) $request->validated('label')),
             'manualOnly' => $request->boolean('manual'),
         ];
 
@@ -45,7 +47,6 @@ class RevisionController extends Controller
             // Preserve filters across pagination.
             ->withQueryString();
 
-        $project = $model->revisionProject();
         $heading = $this->revisionsLeaf($entity, $model->revisionDisplayName(), $filters['field'], __('History'), __('history'));
 
         return view('revisions.index', [
@@ -58,8 +59,8 @@ class RevisionController extends Controller
             'entityName' => $model->revisionDisplayName(),
             'savePoints' => $savePoints,
             // A filtered page still needs hashes for every field in the save.
-            'baseHashes' => $this->baseHashes($entity, $model),
-            'fieldOptions' => $this->fieldOptions($entity, $model),
+            'baseHashes' => AutosavableFields::currentHashes($model),
+            'fieldOptions' => $history->fieldOptions($model),
             'editUrl' => route(AutosavableFields::editRouteFor($entity), $model),
             'heading' => $heading,
             'breadcrumbTrail' => $this->revisionsTrail($project, $heading),
@@ -80,67 +81,25 @@ class RevisionController extends Controller
         ]);
     }
 
-    /**
-     * The fields of this entity that have any history, as `field => headline`.
-     *
-     * @return array<string, string>
-     */
-    private function fieldOptions(string $entity, Model $model): array
+    /** Compares all entity fields at two save points. */
+    public function compare(ShowRevisionsRequest $request, string $entity, int $id, RevisionComparePage $page): View
     {
-        $fields = AutosavableFields::fieldsFor($entity);
-
-        $withHistory = $model->revisions()->getQuery()->reorder()->distinct()->pluck('field')->all();
-
-        $options = [];
-
-        foreach (array_keys($fields) as $field) {
-            if (in_array($field, $withHistory, true)) {
-                $options[$field] = Str::headline($field);
-            }
-        }
-
-        return $options;
-    }
-
-    /**
-     * Compares all entity fields at two save points.
-     * Missing points use the newest pair. Reversed points become chronological.
-     */
-    public function compare(
-        Request $request,
-        string $entity,
-        int $id,
-        RevisionHistory $history,
-        RevisionComparison $comparison,
-    ): View {
-        $model = $this->resolveEntity($entity, $id);
-        $field = $this->resolveFieldFilter($entity, $request);
-
-        // Field filters do not limit the save-point pickers.
-        $points = $history->savePoints($model);
-        [$from, $to] = $this->resolvePair($points, $request);
-
-        $comparisons = ($from !== null && $to !== null)
-            ? $comparison->between($model, $from, $to, $field)
-            : collect();
-
+        $model = $request->revisionable();
         $project = $model->revisionProject();
+        $this->authorize('view', $project);
+
+        $field = $request->fieldFilter();
         $heading = $this->revisionsLeaf($entity, $model->revisionDisplayName(), $field, __('Compare'), __('compare'));
 
         return view('revisions.compare', [
+            ...$page->build($model, $field, $request->validated('from'), $request->validated('to')),
             'project' => $project,
             'entity' => $entity,
             'id' => $id,
             'field' => $field,
             'entityName' => $model->revisionDisplayName(),
-            'points' => $points,
-            'from' => $from,
-            'to' => $to,
-            'comparisons' => $comparisons,
-            'unchangedFields' => $this->unchangedFields($entity, $comparisons, $from, $to),
             // Restore buttons use current hashes for conflict detection.
-            'baseHashes' => $this->baseHashes($entity, $model),
-            'savesApart' => $this->savesApart($points, $from, $to),
+            'baseHashes' => AutosavableFields::currentHashes($model),
             'editUrl' => route(AutosavableFields::editRouteFor($entity), $model),
             'heading' => $heading,
             'breadcrumbTrail' => $this->revisionsTrail($project, $heading),
@@ -173,98 +132,13 @@ class RevisionController extends Controller
         return $model->revisions()->whereKey($revisionId)->value('save_id');
     }
 
-    /**
-     * The two save points to compare, oldest first.
-     *
-     * @param  Collection<int, SavePoint>  $points  Newest first.
-     * @return array{0: ?SavePoint, 1: ?SavePoint}
-     */
-    private function resolvePair(Collection $points, Request $request): array
-    {
-        if ($points->count() < 2) {
-            return [null, null];
-        }
-
-        $fromId = $request->query('from');
-        $toId = $request->query('to');
-
-        if ($fromId === null || $toId === null) {
-            return [$points->get(1), $points->get(0)];
-        }
-
-        $from = $this->pointOrFail($points, $fromId);
-        $to = $this->pointOrFail($points, $toId);
-
-        return $points->search($from, strict: true) < $points->search($to, strict: true)
-            ? [$to, $from]
-            : [$from, $to];
-    }
-
-    /**
-     * @param  Collection<int, SavePoint>  $points
-     */
-    private function pointOrFail(Collection $points, mixed $saveId): SavePoint
-    {
-        $point = $points->firstWhere('saveId', $saveId);
-
-        abort_if($point === null, 404);
-
-        return $point;
-    }
-
-    /**
-     * @param  Collection<int, FieldComparison>  $comparisons
-     * @return list<string> Registered field labels without a change.
-     */
-    private function unchangedFields(string $entity, Collection $comparisons, ?SavePoint $from, ?SavePoint $to): array
-    {
-        if ($from === null || $to === null) {
-            return [];
-        }
-
-        $changed = $comparisons->pluck('field')->all();
-        $fields = AutosavableFields::fieldsFor($entity);
-
-        return array_values(array_map(
-            fn (string $field): string => Str::headline($field),
-            array_diff(array_keys($fields), $changed),
-        ));
-    }
-
-    /** @return array<string, string> Current hashes by registered field. */
-    private function baseHashes(string $entity, Model $model): array
-    {
-        $fields = AutosavableFields::fieldsFor($entity);
-        $hashes = [];
-
-        foreach (array_keys($fields) as $field) {
-            $hashes[$field] = hash('sha256', (string) ($model->getAttribute($field) ?? ''));
-        }
-
-        return $hashes;
-    }
-
-    /** @param Collection<int, SavePoint> $points */
-    private function savesApart(Collection $points, ?SavePoint $from, ?SavePoint $to): int
-    {
-        if ($from === null || $to === null) {
-            return 0;
-        }
-
-        return abs($points->search($from, strict: true) - $points->search($to, strict: true));
-    }
-
     /** Reverts one field and returns conflicts to the page as an actionable alert. */
-    public function revert(Request $request, Revision $revision, RevisionReverter $reverter): RedirectResponse
+    public function revert(RevertRevisionRequest $request, Revision $revision, RevisionReverter $reverter): RedirectResponse
     {
         $entity = $this->revisionableOrFail($revision);
 
-        $validated = $request->validate([
-            'base_hash' => ['required', 'string'],
-        ]);
-
         try {
-            $reverter->revertField($entity, $revision, $validated['base_hash'], $request->user());
+            $reverter->revertField($entity, $revision, $request->validated('base_hash'), $request->user());
         } catch (RevisionConflictException $exception) {
             return back()->with(RevisionsLayout::ERROR_KEY, $exception->getMessage());
         }
@@ -272,26 +146,11 @@ class RevisionController extends Controller
         return back()->with('status', 'reverted');
     }
 
-    /**
-     * Restores every field touched by one save to its preceding value.
-     * The save ID is only a lookup key; authorization still uses the owning project.
-     */
-    public function revertSave(Request $request, string $save, RevisionReverter $reverter): RedirectResponse
+    /** Restores every field touched by one save to its preceding value. */
+    public function revertSave(RevertSaveRequest $request, string $save, RevisionReverter $reverter): RedirectResponse
     {
-        // Do not select revision values for the save-point lookup.
-        $group = Revision::query()
-            ->where('save_id', $save)
-            ->select(['id', 'save_id', 'field', 'created_at', 'origin', 'revisionable_type', 'revisionable_id', 'project_id'])
-            ->get();
-
-        abort_if($group->isEmpty(), 404);
-
+        $group = $request->saveGroup();
         $entity = $this->revisionableOrFail($group->first());
-
-        $validated = $request->validate([
-            'base_hashes' => ['required', 'array'],
-            'base_hashes.*' => ['required', 'string'],
-        ]);
 
         // A baseline has no preceding saved value to restore.
         if (SavePoint::dominantOrigin($group->pluck('origin')) === RevisionOrigin::Baseline) {
@@ -299,7 +158,7 @@ class RevisionController extends Controller
         }
 
         try {
-            $restored = $reverter->revertSave($entity, $group, $validated['base_hashes'], $request->user());
+            $restored = $reverter->revertSave($entity, $group, $request->validated('base_hashes'), $request->user());
         } catch (RevisionConflictException $exception) {
             return back()->with(RevisionsLayout::ERROR_KEY, $exception->getMessage());
         }
@@ -310,24 +169,12 @@ class RevisionController extends Controller
             ->with('restored_fields', array_map(Str::headline(...), $restored));
     }
 
-    /**
-     * Returns the revision's entity after the update check on its project.
-     * Old rows can refer to a deleted entity. They get a 404, but only after
-     * the check on the stored project, so a non-owner cannot probe for IDs.
-     */
+    /** A revision of a deleted entity is a 404, but only after the project check. */
     private function revisionableOrFail(Revision $revision): Model
     {
-        $entity = $revision->revisionable;
+        $this->authorize('update', $revision->owningProject());
 
-        if ($entity === null) {
-            $this->authorize('update', Project::findOrFail($revision->project_id));
-
-            abort(404);
-        }
-
-        $this->authorize('update', $entity->revisionProject());
-
-        return $entity;
+        return $revision->revisionable ?? abort(404);
     }
 
     /** Resolves the entity and authorizes history access through its project. */
@@ -338,22 +185,6 @@ class RevisionController extends Controller
         $this->authorize('view', $model->revisionProject());
 
         return $model;
-    }
-
-    /** Resolves a registered field filter or returns null for all fields. */
-    private function resolveFieldFilter(string $entity, Request $request): ?string
-    {
-        $request->validate(['field' => ['nullable', 'string']]);
-
-        $field = trim((string) $request->query('field', ''));
-
-        if ($field === '') {
-            return null;
-        }
-
-        AutosavableFields::resolveField($entity, $field);
-
-        return $field;
     }
 
     /** @return list<Crumb> */

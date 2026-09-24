@@ -72,6 +72,16 @@ class Revision extends Model
     }
 
     /**
+     * The project that controls access to this revision.
+     * Old rows can refer to a deleted entity. Then the stored project answers,
+     * so a non-owner gets 403 and cannot probe for deleted IDs.
+     */
+    public function owningProject(): Project
+    {
+        return $this->revisionable?->revisionProject() ?? Project::findOrFail($this->project_id);
+    }
+
+    /**
      * Deletes the revisions of each entity that the query selects.
      *
      * A database cascade fires no model events. Thus a parent's `deleting`

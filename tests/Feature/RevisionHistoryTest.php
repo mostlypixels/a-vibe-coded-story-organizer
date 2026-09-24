@@ -442,4 +442,14 @@ class RevisionHistoryTest extends TestCase
         $response->assertSee(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'notes']), escape: false);
         $response->assertDontSee(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']), escape: false);
     }
+
+    public function test_a_label_filter_that_is_not_a_string_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $this->actingAs($user)
+            ->get($this->historyUrl($act, ['label' => ['a']]))
+            ->assertSessionHasErrors('label');
+    }
 }
