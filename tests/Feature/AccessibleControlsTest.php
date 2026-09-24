@@ -39,6 +39,17 @@ class AccessibleControlsTest extends TestCase
         $this->assertSame('Mentions events', $events->querySelector('input[type=text]')->getAttribute('aria-label'));
     }
 
+    public function test_a_wide_table_scrolls_sideways_instead_of_cutting_off_columns(): void
+    {
+        $wrapper = HTMLDocument::createFromString(Blade::render('<x-table><tr><td>A</td></tr></x-table>'), LIBXML_NOERROR)
+            ->querySelector('div');
+
+        $classes = explode(' ', $wrapper->getAttribute('class'));
+
+        $this->assertContains('overflow-x-auto', $classes);
+        $this->assertNotContains('overflow-hidden', $classes);
+    }
+
     public function test_a_toolbar_toggle_announces_its_state_but_a_menu_trigger_does_not(): void
     {
         $toggle = HTMLDocument::createFromString(
