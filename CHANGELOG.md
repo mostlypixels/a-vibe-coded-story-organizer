@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-24 — Page data leaves the templates
+## 2026-09-24 — Page data leaves the templates (#249)
 
 ### Changed
 
