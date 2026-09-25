@@ -26,8 +26,9 @@
                     :placeholder="__('e.g. The Serpent Lady')"
                     :add-label="__('+ Add alias')"
                     :remove-label="__('Remove alias')"
+                    :maxlength="255"
                 />
-                <x-input-error :messages="$errors->get('aliases')" class="mt-2" />
+                <x-input-error :messages="array_merge($errors->get('aliases'), $errors->get('aliases.*'))" class="mt-2" />
             </div>
         </div>
     </x-card>

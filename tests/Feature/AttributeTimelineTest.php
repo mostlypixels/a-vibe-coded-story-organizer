@@ -357,6 +357,31 @@ class AttributeTimelineTest extends TestCase
             ->assertSee('The start event id field is required.');
     }
 
+    /** A failed "Add period" must not blank the other value boxes. */
+    public function test_a_failed_add_keeps_stored_values_in_the_other_rows(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create();
+        $start = $project->events()->where('title', 'Start')->firstOrFail();
+        (new AttributeTimeline($entry, $attribute))->upsertAt($start, 'blonde');
+
+        $this->actingAs($user)
+            ->from(route('codex.edit', $entry))
+            ->post(route('codex.attribute-values.store', [$entry, $attribute]), [
+                'form_key' => "add_{$attribute->id}",
+                'start_event_id' => '',
+                'value' => 'typed-in-add',
+            ])
+            ->assertSessionHasErrors('start_event_id');
+
+        $page = $this->actingAs($user)->get(route('codex.edit', $entry))->assertOk();
+
+        $page->assertSee('value="blonde"', false);
+        $this->assertSame(1, substr_count($page->getContent(), 'value="typed-in-add"'));
+    }
+
     public function test_store_rejects_a_cross_project_anchor_event(): void
     {
         $user = User::factory()->create();

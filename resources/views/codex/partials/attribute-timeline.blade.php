@@ -4,6 +4,11 @@
             {{ __('Each attribute\'s value over time. A period runs from its event until the next change. Editing a value and pressing Save updates it in place.') }}
         </p>
 
+        @php
+            // Every row posts a "value" field. The form key keeps the old input in the row that failed.
+            $oldValue = fn (string $formKey, ?string $stored) => old('form_key') === $formKey ? old('value') : $stored;
+        @endphp
+
         <x-input-error :messages="$errors->get('value')" class="mt-2" />
         <x-input-error :messages="$errors->get('start_event_id')" class="mt-2" />
         <x-input-error :messages="$errors->get('codex_attribute_id')" class="mt-2" />
@@ -31,6 +36,7 @@
                         <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-wrap items-center gap-2">
                             @csrf
                             <input type="hidden" name="start_event_id" value="{{ $startEvent->id }}">
+                            <input type="hidden" name="form_key" value="baseline_{{ $attribute->id }}">
                             <span class="inline-flex items-center gap-1 w-40 shrink-0 text-sm font-medium text-content-muted">
                                 <span aria-hidden="true">&#9679;</span>
                                 {{ $startEvent->title }}
@@ -41,7 +47,7 @@
                                 name="value"
                                 type="text"
                                 class="flex-1 min-w-40"
-                                :value="old('value', $sheet['baseline']?->value)"
+                                :value="$oldValue('baseline_'.$attribute->id, $sheet['baseline']?->value)"
                                 :placeholder="__('Starting value')"
                             />
                             <x-icon-save-button />
@@ -52,6 +58,7 @@
                                 <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-1 flex-wrap items-center gap-2">
                                     @csrf
                                     <input type="hidden" name="start_event_id" value="{{ $period->start_event_id }}">
+                                    <input type="hidden" name="form_key" value="period_{{ $period->id }}">
                                     <span class="inline-flex items-center gap-1 w-40 shrink-0 text-sm font-medium text-content-muted">
                                         <span aria-hidden="true">&#9679;</span>
                                         {{ $period->startEvent->title }}
@@ -62,7 +69,7 @@
                                         name="value"
                                         type="text"
                                         class="flex-1 min-w-40"
-                                        :value="old('value', $period->value)"
+                                        :value="$oldValue('period_'.$period->id, $period->value)"
                                     />
                                     <x-icon-save-button />
                                 </form>
@@ -72,6 +79,7 @@
 
                         <form method="POST" action="{{ route('codex.attribute-values.store', [$entry, $attribute]) }}" class="flex flex-wrap items-center gap-2 border-t border-border pt-2">
                             @csrf
+                            <input type="hidden" name="form_key" value="add_{{ $attribute->id }}">
                             <label class="sr-only" for="add_event_{{ $attribute->id }}">{{ __('Add period at event') }}</label>
                             <x-select
                                 id="add_event_{{ $attribute->id }}"
@@ -81,7 +89,7 @@
                             >
                                 <option value="">{{ __('Add period at…') }}</option>
                                 @foreach ($events as $event)
-                                    <option value="{{ $event->id }}" @selected(old('start_event_id') == $event->id)>{{ $event->title }} — {{ \App\Support\DateFormat::date($event->event_datetime, $locale) }}</option>
+                                    <option value="{{ $event->id }}" @selected(old('form_key') === 'add_'.$attribute->id && old('start_event_id') == $event->id)>{{ $event->title }} — {{ \App\Support\DateFormat::date($event->event_datetime, $locale) }}</option>
                                 @endforeach
                             </x-select>
                             <label class="sr-only" for="add_value_{{ $attribute->id }}">{{ __('New value') }}</label>
@@ -90,7 +98,7 @@
                                 name="value"
                                 type="text"
                                 class="flex-1 min-w-40"
-                                :value="old('value')"
+                                :value="$oldValue('add_'.$attribute->id, null)"
                                 :placeholder="__('New value')"
                             />
                             <x-button variant="primary" type="submit">{{ __('Add') }}</x-button>
