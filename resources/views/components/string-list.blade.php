@@ -4,6 +4,7 @@
     'placeholder' => '',
     'addLabel' => null,
     'removeLabel' => null,
+    'maxlength' => null,
 ])
 
 @php
@@ -21,6 +22,7 @@
                     name="{{ $name }}[]"
                     x-model="items[index]"
                     placeholder="{{ $placeholder }}"
+                    :maxlength="$maxlength"
                     class="block w-full text-sm"
                 />
                 <button type="button" @click="items.splice(index, 1)" class="text-sm text-danger-surface-content hover:text-danger-surface-content/80" aria-label="{{ $removeLabel }}">&times;</button>

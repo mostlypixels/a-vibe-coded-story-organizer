@@ -216,6 +216,26 @@ class CodexEntryTest extends TestCase
         $this->assertSame(['Reworked'], $entry->tags->pluck('name')->all());
     }
 
+    public function test_a_too_long_alias_shows_its_error_on_the_edit_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $this->actingAs($user)
+            ->from(route('codex.edit', $entry))
+            ->put(route('codex.update', $entry), [
+                'name' => $entry->name,
+                'aliases' => [str_repeat('a', 256)],
+            ])
+            ->assertSessionHasErrors('aliases.0');
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSee('must not be greater than 255 characters')
+            ->assertSee('maxlength="255"', false);
+    }
+
     public function test_save_and_stay_redirects_to_the_edit_form_and_flashes_saved(): void
     {
         $user = User::factory()->create();

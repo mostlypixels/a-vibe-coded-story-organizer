@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RevisionOrigin;
 use App\Exceptions\RevisionConflictException;
 use App\Models\Act;
 use App\Models\Revision;
 use App\Models\User;
 use App\Services\FieldAutosaver;
+use App\Services\RevisionRecorder;
 use App\Support\FieldHash;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -50,5 +52,22 @@ class FieldAutosaverTest extends TestCase
 
         $this->assertSame('<p>Old</p>', $act->fresh()->description);
         $this->assertSame(0, Revision::query()->count());
+    }
+
+    /** The blur flush and "Save and stay" can race. Both write the same text. */
+    public function test_an_autosave_that_loses_a_race_to_a_manual_save_records_no_duplicate(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+        $staleAct = Act::findOrFail($act->id);
+
+        // The manual save lands after the autosave read the row.
+        $before = ['description' => '<p>Old</p>'];
+        $act->update(['description' => '<p>New</p>']);
+        app(RevisionRecorder::class)->recordManualChanges($act, $before, $user);
+
+        app(FieldAutosaver::class)->save($staleAct, 'description', '<p>New</p>', FieldHash::of('<p>Old</p>'), $user);
+
+        $this->assertSame(0, Revision::query()->where('origin', RevisionOrigin::Automatic)->count());
     }
 }

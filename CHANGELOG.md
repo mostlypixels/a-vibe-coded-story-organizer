@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-25 — Attribute, alias and autosave fixes (#271)
+
+### Fixed
+
+- A failed attribute value save keeps the stored values in the other rows of the timeline.
+- A too-long alias shows its error, and the alias box stops at 255 characters.
+- A manual save no longer adds an empty duplicate "Autosaved" revision.
+
 ## 2026-09-25 — Small fixes from a form test (#270)
 
 ### Fixed

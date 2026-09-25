@@ -68,9 +68,11 @@ class FieldAutosaver
         // The baseline is seeded from the values captured above, and only inside
         // this branch: a save that changed nothing must leave the field with no
         // revisions at all, baseline included.
+        // A manual save can land between the hash check and the write. It
+        // already recorded this value, so a second revision is a duplicate.
         $recorded = null;
 
-        if ($storedValue !== $currentValue) {
+        if ($storedValue !== $currentValue && $storedValue !== $this->recorder->lastValueFor($model, $field)) {
             $this->recorder->ensureBaseline($model, $field, $currentValue, $heldSince);
 
             $recorded = $this->recorder->record($model, $field, $storedValue, $user, RevisionOrigin::Automatic);
