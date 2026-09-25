@@ -19,4 +19,12 @@ class UpdateSceneRequest extends FormRequest
     {
         return StoreSceneRequest::rulesFor($this->route('scene')->book());
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return StoreSceneRequest::fieldAttributes();
+    }
 }

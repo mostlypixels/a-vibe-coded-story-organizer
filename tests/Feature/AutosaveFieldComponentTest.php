@@ -48,6 +48,21 @@ class AutosaveFieldComponentTest extends TestCase
         $this->assertStringContainsString('name="description"', $html);
     }
 
+    public function test_the_status_text_uses_translated_words_not_the_state_key(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+
+        $html = Blade::render(
+            '<x-autosave-field entity="act" :model="$act" field="description" />',
+            ['act' => $act],
+        );
+
+        $this->assertStringContainsString('x-text="label"', $html);
+        $this->assertStringContainsString('Reconnecting', $html);
+    }
+
     public function test_plain_kind_renders_a_bare_textarea_not_the_rich_editor(): void
     {
         $user = User::factory()->create();
