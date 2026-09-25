@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-25 — Attribute, alias and autosave fixes
+## 2026-09-25 — Attribute, alias and autosave fixes (#271)
 
 ### Fixed
 
