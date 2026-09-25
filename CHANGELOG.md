@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-26 — Readable save status and error messages
+## 2026-09-26 — Readable save status and error messages (#272)
 
 ### Fixed
 
