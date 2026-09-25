@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — Readable save status and error messages (#272)
+
+### Fixed
+
+- The save status under each autosaved field shows words like "Saving…" and "Saved", not internal state names.
+- Error messages name the field label on screen, for example "date and time" instead of "event datetime".
+
 ## 2026-09-25 — Attribute, alias and autosave fixes (#271)
 
 ### Fixed

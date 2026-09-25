@@ -12,6 +12,7 @@
     use App\Enums\FieldKind;
     use App\Support\AutosavableFields;
     use App\Support\FieldHash;
+    use App\Support\ScriptTranslations;
     use App\Support\WordCounter;
     use App\Support\WordCountFormat;
 
@@ -36,6 +37,7 @@
         url: @js($autosaveUrl),
         baseHash: @js($hash),
         initialValue: @js($currentValue),
+        strings: @js(ScriptTranslations::autosaveBadge()),
     })"
     data-autosave-field="{{ $entity }}:{{ $model->id }}:{{ $field }}"
 >
@@ -86,7 +88,7 @@
                 data-autosave-indicator
                 x-show="state !== 'idle'"
                 style="display: none;"
-                x-text="state"
+                x-text="label"
             ></span>
 
             <x-word-count :count="$wordCount" x-text="displayText()" aria-live="off" class="ml-auto" />

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEBOUNCE_MS, fieldKeyFor, registerAutosaveField, shouldAutosave } from './field';
+import { STATES } from './store';
 
 function createAlpineStub() {
     const stores = {};
@@ -80,6 +81,21 @@ describe('registerAutosaveField store dirty tracking', () => {
 
         return { field, textarea };
     }
+
+    it('label shows the translated badge text for the state, not the raw key', () => {
+        const { field } = mountField({
+            entity: 'scene',
+            id: 42,
+            field: 'contents',
+            url: '/scenes/42',
+            baseHash: 'abc',
+            strings: { 'Session expired — your work is safe.': 'Session abgelaufen' },
+        });
+
+        field.setState(STATES.SESSION_EXPIRED);
+
+        expect(field.label).toBe('Session abgelaufen');
+    });
 
     it('isDirty() returns false and does not throw before any field has registered', () => {
         expect(Alpine.store('autosave').isDirty()).toBe(false);

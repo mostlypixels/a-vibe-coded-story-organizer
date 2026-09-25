@@ -354,7 +354,7 @@ class AttributeTimelineTest extends TestCase
         // ...and the message renders on the edit page (the partial now echoes it).
         $this->actingAs($user)->get(route('codex.edit', $entry))
             ->assertOk()
-            ->assertSee('The start event id field is required.');
+            ->assertSee('The event field is required.');
     }
 
     /** A failed "Add period" must not blank the other value boxes. */

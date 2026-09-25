@@ -25,6 +25,22 @@ class StoreSceneRequest extends FormRequest
     }
 
     /**
+     * The scene form labels "name" as Title. UpdateSceneRequest uses the same names.
+     *
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return self::fieldAttributes();
+    }
+
+    /** @return array<string, string> */
+    public static function fieldAttributes(): array
+    {
+        return ['name' => __('title')];
+    }
+
+    /**
      * UpdateSceneRequest uses the same rules.
      *
      * @return array<string, mixed>

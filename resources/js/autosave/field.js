@@ -1,5 +1,6 @@
 /** Connect an autosave field to the state machine and server. */
 
+import { labelFor } from './badge';
 import { mapResponse, retryDelayMs, scheduleRetry, worstState, STATES } from './store';
 
 export const DEBOUNCE_MS = 2000;
@@ -52,6 +53,10 @@ export function registerAutosaveField(Alpine) {
         queuedSave: null,
         wasReplay: false,
         baseHash: config.baseHash,
+
+        get label() {
+            return labelFor(this.state, config.strings);
+        },
 
         init() {
             const store = Alpine.store('autosave');
