@@ -158,6 +158,19 @@ class PlotlineTest extends TestCase
         $this->actingAs($user)->get(route('projects.plotlines.create', $project))->assertOk();
     }
 
+    public function test_colour_swatches_have_colour_names_not_hex_codes(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.plotlines.create', $project))
+            ->assertOk()
+            ->assertSee('aria-label="Red"', false)
+            ->assertSee('aria-label="Dark rose"', false)
+            ->assertDontSee('aria-label="#', false);
+    }
+
     public function test_a_user_can_add_a_plotline_to_their_project(): void
     {
         $user = User::factory()->create();

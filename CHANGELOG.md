@@ -17,6 +17,15 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-25 — Small fixes from a form test (#270)
+
+### Fixed
+
+- Moving an act to another book shows a confirmation message.
+- The book list, new book and edit book pages show breadcrumbs.
+- The share link revoke dialog confirms with "Revoke", not "Delete".
+- Screen readers name the plotline colour swatches by colour and announce the selected one.
+
 ## 2026-09-24 — Fixes from a site check (#257)
 
 ### Fixed

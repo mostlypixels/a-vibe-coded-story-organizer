@@ -480,6 +480,11 @@ class SceneShareTest extends TestCase
         $response->assertSee('Regenerate');
         $response->assertSee(route('scenes.share.destroy', $scene), escape: false);
         $response->assertDontSee('Generate share link');
+        // The dialog confirms with the same verb as the button that opens it.
+        $this->assertMatchesRegularExpression(
+            '#action="'.preg_quote(route('scenes.share.destroy', $scene), '#').'".*?<button[^>]*type="submit"[^>]*>\s*Revoke\s*</button>#s',
+            $response->getContent(),
+        );
     }
 
     public function test_the_regenerate_button_submits_the_share_form(): void

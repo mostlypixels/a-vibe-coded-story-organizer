@@ -9,6 +9,7 @@ use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
+use App\Support\Flash;
 use App\Support\StoryNumbering;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -687,7 +688,8 @@ class ActTest extends TestCase
 
         $this->actingAs($user)
             ->patch(route('acts.move-to-book', $act), ['book_id' => $destination->id])
-            ->assertRedirect(route('acts.edit', $act));
+            ->assertRedirect(route('acts.edit', $act))
+            ->assertSessionHas(Flash::SUCCESS, __('Act moved to :book.', ['book' => $destination->displayName()]));
 
         $act->refresh();
         $this->assertSame($destination->id, $act->book_id);

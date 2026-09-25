@@ -11,7 +11,8 @@
                 :class="{ 'ring-2 ring-offset-2 ring-border-strong': selected === '{{ $hex }}' }"
                 class="h-6 w-6 rounded-full"
                 style="background-color: {{ $hex }}"
-                aria-label="{{ $hex }}"
+                aria-label="{{ \App\Support\PlotlineColors::label($hex) }}"
+                :aria-pressed="(selected === '{{ $hex }}').toString()"
             ></button>
         @endforeach
     </div>

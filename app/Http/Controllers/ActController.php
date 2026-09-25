@@ -179,7 +179,8 @@ class ActController extends Controller
         $act->moveToEndOf($destination, 'book');
         $act->save();
 
-        return redirect()->route('acts.edit', $act);
+        return redirect()->route('acts.edit', $act)
+            ->with(Flash::SUCCESS, __('Act moved to :book.', ['book' => $destination->displayName()]));
     }
 
     public function destroy(DestroyActRequest $request, Act $act): RedirectResponse

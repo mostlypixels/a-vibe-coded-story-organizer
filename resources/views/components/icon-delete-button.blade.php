@@ -14,5 +14,5 @@
         {{ $attributes }}
     />
 
-    <x-confirm-delete-dialog :name="$dialog" :action="$action" :message="$confirm" />
+    <x-confirm-delete-dialog :name="$dialog" :action="$action" :message="$confirm" :confirm-label="$label" />
 </div>
