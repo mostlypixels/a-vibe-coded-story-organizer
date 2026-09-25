@@ -121,6 +121,19 @@ class BreadcrumbsTest extends TestCase
         $this->assertStringNotContainsString('A Named Act', $nav);
     }
 
+    public function test_book_edit_renders_a_books_trail(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+        $book = $project->books()->first();
+
+        $nav = $this->breadcrumbNav(
+            $this->actingAs($this->user)->get(route('books.edit', $book))->assertOk()->getContent()
+        );
+
+        $this->assertStringContainsString('href="'.e(route('projects.books.index', $project)).'"', $nav);
+        $this->assertStringContainsString(__('Edit :thing :id', ['thing' => __('book'), 'id' => $book->id]), $nav);
+    }
+
     public function test_the_revisions_browser_renders_a_tools_trail(): void
     {
         $project = Project::factory()->for($this->user)->create();

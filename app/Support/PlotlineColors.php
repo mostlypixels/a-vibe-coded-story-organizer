@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Str;
+
 class PlotlineColors
 {
     /**
@@ -27,4 +29,24 @@ class PlotlineColors
         '#ec4899', '#be185d', // pink
         '#f43f5e', '#be123c', // rose
     ];
+
+    /** One name for each pair in PRESETS, in the same order. */
+    private const FAMILIES = [
+        'Red', 'Orange', 'Yellow', 'Lime', 'Green', 'Emerald', 'Teal', 'Cyan',
+        'Sky', 'Blue', 'Indigo', 'Violet', 'Purple', 'Fuchsia', 'Pink', 'Rose',
+    ];
+
+    /** The accessible name of a swatch. A screen reader otherwise reads the hex code. */
+    public static function label(string $hex): string
+    {
+        $index = array_search($hex, self::PRESETS, true);
+
+        if ($index === false) {
+            return $hex;
+        }
+
+        $family = __(self::FAMILIES[intdiv($index, 2)]);
+
+        return $index % 2 === 0 ? $family : __('Dark :color', ['color' => Str::lower($family)]);
+    }
 }

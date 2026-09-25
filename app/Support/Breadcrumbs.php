@@ -95,6 +95,9 @@ class Breadcrumbs implements Countable, IteratorAggregate
             $navigation->timelineActive => $this->timelineTrail($project, $request),
             $navigation->codexActive => $this->codexTrail($navigation, $project, $request),
             $navigation->toolsActive => $this->toolsTrail($project, $request),
+            $navigation->booksActive => $this->entityTrail(
+                $project, $request, __('Books'), 'projects.books.index', 'projects.books.create', 'books.edit', null, 'book', __('book')
+            ),
             default => [],
         };
 
