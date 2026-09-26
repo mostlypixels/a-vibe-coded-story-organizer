@@ -37,8 +37,7 @@ class ProjectController extends Controller
     {
         // The counts feed each row's delete warning. One aggregate query for the whole
         // list, not one per row.
-        $projects = $request->user()->projects()
-            ->withCount(ProjectDeleteWarning::countRelations())
+        $projects = ProjectDeleteWarning::withCounts($request->user()->projects())
             ->orderBy('name')
             ->get();
 
@@ -123,7 +122,7 @@ class ProjectController extends Controller
     {
         $this->authorize('update', $project);
 
-        $project->loadCount(ProjectDeleteWarning::countRelations());
+        ProjectDeleteWarning::loadCounts($project);
 
         return view('projects.edit', [
             'project' => $project,

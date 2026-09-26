@@ -76,7 +76,7 @@ class ProjectTest extends TestCase
 
     public function test_the_dashboard_counts_cost_the_same_whatever_the_project_count(): void
     {
-        // The delete warning needs four relation counts per project. They must come from
+        // The delete warning needs several counts per project. They must come from
         // the list query, not from one loadCount() per row.
         $user = User::factory()->create();
         Project::factory()->for($user)->create();
@@ -467,6 +467,27 @@ class ProjectTest extends TestCase
 
         $response->assertSee('This project has 2 acts and 5 codex entries, which will also be deleted.', false);
         $response->assertDontSee('Are you sure you want to delete this project?');
+    }
+
+    public function test_the_delete_confirmation_counts_chapters_scenes_and_words_per_project(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        Scene::factory()->for($chapter)->create(['contents' => 'One two three']);
+        Scene::factory()->for($chapter)->create(['contents' => 'Four five']);
+
+        // A second project with its own scenes. The list counts each row on its own.
+        [, $otherBook] = $this->projectWithBook($user);
+        Scene::factory()->for(Chapter::factory()->for(Act::factory()->for($otherBook)))->create(['contents' => 'Six']);
+
+        $expected = 'This project has 1 act, 1 chapter and 2 scenes (5 words), which will also be deleted.';
+        $otherExpected = 'This project has 1 act, 1 chapter and 1 scene (1 word), which will also be deleted.';
+
+        $this->actingAs($user)->get(route('projects.index'))->assertOk()
+            ->assertSee($expected)
+            ->assertSee($otherExpected);
+        $this->actingAs($user)->get(route('projects.edit', $project))->assertOk()->assertSee($expected);
     }
 
     public function test_the_page_level_draft_recovery_modal_is_not_mounted_on_a_page_with_autosave_fields(): void
