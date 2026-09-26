@@ -227,11 +227,25 @@ export function registerAutosaveField(Alpine) {
 
             const state = await this.send({ runMatcher: !loadSaved, newRevision: true });
 
+            // A retry would save this text, so "Load saved text" would act as "Keep mine".
+            // Ask again instead. A new 409 already set a new conflict.
+            if (state !== STATES.SAVED && !this.conflict) {
+                clearTimeout(this.retryTimer);
+                this.retryTimer = null;
+                this.conflict = saved;
+                this.setState(STATES.CONFLICT);
+
+                return;
+            }
+
             if (state !== STATES.SAVED || !loadSaved) {
                 return;
             }
 
             this.replaceValue(saved.value);
+            // The saved text is not stored at this hash yet. Warn on leave until it is.
+            this.dirty = true;
+            Alpine.store('autosave').dirty[this.key] = true;
             await this.send({ runMatcher: true, newRevision: true });
         },
 
@@ -279,7 +293,7 @@ export function registerAutosaveField(Alpine) {
          * Send one request at a time. A second request would send the old
          * base_hash and get a false 409 after the first request succeeds.
          */
-        save({ runMatcher = false } = {}) {
+        save({ runMatcher = false, newRevision = false } = {}) {
             clearTimeout(this.retryTimer);
             this.retryTimer = null;
 
@@ -289,12 +303,15 @@ export function registerAutosaveField(Alpine) {
             }
 
             if (this.inFlight) {
-                this.queuedSave = { runMatcher: runMatcher || (this.queuedSave?.runMatcher ?? false) };
+                this.queuedSave = {
+                    runMatcher: runMatcher || (this.queuedSave?.runMatcher ?? false),
+                    newRevision: newRevision || (this.queuedSave?.newRevision ?? false),
+                };
 
                 return this.inFlight;
             }
 
-            this.inFlight = this.sendUntilSettled({ runMatcher }).finally(() => {
+            this.inFlight = this.sendUntilSettled({ runMatcher, newRevision }).finally(() => {
                 this.inFlight = null;
             });
 
@@ -392,7 +409,8 @@ export function registerAutosaveField(Alpine) {
                 // Keep a matcher request that arrived during this request.
                 const retryMatcher = runMatcher || (this.queuedSave?.runMatcher ?? false);
                 this.retryTimer = scheduleRetry(
-                    () => this.save({ runMatcher: retryMatcher }),
+                    // A retry of a conflict choice must still keep both texts in History.
+                    () => this.save({ runMatcher: retryMatcher, newRevision }),
                     retryDelayMs(this.attempt, retryAfterMs),
                 );
             }

@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — Conflict choice survives a failed save
+
+### Fixed
+
+- If the connection fails during "Load saved text", the choice comes back. Before, your own text was saved instead.
+- A retried conflict choice still keeps both texts in History.
+
 ## 2026-09-26 — Two tabs on one scene (#281)
 
 ### Fixed
