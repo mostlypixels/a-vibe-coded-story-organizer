@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-26 — Event delete warns about codex values and scenes
+## 2026-09-26 — Event delete warns about codex values and scenes (#276)
 
 ### Fixed
 
