@@ -1052,14 +1052,15 @@ class SceneTest extends TestCase
             ->assertSee(route('codex.show', $entry), escape: false);
     }
 
-    public function test_the_edit_page_caption_names_the_autosave(): void
+    public function test_the_edit_page_caption_names_when_detection_runs(): void
     {
         $user = User::factory()->create();
         $scene = Scene::factory()->for($this->chapterFor($user))->create();
 
         $this->actingAs($user)->get(route('scenes.edit', $scene))
             ->assertOk()
-            ->assertSee('Detected from the scene contents each time it autosaves.');
+            ->assertSee('Detected from the scene contents when you leave the text, press Ctrl+S or save.')
+            ->assertSee('x-on:codex-references-synced.window', escape: false);
     }
 
     /**

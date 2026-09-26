@@ -23,7 +23,10 @@
 
     $historyUrl = route('revisions.index', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
 
-    $wordCount = $model instanceof \App\Models\Scene && $field === 'contents'
+    // Only scene contents feed the codex reference matcher.
+    $isSceneContents = $model instanceof \App\Models\Scene && $field === 'contents';
+
+    $wordCount = $isSceneContents
         ? $model->word_count
         : WordCounter::count($currentValue, $kind);
     $wordCountTemplates = WordCountFormat::jsTemplates();
@@ -37,6 +40,7 @@
         url: @js($autosaveUrl),
         baseHash: @js($hash),
         initialValue: @js($currentValue),
+        matcher: @js($isSceneContents),
         strings: @js(ScriptTranslations::autosaveBadge()),
     })"
     data-autosave-field="{{ $entity }}:{{ $model->id }}:{{ $field }}"

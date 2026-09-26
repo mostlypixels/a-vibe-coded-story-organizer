@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\RevisionConflictException;
 use App\Http\Requests\AutosaveFieldRequest;
 use App\Services\FieldAutosaver;
+use App\Services\ReferencingScenes;
 use App\Support\AutosavableFields;
 use Illuminate\Http\JsonResponse;
 
@@ -17,7 +18,7 @@ use Illuminate\Http\JsonResponse;
  */
 class FieldAutosaveController extends Controller
 {
-    public function update(AutosaveFieldRequest $request, string $entity, int $id, string $field, FieldAutosaver $autosaver): JsonResponse
+    public function update(AutosaveFieldRequest $request, string $entity, int $id, string $field, FieldAutosaver $autosaver, ReferencingScenes $referencingScenes): JsonResponse
     {
         $model = $request->autosavable();
         $this->authorize('update', $model->revisionProject());
@@ -35,12 +36,22 @@ class FieldAutosaveController extends Controller
             return response()->json(['message' => __('This field was changed elsewhere.')], 409);
         }
 
-        return response()->json([
+        $payload = [
             'value' => $result->value,
             'hash' => $result->hash(),
             'word_count' => $result->wordCount,
             'revision_id' => $result->revisionId,
             'saved_at' => now()->toIso8601String(),
-        ]);
+        ];
+
+        // The scene editor shows this list. The same partial renders it on page load.
+        if ($result->referencesSynced) {
+            $payload['referenced_entries_html'] = view('codex.partials.referenced-entries', [
+                'referencedEntries' => $referencingScenes->forScene($model),
+                'scene' => $model,
+            ])->render();
+        }
+
+        return response()->json($payload);
     }
 }
