@@ -32,10 +32,11 @@ class FieldAutosaver
 
     /**
      * @param  bool  $runMatcher  True only for a coarse trigger (blur, Ctrl-S, submit), never a bare debounce tick.
+     * @param  bool  $newRevision  True when the writer resolves a conflict: the other text must stay in history.
      *
      * @throws RevisionConflictException When the stored value no longer matches `$baseHash`.
      */
-    public function save(Model $model, string $field, ?string $value, string $baseHash, User $user, bool $runMatcher = false): AutosaveResult
+    public function save(Model $model, string $field, ?string $value, string $baseHash, User $user, bool $runMatcher = false, bool $newRevision = false): AutosaveResult
     {
         $currentValue = (string) ($model->getAttribute($field) ?? '');
 
@@ -75,7 +76,7 @@ class FieldAutosaver
         if ($storedValue !== $currentValue && $storedValue !== $this->recorder->lastValueFor($model, $field)) {
             $this->recorder->ensureBaseline($model, $field, $currentValue, $heldSince);
 
-            $recorded = $this->recorder->record($model, $field, $storedValue, $user, RevisionOrigin::Automatic);
+            $recorded = $this->recorder->record($model, $field, $storedValue, $user, RevisionOrigin::Automatic, coalesce: ! $newRevision);
         }
 
         $isSceneContents = $model instanceof Scene && $field === 'contents';

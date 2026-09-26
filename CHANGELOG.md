@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — Two tabs on one scene
+
+### Fixed
+
+- A second tab on the same text locks the first tab. "Write here instead" moves the lock.
+- A save conflict offers "Keep mine" or "Load saved text". History keeps both texts.
+
 ## 2026-09-26 — App dialogs announce as dialogs (#280)
 
 ### Fixed

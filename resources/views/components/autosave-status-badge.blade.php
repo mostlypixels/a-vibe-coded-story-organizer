@@ -22,5 +22,15 @@
         >
             {{ __('Sign in') }}
         </a>
+
+        <button
+            type="button"
+            x-show="showTakeOver"
+            style="display: none;"
+            @click="takeOver()"
+            class="shrink-0 font-medium underline"
+        >
+            {{ __('Write here instead') }}
+        </button>
     </div>
 </div>

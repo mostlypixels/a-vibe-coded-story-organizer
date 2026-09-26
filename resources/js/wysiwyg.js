@@ -665,6 +665,7 @@ export function registerWysiwyg(Alpine) {
         let editor = null;
         let form = null;
         let syncOnSubmit = null;
+        let replaceContent = null;
         const t = (key) => translate(config.strings, key);
 
         return {
@@ -738,10 +739,20 @@ export function registerWysiwyg(Alpine) {
                     form.addEventListener('submit', syncOnSubmit);
                 }
 
+                // Autosave replaced the text: another tab saved, or the writer loaded the saved text.
+                replaceContent = (event) => {
+                    editor.commands.setContent(event.detail.value || '', {
+                        emitUpdate: false,
+                        ...(isMarkdown ? { contentType: 'markdown' } : {}),
+                    });
+                };
+                this.$el.addEventListener('autosave:value-replaced', replaceContent);
+
                 this.ready = true;
             },
 
             destroy() {
+                this.$el.removeEventListener('autosave:value-replaced', replaceContent);
                 form?.removeEventListener('submit', syncOnSubmit);
                 editor?.destroy();
             },

@@ -7,6 +7,7 @@ use App\Http\Requests\AutosaveFieldRequest;
 use App\Services\FieldAutosaver;
 use App\Services\ReferencingScenes;
 use App\Support\AutosavableFields;
+use App\Support\FieldHash;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -31,9 +32,17 @@ class FieldAutosaveController extends Controller
                 $request->validated('base_hash'),
                 $request->user(),
                 $request->boolean('run_matcher'),
+                $request->boolean('new_revision'),
             );
         } catch (RevisionConflictException) {
-            return response()->json(['message' => __('This field was changed elsewhere.')], 409);
+            // The client offers "Load saved text" and needs the hash to save over it.
+            $storedValue = (string) ($model->getAttribute($field) ?? '');
+
+            return response()->json([
+                'message' => __('This field was changed elsewhere.'),
+                'value' => $storedValue,
+                'hash' => FieldHash::of($storedValue),
+            ], 409);
         }
 
         $payload = [

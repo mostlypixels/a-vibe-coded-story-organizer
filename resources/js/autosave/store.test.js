@@ -71,6 +71,8 @@ describe('worstState — global badge precedence', () => {
         [[STATES.RETRYING, STATES.ERROR], STATES.ERROR],
         [[STATES.ERROR, STATES.FORBIDDEN_AFTER_REPLAY], STATES.FORBIDDEN_AFTER_REPLAY],
         [[STATES.FORBIDDEN_AFTER_REPLAY, STATES.CONFLICT], STATES.CONFLICT],
+        [[STATES.SAVING, STATES.LOCKED], STATES.LOCKED],
+        [[STATES.LOCKED, STATES.CONFLICT], STATES.CONFLICT],
         [[STATES.CONFLICT, STATES.SESSION_EXPIRED], STATES.SESSION_EXPIRED],
         // Full house, in scrambled order — the worst one always wins regardless of position.
         [

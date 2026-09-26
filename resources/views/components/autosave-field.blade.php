@@ -44,6 +44,7 @@
         strings: @js(ScriptTranslations::autosaveBadge()),
     })"
     data-autosave-field="{{ $entity }}:{{ $model->id }}:{{ $field }}"
+    :class="{ 'opacity-60': locked }"
 >
     <div class="flex items-center justify-between gap-2">
         <x-input-label for="{{ $field }}" :value="$label" />
@@ -96,6 +97,22 @@
             ></span>
 
             <x-word-count :count="$wordCount" x-text="displayText()" aria-live="off" class="ml-auto" />
+        </div>
+    </div>
+
+    <div
+        x-show="conflict"
+        style="display: none;"
+        class="mt-2 rounded-md border border-danger bg-danger-surface p-3 text-sm text-danger-surface-content"
+        role="alert"
+        data-autosave-conflict
+    >
+        <p>{{ __('This text was changed in another tab or on another device.') }}</p>
+        <p>{{ __('History keeps both versions.') }}</p>
+
+        <div class="mt-2 flex flex-wrap gap-2">
+            <x-button type="button" variant="secondary" size="sm" @click="keepMine()">{{ __('Keep mine') }}</x-button>
+            <x-button type="button" variant="secondary" size="sm" @click="loadSaved()">{{ __('Load saved text') }}</x-button>
         </div>
     </div>
 

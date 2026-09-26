@@ -7,6 +7,14 @@ export const DEBOUNCE_MS = 2000;
 
 export const SAVED_FADE_MS = 2000;
 
+/** Tabs of this app use this channel to tell each other which field they edit. */
+export const TAB_CHANNEL = 'imagoldfish-autosave';
+
+/** Browsers without BroadcastChannel get no tab lock. The 409 choice still protects the text. */
+export function openTabChannel() {
+    return typeof BroadcastChannel === 'function' ? new BroadcastChannel(TAB_CHANNEL) : null;
+}
+
 export function fieldKeyFor({ entity, id, field }) {
     return `${entity}:${id}:${field}`;
 }
@@ -24,9 +32,18 @@ export function registerAutosaveField(Alpine) {
             elements: {},
             dirty: {},
             flushers: {},
+            locked: {},
+            unlockers: {},
 
             worstState() {
-                return worstState(Object.values(this.fields));
+                const locked = Object.keys(this.locked).filter((key) => this.locked[key]).map(() => STATES.LOCKED);
+
+                return worstState([...Object.values(this.fields), ...locked]);
+            },
+
+            /** Unlock every field of this page, so the other tab locks instead. */
+            takeOver() {
+                Object.keys(this.locked).filter((key) => this.locked[key]).forEach((key) => this.unlockers[key]?.());
             },
 
             isDirty() {
@@ -55,6 +72,11 @@ export function registerAutosaveField(Alpine) {
         // The text changed since the last matcher run. A clean field still needs one.
         matcherPending: false,
         baseHash: config.baseHash,
+        // Another tab opened this field. Only one tab may write, or the tabs overwrite each other (#258).
+        locked: false,
+        // What the server holds after a 409: { value, hash }.
+        conflict: null,
+        channel: null,
 
         get label() {
             return labelFor(this.state, config.strings);
@@ -65,6 +87,7 @@ export function registerAutosaveField(Alpine) {
             store.fields[this.key] = this.state;
             store.elements[this.key] = this.$el;
             store.flushers[this.key] = (options) => this.flush(options);
+            store.unlockers[this.key] = () => this.takeOver();
 
             this._onInput = () => this.onInput();
             this._onFocusOut = () => this.flush({ runMatcher: true });
@@ -78,6 +101,16 @@ export function registerAutosaveField(Alpine) {
             this.$root.addEventListener('keydown', this._onKeydown);
             window.addEventListener('focus', this._onWindowFocus);
             document.addEventListener('visibilitychange', this._onWindowFocus);
+
+            // A create form has no id, so it has nothing to overwrite.
+            if (config.id !== null && config.id !== undefined) {
+                this.channel = openTabChannel();
+
+                if (this.channel) {
+                    this.channel.onmessage = (event) => this.onTabMessage(event.data);
+                    this.channel.postMessage({ type: 'claim', key: this.key });
+                }
+            }
         },
 
         destroy() {
@@ -88,12 +121,15 @@ export function registerAutosaveField(Alpine) {
             this.$root.removeEventListener('keydown', this._onKeydown);
             window.removeEventListener('focus', this._onWindowFocus);
             document.removeEventListener('visibilitychange', this._onWindowFocus);
+            this.channel?.close();
 
             const store = Alpine.store('autosave');
             delete store.fields[this.key];
             delete store.elements[this.key];
             delete store.dirty[this.key];
             delete store.flushers[this.key];
+            delete store.locked[this.key];
+            delete store.unlockers[this.key];
         },
 
         setState(next) {
@@ -121,6 +157,82 @@ export function registerAutosaveField(Alpine) {
             if (typeof html === 'string') {
                 window.dispatchEvent(new CustomEvent('codex-references-synced', { detail: { html } }));
             }
+        },
+
+        /** The newest tab wins. A tab that saved tells the others, so a clean tab stays current. */
+        onTabMessage(message) {
+            if (!message || message.key !== this.key) {
+                return;
+            }
+
+            if (message.type === 'claim') {
+                this.lock();
+
+                return;
+            }
+
+            if (message.type === 'saved' && typeof message.value === 'string' && !this.dirty && !this.conflict) {
+                this.replaceValue(message.value);
+                this.baseHash = message.hash;
+                this.notifyWordCount(message.wordCount);
+            }
+        },
+
+        lock() {
+            // Save what this tab has, so the other tab can take it over.
+            this.flush({ runMatcher: true });
+            this.locked = true;
+            Alpine.store('autosave').locked[this.key] = true;
+            this.$root.inert = true;
+        },
+
+        takeOver() {
+            this.locked = false;
+            Alpine.store('autosave').locked[this.key] = false;
+            this.$root.inert = false;
+            this.channel?.postMessage({ type: 'claim', key: this.key });
+        },
+
+        /** Put text in the field without a change event. The editor listens for the event below. */
+        replaceValue(value) {
+            const textarea = this.$root.querySelector('textarea');
+
+            if (!textarea) {
+                return;
+            }
+
+            textarea.value = value;
+            textarea.dispatchEvent(new CustomEvent('autosave:value-replaced', { detail: { value }, bubbles: true }));
+        },
+
+        /** Save this tab's text over the newer text. */
+        keepMine() {
+            return this.resolveConflict({ loadSaved: false });
+        },
+
+        /** Take the newer text. This tab's text goes to History first. */
+        loadSaved() {
+            return this.resolveConflict({ loadSaved: true });
+        },
+
+        /** Both texts get their own revision, so History keeps each of them. */
+        async resolveConflict({ loadSaved }) {
+            if (!this.conflict) {
+                return;
+            }
+
+            const saved = this.conflict;
+            this.conflict = null;
+            this.baseHash = saved.hash;
+
+            const state = await this.send({ runMatcher: !loadSaved, newRevision: true });
+
+            if (state !== STATES.SAVED || !loadSaved) {
+                return;
+            }
+
+            this.replaceValue(saved.value);
+            await this.send({ runMatcher: true, newRevision: true });
         },
 
         onInput() {
@@ -171,6 +283,11 @@ export function registerAutosaveField(Alpine) {
             clearTimeout(this.retryTimer);
             this.retryTimer = null;
 
+            // Every save would get a 409 again. The writer must choose first.
+            if (this.conflict) {
+                return Promise.resolve();
+            }
+
             if (this.inFlight) {
                 this.queuedSave = { runMatcher: runMatcher || (this.queuedSave?.runMatcher ?? false) };
 
@@ -202,7 +319,7 @@ export function registerAutosaveField(Alpine) {
             }
         },
 
-        async send({ runMatcher = false }) {
+        async send({ runMatcher = false, newRevision = false }) {
             const value = this.fieldValue();
 
             this.setState(STATES.SAVING);
@@ -216,6 +333,7 @@ export function registerAutosaveField(Alpine) {
                     value,
                     base_hash: this.baseHash,
                     run_matcher: runMatcher,
+                    new_revision: newRevision,
                 });
 
                 status = response.status;
@@ -225,6 +343,7 @@ export function registerAutosaveField(Alpine) {
                 if (error.response) {
                     status = error.response.status;
                     headers = error.response.headers;
+                    data = error.response.data;
                 }
             }
 
@@ -251,6 +370,7 @@ export function registerAutosaveField(Alpine) {
                 this.baseHash = data.hash;
                 this.notifyWordCount(data.word_count);
                 this.notifyReferences(data.referenced_entries_html);
+                this.channel?.postMessage({ type: 'saved', key: this.key, value: data.value, hash: data.hash, wordCount: data.word_count });
                 this.setState(state);
                 setTimeout(() => {
                     if (this.state === STATES.SAVED) {
@@ -259,6 +379,10 @@ export function registerAutosaveField(Alpine) {
                 }, SAVED_FADE_MS);
 
                 return state;
+            }
+
+            if (state === STATES.CONFLICT && typeof data?.hash === 'string') {
+                this.conflict = { value: data.value ?? '', hash: data.hash };
             }
 
             this.setState(state);

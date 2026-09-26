@@ -53,10 +53,31 @@ describe('shouldAutosave', () => {
     });
 });
 
+/** An in-memory BroadcastChannel. A new class per test, so fields of old tests hear nothing. */
+function fakeBroadcastChannel() {
+    const members = new Set();
+
+    return class FakeBroadcastChannel {
+        constructor() {
+            this.onmessage = null;
+            members.add(this);
+        }
+
+        postMessage(data) {
+            members.forEach((other) => other !== this && other.onmessage?.({ data }));
+        }
+
+        close() {
+            members.delete(this);
+        }
+    };
+}
+
 describe('registerAutosaveField store dirty tracking', () => {
     let Alpine;
 
     beforeEach(() => {
+        vi.stubGlobal('BroadcastChannel', fakeBroadcastChannel());
         Alpine = createAlpineStub();
         registerAutosaveField(Alpine);
     });
@@ -64,6 +85,7 @@ describe('registerAutosaveField store dirty tracking', () => {
     afterEach(() => {
         vi.useRealTimers();
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
         window.localStorage.clear();
         delete window.axios;
     });
@@ -603,6 +625,128 @@ describe('registerAutosaveField store dirty tracking', () => {
 
         await second.field.save({});
         expect(Alpine.store('autosave').isDirty()).toBe(false);
+    });
+
+    describe('two tabs on one field (#258)', () => {
+        const scene = { entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'h0' };
+
+        function type(textarea, value) {
+            textarea.value = value;
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function conflictResponse(value, hash) {
+            return { response: { status: 409, headers: {}, data: { value, hash } } };
+        }
+
+        it('a newer tab on the same field locks the older tab', () => {
+            const older = mountField(scene);
+            const newer = mountField(scene);
+
+            expect(older.field.locked).toBe(true);
+            expect(older.field.$root.inert).toBe(true);
+            expect(newer.field.locked).toBe(false);
+            expect(Alpine.store('autosave').worstState()).toBe(STATES.LOCKED);
+        });
+
+        it('a tab on another field stays unlocked', () => {
+            const other = mountField({ ...scene, field: 'notes' });
+            mountField(scene);
+
+            expect(other.field.locked).toBe(false);
+        });
+
+        it('a create form has no id and sends no claim', () => {
+            const older = mountField(scene);
+            mountField({ ...scene, id: null });
+
+            expect(older.field.locked).toBe(false);
+        });
+
+        it('the older tab saves its pending text when it locks', () => {
+            window.axios = { patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'h1' } }) };
+            const older = mountField(scene);
+            type(older.textarea, 'unsaved words');
+
+            mountField(scene);
+
+            expect(window.axios.patch).toHaveBeenCalledWith('/scenes/42', expect.objectContaining({ value: 'unsaved words', base_hash: 'h0' }));
+        });
+
+        it('take over unlocks this tab and locks the other tab', () => {
+            const older = mountField(scene);
+            const newer = mountField(scene);
+
+            older.field.takeOver();
+
+            expect(older.field.locked).toBe(false);
+            expect(older.field.$root.inert).toBe(false);
+            expect(newer.field.locked).toBe(true);
+        });
+
+        it('a clean tab takes the text and hash that another tab saved', async () => {
+            window.axios = { patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { value: 'new text', hash: 'h1', word_count: 2 } }) };
+            const older = mountField(scene);
+            const newer = mountField(scene);
+
+            type(newer.textarea, 'new text');
+            await newer.field.flush({});
+
+            expect(older.textarea.value).toBe('new text');
+            expect(older.field.baseHash).toBe('h1');
+        });
+
+        it('a 409 keeps the saved text and stops more saves until the writer chooses', async () => {
+            window.axios = { patch: vi.fn().mockRejectedValue(conflictResponse('theirs', 'h9')) };
+            const { field, textarea } = mountField(scene);
+
+            type(textarea, 'mine');
+            await field.flush({});
+            type(textarea, 'mine and more');
+            await field.flush({});
+
+            expect(field.state).toBe(STATES.CONFLICT);
+            expect(field.conflict).toEqual({ value: 'theirs', hash: 'h9' });
+            expect(window.axios.patch).toHaveBeenCalledTimes(1);
+        });
+
+        it('keep mine saves this text over the newer text as a new revision', async () => {
+            window.axios = {
+                patch: vi.fn()
+                    .mockRejectedValueOnce(conflictResponse('theirs', 'h9'))
+                    .mockResolvedValueOnce({ status: 200, headers: {}, data: { value: 'mine', hash: 'h10' } }),
+            };
+            const { field, textarea } = mountField(scene);
+            type(textarea, 'mine');
+            await field.flush({});
+
+            await field.keepMine();
+
+            expect(window.axios.patch.mock.calls[1][1]).toMatchObject({ value: 'mine', base_hash: 'h9', new_revision: true });
+            expect(field.conflict).toBeNull();
+            expect(field.state).toBe(STATES.SAVED);
+            expect(field.baseHash).toBe('h10');
+        });
+
+        it('load saved text first puts this text in history, then restores the saved text', async () => {
+            window.axios = {
+                patch: vi.fn()
+                    .mockRejectedValueOnce(conflictResponse('theirs', 'h9'))
+                    .mockResolvedValueOnce({ status: 200, headers: {}, data: { value: 'mine', hash: 'h10' } })
+                    .mockResolvedValueOnce({ status: 200, headers: {}, data: { value: 'theirs', hash: 'h11' } }),
+            };
+            const { field, textarea } = mountField(scene);
+            type(textarea, 'mine');
+            await field.flush({});
+
+            await field.loadSaved();
+
+            expect(window.axios.patch.mock.calls[1][1]).toMatchObject({ value: 'mine', base_hash: 'h9', new_revision: true });
+            expect(window.axios.patch.mock.calls[2][1]).toMatchObject({ value: 'theirs', base_hash: 'h10', new_revision: true });
+            expect(textarea.value).toBe('theirs');
+            expect(field.dirty).toBe(false);
+            expect(field.baseHash).toBe('h11');
+        });
     });
 });
 

@@ -31,6 +31,7 @@ class AutosaveFieldRequest extends FormRequest
             'value' => AutosavableFields::validationRule($this->route('entity'), $this->route('field')),
             'base_hash' => ['required', 'string'],
             'run_matcher' => ['sometimes', 'boolean'],
+            'new_revision' => ['sometimes', 'boolean'],
         ];
     }
 
