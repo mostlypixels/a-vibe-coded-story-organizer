@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-26 — Project name opens its dashboard
+## 2026-09-26 — Project name opens its dashboard (#278)
 
 ### Changed
 
