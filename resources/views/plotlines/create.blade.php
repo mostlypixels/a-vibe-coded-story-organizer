@@ -18,7 +18,7 @@
 
                 <div>
                     <x-input-label :value="__('Color')" />
-                    <x-color-picker name="color" :selected="old('color')" />
+                    <x-color-picker name="color" :selected="old('color', $defaultColor)" />
                     <x-input-error :messages="$errors->get('color')" class="mt-2" />
                 </div>
             </form>

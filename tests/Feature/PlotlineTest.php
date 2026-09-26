@@ -158,6 +158,33 @@ class PlotlineTest extends TestCase
         $this->actingAs($user)->get(route('projects.plotlines.create', $project))->assertOk();
     }
 
+    public function test_the_create_page_starts_on_the_first_colour_the_project_does_not_use(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $project->plotlines()->update(['color' => PlotlineColors::PRESETS[0]]);
+        Plotline::factory()->for($project)->create(['color' => PlotlineColors::PRESETS[1]]);
+
+        $this->actingAs($user)->get(route('projects.plotlines.create', $project))
+            ->assertOk()
+            ->assertViewHas('defaultColor', PlotlineColors::PRESETS[2]);
+    }
+
+    public function test_the_create_page_selects_no_colour_when_every_colour_is_used(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $taken = $project->plotlines()->pluck('color')->all();
+
+        foreach (array_diff(PlotlineColors::PRESETS, $taken) as $hex) {
+            Plotline::factory()->for($project)->create(['color' => $hex]);
+        }
+
+        $this->actingAs($user)->get(route('projects.plotlines.create', $project))
+            ->assertOk()
+            ->assertViewHas('defaultColor', null);
+    }
+
     public function test_colour_swatches_have_colour_names_not_hex_codes(): void
     {
         $user = User::factory()->create();

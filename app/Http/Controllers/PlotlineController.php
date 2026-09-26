@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
+use App\Support\PlotlineColors;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -49,7 +50,10 @@ class PlotlineController extends Controller
     {
         $this->authorize('update', $project);
 
-        return view('plotlines.create', ['project' => $project]);
+        return view('plotlines.create', [
+            'project' => $project,
+            'defaultColor' => PlotlineColors::firstUnused($project->plotlines()->pluck('color')->all()),
+        ]);
     }
 
     public function store(StorePlotlineRequest $request, Project $project): RedirectResponse

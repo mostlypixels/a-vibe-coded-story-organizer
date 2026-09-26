@@ -273,6 +273,30 @@ class EventTest extends TestCase
         $this->actingAs($user)->get(route('projects.events.create', $project))->assertOk();
     }
 
+    public function test_the_create_page_checks_the_main_plotline(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $main = $project->plotlines()->where('is_main', true)->sole();
+        Plotline::factory()->for($project)->create();
+
+        $this->actingAs($user)->get(route('projects.events.create', $project))
+            ->assertOk()
+            ->assertViewHas('selectedPlotlines', [$main->id]);
+    }
+
+    public function test_the_create_page_keeps_an_unchecked_main_plotline_after_a_failed_submit(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->withSession(['_old_input' => ['title' => 'Meeting']])
+            ->get(route('projects.events.create', $project))
+            ->assertOk()
+            ->assertViewHas('selectedPlotlines', []);
+    }
+
     public function test_a_user_can_create_an_event_attached_to_plotlines(): void
     {
         $user = User::factory()->create();
