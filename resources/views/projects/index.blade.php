@@ -44,7 +44,7 @@
                         <x-table-row :striped="$loop->even">
                             <x-table-cell>
                                 {{-- The name link next to it is the one that screen readers and the keyboard use. --}}
-                                <a href="{{ route('projects.edit', $project) }}" tabindex="-1" aria-hidden="true">
+                                <a href="{{ route('projects.show', $project) }}" tabindex="-1" aria-hidden="true">
                                     @if ($project->cover_image)
                                         <img src="{{ $project->coverUrl() }}" alt="{{ $project->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
                                     @else
@@ -53,7 +53,7 @@
                                 </a>
                             </x-table-cell>
                             <x-table-cell>
-                                <a href="{{ route('projects.edit', $project) }}" class="font-semibold text-content hover:text-link">{{ $project->name }}</a>
+                                <a href="{{ route('projects.show', $project) }}" class="font-semibold text-content hover:text-link">{{ $project->name }}</a>
                             </x-table-cell>
                             <x-table-cell muted>
                                 @if ($project->description)
@@ -90,7 +90,7 @@
                     @endif
 
                     <div class="overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xs hover:shadow-md transition-shadow">
-                        <a href="{{ route('projects.edit', $project) }}" class="block">
+                        <a href="{{ route('projects.show', $project) }}" class="block">
                             @if ($project->cover_image)
                                 <img src="{{ $project->coverUrl() }}" alt="{{ $project->name }}" class="h-24 w-full object-cover">
                             @else
