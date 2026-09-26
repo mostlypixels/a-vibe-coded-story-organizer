@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — Quick saves no longer fail
+
+### Fixed
+
+- Two saves close together no longer fail with a server error.
+
 ## 2026-09-26 — Conflict choice survives a failed save (#282)
 
 ### Fixed

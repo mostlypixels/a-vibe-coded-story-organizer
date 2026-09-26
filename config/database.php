@@ -41,7 +41,10 @@ return [
             'busy_timeout' => null,
             'journal_mode' => null,
             'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
+            // A DEFERRED transaction that reads, then writes, fails at once with "database is
+            // locked" while another request writes. The busy timeout does not apply to it.
+            // IMMEDIATE takes the write lock first, so the transaction waits instead.
+            'transaction_mode' => 'IMMEDIATE',
         ],
 
         'mysql' => [
