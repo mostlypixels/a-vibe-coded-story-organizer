@@ -35,7 +35,7 @@ class CreateChallengesMigrationTest extends TestCase
 
         $challenge = Challenge::query()->create([
             'project_id' => $project->id,
-            'name' => 'NaNoWriMo',
+            'name' => 'Monthly sprint',
             'recurrence' => ChallengeRecurrence::Monthly,
             'starts_on' => '2026-08-01',
             'ends_on' => null,

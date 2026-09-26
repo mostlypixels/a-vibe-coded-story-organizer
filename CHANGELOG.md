@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — Challenge drafter persona
+
+### Added
+
+- A simulated-user persona for a writer who drafts a novel during a month-long word challenge.
+
+### Changed
+
+- Simulated-user personas run on Opus by default.
+
 ## 2026-09-26 — Event delete warns about codex values and scenes (#276)
 
 ### Fixed

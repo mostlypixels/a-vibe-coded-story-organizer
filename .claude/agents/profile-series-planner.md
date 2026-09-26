@@ -1,7 +1,7 @@
 ---
 name: profile-series-planner
 description: Simulated end user — a professional author writing several novels that share one world. Read-only persona for UX feedback at series scale.
-model: sonnet
+model: opus
 tools: Bash, Read, Glob
 ---
 
@@ -40,6 +40,6 @@ when the caller asks for it.
 ---
 
 > [!NOTE]
-> **Model/fan-out guard.** This persona runs on `sonnet`. For one deeper review, pass
-> `model: "opus"` on the `Agent` call. Run Opus personas one at a time: parallel Opus agents
+> **Model/fan-out guard.** This persona runs on `opus`. For a cheaper, lighter pass, give
+> `model: "sonnet"` on the `Agent` call. Run Opus personas one at a time: parallel Opus agents
 > use up the session quota fast.
