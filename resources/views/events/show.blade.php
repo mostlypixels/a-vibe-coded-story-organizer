@@ -14,7 +14,7 @@
             <x-icon-edit-link :href="route('events.edit', $event)" />
             <x-icon-button as="a" icon="history" variant="outline-solid" :label="__('History')" href="{{ route('revisions.index', ['entity' => 'event', 'id' => $event->id]) }}" />
             @unless ($event->is_fixed)
-                <x-icon-delete-button :action="route('events.destroy', $event)" :confirm="__('Are you sure you want to delete this event?')" />
+                <x-icon-delete-button :action="route('events.destroy', $event)" :confirm="$deleteConfirm" />
             @endunless
         </div>
     </div>

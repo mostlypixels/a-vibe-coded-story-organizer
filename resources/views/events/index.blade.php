@@ -58,7 +58,7 @@
                                 <x-icon-view-link :href="route('events.show', $event)" />
                                 <x-icon-edit-link :href="route('events.edit', $event)" />
                                 @unless ($event->is_fixed)
-                                    <x-icon-delete-button :action="route('events.destroy', $event)" :confirm="__('Are you sure you want to delete this event?')" />
+                                    <x-icon-delete-button :action="route('events.destroy', $event)" :confirm="$deleteConfirms[$event->id]" />
                                 @endunless
                             </div>
                         </x-table-cell>

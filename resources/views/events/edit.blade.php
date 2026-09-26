@@ -45,7 +45,7 @@
                 form="event-edit-form"
                 :history-model="$event"
                 :delete-action="$event->is_fixed ? null : route('events.destroy', $event)"
-                :delete-confirm="__('Are you sure you want to delete this event?')"
+                :delete-confirm="$deleteConfirm"
             >
                 {{ __('Delete Event') }}
             </x-edit-actions>

@@ -12,6 +12,7 @@ use App\Models\Event;
 use App\Models\Project;
 use App\Services\CodexAsOfResolver;
 use App\Services\EventLifespanEntries;
+use App\Support\EventDeleteWarning;
 use App\Support\EventWindow;
 use App\Support\Flash;
 use App\Support\LikeSearch;
@@ -37,6 +38,7 @@ class EventController extends Controller
 
         $events = $project->events()
             ->with('plotlines')
+            ->withCount(EventDeleteWarning::countRelations())
             ->when($request->filled('search'), fn ($query) => LikeSearch::whereContains($query, 'title', $request->query('search')))
             ->when($request->filled('plotline'), fn ($query) => $query->whereHas(
                 'plotlines',
@@ -49,6 +51,9 @@ class EventController extends Controller
         return view('events.index', [
             'project' => $project->load('plotlines'),
             'events' => $events,
+            'deleteConfirms' => $events->getCollection()->mapWithKeys(
+                fn (Event $event) => [$event->id => EventDeleteWarning::for($event)]
+            ),
             'sort' => $sort,
             'direction' => $direction,
         ]);
@@ -87,6 +92,7 @@ class EventController extends Controller
         $this->authorize('view', $event->project);
 
         $event->load('plotlines', 'scenes.chapter.act.book', 'mentioningScenes.chapter.act.book');
+        $event->loadCount(EventDeleteWarning::countRelations());
 
         // Scenes come back in insertion order; readers expect manuscript order.
         $byManuscriptOrder = fn ($scenes) => $scenes->sortBy(StoryOrder::sceneKey(...))->values();
@@ -96,6 +102,7 @@ class EventController extends Controller
             'scenesOnEvent' => $byManuscriptOrder($event->scenes),
             'mentioningScenes' => $byManuscriptOrder($event->mentioningScenes),
             'lifespanEntries' => $lifespanEntries->forEvent($event),
+            'deleteConfirm' => EventDeleteWarning::for($event),
         ]);
     }
 
@@ -104,6 +111,7 @@ class EventController extends Controller
         $this->authorize('update', $event->project);
 
         $event->load('plotlines', 'scenes', 'mentioningScenes');
+        $event->loadCount(EventDeleteWarning::countRelations());
 
         [$windowMin, $windowMax] = EventWindow::forEvent($event->project, $event);
 
@@ -112,6 +120,7 @@ class EventController extends Controller
             'project' => $event->project->load('plotlines'),
             'windowMin' => $windowMin,
             'windowMax' => $windowMax,
+            'deleteConfirm' => EventDeleteWarning::for($event),
             // Codex values resolved as of this event. The moment is the event itself, so the
             // anchor-identity rule applies (its own anchored values win over datetime ties).
             // Pre-computed here to keep resolution out of Blade and avoid N+1 across entries.
