@@ -748,6 +748,51 @@ describe('registerAutosaveField store dirty tracking', () => {
             expect(field.baseHash).toBe('h11');
         });
 
+        it('a page from a failed full-form save starts in the conflict, and saves nothing yet', async () => {
+            vi.useFakeTimers();
+            window.axios = { patch: vi.fn() };
+
+            const { field } = mountField({ ...scene, dirty: true, conflict: { value: 'theirs', hash: 'h9' } });
+            await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+            expect(field.state).toBe(STATES.CONFLICT);
+            expect(field.dirty).toBe(true);
+            expect(Alpine.store('autosave').isDirty()).toBe(true);
+            expect(window.axios.patch).not.toHaveBeenCalled();
+        });
+
+        it('a page that shows unsaved text autosaves it', async () => {
+            vi.useFakeTimers();
+            window.axios = { patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'h1' } }) };
+
+            const { textarea } = mountField({ ...scene, dirty: true });
+            textarea.value = 'text from the failed save';
+            await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+            expect(window.axios.patch).toHaveBeenCalledWith('/scenes/42', expect.objectContaining({ value: 'text from the failed save' }));
+        });
+
+        it('flush() on a clean field waits for the running save', async () => {
+            const server = slowServer();
+            window.axios = { patch: server.patch };
+            const { field, textarea } = mountField(scene);
+            type(textarea, 'first');
+            field.flush({});
+
+            // The field is still dirty until the response, so mark it clean like a settled send would.
+            let done = false;
+            field.dirty = false;
+            field.flush({}).then(() => {
+                done = true;
+            });
+            await Promise.resolve();
+            expect(done).toBe(false);
+
+            server.respondNext();
+            await vi.waitFor(() => expect(done).toBe(true));
+            expect(field.baseHash).toBe('h1');
+        });
+
         it('a failed first request asks again, so load saved text never turns into keep mine', async () => {
             vi.useFakeTimers();
             window.axios = {

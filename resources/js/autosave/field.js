@@ -41,6 +41,15 @@ export function registerAutosaveField(Alpine) {
                 return worstState([...Object.values(this.fields), ...locked]);
             },
 
+            isLocked() {
+                return Object.values(this.locked).some(Boolean);
+            },
+
+            /** Wait for every pending and running save, so a full-form save sends current hashes. */
+            flushAll() {
+                return Promise.all(Object.values(this.flushers).map((flusher) => flusher({})));
+            },
+
             /** Unlock every field of this page, so the other tab locks instead. */
             takeOver() {
                 Object.keys(this.locked).filter((key) => this.locked[key]).forEach((key) => this.unlockers[key]?.());
@@ -74,8 +83,8 @@ export function registerAutosaveField(Alpine) {
         baseHash: config.baseHash,
         // Another tab opened this field. Only one tab may write, or the tabs overwrite each other (#258).
         locked: false,
-        // What the server holds after a 409: { value, hash }.
-        conflict: null,
+        // What the server holds after a 409: { value, hash }. A failed full-form save starts with one.
+        conflict: config.conflict ?? null,
         channel: null,
 
         get label() {
@@ -101,6 +110,15 @@ export function registerAutosaveField(Alpine) {
             this.$root.addEventListener('keydown', this._onKeydown);
             window.addEventListener('focus', this._onWindowFocus);
             document.addEventListener('visibilitychange', this._onWindowFocus);
+
+            if (this.conflict) {
+                this.setState(STATES.CONFLICT);
+            }
+
+            // The page shows text that the server does not hold yet.
+            if (config.dirty) {
+                this.onInput();
+            }
 
             // A create form has no id, so it has nothing to overwrite.
             if (config.id !== null && config.id !== undefined) {
@@ -278,8 +296,9 @@ export function registerAutosaveField(Alpine) {
         flush(options = {}) {
             clearTimeout(this.pendingTimer);
 
+            // A running save still counts: its response sets the next base hash.
             if (!shouldAutosave(this.dirty || this.needsMatcher(options), config.id)) {
-                return Promise.resolve();
+                return this.inFlight ?? Promise.resolve();
             }
 
             return this.save(options);

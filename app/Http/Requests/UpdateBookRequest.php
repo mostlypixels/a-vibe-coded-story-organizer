@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\BookLanguage;
+use App\Rules\NoAutosaveConflict;
 use App\Rules\ValidIsbn;
 use App\Support\AutosavableFields;
 use App\Support\CodexMediaRules;
@@ -58,5 +59,11 @@ class UpdateBookRequest extends FormRequest
             'publisher' => ['nullable', 'string', 'max:255'],
             'isbn' => ['nullable', 'string', new ValidIsbn],
         ];
+    }
+
+    /** @return array<int, callable> */
+    public function after(): array
+    {
+        return [new NoAutosaveConflict($this->route('book'), (array) $this->input('base_hashes', []))];
     }
 }

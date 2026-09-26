@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\NoAutosaveConflict;
 use App\Rules\WithinEventWindow;
 use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
@@ -32,5 +33,11 @@ class UpdateEventRequest extends FormRequest
                 Rule::exists('plotlines', 'id')->where('project_id', $this->route('event')->project_id),
             ],
         ];
+    }
+
+    /** @return array<int, callable> */
+    public function after(): array
+    {
+        return [new NoAutosaveConflict($this->route('event'), (array) $this->input('base_hashes', []))];
     }
 }

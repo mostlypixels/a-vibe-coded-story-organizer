@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — Save checks for newer text
+
+### Fixed
+
+- Save is off in a tab that another tab locked.
+- Save stops when another tab or device saved newer text, and offers "Keep mine" or "Load saved text".
+- Text typed just before a failed save is shown again, not lost.
+
 ## 2026-09-26 — Quick saves no longer fail (#283)
 
 ### Fixed

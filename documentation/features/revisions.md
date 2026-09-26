@@ -113,6 +113,11 @@ Two tabs on one field overwrite each other. Most of the time the writer forgot t
   - *Load saved text* saves this tab's text, then saves the newer text again.
   - Both send `new_revision`, so History keeps each text in its own row. A coalesced save would erase the other text.
 
+- **Manual Save.** A locked tab cannot save. The form sends `base_hashes[field]`, the live hash of each autosaved field.
+  - `resources/js/autosave/submit.js` holds the submit until every autosave settles. Else the blur autosave from the Save click changes the hash, and the server sees a false conflict. A conflict stops the submit and shows the choice.
+  - `App\Rules\NoAutosaveConflict` checks the hashes on the server, in the `after()` hook of each `Update*Request`. On a mismatch the save fails. The edit page shows the text of the writer, with the choice open.
+  - Fields without autosave (title, status) have no check. Last save wins.
+
 > [!NOTE]
 > The channel works only inside one browser profile. Two devices, or two browsers, still meet at the 409.
 

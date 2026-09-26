@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\NoAutosaveConflict;
 use App\Rules\WithinEventWindow;
 use App\Support\AutosavableFields;
 use App\Support\CodexMediaRules;
@@ -57,5 +58,11 @@ class UpdateCodexEntryRequest extends FormRequest
             ],
 
         ];
+    }
+
+    /** @return array<int, callable> */
+    public function after(): array
+    {
+        return [new NoAutosaveConflict($this->route('codexEntry'), (array) $this->input('base_hashes', []))];
     }
 }
