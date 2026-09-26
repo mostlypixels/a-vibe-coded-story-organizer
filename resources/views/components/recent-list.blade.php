@@ -5,13 +5,21 @@
     'allLabel' => null,
     'noun' => null,
     'showCovers' => false,
+    'createUrl' => null,
+    'createLabel' => null,
+    'emptyHint' => null,
 ])
 
 <x-card :title="$title" stretch flush-footer :padded="false">
     @if (count($items) === 0)
-        <p class="px-6 py-4 text-sm text-content-muted">
-            {{ __('No :items yet.', ['items' => $noun ?? __('entries')]) }}
-        </p>
+        <div class="space-y-3 px-6 py-4 text-sm text-content-muted">
+            <p>{{ __('No :items yet.', ['items' => $noun ?? __('entries')]) }}</p>
+            @if ($createUrl && $createLabel)
+                <x-button variant="primary" :href="$createUrl">{{ $createLabel }}</x-button>
+            @elseif ($emptyHint)
+                <p>{{ $emptyHint }}</p>
+            @endif
+        </div>
     @else
         <ul class="divide-y divide-border">
             @foreach ($items as $item)
