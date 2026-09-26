@@ -7,6 +7,7 @@ use App\Enums\RevisionOrigin;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
+use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Plotline;
@@ -15,6 +16,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Services\EventLifespanEntries;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -429,6 +431,63 @@ class EventTest extends TestCase
             ->assertRedirect(route('projects.events.index', $project));
 
         $this->assertNull($event->fresh());
+    }
+
+    /** An event with two attribute values and three scenes that happen during it. */
+    private function eventWithDependents(User $user): Event
+    {
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create();
+        $entry = CodexEntry::factory()->for($project)->create();
+
+        CodexAttributeValue::factory()->count(2)->for($entry, 'entry')->startingAt($event)->create();
+
+        $book = $project->books()->first();
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        Scene::factory()->count(3)->for($chapter)->create(['event_id' => $event->id]);
+
+        return $event;
+    }
+
+    public function test_the_delete_warning_counts_attribute_values_and_scenes_on_every_page(): void
+    {
+        $user = User::factory()->create();
+        $event = $this->eventWithDependents($user);
+        $warning = 'It also deletes 2 codex attribute values. 3 scenes lose their event.';
+
+        foreach ([
+            route('projects.events.index', $event->project),
+            route('events.show', $event),
+            route('events.edit', $event),
+        ] as $url) {
+            $this->actingAs($user)->get($url)->assertOk()->assertSee($warning);
+        }
+    }
+
+    public function test_the_delete_warning_stays_plain_for_an_event_with_no_dependents(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create();
+
+        $this->actingAs($user)->get(route('events.show', $event))
+            ->assertOk()
+            ->assertSee('Are you sure you want to delete this event?')
+            ->assertDontSee('It also deletes')
+            ->assertDontSee('lose their event');
+    }
+
+    public function test_the_events_index_counts_dependents_in_one_query_for_the_whole_list(): void
+    {
+        $user = User::factory()->create();
+        $event = $this->eventWithDependents($user);
+        Event::factory()->count(3)->for($event->project)->create();
+
+        DB::enableQueryLog();
+        $this->actingAs($user)->get(route('projects.events.index', $event->project))->assertOk();
+
+        $valueQueries = collect(DB::getQueryLog())->filter(fn ($q) => str_contains($q['query'], 'codex_attribute_values'));
+        $this->assertCount(1, $valueQueries);
     }
 
     public function test_a_fixed_event_cannot_be_deleted(): void

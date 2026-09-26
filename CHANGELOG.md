@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — Event delete warns about codex values and scenes (#276)
+
+### Fixed
+
+- Deleting an event warns how many codex attribute values it also deletes and how many scenes lose their event.
+
 ## 2026-09-26 — Event and plotline forms start with defaults (#275)
 
 ### Fixed

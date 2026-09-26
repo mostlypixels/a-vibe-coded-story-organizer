@@ -67,6 +67,14 @@ class Event extends Model
     }
 
     /**
+     * Codex attribute values that start at this event. They are deleted with it.
+     */
+    public function attributeValues(): HasMany
+    {
+        return $this->hasMany(CodexAttributeValue::class, 'start_event_id');
+    }
+
+    /**
      * Scenes that mention this event (many-to-many).
      */
     public function mentioningScenes(): BelongsToMany
