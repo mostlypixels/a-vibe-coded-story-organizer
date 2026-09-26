@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-26 — Two tabs on one scene
+## 2026-09-26 — Two tabs on one scene (#281)
 
 ### Fixed
 
