@@ -9,7 +9,7 @@
    Recommend 7 daily as the default, and a second scheduled run hourly during a writing
    month, added by hand when it starts. The database is under a megabyte; a week of hourly
    snapshots is still trivial. The real question is whether losing an hour of writing is
-   acceptable — the answer for NaNoWriMo is probably no.
+   acceptable — during a month-long word challenge, probably not.
 
 3. **Should anything risky trigger a snapshot automatically?**
    Recommend no, for now. A hook on `migrate` is the tempting one, but a command that

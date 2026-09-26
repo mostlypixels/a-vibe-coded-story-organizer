@@ -1,7 +1,7 @@
 ---
 name: profile-serial-writer
 description: Simulated end user — a web serial author with one endless, already-published story. Read-only persona for UX feedback at high chapter and codex counts.
-model: sonnet
+model: opus
 tools: Bash, Read, Glob
 ---
 
@@ -45,6 +45,6 @@ You are a discoverer by need, and a planner about the parts you cannot change. R
 ---
 
 > [!NOTE]
-> **Model/fan-out guard.** This persona runs on `sonnet`. For one deeper review, pass
-> `model: "opus"` on the `Agent` call. Run Opus personas one at a time: parallel Opus agents
+> **Model/fan-out guard.** This persona runs on `opus`. For a cheaper, lighter pass, give
+> `model: "sonnet"` on the `Agent` call. Run Opus personas one at a time: parallel Opus agents
 > use up the session quota fast.
