@@ -60,8 +60,14 @@ class EventController extends Controller
 
         [$windowMin, $windowMax] = EventWindow::forRegularEvent($project);
 
+        $project->load('plotlines');
+
         return view('events.create', [
-            'project' => $project->load('plotlines'),
+            'project' => $project,
+            // After a failed submit, keep what the writer checked, even if that is nothing.
+            'selectedPlotlines' => session()->hasOldInput()
+                ? array_map('intval', old('plotlines', []))
+                : $project->plotlines->where('is_main', true)->pluck('id')->all(),
             'windowMin' => $windowMin,
             'windowMax' => $windowMax,
         ]);

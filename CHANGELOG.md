@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — Event and plotline forms start with defaults
+
+### Fixed
+
+- A new event starts with the main plotline checked.
+- A new plotline starts on the first colour that the project does not use yet.
+
 ## 2026-09-26 — Codex references refresh while you write (#274)
 
 ### Fixed

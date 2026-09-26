@@ -36,6 +36,17 @@ class PlotlineColors
         'Sky', 'Blue', 'Indigo', 'Violet', 'Purple', 'Fuchsia', 'Pink', 'Rose',
     ];
 
+    /**
+     * A new plotline starts on a colour that no other plotline in the project uses. Colours are unique per project.
+     * Null when every colour is taken.
+     *
+     * @param  array<int, string>  $used
+     */
+    public static function firstUnused(array $used): ?string
+    {
+        return collect(self::PRESETS)->first(fn (string $hex) => ! in_array($hex, $used, true));
+    }
+
     /** The accessible name of a swatch. A screen reader otherwise reads the hex code. */
     public static function label(string $hex): string
     {

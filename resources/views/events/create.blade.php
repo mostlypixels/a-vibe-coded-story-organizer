@@ -25,7 +25,7 @@
                     <div class="mt-2 space-y-2">
                         @foreach ($project->plotlines as $plotline)
                             <label class="flex items-center gap-2">
-                                <input type="checkbox" name="plotlines[]" value="{{ $plotline->id }}" @checked(in_array($plotline->id, old('plotlines', [])))>
+                                <input type="checkbox" name="plotlines[]" value="{{ $plotline->id }}" @checked(in_array($plotline->id, $selectedPlotlines))>
                                 <span>{{ $plotline->name }}</span>
                             </label>
                         @endforeach
