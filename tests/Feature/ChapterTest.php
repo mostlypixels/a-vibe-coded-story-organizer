@@ -193,6 +193,28 @@ class ChapterTest extends TestCase
         $this->assertSame($act->id, $chapter->act_id);
     }
 
+    public function test_the_create_form_asks_for_an_act_first_when_the_book_has_none(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)->get(route('books.chapters.create', $book))
+            ->assertOk()
+            ->assertSee(__('Add an act first.'))
+            ->assertSee(route('books.acts.create', $book));
+    }
+
+    public function test_the_create_form_does_not_ask_for_an_act_when_one_exists(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        Act::factory()->for($book)->create();
+
+        $this->actingAs($user)->get(route('books.chapters.create', $book))
+            ->assertOk()
+            ->assertDontSee(__('Add an act first.'));
+    }
+
     public function test_chapter_positions_are_auto_assigned_sequentially_within_an_act(): void
     {
         $user = User::factory()->create();

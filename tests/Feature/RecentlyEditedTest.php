@@ -116,6 +116,34 @@ class RecentlyEditedTest extends TestCase
             ->assertSee(__('No :items yet.', ['items' => __('scenes')]));
     }
 
+    public function test_an_empty_story_home_offers_a_new_act_and_asks_for_an_act_first(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->get(route('books.story.home', $book))
+            ->assertOk()
+            ->assertSee(route('books.acts.create', $book))
+            ->assertDontSee(route('books.chapters.create', $book))
+            ->assertDontSee(route('books.scenes.create', $book))
+            ->assertSee(__('Add an act first.'))
+            ->assertSee(__('Add a chapter first.'));
+    }
+
+    public function test_the_story_home_offers_a_new_scene_once_a_chapter_exists(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $book = $chapter->act->book;
+
+        $this->actingAs($user)
+            ->get(route('books.story.home', $book))
+            ->assertOk()
+            ->assertSee(route('books.scenes.create', $book))
+            ->assertDontSee(__('Add a chapter first.'));
+    }
+
     public function test_the_story_home_never_leaks_another_projects_scenes(): void
     {
         $user = User::factory()->create();

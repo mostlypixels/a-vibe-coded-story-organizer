@@ -26,11 +26,17 @@ class StoryController extends Controller
     {
         $this->authorize('view', $book->project);
 
+        $recentActs = $recentlyEdited->acts($book);
+        $recentChapters = $recentlyEdited->chapters($book);
+
+        // A chapter needs an act, and a scene needs a chapter. An empty recent list means that the book has none.
         return view('story.home', [
             'book' => $book,
-            'recentActs' => $recentlyEdited->acts($book),
-            'recentChapters' => $recentlyEdited->chapters($book),
+            'recentActs' => $recentActs,
+            'recentChapters' => $recentChapters,
             'recentScenes' => $recentlyEdited->scenes($book),
+            'newChapterUrl' => $recentActs->isEmpty() ? null : route('books.chapters.create', $book),
+            'newSceneUrl' => $recentChapters->isEmpty() ? null : route('books.scenes.create', $book),
         ]);
     }
 

@@ -15,6 +15,12 @@
                                 <option value="{{ $chapter->id }}" @selected(old('chapter_id') == $chapter->id)>{{ $chapter->act->name }} &mdash; {{ $chapter->name }}</option>
                             @endforeach
                         </x-select>
+                        @if ($chapters->isEmpty())
+                            <p class="mt-1 text-sm text-content-muted">
+                                {{ __('Add a chapter first.') }}
+                                <a href="{{ route('books.chapters.create', $book) }}" class="font-medium text-link hover:underline">{{ __('New Chapter') }}</a>
+                            </p>
+                        @endif
                     </x-field>
 
                     <x-single-event-field

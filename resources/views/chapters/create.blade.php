@@ -15,6 +15,12 @@
                             <option value="{{ $act->id }}" @selected(old('act_id') == $act->id)>{{ $act->name }}</option>
                         @endforeach
                     </x-select>
+                    @if ($acts->isEmpty())
+                        <p class="mt-1 text-sm text-content-muted">
+                            {{ __('Add an act first.') }}
+                            <a href="{{ route('books.acts.create', $book) }}" class="font-medium text-link hover:underline">{{ __('New Act') }}</a>
+                        </p>
+                    @endif
                 </x-field>
 
                 <x-field name="name" :label="__('Title')" :hint="__('The chapter number is assigned automatically and can be changed later by reordering.')">

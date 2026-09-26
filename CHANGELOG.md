@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — A way to start writing in a new project (#273)
+
+### Fixed
+
+- The empty Story page offers "New Act", then "New Chapter" and "New Scene" once the part above exists.
+- The new chapter and new scene forms say "Add an act first" or "Add a chapter first", with a link.
+
 ## 2026-09-26 — Readable save status and error messages (#272)
 
 ### Fixed

@@ -255,6 +255,27 @@ class SceneTest extends TestCase
         $this->assertSame(SceneStatus::Draft, $scene->status);
     }
 
+    public function test_the_create_form_asks_for_a_chapter_first_when_the_book_has_none(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)->get(route('books.scenes.create', $book))
+            ->assertOk()
+            ->assertSee(__('Add a chapter first.'))
+            ->assertSee(route('books.chapters.create', $book));
+    }
+
+    public function test_the_create_form_does_not_ask_for_a_chapter_when_one_exists(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+
+        $this->actingAs($user)->get(route('books.scenes.create', $chapter->act->book))
+            ->assertOk()
+            ->assertDontSee(__('Add a chapter first.'));
+    }
+
     public function test_scene_positions_are_auto_assigned_sequentially_within_a_chapter(): void
     {
         $user = User::factory()->create();
