@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — App dialogs announce as dialogs (#280)
+
+### Fixed
+
+- Screen readers now announce app dialogs as dialogs, with their title as the name.
+
 ## 2026-09-26 — Project delete counts scenes (#279)
 
 ### Fixed

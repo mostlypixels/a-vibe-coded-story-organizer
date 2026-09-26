@@ -13,12 +13,12 @@
         x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')"
     >{{ __('Delete Account') }}</x-button>
 
-    <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable>
+    <x-modal name="confirm-user-deletion" labelledby="confirm-user-deletion-title" :show="$errors->userDeletion->isNotEmpty()" focusable>
         <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
             @csrf
             @method('delete')
 
-            <x-heading level="3">
+            <x-heading level="3" id="confirm-user-deletion-title">
                 {{ __('Are you sure you want to delete your account?') }}
             </x-heading>
 

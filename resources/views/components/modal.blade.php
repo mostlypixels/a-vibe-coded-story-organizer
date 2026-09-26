@@ -1,7 +1,8 @@
 @props([
     'name',
     'show' => false,
-    'maxWidth' => '2xl'
+    'maxWidth' => '2xl',
+    'labelledby' => null,
 ])
 
 @php
@@ -64,6 +65,9 @@ $maxWidth = [
     {{-- The positioned panel must paint above the fixed scrim. --}}
     <div
         x-show="show"
+        role="dialog"
+        aria-modal="true"
+        @if ($labelledby) aria-labelledby="{{ $labelledby }}" @endif
         class="relative mb-6 bg-surface-overlay rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"
         x-transition:enter="ease-out duration-300"
         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
