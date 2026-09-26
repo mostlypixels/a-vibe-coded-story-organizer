@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-26 — A way to start writing in a new project
+## 2026-09-26 — A way to start writing in a new project (#273)
 
 ### Fixed
 
