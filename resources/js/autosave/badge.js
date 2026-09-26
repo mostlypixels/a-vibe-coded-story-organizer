@@ -7,6 +7,7 @@ export const BADGE_COPY = {
     [STATES.SAVED]: 'Saved',
     [STATES.RETRYING]: 'Reconnecting…',
     [STATES.CONFLICT]: 'Save conflict — needs your attention',
+    [STATES.LOCKED]: 'This page is open in another tab.',
     [STATES.SESSION_EXPIRED]: 'Session expired — your work is safe.',
     [STATES.FORBIDDEN_AFTER_REPLAY]: "You're signed in as a different account — copy your text before switching back.",
     [STATES.ERROR]: "Couldn't save — check your connection.",
@@ -15,6 +16,7 @@ export const BADGE_COPY = {
 const BADGE_STYLES = {
     [STATES.SESSION_EXPIRED]: 'border-warning bg-warning-surface text-warning-surface-content',
     [STATES.CONFLICT]: 'border-danger bg-danger-surface text-danger-surface-content',
+    [STATES.LOCKED]: 'border-warning bg-warning-surface text-warning-surface-content',
     [STATES.FORBIDDEN_AFTER_REPLAY]: 'border-danger bg-danger-surface text-danger-surface-content',
     [STATES.ERROR]: 'border-danger bg-danger-surface text-danger-surface-content',
     [STATES.RETRYING]: 'border-warning bg-warning-surface text-warning-surface-content',
@@ -24,8 +26,8 @@ const BADGE_STYLES = {
 
 const DEFAULT_BADGE_STYLE = 'border-border-strong bg-surface-raised text-content-muted';
 
-/** These states need account action instead of field action. */
-const NON_NAVIGABLE_STATES = [STATES.SESSION_EXPIRED, STATES.FORBIDDEN_AFTER_REPLAY];
+/** These states need account or page action instead of field action. A locked field cannot take focus. */
+const NON_NAVIGABLE_STATES = [STATES.SESSION_EXPIRED, STATES.FORBIDDEN_AFTER_REPLAY, STATES.LOCKED];
 
 export function labelFor(state, strings = {}) {
     const key = BADGE_COPY[state];
@@ -61,6 +63,14 @@ export function registerAutosaveBadge(Alpine) {
 
         get showSignIn() {
             return this.state === STATES.SESSION_EXPIRED;
+        },
+
+        get showTakeOver() {
+            return this.state === STATES.LOCKED;
+        },
+
+        takeOver() {
+            Alpine.store('autosave').takeOver();
         },
 
         focusField() {

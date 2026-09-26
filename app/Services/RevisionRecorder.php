@@ -44,6 +44,8 @@ class RevisionRecorder
      *
      * Automatic revisions within the field's window update the open row. Other
      * origins always insert a row. Coalescing preserves the original time and save ID.
+     *
+     * @param  bool  $coalesce  False keeps both sides of a resolved conflict as separate rows.
      */
     public function record(
         Model $entity,
@@ -52,10 +54,11 @@ class RevisionRecorder
         User $user,
         RevisionOrigin $origin,
         ?string $label = null,
+        bool $coalesce = true,
     ): Revision {
         $this->ensureBaseline($entity, $field);
 
-        $open = $origin === RevisionOrigin::Automatic
+        $open = $coalesce && $origin === RevisionOrigin::Automatic
             ? $this->openAutomaticRevision($entity, $field)
             : null;
 

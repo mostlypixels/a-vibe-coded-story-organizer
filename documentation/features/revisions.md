@@ -30,7 +30,7 @@ The `revisions` table stores one immutable row for each field and moment. `save_
 
 `App\Services\RevisionRecorder` is the only revision writer.
 
-- Automatic saves within the coalescing window update one open row.
+- Automatic saves within the coalescing window update one open row. A save with `new_revision` always inserts. See [Two tabs and conflicts](#two-tabs-and-conflicts).
 - Manual, revert, and baseline origins always insert.
 - A coalesced row keeps its original `save_id` and `created_at`.
 - Callers skip byte-identical values.
@@ -101,6 +101,20 @@ item's tick are reported the same way.
 - Both actions record new `revert` rows. History remains append-only.
 - Conflict checks compare the current value with the expected base.
 - Word counts, sanitization, and other model invariants run during restoration.
+
+## Two tabs and conflicts
+
+Two tabs on one field overwrite each other. Most of the time the writer forgot the first tab.
+
+- **Tab lock.** Each field posts a claim on the `imagoldfish-autosave` `BroadcastChannel` when it opens. The older tab saves its pending text, then locks the field with `inert`. The badge offers "Write here instead".
+- **Sync.** A tab that saved tells the other tabs. A clean tab takes the new text and hash.
+- **Conflict.** A 409 returns the saved `value` and `hash`. Autosave stops until the writer picks one:
+  - *Keep mine* saves this tab's text over the newer text.
+  - *Load saved text* saves this tab's text, then saves the newer text again.
+  - Both send `new_revision`, so History keeps each text in its own row. A coalesced save would erase the other text.
+
+> [!NOTE]
+> The channel works only inside one browser profile. Two devices, or two browsers, still meet at the 409.
 
 ## Entry points
 

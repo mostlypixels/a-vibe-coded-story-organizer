@@ -71,6 +71,7 @@ describe('isNavigable', () => {
     it('session-expired and forbidden-after-replay are never navigable — the fix there is Sign in or copying text, not scrolling to a field', () => {
         expect(isNavigable(STATES.SESSION_EXPIRED)).toBe(false);
         expect(isNavigable(STATES.FORBIDDEN_AFTER_REPLAY)).toBe(false);
+        expect(isNavigable(STATES.LOCKED)).toBe(false);
     });
 
     it('every other non-idle state can be scrolled to and focused', () => {

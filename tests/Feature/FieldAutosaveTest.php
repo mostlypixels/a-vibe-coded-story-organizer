@@ -282,6 +282,68 @@ class FieldAutosaveTest extends TestCase
         $this->assertSame($originalDescription, $act->fresh()->description);
     }
 
+    /** #258: without the saved text and hash, the conflict has no way out. */
+    public function test_a_409_returns_the_saved_value_and_its_hash(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+
+        $response = $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']),
+            ['value' => 'Fresh text', 'base_hash' => 'not-the-real-hash'],
+        )->assertStatus(409);
+
+        $response->assertJson([
+            'value' => (string) $act->description,
+            'hash' => $this->hashOf($act->description),
+        ]);
+    }
+
+    /** #258: "Keep mine" must not merge into the other tab's revision and erase it. */
+    public function test_new_revision_keeps_the_other_tabs_text_in_history(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+        $url = route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']);
+
+        $theirs = $this->actingAs($user)->patchJson($url, [
+            'value' => '<p>From the other tab</p>',
+            'base_hash' => $this->hashOf($act->description),
+        ])->assertOk();
+
+        $this->actingAs($user)->patchJson($url, [
+            'value' => '<p>From this tab</p>',
+            'base_hash' => $theirs->json('hash'),
+            'new_revision' => true,
+        ])->assertOk();
+
+        $automatic = Revision::where('field', 'description')
+            ->where('origin', RevisionOrigin::Automatic)
+            ->pluck('value')
+            ->all();
+
+        $this->assertSame(['<p>From the other tab</p>', '<p>From this tab</p>'], $automatic);
+    }
+
+    public function test_without_new_revision_a_quick_second_autosave_merges_into_the_open_revision(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+        $url = route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'description']);
+
+        $first = $this->actingAs($user)->patchJson($url, [
+            'value' => '<p>First</p>',
+            'base_hash' => $this->hashOf($act->description),
+        ])->assertOk();
+
+        $this->actingAs($user)->patchJson($url, [
+            'value' => '<p>Second</p>',
+            'base_hash' => $first->json('hash'),
+        ])->assertOk();
+
+        $this->assertSame(1, Revision::where('field', 'description')->where('origin', RevisionOrigin::Automatic)->count());
+    }
+
     // ---------------------------------------------------------------------
     // Hash authority — response hash reflects the stored (post-mutator) value
     // ---------------------------------------------------------------------

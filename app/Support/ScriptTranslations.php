@@ -20,6 +20,7 @@ final class ScriptTranslations
         'Saved',
         'Reconnecting…',
         'Save conflict — needs your attention',
+        'This page is open in another tab.',
         'Session expired — your work is safe.',
         "You're signed in as a different account — copy your text before switching back.",
         "Couldn't save — check your connection.",
