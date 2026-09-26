@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-26 — Project delete counts scenes
+## 2026-09-26 — Project delete counts scenes (#279)
 
 ### Fixed
 
