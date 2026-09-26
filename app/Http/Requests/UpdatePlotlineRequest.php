@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\NoAutosaveConflict;
 use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -30,5 +31,11 @@ class UpdatePlotlineRequest extends FormRequest
                     ->ignore($this->route('plotline')),
             ],
         ];
+    }
+
+    /** @return array<int, callable> */
+    public function after(): array
+    {
+        return [new NoAutosaveConflict($this->route('plotline'), (array) $this->input('base_hashes', []))];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\NoAutosaveConflict;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Same rules as StoreSceneRequest, for the book that holds the scene. */
@@ -26,5 +27,11 @@ class UpdateSceneRequest extends FormRequest
     public function attributes(): array
     {
         return StoreSceneRequest::fieldAttributes();
+    }
+
+    /** @return array<int, callable> */
+    public function after(): array
+    {
+        return [new NoAutosaveConflict($this->route('scene'), (array) $this->input('base_hashes', []))];
     }
 }

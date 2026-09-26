@@ -13,9 +13,10 @@
         <x-auth-session-status :status="__('Duplicated.')" class="mb-3" />
     @endif
 
-    <div class="flex flex-col gap-3">
-        <x-button variant="primary" type="submit" form="{{ $form }}" data-guard-save :icon="true" class="w-full">{{ __('Save') }}</x-button>
-        <x-button variant="secondary" type="submit" form="{{ $form }}" data-guard-save name="stay" value="1" icon="tabler-device-floppy" class="w-full">{{ __('Save and stay') }}</x-button>
+    {{-- A locked tab must not save: the other tab holds the newer text. --}}
+    <div class="flex flex-col gap-3" x-data>
+        <x-button x-bind:disabled="$store.autosave?.isLocked()" variant="primary" type="submit" form="{{ $form }}" data-guard-save :icon="true" class="w-full">{{ __('Save') }}</x-button>
+        <x-button x-bind:disabled="$store.autosave?.isLocked()" variant="secondary" type="submit" form="{{ $form }}" data-guard-save name="stay" value="1" icon="tabler-device-floppy" class="w-full">{{ __('Save and stay') }}</x-button>
 
         @if ($historyModel)
             <x-entity-history-link :model="$historyModel" class="w-full" />

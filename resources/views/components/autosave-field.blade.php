@@ -19,6 +19,10 @@
     $kind = AutosavableFields::kindOf($entity, $field);
     $currentValue = (string) ($model->{$field} ?? '');
     $hash = FieldHash::of($currentValue);
+
+    // A failed full-form save comes back with the text of the writer. Show it, not the stored text.
+    $shownValue = (string) old($field, $currentValue);
+    $conflicted = $errors->has("base_hashes.$field");
     $autosaveUrl = route('autosave.update', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
 
     $historyUrl = route('revisions.index', ['entity' => $entity, 'id' => $model->id, 'field' => $field]);
@@ -39,7 +43,9 @@
         field: @js($field),
         url: @js($autosaveUrl),
         baseHash: @js($hash),
-        initialValue: @js($currentValue),
+        initialValue: @js($shownValue),
+        dirty: @js($shownValue !== $currentValue),
+        conflict: @js($conflicted ? ['value' => $currentValue, 'hash' => $hash] : null),
         matcher: @js($isSceneContents),
         strings: @js(ScriptTranslations::autosaveBadge()),
     })"
@@ -59,6 +65,9 @@
         </a>
     </div>
 
+    {{-- The full-form save compares this with the stored hash, so it cannot overwrite newer text. --}}
+    <input type="hidden" name="base_hashes[{{ $field }}]" value="{{ $hash }}" :value="baseHash" @if ($form) form="{{ $form }}" @endif>
+
     {{-- This scope must contain the input because editor events bubble to it. --}}
     <div
         x-data="wordCount({
@@ -74,12 +83,12 @@
                 rows="{{ $rows }}"
                 form="{{ $form }}"
                 class="mt-1 block w-full"
-            >{{ $currentValue }}</x-textarea>
+            >{{ $shownValue }}</x-textarea>
         @else
             <x-wysiwyg
                 id="{{ $field }}"
                 name="{{ $field }}"
-                :value="$currentValue"
+                :value="$shownValue"
                 :rows="$rows"
                 :markdown="$kind === FieldKind::Markdown"
                 :form="$form"

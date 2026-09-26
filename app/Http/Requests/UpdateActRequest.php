@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\NoAutosaveConflict;
 use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -21,5 +22,11 @@ class UpdateActRequest extends FormRequest
             ...StoreActRequest::fieldRules(),
             'description' => AutosavableFields::validationRule('act', 'description'),
         ];
+    }
+
+    /** @return array<int, callable> */
+    public function after(): array
+    {
+        return [new NoAutosaveConflict($this->route('act'), (array) $this->input('base_hashes', []))];
     }
 }

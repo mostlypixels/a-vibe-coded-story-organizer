@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\NoAutosaveConflict;
 use App\Support\AutosavableFields;
 use App\Support\CodexMediaRules;
 use Illuminate\Foundation\Http\FormRequest;
@@ -50,5 +51,11 @@ class UpdateProjectRequest extends FormRequest
             'daily_word_goal' => ['nullable', 'integer', 'min:0'],
             'total_word_goal' => ['nullable', 'integer', 'min:0'],
         ];
+    }
+
+    /** @return array<int, callable> */
+    public function after(): array
+    {
+        return [new NoAutosaveConflict($this->route('project'), (array) $this->input('base_hashes', []))];
     }
 }
