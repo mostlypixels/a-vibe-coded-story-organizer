@@ -144,9 +144,9 @@
 
     @unless ($disabled)
         {{-- The app dialog, not a browser prompt: it keeps the theme and does not hide the selected text. --}}
-        <x-dialog :name="$urlDialog" max-width="md">
+        <x-dialog :name="$urlDialog" max-width="md" :labelledby="$urlDialog.'-title'">
             <div class="space-y-4">
-                <h3 class="text-lg font-semibold text-content" x-text="urlForm.kind === 'image' ? @js(__('Image')) : @js(__('Link'))"></h3>
+                <h3 id="{{ $urlDialog }}-title" class="text-lg font-semibold text-content" x-text="urlForm.kind === 'image' ? @js(__('Image')) : @js(__('Link'))"></h3>
 
                 <div>
                     <x-input-label :for="$urlDialog.'-url'" :value="__('Web address (http:// or https://)')" />

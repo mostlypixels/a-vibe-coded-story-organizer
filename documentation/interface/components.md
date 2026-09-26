@@ -70,6 +70,11 @@ Put an `x-disclosure-button` in the `trigger` slot of `x-dropdown` or `x-popover
 
 `x-modal` owns focus trapping, Escape handling, scroll locking, and its scrim. Use `x-dialog` for normal confirmation and message dialogs.
 
+The modal panel has `role="dialog"` and `aria-modal="true"`. A screen reader reads its name from `aria-labelledby`:
+
+- `x-dialog` with a `title` sets the id and the link itself.
+- Without a `title`, give your heading an id and pass it as `labelledby`.
+
 ## Rich text
 
 | Component | Purpose |
