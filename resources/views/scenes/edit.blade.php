@@ -168,7 +168,7 @@
 
         <div class="lg:col-span-3">
             <x-collapsible-card :title="__('Codex references')">
-                <p class="text-sm text-content-muted">{{ __('Detected from the scene contents each time it autosaves.') }}</p>
+                <p class="text-sm text-content-muted">{{ __('Detected from the scene contents when you leave the text, press Ctrl+S or save.') }}</p>
 
                 <x-button
                     type="button"
@@ -181,7 +181,7 @@
 
                 <p class="mt-2 text-sm text-success" data-codex-entry-created role="status" aria-live="polite"></p>
 
-                <div data-codex-references-list>
+                <div data-codex-references-list x-data x-on:codex-references-synced.window="$el.innerHTML = $event.detail.html">
                     @include('codex.partials.referenced-entries', ['referencedEntries' => $referencedEntries, 'scene' => $scene])
                 </div>
             </x-collapsible-card>

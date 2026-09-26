@@ -95,6 +95,7 @@ class FieldAutosaver
             // lookup is only needed for the no-op branch, where the client still
             // wants to know which revision its text currently corresponds to.
             revisionId: ($recorded ?? $this->recorder->lastRevisionFor($model, $field))?->id,
+            referencesSynced: $runMatcher && $isSceneContents,
         );
     }
 

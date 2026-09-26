@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-26 — Codex references refresh while you write
+
+### Fixed
+
+- The scene's "Codex references" list updates when you leave the text or press Ctrl+S, without a page reload.
+- Leaving the scene text or pressing Ctrl+S after an autosave now detects codex references.
+- The help text above the list says when detection runs.
+
 ## 2026-09-26 — A way to start writing in a new project (#273)
 
 ### Fixed

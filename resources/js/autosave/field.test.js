@@ -460,6 +460,76 @@ describe('registerAutosaveField store dirty tracking', () => {
         await expect(flushed).resolves.toBeUndefined();
     });
 
+    it('leaving the field runs the matcher', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc', matcher: true });
+
+        textarea.value = 'Melchior';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        field.$root.dispatchEvent(new Event('focusout'));
+
+        await vi.waitFor(() => expect(window.axios.patch).toHaveBeenCalledTimes(1));
+        expect(window.axios.patch.mock.calls[0][1]).toMatchObject({ run_matcher: true });
+    });
+
+    it('Ctrl-S after a debounce save still runs the matcher once for the unmatched text', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc', matcher: true });
+
+        textarea.value = 'Melchior';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        await field.save({});
+
+        await field.flush({ runMatcher: true });
+        await field.flush({ runMatcher: true });
+
+        expect(window.axios.patch).toHaveBeenCalledTimes(2);
+        expect(window.axios.patch.mock.calls[1][1]).toMatchObject({ value: 'Melchior', run_matcher: true });
+    });
+
+    it('a clean flush sends nothing on a field without the matcher', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
+        };
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'notes', url: '/scenes/42', baseHash: 'abc' });
+
+        textarea.value = 'Melchior';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        await field.save({});
+        await field.flush({ runMatcher: true });
+
+        expect(window.axios.patch).toHaveBeenCalledTimes(1);
+    });
+
+    it('a matcher response hands the references list to the page', async () => {
+        window.axios = {
+            patch: vi.fn().mockResolvedValue({
+                status: 200,
+                headers: {},
+                data: { hash: 'new-hash', referenced_entries_html: '<ul><li>Melchior</li></ul>' },
+            }),
+        };
+        const handler = vi.fn();
+        window.addEventListener('codex-references-synced', handler);
+
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'contents', url: '/scenes/42', baseHash: 'abc', matcher: true });
+
+        textarea.value = 'Melchior';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        await field.flush({ runMatcher: true });
+
+        window.removeEventListener('codex-references-synced', handler);
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(handler.mock.calls[0][0].detail.html).toBe('<ul><li>Melchior</li></ul>');
+    });
+
     it('flush() resolves, not undefined-by-accident, when the field is clean', async () => {
         window.axios = { patch: vi.fn() };
 

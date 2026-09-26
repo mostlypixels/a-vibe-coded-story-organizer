@@ -9,6 +9,7 @@ final class AutosaveResult
         public readonly string $value,
         public readonly int $wordCount,
         public readonly ?int $revisionId,
+        public readonly bool $referencesSynced = false,
     ) {}
 
     public function hash(): string

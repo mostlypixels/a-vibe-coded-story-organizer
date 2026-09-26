@@ -52,6 +52,8 @@ export function registerAutosaveField(Alpine) {
         inFlight: null,
         queuedSave: null,
         wasReplay: false,
+        // The text changed since the last matcher run. A clean field still needs one.
+        matcherPending: false,
         baseHash: config.baseHash,
 
         get label() {
@@ -65,7 +67,7 @@ export function registerAutosaveField(Alpine) {
             store.flushers[this.key] = (options) => this.flush(options);
 
             this._onInput = () => this.onInput();
-            this._onFocusOut = () => this.flush();
+            this._onFocusOut = () => this.flush({ runMatcher: true });
             this._onKeydown = (event) => this.onKeydown(event);
             this._onWindowFocus = () => this.replayIfQueued();
 
@@ -114,8 +116,16 @@ export function registerAutosaveField(Alpine) {
             }
         },
 
+        /** The field does not know where the page shows the list, so it announces it. */
+        notifyReferences(html) {
+            if (typeof html === 'string') {
+                window.dispatchEvent(new CustomEvent('codex-references-synced', { detail: { html } }));
+            }
+        },
+
         onInput() {
             this.dirty = true;
+            this.matcherPending = true;
             Alpine.store('autosave').dirty[this.key] = true;
 
             if (!shouldAutosave(this.dirty, config.id)) {
@@ -142,11 +152,15 @@ export function registerAutosaveField(Alpine) {
         flush(options = {}) {
             clearTimeout(this.pendingTimer);
 
-            if (!shouldAutosave(this.dirty, config.id)) {
+            if (!shouldAutosave(this.dirty || this.needsMatcher(options), config.id)) {
                 return Promise.resolve();
             }
 
             return this.save(options);
+        },
+
+        needsMatcher({ runMatcher = false } = {}) {
+            return runMatcher && config.matcher === true && this.matcherPending;
         },
 
         /**
@@ -226,12 +240,17 @@ export function registerAutosaveField(Alpine) {
                 if (settled) {
                     this.dirty = false;
                     Alpine.store('autosave').dirty[this.key] = false;
+
+                    if (runMatcher) {
+                        this.matcherPending = false;
+                    }
                 }
 
                 this.attempt = 0;
                 // Use the stored hash for the next save. Do not replace editor text.
                 this.baseHash = data.hash;
                 this.notifyWordCount(data.word_count);
+                this.notifyReferences(data.referenced_entries_html);
                 this.setState(state);
                 setTimeout(() => {
                     if (this.state === STATES.SAVED) {

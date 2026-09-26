@@ -364,6 +364,47 @@ class FieldAutosaveTest extends TestCase
         $this->assertFalse($scene->codexReferences()->where('name', 'Melchior')->exists());
     }
 
+    public function test_a_matcher_run_returns_the_refreshed_codex_references_list(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user, ['contents' => 'Nothing interesting yet.']);
+        CodexEntry::factory()->for($scene->project())->create(['name' => 'Melchior']);
+
+        $html = $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']),
+            [
+                'value' => 'Melchior arrives at dawn.',
+                'base_hash' => $this->hashOf($scene->contents),
+                'run_matcher' => true,
+            ],
+        )->assertOk()->json('referenced_entries_html');
+
+        $this->assertIsString($html);
+        $this->assertStringContainsString('Melchior', $html);
+    }
+
+    public function test_a_bare_debounce_tick_returns_no_codex_references_list(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user, ['contents' => 'Old.']);
+
+        $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']),
+            ['value' => 'New.', 'base_hash' => $this->hashOf('Old.')],
+        )->assertOk()->assertJsonMissingPath('referenced_entries_html');
+    }
+
+    public function test_run_matcher_on_a_field_other_than_scene_contents_returns_no_codex_references_list(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user, ['notes' => 'Old.']);
+
+        $this->actingAs($user)->patchJson(
+            route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'notes']),
+            ['value' => 'New.', 'base_hash' => $this->hashOf('Old.'), 'run_matcher' => true],
+        )->assertOk()->assertJsonMissingPath('referenced_entries_html');
+    }
+
     public function test_run_matcher_true_on_scene_contents_fires_scene_contents_changed(): void
     {
         $user = User::factory()->create();

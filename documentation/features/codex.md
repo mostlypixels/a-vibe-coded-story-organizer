@@ -94,6 +94,13 @@ Entry search is different. It uses a case-insensitive SQL substring match to hel
 
 Normal edits synchronize references automatically. `codex:sync-references` and the project edit action are recovery tools.
 
+- The scene form save runs the matcher.
+- An autosave of scene contents runs it on blur and Ctrl+S, not on a debounce tick. The matcher reads every entry and alias in the project, so each 2-second save would pay for it.
+- A matcher autosave returns the new "Codex references" list HTML, and the scene editor replaces its list.
+
+> [!NOTE]
+> A writer who types and closes the tab without a blur leaves references stale. The next blur or save after an edit fixes them.
+
 ## Seeder requirements
 
 Seeders must:
