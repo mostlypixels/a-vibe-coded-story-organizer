@@ -48,6 +48,19 @@ class ProjectTest extends TestCase
         $this->assertSame(2, substr_count($html, 'action="'.route('projects.destroy', $project).'"'));
     }
 
+    public function test_the_project_name_and_cover_open_the_project_dashboard_not_its_settings(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $html = $this->actingAs($user)->get(route('projects.index'))->assertOk()->getContent();
+
+        // The list has a cover link and a name link. The grid card has one link.
+        $this->assertSame(3, substr_count($html, 'href="'.route('projects.show', $project).'"'));
+        // Only the edit icon, once in the list and once in the grid, opens the settings.
+        $this->assertSame(2, substr_count($html, 'href="'.route('projects.edit', $project).'"'));
+    }
+
     public function test_the_dashboard_delete_warns_with_the_same_cascade_sentence_as_the_edit_page(): void
     {
         $user = User::factory()->create();
