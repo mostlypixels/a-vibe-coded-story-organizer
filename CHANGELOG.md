@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-26 — App dialogs announce as dialogs
+## 2026-09-26 — App dialogs announce as dialogs (#280)
 
 ### Fixed
 
