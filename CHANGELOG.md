@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-26 — Event and plotline forms start with defaults
+## 2026-09-26 — Event and plotline forms start with defaults (#275)
 
 ### Fixed
 
