@@ -747,6 +747,48 @@ describe('registerAutosaveField store dirty tracking', () => {
             expect(field.dirty).toBe(false);
             expect(field.baseHash).toBe('h11');
         });
+
+        it('a failed first request asks again, so load saved text never turns into keep mine', async () => {
+            vi.useFakeTimers();
+            window.axios = {
+                patch: vi.fn()
+                    .mockRejectedValueOnce(conflictResponse('theirs', 'h9'))
+                    .mockRejectedValueOnce({ response: { status: 500, headers: {} } }),
+            };
+            const { field, textarea } = mountField(scene);
+            type(textarea, 'mine');
+            await field.flush({});
+
+            await field.loadSaved();
+            await vi.advanceTimersByTimeAsync(60_000);
+
+            expect(window.axios.patch).toHaveBeenCalledTimes(2);
+            expect(field.state).toBe(STATES.CONFLICT);
+            expect(field.conflict).toEqual({ value: 'theirs', hash: 'h9' });
+            expect(textarea.value).toBe('mine');
+        });
+
+        it('a retry of the second request still asks for a new revision', async () => {
+            vi.useFakeTimers();
+            window.axios = {
+                patch: vi.fn()
+                    .mockRejectedValueOnce(conflictResponse('theirs', 'h9'))
+                    .mockResolvedValueOnce({ status: 200, headers: {}, data: { value: 'mine', hash: 'h10' } })
+                    .mockRejectedValueOnce({ response: { status: 500, headers: {} } })
+                    .mockResolvedValueOnce({ status: 200, headers: {}, data: { value: 'theirs', hash: 'h11' } }),
+            };
+            const { field, textarea } = mountField(scene);
+            type(textarea, 'mine');
+            await field.flush({});
+
+            await field.loadSaved();
+            expect(field.dirty).toBe(true);
+            await vi.advanceTimersByTimeAsync(60_000);
+
+            expect(window.axios.patch.mock.calls[3][1]).toMatchObject({ value: 'theirs', base_hash: 'h10', new_revision: true });
+            expect(field.dirty).toBe(false);
+            expect(field.baseHash).toBe('h11');
+        });
     });
 });
 
