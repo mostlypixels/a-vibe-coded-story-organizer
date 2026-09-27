@@ -28,6 +28,13 @@ fi
 echo "Running migrations..."
 php artisan migrate --force
 
+# The dev stack compiles views outside the bind mount (see docker-compose.dev.yml).
+# Create the folder now for php-fpm's user, before a root command can own it.
+if [ -n "$VIEW_COMPILED_PATH" ]; then
+    mkdir -p "$VIEW_COMPILED_PATH"
+    chown laravel:laravel "$VIEW_COMPILED_PATH"
+fi
+
 # Clear caches
 echo "Clearing application caches..."
 php artisan config:clear
