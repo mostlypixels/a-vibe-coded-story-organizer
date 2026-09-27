@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-27 — List filters fit on a phone
+
+### Fixed
+
+- A list filter with long chapter names no longer makes the page scroll sideways on a phone.
+
 ## 2026-09-27 — Lighter list pages (#299)
 
 ### Changed

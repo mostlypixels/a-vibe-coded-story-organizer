@@ -8,9 +8,11 @@
     'filters' => ['search'],
 ])
 
-{{-- Wrap, so a phone does not push the buttons off the screen. --}}
+{{-- Wrap, so a phone does not push the buttons off the screen. A select is as wide as
+     its longest option, so it gets a cap too: long chapter names widened the page.
+     The open list still shows the full names. --}}
 <div class="flex flex-wrap items-center justify-between gap-4">
-    <form method="GET" class="flex flex-wrap items-center gap-2">
+    <form method="GET" class="flex flex-wrap items-center gap-2 min-w-0 max-w-full [&_select]:max-w-full sm:[&_select]:max-w-sm">
         <input type="hidden" name="sort" value="{{ $sort }}">
         <input type="hidden" name="direction" value="{{ $direction }}">
         <x-text-input type="text" name="search" placeholder="{{ $searchPlaceholder }}" aria-label="{{ $searchPlaceholder }}" class="text-sm" :value="request('search')" />
