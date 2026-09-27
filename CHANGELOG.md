@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-09-27 — List filters fit on a phone
+## 2026-09-27 — List filters fit on a phone (#301)
 
 ### Fixed
 
