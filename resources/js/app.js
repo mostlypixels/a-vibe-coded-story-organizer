@@ -12,6 +12,7 @@ import { registerChallengeChart, registerWordCountChart } from './word-count-cha
 import { registerFontPreview } from './font-preview';
 import { registerSettingTrack } from './setting-track';
 import { registerDateField } from './date-field';
+import { registerDropdown } from './dropdown';
 import { moveScene } from './scene-reorder';
 import { saveQuickEvent } from './quick-event';
 import { registerQuickCodexEntry } from './quick-codex-entry';
@@ -30,6 +31,7 @@ registerChallengeChart(Alpine);
 registerFontPreview(Alpine);
 registerSettingTrack(Alpine);
 registerDateField(Alpine);
+registerDropdown(Alpine);
 registerQuickCodexEntry(Alpine);
 
 Alpine.start();

@@ -76,6 +76,9 @@ class ProjectNavigation
 
     public readonly bool $searchActive;
 
+    /** The Account page and its Profile/Configuration destinations. */
+    public readonly bool $accountActive;
+
     /** The Revisions browser + per-field history routes (a Tools submenu item). */
     public readonly bool $revisionsActive;
 
@@ -144,6 +147,8 @@ class ProjectNavigation
         $this->codexActive = $request->routeIs('projects.codex.*', 'codex.*') || $this->attributesActive || $this->tagsActive;
 
         $this->searchActive = $request->routeIs('projects.search.*');
+
+        $this->accountActive = $request->routeIs('account', 'profile.*', 'admin.*');
 
         $this->revisionsActive = $request->routeIs('projects.revisions.*', 'revisions.*');
         $this->progressActive = $request->routeIs('projects.progress');

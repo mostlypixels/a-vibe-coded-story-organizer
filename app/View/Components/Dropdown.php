@@ -26,6 +26,8 @@ class Dropdown extends Component
         string $width = '48',
         public readonly string $contentClasses = 'py-1 bg-surface-overlay',
         public readonly string $offsetClasses = 'mt-2',
+        // Open on mouse hover. Only the disclosure button toggles, so a link in the trigger navigates.
+        public readonly bool $hover = false,
     ) {
         // A page can show the same menu more than one time, for example one per editor.
         $this->disclosureId = 'dropdown-'.Str::lower(Str::random(8));

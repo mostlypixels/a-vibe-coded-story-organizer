@@ -6,16 +6,16 @@
 
 @if ($navigation->hasBook())
     <div class="flex items-center">
-        <x-dropdown align="left" width="48">
+        <x-dropdown align="left" width="48" hover>
             <x-slot name="trigger">
-                <x-navigation.dropdown-trigger :active="$navigation->storyActive">{{ __('Story') }}</x-navigation.dropdown-trigger>
+                <x-navigation.menu-link
+                    :href="route('books.story.home', $navigation->book)"
+                    :active="$navigation->storyActive"
+                    :current="$navigation->storyHomeActive"
+                    :menu-label="__('Story menu')">{{ __('Story') }}</x-navigation.menu-link>
             </x-slot>
 
             <x-slot name="content">
-                <x-dropdown-link :href="route('books.story.home', $navigation->book)" :active="$navigation->storyHomeActive">
-                    {{ __('Story') }}
-                </x-dropdown-link>
-
                 <x-dropdown-link :href="route('books.story.overview', $navigation->book)" :active="$navigation->storyOverviewActive">
                     {{ __('Overview') }}
                 </x-dropdown-link>
@@ -37,16 +37,16 @@
 @endif
 
 <div class="flex items-center">
-    <x-dropdown align="left" width="48">
+    <x-dropdown align="left" width="48" hover>
         <x-slot name="trigger">
-            <x-navigation.dropdown-trigger :active="$navigation->timelineActive">{{ __('Timeline') }}</x-navigation.dropdown-trigger>
+            <x-navigation.menu-link
+                :href="route('projects.timeline.home', $navigation->project)"
+                :active="$navigation->timelineActive"
+                :current="$navigation->timelineHomeActive"
+                :menu-label="__('Timeline menu')">{{ __('Timeline') }}</x-navigation.menu-link>
         </x-slot>
 
         <x-slot name="content">
-            <x-dropdown-link :href="route('projects.timeline.home', $navigation->project)" :active="$navigation->timelineHomeActive">
-                {{ __('Timeline') }}
-            </x-dropdown-link>
-
             <x-dropdown-link :href="route('projects.plotlines.index', $navigation->project)" :active="$navigation->plotlinesActive">
                 {{ __('Plotlines') }}
             </x-dropdown-link>
@@ -59,16 +59,16 @@
 </div>
 
 <div class="flex items-center">
-    <x-dropdown align="left" width="48">
+    <x-dropdown align="left" width="48" hover>
         <x-slot name="trigger">
-            <x-navigation.dropdown-trigger :active="$navigation->codexActive">{{ __('Codex') }}</x-navigation.dropdown-trigger>
+            <x-navigation.menu-link
+                :href="route('projects.codex.home', $navigation->project)"
+                :active="$navigation->codexActive"
+                :current="$navigation->codexHomeActive"
+                :menu-label="__('Codex menu')">{{ __('Codex') }}</x-navigation.menu-link>
         </x-slot>
 
         <x-slot name="content">
-            <x-dropdown-link :href="route('projects.codex.home', $navigation->project)" :active="$navigation->codexHomeActive">
-                {{ __('Codex') }}
-            </x-dropdown-link>
-
             @foreach (\App\Enums\CodexEntryType::cases() as $codexType)
                 <x-dropdown-link
                     :href="route('projects.codex.index', [$navigation->project, $codexType->routeKey()])"
@@ -92,16 +92,16 @@
 </div>
 
 <div class="flex items-center">
-    <x-dropdown align="left" width="48">
+    <x-dropdown align="left" width="48" hover>
         <x-slot name="trigger">
-            <x-navigation.dropdown-trigger :active="$navigation->toolsActive">{{ __('Tools') }}</x-navigation.dropdown-trigger>
+            <x-navigation.menu-link
+                :href="route('projects.tools.home', $navigation->project)"
+                :active="$navigation->toolsActive"
+                :current="$navigation->toolsHomeActive"
+                :menu-label="__('Tools menu')">{{ __('Tools') }}</x-navigation.menu-link>
         </x-slot>
 
         <x-slot name="content">
-            <x-dropdown-link :href="route('projects.tools.home', $navigation->project)" :active="$navigation->toolsHomeActive">
-                {{ __('Tools') }}
-            </x-dropdown-link>
-
             <x-dropdown-link :href="route('projects.revisions.index', $navigation->project)" :active="$navigation->revisionsActive">
                 {{ __('Revisions') }}
             </x-dropdown-link>

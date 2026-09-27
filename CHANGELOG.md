@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-27 — Nav sections open in one click
+
+### Added
+
+- An Account page with links to Profile and Configuration. The user name in the nav opens it.
+
+### Changed
+
+- Story, Timeline, Codex and Tools open their page in one click. A mouse hover or the arrow next to them opens the menu.
+- The menu arrow points up while the menu is open, and a click on it closes the menu.
+- Menus no longer repeat their own name as the first item.
+- Every dropdown closes on Escape, and only one menu is open at a time.
+
 ## 2026-09-26 — Save checks for newer text (#284)
 
 ### Fixed

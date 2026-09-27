@@ -1,5 +1,17 @@
-<div class="relative" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
-    <div @click="open = ! open">
+<div class="relative"
+        x-data="dropdown({ id: @js($disclosureId), hover: @js($hover) })"
+        @click.outside="close()"
+        @close.stop="close()"
+        @keydown.escape="escape($event)"
+        @keydown.escape.window="escapeOutside()"
+        @dropdown-opened.window="otherOpened($event)"
+        @if ($hover)
+            data-hover
+            @pointerenter="pointerEnter($event)"
+            @pointerleave="pointerLeave($event)"
+        @endif
+>
+    <div @click="triggerClick($event)">
         {{ $trigger }}
     </div>
 
@@ -13,7 +25,7 @@
             x-transition:leave-end="opacity-0 scale-95"
             class="absolute z-50 {{ $offsetClasses }} {{ $widthClass }} rounded-md shadow-lg {{ $alignmentClasses }}"
             style="display: none;"
-            @click="open = false">
+            @click="close()">
         <div class="rounded-md ring-1 ring-black/5 {{ $contentClasses }}">
             {{ $content }}
         </div>
