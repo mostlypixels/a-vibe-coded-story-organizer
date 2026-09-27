@@ -142,10 +142,12 @@ class PlotlineTest extends TestCase
         $project = Project::factory()->for($user)->create();
         $mainPlotline = $project->plotlines()->first();
 
-        $this->actingAs($user)->get(route('plotlines.show', $mainPlotline))
+        $html = $this->actingAs($user)->get(route('plotlines.show', $mainPlotline))
             ->assertOk()
             ->assertSee(__('Main'))
-            ->assertDontSee('value="DELETE"', false);
+            ->getContent();
+
+        $this->assertSame([], $this->deleteActions($html));
     }
 
     // --- Create / store ----------------------------------------------------
@@ -349,17 +351,17 @@ class PlotlineTest extends TestCase
         $mainPlotline = $project->plotlines()->first();
         $regular = Plotline::factory()->for($project)->create();
 
-        // The destroy URL equals the update URL, so the button is identified by its
-        // label and the DELETE method spoof instead.
-        $this->actingAs($user)->get(route('plotlines.edit', $mainPlotline))
+        $html = $this->actingAs($user)->get(route('plotlines.edit', $mainPlotline))
             ->assertOk()
             ->assertDontSee('Delete Plotline')
-            ->assertDontSee('value="DELETE"', false);
+            ->getContent();
+        $this->assertSame([], $this->deleteActions($html));
 
-        $this->actingAs($user)->get(route('plotlines.edit', $regular))
+        $html = $this->actingAs($user)->get(route('plotlines.edit', $regular))
             ->assertOk()
             ->assertSee('Delete Plotline')
-            ->assertSee('value="DELETE"', false);
+            ->getContent();
+        $this->assertSame([route('plotlines.destroy', $regular)], $this->deleteActions($html));
     }
 
     public function test_a_user_cannot_update_a_plotline_in_another_users_project(): void

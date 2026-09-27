@@ -1236,8 +1236,8 @@ class CodexEntryTest extends TestCase
         $this->actingAs($user)
             ->get(route('projects.codex.index', [$project, 'characters']))
             ->assertOk()
-            ->assertSee('duplicate-codex-entry-'.$entry->id, false)
-            ->assertSee('value="Melusine (2)"', false);
+            ->assertSee('open-duplicate', false)
+            ->assertSee('Melusine (2)', false);
     }
 
     public function test_the_codex_edit_page_shows_a_duplicate_trigger_with_the_suggested_name(): void

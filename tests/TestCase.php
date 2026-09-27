@@ -44,6 +44,32 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
+     * The detail of each `$dispatch($event, …)` in $html, decoded.
+     *
+     * Row buttons send their data to a shared dialog this way, so a delete control
+     * shows as a `open-confirm-delete` dispatch, not as a form.
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function dispatchDetails(string $html, string $event): array
+    {
+        preg_match_all('/\$dispatch\(\''.preg_quote($event, '/').'\', JSON\.parse\(\'(.*?)\'\)\)/', $html, $matches);
+
+        // Js::from() writes a JS string literal; its escapes are valid JSON string escapes.
+        return array_map(fn (string $literal) => json_decode(json_decode('"'.$literal.'"'), true), $matches[1]);
+    }
+
+    /**
+     * The actions of the delete controls in $html.
+     *
+     * @return list<string>
+     */
+    protected function deleteActions(string $html): array
+    {
+        return array_column($this->dispatchDetails($html, 'open-confirm-delete'), 'action');
+    }
+
+    /**
      * Remove the test's export directory. Exports are flat uuid-named files, so
      * one pass over the directory is enough.
      */

@@ -17,11 +17,7 @@
 ])
 
 @php
-    $countPhrase = fn (int $count, string $singular, string $plural) => trans_choice(
-        '{1} :count '.$singular.'|[2,*] :count '.$plural,
-        $count,
-        ['count' => $count],
-    );
+    $countPhrase = \App\Support\CountPhrase::make(...);
 
     $childPhrase = $countPhrase($childCount, $childSingular, $childPlural);
 

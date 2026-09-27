@@ -44,7 +44,7 @@
                                 <x-icon-view-link :href="route('acts.show', $act)" />
                                 <x-icon-edit-link :href="route('acts.edit', $act)" />
                                 @if ($act->chapters_count > 0)
-                                    <x-icon-dialog-button :modal="'delete-act-'.$act->id" />
+                                    <x-icon-delete-with-move-button dialog="delete-act" :action="route('acts.destroy', $act)" :exclude="$act->id" :child-count="$act->chapters_count" child-singular="chapter" child-plural="chapters" />
                                 @else
                                     <x-icon-delete-button :action="route('acts.destroy', $act)" :confirm="__('Are you sure you want to delete this act?')" />
                                 @endif
@@ -85,19 +85,13 @@
 
             <x-pagination-bar :paginator="$acts" />
 
-            @foreach ($acts as $act)
-                @if ($act->chapters_count > 0)
-                    <x-delete-with-move-dialog
-                        name="delete-act-{{ $act->id }}"
-                        :action="route('acts.destroy', $act)"
-                        :title="__('Delete Act?')"
-                        :child-count="$act->chapters_count"
-                        child-singular="chapter"
-                        child-plural="chapters"
-                        destination-noun="act"
-                        :destinations="$destinationActs->where('id', '!=', $act->id)->values()"
-                    />
-                @endif
-            @endforeach
+            @if ($acts->contains(fn ($row) => $row->chapters_count > 0))
+                <x-delete-with-move-list-dialog
+                    name="delete-act"
+                    :title="__('Delete Act?')"
+                    destination-noun="act"
+                    :destinations="$destinationActs"
+                />
+            @endif
     </div>
 </x-app-layout>

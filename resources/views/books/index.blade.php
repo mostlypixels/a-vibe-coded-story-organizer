@@ -39,7 +39,7 @@
                                 <x-icon-edit-link :href="route('books.edit', $book)" />
                                 @unless ($isLastBook)
                                     @if ($book->acts_count > 0)
-                                        <x-icon-dialog-button :modal="'delete-book-'.$book->id" />
+                                        <x-icon-delete-with-move-button dialog="delete-book" :action="route('books.destroy', $book)" :exclude="$book->id" :child-count="$book->acts_count" child-singular="act" child-plural="acts" />
                                     @else
                                         <x-icon-delete-button :action="route('books.destroy', $book)" :confirm="__('Are you sure you want to delete this book?')" />
                                     @endif
@@ -53,20 +53,14 @@
             <x-pagination-bar :paginator="$books" />
 
             @unless ($isLastBook)
-                @foreach ($books as $book)
-                    @if ($book->acts_count > 0)
-                        <x-delete-with-move-dialog
-                            name="delete-book-{{ $book->id }}"
-                            :action="route('books.destroy', $book)"
-                            :title="__('Delete Book?')"
-                            :child-count="$book->acts_count"
-                            child-singular="act"
-                            child-plural="acts"
-                            destination-noun="book"
-                            :destinations="$destinationBooks->where('id', '!=', $book->id)->values()"
-                        />
-                    @endif
-                @endforeach
+                @if ($books->contains(fn ($row) => $row->acts_count > 0))
+                    <x-delete-with-move-list-dialog
+                        name="delete-book"
+                        :title="__('Delete Book?')"
+                        destination-noun="book"
+                        :destinations="$destinationBooks"
+                    />
+                @endif
             @endunless
     </div>
 </x-app-layout>

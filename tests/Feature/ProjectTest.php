@@ -42,10 +42,12 @@ class ProjectTest extends TestCase
         $html = $this->actingAs($user)->get(route('projects.index'))->assertOk()->getContent();
 
         $this->assertStringContainsString('href="'.route('projects.edit', $project).'"', $html);
-        $this->assertStringContainsString('action="'.route('projects.destroy', $project).'"', $html);
         // The list and the grid are two renderings of the same list, so both carry the
         // actions — the writer's view preference must not decide what they can do.
-        $this->assertSame(2, substr_count($html, 'action="'.route('projects.destroy', $project).'"'));
+        $this->assertSame(
+            [route('projects.destroy', $project), route('projects.destroy', $project)],
+            $this->deleteActions($html),
+        );
     }
 
     public function test_the_project_name_and_cover_open_the_project_dashboard_not_its_settings(): void

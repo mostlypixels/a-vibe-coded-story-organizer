@@ -850,6 +850,29 @@ class ChapterTest extends TestCase
      * story order makes an unqualified `name` ambiguous. This covers both places it
      * appears: the search filter and `?sort=name`.
      */
+    /**
+     * One delete dialog per row made the page grow with the square of the chapter
+     * count, because each dialog listed every other chapter (#290).
+     */
+    public function test_the_chapters_index_renders_one_delete_dialog_for_all_rows(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapters = Chapter::factory()->for($act)->count(4)->create();
+        $chapters->each(fn (Chapter $chapter) => Scene::factory()->for($chapter)->create());
+
+        $html = $this->actingAs($user)
+            ->get(route('books.chapters.index', $book))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, 'x-on:open-delete-with-move.window'));
+        // Each chapter is a destination once, not once per other row.
+        $this->assertSame(4, substr_count($html, 'x-bind:hidden="exclude ==='));
+        $this->assertSame(4, substr_count($html, "open-delete-with-move', JSON.parse"));
+    }
+
     public function test_the_chapters_index_still_sorts_and_searches_by_name(): void
     {
         $user = User::factory()->create();

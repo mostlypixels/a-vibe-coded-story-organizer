@@ -260,9 +260,9 @@ class EventTest extends TestCase
         $project = Project::factory()->for($user)->create();
         $event = Event::factory()->for($project)->create(['is_fixed' => true]);
 
-        $this->actingAs($user)->get(route('events.show', $event))
-            ->assertOk()
-            ->assertDontSee('value="DELETE"', false);
+        $html = $this->actingAs($user)->get(route('events.show', $event))->assertOk()->getContent();
+
+        $this->assertSame([], $this->deleteActions($html));
     }
 
     // --- Create / store ----------------------------------------------------

@@ -93,19 +93,58 @@ class IconButtonComponentTest extends TestCase
         $this->assertStringContainsString('absolute', $rendered);
     }
 
-    public function test_the_delete_button_posts_a_delete_behind_the_app_dialog(): void
+    public function test_the_delete_button_fills_the_shared_dialog_instead_of_rendering_one(): void
     {
         $rendered = $this->render('<x-icon-delete-button action="/acts/1" :confirm="$confirm" />', [
             'confirm' => "Delete l'entrée?",
         ]);
 
-        $this->assertStringContainsString('action="/acts/1"', $rendered);
-        $this->assertStringContainsString('name="_method" value="DELETE"', $rendered);
-        $this->assertMatchesRegularExpression("/\\\$dispatch\\('open-modal', '(confirm-delete-[a-z0-9]{8})'\\)/", $rendered);
-        $this->assertStringContainsString('Delete l&#039;entrée?', $rendered);
+        $this->assertSame([
+            'dialog' => 'confirm-delete',
+            'action' => '/acts/1',
+            'message' => "Delete l'entrée?",
+            'confirmLabel' => null,
+        ], $this->dispatchDetails($rendered, 'open-confirm-delete')[0]);
+        // A list row must not carry its own dialog or form (#290).
+        $this->assertStringNotContainsString('<form', $rendered);
+        $this->assertStringNotContainsString('x-on:open-modal.window', $rendered);
         $this->assertStringNotContainsString('confirm(', $rendered);
         // Destructive, so danger rather than the default outline.
         $this->assertStringContainsString('border-danger', $rendered);
+    }
+
+    public function test_the_shared_delete_dialog_posts_a_delete_to_the_action_it_receives(): void
+    {
+        $rendered = $this->render('<x-confirm-delete-dialog name="confirm-delete" />');
+
+        $this->assertStringContainsString('x-on:open-confirm-delete.window', $rendered);
+        $this->assertStringContainsString('x-bind:action="action"', $rendered);
+        $this->assertStringContainsString('name="_method" value="DELETE"', $rendered);
+    }
+
+    public function test_the_duplicate_button_passes_its_action_and_suggested_name(): void
+    {
+        $rendered = $this->render('<x-icon-duplicate-button dialog="duplicate-scene" action="/scenes/4/duplicate" suggestion="Arrival (2)" />');
+
+        $this->assertSame([
+            'dialog' => 'duplicate-scene',
+            'action' => '/scenes/4/duplicate',
+            'suggestion' => 'Arrival (2)',
+        ], $this->dispatchDetails($rendered, 'open-duplicate')[0]);
+        $this->assertStringNotContainsString('<form', $rendered);
+    }
+
+    public function test_the_delete_with_move_button_passes_its_row_and_count_phrase(): void
+    {
+        $rendered = $this->render('<x-icon-delete-with-move-button dialog="delete-act" action="/acts/1" :exclude="1" :child-count="2" child-singular="chapter" child-plural="chapters" />');
+
+        $this->assertSame([
+            'dialog' => 'delete-act',
+            'action' => '/acts/1',
+            'exclude' => 1,
+            'children' => '2 chapters',
+        ], $this->dispatchDetails($rendered, 'open-delete-with-move')[0]);
+        $this->assertStringNotContainsString('<select', $rendered);
     }
 
     public function test_the_move_button_posts_a_patch_and_picks_its_glyph_from_the_direction(): void
