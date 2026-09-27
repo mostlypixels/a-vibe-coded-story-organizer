@@ -12,6 +12,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -32,6 +33,9 @@ class ProjectImporter
 
     /** Directory for import ZIP files and extraction folders. */
     private const DIRECTORY = 'imports';
+
+    /** Delete passes before a working folder counts as stuck. */
+    private const DELETE_ATTEMPTS = 3;
 
     /** @var array<int, ImportPhase> Phases in checkpoint order. */
     private const GRAPH_PHASES = [
@@ -182,7 +186,7 @@ class ProjectImporter
             }
 
             is_dir($this->disk()->path($path))
-                ? $this->disk()->deleteDirectory($path)
+                ? $this->deleteDirectory($path)
                 : $this->disk()->delete($path);
 
             $count++;
@@ -245,7 +249,24 @@ class ProjectImporter
     private function deleteWorkingFiles(Import $import): void
     {
         $this->disk()->delete($import->archive_path);
-        $this->disk()->deleteDirectory($this->extractedDirectory($import));
+        $this->deleteDirectory($this->extractedDirectory($import));
+    }
+
+    /**
+     * Deletes a folder, with more passes when one pass leaves files.
+     *
+     * On a Docker bind mount under Windows, one pass can skip files and return false.
+     * The extracted files hold the writer's text, so a failure gets a log warning.
+     */
+    private function deleteDirectory(string $path): void
+    {
+        for ($attempt = 0; $attempt < self::DELETE_ATTEMPTS && $this->disk()->directoryExists($path); $attempt++) {
+            $this->disk()->deleteDirectory($path);
+        }
+
+        if ($this->disk()->directoryExists($path)) {
+            Log::warning('Import working files could not be deleted.', ['path' => $path]);
+        }
     }
 
     /** Returns the absolute extraction directory. */

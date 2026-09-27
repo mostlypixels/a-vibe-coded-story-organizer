@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-27 — Import cleanup removes all its files (#297)
+
+### Fixed
+
+- A finished or purged import no longer leaves unpacked files behind in Docker on Windows.
+
 ## 2026-09-27 — Faster pages in Docker on Windows (#296)
 
 ### Fixed

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\PartialDeleteDisk;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -183,6 +184,19 @@ class ImportTest extends TestCase
         $this->actingAs($owner)
             ->get(route('admin.data.import.index'))
             ->assertDontSee(__('In-progress imports'));
+    }
+
+    public function test_a_completed_import_removes_its_working_files_when_the_first_delete_stops_part_way(): void
+    {
+        $owner = User::factory()->create();
+        $import = app(ProjectImporter::class)->start($this->makeValidUpload(), $owner);
+        PartialDeleteDisk::install('local');
+
+        $this->actingAs($owner)->post(route('admin.data.imports.resume', $import));
+
+        $this->assertSame(ImportPhase::Completed, $import->refresh()->phase);
+        $this->assertSame([], Storage::disk('local')->allFiles('imports'));
+        $this->assertSame([], Storage::disk('local')->directories('imports'));
     }
 
     public function test_the_import_settings_form_prefills_with_the_current_singleton_values(): void
