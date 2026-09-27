@@ -9,6 +9,8 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use App\Support\ProjectNavigation;
+use Dom\Element;
+use Dom\HTMLDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -109,46 +111,156 @@ class NavigationTest extends TestCase
         $book = $chapter->act->book;
         $project = $book->project;
 
-        // On a Story page the trigger swaps to nav-link's active look.
-        $this->actingAs($user)
+        $storyHtml = $this->actingAs($user)
             ->get(route('books.scenes.index', $book))
             ->assertOk()
-            ->assertSee('text-nav-content border-accent', false);
+            ->getContent();
 
-        // On Home the Story trigger is inactive; the active-trigger token, whose
-        // class order is unique to the trigger, must be absent.
-        $this->actingAs($user)
+        $this->assertTriggerIsActive($storyHtml, 'Story');
+
+        $homeHtml = $this->actingAs($user)
             ->get(route('projects.show', $project))
             ->assertOk()
-            ->assertDontSee('text-nav-content border-accent', false);
+            ->getContent();
+
+        $this->assertTriggerIsNotActive($homeHtml, 'Story');
     }
 
     /**
-     * Assert that the desktop dropdown trigger button labeled $label carries the
-     * active class token. Triggers are <button>s (no aria-current), so the active
-     * class token is the sanctioned hook. The regex ties the token to the specific
-     * button by matching up to its label, so "Codex active" cannot be satisfied by
-     * a different active trigger on the same page.
+     * Assert that the section link labeled $label carries the active underline.
+     * The regex ties `data-active` to the link with this label, so another active
+     * section on the same page cannot satisfy it.
      */
     private function assertTriggerIsActive(string $html, string $label, string $message = ''): void
     {
-        $this->assertMatchesRegularExpression(
-            '/<button[^>]*text-nav-content border-accent[^>]*>\s*'.preg_quote($label, '/').'/',
-            $html,
-            $message,
-        );
+        $this->assertMatchesRegularExpression($this->activeSectionLink($label), $html, $message);
     }
 
     /**
-     * Assert that the trigger labeled $label is present but NOT in its active state.
+     * Assert that the section link labeled $label is NOT in its active state.
      */
     private function assertTriggerIsNotActive(string $html, string $label, string $message = ''): void
     {
-        $this->assertDoesNotMatchRegularExpression(
-            '/<button[^>]*text-nav-content border-accent[^>]*>\s*'.preg_quote($label, '/').'/',
-            $html,
-            $message,
-        );
+        $this->assertStringContainsString('>'.$label.'</a>', $html, $message);
+        $this->assertDoesNotMatchRegularExpression($this->activeSectionLink($label), $html, $message);
+    }
+
+    private function activeSectionLink(string $label): string
+    {
+        return '/<a[^>]*data-active[^>]*>\s*'.preg_quote($label, '/').'\s*<\/a>/';
+    }
+
+    /**
+     * The hover dropdowns of the desktop nav, keyed by link label. Each entry holds
+     * the hub link, the chevron button and the menu panel.
+     *
+     * @return array<string, array{link: Element, chevron: Element, panel: Element}>
+     */
+    private function sections(string $html): array
+    {
+        $document = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+        $sections = [];
+
+        // Scoped to the Story/Timeline/Codex/Tools links, not the user menu,
+        // which is its own hover dropdown outside #section-links.
+        foreach ($document->querySelectorAll('#section-links [data-hover]') as $dropdown) {
+            $link = $dropdown->querySelector('a');
+            $chevron = $dropdown->querySelector('button[aria-controls]');
+            $panel = $document->getElementById($chevron->getAttribute('aria-controls'));
+
+            $sections[trim($link->textContent)] = compact('link', 'chevron', 'panel');
+        }
+
+        return $sections;
+    }
+
+    public function test_each_section_is_a_hub_link_plus_a_named_chevron(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $sections = $this->sections($this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->getContent());
+
+        $hubs = [
+            'Story' => route('books.story.home', $book),
+            'Timeline' => route('projects.timeline.home', $project),
+            'Codex' => route('projects.codex.home', $project),
+            'Tools' => route('projects.tools.home', $project),
+        ];
+
+        $this->assertSame(array_keys($hubs), array_keys($sections));
+
+        foreach ($hubs as $label => $href) {
+            $this->assertSame($href, $sections[$label]['link']->getAttribute('href'));
+            $this->assertSame("$label menu", $sections[$label]['chevron']->getAttribute('aria-label'));
+            $this->assertSame('false', $sections[$label]['chevron']->getAttribute('aria-expanded'));
+            $this->assertNotNull($sections[$label]['panel'], "$label menu panel");
+
+            // A menu item that repeats the hub link is noise: the label already goes there.
+            $this->assertNull(
+                $sections[$label]['panel']->querySelector('a[href="'.$href.'"]'),
+                "The $label menu links to its own hub.",
+            );
+        }
+    }
+
+    public function test_the_user_menu_links_to_account_and_underlines_on_its_pages(): void
+    {
+        $user = User::factory()->create();
+        $accountHref = route('account');
+
+        foreach (['account', 'profile.edit', 'admin.settings.edit'] as $routeName) {
+            $html = $this->actingAs($user)->get(route($routeName))->assertOk()->getContent();
+            $document = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+            $link = $document->querySelector('a[href="'.e($accountHref).'"]');
+
+            $this->assertNotNull($link, "The user menu link is missing on $routeName.");
+            $this->assertTrue($link->hasAttribute('data-active'), "The user menu is not underlined on $routeName.");
+
+            if ($routeName === 'account') {
+                $this->assertSame('page', $link->getAttribute('aria-current'), "aria-current on $routeName.");
+            } else {
+                $this->assertFalse($link->hasAttribute('aria-current'), "aria-current on $routeName.");
+            }
+        }
+    }
+
+    public function test_the_hub_link_is_current_only_on_its_hub_page(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+
+        $cases = [
+            'Story' => [route('books.story.home', $book), route('books.acts.index', $book)],
+            'Timeline' => [route('projects.timeline.home', $project), route('projects.plotlines.index', $project)],
+            'Codex' => [route('projects.codex.home', $project), route('projects.tags.index', $project)],
+            'Tools' => [route('projects.tools.home', $project), route('projects.progress', $project)],
+        ];
+
+        foreach ($cases as $label => [$hub, $child]) {
+            $hubLink = $this->sections($this->actingAs($user)->get($hub)->assertOk()->getContent())[$label]['link'];
+            $childLink = $this->sections($this->actingAs($user)->get($child)->assertOk()->getContent())[$label]['link'];
+
+            $this->assertSame('page', $hubLink->getAttribute('aria-current'), "$label hub page");
+            $this->assertFalse($childLink->hasAttribute('aria-current'), "$label child page");
+
+            // The underline marks the whole section on both pages.
+            $this->assertTrue($hubLink->hasAttribute('data-active'), "$label hub page");
+            $this->assertTrue($childLink->hasAttribute('data-active'), "$label child page");
+        }
+    }
+
+    public function test_the_error_page_user_menu_links_to_account(): void
+    {
+        $user = User::factory()->create();
+        Project::factory()->for($user)->create();
+
+        $html = $this->actingAs($user)->get('/this-page-does-not-exist')->assertNotFound()->getContent();
+
+        $this->assertStringContainsString('href="'.e(route('account')).'"', $html);
     }
 
     public function test_the_active_codex_type_is_marked_on_a_codex_page(): void

@@ -63,7 +63,7 @@
                     </x-dropdown>
                 </div>
 
-                <div class="hidden space-x-8 sm:-my-px sm:ms-6 sm:flex">
+                <div id="section-links" class="hidden space-x-8 sm:-my-px sm:ms-6 sm:flex">
                     @if ($navigation->hasProject())
                         <x-navigation.project-menu :navigation="$navigation" />
                     @endif
@@ -71,15 +71,13 @@
             </div>
 
             <div class="hidden sm:flex sm:items-center sm:ms-6 sm:pe-2">
-                <x-dropdown align="right" width="48">
+                <x-dropdown align="right" width="48" hover>
                     <x-slot name="trigger">
-                        <x-disclosure-button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-nav-content bg-transparent hover:text-nav-content focus:outline-hidden transition ease-in-out duration-150">
-                            <div>{{ Auth::user()->name }}</div>
-
-                            <div class="ms-1">
-                                <x-tabler-chevron-down class="h-4 w-4" />
-                            </div>
-                        </x-disclosure-button>
+                        <x-navigation.menu-link
+                            :href="route('account')"
+                            :active="$navigation->accountActive"
+                            :current="request()->routeIs('account')"
+                            :menu-label="__('Account menu')">{{ Auth::user()->name }}</x-navigation.menu-link>
                     </x-slot>
 
                     <x-slot name="content">

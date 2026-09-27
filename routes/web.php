@@ -2,6 +2,7 @@
 
 use App\Enums\CodexEntryType;
 use App\Enums\SearchDomain;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ActController;
 use App\Http\Controllers\AppearanceController;
 use App\Http\Controllers\BookController;
@@ -80,6 +81,8 @@ Route::post('/onboarding/demo', [OnboardingController::class, 'installDemo'])
 
 // Only authenticated project pages update users.active_project_id.
 Route::middleware(['auth', TrackActiveProject::class])->group(function () {
+    Route::get('/account', [AccountController::class, 'home'])->name('account');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
