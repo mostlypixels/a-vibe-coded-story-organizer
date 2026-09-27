@@ -478,13 +478,11 @@ class SceneShareTest extends TestCase
         // Revoke + regenerate controls are present; the generate select is gone.
         $response->assertSee('Revoke');
         $response->assertSee('Regenerate');
-        $response->assertSee(route('scenes.share.destroy', $scene), escape: false);
         $response->assertDontSee('Generate share link');
         // The dialog confirms with the same verb as the button that opens it.
-        $this->assertMatchesRegularExpression(
-            '#action="'.preg_quote(route('scenes.share.destroy', $scene), '#').'".*?<button[^>]*type="submit"[^>]*>\s*Revoke\s*</button>#s',
-            $response->getContent(),
-        );
+        $revoke = collect($this->dispatchDetails($response->getContent(), 'open-confirm-delete'))
+            ->firstWhere('action', route('scenes.share.destroy', $scene));
+        $this->assertSame('Revoke', $revoke['confirmLabel'] ?? null);
     }
 
     public function test_the_regenerate_button_submits_the_share_form(): void

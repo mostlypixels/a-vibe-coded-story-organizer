@@ -1,8 +1,6 @@
 @props(['action', 'confirm', 'buttonClass' => null])
 
-{{-- A random name, because one page can show the same delete twice (desktop and phone). --}}
-@php($dialog = 'confirm-delete-'.Str::lower(Str::random(8)))
-
+{{-- Opens the layout's shared `confirm-delete` dialog. --}}
 <div {{ $attributes }}>
     <x-button
         type="button"
@@ -10,8 +8,6 @@
         :icon="true"
         :class="$buttonClass"
         x-data=""
-        x-on:click.prevent="$dispatch('open-modal', '{{ $dialog }}')"
+        x-on:click.prevent="$dispatch('open-confirm-delete', {{ Js::from(['dialog' => 'confirm-delete', 'action' => $action, 'message' => $confirm]) }})"
     >{{ $slot }}</x-button>
-
-    <x-confirm-delete-dialog :name="$dialog" :action="$action" :message="$confirm" />
 </div>

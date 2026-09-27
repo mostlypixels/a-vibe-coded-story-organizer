@@ -60,6 +60,9 @@
 
         <x-autosave-status-badge />
 
+        {{-- One delete dialog for the whole page; every delete button fills it. --}}
+        <x-confirm-delete-dialog name="confirm-delete" />
+
         {{-- Keep x-data on this wrapper because x-dialog does not forward attributes to x-modal. --}}
         <div x-data="navigationGuard()">
             <x-dialog name="unsaved-changes-guard" :title="__('Unsaved changes')">

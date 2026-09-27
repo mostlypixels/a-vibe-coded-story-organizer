@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-27 — Lighter list pages
+
+### Changed
+
+- List pages share one delete or duplicate dialog instead of one per row, so long lists load up to four times lighter.
+
 ## 2026-09-27 — Import cleanup removes all its files (#297)
 
 ### Fixed

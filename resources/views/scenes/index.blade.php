@@ -81,7 +81,7 @@
                                     <x-icon-move-button direction="up" :action="route('scenes.move-up', $scene)" :disabled="$loop->first && $scenes->onFirstPage()" />
                                     <x-icon-move-button direction="down" :action="route('scenes.move-down', $scene)" :disabled="$loop->last && $scenes->onLastPage()" />
                                 @endif
-                                <x-icon-dialog-button icon="copy" variant="outline-solid" :modal="'duplicate-scene-'.$scene->id" :label="__('Duplicate')" />
+                                <x-icon-duplicate-button dialog="duplicate-scene" :action="route('scenes.duplicate', $scene)" :suggestion="$duplicateNames[$scene->id]" />
                                 <x-icon-view-link :href="route('scenes.show', $scene)" />
                                 <x-icon-edit-link :href="route('scenes.edit', $scene)" />
                                 <x-icon-delete-button :action="route('scenes.destroy', $scene)" :confirm="__('Are you sure you want to delete this scene?')" />
@@ -120,13 +120,6 @@
 
             <x-pagination-bar :paginator="$scenes" :range="$pageRange" />
 
-            @foreach ($scenes as $scene)
-                <x-duplicate-dialog
-                    name="duplicate-scene-{{ $scene->id }}"
-                    :action="route('scenes.duplicate', $scene)"
-                    :title="__('Duplicate Scene?')"
-                    :suggestion="$duplicateNames[$scene->id]"
-                />
-            @endforeach
+            <x-duplicate-dialog name="duplicate-scene" :title="__('Duplicate Scene?')" />
     </div>
 </x-app-layout>

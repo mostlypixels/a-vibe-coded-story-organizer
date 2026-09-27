@@ -47,8 +47,10 @@ Reuse a component before adding local Blade and Tailwind markup.
 | `x-button` | Link or button with semantic variants |
 | `x-icon-button` | Compact icon action |
 | `x-edit-actions`, `x-create-actions` | Standard form actions |
-| `x-delete-button` | Labeled delete action |
-| `x-delete-with-move-dialog` | Delete or reparent children |
+| `x-delete-button`, `x-icon-delete-button` | Delete action; opens the layout's shared `confirm-delete` dialog |
+| `x-delete-with-move-dialog` | Delete or reparent children, for one entity |
+| `x-delete-with-move-list-dialog`, `x-icon-delete-with-move-button` | The same for a list: one dialog per page, filled by the row button |
+| `x-duplicate-dialog`, `x-icon-duplicate-button` | Duplicate under a new name; a list renders one dialog and each row button fills it |
 | `x-chip-picker` | Searchable multi-select |
 | `x-event-picker`, `x-tag-picker` | Domain wrappers around the chip picker |
 
@@ -63,6 +65,9 @@ Reuse a component before adding local Blade and Tailwind markup.
 | `x-tooltip` | Hover and focus hint |
 | `x-dialog` | Application dialog built on `x-modal` |
 | `x-modal` | Low-level focus-trapped modal shell |
+
+> [!WARNING]
+> Do not render a dialog in each row of a list. Each copy carries its own form and focus-trap code, and a "move to" list inside it repeats every row. A 76-chapter list was 1.4 MB. Render one dialog per page, and let the row button send its data with the open event (`open-confirm-delete`, `open-duplicate`, `open-delete-with-move`).
 
 Put an `x-disclosure-button` in the `trigger` slot of `x-dropdown` or `x-popover`. It reads the panel id through `@aware` and sets `aria-expanded` and `aria-controls`. A plain `<button>` there gets neither.
 

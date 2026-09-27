@@ -1,19 +1,22 @@
 @props([
     'name',
     'title' => null,
+    // An Alpine expression for a title that changes per opening, e.g. a shared dialog.
+    'titleExpression' => null,
     'maxWidth' => '2xl',
     // An untitled caller passes the id of its own heading.
     'labelledby' => null,
 ])
 
 @php
-    $labelledby = $title ? $name.'-title' : $labelledby;
+    $hasTitle = $title || $titleExpression;
+    $labelledby = $hasTitle ? $name.'-title' : $labelledby;
 @endphp
 
 <x-modal :name="$name" :max-width="$maxWidth" :labelledby="$labelledby" focusable>
-    @if ($title)
+    @if ($hasTitle)
         <div class="flex items-center justify-between border-b border-border px-6 py-4">
-            <x-heading level="3" :id="$labelledby">{{ $title }}</x-heading>
+            <x-heading level="3" :id="$labelledby" :x-text="$titleExpression">{{ $title }}</x-heading>
             <x-icon-close-button x-on:click="$dispatch('close')" />
         </div>
     @endif

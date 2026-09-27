@@ -59,7 +59,7 @@
                         </x-table-cell>
                         <x-table-cell align="right" nowrap sm>
                             <div class="flex items-center justify-end gap-1">
-                                <x-icon-dialog-button icon="copy" variant="outline-solid" :modal="'duplicate-codex-entry-'.$entry->id" :label="__('Duplicate')" />
+                                <x-icon-duplicate-button dialog="duplicate-codex-entry" :action="route('codex.duplicate', $entry)" :suggestion="$duplicateNames[$entry->id]" />
                                 <x-icon-edit-link :href="route('codex.edit', $entry)" />
                                 <x-icon-delete-button :action="route('codex.destroy', $entry)" :confirm="__('Are you sure you want to delete this entry?')" />
                             </div>
@@ -78,13 +78,6 @@
 
             <x-pagination-bar :paginator="$entries" />
 
-            @foreach ($entries as $entry)
-                <x-duplicate-dialog
-                    name="duplicate-codex-entry-{{ $entry->id }}"
-                    :action="route('codex.duplicate', $entry)"
-                    :title="__('Duplicate :label', ['label' => $type->label()])"
-                    :suggestion="$duplicateNames[$entry->id]"
-                />
-            @endforeach
+            <x-duplicate-dialog name="duplicate-codex-entry" :title="__('Duplicate :label', ['label' => $type->label()])" />
     </div>
 </x-app-layout>

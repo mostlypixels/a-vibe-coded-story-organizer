@@ -1630,8 +1630,8 @@ class SceneTest extends TestCase
         $this->actingAs($user)
             ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
-            ->assertSee('duplicate-scene-'.$scene->id, false)
-            ->assertSee('value="Arrival (2)"', false);
+            ->assertSee('open-duplicate', false)
+            ->assertSee('Arrival (2)', false);
     }
 
     public function test_the_scene_edit_page_shows_a_duplicate_trigger_with_the_suggested_name(): void

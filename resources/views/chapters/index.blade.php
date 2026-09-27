@@ -63,7 +63,7 @@
                                 <x-icon-view-link :href="route('chapters.show', $chapter)" />
                                 <x-icon-edit-link :href="route('chapters.edit', $chapter)" />
                                 @if ($chapter->scenes_count > 0)
-                                    <x-icon-dialog-button :modal="'delete-chapter-'.$chapter->id" />
+                                    <x-icon-delete-with-move-button dialog="delete-chapter" :action="route('chapters.destroy', $chapter)" :exclude="$chapter->id" :child-count="$chapter->scenes_count" child-singular="scene" child-plural="scenes" />
                                 @else
                                     <x-icon-delete-button :action="route('chapters.destroy', $chapter)" :confirm="__('Are you sure you want to delete this chapter?')" />
                                 @endif
@@ -104,19 +104,13 @@
 
             <x-pagination-bar :paginator="$chapters" :range="$pageRange" />
 
-            @foreach ($chapters as $chapter)
-                @if ($chapter->scenes_count > 0)
-                    <x-delete-with-move-dialog
-                        name="delete-chapter-{{ $chapter->id }}"
-                        :action="route('chapters.destroy', $chapter)"
-                        :title="__('Delete Chapter?')"
-                        :child-count="$chapter->scenes_count"
-                        child-singular="scene"
-                        child-plural="scenes"
-                        destination-noun="chapter"
-                        :destinations="$destinationChapters->where('id', '!=', $chapter->id)->values()"
-                    />
-                @endif
-            @endforeach
+            @if ($chapters->contains(fn ($row) => $row->scenes_count > 0))
+                <x-delete-with-move-list-dialog
+                    name="delete-chapter"
+                    :title="__('Delete Chapter?')"
+                    destination-noun="chapter"
+                    :destinations="$destinationChapters"
+                />
+            @endif
     </div>
 </x-app-layout>
