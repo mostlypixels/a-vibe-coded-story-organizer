@@ -6,7 +6,9 @@ use App\Enums\ImportPhase;
 use App\Models\Import;
 use App\Models\Project;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\PartialDeleteDisk;
 use Tests\TestCase;
 
 /**
@@ -107,6 +109,29 @@ class PurgeImportsTest extends TestCase
 
         Storage::disk('local')->assertMissing('imports/orphan.zip');
         Storage::disk('local')->assertMissing('imports/orphan');
+    }
+
+    public function test_it_removes_an_orphaned_folder_when_the_first_delete_stops_part_way(): void
+    {
+        $this->makeWorkingFiles('orphan', daysOld: 30);
+        PartialDeleteDisk::install('local');
+
+        $this->artisan('imports:purge')->assertSuccessful();
+
+        Storage::disk('local')->assertMissing('imports/orphan');
+    }
+
+    public function test_it_logs_a_warning_when_a_folder_cannot_be_deleted(): void
+    {
+        $this->makeWorkingFiles('stuck', daysOld: 30);
+        PartialDeleteDisk::install('local', partialDeletes: 10);
+        Log::spy();
+
+        $this->artisan('imports:purge')->assertSuccessful();
+
+        Log::shouldHaveReceived('warning')
+            ->with('Import working files could not be deleted.', ['path' => 'imports/stuck'])
+            ->once();
     }
 
     public function test_it_keeps_new_working_files_that_have_no_import_row_yet(): void
