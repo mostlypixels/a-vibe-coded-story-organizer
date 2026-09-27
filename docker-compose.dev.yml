@@ -19,6 +19,10 @@ services:
       - MAIL_PORT=1025
       # Vite watches the bind-mounted source by polling — see vite.config.js.
       - VITE_USE_POLLING=true
+      # Compiled Blade views stay inside the container. On the Windows bind mount,
+      # file access per component made big pages 10x slower (#288). A real env var
+      # wins over .env, so the native server keeps storage/framework/views.
+      - VIEW_COMPILED_PATH=/tmp/views
     ports:
       - "${APP_PORT:-8000}:80"
       - "${VITE_PORT:-5173}:5173"

@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-09-27 — Faster pages in Docker on Windows
+
+### Fixed
+
+- Large pages load about seven times faster in the Docker development stack on Windows.
+
 ## 2026-09-27 — Nav sections open in one click (#285)
 
 ### Added

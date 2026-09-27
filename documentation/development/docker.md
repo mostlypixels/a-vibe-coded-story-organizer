@@ -66,6 +66,8 @@ docker compose -f docker-compose.dev.yml exec app npm run build
 
 The stack uses SQLite. The database directory is mounted so data survives restarts. `make clean` removes it.
 
+Compiled Blade views go to `/tmp/views` inside the container, not to the bind mount (`VIEW_COMPILED_PATH`). On Windows, the mount made each view file access slow: large pages took 10 times longer. The native server does not see this variable, so it keeps `storage/framework/views`.
+
 Cache, sessions, and queues use the database. There is no Redis service. Add Redis only when deployment needs justify another service.
 
 ## Xdebug
