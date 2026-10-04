@@ -24,32 +24,32 @@
 
     <div class="space-y-6">
         @if (filled($scene->description))
-            <x-card :title="__('Description')">
+            <x-card :title="__('Description')" icon="tabler-align-left">
                 <x-rich-text :html="$scene->description" />
             </x-card>
         @endif
 
         @if (filled($scene->contents))
-            <x-card :title="__('Prose')">
+            <x-card :title="__('Prose')" icon="tabler-feather">
                 <x-scene-prose :scene="$scene" />
             </x-card>
         @endif
 
         @if (filled($scene->notes))
-            <x-card :title="__('Notes')">
+            <x-card :title="__('Notes')" icon="tabler-note">
                 <x-rich-text :html="$scene->notes" />
             </x-card>
         @endif
 
         @if ($scene->event)
-            <x-card :title="__('Happens during')">
+            <x-card :title="__('Happens during')" icon="tabler-calendar-event">
                 <a href="{{ route('events.show', $scene->event) }}" class="text-link hover:text-link-hover">{{ $scene->event->title }}</a>
                 <span class="text-sm text-content-muted"> &middot; <x-date :value="$scene->event->event_datetime" with-time /></span>
             </x-card>
         @endif
 
         @if ($scene->mentionedEvents->isNotEmpty())
-            <x-card :title="__('Mentions')">
+            <x-card :title="__('Mentions')" icon="tabler-at">
                 <x-table>
                     <x-slot:head>
                         <x-table-heading>{{ __('Event') }}</x-table-heading>
@@ -69,7 +69,7 @@
         @endif
 
         @if ($referencedEntries->isNotEmpty())
-            <x-card :title="__('Codex references')">
+            <x-card :title="__('Codex references')" icon="entity-codex">
                 @include('codex.partials.referenced-entries', ['referencedEntries' => $referencedEntries, 'scene' => $scene])
             </x-card>
         @endif

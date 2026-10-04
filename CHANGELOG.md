@@ -17,6 +17,19 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-04 — Codex sheet, card and list refresh (#302)
+
+### Added
+
+- Icons on card titles, the dashboard and recent lists, plus a large faint icon behind each card header.
+- Event dates on codex attribute timelines.
+
+### Changed
+
+- The codex sheet shows the gallery beside the description, aliases, tags and files in sidebar cards, and attribute changes as tables.
+- Scenes and chapters lists give the description its own column and show the position next to the chapter or act.
+- The story overview chapter pager sits under the act title.
+
 ## 2026-09-27 — List filters fit on a phone (#301)
 
 ### Fixed

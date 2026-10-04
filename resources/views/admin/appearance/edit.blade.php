@@ -40,9 +40,9 @@
         @csrf
         @method('patch')
 
-        <x-card class="max-w-5xl">
+        <x-card icon="tabler-palette" class="max-w-5xl">
             <x-slot name="header">
-                <x-heading level="3">{{ __('Colour theme') }}</x-heading>
+                <x-heading level="3" icon="tabler-palette">{{ __('Colour theme') }}</x-heading>
                 <p class="mt-1 text-sm text-content-muted">
                     {{ __('Choose the colour theme this account uses across the app.') }}
                 </p>
@@ -65,9 +65,9 @@
             </fieldset>
         </x-card>
 
-        <x-card class="max-w-5xl mt-6">
+        <x-card icon="tabler-typography" class="max-w-5xl mt-6">
             <x-slot name="header">
-                <x-heading level="3">{{ __('Interface font') }}</x-heading>
+                <x-heading level="3" icon="tabler-typography">{{ __('Interface font') }}</x-heading>
                 <p class="mt-1 text-sm text-content-muted">
                     {{ __('The typeface used for menus, buttons and labels.') }}
                 </p>
@@ -115,9 +115,9 @@
             </div>
         </x-card>
 
-        <x-card class="max-w-5xl mt-6">
+        <x-card icon="tabler-feather" class="max-w-5xl mt-6">
             <x-slot name="header">
-                <x-heading level="3">{{ __('Manuscript font') }}</x-heading>
+                <x-heading level="3" icon="tabler-feather">{{ __('Manuscript font') }}</x-heading>
                 <p class="mt-1 text-sm text-content-muted">
                     {{ __('The typeface used for scene text and other long-form prose.') }}
                 </p>
@@ -170,9 +170,9 @@
             </div>
         </x-card>
 
-        <x-card class="max-w-5xl mt-6">
+        <x-card icon="tabler-world" class="max-w-5xl mt-6">
             <x-slot name="header">
-                <x-heading level="3">{{ __('Date & time locale') }}</x-heading>
+                <x-heading level="3" icon="tabler-world">{{ __('Date & time locale') }}</x-heading>
                 <p class="mt-1 text-sm text-content-muted">
                     {{ __('Choose how event dates and times are written across the app.') }}
                 </p>

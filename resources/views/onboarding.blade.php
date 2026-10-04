@@ -13,13 +13,13 @@
             </p>
         </x-card>
 
-        <x-collapsible-card :title="__('What\'s a project?')">
+        <x-collapsible-card :title="__('What\'s a project?')" icon="tabler-help-circle">
             <p class="text-content-muted">
                 {{ __('A project is your universe. It holds all the books in your series and one codex you share across them. The codex is where you keep your worldbuilding: the people, the places, and the groups in your story.') }}
             </p>
         </x-collapsible-card>
 
-        <x-collapsible-card :title="__('What are attributes?')">
+        <x-collapsible-card :title="__('What are attributes?')" icon="tabler-help-circle">
             <div class="space-y-3 text-content-muted">
                 <p>
                     {{ __("Attributes are the facts you track about a character, place, or group. A character has an age. A city has a ruler. A guild has a founding year. You pick which facts matter, and every character gets the same set, so you don't forget one.") }}

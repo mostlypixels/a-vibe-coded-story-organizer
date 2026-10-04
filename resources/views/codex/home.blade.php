@@ -7,6 +7,7 @@
 
             <x-recent-list
                 :title="__('Recently edited :items', ['items' => $noun])"
+                :icon="'entity-'.$codexType->value"
                 :items="$recentEntries[$codexType->value]"
                 :all-url="route('projects.codex.index', [$project, $codexType->routeKey()])"
                 :all-label="__('View all :items', ['items' => $noun])"

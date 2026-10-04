@@ -7,9 +7,9 @@
 
     @include('admin.data.partials.subnav')
 
-    <x-card>
+    <x-card icon="tabler-package-export">
         <x-slot name="header">
-            <x-heading level="3">{{ __('Export project') }}</x-heading>
+            <x-heading level="3" icon="tabler-package-export">{{ __('Export project') }}</x-heading>
         </x-slot>
 
         <p class="text-sm text-content-muted">

@@ -3,41 +3,18 @@
 
     $cover = $entry->media->firstWhere('collection', CodexMediaCollection::Cover);
     $referenceImages = $entry->media->where('collection', CodexMediaCollection::ReferenceImage)->sortBy('position')->values();
-    $referenceFiles = $entry->media->where('collection', CodexMediaCollection::ReferenceFile)->sortBy('position')->values();
+    $gallery = collect([$cover])->filter()->concat($referenceImages)->map(fn ($media) => [
+        'url' => $media->url(),
+        'alt' => $media->original_name ?? $entry->name,
+    ])->values();
+    $referenceFiles =$entry->media->where('collection', CodexMediaCollection::ReferenceFile)->sortBy('position')->values();
 @endphp
 
 <x-app-layout>
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div class="flex items-start gap-4">
-            @if ($cover)
-                <img src="{{ $cover->url() }}" alt="{{ $entry->name }}" class="h-20 w-20 shrink-0 rounded-md border border-border object-cover">
-            @endif
-
-            <div>
-                <x-heading level="1">{{ $entry->name }}</x-heading>
-                <p class="text-sm text-content-muted">{{ $entry->type->label() }}</p>
-
-                {{-- Labelled separately: badge colour alone does not say where the aliases end. --}}
-                <div class="mt-2 space-y-1">
-                    @if ($entry->aliases->isNotEmpty())
-                        <div class="flex flex-wrap items-center gap-1">
-                            <span class="mr-1 text-xs text-content-muted">{{ __('Also known as') }}</span>
-                            @foreach ($entry->aliases as $alias)
-                                <x-badge>{{ $alias->alias }}</x-badge>
-                            @endforeach
-                        </div>
-                    @endif
-
-                    @if ($entry->tags->isNotEmpty())
-                        <div class="flex flex-wrap items-center gap-1">
-                            <span class="mr-1 text-xs text-content-muted">{{ __('Tags') }}</span>
-                            @foreach ($entry->tags as $tag)
-                                <x-badge variant="accent">{{ $tag->name }}</x-badge>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-            </div>
+        <div>
+            <x-heading level="1">{{ $entry->name }}</x-heading>
+            <p class="text-sm text-content-muted">{{ $entry->type->label() }}</p>
         </div>
 
         <div class="flex shrink-0 items-center gap-1">
@@ -49,43 +26,81 @@
     </div>
 
     <div class="space-y-6">
-        @if (filled($entry->description))
-            <x-card :title="__('Description')">
-                <x-rich-text :html="$entry->description" />
-            </x-card>
-        @endif
+        @php($hasSidebar = $gallery->isNotEmpty() || $referenceFiles->isNotEmpty() || $entry->aliases->isNotEmpty() || $entry->tags->isNotEmpty())
 
-        @if ($referenceImages->isNotEmpty())
-            <x-card :title="__('Reference images')">
-                <ul class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-                    @foreach ($referenceImages as $image)
-                        <li>
-                            <a href="{{ $image->url() }}" target="_blank" rel="noopener">
-                                <img src="{{ $image->url() }}" alt="{{ $image->original_name }}" class="aspect-square w-full rounded-md border border-border object-cover">
-                            </a>
-                        </li>
-                    @endforeach
-                </ul>
-            </x-card>
-        @endif
+        @if ($hasSidebar || filled($entry->description))
+            <div class="grid gap-6 md:grid-cols-12">
+                @if ($hasSidebar)
+                    <div class="space-y-4 md:col-span-3">
+                        @if ($gallery->isNotEmpty())
+                            <div x-data="{ images: @js($gallery), current: 0 }">
+                                <img :src="images[current].url" :alt="images[current].alt" class="aspect-square w-full rounded-md border border-border object-cover">
 
-        @if ($referenceFiles->isNotEmpty())
-            <x-card :title="__('Reference files')">
-                <ul class="space-y-2">
-                    @foreach ($referenceFiles as $file)
-                        <li class="flex items-center justify-between gap-2 text-sm">
-                            <span class="truncate">{{ $file->original_name }}</span>
-                            <x-icon-download-button :href="$file->url()" :download="$file->original_name" class="shrink-0" />
-                        </li>
-                    @endforeach
-                </ul>
-            </x-card>
+                                @if ($gallery->count() > 1)
+                                    <ul class="mt-2 grid grid-cols-4 gap-2">
+                                        <template x-for="(image, index) in images" :key="index">
+                                            <li>
+                                                <button type="button" @click="current = index" :aria-label="image.alt" :aria-current="current === index" class="block w-full rounded-md focus-visible:outline-2 focus-visible:outline-offset-2">
+                                                    <img :src="image.url" :alt="image.alt" class="aspect-square w-full rounded-md border object-cover" :class="current === index ? 'border-accent' : 'border-border'">
+                                                </button>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                @endif
+                            </div>
+                        @endif
+
+                        @if ($entry->aliases->isNotEmpty())
+                            <x-card :title="__('Also known as')" icon="tabler-id">
+                                <div class="flex flex-wrap gap-1">
+                                    @foreach ($entry->aliases as $alias)
+                                        <x-badge>{{ $alias->alias }}</x-badge>
+                                    @endforeach
+                                </div>
+                            </x-card>
+                        @endif
+
+                        @if ($entry->tags->isNotEmpty())
+                            <x-card :title="__('Tags')" icon="tabler-tags">
+                                <div class="flex flex-wrap gap-1">
+                                    @foreach ($entry->tags as $tag)
+                                        <a href="{{ route('projects.codex.index', [$project, $entry->type->routeKey(), 'tag' => $tag->id]) }}" class="hover:opacity-80">
+                                            <x-badge variant="accent">{{ $tag->name }}</x-badge>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </x-card>
+                        @endif
+
+                        @if ($referenceFiles->isNotEmpty())
+                            <x-card :title="__('Reference files')" icon="tabler-paperclip">
+                                <ul class="space-y-2">
+                                    @foreach ($referenceFiles as $file)
+                                        <li class="flex items-center justify-between gap-2 text-sm">
+                                            <span class="truncate">{{ $file->original_name }}</span>
+                                            <x-icon-download-button :href="$file->url()" :download="$file->original_name" class="shrink-0" />
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </x-card>
+                        @endif
+                    </div>
+                @endif
+
+                @if (filled($entry->description))
+                    <div class="{{ $hasSidebar ? 'md:col-span-9' : 'md:col-span-12' }}">
+                        <x-card :title="__('Description')" icon="tabler-align-left">
+                            <x-rich-text :html="$entry->description" />
+                        </x-card>
+                    </div>
+                @endif
+            </div>
         @endif
 
         @include('codex.partials.attribute-values')
 
         @if ($entry->inceptionEvent || $entry->terminationEvent)
-            <x-card :title="__('Lifespan')">
+            <x-card :title="__('Lifespan')" icon="tabler-hourglass">
                 <dl class="space-y-1 text-sm">
                     @if ($entry->inceptionEvent)
                         <div class="flex gap-2">
@@ -105,7 +120,7 @@
         @endif
 
         @if ($referencingScenes->isNotEmpty())
-            <x-card :title="__('Referenced in scenes')">
+            <x-card :title="__('Referenced in scenes')" icon="entity-scene">
                 <x-references.scene-table
                     :scenes="$referencingScenes->take(config('search.cap'))"
                     :show-book="$showBook"

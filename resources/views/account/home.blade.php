@@ -2,7 +2,7 @@
     <x-page-heading>{{ __('Account') }}</x-page-heading>
 
     <div class="grid gap-6 md:grid-cols-2">
-        <x-card :title="__('Profile')" stretch flush-footer>
+        <x-card :title="__('Profile')" icon="tabler-user" stretch flush-footer>
             <p>{{ __('Your name, email and password.') }}</p>
 
             <x-slot:footer>
@@ -12,7 +12,7 @@
             </x-slot:footer>
         </x-card>
 
-        <x-card :title="__('Configuration')" stretch flush-footer>
+        <x-card :title="__('Configuration')" icon="tabler-settings" stretch flush-footer>
             <p>{{ __('App-wide settings: general options, appearance and data.') }}</p>
 
             <x-slot:footer>

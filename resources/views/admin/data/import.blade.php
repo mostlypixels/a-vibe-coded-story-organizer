@@ -20,9 +20,9 @@
         </div>
     @endif
 
-    <x-card class="max-w-md mb-8">
+    <x-card icon="tabler-settings" class="max-w-md mb-8">
         <x-slot name="header">
-            <x-heading level="4">{{ __('Import settings') }}</x-heading>
+            <x-heading level="4" icon="tabler-settings">{{ __('Import settings') }}</x-heading>
         </x-slot>
 
         <form method="POST" action="{{ route('admin.data.import-settings') }}" class="space-y-4">
@@ -66,9 +66,9 @@
         </form>
     </x-card>
 
-    <x-card>
+    <x-card icon="tabler-file-import">
         <x-slot name="header">
-            <x-heading level="3">{{ __('Import') }}</x-heading>
+            <x-heading level="3" icon="tabler-file-import">{{ __('Import') }}</x-heading>
         </x-slot>
 
         <p class="text-sm text-content-muted">

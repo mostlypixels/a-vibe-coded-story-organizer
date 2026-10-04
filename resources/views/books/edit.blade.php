@@ -28,7 +28,7 @@
             </form>
         </x-card>
 
-        <x-card :title="__('Book metadata')">
+        <x-card :title="__('Book metadata')" icon="entity-book">
             <p class="text-sm text-content-muted">{{ __('Used when exporting this book as an EPUB.') }}</p>
 
             <div class="mt-4 space-y-6">
@@ -59,7 +59,7 @@
             </div>
         </x-card>
 
-        <x-card :title="__('Front & back matter')">
+        <x-card :title="__('Front & back matter')" icon="tabler-files">
             <p class="text-sm text-content-muted">{{ __('Optional pages placed around the manuscript in the EPUB export.') }}</p>
 
             <div class="mt-4 space-y-6">
@@ -127,7 +127,7 @@
                 </x-edit-actions>
             @endif
 
-            <x-card :title="$coverUrl ? __('Replace cover image') : __('Cover image')">
+            <x-card :title="$coverUrl ? __('Replace cover image') : __('Cover image')" icon="tabler-photo">
                 <p class="text-sm text-content-muted">{{ __('The EPUB cover for this book.') }}</p>
 
                 @if ($coverUrl)

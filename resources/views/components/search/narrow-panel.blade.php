@@ -4,9 +4,9 @@
     $numbering = \App\Support\StoryNumbering::fromChapters($chapters);
 @endphp
 
-<x-collapsible-card :open="$scope->isNarrowed()">
+<x-collapsible-card :open="$scope->isNarrowed()" icon="tabler-filter">
     <x-slot name="header">
-        <x-heading level="3" class="inline">{{ __('Narrow') }}</x-heading>
+        <x-heading level="3" icon="tabler-filter">{{ __('Narrow') }}</x-heading>
     </x-slot>
 
     <div class="space-y-6">

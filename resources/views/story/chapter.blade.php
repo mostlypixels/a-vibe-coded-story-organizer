@@ -13,7 +13,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-3">
-                <x-collapsible-card :title="__('Table of Contents')" class="lg:sticky lg:top-6">
+                <x-collapsible-card :title="__('Table of Contents')" icon="tabler-list-numbers" class="lg:sticky lg:top-6">
                     <div class="space-y-3">
                         @foreach ($tocActs as $act)
                             <div>
@@ -46,8 +46,6 @@
             <div class="lg:col-span-9 space-y-10">
                 @if ($currentChapter)
                     <div class="space-y-6">
-                        <x-chapter-pager :book="$book" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
-
                         <div class="flex items-center justify-between gap-4 text-nav-content bg-nav rounded-md px-4 py-2">
                             <h2 id="act-{{ $currentChapter->act->id }}" class="text-2xl font-bold scroll-mt-16">
                                 {{ $numbering->actLabel($currentChapter->act) }}
@@ -58,6 +56,8 @@
                                 class="shrink-0 text-base font-normal"
                             />
                         </div>
+
+                        <x-chapter-pager :book="$book" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
 
                         <x-story-chapter :chapter="$currentChapter" :numbering="$numbering" />
 

@@ -31,6 +31,7 @@
                 <x-slot:head>
                     <x-sortable-header field="position" :sort="$sort" :direction="$direction">{{ __('#') }}</x-sortable-header>
                     <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
+                    <x-table-heading>{{ __('Description') }}</x-table-heading>
                     <x-table-heading>{{ __('Act') }}</x-table-heading>
                     <x-table-heading>{{ __('Scenes') }}</x-table-heading>
                     <x-table-heading class="text-right">{{ __('Words') }}</x-table-heading>
@@ -45,11 +46,9 @@
                         <x-table-cell muted nowrap class="{{ $highlighted ? 'border-l-4 border-accent' : '' }}">{{ $numbering->chapter($chapter) }}</x-table-cell>
                         <x-table-cell>
                             <a href="{{ route('chapters.show', $chapter) }}" class="font-semibold text-content hover:text-link">{{ $chapter->name }}</a>
-                            @if ($chapter->description)
-                                <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$chapter->description" /></div>
-                            @endif
                         </x-table-cell>
-                        <x-table-cell muted>{{ $chapter->act->name }}</x-table-cell>
+                        <x-table-cell muted sm class="min-w-64"><x-rich-text-excerpt :html="$chapter->description" /></x-table-cell>
+                        <x-table-cell muted>{{ $numbering->act($chapter->act) }} &mdash; {{ $chapter->act->name }} <span class="whitespace-nowrap text-content-subtle">({{ __('chapter #:position', ['position' => $chapter->position]) }})</span></x-table-cell>
                         <x-table-cell muted>{{ $chapter->scenes_count }}</x-table-cell>
                         <x-table-cell align="right" muted nowrap>
                             <x-word-count :count="$chapter->word_count" variant="inline" />
@@ -72,7 +71,7 @@
                     </x-table-row>
                 @empty
                     <x-table-empty
-                        :colspan="6"
+                        :colspan="7"
                         :filtered="request()->hasAny(['search', 'act'])"
                         :create-url="route('books.chapters.create', $book)"
                         :create-label="__('New Chapter')"
@@ -83,7 +82,7 @@
                 @if ($chapters->isNotEmpty())
                     <x-slot:foot>
                         <tr>
-                            <x-table-cell colspan="3" total>{{ __('Page total') }}</x-table-cell>
+                            <x-table-cell colspan="4" total>{{ __('Page total') }}</x-table-cell>
                             <x-table-cell total>{{ $chapters->sum('scenes_count') }}</x-table-cell>
                             <x-table-cell align="right" total nowrap>
                                 <x-word-count :count="$chapters->sum('word_count')" variant="inline" />
@@ -91,7 +90,7 @@
                             <x-table-cell></x-table-cell>
                         </tr>
                         <tr>
-                            <x-table-cell colspan="3" total>{{ __('Full total') }}</x-table-cell>
+                            <x-table-cell colspan="4" total>{{ __('Full total') }}</x-table-cell>
                             <x-table-cell total>{{ $fullSceneCount }}</x-table-cell>
                             <x-table-cell align="right" total nowrap>
                                 <x-word-count :count="$fullWordCount" variant="inline" />

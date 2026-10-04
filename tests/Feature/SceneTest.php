@@ -1308,12 +1308,27 @@ class SceneTest extends TestCase
         $this->assertSame('2', $this->numberColumnFor($html, 'Closing'));
     }
 
+    public function test_the_scenes_index_shows_the_description_in_its_own_column(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        Scene::factory()->for($chapter)->create(['name' => 'A described scene', 'description' => '<p>Rain on the barricade.</p>']);
+
+        $html = $this->actingAs($user)
+            ->get(route('books.scenes.index', $chapter->act->book))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame('A described scene', $this->columnCellFor($html, 'A described scene', 1));
+        $this->assertSame('Rain on the barricade.', $this->columnCellFor($html, 'A described scene', 2));
+    }
+
     /**
-     * The new "In chapter" column shows the raw, per-chapter `position` — the
+     * The Chapter column shows the book-wide chapter number and ends with the raw, per-chapter `position` — the
      * gappy sibling-order value move up/down writes — which is deliberately not
      * the same number as the continuous '#' column beside it.
      */
-    public function test_the_scenes_index_shows_the_in_chapter_column_with_the_raw_position(): void
+    public function test_the_scenes_index_chapter_column_shows_chapter_number_and_raw_position(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
@@ -1324,8 +1339,8 @@ class SceneTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // Column order: #, Title, Chapter, In chapter, Status, Event, Words, actions.
-        $this->assertSame('7', $this->columnCellFor($html, 'A gappy scene', 3));
+        // Column order: #, Title, Description, Chapter, Status, Event, Words, actions.
+        $this->assertSame('1 &mdash; '.$chapter->name.' (scene #7)', $this->columnCellFor($html, 'A gappy scene', 3));
         // The '#' column beside it shows the continuous number (1, the only scene
         // in the project), deliberately not the same value as the raw position.
         $this->assertSame('1', $this->numberColumnFor($html, 'A gappy scene'));

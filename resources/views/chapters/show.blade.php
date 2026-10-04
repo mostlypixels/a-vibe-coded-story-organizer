@@ -35,13 +35,13 @@
 
     <div class="space-y-6">
         @if (filled($chapter->description))
-            <x-card :title="__('Description')">
+            <x-card :title="__('Description')" icon="tabler-align-left">
                 <x-rich-text :html="$chapter->description" />
             </x-card>
         @endif
 
         @if ($scenes->isNotEmpty())
-            <x-card :title="__('Scenes')">
+            <x-card :title="__('Scenes')" icon="entity-scene">
                 <x-table>
                     <x-slot:head>
                         <x-table-heading>{{ __('Scene') }}</x-table-heading>

@@ -1,6 +1,6 @@
-<x-card class="max-w-xl">
+<x-card icon="tabler-user" class="max-w-xl">
     <x-slot name="header">
-        <x-heading level="3">{{ __('Profile Information') }}</x-heading>
+        <x-heading level="3" icon="tabler-user">{{ __('Profile Information') }}</x-heading>
         <p class="mt-1 text-sm text-content-muted">
             {{ __("Update your account's profile information and email address.") }}
         </p>

@@ -26,7 +26,7 @@
 
         @include('codex.partials.attribute-timeline')
 
-        <x-card :title="__('Referenced in scenes')">
+        <x-card :title="__('Referenced in scenes')" icon="entity-scene">
             @if ($referencingScenes->isEmpty())
                 <p class="text-sm text-content-muted">{{ __('No scenes reference this entry yet.') }}</p>
             @else

@@ -1,4 +1,4 @@
-<x-collapsible-card :title="$title">
+<x-collapsible-card :title="$title" icon="tabler-clock">
     @if ($moment === null)
         <p class="text-sm text-content-muted">&mdash; {{ __('Assign an event to this scene to see codex values.') }}</p>
     @elseif ($groups->isEmpty())

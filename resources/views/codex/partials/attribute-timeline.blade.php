@@ -1,5 +1,5 @@
 <div class="border-t border-border pt-10">
-    <x-card :title="__('Attribute timeline')">
+    <x-card :title="__('Attribute timeline')" icon="tabler-timeline">
         <p class="text-sm text-content-muted">
             {{ __('Each attribute\'s value over time. A period runs from its event until the next change. Editing a value and pressing Save updates it in place.') }}
         </p>
@@ -61,7 +61,10 @@
                                     <input type="hidden" name="form_key" value="period_{{ $period->id }}">
                                     <span class="inline-flex items-center gap-1 w-40 shrink-0 text-sm font-medium text-content-muted">
                                         <span aria-hidden="true">&#9679;</span>
-                                        {{ $period->startEvent->title }}
+                                        <span>
+                                            {{ $period->startEvent->title }}
+                                            <x-date class="block text-xs font-normal text-content-subtle" :value="$period->startEvent->event_datetime" />
+                                        </span>
                                     </span>
                                     <label class="sr-only" for="period_{{ $period->id }}">{{ __('Value from :event', ['event' => $period->startEvent->title]) }}</label>
                                     <x-text-input

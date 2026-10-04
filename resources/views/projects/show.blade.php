@@ -31,6 +31,7 @@
         <div class="lg:col-span-9 grid gap-6 md:grid-cols-2">
             <x-recent-list
                 :title="__('Recent scenes')"
+                icon="entity-scene"
                 :items="$recentScenes"
                 :all-url="route('books.story.home', $book)"
                 :all-label="__('View the story')"
@@ -39,6 +40,7 @@
 
             <x-recent-list
                 :title="__('Recent codex entries')"
+                icon="entity-codex"
                 :items="$recentCodexEntries"
                 :all-url="route('projects.codex.home', $project)"
                 :all-label="__('View the codex')"
@@ -48,13 +50,13 @@
         </div>
 
         <div class="lg:col-span-3 space-y-6">
-            <x-card :title="__('Actions')">
+            <x-card :title="__('Actions')" icon="tabler-bolt">
                 <x-button :href="route('projects.edit', $project)" variant="primary" icon="tabler-pencil" class="w-full">
                     {{ __('Edit Project') }}
                 </x-button>
             </x-card>
 
-            <x-card :title="__('Books')">
+            <x-card :title="__('Books')" icon="entity-book">
                 <ul class="divide-y divide-border">
                     @foreach ($books as $book)
                         <li class="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
@@ -77,10 +79,10 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div class="lg:col-span-9">
-            <x-card>
+            <x-card icon="tabler-chart-bar">
                 <x-slot:header>
                     <div class="flex items-center justify-between gap-4">
-                        <x-heading level="3">{{ __('Progress') }}</x-heading>
+                        <x-heading level="3" icon="tabler-chart-bar">{{ __('Progress') }}</x-heading>
                         <a href="{{ route('projects.progress', $project) }}" class="text-sm text-content-muted hover:text-content">
                             {{ __('View history →') }}
                         </a>
@@ -92,11 +94,7 @@
         </div>
 
         <div class="lg:col-span-3 space-y-6">
-            <x-card>
-                <x-slot:header>
-                    <x-heading level="3">{{ __('Goals') }}</x-heading>
-                </x-slot:header>
-
+            <x-card :title="__('Goals')" icon="tabler-target-arrow">
                 <div class="space-y-4">
                     @if ($project->daily_word_goal !== null)
                         <x-progress-bar :label="__('Today')" :value="$writtenToday" :goal="$project->daily_word_goal" />

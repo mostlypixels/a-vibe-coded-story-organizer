@@ -24,13 +24,13 @@
 
     <div class="space-y-6">
         @if (filled($act->description))
-            <x-card :title="__('Description')">
+            <x-card :title="__('Description')" icon="tabler-align-left">
                 <x-rich-text :html="$act->description" />
             </x-card>
         @endif
 
         @if ($act->chapters->isNotEmpty())
-            <x-card :title="__('Chapters')">
+            <x-card :title="__('Chapters')" icon="entity-chapter">
                 <div x-data="{ showAll: false }">
                     @php $chapters = $act->chapters->sortBy('position')->values(); @endphp
                     <x-table>

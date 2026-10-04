@@ -1,5 +1,6 @@
 @props([
     'title',
+    'icon' => null,
     'items',
     'allUrl',
     'allLabel' => null,
@@ -10,7 +11,7 @@
     'emptyHint' => null,
 ])
 
-<x-card :title="$title" stretch flush-footer :padded="false">
+<x-card :title="$title" :icon="$icon" stretch flush-footer :padded="false">
     @if (count($items) === 0)
         <div class="space-y-3 px-6 py-4 text-sm text-content-muted">
             <p>{{ __('No :items yet.', ['items' => $noun ?? __('entries')]) }}</p>

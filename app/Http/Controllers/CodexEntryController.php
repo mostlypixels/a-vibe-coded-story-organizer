@@ -113,7 +113,7 @@ class CodexEntryController extends Controller
     {
         $this->authorize('view', $codexEntry->project);
 
-        $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent', 'inceptionEvent', 'terminationEvent');
+        $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent.scenes', 'inceptionEvent', 'terminationEvent');
 
         $project = $codexEntry->project;
 

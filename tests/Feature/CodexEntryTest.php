@@ -18,6 +18,8 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
+use App\Support\DateFormat;
+use App\Support\LocaleChoice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -750,6 +752,52 @@ class CodexEntryTest extends TestCase
             ->assertOk()
             ->assertSee('Hair color')
             ->assertSeeInOrder(['Black', 'Grey', 'White']);
+    }
+
+    public function test_show_page_tag_links_to_the_index_filtered_by_that_tag(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $tag = Tag::factory()->for($project)->create(['name' => 'Fae']);
+        $entry->tags()->attach($tag);
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertSee(route('projects.codex.index', [$project, 'characters', 'tag' => $tag->id]), false);
+    }
+
+    public function test_attribute_timelines_show_each_event_date_but_not_the_start_date(): void
+    {
+        $user = User::factory()->create(['locale' => 'en']);
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create(['name' => 'Hair color']);
+        $event = Event::factory()->for($project)->create([
+            'title' => 'The Barricade',
+            'event_datetime' => '1832-06-05 18:00',
+        ]);
+
+        CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+            'start_event_id' => $project->startEvent()->id,
+            'value' => 'Black',
+        ]);
+        CodexAttributeValue::factory()->for($entry, 'entry')->for($attribute, 'attribute')->create([
+            'start_event_id' => $event->id,
+            'value' => 'White',
+        ]);
+
+        $startDate = DateFormat::date($project->startEvent()->event_datetime, LocaleChoice::resolve('en'));
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertSeeInOrder(['June 5, 1832', 'White'])
+            ->assertDontSee('The Barricade')
+            ->assertDontSee($startDate);
+
+        $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->assertSeeInOrder(['The Barricade', 'June 5, 1832', 'White']);
     }
 
     public function test_create_attaches_only_the_picked_attributes(): void

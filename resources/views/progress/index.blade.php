@@ -21,16 +21,18 @@
         </div>
     </x-card>
 
-    <x-card class="mt-6">
-        <div class="flex items-center justify-between gap-4">
-            <x-heading level="3">{{ __('Challenges') }}</x-heading>
-            <x-button variant="primary" size="sm" :href="route('projects.challenges.create', $project)">{{ __('New challenge') }}</x-button>
-        </div>
+    <x-card class="mt-6" icon="tabler-trophy">
+        <x-slot:header>
+            <div class="flex items-center justify-between gap-4">
+                <x-heading level="3" icon="tabler-trophy">{{ __('Challenges') }}</x-heading>
+                <x-button variant="primary" size="sm" :href="route('projects.challenges.create', $project)">{{ __('New challenge') }}</x-button>
+            </div>
+        </x-slot:header>
 
         @if ($runningChallenges->isEmpty() && $upcomingChallenges->isEmpty() && $pastChallenges->isEmpty())
-            <p class="mt-4 text-content-muted">{{ __("You haven't started a challenge yet.") }}</p>
+            <p class="text-content-muted">{{ __("You haven't started a challenge yet.") }}</p>
         @else
-            <div class="mt-4 space-y-6">
+            <div class="space-y-6">
                 @if ($runningChallenges->isNotEmpty())
                     <div class="grid gap-4 sm:grid-cols-2">
                         @foreach ($runningChallenges as $pair)

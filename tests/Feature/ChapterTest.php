@@ -55,6 +55,36 @@ class ChapterTest extends TestCase
             ->assertSee('The Long Road');
     }
 
+    public function test_the_chapters_index_shows_the_description_in_its_own_column(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        Chapter::factory()->for($act)->create(['name' => 'A described chapter', 'description' => '<p>Rain on the barricade.</p>']);
+
+        $html = $this->actingAs($user)
+            ->get(route('books.chapters.index', $book))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame('A described chapter', $this->columnCellFor($html, 'A described chapter', 1));
+        $this->assertSame('Rain on the barricade.', $this->columnCellFor($html, 'A described chapter', 2));
+    }
+
+    /** The Act column shows the raw, gappy per-act `position`, not the book-wide '#' number. */
+    public function test_the_chapters_index_act_column_shows_act_number_and_raw_position(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['name' => 'Part One']);
+        Chapter::factory()->for($act)->create(['name' => 'A gappy chapter', 'position' => 7]);
+
+        $this->actingAs($user)
+            ->get(route('books.chapters.index', $book))
+            ->assertOk()
+            ->assertSee('1 &mdash; Part One <span class="whitespace-nowrap text-content-subtle">(chapter #7)</span>', false);
+    }
+
     public function test_the_chapters_index_shows_only_the_chapters_of_the_book_in_the_url(): void
     {
         $user = User::factory()->create();

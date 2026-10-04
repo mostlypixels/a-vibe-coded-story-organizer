@@ -21,13 +21,13 @@
 
     <div class="space-y-6">
         @if (filled($plotline->description))
-            <x-card :title="__('Description')">
+            <x-card :title="__('Description')" icon="tabler-align-left">
                 <x-rich-text :html="$plotline->description" />
             </x-card>
         @endif
 
         @if ($plotline->events->isNotEmpty())
-            <x-card :title="__('Events')">
+            <x-card :title="__('Events')" icon="tabler-calendar-event">
                 <x-table>
                     <x-slot:head>
                         <x-table-heading>{{ __('Title') }}</x-table-heading>

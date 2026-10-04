@@ -35,8 +35,8 @@
                 <x-slot:head>
                     <x-sortable-header field="position" :sort="$sort" :direction="$direction">{{ __('#') }}</x-sortable-header>
                     <x-sortable-header field="name" :sort="$sort" :direction="$direction">{{ __('Title') }}</x-sortable-header>
+                    <x-table-heading>{{ __('Description') }}</x-table-heading>
                     <x-table-heading>{{ __('Chapter') }}</x-table-heading>
-                    <x-table-heading>{{ __('In chapter') }}</x-table-heading>
                     <x-table-heading>{{ __('Status') }}</x-table-heading>
                     <x-table-heading>{{ __('Event') }}</x-table-heading>
                     <x-table-heading class="text-right">{{ __('Words') }}</x-table-heading>
@@ -58,14 +58,11 @@
                         <x-table-cell :title="$scene->event ? null : __('This scene has no “happens during” event yet.')" muted nowrap class="{{ $markerClass }}">{{ $numbering->scene($scene) }}</x-table-cell>
                         <x-table-cell>
                             <a href="{{ route('scenes.show', $scene) }}" class="font-semibold text-content hover:text-link">{{ $scene->name }}</a>
-                            @if ($scene->description)
-                                <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$scene->description" /></div>
-                            @endif
                         </x-table-cell>
-                        <x-table-cell muted>{{ $scene->chapter->act->name }} &mdash; {{ $scene->chapter->name }}</x-table-cell>
-                        <x-table-cell muted>{{ $scene->position }}</x-table-cell>
+                        <x-table-cell muted sm class="min-w-64"><x-rich-text-excerpt :html="$scene->description" /></x-table-cell>
+                        <x-table-cell muted>{{ $numbering->chapter($scene->chapter) }} &mdash; {{ $scene->chapter->name }} <span class="whitespace-nowrap text-content-subtle">({{ __('scene #:position', ['position' => $scene->position]) }})</span></x-table-cell>
                         <x-table-cell nowrap><x-scene-status-badge :status="$scene->status" /></x-table-cell>
-                        <x-table-cell nowrap sm>
+                        <x-table-cell sm>
                             @if ($scene->event)
                                 <span class="text-content-muted">{{ $scene->event->title }}</span>
                             @else

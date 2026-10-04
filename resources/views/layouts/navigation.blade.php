@@ -13,10 +13,11 @@
                         <x-slot name="trigger">
                             @if ($navigation->hasBook())
                                 <x-disclosure-button class="inline-flex h-12 items-center gap-2 bg-nav-raised px-4 text-sm font-semibold leading-5 text-nav-content hover:bg-nav-raised/80 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-focus transition ease-in-out duration-150">
-                                    <span class="flex flex-col items-start leading-tight">
-                                        <span>{{ $navigation->book->displayName() }}</span>
+                                    {{-- A small fixed cap: the book menu is rarely used and must not crowd the section links. --}}
+                                    <span class="flex max-w-40 flex-col items-start leading-tight">
+                                        <span class="max-w-full truncate" title="{{ $navigation->book->displayName() }}">{{ $navigation->book->displayName() }}</span>
                                         @if ($navigation->book->hasOwnName())
-                                            <span class="text-xs font-normal text-nav-content-muted">{{ $navigation->project->name }}</span>
+                                            <span class="max-w-full truncate text-xs font-normal text-nav-content-muted">{{ $navigation->project->name }}</span>
                                         @endif
                                     </span>
                                     <x-tabler-chevron-down class="h-4 w-4 shrink-0" aria-hidden="true" />

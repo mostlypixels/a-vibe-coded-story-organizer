@@ -1,6 +1,6 @@
-<x-card class="max-w-xl">
+<x-card icon="tabler-lock" class="max-w-xl">
     <x-slot name="header">
-        <x-heading level="3">{{ __('Update Password') }}</x-heading>
+        <x-heading level="3" icon="tabler-lock">{{ __('Update Password') }}</x-heading>
         <p class="mt-1 text-sm text-content-muted">
             {{ __('Ensure your account is using a long, random password to stay secure.') }}
         </p>

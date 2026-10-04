@@ -5,9 +5,9 @@
         </x-heading>
     </x-slot>
 
-    <x-card class="max-w-xl">
+    <x-card icon="tabler-alert-triangle" class="max-w-xl">
         <x-slot name="header">
-            <x-heading level="3">{{ __('Confirm lower retention window') }}</x-heading>
+            <x-heading level="3" icon="tabler-alert-triangle">{{ __('Confirm lower retention window') }}</x-heading>
         </x-slot>
 
         <p class="text-sm text-content-muted">

@@ -5,9 +5,9 @@
         </x-heading>
     </x-slot>
 
-    <x-card>
+    <x-card icon="tabler-database">
         <x-slot name="header">
-            <x-heading level="3">{{ __('Database configuration') }}</x-heading>
+            <x-heading level="3" icon="tabler-database">{{ __('Database configuration') }}</x-heading>
         </x-slot>
 
         <dl class="space-y-4 text-sm">

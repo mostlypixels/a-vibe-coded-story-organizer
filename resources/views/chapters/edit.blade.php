@@ -78,7 +78,7 @@
                 </x-edit-actions>
             @endif
 
-            <x-card :title="$coverUrl ? __('Replace cover image') : __('Cover image')">
+            <x-card :title="$coverUrl ? __('Replace cover image') : __('Cover image')" icon="tabler-photo">
                 <p class="text-sm text-content-muted">{{ __('Optional. Included before this chapter in the EPUB export when chapter covers are enabled.') }}</p>
 
                 @if ($coverUrl)
