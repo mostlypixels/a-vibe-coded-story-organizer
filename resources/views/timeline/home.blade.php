@@ -4,6 +4,7 @@
     <div class="grid gap-6 md:grid-cols-2">
         <x-recent-list
             :title="__('Recently edited plotlines')"
+            icon="tabler-route"
             :items="$recentPlotlines"
             :all-url="route('projects.plotlines.index', $project)"
             :all-label="__('View all plotlines')"
@@ -12,6 +13,7 @@
 
         <x-recent-list
             :title="__('Recently edited events')"
+            icon="tabler-calendar-event"
             :items="$recentEvents"
             :all-url="route('projects.events.index', $project)"
             :all-label="__('View all events')"

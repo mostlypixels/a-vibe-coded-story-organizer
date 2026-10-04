@@ -44,7 +44,7 @@
                 {{ __('Delete Project') }}
             </x-edit-actions>
 
-            <x-card :title="$coverUrl ? __('Replace cover image') : __('Cover image')">
+            <x-card :title="$coverUrl ? __('Replace cover image') : __('Cover image')" icon="tabler-photo">
                 @if ($coverUrl)
                     <img src="{{ $coverUrl }}" alt="{{ $project->name }}" class="w-full rounded-md border border-border object-cover">
 
@@ -59,7 +59,7 @@
                 <x-input-error :messages="$errors->get('cover_image')" class="mt-2" />
             </x-card>
 
-            <x-card :title="__('Writing goals')">
+            <x-card :title="__('Writing goals')" icon="tabler-target-arrow">
                 <p class="text-sm text-content-muted">{{ __('Shown on the Progress page and the project dashboard. Leave a field empty for no goal.') }}</p>
 
                 <div class="mt-4 space-y-6">
@@ -75,7 +75,7 @@
         </x-slot:sidebar>
     </x-edit-layout>
 
-    <x-card :title="__('Codex references')" class="mt-6">
+    <x-card :title="__('Codex references')" icon="entity-codex" class="mt-6">
         <p class="text-sm text-content-muted">
             {{ __('Rebuild which codex entries every scene in this project references, from scratch. Scenes and codex entries keep this in sync automatically as you edit them — use this only to backfill existing scenes or recover from a suspected mismatch.') }}
         </p>

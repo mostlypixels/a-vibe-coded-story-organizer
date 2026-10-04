@@ -34,7 +34,7 @@
     </x-card>
 
     @if ($entry !== null && $type->tracksLifespan())
-        <x-card :title="__('Existence')">
+        <x-card :title="__('Existence')" icon="tabler-hourglass">
             <div class="space-y-6">
                 <x-single-event-field
                     name="inception_event_id"
@@ -66,7 +66,7 @@
     @endif
 
     @if ($entry === null && $form->attributes->isNotEmpty())
-                <x-card :title="__('Attributes')">
+                <x-card :title="__('Attributes')" icon="tabler-list-details">
             <div
                 x-data="{
                     options: {{ Illuminate\Support\Js::from($form->attributeOptions) }},
@@ -156,7 +156,7 @@
             </x-edit-actions>
         @endif
 
-        <x-card :title="__('Cover')">
+        <x-card :title="__('Cover')" icon="tabler-photo">
             @if ($form->cover)
                 <img src="{{ $form->cover->url() }}" alt="{{ $entry->name }}" class="w-full rounded-md border border-border object-cover">
 
@@ -172,7 +172,7 @@
             </x-field>
         </x-card>
 
-        <x-card :title="__('Tags')" overflow="visible">
+        <x-card :title="__('Tags')" icon="tabler-tags" overflow="visible">
             <x-tag-picker name="tags" :tags="$projectTags" :selected="$form->tagValues" />
             <x-input-error :messages="$errors->get('tags')" class="mt-2" />
         </x-card>

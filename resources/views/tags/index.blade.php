@@ -4,7 +4,7 @@
     </x-page-heading>
 
     <div class="space-y-6">
-        <x-card :title="__('Add a tag')">
+        <x-card :title="__('Add a tag')" icon="tabler-tag">
             <form method="POST" action="{{ route('projects.tags.store', $project) }}" class="flex items-start gap-2">
                 @csrf
                 <div class="flex-1">

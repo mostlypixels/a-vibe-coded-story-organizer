@@ -10,6 +10,7 @@ use App\Support\Breadcrumbs;
 use App\Support\LocaleChoice;
 use App\Support\PageTitle;
 use App\Support\ProjectNavigation;
+use BladeUI\Icons\Factory as IconFactory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
@@ -25,6 +26,11 @@ class AppServiceProvider extends ServiceProvider
 
         // One request must use one save ID for all revised fields.
         $this->app->scoped(RevisionRecorder::class);
+
+        // Custom entity icons (book, scene, character...) as <x-entity-*> components.
+        $this->callAfterResolving(IconFactory::class, function (IconFactory $factory): void {
+            $factory->add('entity', ['path' => resource_path('svg/entity'), 'prefix' => 'entity']);
+        });
     }
 
     public function boot(): void

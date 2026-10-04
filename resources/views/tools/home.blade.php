@@ -2,7 +2,7 @@
     <x-page-heading>{{ __('Tools') }}</x-page-heading>
 
     <div class="grid gap-6 md:grid-cols-2">
-        <x-card :title="__('Revisions')" stretch flush-footer>
+        <x-card :title="__('Revisions')" icon="tabler-history" stretch flush-footer>
             <p>{{ __('Every autosave and manual save of your scenes, kept for restoring or comparing later.') }}</p>
 
             <x-slot:footer>
@@ -12,7 +12,7 @@
             </x-slot:footer>
         </x-card>
 
-        <x-card :title="__('Progress')" stretch flush-footer>
+        <x-card :title="__('Progress')" icon="tabler-chart-bar" stretch flush-footer>
             <p>{{ __('Your daily and total word count goals, charted against what you have written.') }}</p>
 
             <x-slot:footer>

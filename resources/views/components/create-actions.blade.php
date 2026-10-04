@@ -3,7 +3,7 @@
     'cancel' => null,
 ])
 
-<x-card :title="__('Actions')">
+<x-card :title="__('Actions')" icon="tabler-bolt">
     <div class="flex flex-col gap-3">
         <x-button variant="primary" type="submit" form="{{ $form }}" data-guard-save :icon="true" class="w-full">{{ $slot }}</x-button>
 

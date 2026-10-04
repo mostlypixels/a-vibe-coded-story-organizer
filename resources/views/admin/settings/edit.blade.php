@@ -5,9 +5,9 @@
         </x-heading>
     </x-slot>
 
-    <x-card class="max-w-xl">
+    <x-card icon="tabler-settings" class="max-w-xl">
         <x-slot name="header">
-            <x-heading level="3">{{ __('General settings') }}</x-heading>
+            <x-heading level="3" icon="tabler-settings">{{ __('General settings') }}</x-heading>
             <p class="mt-1 text-sm text-content-muted">
                 {{ __('Control whether search engines and crawlers may index this site.') }}
             </p>

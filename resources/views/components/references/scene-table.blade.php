@@ -8,11 +8,11 @@
 <x-table>
     <x-slot:head>
         <x-table-heading>{{ __('Scene') }}</x-table-heading>
-        <x-table-heading>{{ __('Chapter') }}</x-table-heading>
-        <x-table-heading>{{ __('Act') }}</x-table-heading>
         @if ($showBook)
             <x-table-heading>{{ __('Book') }}</x-table-heading>
         @endif
+        <x-table-heading>{{ __('Act') }}</x-table-heading>
+        <x-table-heading>{{ __('Chapter') }}</x-table-heading>
         <x-table-heading>{{ __('Event') }}</x-table-heading>
     </x-slot:head>
 

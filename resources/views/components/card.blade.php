@@ -1,4 +1,4 @@
-@props(['title' => null, 'stretch' => false, 'flushFooter' => false, 'padded' => true, 'overflow' => 'hidden'])
+@props(['title' => null, 'icon' => null,'stretch' => false, 'flushFooter' => false, 'padded' => true, 'overflow' => 'hidden'])
 
 @php
     $hasHeader = isset($header) || filled($title);
@@ -17,11 +17,14 @@
 
 <div {{ $attributes->merge(['class' => trim("bg-surface-raised {$overflowClass} shadow-xs sm:rounded-lg {$shell}")]) }}>
     @if ($hasHeader)
-        <div class="border-b border-border px-6 py-4">
+        <div @class(['border-b border-border px-6 py-4', 'relative isolate overflow-hidden' => $icon])>
+            @if ($icon)
+                <x-card-backdrop-icon :icon="$icon" />
+            @endif
             @isset($header)
                 {{ $header }}
             @else
-                <x-heading level="3">{{ $title }}</x-heading>
+                <x-heading level="3" :icon="$icon">{{ $title }}</x-heading>
             @endisset
         </div>
     @endif

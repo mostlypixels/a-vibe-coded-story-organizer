@@ -6,7 +6,7 @@
     'duplicateModal' => null,
 ])
 
-<x-card :title="__('Actions')">
+<x-card :title="__('Actions')" icon="tabler-bolt">
     @if (session('status') === 'saved')
         <x-auth-session-status :status="__('Saved.')" class="mb-3" />
     @elseif (session('status') === 'duplicated')

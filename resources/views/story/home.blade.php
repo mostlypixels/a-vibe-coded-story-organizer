@@ -4,6 +4,7 @@
     <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <x-recent-list
             :title="__('Recently edited acts')"
+            icon="entity-act"
             :items="$recentActs"
             :all-url="route('books.acts.index', $book)"
             :all-label="__('View all acts')"
@@ -14,6 +15,7 @@
 
         <x-recent-list
             :title="__('Recently edited chapters')"
+            icon="entity-chapter"
             :items="$recentChapters"
             :all-url="route('books.chapters.index', $book)"
             :all-label="__('View all chapters')"
@@ -26,6 +28,7 @@
 
         <x-recent-list
             :title="__('Recently edited scenes')"
+            icon="entity-scene"
             :items="$recentScenes"
             :all-url="route('books.scenes.index', $book)"
             :all-label="__('View all scenes')"

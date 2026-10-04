@@ -65,7 +65,7 @@
             @endif
 
             @if ($destinationBooks->isNotEmpty())
-                <x-card :title="__('Move to another book')">
+                <x-card :title="__('Move to another book')" icon="tabler-arrows-exchange">
                     <p class="text-sm text-content-muted">{{ __('Move this act, with its chapters and scenes, to another book in this project.') }}</p>
 
                     <form method="POST" action="{{ route('acts.move-to-book', $act) }}" class="mt-3 space-y-3">

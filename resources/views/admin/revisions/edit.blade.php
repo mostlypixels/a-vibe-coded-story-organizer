@@ -30,9 +30,9 @@
         </div>
     @endif
 
-    <x-card class="max-w-xl mb-8">
+    <x-card icon="tabler-history" class="max-w-xl mb-8">
         <x-slot name="header">
-            <x-heading level="3">{{ __('Retention') }}</x-heading>
+            <x-heading level="3" icon="tabler-history">{{ __('Retention') }}</x-heading>
             <p class="mt-1 text-sm text-content-muted">
                 {{ __('The nightly cleanup keeps unlabeled, autosaved revisions for this many days before removing them. Manual saves, labeled revisions, and reverts are never removed by this — see the storage panel below to clear those explicitly.') }}
             </p>
@@ -58,9 +58,9 @@
         </form>
     </x-card>
 
-    <x-card>
+    <x-card icon="tabler-database">
         <x-slot name="header">
-            <x-heading level="3">{{ __('Revision storage') }}</x-heading>
+            <x-heading level="3" icon="tabler-database">{{ __('Revision storage') }}</x-heading>
             <p class="mt-1 text-sm text-content-muted">
                 {{ __('Bulk-delete revisions of your projects by category or age. Unlike the nightly cleanup above, this can remove labeled, manual, and reverted revisions — use it deliberately.') }}
             </p>

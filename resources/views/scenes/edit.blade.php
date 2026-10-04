@@ -85,7 +85,7 @@
                 :suggestion="$duplicateSuggestion"
             />
 
-            <x-collapsible-card :title="__('Share this scene')">
+            <x-collapsible-card :title="__('Share this scene')" icon="tabler-share">
                 @if (! $scene->isShared())
                     <form method="POST" action="{{ route('scenes.share.store', $scene) }}" class="space-y-4">
                         @csrf
@@ -167,7 +167,7 @@
         </div>
 
         <div class="lg:col-span-3">
-            <x-collapsible-card :title="__('Codex references')">
+            <x-collapsible-card :title="__('Codex references')" icon="entity-codex">
                 <p class="text-sm text-content-muted">{{ __('Detected from the scene contents when you leave the text, press Ctrl+S or save.') }}</p>
 
                 <x-button

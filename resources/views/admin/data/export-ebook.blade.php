@@ -20,9 +20,9 @@
         </div>
     @endif
 
-    <x-card>
+    <x-card icon="tabler-book-download">
         <x-slot name="header">
-            <x-heading level="3">{{ __('Export ebook') }}</x-heading>
+            <x-heading level="3" icon="tabler-book-download">{{ __('Export ebook') }}</x-heading>
         </x-slot>
 
         <p class="text-sm text-content-muted">

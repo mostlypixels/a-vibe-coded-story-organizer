@@ -1,9 +1,10 @@
 @props(['chapter', 'numbering'])
 
-<x-collapsible-card>
+<x-collapsible-card icon="entity-chapter">
     <x-slot:header>
         <div class="flex items-center justify-between gap-4">
-            <h3 id="chapter-{{ $chapter->id }}" class="text-xl font-semibold text-content scroll-mt-16">
+            <h3 id="chapter-{{ $chapter->id }}" class="flex items-center gap-2 text-xl font-semibold text-content scroll-mt-16">
+                <x-entity-chapter class="h-5 w-5 shrink-0 text-content-muted" aria-hidden="true" />
                 {{ $numbering->chapterLabel($chapter) }}
             </h3>
             <x-word-count :count="$chapter->scenes->sum('word_count')" class="shrink-0" />

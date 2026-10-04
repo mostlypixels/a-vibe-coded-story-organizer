@@ -21,13 +21,13 @@
 
     <div class="space-y-6">
         @if (filled($event->description))
-            <x-card :title="__('Description')">
+            <x-card :title="__('Description')" icon="tabler-align-left">
                 <x-rich-text :html="$event->description" />
             </x-card>
         @endif
 
         @if ($event->plotlines->isNotEmpty())
-            <x-card :title="__('Plotlines')">
+            <x-card :title="__('Plotlines')" icon="tabler-route">
                 <div class="flex flex-wrap items-center gap-3">
                     @foreach ($event->plotlines as $plotline)
                         <a href="{{ route('plotlines.show', $plotline) }}" class="inline-flex items-center gap-1 text-sm text-link hover:text-link-hover">
@@ -40,7 +40,7 @@
         @endif
 
         @if ($scenesOnEvent->isNotEmpty())
-            <x-card :title="__('Scenes')">
+            <x-card :title="__('Scenes')" icon="entity-scene">
                 <div x-data="{ showAll: false }">
                     <x-table>
                         <x-slot:head>
@@ -70,7 +70,7 @@
         @endif
 
         @if ($mentioningScenes->isNotEmpty())
-            <x-card :title="__('Scenes mentioning this event')">
+            <x-card :title="__('Scenes mentioning this event')" icon="entity-scene">
                 <div x-data="{ showAll: false }">
                     <x-table>
                         <x-slot:head>
@@ -100,7 +100,7 @@
         @endif
 
         @if ($lifespanEntries['inceptions']->isNotEmpty() || $lifespanEntries['terminations']->isNotEmpty())
-            <x-card :title="__('Codex entries')">
+            <x-card :title="__('Codex entries')" icon="entity-codex">
                 <div class="space-y-4">
                     @if ($lifespanEntries['inceptions']->isNotEmpty())
                         <div>

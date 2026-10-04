@@ -13,7 +13,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-3">
-                <x-collapsible-card :title="__('Table of Contents')" class="lg:sticky lg:top-6">
+                <x-collapsible-card :title="__('Table of Contents')" icon="tabler-list-numbers" class="lg:sticky lg:top-6">
                     <div class="space-y-3">
                         @foreach ($acts as $act)
                             <div>

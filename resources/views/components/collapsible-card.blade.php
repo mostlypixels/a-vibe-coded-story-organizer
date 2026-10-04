@@ -1,14 +1,21 @@
-@props(['title' => null, 'open' => true])
+@props(['title' => null, 'icon' => null, 'open' => true])
 
 <details @if ($open) open @endif {{ $attributes->merge(['class' => 'group bg-surface-raised overflow-hidden shadow-xs sm:rounded-lg']) }}>
-    <summary class="flex items-center gap-2 list-none cursor-pointer select-none px-6 py-4 group-open:border-b group-open:border-border [&::-webkit-details-marker]:hidden">
+    <summary @class([
+        'flex items-center gap-2 list-none cursor-pointer select-none px-6 py-4 group-open:border-b group-open:border-border [&::-webkit-details-marker]:hidden',
+        'relative isolate overflow-hidden' => $icon,
+    ])>
+        @if ($icon)
+            <x-card-backdrop-icon :icon="$icon" />
+        @endif
+
         <x-tabler-chevron-down class="h-4 w-4 shrink-0 text-content-muted transition-transform group-open:rotate-180" />
 
         <div class="min-w-0 flex-1">
             @isset($header)
                 {{ $header }}
             @else
-                <x-heading level="3" class="inline">{{ $title }}</x-heading>
+                <x-heading level="3" :icon="$icon" :class="$icon ? null : 'inline'">{{ $title }}</x-heading>
             @endisset
         </div>
     </summary>

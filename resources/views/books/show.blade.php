@@ -11,6 +11,7 @@
         <div class="lg:col-span-9">
             <x-recent-list
                 :title="__('Recent scenes')"
+                icon="entity-scene"
                 :items="$recentScenes"
                 :all-url="route('books.scenes.index', $book)"
                 :all-label="__('View all scenes')"
@@ -19,7 +20,7 @@
         </div>
 
         <div class="lg:col-span-3">
-            <x-card :title="__('Story')">
+            <x-card :title="__('Story')" icon="entity-act">
                 <div class="space-y-2">
                     <x-button :href="route('books.story.overview', $book)" variant="secondary" class="w-full">
                         {{ __('Overview') }}

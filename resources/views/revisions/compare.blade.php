@@ -59,9 +59,9 @@
 
             @forelse ($comparisons as $comparison)
                 <article aria-labelledby="diff-{{ $comparison->field }}">
-                    <x-card>
+                    <x-card icon="tabler-arrows-diff">
                         <x-slot name="header">
-                            <x-heading level="3" id="diff-{{ $comparison->field }}">
+                            <x-heading level="3" id="diff-{{ $comparison->field }}" icon="tabler-arrows-diff">
                                 {{ __("Comparing changes to :entity field ':field'", [
                                     'entity' => Str::headline($entity),
                                     'field' => Str::headline($comparison->field),
