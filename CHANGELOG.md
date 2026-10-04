@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-04 — Books card footer link
+## 2026-10-04 — Books card footer link (#303)
 
 ### Changed
 
