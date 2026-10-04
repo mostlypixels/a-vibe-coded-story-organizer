@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-04 — Books card footer link (#303)
+
+### Changed
+
+- The dashboard Books card puts its Manage books link in a footer, like the recent lists.
+
 ## 2026-10-04 — Codex sheet, card and list refresh (#302)
 
 ### Added
