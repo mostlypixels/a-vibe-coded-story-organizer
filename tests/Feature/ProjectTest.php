@@ -600,6 +600,18 @@ class ProjectTest extends TestCase
             ->assertSeeInOrder([__('Recent scenes'), __('Recent codex entries')]);
     }
 
+    /** The Books card uses the same footer link as the recent lists. */
+    public function test_the_dashboard_books_card_links_to_manage_books_in_its_footer(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee('<a href="'.route('projects.books.index', $project).'" class="text-sm font-medium text-link hover:underline">', false);
+    }
+
     public function test_a_project_with_no_goals_renders_the_card_without_goal_bars(): void
     {
         $user = User::factory()->create();
