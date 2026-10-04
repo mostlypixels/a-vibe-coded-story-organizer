@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-04 — Codex sheet, card and list refresh
+## 2026-10-04 — Codex sheet, card and list refresh (#302)
 
 ### Added
 
