@@ -88,6 +88,40 @@ class ThemePresetTest extends TestCase
         );
     }
 
+    public function test_every_configured_preset_sets_an_image_opacity_from_0_to_1(): void
+    {
+        foreach (array_keys(config('themes.presets')) as $slug) {
+            $value = config("themes.presets.{$slug}.image_opacity");
+
+            $this->assertIsNumeric($value, "Preset [{$slug}] must set image_opacity explicitly.");
+            $this->assertGreaterThanOrEqual(0, $value);
+            $this->assertLessThanOrEqual(1, $value);
+        }
+    }
+
+    public function test_light_presets_keep_full_image_opacity_and_dark_presets_dim(): void
+    {
+        $this->assertSame(1.0, ThemePreset::fromSlug('daylight')->imageOpacity);
+        $this->assertSame(1.0, ThemePreset::fromSlug('dusk')->imageOpacity);
+        $this->assertLessThan(1.0, ThemePreset::fromSlug('low-glare-dark')->imageOpacity);
+        $this->assertLessThan(1.0, ThemePreset::fromSlug('no-halation')->imageOpacity);
+    }
+
+    public function test_no_halation_dims_at_least_as_much_as_low_glare_dark(): void
+    {
+        $this->assertLessThanOrEqual(
+            ThemePreset::fromSlug('low-glare-dark')->imageOpacity,
+            ThemePreset::fromSlug('no-halation')->imageOpacity,
+        );
+    }
+
+    public function test_the_image_opacity_falls_back_to_full_brightness(): void
+    {
+        config()->set('themes.presets.silent', ['name' => 'Silent', 'tokens' => []]);
+
+        $this->assertSame(1.0, ThemePreset::fromSlug('silent')->imageOpacity);
+    }
+
     public function test_the_contrast_ceiling_falls_back_to_the_config_default(): void
     {
         config()->set('themes.contrast.default_ceiling', 13.5);

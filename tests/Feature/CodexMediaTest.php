@@ -11,6 +11,7 @@ use App\Services\CodexMediaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Js;
 use Tests\TestCase;
 
 class CodexMediaTest extends TestCase
@@ -184,6 +185,42 @@ class CodexMediaTest extends TestCase
             ->assertSee($message);
 
         $this->assertSame(0, $entry->media()->count());
+    }
+
+    public function test_edit_page_renders_one_image_lightbox_that_opts_out_of_dimming(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create();
+
+        $html = $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, '@open-lightbox.window'));
+        $this->assertSame(1, substr_count($html, 'data-full-opacity'));
+        $this->assertStringNotContainsString('lightbox:', $html);
+    }
+
+    public function test_edit_page_thumbnail_buttons_dispatch_open_lightbox_with_url_and_alt(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $first = CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create(['original_name' => 'first.jpg']);
+        $second = CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create(['original_name' => 'second.jpg']);
+
+        $html = $this->actingAs($user)->get(route('codex.edit', $entry))
+            ->assertOk()
+            ->getContent();
+
+        foreach ([$first, $second] as $image) {
+            // Match the Blade @js output, which escapes for use inside an HTML attribute.
+            $expected = "\$dispatch('open-lightbox', { url: ".Js::from($image->url()).', alt: '.Js::from($image->original_name).' })';
+
+            $this->assertStringContainsString($expected, $html);
+        }
     }
 
     public function test_removing_media_deletes_the_row_and_the_file(): void

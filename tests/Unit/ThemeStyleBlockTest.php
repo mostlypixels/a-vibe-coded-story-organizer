@@ -123,6 +123,7 @@ class ThemeStyleBlockTest extends TestCase
         $this->assertSame([
             '--color-surface' => '#fff',
             '--color-content' => 'oklch(0.62 0.11 220)',
+            '--image-opacity' => '1',
         ], $block->declarations($preset));
 
         foreach ($block->declarations($preset) as $property => $value) {
@@ -130,11 +131,39 @@ class ThemeStyleBlockTest extends TestCase
         }
     }
 
+    public function test_it_renders_the_image_opacity_as_a_trimmed_number(): void
+    {
+        $block = new ThemeStyleBlock;
+
+        $this->assertStringContainsString('--image-opacity:0.8;', $block->render($this->preset([], 0.8)));
+        $this->assertStringContainsString('--image-opacity:1;', $block->render($this->preset([], 1.0)));
+        $this->assertStringContainsString('--image-opacity:0.65;', $block->render($this->preset([], 0.65)));
+    }
+
+    public function test_declarations_include_the_image_opacity(): void
+    {
+        $declarations = (new ThemeStyleBlock)->declarations($this->preset([], 0.8));
+
+        $this->assertSame('0.8', $declarations['--image-opacity']);
+    }
+
+    public function test_an_out_of_range_image_opacity_emits_no_entry(): void
+    {
+        $block = new ThemeStyleBlock;
+
+        foreach ([-0.1, 1.5, NAN] as $opacity) {
+            $preset = $this->preset([], $opacity);
+
+            $this->assertArrayNotHasKey('--image-opacity', $block->declarations($preset));
+            $this->assertStringNotContainsString('--image-opacity', $block->render($preset));
+        }
+    }
+
     /**
      * @param  array<string, string>  $tokens
      */
-    private function preset(array $tokens): ThemePreset
+    private function preset(array $tokens, float $imageOpacity = 1.0): ThemePreset
     {
-        return new ThemePreset('fixture', 'Fixture', $tokens, 15.0);
+        return new ThemePreset('fixture', 'Fixture', $tokens, 15.0, imageOpacity: $imageOpacity);
     }
 }

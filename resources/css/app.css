@@ -695,6 +695,32 @@ blockquote[data-callout-type='caution']::before {
     height: auto;
 }
 
+/*
+ * Dark presets dim content images. A hovered or focused link or button restores
+ * the image. The lightbox image opts out with data-full-opacity. No transition.
+ */
+img {
+    opacity: var(--image-opacity, 1);
+}
+
+img:hover,
+:is(a, button):is(:hover, :focus-visible) img {
+    opacity: 1;
+}
+
+img[data-full-opacity] {
+    opacity: 1;
+}
+
+/*
+ * The forms plugin paints checkboxes and radios white, which glares on dark presets.
+ * Use the text-input surface. The rule is unlayered, so it beats the plugin's base layer.
+ * It skips checked and indeterminate boxes, which keep the plugin's fill.
+ */
+input:is([type='checkbox'], [type='radio']):not(:checked, :indeterminate) {
+    background-color: var(--color-surface-raised);
+}
+
 /* Render the source differ's table as two prose panels. */
 .revision-diff--source table {
     width: 100%;

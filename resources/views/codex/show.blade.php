@@ -34,7 +34,13 @@
                     <div class="space-y-4 md:col-span-3">
                         @if ($gallery->isNotEmpty())
                             <div x-data="{ images: @js($gallery), current: 0 }">
-                                <img :src="images[current].url" :alt="images[current].alt" class="aspect-square w-full rounded-md border border-border object-cover">
+                                <button
+                                    type="button"
+                                    @click="$dispatch('open-lightbox', { url: images[current].url, alt: images[current].alt })"
+                                    class="block w-full rounded-md focus:outline-hidden focus:ring-2 focus:ring-focus focus:ring-offset-2"
+                                >
+                                    <img :src="images[current].url" :alt="images[current].alt" class="aspect-square w-full rounded-md border border-border object-cover">
+                                </button>
 
                                 @if ($gallery->count() > 1)
                                     <ul class="mt-2 grid grid-cols-4 gap-2">
@@ -48,6 +54,8 @@
                                     </ul>
                                 @endif
                             </div>
+
+                            <x-image-lightbox />
                         @endif
 
                         @if ($entry->aliases->isNotEmpty())
