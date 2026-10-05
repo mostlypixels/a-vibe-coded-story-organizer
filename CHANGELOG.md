@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-06 — Dim images on dark themes
+## 2026-10-06 — Dim images on dark themes (#304)
 
 ### Added
 
