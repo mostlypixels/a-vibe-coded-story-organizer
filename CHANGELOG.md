@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-06 — Dim images on dark themes (#304)
+
+### Added
+
+- Dark themes dim images. Hovering or focusing an image's link or button restores full brightness.
+- The codex sheet opens its main image in a full-size lightbox.
+- Each theme sets its own image dimming level.
+
+### Fixed
+
+- Unchecked checkboxes and radio buttons no longer show a bright white box on dark themes.
+
 ## 2026-10-04 — Books card footer link (#303)
 
 ### Changed

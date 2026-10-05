@@ -75,6 +75,18 @@ class ThemeRenderingTest extends TestCase
         }
     }
 
+    public function test_a_page_carries_the_image_opacity_of_every_preset(): void
+    {
+        foreach (array_keys(config('themes.presets')) as $slug) {
+            $user = User::factory()->create(['theme_slug' => $slug]);
+
+            $content = $this->actingAs($user)->get(route('onboarding'))->getContent();
+
+            $expected = (string) round((float) config("themes.presets.{$slug}.image_opacity"), 2);
+            $this->assertStringContainsString("--image-opacity:{$expected};", $content, "Preset [{$slug}]");
+        }
+    }
+
     public function test_the_authenticated_layout_emits_the_font_variables(): void
     {
         $response = $this->actingAs(User::factory()->create())->get(route('onboarding'));

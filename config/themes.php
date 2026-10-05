@@ -34,7 +34,10 @@ return [
     |--------------------------------------------------------------------------
     |
     | ThemePreset reads these final values. ThemePresetTest requires every token in
-    | ThemeTokens::ALL and rejects unknown tokens. Generate ramps with
+    | ThemeTokens::ALL and rejects unknown tokens. `image_opacity` (0 to 1) sets how
+    | much content images dim on the preset; it is not a color token. On a dark preset,
+    | pick it so image white over `surface` reaches the OKLCH lightness of `content`.
+    | Then images glare no more than the body text. Generate ramps with
     | `php artisan theme:ramp`, then paste the values and source anchors here.
     | The picker translates `name` because config loads before the locale.
     |
@@ -47,6 +50,7 @@ return [
         'daylight' => [
             'name' => 'Daylight',
             'contrast_ceiling' => 18.0,
+            'image_opacity' => 1.0,
             'tokens' => [
                 'surface' => 'oklch(96.7% 0.003 264.542)',        // gray-100
                 'surface-raised' => '#ffffff',                    // white
@@ -128,6 +132,7 @@ return [
         'dusk' => [
             'name' => 'Dusk',
             'contrast_ceiling' => 12.0,
+            'image_opacity' => 1.0,
             'tokens' => [
                 // Elevation rises with lightness.
                 'surface' => 'oklch(0.888 0.012 255)',            // neutral-100
@@ -204,6 +209,7 @@ return [
         'low-glare-dark' => [
             'name' => 'Low-glare dark',
             'contrast_ceiling' => 10.0,
+            'image_opacity' => 0.7,
             'tokens' => [
                 // Elevation rises with lightness.
                 'surface' => 'oklch(0.207 0.018 250)',
@@ -281,6 +287,7 @@ return [
             'name' => 'No halation',
             'contrast_ceiling' => 3.8,
             'contrast_floor' => 2.0,
+            'image_opacity' => 0.36,
             'tokens' => [
                 // Surfaces match Low-glare dark.
                 'surface' => 'oklch(0.207 0.018 250)',

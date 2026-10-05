@@ -91,6 +91,11 @@ async function runLine(raw) {
       console.log(`[click] ${rest}`);
       break;
     }
+    case 'hover': {
+      await page.locator(rest).first().hover({ timeout: 10000 });
+      console.log(`[hover] ${rest}`);
+      break;
+    }
     case 'fill': {
       const parts = parseArgs(rest);
       const selector = parts[0];

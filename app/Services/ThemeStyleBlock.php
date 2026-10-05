@@ -57,7 +57,11 @@ final class ThemeStyleBlock
      * previewed theme and a saved theme cannot paint different pixels, and the
      * whitelist above guards both.
      *
-     * @return array<string, string> `--color-<token>` => CSS color value
+     * `--image-opacity` follows the colors. It is a scalar, so it skips the color
+     * whitelist; the 0 to 1 range check is its guard for the unescaped output.
+     *
+     * @return array<string, string> `--color-<token>` => CSS color value, then
+     *                               `--image-opacity` => a number from 0 to 1
      */
     public function declarations(ThemePreset $preset): array
     {
@@ -73,6 +77,11 @@ final class ThemeStyleBlock
             }
 
             $declarations["--color-{$token}"] = $value;
+        }
+
+        // Out of range or NaN is dropped; the CSS `var()` fallback then gives 1.
+        if ($preset->imageOpacity >= 0.0 && $preset->imageOpacity <= 1.0) {
+            $declarations['--image-opacity'] = (string) round($preset->imageOpacity, 2);
         }
 
         return $declarations;

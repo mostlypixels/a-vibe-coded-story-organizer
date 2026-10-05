@@ -179,7 +179,7 @@
     </x-slot:sidebar>
 </x-edit-layout>
 
-<div class="mt-6" x-data="{ activeTab: 'images', lightbox: null, filePreview: null }">
+<div class="mt-6" x-data="{ activeTab: 'images', filePreview: null }">
     <x-card>
         <div class="border-b border-border">
             <div role="tablist" aria-label="{{ __('Reference media') }}" class="-mb-px flex gap-2">
@@ -237,7 +237,7 @@
                         <li>
                             <button
                                 type="button"
-                                @click="lightbox = { url: @js($image->url()), alt: @js($image->original_name) }"
+                                @click="$dispatch('open-lightbox', { url: @js($image->url()), alt: @js($image->original_name) })"
                                 class="block w-full focus:outline-hidden focus:ring-2 focus:ring-focus focus:ring-offset-2 rounded-md"
                             >
                                 <img src="{{ $image->url() }}" alt="{{ $image->original_name }}" class="w-full aspect-square rounded-md border border-border object-cover">
@@ -302,21 +302,7 @@
         </div>
     </x-card>
 
-    <div
-        x-show="lightbox"
-        style="display: none"
-        @keydown.escape.window="lightbox = null"
-        class="fixed inset-0 z-50 overflow-y-auto px-4 py-6"
-        role="dialog"
-        aria-modal="true"
-    >
-        <div class="fixed inset-0 bg-scrim opacity-75" @click="lightbox = null"></div>
-
-        <div class="relative mx-auto max-w-3xl">
-            <x-icon-close-button @click="lightbox = null" variant="light" class="absolute -top-10 right-0" />
-            <img :src="lightbox?.url" :alt="lightbox?.alt" class="w-full rounded-lg shadow-xl">
-        </div>
-    </div>
+    <x-image-lightbox />
 
     <div
         x-show="filePreview"

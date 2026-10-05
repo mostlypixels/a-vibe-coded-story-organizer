@@ -8,7 +8,7 @@ use InvalidArgumentException;
  * One theme preset, read from `config/themes.php`.
  *
  * Presets are config, not database rows: a preset's tokens, its display name and its
- * contrast ceiling change only when someone edits a file, so nothing about them varies
+ * contrast ceiling and its image opacity change only when someone edits a file, so nothing about them varies
  * per request. The single runtime-varying value in the whole feature is which slug is
  * active. This value object is what ThemeStyleBlock and the Appearance picker consume,
  * so neither of them handles a raw config array.
@@ -20,6 +20,7 @@ final readonly class ThemePreset
      * @param  float  $contrastCeiling  the preset's own upper bound, or the config default
      * @param  float|null  $contrastFloor  the preset's own lower bound, replacing both WCAG
      *                                     minimums; null leaves them in force
+     * @param  float  $imageOpacity  opacity of content images, 0 to 1; not a color token
      */
     public function __construct(
         public string $slug,
@@ -27,6 +28,7 @@ final readonly class ThemePreset
         public array $tokens,
         public float $contrastCeiling,
         public ?float $contrastFloor = null,
+        public float $imageOpacity = 1.0,
     ) {}
 
     /**
@@ -52,6 +54,8 @@ final readonly class ThemePreset
             // No default to fall back to, deliberately: absent means the WCAG floors
             // apply, and ColorContrast is where they live.
             contrastFloor: isset($preset['contrast_floor']) ? (float) $preset['contrast_floor'] : null,
+            // Absent means full brightness: a missing key must never dim or break a page.
+            imageOpacity: (float) ($preset['image_opacity'] ?? 1.0),
         );
     }
 

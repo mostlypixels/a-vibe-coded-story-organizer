@@ -364,6 +364,7 @@ class AppearanceSettingsTest extends TestCase
 
         foreach (ThemePreset::all() as $slug => $preset) {
             $this->assertSame($block->declarations($preset), $map['theme_slug'][$slug]);
+            $this->assertArrayHasKey('--image-opacity', $map['theme_slug'][$slug], "Preset [{$slug}]");
         }
     }
 

@@ -23,7 +23,9 @@ This keeps component intent stable when a preset changes from light to dark.
 
 ## Presets
 
-`config/themes.php` stores preset names, token values, and an optional contrast ceiling. `users.theme_slug` stores only the selected slug.
+`config/themes.php` stores preset names, token values, an optional contrast ceiling, and `image_opacity`. `users.theme_slug` stores only the selected slug.
+
+`image_opacity` is a scalar from 0 to 1, not a colour token. `ThemePreset::$imageOpacity` defaults to 1 when a preset omits it.
 
 `App\Support\ThemePreset::resolve()` handles `null` and unknown slugs by returning the configured default.
 
@@ -34,6 +36,21 @@ No theme data comes from free-form user input.
 `App\Services\ThemeStyleBlock` validates every value against `Oklch::CSS_VALUE_PATTERN`. `x-theme-style` writes one unlayered `:root` block in each layout.
 
 The unlayered block must outrank Tailwind’s theme layer so runtime values take effect without a rebuild.
+
+## Image dimming
+
+- Dark presets dim content images so they glare less on a dark page.
+- `ThemeStyleBlock::declarations()` emits `--image-opacity`, only for a float within 0 to 1. The Appearance live preview reads the same array.
+- One unlayered `img` rule in `resources/css/app.css` applies it. The `var()` fallback is 1.
+- Hover on an image, or on its enclosing link or button, restores full opacity. So does `:focus-visible` on that link or button.
+- `data-full-opacity` on an `<img>` opts out. `x-image-lightbox` uses it.
+- The rule is unlayered, so it outranks a Tailwind `opacity-*` utility on an `<img>`. Put such opacity on a wrapper.
+- No transition. Opacity also dims the image border.
+- Touch has no hover. The codex edit and show pages open the lightbox for full brightness.
+
+Current values: `daylight` 1, `dusk` 1, `low-glare-dark` 0.7, `no-halation` 0.36.
+
+On a dark preset, the value puts image white over `surface` at the OKLCH lightness of `content`. So an image glares no more than the body text. Recompute it when either token changes. Opacity blends in gamma-encoded sRGB, so the value is not simply the ratio of the two lightness values.
 
 ## Contrast
 
@@ -79,7 +96,7 @@ chrome. Weigh that before retuning them.
 ## Adding a preset
 
 1. Add the preset to `config/themes.php`.
-2. Supply every required token.
+2. Supply every required token and an `image_opacity`.
 3. Check floors and review ceiling warnings.
 4. Test the appearance preview and stored selection.
 

@@ -689,6 +689,51 @@ class CodexEntryTest extends TestCase
             ->assertSee('notes.pdf');
     }
 
+    public function test_show_page_main_image_button_opens_the_lightbox_once(): void
+    {
+        Storage::fake('media');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create(['original_name' => 'first.jpg']);
+        CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create(['original_name' => 'second.jpg']);
+
+        $html = $this->actingAs($user)->get(route('codex.show', $entry))->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, '@open-lightbox.window'));
+        $this->assertStringContainsString(
+            "\$dispatch('open-lightbox', { url: images[current].url, alt: images[current].alt })",
+            $html,
+        );
+    }
+
+    public function test_show_page_gives_a_one_image_gallery_the_lightbox_button(): void
+    {
+        Storage::fake('media');
+
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        CodexMedia::factory()->for($entry, 'entry')->referenceImage()->create();
+
+        $this->actingAs($user)->get(route('codex.show', $entry))
+            ->assertOk()
+            ->assertSee("\$dispatch('open-lightbox'", false);
+    }
+
+    public function test_show_page_renders_no_lightbox_without_a_gallery(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+
+        $html = $this->actingAs($user)->get(route('codex.show', $entry))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('@open-lightbox.window', $html);
+        $this->assertStringNotContainsString('open-lightbox', $html);
+    }
+
     public function test_show_page_renders_without_media_sections_for_a_media_less_entry(): void
     {
         $user = User::factory()->create();

@@ -168,6 +168,7 @@ and removes the PID file; it's idempotent if the server is already gone.
 | `resize <width> <height>` | set the viewport (default is desktop-sized; narrow it to hit `sm:` breakpoints) |
 | `wait-for text=<t>` / `wait-for <css>` | wait for visible text or element |
 | `click <css>` | click |
+| `hover <css>` | move the pointer over an element |
 | `fill <css> <value>` | fill an input |
 | `type <text>` | keyboard-type into whatever has focus (contenteditable/Tiptap) |
 | `set-input-file <css> <path>` | attach a file to a `<input type=file>` |
