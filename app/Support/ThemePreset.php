@@ -81,6 +81,30 @@ final readonly class ThemePreset
     }
 
     /**
+     * The colours a theme swatch paints. A value that fails the CSS pattern is
+     * dropped, because the swatch prints it into a `style` attribute.
+     *
+     * @return array{stripes: list<string>, plate: ?string, plateBackground: ?string, content: ?string}
+     */
+    public function swatch(): array
+    {
+        $token = fn (string $name): ?string => preg_match(Oklch::CSS_VALUE_PATTERN, $this->tokens[$name] ?? '')
+            ? $this->tokens[$name]
+            : null;
+
+        $levels = array_filter([$token('surface-raised'), $token('surface'), $token('surface-sunken')]);
+
+        return [
+            'stripes' => array_values(array_filter([$token('primary'), $token('accent'), $token('focus')])),
+            'plate' => $token('surface') ?? $token('surface-raised'),
+            'plateBackground' => count($levels) === 3
+                ? vsprintf('linear-gradient(to bottom, %s 0%%, %s 50%%, %s 100%%)', array_values($levels))
+                : null,
+            'content' => $token('content'),
+        ];
+    }
+
+    /**
      * Every configured preset, keyed by slug — the picker's option list.
      *
      * @return array<string, self>

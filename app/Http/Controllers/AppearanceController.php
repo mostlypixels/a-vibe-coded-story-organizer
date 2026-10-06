@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateAppearanceRequest;
 use App\Services\ThemeStyleBlock;
+use App\Support\AppearancePreviewMap;
 use App\Support\DateFormat;
 use App\Support\FontChoice;
 use App\Support\LocaleChoice;
 use App\Support\ThemePreset;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
@@ -32,17 +34,11 @@ class AppearanceController extends Controller
         return view('admin.appearance.edit', [
             'themes' => $themes,
             'active' => ThemePreset::resolve($user?->theme_slug)->slug,
-            // The live preview writes these verbatim, so they come from the renderer
-            // that paints the saved page rather than from a second walk of the config.
-            'themeDeclarations' => array_map($themeStyle->declarations(...), $themes),
+            'previewMap' => AppearancePreviewMap::build($themeStyle),
             'families' => config('fonts.families'),
             'uiScales' => config('fonts.ui_scales'),
             'manuscriptScales' => config('fonts.manuscript_scales'),
-            // The picker labels the multipliers; the preview needs them already
-            // multiplied, per surface, so the browser never does that maths.
             'leadings' => config('fonts.leading'),
-            'uiLineHeights' => FontChoice::lineHeightsFor('ui'),
-            'manuscriptLineHeights' => FontChoice::lineHeightsFor('manuscript'),
             'fonts' => FontChoice::resolve(
                 $user?->ui_font,
                 $user?->manuscript_font,
@@ -62,11 +58,16 @@ class AppearanceController extends Controller
     }
 
     /**
-     * Persist the picked preferences to the acting user only.
+     * Persist the picked preferences to the acting user only. The quick switcher
+     * saves over AJAX and gets 204; the Appearance form gets the redirect.
      */
-    public function update(UpdateAppearanceRequest $request): RedirectResponse
+    public function update(UpdateAppearanceRequest $request): RedirectResponse|Response
     {
         $request->user()->update($request->validated());
+
+        if ($request->wantsJson()) {
+            return response()->noContent();
+        }
 
         return redirect()
             ->route('admin.appearance.edit')

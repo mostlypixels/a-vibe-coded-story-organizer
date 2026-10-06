@@ -44,6 +44,15 @@ Requests validate slugs with `Rule::in(array_keys(...))`. `App\Support\FontChoic
 
 The controls remain native radios. Keyboard navigation and form submission work without JavaScript. Dragging a setting track only changes the selected radio.
 
+## Quick switcher
+
+The palette button in the top bar opens a panel of font families, sizes and line spacing for the interface and the manuscript. The panel is a fragment from `admin.appearance.switcher`, fetched on the first open.
+
+- Preview values come from `AppearancePreviewMap::build()`, the same map the Appearance page uses. The JS rejects any slug not in the map.
+- Each change sends one `PATCH admin.appearance.update` with that one field. It changes one column.
+- A failed save puts the last saved value back and shows an error.
+- The button is absent from the Appearance page: a change there would leave its form stale.
+
 ## Bundled files
 
 Fonts live under `public/fonts`. `scripts/fetch-fonts.sh` downloads pinned Fontsource files.

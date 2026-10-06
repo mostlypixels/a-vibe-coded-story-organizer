@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-06 — Quick appearance switcher (#307)
+
+### Added
+
+- A palette button in the top bar opens a panel to change the theme, fonts, text size and line spacing. Changes show and save at once.
+
 ## 2026-10-06 — Project icon (#306)
 
 ### Added

@@ -51,6 +51,7 @@ Reuse a component before adding local Blade and Tailwind markup.
 | `x-delete-with-move-dialog` | Delete or reparent children, for one entity |
 | `x-delete-with-move-list-dialog`, `x-icon-delete-with-move-button` | The same for a list: one dialog per page, filled by the row button |
 | `x-duplicate-dialog`, `x-icon-duplicate-button` | Duplicate under a new name; a list renders one dialog and each row button fills it |
+| `x-theme-swatch` | Small theme radio (`theme_slug`) with a tooltip name; used by the quick switcher panel |
 | `x-chip-picker` | Searchable multi-select |
 | `x-event-picker`, `x-tag-picker` | Domain wrappers around the chip picker |
 
@@ -79,7 +80,10 @@ Put an `x-disclosure-button` in the `trigger` slot of `x-dropdown` or `x-popover
 - Escape closes an open dropdown. With focus inside, focus goes back to its disclosure button, and an `x-modal` around it stays open. With focus elsewhere, focus does not move.
 - One dropdown is open at a time. Opening one closes the others.
 - `hover` (default `false`) opens the menu on mouse hover and closes it 250 ms after the pointer leaves the trigger and the panel. Touch and pen do not open it. In this mode only the disclosure button toggles on click, so a link in the trigger navigates.
+- `closeOnClick` (default `true`) closes the menu on any click inside the panel. Pass `:close-on-click="false"` for a panel with form controls. Escape and an outside click still close it.
 - In `hover` mode a click on the disclosure button toggles the menu. A menu opened by a click stays open when the pointer leaves. A click on an open menu closes it, also after a hover-open: the `x-navigation.menu-link` chevron points up while the menu is open, and the click does what the arrow shows.
+
+`x-navigation.appearance-switcher` is the palette button in the top bar. It is a click-only `x-dropdown` with `closeOnClick` off. The panel loads on the first open. `ProjectNavigation::showsAppearanceSwitcher()` hides the button on the Appearance page and error pages never render it.
 
 `x-navigation.menu-link` goes in the `trigger` slot of `x-dropdown hover`. Props: `href`, `active` (section underline, `data-active` on the link), `current` (`aria-current="page"`, the hub page only) and `menuLabel` (the chevron's accessible name, for example "Story menu"). The chevron is the full nav height and at least 24px wide.
 

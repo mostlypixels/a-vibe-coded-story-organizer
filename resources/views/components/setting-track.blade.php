@@ -1,19 +1,5 @@
 @props(['name', 'legend', 'options', 'selected', 'format' => 'ratio', 'hint' => null])
 
-@php
-    $tickLabel = function (string $value) use ($format): string {
-        $isPercentage = str_ends_with($value, '%');
-        $number = (float) rtrim($value, '%');
-        $multiplier = $isPercentage ? $number / 100 : $number;
-
-        return match ($format) {
-            'px' => round($number / 100 * 16).'px',
-            'times' => rtrim(rtrim(number_format($multiplier, 2), '0'), '.').'×',
-            default => $value,
-        };
-    };
-@endphp
-
 <fieldset>
     <legend class="text-sm font-medium text-content">
         {{ $legend }}
@@ -51,7 +37,7 @@
                            peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2
                            peer-focus-visible:outline-focus"
                 >
-                    {{ $tickLabel($value) }}
+                    {{ \App\Support\ScaleLabel::format($value, $format) }}
                 </span>
 
                 <span class="flex h-4 w-full items-center peer-checked:[&>.tick]:hidden peer-checked:[&>.dot]:block">

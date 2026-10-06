@@ -79,6 +79,9 @@ class ProjectNavigation
     /** The Account page and its Profile/Configuration destinations. */
     public readonly bool $accountActive;
 
+    /** The Appearance form page. A switcher change there would leave its form stale. */
+    public readonly bool $appearanceEditActive;
+
     /** The Revisions browser + per-field history routes (a Tools submenu item). */
     public readonly bool $revisionsActive;
 
@@ -150,6 +153,8 @@ class ProjectNavigation
 
         $this->accountActive = $request->routeIs('account', 'profile.*', 'admin.*');
 
+        $this->appearanceEditActive = $request->routeIs('admin.appearance.edit');
+
         $this->revisionsActive = $request->routeIs('projects.revisions.*', 'revisions.*');
         $this->progressActive = $request->routeIs('projects.progress');
         $this->toolsActive = $request->routeIs('projects.tools.*') || $this->revisionsActive || $this->progressActive;
@@ -167,6 +172,12 @@ class ProjectNavigation
         $request->setUserResolver(fn () => $user);
 
         return new self($request);
+    }
+
+    /** Whether the top bar shows the quick appearance button. */
+    public function showsAppearanceSwitcher(): bool
+    {
+        return ! $this->appearanceEditActive;
     }
 
     /** Whether there is a project to build project-scoped links from. */

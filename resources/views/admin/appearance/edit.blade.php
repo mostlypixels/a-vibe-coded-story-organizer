@@ -14,19 +14,6 @@
         $selectedLeading = old('manuscript_leading', $fonts->leadingSlug);
         $selectedUiLeading = old('ui_leading', $fonts->uiLeadingSlug);
         $selectedLocale = old('locale', $activeLocale);
-
-        $stacks = array_map(fn (array $family) => $family['stack'], $families);
-
-        // Only server-approved values can reach CSS properties.
-        $previewMap = [
-            'theme_slug' => $themeDeclarations,
-            'ui_font' => $stacks,
-            'manuscript_font' => $stacks,
-            'ui_scale' => $uiScales,
-            'manuscript_scale' => $manuscriptScales,
-            'manuscript_leading' => $manuscriptLineHeights,
-            'ui_leading' => $uiLineHeights,
-        ];
     @endphp
 
     {{-- Disable radio restoration because it does not trigger the live preview. --}}
