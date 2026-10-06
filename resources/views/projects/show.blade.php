@@ -59,8 +59,9 @@
             <x-card :title="__('Books')" icon="entity-book" flush-footer>
                 <ul class="divide-y divide-border">
                     @foreach ($books as $book)
-                        <li class="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
-                            <a href="{{ route('books.show', $book) }}" class="text-sm font-medium text-content hover:text-link">
+                        <li class="flex items-center gap-2 py-2 first:pt-0 last:pb-0">
+                            <x-cover-thumbnail :href="route('books.show', $book)" :src="$book->coverUrl()" :alt="$book->displayName()" icon="entity-book" :label="$loop->iteration" />
+                            <a href="{{ route('books.show', $book) }}" class="min-w-0 flex-1 text-sm font-medium text-content hover:text-link">
                                 {{ $book->displayName() }}
                             </a>
                             <span class="text-xs text-content-muted">

@@ -110,6 +110,34 @@ class CodexEntry extends Model
     }
 
     /**
+     * The first letter of the first and the last word of the name, for a cover placeholder.
+     * Only a character has initials: "RP" for a street tells the reader nothing.
+     *
+     * > [!WARNING]
+     * > An article or a title counts as a word: "La Thénardier" gives "LT".
+     */
+    public function initials(): ?string
+    {
+        if ($this->type !== CodexEntryType::Character) {
+            return null;
+        }
+
+        // The first letter, not the first character: "« Le Cabuc »" starts with a quote mark.
+        $letters = collect(preg_split('/\s+/u', $this->name, -1, PREG_SPLIT_NO_EMPTY))
+            ->map(fn (string $word) => preg_match('/\p{L}/u', $word, $match) ? $match[0] : null)
+            ->filter()
+            ->values();
+
+        if ($letters->isEmpty()) {
+            return null;
+        }
+
+        $initials = $letters->count() === 1 ? $letters->first() : $letters->first().$letters->last();
+
+        return mb_strtoupper($initials);
+    }
+
+    /**
      * Whether termination happens before inception — a time traveller.
      * A legal save (see the edit page warning); age and the existence
      * filter both stand down when this is true.

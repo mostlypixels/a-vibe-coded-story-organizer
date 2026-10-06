@@ -20,6 +20,7 @@ use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
 use App\Support\DateFormat;
 use App\Support\LocaleChoice;
+use Dom\HTMLDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -57,6 +58,18 @@ class CodexEntryTest extends TestCase
 
         $response->assertSee(route('codex.show', $entry), false);
         $response->assertSee(route('codex.edit', $entry), false);
+    }
+
+    public function test_the_index_shows_the_initials_of_a_character_without_a_cover(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        CodexEntry::factory()->for($project)->character()->create(['name' => 'Jean Valjean']);
+
+        $html = $this->actingAs($user)->get(route('projects.codex.index', [$project, 'characters']))->assertOk()->getContent();
+        $label = HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelector('td a[aria-hidden="true"] > div > span');
+
+        $this->assertSame('JV', trim($label->textContent));
     }
 
     public function test_index_search_matches_name_and_alias(): void
