@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-06 — Update the Markdown library
+
+### Fixed
+
+- The Markdown library is updated to fix known cross-site scripting and denial-of-service flaws.
+
 ## 2026-10-06 — Code audit fixes (#308)
 
 ### Added
