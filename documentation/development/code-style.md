@@ -7,6 +7,7 @@ Write code that a new contributor can read and change safely. Match nearby code 
 ## Formatting and naming
 
 - Use Laravel Pint. Run `composer lint` to format or `composer lint -- --test` to check.
+- Run `composer analyse` for Larastan. Fix the code; do not add a baseline or an inline ignore. Raise `level` in `phpstan.neon` one step at a time.
 - Follow Laravel conventions.
 - Use descriptive names. Avoid unclear abbreviations.
 - Keep manuscript titles independent from stored positions and calculated numbers.
@@ -39,13 +40,16 @@ Before copying a controller pattern, check `app/Http/Controllers/Concerns`:
 
 | Concern | Purpose |
 |---|---|
-| `RecordsManualRevisions` | Record revisions around a manual update. |
 | `ResolvesIndexSorting` | Apply an allow-listed sort and direction. |
 | `ReordersSiblings` | Authorize and move a sibling. |
-| `ReparentsChildren` | Move children before deleting a parent. |
 | `RedirectsAfterSave` | Select the save or save-and-stay response. |
 
-Keep each concern limited to behavior that is identical for all callers. Read its docblock before extending it.
+Keep each concern limited to behavior that is identical for all callers. Read its docblock before extending it. Domain work goes to a service:
+
+| Service method | Purpose |
+|---|---|
+| `RevisionRecorder::saveWithManualCheckpoint()` | Record revisions around a manual update. |
+| `ParentDeleter::delete()` | Move children, then delete a parent. |
 
 Use `Project::chapterQuery()` and `Project::sceneQuery()` for project-scoped lookups through parents. They return builders so callers can apply unambiguous ordering and filters.
 

@@ -92,14 +92,14 @@ final readonly class ThemePreset
             ? $this->tokens[$name]
             : null;
 
-        $levels = array_filter([$token('surface-raised'), $token('surface'), $token('surface-sunken')]);
+        $levels = [$token('surface-raised'), $token('surface'), $token('surface-sunken')];
 
         return [
             'stripes' => array_values(array_filter([$token('primary'), $token('accent'), $token('focus')])),
             'plate' => $token('surface') ?? $token('surface-raised'),
-            'plateBackground' => count($levels) === 3
-                ? vsprintf('linear-gradient(to bottom, %s 0%%, %s 50%%, %s 100%%)', array_values($levels))
-                : null,
+            'plateBackground' => in_array(null, $levels, true)
+                ? null
+                : sprintf('linear-gradient(to bottom, %s 0%%, %s 50%%, %s 100%%)', ...$levels),
             'content' => $token('content'),
         ];
     }

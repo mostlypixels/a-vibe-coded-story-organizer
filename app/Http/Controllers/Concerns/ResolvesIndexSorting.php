@@ -7,10 +7,9 @@ use Illuminate\Http\Request;
 /**
  * Resolves the `?sort=` / `?direction=` query pair an index page is ordered by.
  *
- * Every entity index accepts the same two parameters and applied the same rule to
- * them — an unrecognised column falls back to the page's default, and anything
- * other than the literal `desc` means ascending — repeated verbatim across the
- * Act, Chapter, Scene, Event, Plotline and CodexEntry controllers.
+ * Every entity index accepts the same two parameters and applies the same rule to
+ * them: an unrecognised column falls back to the page's default, and anything
+ * other than the literal `desc` means ascending.
  *
  * The allow-list is the security boundary here: `$sort` reaches `orderBy()` as a
  * column name, so it must never be whatever the query string happened to say.

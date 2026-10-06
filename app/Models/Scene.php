@@ -107,8 +107,8 @@ class Scene extends Model
 
     /**
      * The scene's Markdown `contents` rendered to HTML. This is the single home for
-     * the null-guard and the renderer choice (previously `Str::markdown($contents ?? '')`
-     * repeated across the Story overview, the public share view, and the book export).
+     * the null-guard and the renderer choice. The Story overview, the public share
+     * view, and the book export all read it.
      * Rendering `contents` (unlike the rich-HTML fields) is safe by our convention:
      * it is Markdown gated by ValidMarkdown, echoed with {!! !!} only here and in those
      * views. Returns an empty string when there are no contents.

@@ -9,10 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * The controller half of a "move up / move down" action.
  *
- * {@see HasSiblingPosition} owns the swap itself; this owns the two things every
- * one of the six move actions (Act, Chapter and Scene × up, down) did around it:
- * authorize against the owning Project, then move. That pairing was repeated
- * verbatim. This trait prevents a move without the matching authorization.
+ * {@see HasSiblingPosition} owns the swap itself. This trait authorizes against the
+ * owning Project, then moves, so no move action can skip the authorization.
  *
  * The **response is deliberately not absorbed**: Act and Chapter always redirect
  * back, while Scene's pair also answers JSON for the Story overview's AJAX

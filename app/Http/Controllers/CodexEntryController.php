@@ -16,6 +16,7 @@ use App\Services\CodexEntryDuplicator;
 use App\Services\CodexEntrySaver;
 use App\Services\ReferencingScenes;
 use App\Support\CodexEntryForm;
+use App\Support\CodexEntryMedia;
 use App\Support\CodexMediaUploads;
 use App\Support\DuplicateName;
 use App\Support\EventWindow;
@@ -116,10 +117,18 @@ class CodexEntryController extends Controller
         $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent.scenes', 'inceptionEvent', 'terminationEvent');
 
         $project = $codexEntry->project;
+        $media = CodexEntryMedia::of($codexEntry);
+        $gallery = $media->gallery();
 
         return view('codex.show', [
             'project' => $project,
             'entry' => $codexEntry,
+            'gallery' => $gallery,
+            'referenceFiles' => $media->referenceFiles,
+            'hasSidebar' => $gallery !== []
+                || $media->referenceFiles->isNotEmpty()
+                || $codexEntry->aliases->isNotEmpty()
+                || $codexEntry->tags->isNotEmpty(),
             'sheets' => $sheets->setOnly($codexEntry, $project->startEvent()),
             'referencingScenes' => $referencingScenes->forEntry($codexEntry),
             'showBook' => $project->books()->count() > 1,

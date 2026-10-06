@@ -6,7 +6,6 @@ use App\Models\Chapter;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\Concerns\CreatesInlineEvents;
-use App\Support\AutosavableFields;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -52,11 +51,7 @@ class SceneSaver
     {
         $attributes = $this->sceneAttributes($validated);
 
-        // A first-ever save seeds its baseline with this timestamp, and the save overwrites it.
-        $heldSince = $scene->updated_at;
-        $before = AutosavableFields::snapshotFieldsBeforeUpdate($scene, $attributes);
-
-        DB::transaction(function () use ($scene, $chapter, $validated, $user, $attributes, $heldSince, $before) {
+        DB::transaction(fn () => $this->recorder->saveWithManualCheckpoint($scene, $attributes, $user, function () use ($scene, $chapter, $validated, $attributes) {
             $scene->fill($attributes + ['event_id' => $this->eventId($chapter, $validated)]);
 
             if ($scene->chapter_id !== $chapter->id) {
@@ -66,9 +61,7 @@ class SceneSaver
             $scene->save();
 
             $this->syncRelations($scene, $validated);
-
-            $this->recorder->recordManualChanges($scene, $before, $user, heldSince: $heldSince);
-        });
+        }));
     }
 
     /**

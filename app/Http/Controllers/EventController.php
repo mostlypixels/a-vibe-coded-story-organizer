@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Controllers\Concerns\ValidatesIndexFilters;
@@ -12,6 +11,7 @@ use App\Models\Event;
 use App\Models\Project;
 use App\Services\CodexAsOfResolver;
 use App\Services\EventLifespanEntries;
+use App\Services\RevisionRecorder;
 use App\Support\EventDeleteWarning;
 use App\Support\EventWindow;
 use App\Support\Flash;
@@ -24,7 +24,6 @@ use Illuminate\View\View;
 
 class EventController extends Controller
 {
-    use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ResolvesIndexSorting;
     use ValidatesIndexFilters;
@@ -128,16 +127,14 @@ class EventController extends Controller
         ]);
     }
 
-    public function update(UpdateEventRequest $request, Event $event): RedirectResponse
+    public function update(UpdateEventRequest $request, Event $event, RevisionRecorder $recorder): RedirectResponse
     {
         $data = $request->safe()->except('plotlines');
-        $beforeAutosavedFields = $this->snapshotAutosaved($event, $data);
 
-        $event->update($data);
-
-        $event->plotlines()->sync($request->validated('plotlines'));
-
-        $this->recordManualSave($event, $beforeAutosavedFields);
+        $recorder->saveWithManualCheckpoint($event, $data, $request->user(), function () use ($request, $event, $data) {
+            $event->update($data);
+            $event->plotlines()->sync($request->validated('plotlines'));
+        });
 
         return $this->redirectAfterSave($request, ['events.edit', $event], ['projects.events.index', $event->project]);
     }

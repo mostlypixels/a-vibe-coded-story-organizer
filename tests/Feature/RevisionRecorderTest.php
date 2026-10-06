@@ -134,6 +134,22 @@ class RevisionRecorderTest extends TestCase
         $this->assertSame('Saved 24 July 10:43', $notesRevision->label);
     }
 
+    public function test_save_with_manual_checkpoint_records_the_change_that_the_callback_saves(): void
+    {
+        $scene = Scene::factory()->create(['notes' => 'Old notes', 'description' => 'Same description']);
+        $user = User::factory()->create();
+        $data = ['notes' => 'New notes', 'description' => 'Same description'];
+
+        $result = $this->recorder->saveWithManualCheckpoint($scene, $data, $user, fn () => $scene->update($data));
+
+        $this->assertTrue($result);
+        $this->assertSame(0, $scene->revisions()->where('field', 'description')->count());
+        $this->assertSame(
+            ['Old notes', 'New notes'],
+            $scene->revisions()->where('field', 'notes')->reorder('id')->pluck('value')->all(),
+        );
+    }
+
     public function test_record_manual_changes_always_inserts_a_fresh_row_even_immediately_after_an_automatic_one(): void
     {
         $scene = Scene::factory()->create(['contents' => 'original']);

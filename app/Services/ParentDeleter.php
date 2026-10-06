@@ -1,16 +1,16 @@
 <?php
 
-namespace App\Http\Controllers\Concerns;
+namespace App\Services;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Moves a parent's ordered children onto a new parent, for the "move or delete"
- * dialog's reassignment branch (an act's chapters → another act, a chapter's
- * scenes → another chapter).
+ * Deletes a parent from the "move or delete" dialog: a book with its acts, an act
+ * with its chapters, or a chapter with its scenes. The writer can move the
+ * children to another parent first.
  *
- * Both destroy actions ran the same algorithm and carried the same explanation
- * of the same two pitfalls. Those pitfalls are the reason this is worth sharing:
+ * Two pitfalls make the move worth one shared place:
  *
  *  - **`position` is not reassigned on a plain parent change.** Act/Chapter/Scene
  *    only auto-assign `position` in their `creating()` hook, so a moved child
@@ -22,18 +22,29 @@ use Illuminate\Database\Eloquent\Model;
  *    from `$fillable` on purpose, so `update(['act_id' => …])` is *silently*
  *    dropped — a no-op that looks like a successful move. Reparenting has to go
  *    through the relationship's `associate()`.
- *
- * The caller owns the transaction. Reassignment and deletion must commit together.
  */
-trait ReparentsChildren
+class ParentDeleter
 {
     /**
-     * Append every one of `$from`'s children to the end of `$to`'s ordered set.
+     * Delete `$parent`. When `$destination` is set, its children move there first.
+     * The move and the delete commit together.
      *
      * @param  string  $childrenRelation  The HasMany relation on both parents, e.g. `chapters`.
      * @param  string  $parentRelation  The inverse BelongsTo on the child, e.g. `act`.
      */
-    protected function reparentChildren(Model $from, Model $to, string $childrenRelation, string $parentRelation): void
+    public function delete(Model $parent, ?Model $destination, string $childrenRelation, string $parentRelation): void
+    {
+        DB::transaction(function () use ($parent, $destination, $childrenRelation, $parentRelation) {
+            if ($destination !== null) {
+                $this->moveChildren($parent, $destination, $childrenRelation, $parentRelation);
+            }
+
+            // The model cascade deletes any children that did not move.
+            $parent->delete();
+        });
+    }
+
+    private function moveChildren(Model $from, Model $to, string $childrenRelation, string $parentRelation): void
     {
         // Each save raises the destination maximum, so the next child lands after it.
         $from->{$childrenRelation}()

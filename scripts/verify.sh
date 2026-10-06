@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # verify.sh — run the project's whole green-tree gate in one call.
 #
-# Runs, in order: the PHP suite (`composer test`), the JS suite (`npm run test`)
-# and the formatter check (`composer lint -- --test`). All three always run, so
+# Runs, in order: the PHP suite (`composer test`), the JS suite (`npm run test`),
+# the formatter check (`composer lint -- --test`) and static analysis
+# (`composer analyse`). All steps always run, so
 # one call reports every problem instead of stopping at the first — then it
 # prints a one-line-per-tool summary. Full output of a passing tool is thrown
 # away; a failing tool gets its last lines printed and its log file kept.
@@ -10,13 +11,14 @@
 # These are the canonical commands from CLAUDE.md → Commands. This script is the
 # only place they are spelled out; callers must not hardcode them.
 #
-# Usage: scripts/verify.sh [--filter <pattern>] [--no-js] [--no-lint]
+# Usage: scripts/verify.sh [--filter <pattern>] [--no-js] [--no-lint] [--no-analyse]
 #
 #   --filter <pattern>  run `php artisan test --filter <pattern>` instead of the
 #                       full parallel suite, and skip the JS suite (a PHP filter
 #                       says nothing about JS). For a fast loop on one test.
 #   --no-js             skip the JS suite.
 #   --no-lint           skip the formatter check.
+#   --no-analyse        skip static analysis.
 #
 # Exit codes:
 #   0 — every tool that ran passed
@@ -28,13 +30,14 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: scripts/verify.sh [--filter <pattern>] [--no-js] [--no-lint]" >&2
+    echo "usage: scripts/verify.sh [--filter <pattern>] [--no-js] [--no-lint] [--no-analyse]" >&2
     exit 2
 }
 
 FILTER=""
 RUN_JS=1
 RUN_LINT=1
+RUN_ANALYSE=1
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -48,6 +51,7 @@ while [ $# -gt 0 ]; do
             ;;
         --no-js) RUN_JS=0; shift ;;
         --no-lint) RUN_LINT=0; shift ;;
+        --no-analyse) RUN_ANALYSE=0; shift ;;
         *) usage ;;
     esac
 done
@@ -109,6 +113,10 @@ fi
 
 if [ "$RUN_LINT" -eq 1 ]; then
     run_step "Lint" lint composer lint -- --test
+fi
+
+if [ "$RUN_ANALYSE" -eq 1 ]; then
+    run_step "Static analysis" analyse composer analyse -- --no-progress
 fi
 
 echo ""

@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
-use App\Http\Controllers\Concerns\ReparentsChildren;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Controllers\Concerns\ValidatesIndexFilters;
 use App\Http\Requests\DestroyActRequest;
@@ -16,21 +14,20 @@ use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Scene;
+use App\Services\ParentDeleter;
+use App\Services\RevisionRecorder;
 use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
 use App\Support\StoryNumbering;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ActController extends Controller
 {
-    use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ReordersSiblings;
-    use ReparentsChildren;
     use ResolvesIndexSorting;
     use ValidatesIndexFilters;
 
@@ -159,14 +156,11 @@ class ActController extends Controller
         ]);
     }
 
-    public function update(UpdateActRequest $request, Act $act): RedirectResponse
+    public function update(UpdateActRequest $request, Act $act, RevisionRecorder $recorder): RedirectResponse
     {
         $data = $request->validated();
-        $beforeAutosavedFields = $this->snapshotAutosaved($act, $data);
 
-        $act->update($data);
-
-        $this->recordManualSave($act, $beforeAutosavedFields);
+        $recorder->saveWithManualCheckpoint($act, $data, $request->user(), fn () => $act->update($data));
 
         return $this->redirectAfterSave($request, ['acts.edit', $act], ['books.acts.index', $act->book]);
     }
@@ -183,24 +177,15 @@ class ActController extends Controller
             ->with(Flash::SUCCESS, __('Act moved to :book.', ['book' => $destination->displayName()]));
     }
 
-    public function destroy(DestroyActRequest $request, Act $act): RedirectResponse
+    public function destroy(DestroyActRequest $request, Act $act, ParentDeleter $deleter): RedirectResponse
     {
         // Authorization is handled by DestroyActRequest::authorize() (mirrors the
         // walk-up-to-project check the other actions perform).
         $book = $act->book;
+        $destinationId = $request->validated('move_children_to');
+        $destination = $destinationId ? $book->acts()->findOrFail($destinationId) : null;
 
-        // Reassignment and deletion must succeed or fail together.
-        DB::transaction(function () use ($request, $act, $book) {
-            if ($destinationId = $request->validated('move_children_to')) {
-                $destination = $book->acts()->findOrFail($destinationId);
-
-                $this->reparentChildren($act, $destination, 'chapters', 'act');
-            }
-
-            // Same cascade path as before — just nothing left to cascade if the
-            // chapters were reassigned above.
-            $act->delete();
-        });
+        $deleter->delete($act, $destination, 'chapters', 'act');
 
         return redirect()->route('books.acts.index', $book)->with(Flash::SUCCESS, __('Act deleted.'));
     }

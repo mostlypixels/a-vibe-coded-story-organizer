@@ -1,4 +1,4 @@
-.PHONY: help up down build rebuild logs shell tinker test lint migrate seed demo fresh fresh-install-onboardable fresh-install-testable ps restart clean guard-native
+.PHONY: help up down build rebuild logs shell tinker test lint analyse migrate seed demo fresh fresh-install-onboardable fresh-install-testable ps restart clean guard-native
 
 # `docker compose` (v2, a subcommand) rather than `docker-compose` (v1, a separate
 # Python binary that reached end of life in 2023).
@@ -42,6 +42,7 @@ help:
 	@echo "  make tinker          - Open Laravel tinker REPL"
 	@echo "  make test            - Run test suite"
 	@echo "  make lint            - Run code linting"
+	@echo "  make analyse         - Run static analysis"
 	@echo ""
 	@echo "Database:"
 	@echo "  make migrate         - Run database migrations"
@@ -105,6 +106,9 @@ test:
 
 lint:
 	$(APP_EXEC) composer lint
+
+analyse:
+	$(APP_EXEC) composer analyse
 
 migrate:
 	$(APP_EXEC) php artisan migrate

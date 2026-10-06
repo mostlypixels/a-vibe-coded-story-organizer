@@ -80,7 +80,7 @@ class SceneController extends Controller
             ->select('scenes.*')
             // Joined so the `#` column can sort by story order: act order, then chapter
             // within the act, then scene within the chapter. Grouping by `chapter_id`
-            // instead — as this did — only matches story order until something is
+            // instead only matches story order until something is
             // reordered. `chapters` and `acts` both carry `name` and `position`, so
             // every column below is table-qualified to stay unambiguous.
             ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')

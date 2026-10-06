@@ -108,8 +108,7 @@ class SearchController extends Controller
 
         $page = max(1, $request->integer('page', 1));
         // The reader's own rows-per-page, the same one every entity list honours.
-        // This page used to keep a separate `search.per_page`, which meant one screen
-        // in ten quietly disagreed with the preference set on all the others.
+        // Do not give search a separate page size: it would disagree with the preference.
         $perPage = PageSize::resolve($request->user()?->page_size);
 
         // PHP-side slice of the already-matched collection — never a SQL

@@ -8,6 +8,7 @@ Use these rules during planning and development. Prefer clear code that junior d
 - JavaScript tests: `npm run test`
 - Format: `composer lint`
 - Check formatting: `composer lint -- --test`
+- Static analysis: `composer analyse` (Larastan, `phpstan.neon`)
 - Build frontend: `npm run build`
 - Start development server: `make up` (Docker, the default); `php artisan serve` when a native run is asked for
 - Run all checks: `bash scripts/verify.sh`

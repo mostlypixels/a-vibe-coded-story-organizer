@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use App\Enums\CodexMediaCollection;
 use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
@@ -38,14 +37,14 @@ final class CodexEntryForm
     /** Eager-load `aliases`, `tags` and `media` on the entry first. */
     public static function forEdit(CodexEntry $entry): self
     {
-        $media = $entry->media;
+        $media = CodexEntryMedia::of($entry);
 
         return new self(
             aliasValues: old('aliases', $entry->aliases->pluck('alias')->values()->all()),
             tagValues: old('tags', $entry->tags->pluck('name')->values()->all()),
-            cover: $media->firstWhere('collection', CodexMediaCollection::Cover),
-            referenceImages: $media->where('collection', CodexMediaCollection::ReferenceImage)->sortBy('position')->values(),
-            referenceFiles: $media->where('collection', CodexMediaCollection::ReferenceFile)->sortBy('position')->values(),
+            cover: $media->cover,
+            referenceImages: $media->referenceImages,
+            referenceFiles: $media->referenceFiles,
             attributes: collect(),
             attributeOptions: [],
             pickedAttributes: [],

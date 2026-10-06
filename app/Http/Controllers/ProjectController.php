@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
 use App\Services\CoverImageService;
 use App\Services\RecentlyEdited;
+use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
 use App\Services\WordCountHistory;
 use App\Support\Flash;
@@ -20,7 +20,6 @@ use Illuminate\View\View;
 
 class ProjectController extends Controller
 {
-    use RecordsManualRevisions;
     use RedirectsAfterSave;
 
     /**
@@ -130,25 +129,21 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function update(UpdateProjectRequest $request, Project $project): RedirectResponse
+    public function update(UpdateProjectRequest $request, Project $project, RevisionRecorder $recorder): RedirectResponse
     {
         // The cover is a file, not a mass-assignable column value, so keep it (and its
         // remove checkbox) out of the plain attribute update and resolve it separately.
         $data = $request->safe()->except(['cover_image', 'remove_cover_image']);
 
-        // Snapshot before the update below overwrites these in memory — see
-        // RecordsManualRevisions::snapshotAutosaved()'s docblock.
-        $beforeAutosavedFields = $this->snapshotAutosaved($project, $data);
-
-        $project->fill($data);
-        $this->coverImageService->saveWithCover(
-            $project,
-            $request->file('cover_image'),
-            $request->boolean('remove_cover_image'),
-            CoverImageService::PROJECT_COVER_DIRECTORY,
-        );
-
-        $this->recordManualSave($project, $beforeAutosavedFields);
+        $recorder->saveWithManualCheckpoint($project, $data, $request->user(), function () use ($request, $project, $data) {
+            $project->fill($data);
+            $this->coverImageService->saveWithCover(
+                $project,
+                $request->file('cover_image'),
+                $request->boolean('remove_cover_image'),
+                CoverImageService::PROJECT_COVER_DIRECTORY,
+            );
+        });
 
         return $this->redirectAfterSave($request, ['projects.edit', $project], ['projects.show', $project]);
     }

@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
-use App\Http\Controllers\Concerns\ReparentsChildren;
 use App\Http\Requests\DestroyBookRequest;
 use App\Http\Requests\StoreBookRequest;
 use App\Http\Requests\UpdateBookRequest;
@@ -13,20 +11,19 @@ use App\Models\Book;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Services\CoverImageService;
+use App\Services\ParentDeleter;
 use App\Services\RecentlyEdited;
+use App\Services\RevisionRecorder;
 use App\Support\Flash;
 use App\Support\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class BookController extends Controller
 {
-    use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ReordersSiblings;
-    use ReparentsChildren;
 
     public function __construct(private CoverImageService $coverImageService) {}
 
@@ -134,48 +131,35 @@ class BookController extends Controller
         ]);
     }
 
-    public function update(UpdateBookRequest $request, Book $book): RedirectResponse
+    public function update(UpdateBookRequest $request, Book $book, RevisionRecorder $recorder): RedirectResponse
     {
         // The cover is a file, not a mass-assignable column value, so keep it (and its
         // remove checkbox) out of the plain attribute update and resolve it separately.
         $data = $request->safe()->except(['cover_image', 'remove_cover_image']);
 
-        // Snapshot before the update below overwrites these in memory — see
-        // RecordsManualRevisions::snapshotAutosaved()'s docblock.
-        $beforeAutosavedFields = $this->snapshotAutosaved($book, $data);
-
-        $book->fill($data);
-        $this->coverImageService->saveWithCover(
-            $book,
-            $request->file('cover_image'),
-            $request->boolean('remove_cover_image'),
-            CoverImageService::BOOK_COVER_DIRECTORY,
-        );
-
-        $this->recordManualSave($book, $beforeAutosavedFields);
+        $recorder->saveWithManualCheckpoint($book, $data, $request->user(), function () use ($request, $book, $data) {
+            $book->fill($data);
+            $this->coverImageService->saveWithCover(
+                $book,
+                $request->file('cover_image'),
+                $request->boolean('remove_cover_image'),
+                CoverImageService::BOOK_COVER_DIRECTORY,
+            );
+        });
 
         return $this->redirectAfterSave($request, ['books.edit', $book], ['projects.books.index', $book->project]);
     }
 
-    public function destroy(DestroyBookRequest $request, Book $book): RedirectResponse
+    public function destroy(DestroyBookRequest $request, Book $book, ParentDeleter $deleter): RedirectResponse
     {
         // A project must always keep at least one book.
         abort_if($book->project->books()->count() === 1, 403);
 
         $project = $book->project;
+        $destinationId = $request->validated('move_children_to');
+        $destination = $destinationId ? $project->books()->findOrFail($destinationId) : null;
 
-        // Reassignment and deletion must succeed or fail together.
-        DB::transaction(function () use ($request, $book, $project) {
-            if ($destinationId = $request->validated('move_children_to')) {
-                $destination = $project->books()->findOrFail($destinationId);
-
-                $this->reparentChildren($book, $destination, 'acts', 'book');
-            }
-
-            // Same cascade path as before — just nothing left to cascade if the
-            // acts were reassigned above.
-            $book->delete();
-        });
+        $deleter->delete($book, $destination, 'acts', 'book');
 
         return redirect()->route('projects.books.index', $project)->with(Flash::SUCCESS, __('Book deleted.'));
     }

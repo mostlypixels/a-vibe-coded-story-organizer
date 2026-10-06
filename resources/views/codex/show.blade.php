@@ -1,15 +1,3 @@
-@php
-    use App\Enums\CodexMediaCollection;
-
-    $cover = $entry->media->firstWhere('collection', CodexMediaCollection::Cover);
-    $referenceImages = $entry->media->where('collection', CodexMediaCollection::ReferenceImage)->sortBy('position')->values();
-    $gallery = collect([$cover])->filter()->concat($referenceImages)->map(fn ($media) => [
-        'url' => $media->url(),
-        'alt' => $media->original_name ?? $entry->name,
-    ])->values();
-    $referenceFiles =$entry->media->where('collection', CodexMediaCollection::ReferenceFile)->sortBy('position')->values();
-@endphp
-
 <x-app-layout>
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -26,13 +14,11 @@
     </div>
 
     <div class="space-y-6">
-        @php($hasSidebar = $gallery->isNotEmpty() || $referenceFiles->isNotEmpty() || $entry->aliases->isNotEmpty() || $entry->tags->isNotEmpty())
-
         @if ($hasSidebar || filled($entry->description))
             <div class="grid gap-6 md:grid-cols-12">
                 @if ($hasSidebar)
                     <div class="space-y-4 md:col-span-3">
-                        @if ($gallery->isNotEmpty())
+                        @if ($gallery !== [])
                             <div x-data="{ images: @js($gallery), current: 0 }">
                                 <button
                                     type="button"
@@ -42,7 +28,7 @@
                                     <img :src="images[current].url" :alt="images[current].alt" class="aspect-square w-full rounded-md border border-border object-cover">
                                 </button>
 
-                                @if ($gallery->count() > 1)
+                                @if (count($gallery) > 1)
                                     <ul class="mt-2 grid grid-cols-4 gap-2">
                                         <template x-for="(image, index) in images" :key="index">
                                             <li>

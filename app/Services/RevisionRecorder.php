@@ -101,9 +101,34 @@ class RevisionRecorder
     }
 
     /**
+     * Runs `$save`, then records the autosaved fields it changed as one manual checkpoint.
+     *
+     * The snapshot comes first, because `$save` overwrites the old values in memory.
+     *
+     * @template TResult
+     *
+     * @param  array<string, mixed>  $data  The form values that `$save` applies.
+     * @param  callable(): TResult  $save
+     * @return TResult
+     */
+    public function saveWithManualCheckpoint(Model $entity, array $data, User $user, callable $save): mixed
+    {
+        // A first-ever save seeds its baseline with this timestamp, and the save overwrites it.
+        $heldSince = $entity->updated_at;
+        $before = AutosavableFields::snapshotFieldsBeforeUpdate($entity, $data);
+
+        $result = $save();
+
+        $this->recordManualChanges($entity, $before, $user, heldSince: $heldSince);
+
+        return $result;
+    }
+
+    /**
      * Records changed fields from a full form as one manual checkpoint.
      *
      * The caller must capture `$before` and `$heldSince` before it updates the model.
+     * {@see saveWithManualCheckpoint()} does this for you.
      */
     public function recordManualChanges(
         Model $entity,

@@ -13,7 +13,7 @@ use Illuminate\View\View;
 
 /**
  * Create, edit, and delete challenges. No `index`: the Progress page lists
- * them. Not `RecordsManualRevisions` — a challenge is a target, not authored
+ * them. No manual revision checkpoint — a challenge is a target, not authored
  * content, and edits are silent.
  */
 class ChallengeController extends Controller

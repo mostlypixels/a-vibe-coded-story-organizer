@@ -8,8 +8,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Reorders a model within its ordered set of siblings by swapping its `position`
  * with the adjacent sibling's. This is the one place the "move up / move down"
- * logic lives — it was previously copied verbatim across the Act, Chapter, and
- * Scene controllers, differing only in the column that scopes the sibling set.
+ * logic lives.
  *
  * A using model declares that scope column via {@see siblingScopeColumn()} (e.g.
  * `book_id` for acts, `act_id` for chapters, `chapter_id` for scenes); the swap
