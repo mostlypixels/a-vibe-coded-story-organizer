@@ -43,14 +43,7 @@
                     @forelse ($projects as $project)
                         <x-table-row :striped="$loop->even">
                             <x-table-cell>
-                                {{-- The name link next to it is the one that screen readers and the keyboard use. --}}
-                                <a href="{{ route('projects.show', $project) }}" tabindex="-1" aria-hidden="true">
-                                    @if ($project->cover_image)
-                                        <img src="{{ $project->coverUrl() }}" alt="{{ $project->name }}" class="h-10 w-10 rounded-sm object-cover border border-border">
-                                    @else
-                                        <div class="h-10 w-10 rounded-sm bg-surface border border-border" aria-hidden="true"></div>
-                                    @endif
-                                </a>
+                                <x-cover-thumbnail :href="route('projects.show', $project)" :src="$project->coverUrl()" :alt="$project->name" />
                             </x-table-cell>
                             <x-table-cell>
                                 <a href="{{ route('projects.show', $project) }}" class="font-semibold text-content hover:text-link">{{ $project->name }}</a>

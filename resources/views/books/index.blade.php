@@ -16,6 +16,7 @@
             <x-table>
                 <x-slot:head>
                     <x-table-heading>{{ __('#') }}</x-table-heading>
+                    <x-table-heading><span class="sr-only">{{ __('Cover') }}</span></x-table-heading>
                     <x-table-heading>{{ __('Name') }}</x-table-heading>
                     <x-table-heading>{{ __('Acts') }}</x-table-heading>
                     <x-table-heading class="text-right">{{ __('Words') }}</x-table-heading>
@@ -25,6 +26,9 @@
                 @foreach ($books as $book)
                     <x-table-row :striped="$loop->even">
                         <x-table-cell muted nowrap>{{ $books->firstItem() + $loop->index }}</x-table-cell>
+                        <x-table-cell>
+                            <x-cover-thumbnail :href="route('books.edit', $book)" :src="$book->coverUrl()" :alt="$book->displayName()" icon="entity-book" :label="$books->firstItem() + $loop->index" />
+                        </x-table-cell>
                         <x-table-cell>
                             <a href="{{ route('books.edit', $book) }}" class="font-semibold text-content hover:text-link">{{ $book->displayName() }}</a>
                         </x-table-cell>

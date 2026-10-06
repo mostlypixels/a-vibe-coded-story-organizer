@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-06 — Covers in book and chapter lists (#305)
+
+### Added
+
+- The books and chapters lists, the project page's books card and the act page's chapters card show cover thumbnails.
+- A book or chapter without a cover shows its number over a faint, tilted icon.
+- A codex entry without a cover shows its type icon; a character also shows its initials.
+
 ## 2026-10-06 — Dim images on dark themes (#304)
 
 ### Added

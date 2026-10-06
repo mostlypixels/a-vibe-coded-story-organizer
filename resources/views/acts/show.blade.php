@@ -35,12 +35,16 @@
                     @php $chapters = $act->chapters->sortBy('position')->values(); @endphp
                     <x-table>
                         <x-slot:head>
+                            <x-table-heading><span class="sr-only">{{ __('Cover') }}</span></x-table-heading>
                             <x-table-heading>{{ __('Chapter') }}</x-table-heading>
                             <x-table-heading>{{ __('Scenes') }}</x-table-heading>
                         </x-slot:head>
 
                         @foreach ($chapters as $chapter)
                             <x-table-row :striped="$loop->even" x-show="{{ $loop->index < 20 ? 'true' : 'showAll' }}">
+                                <x-table-cell>
+                                    <x-cover-thumbnail :href="route('chapters.show', $chapter)" :src="$chapter->coverUrl()" :alt="$chapter->name" icon="entity-chapter" :label="$numbering->chapter($chapter)" />
+                                </x-table-cell>
                                 <x-table-cell>
                                     <a href="{{ route('chapters.show', $chapter) }}" class="text-link hover:text-link-hover">{{ $chapter->name }}</a>
                                 </x-table-cell>

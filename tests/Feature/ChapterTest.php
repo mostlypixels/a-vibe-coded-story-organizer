@@ -67,8 +67,34 @@ class ChapterTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertSame('A described chapter', $this->columnCellFor($html, 'A described chapter', 1));
-        $this->assertSame('Rain on the barricade.', $this->columnCellFor($html, 'A described chapter', 2));
+        $this->assertSame('A described chapter', $this->columnCellFor($html, 'A described chapter', 2));
+        $this->assertSame('Rain on the barricade.', $this->columnCellFor($html, 'A described chapter', 3));
+    }
+
+    public function test_the_chapters_index_shows_the_chapter_cover(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create(['cover_image' => 'chapter-covers/front.jpg']);
+
+        $this->actingAs($user)
+            ->get(route('books.chapters.index', $book))
+            ->assertOk()
+            ->assertSee('src="'.$chapter->coverUrl().'"', false);
+    }
+
+    public function test_the_act_page_shows_the_chapter_cover(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create(['cover_image' => 'chapter-covers/front.jpg']);
+
+        $this->actingAs($user)
+            ->get(route('acts.show', $act))
+            ->assertOk()
+            ->assertSee('src="'.$chapter->coverUrl().'"', false);
     }
 
     /** The Act column shows the raw, gappy per-act `position`, not the book-wide '#' number. */

@@ -12,6 +12,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Models\WordCountSnapshot;
 use App\Support\WordCountFormat;
+use Dom\HTMLDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -256,6 +257,45 @@ class BookTest extends TestCase
             ->get(route('projects.books.index', $project))
             ->assertOk()
             ->assertSee('Volume Two');
+    }
+
+    public function test_the_books_index_shows_the_book_cover(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $book->update(['cover_image' => 'book-covers/front.jpg']);
+
+        $this->actingAs($user)
+            ->get(route('projects.books.index', $project))
+            ->assertOk()
+            ->assertSee('src="'.$book->coverUrl().'"', false);
+    }
+
+    public function test_the_books_index_shows_the_icon_and_number_for_a_book_without_a_cover(): void
+    {
+        $user = User::factory()->create();
+        [$project, $first] = $this->projectWithBook($user);
+        $first->update(['cover_image' => 'book-covers/front.jpg']);
+        Book::factory()->for($project)->create(['name' => 'Volume Two']);
+
+        $html = $this->actingAs($user)->get(route('projects.books.index', $project))->assertOk()->getContent();
+        $placeholders = HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelectorAll('td a[aria-hidden="true"] > div');
+
+        $this->assertCount(1, $placeholders);
+        $this->assertNotNull($placeholders[0]->querySelector('svg'));
+        $this->assertSame('2', trim($placeholders[0]->querySelector('span')->textContent));
+    }
+
+    public function test_the_project_page_shows_the_book_cover(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $book->update(['cover_image' => 'book-covers/front.jpg']);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->assertSee('src="'.$book->coverUrl().'"', false);
     }
 
     public function test_a_user_cannot_view_another_users_books_index(): void
