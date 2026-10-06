@@ -28,6 +28,8 @@ class Dropdown extends Component
         public readonly string $offsetClasses = 'mt-2',
         // Open on mouse hover. Only the disclosure button toggles, so a link in the trigger navigates.
         public readonly bool $hover = false,
+        // Set false for a panel with form controls, so a click inside does not close it.
+        public readonly bool $closeOnClick = true,
     ) {
         // A page can show the same menu more than one time, for example one per editor.
         $this->disclosureId = 'dropdown-'.Str::lower(Str::random(8));

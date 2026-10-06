@@ -54,6 +54,40 @@ class DropdownComponentTest extends TestCase
         $this->assertSame('otherOpened($event)', $root->getAttribute('@dropdown-opened.window'));
     }
 
+    public function test_the_panel_closes_on_click_by_default(): void
+    {
+        $panel = $this->panel(Blade::render(<<<'BLADE'
+            <x-dropdown>
+                <x-slot name="trigger"><x-disclosure-button>Menu</x-disclosure-button></x-slot>
+                <x-slot name="content"><a href="/x">Item</a></x-slot>
+            </x-dropdown>
+            BLADE));
+
+        $this->assertSame('close()', $panel->getAttribute('@click'));
+    }
+
+    public function test_close_on_click_false_keeps_the_panel_open_on_click(): void
+    {
+        $html = Blade::render(<<<'BLADE'
+            <x-dropdown :close-on-click="false">
+                <x-slot name="trigger"><x-disclosure-button>Menu</x-disclosure-button></x-slot>
+                <x-slot name="content"><select><option>A</option></select></x-slot>
+            </x-dropdown>
+            BLADE);
+        $panel = $this->panel($html);
+
+        $this->assertFalse($panel->hasAttribute('@click'));
+        $this->assertStringContainsString('@click.outside="close()"', $html);
+    }
+
+    private function panel(string $html): Element
+    {
+        $panel = $this->root($html)->querySelector('[id^="dropdown-"]');
+        $this->assertNotNull($panel);
+
+        return $panel;
+    }
+
     private function root(string $html): Element
     {
         $root = HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelector('[x-data]');

@@ -83,6 +83,72 @@ class AppearanceSettingsTest extends TestCase
         $this->assertSame('low-glare-dark', $user->fresh()->theme_slug);
     }
 
+    public function test_json_patch_with_a_valid_slug_answers_204_and_saves_the_column(): void
+    {
+        $user = User::factory()->create(['theme_slug' => null]);
+
+        $this->actingAs($user)
+            ->patchJson(route('admin.appearance.update'), ['theme_slug' => 'low-glare-dark'])
+            ->assertNoContent();
+
+        $this->assertSame('low-glare-dark', $user->fresh()->theme_slug);
+    }
+
+    public function test_json_patch_with_a_tampered_slug_answers_422_and_leaves_the_column_unchanged(): void
+    {
+        $user = User::factory()->create(['theme_slug' => 'daylight']);
+
+        $this->actingAs($user)
+            ->patchJson(route('admin.appearance.update'), ['theme_slug' => 'not-a-real-preset'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('theme_slug');
+
+        $this->assertSame('daylight', $user->fresh()->theme_slug);
+    }
+
+    /** The switcher sends one field per request; the rest must stay as saved. */
+    public function test_a_one_field_json_patch_changes_only_that_column(): void
+    {
+        $user = User::factory()->create([
+            'theme_slug' => 'daylight',
+            'ui_font' => 'atkinson',
+            'manuscript_font' => 'literata',
+            'ui_scale' => 'large',
+            'manuscript_scale' => 'larger',
+            'manuscript_leading' => 'airy',
+            'ui_leading' => 'roomier',
+        ]);
+        $columns = [
+            'theme_slug', 'ui_font', 'manuscript_font', 'ui_scale',
+            'manuscript_scale', 'manuscript_leading', 'ui_leading',
+        ];
+        $before = $user->only($columns);
+
+        $this->actingAs($user)
+            ->patchJson(route('admin.appearance.update'), ['theme_slug' => 'low-glare-dark'])
+            ->assertNoContent();
+
+        $this->assertSame(
+            array_merge($before, ['theme_slug' => 'low-glare-dark']),
+            $user->fresh()->only($columns),
+        );
+
+        $this->actingAs($user)
+            ->patchJson(route('admin.appearance.update'), ['manuscript_leading' => 'roomier'])
+            ->assertNoContent();
+
+        $this->assertSame(
+            array_merge($before, ['theme_slug' => 'low-glare-dark', 'manuscript_leading' => 'roomier']),
+            $user->fresh()->only($columns),
+        );
+    }
+
+    public function test_guest_json_patch_is_unauthenticated(): void
+    {
+        $this->patchJson(route('admin.appearance.update'), ['theme_slug' => 'daylight'])
+            ->assertUnauthorized();
+    }
+
     public function test_patch_with_a_slug_not_in_config_fails_validation(): void
     {
         $user = User::factory()->create(['theme_slug' => 'daylight']);

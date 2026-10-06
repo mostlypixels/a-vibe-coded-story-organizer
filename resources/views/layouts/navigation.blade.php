@@ -71,50 +71,56 @@
                 </div>
             </div>
 
-            <div class="hidden sm:flex sm:items-center sm:ms-6 sm:pe-2">
-                <x-dropdown align="right" width="48" hover>
-                    <x-slot name="trigger">
-                        <x-navigation.menu-link
-                            :href="route('account')"
-                            :active="$navigation->accountActive"
-                            :current="request()->routeIs('account')"
-                            :menu-label="__('Account menu')">{{ Auth::user()->name }}</x-navigation.menu-link>
-                    </x-slot>
+            <div class="flex items-center">
+                @if ($navigation->showsAppearanceSwitcher())
+                    <x-navigation.appearance-switcher />
+                @endif
 
-                    <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Profile') }}
-                        </x-dropdown-link>
+                <div class="hidden sm:flex sm:items-center sm:ms-3 sm:pe-2">
+                    <x-dropdown align="right" width="48" hover>
+                        <x-slot name="trigger">
+                            <x-navigation.menu-link
+                                :href="route('account')"
+                                :active="$navigation->accountActive"
+                                :current="request()->routeIs('account')"
+                                :menu-label="__('Account menu')">{{ Auth::user()->name }}</x-navigation.menu-link>
+                        </x-slot>
 
-                        <x-dropdown-link :href="route('admin.index')">
-                            {{ __('Configuration') }}
-                        </x-dropdown-link>
-
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-
-                            <x-dropdown-link :href="route('logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();">
-                                {{ __('Log Out') }}
+                        <x-slot name="content">
+                            <x-dropdown-link :href="route('profile.edit')">
+                                {{ __('Profile') }}
                             </x-dropdown-link>
-                        </form>
-                    </x-slot>
-                </x-dropdown>
-            </div>
 
-            <div class="pe-2 flex items-center sm:hidden">
-                <button
-                    type="button"
-                    @click="open = ! open"
-                    aria-label="{{ __('Menu') }}"
-                    aria-expanded="false"
-                    :aria-expanded="open.toString()"
-                    aria-controls="mobile-navigation"
-                    class="inline-flex items-center justify-center p-2 rounded-md text-nav-content hover:bg-nav-raised focus:outline-hidden focus:bg-nav-raised transition duration-150 ease-in-out">
-                    <x-tabler-menu-2 class="h-6 w-6" x-bind:class="{ 'hidden': open }" />
-                    <x-tabler-x class="h-6 w-6" x-bind:class="{ 'hidden': ! open }" />
-                </button>
+                            <x-dropdown-link :href="route('admin.index')">
+                                {{ __('Configuration') }}
+                            </x-dropdown-link>
+
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+
+                                <x-dropdown-link :href="route('logout')"
+                                        onclick="event.preventDefault();
+                                                    this.closest('form').submit();">
+                                    {{ __('Log Out') }}
+                                </x-dropdown-link>
+                            </form>
+                        </x-slot>
+                    </x-dropdown>
+                </div>
+
+                <div class="pe-2 flex items-center sm:hidden">
+                    <button
+                        type="button"
+                        @click="open = ! open"
+                        aria-label="{{ __('Menu') }}"
+                        aria-expanded="false"
+                        :aria-expanded="open.toString()"
+                        aria-controls="mobile-navigation"
+                        class="inline-flex items-center justify-center p-2 rounded-md text-nav-content hover:bg-nav-raised focus:outline-hidden focus:bg-nav-raised transition duration-150 ease-in-out">
+                        <x-tabler-menu-2 class="h-6 w-6" x-bind:class="{ 'hidden': open }" />
+                        <x-tabler-x class="h-6 w-6" x-bind:class="{ 'hidden': ! open }" />
+                    </button>
+                </div>
             </div>
         </div>
     </div>

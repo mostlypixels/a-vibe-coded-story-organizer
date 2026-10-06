@@ -16,6 +16,7 @@ import { registerDropdown } from './dropdown';
 import { moveScene } from './scene-reorder';
 import { saveQuickEvent } from './quick-event';
 import { registerQuickCodexEntry } from './quick-codex-entry';
+import { registerAppearanceSwitcher } from './appearance-switcher';
 
 window.Alpine = Alpine;
 
@@ -33,6 +34,7 @@ registerSettingTrack(Alpine);
 registerDateField(Alpine);
 registerDropdown(Alpine);
 registerQuickCodexEntry(Alpine);
+registerAppearanceSwitcher(Alpine);
 
 Alpine.start();
 

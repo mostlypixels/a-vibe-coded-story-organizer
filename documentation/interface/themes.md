@@ -37,6 +37,15 @@ No theme data comes from free-form user input.
 
 The unlayered block must outrank Tailwind’s theme layer so runtime values take effect without a rebuild.
 
+## Quick switcher
+
+The palette button in the top bar opens a panel of theme swatches and font controls. The panel is a fragment from `admin.appearance.switcher`, fetched on the first open.
+
+- Preview values come from `AppearancePreviewMap::build()`, the same map the Appearance page uses. The JS rejects any slug not in the map.
+- Each change sends one `PATCH admin.appearance.update` with that one field. It changes one column.
+- A failed save puts the last saved value back and shows an error.
+- The button is absent from the Appearance page: a change there would leave its form stale.
+
 ## Image dimming
 
 - Dark presets dim content images so they glare less on a dark page.

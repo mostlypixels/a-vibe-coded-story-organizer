@@ -35,6 +35,13 @@ export function resolvePreview(maps, field, slug) {
     return { [PREVIEW_PROPERTIES[field]]: options[slug] };
 }
 
+/** Write a `resolvePreview()` result to the root element. */
+export function applyDeclarations(declarations) {
+    for (const [property, value] of Object.entries(declarations)) {
+        document.documentElement.style.setProperty(property, value);
+    }
+}
+
 export function registerFontPreview(Alpine) {
     Alpine.data('fontPreview', (maps = {}) => ({
         init() {
@@ -57,9 +64,7 @@ export function registerFontPreview(Alpine) {
                 return;
             }
 
-            for (const [property, value] of Object.entries(resolved)) {
-                document.documentElement.style.setProperty(property, value);
-            }
+            applyDeclarations(resolved);
         },
     }));
 }

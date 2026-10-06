@@ -5,6 +5,7 @@ use App\Enums\SearchDomain;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ActController;
 use App\Http\Controllers\AppearanceController;
+use App\Http\Controllers\AppearanceSwitcherController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\ChapterController;
@@ -99,6 +100,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
         Route::get('/appearance', [AppearanceController::class, 'edit'])->name('appearance.edit');
         Route::patch('/appearance', [AppearanceController::class, 'update'])->name('appearance.update');
+        Route::get('/appearance/switcher', AppearanceSwitcherController::class)->name('appearance.switcher');
 
         Route::get('/data', fn () => redirect()->route('admin.data.export-project'))->name('data.index');
         Route::get('/data/export/project', [DataTransferController::class, 'exportProject'])->name('data.export-project');

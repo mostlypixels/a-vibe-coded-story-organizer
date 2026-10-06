@@ -210,4 +210,29 @@ class ThemePresetTest extends TestCase
             array_values(array_intersect(ThemeTokens::NON_TEXT, ThemeTokens::DECORATIVE)),
         );
     }
+
+    public function test_swatch_returns_three_stripes_for_a_complete_preset(): void
+    {
+        $swatch = ThemePreset::fromSlug('daylight')->swatch();
+
+        $this->assertCount(3, $swatch['stripes']);
+        $this->assertNotNull($swatch['plate']);
+        $this->assertNotNull($swatch['plateBackground']);
+        $this->assertNotNull($swatch['content']);
+    }
+
+    public function test_swatch_drops_a_value_that_fails_the_css_pattern(): void
+    {
+        $tokens = ThemePreset::fromSlug('daylight')->tokens;
+        $tokens['primary'] = 'red; background: url(x)';
+        $tokens['content'] = '</style>';
+        $tokens['surface-sunken'] = 'nope';
+
+        $swatch = (new ThemePreset('bad', 'Bad', $tokens, 7.0))->swatch();
+
+        $this->assertSame([$tokens['accent'], $tokens['focus']], $swatch['stripes']);
+        $this->assertNull($swatch['content']);
+        $this->assertNull($swatch['plateBackground']);
+        $this->assertSame($tokens['surface'], $swatch['plate']);
+    }
 }
