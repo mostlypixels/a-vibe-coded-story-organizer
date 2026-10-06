@@ -64,8 +64,7 @@ trait HasRevisions
     /**
      * The single column holding this model's human-readable title in the
      * revisions UI. `name` for every revisionable except Event, which overrides
-     * this to `title` — the one place that exception lives now (previously it was
-     * re-encoded in both RevisionController and ProjectRevisionsBrowser).
+     * this to `title`. Keep that exception here only.
      *
      * Static so ProjectRevisionsBrowser can name the column at query-build time —
      * it selects `id` + this column instead of hydrating each entity's full row,

@@ -82,7 +82,6 @@ class FieldAutosaver
         $isSceneContents = $model instanceof Scene && $field === 'contents';
 
         // SceneContentsChanged is a published seam for other features.
-        // Nothing listens to it today.
         if ($runMatcher && $isSceneContents) {
             $this->matcher->syncScene($model);
 

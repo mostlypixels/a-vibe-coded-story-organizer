@@ -143,4 +143,20 @@ class ReferencingScenesTest extends TestCase
 
         $this->assertSame(['Ash', 'Bell', 'Zebra Plains'], $ordered->pluck('name')->all());
     }
+
+    public function test_scenes_for_an_entry_do_not_load_the_scene_text(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $scene = $this->sceneIn($project, 'A long scene');
+
+        $entry->referencingScenes()->attach($scene->id);
+
+        $loaded = (new ReferencingScenes)->forEntry($entry)->sole();
+
+        $this->assertSame('A long scene', $loaded->name);
+        $this->assertArrayNotHasKey('contents', $loaded->getAttributes());
+        $this->assertArrayNotHasKey('notes', $loaded->getAttributes());
+    }
 }

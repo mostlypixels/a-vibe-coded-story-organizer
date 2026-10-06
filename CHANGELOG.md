@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-06 — Code audit fixes (#308)
+
+### Added
+
+- Static analysis with Larastan runs in the checks and in CI.
+
+### Changed
+
+- A codex entry that appears in many scenes opens faster: its page no longer loads the text of those scenes.
+
 ## 2026-10-06 — Quick appearance switcher (#307)
 
 ### Added

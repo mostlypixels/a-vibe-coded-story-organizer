@@ -1,0 +1,21 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - routes
+        - database
+
+    excludePaths:
+        # Local, gitignored one-off scripts. Absent in CI, so optional.
+        - database/seeders/data (?)
+
+    # Start low and raise the level one step at a time. Fix the code, do not add a baseline.
+    level: 1
+
+    ignoreErrors:
+        # A false positive: the closure writes these variables by reference.
+        -
+            identifier: closure.unusedUse
+            path: app/Services/Diff/HtmlTokenizer.php

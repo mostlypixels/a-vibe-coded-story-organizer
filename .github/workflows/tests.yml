@@ -46,3 +46,6 @@ jobs:
 
       - name: Check code style
         run: composer lint -- --test
+
+      - name: Run static analysis
+        run: composer analyse -- --no-progress

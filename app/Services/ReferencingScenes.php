@@ -23,6 +23,9 @@ class ReferencingScenes
     public function forEntry(CodexEntry $codexEntry): Collection
     {
         return $codexEntry->referencingScenes()
+            // The list shows names only. A main character can appear in every scene,
+            // so the scene text must stay out of this query.
+            ->select('scenes.id', 'scenes.chapter_id', 'scenes.event_id', 'scenes.name', 'scenes.position')
             ->with('chapter.act.book', 'event')
             ->get()
             ->sortBy(fn (Scene $scene) => [

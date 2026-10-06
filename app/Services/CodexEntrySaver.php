@@ -9,7 +9,6 @@ use App\Models\CodexEntry;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Concerns\CreatesInlineEvents;
-use App\Support\AutosavableFields;
 use App\Support\CodexMediaUploads;
 use Illuminate\Support\Facades\DB;
 
@@ -103,23 +102,18 @@ class CodexEntrySaver
 
             $termsBefore = $this->referenceTerms($entry->name, $entry->aliases()->pluck('alias')->all());
 
-            // A first-ever save seeds its baseline with the timestamp the entry
-            // carried here, and the save below overwrites it.
-            $heldSince = $entry->updated_at;
-            $before = AutosavableFields::snapshotFieldsBeforeUpdate($entry, $data);
+            $this->recorder->saveWithManualCheckpoint($entry, $data, $user, function () use ($project, $entry, $validated, $data, $termsBefore) {
+                $entry->update($data);
 
-            $entry->update($data);
+                $this->syncAliases($entry, $validated['aliases'] ?? []);
+                $entry->tags()->sync($this->resolveTags($project, $validated['tags'] ?? []));
 
-            $this->syncAliases($entry, $validated['aliases'] ?? []);
-            $entry->tags()->sync($this->resolveTags($project, $validated['tags'] ?? []));
+                $termsAfter = $this->referenceTerms($entry->name, $entry->aliases()->pluck('alias')->all());
 
-            $termsAfter = $this->referenceTerms($entry->name, $entry->aliases()->pluck('alias')->all());
-
-            if ($termsBefore !== $termsAfter) {
-                $this->matcher->syncProject($project);
-            }
-
-            $this->recorder->recordManualChanges($entry, $before, $user, heldSince: $heldSince);
+                if ($termsBefore !== $termsAfter) {
+                    $this->matcher->syncProject($project);
+                }
+            });
 
             return $this->queueMediaRemovals($entry, $uploads);
         });

@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\JumpsToListPosition;
-use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
-use App\Http\Controllers\Concerns\ReparentsChildren;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Controllers\Concerns\ValidatesIndexFilters;
 use App\Http\Requests\DestroyChapterRequest;
@@ -16,6 +14,8 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Scene;
 use App\Services\CoverImageService;
+use App\Services\ParentDeleter;
+use App\Services\RevisionRecorder;
 use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\ListJump;
@@ -25,16 +25,13 @@ use App\Support\StoryOrder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ChapterController extends Controller
 {
     use JumpsToListPosition;
-    use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ReordersSiblings;
-    use ReparentsChildren;
     use ResolvesIndexSorting;
     use ValidatesIndexFilters;
 
@@ -78,7 +75,7 @@ class ChapterController extends Controller
 
         $chapters = $filtered
             // Joined so the `#` column can sort by story order (act order, then
-            // position within the act). Grouping by `act_id` instead — as this did —
+            // position within the act). Grouping by `act_id` instead
             // only matches story order until someone reorders an act. Because `acts`
             // carries `name` and `position` columns of its own, every column below is
             // table-qualified: the join makes bare `name`/`position` ambiguous (see
@@ -194,7 +191,7 @@ class ChapterController extends Controller
         ]);
     }
 
-    public function update(UpdateChapterRequest $request, Chapter $chapter): RedirectResponse
+    public function update(UpdateChapterRequest $request, Chapter $chapter, RevisionRecorder $recorder): RedirectResponse
     {
         $book = $chapter->book();
         $act = $book->acts()->findOrFail($request->validated()['act_id']);
@@ -203,46 +200,33 @@ class ChapterController extends Controller
         // remove checkbox and the non-fillable act_id) out of the plain attribute fill.
         $data = $request->safe()->except(['act_id', 'cover_image', 'remove_cover_image']);
 
-        // Snapshot before fill()/save() below overwrite these in memory — see
-        // RecordsManualRevisions::snapshotAutosaved()'s docblock.
-        $beforeAutosavedFields = $this->snapshotAutosaved($chapter, $data);
+        $recorder->saveWithManualCheckpoint($chapter, $data, $request->user(), function () use ($request, $chapter, $act, $data) {
+            $chapter->fill($data);
 
-        $chapter->fill($data);
+            if ($chapter->act_id !== $act->id) {
+                $chapter->moveToEndOf($act, 'act');
+            }
 
-        if ($chapter->act_id !== $act->id) {
-            $chapter->moveToEndOf($act, 'act');
-        }
-
-        $this->coverImageService->saveWithCover(
-            $chapter,
-            $request->file('cover_image'),
-            $request->boolean('remove_cover_image'),
-            CoverImageService::CHAPTER_COVER_DIRECTORY,
-        );
-
-        $this->recordManualSave($chapter, $beforeAutosavedFields);
+            $this->coverImageService->saveWithCover(
+                $chapter,
+                $request->file('cover_image'),
+                $request->boolean('remove_cover_image'),
+                CoverImageService::CHAPTER_COVER_DIRECTORY,
+            );
+        });
 
         return $this->redirectAfterSave($request, ['chapters.edit', $chapter], ['books.chapters.index', $book]);
     }
 
-    public function destroy(DestroyChapterRequest $request, Chapter $chapter): RedirectResponse
+    public function destroy(DestroyChapterRequest $request, Chapter $chapter, ParentDeleter $deleter): RedirectResponse
     {
         // Authorization is handled by DestroyChapterRequest::authorize() (mirrors the
         // walk-up-to-project check the other actions perform).
         $book = $chapter->book();
+        $destinationId = $request->validated('move_children_to');
+        $destination = $destinationId ? $book->chapterQuery()->findOrFail($destinationId) : null;
 
-        // Reassignment and deletion must succeed or fail together.
-        DB::transaction(function () use ($request, $chapter, $book) {
-            if ($destinationId = $request->validated('move_children_to')) {
-                $destination = $book->chapterQuery()->findOrFail($destinationId);
-
-                $this->reparentChildren($chapter, $destination, 'scenes', 'chapter');
-            }
-
-            // Same cascade path as before — just nothing left to cascade if the
-            // scenes were reassigned above.
-            $chapter->delete();
-        });
+        $deleter->delete($chapter, $destination, 'scenes', 'chapter');
 
         return redirect()->route('books.chapters.index', $book)->with(Flash::SUCCESS, __('Chapter deleted.'));
     }

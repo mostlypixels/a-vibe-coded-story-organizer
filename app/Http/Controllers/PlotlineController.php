@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\RecordsManualRevisions;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Controllers\Concerns\ValidatesIndexFilters;
@@ -10,6 +9,7 @@ use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\UpdatePlotlineRequest;
 use App\Models\Plotline;
 use App\Models\Project;
+use App\Services\RevisionRecorder;
 use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
@@ -20,7 +20,6 @@ use Illuminate\View\View;
 
 class PlotlineController extends Controller
 {
-    use RecordsManualRevisions;
     use RedirectsAfterSave;
     use ResolvesIndexSorting;
     use ValidatesIndexFilters;
@@ -79,14 +78,11 @@ class PlotlineController extends Controller
         return view('plotlines.edit', ['plotline' => $plotline]);
     }
 
-    public function update(UpdatePlotlineRequest $request, Plotline $plotline): RedirectResponse
+    public function update(UpdatePlotlineRequest $request, Plotline $plotline, RevisionRecorder $recorder): RedirectResponse
     {
         $data = $request->validated();
-        $beforeAutosavedFields = $this->snapshotAutosaved($plotline, $data);
 
-        $plotline->update($data);
-
-        $this->recordManualSave($plotline, $beforeAutosavedFields);
+        $recorder->saveWithManualCheckpoint($plotline, $data, $request->user(), fn () => $plotline->update($data));
 
         return $this->redirectAfterSave(
             $request,

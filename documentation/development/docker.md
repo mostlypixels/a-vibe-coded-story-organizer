@@ -46,6 +46,7 @@ Without Make, use `docker compose -f docker-compose.dev.yml up`.
 | `make shell` | Open a shell in the app container. |
 | `make test` | Run `composer test`. |
 | `make lint` | Run `composer lint`. |
+| `make analyse` | Run `composer analyse`. |
 | `make migrate` / `make seed` / `make fresh` | Prepare the database. `seed` and `fresh` add the admin, the Melusine demo, and the second user. |
 | `make demo` | Install the Melusine demo projects for the first user only. |
 | `make tinker` | Open the Laravel REPL. |

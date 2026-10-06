@@ -21,6 +21,7 @@
     },
     "require-dev": {
         "brianium/paratest": "^7.23",
+        "larastan/larastan": "^3.12",
         "laravel/breeze": "^2.4",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
@@ -59,6 +60,7 @@
             "@php artisan test --parallel"
         ],
         "lint": "pint",
+        "analyse": "phpstan analyse --memory-limit=1G",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
