@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-06 — Quick appearance switcher
+## 2026-10-06 — Quick appearance switcher (#307)
 
 ### Added
 
