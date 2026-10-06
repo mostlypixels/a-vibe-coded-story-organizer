@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-06 — Project icon (#306)
+
+### Added
+
+- A project without a cover shows a faint project icon in the projects list and grid.
+
 ## 2026-10-06 — Covers in book and chapter lists (#305)
 
 ### Added
