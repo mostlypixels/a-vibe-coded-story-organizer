@@ -8,8 +8,8 @@ parameters:
         - database
 
     excludePaths:
-        # Local, gitignored one-off scripts.
-        - database/seeders/data
+        # Local, gitignored one-off scripts. Absent in CI, so optional.
+        - database/seeders/data (?)
 
     # Start low and raise the level one step at a time. Fix the code, do not add a baseline.
     level: 1
