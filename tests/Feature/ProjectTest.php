@@ -13,6 +13,7 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Models\WordCountSnapshot;
 use Carbon\CarbonImmutable;
+use Dom\HTMLDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -61,6 +62,18 @@ class ProjectTest extends TestCase
         $this->assertSame(3, substr_count($html, 'href="'.route('projects.show', $project).'"'));
         // Only the edit icon, once in the list and once in the grid, opens the settings.
         $this->assertSame(2, substr_count($html, 'href="'.route('projects.edit', $project).'"'));
+    }
+
+    public function test_a_project_without_a_cover_shows_the_project_icon_in_the_list_and_the_grid(): void
+    {
+        $user = User::factory()->create();
+        Project::factory()->for($user)->create();
+
+        $html = $this->actingAs($user)->get(route('projects.index'))->assertOk()->getContent();
+        $document = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+
+        $this->assertNotNull($document->querySelector('td a[aria-hidden="true"] > div > svg'));
+        $this->assertNotNull($document->querySelector('.grid a > div[aria-hidden="true"] > svg'));
     }
 
     public function test_the_dashboard_delete_warns_with_the_same_cascade_sentence_as_the_edit_page(): void

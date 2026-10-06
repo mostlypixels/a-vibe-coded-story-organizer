@@ -43,7 +43,7 @@
                     @forelse ($projects as $project)
                         <x-table-row :striped="$loop->even">
                             <x-table-cell>
-                                <x-cover-thumbnail :href="route('projects.show', $project)" :src="$project->coverUrl()" :alt="$project->name" />
+                                <x-cover-thumbnail :href="route('projects.show', $project)" :src="$project->coverUrl()" :alt="$project->name" icon="entity-project" />
                             </x-table-cell>
                             <x-table-cell>
                                 <a href="{{ route('projects.show', $project) }}" class="font-semibold text-content hover:text-link">{{ $project->name }}</a>
@@ -87,7 +87,10 @@
                             @if ($project->cover_image)
                                 <img src="{{ $project->coverUrl() }}" alt="{{ $project->name }}" class="h-24 w-full object-cover">
                             @else
-                                <div class="h-24 w-full bg-surface" aria-hidden="true"></div>
+                                {{-- The same faint, tilted icon as the cover-thumbnail placeholder, at card size. --}}
+                                <div class="relative isolate h-24 w-full overflow-hidden bg-surface" aria-hidden="true">
+                                    <x-entity-project class="absolute top-1/2 left-1/2 -z-10 h-20 w-20 -translate-x-1/2 -translate-y-1/2 -rotate-[20deg] text-content-muted opacity-15" />
+                                </div>
                             @endif
                             <div class="p-2">
                                 <div class="text-sm font-semibold text-content truncate">{{ $project->name }}</div>
