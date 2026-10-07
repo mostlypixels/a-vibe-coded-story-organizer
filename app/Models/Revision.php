@@ -67,7 +67,7 @@ class Revision extends Model
         ];
     }
 
-    /** @return MorphTo<Model&Revisionable, $this> */
+    /** @return MorphTo<Model, $this> */
     public function revisionable(): MorphTo
     {
         return $this->morphTo();
@@ -80,7 +80,9 @@ class Revision extends Model
      */
     public function owningProject(): Project
     {
-        return $this->revisionable?->revisionProject() ?? Project::findOrFail($this->project_id);
+        $entity = $this->revisionable;
+
+        return $entity instanceof Revisionable ? $entity->revisionProject() : Project::findOrFail($this->project_id);
     }
 
     /**

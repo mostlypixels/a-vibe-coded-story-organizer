@@ -4,6 +4,7 @@ namespace App\View\Components;
 
 use App\Models\Project;
 use App\Services\ProjectRevisionsBrowser;
+use App\Support\RevisionTreeGroup;
 use Illuminate\Support\Collection;
 use Illuminate\View\Component;
 use Illuminate\View\View;
@@ -40,11 +41,7 @@ class RevisionsLayout extends Component
      */
     public const ERROR_KEY = 'revision_error';
 
-    /**
-     * The sidebar tree — see ProjectRevisionsBrowser::tree() for its shape.
-     *
-     * @var Collection<int, object>
-     */
+    /** @var Collection<int, RevisionTreeGroup> The sidebar tree. */
     public Collection $tree;
 
     public function __construct(

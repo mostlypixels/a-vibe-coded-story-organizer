@@ -78,7 +78,8 @@ final readonly class ChallengeWindow
      */
     public function totalDays(): int
     {
-        return $this->from->diffInDays($this->to) + 1;
+        // Carbon returns a float. Both ends are midnight, so the value is whole.
+        return (int) $this->from->diffInDays($this->to) + 1;
     }
 
     /**

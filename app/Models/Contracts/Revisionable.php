@@ -19,7 +19,7 @@ interface Revisionable
     /** The Project that owns the revisions, and the authorization boundary for them. */
     public function revisionProject(): Project;
 
-    /** @return MorphMany<Revision, Model> */
+    /** @return MorphMany<Revision, covariant Model> */
     public function revisions(): MorphMany;
 
     public function revisionDisplayName(): string;

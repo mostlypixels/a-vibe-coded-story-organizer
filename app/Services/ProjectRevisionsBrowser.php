@@ -5,10 +5,16 @@ namespace App\Services;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
+use App\Models\Contracts\Revisionable;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Models\Scene;
 use App\Support\AutosavableFields;
+use App\Support\RevisionTreeBook;
+use App\Support\RevisionTreeEntity;
+use App\Support\RevisionTreeField;
+use App\Support\RevisionTreeGroup;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -35,26 +41,7 @@ class ProjectRevisionsBrowser
     /** @var list<string> Entity slugs that group under books. */
     private const MANUSCRIPT_GROUPS = ['act', 'chapter', 'scene'];
 
-    /**
-     * @return Collection<int, object{
-     *     type: string,
-     *     label: string,
-     *     entityCount: int,
-     *     filterNames: list<string>,
-     *     books: Collection<int, object{
-     *         id: ?int,
-     *         name: ?string,
-     *         filterNames: list<string>,
-     *         entities: Collection<int, object{
-     *             id: int,
-     *             name: string,
-     *             filterName: string,
-     *             url: string,
-     *             fields: Collection<int, object{field: string, label: string, count: int, url: string, entity: string}>
-     *         }>
-     *     }>
-     * }>
-     */
+    /** @return Collection<int, RevisionTreeGroup> */
     public function tree(Project $project): Collection
     {
         // Add a composite index only if measured browser performance requires it.
@@ -76,32 +63,38 @@ class ProjectRevisionsBrowser
                 }
 
                 $books = $this->booksFor($slug, $modelClass, $rows, $project);
-                $filterNames = $books->flatMap(fn (object $bookGroup) => $bookGroup->filterNames)->values()->all();
+                $filterNames = $books->flatMap(fn (RevisionTreeBook $bookGroup) => $bookGroup->filterNames)->values()->all();
 
-                return (object) [
-                    'type' => $slug,
-                    'label' => $label,
-                    'entityCount' => count($filterNames),
-                    'filterNames' => $filterNames,
-                    'books' => $books,
-                ];
+                return new RevisionTreeGroup(
+                    type: $slug,
+                    label: $label,
+                    entityCount: count($filterNames),
+                    filterNames: $filterNames,
+                    books: $books,
+                );
             })
             ->filter()
             ->values();
     }
 
-    /** Groups story entities by book and other entities in one unnamed bucket. */
+    /**
+     * Groups story entities by book and other entities in one unnamed bucket.
+     *
+     * @param  class-string<Model&Revisionable>  $modelClass
+     * @param  Collection<int, Revision>  $rows
+     * @return Collection<int, RevisionTreeBook>
+     */
     private function booksFor(string $slug, string $modelClass, Collection $rows, Project $project): Collection
     {
         $entities = $this->entitiesFor($slug, $modelClass, $rows, $project);
 
         if (! in_array($slug, self::MANUSCRIPT_GROUPS, true)) {
-            return collect([(object) [
-                'id' => null,
-                'name' => null,
-                'filterNames' => $entities->pluck('filterName')->all(),
-                'entities' => $entities,
-            ]]);
+            return collect([new RevisionTreeBook(
+                id: null,
+                name: null,
+                filterNames: $entities->pluck('filterName')->all(),
+                entities: $entities,
+            )]);
         }
 
         $bookIdByEntity = $this->bookIdsFor($slug, $entities->pluck('id'));
@@ -114,14 +107,14 @@ class ProjectRevisionsBrowser
             ->keyBy('id');
 
         return $entities
-            ->groupBy(fn (object $entity) => $bookIdByEntity->get($entity->id))
-            ->map(fn (Collection $bookEntities, int $bookId) => (object) [
-                'id' => $bookId,
-                'name' => $booksById->get($bookId)?->displayName() ?? '#'.$bookId,
-                'filterNames' => $bookEntities->pluck('filterName')->all(),
-                'entities' => $bookEntities->values(),
-            ])
-            ->sortBy(fn (object $bookGroup) => $booksById->get($bookGroup->id)?->position)
+            ->groupBy(fn (RevisionTreeEntity $entity) => $bookIdByEntity->get($entity->id))
+            ->map(fn (Collection $bookEntities, int $bookId) => new RevisionTreeBook(
+                id: $bookId,
+                name: $booksById->get($bookId)?->displayName() ?? '#'.$bookId,
+                filterNames: $bookEntities->pluck('filterName')->all(),
+                entities: $bookEntities->values(),
+            ))
+            ->sortBy(fn (RevisionTreeBook $bookGroup) => $booksById->get($bookGroup->id)?->position)
             ->values();
     }
 
@@ -147,9 +140,9 @@ class ProjectRevisionsBrowser
     }
 
     /**
-     * @param  class-string  $modelClass
-     * @param  Collection<int, object>  $rows
-     * @return Collection<int, object{id: int, name: string, filterName: string, url: string, fields: Collection}>
+     * @param  class-string<Model&Revisionable>  $modelClass
+     * @param  Collection<int, Revision>  $rows
+     * @return Collection<int, RevisionTreeEntity>
      */
     private function entitiesFor(string $slug, string $modelClass, Collection $rows, Project $project): Collection
     {
@@ -168,22 +161,22 @@ class ProjectRevisionsBrowser
             ->map(function (Collection $fieldRows, int $id) use ($slug, $names) {
                 $name = $names->get($id)?->revisionDisplayName() ?? '#'.$id;
 
-                return (object) [
-                    'id' => $id,
-                    'name' => $name,
+                return new RevisionTreeEntity(
+                    id: $id,
+                    name: $name,
                     // The sidebar filter compares lowercase names on the client.
-                    'filterName' => Str::lower($name),
-                    'url' => route('revisions.index', ['entity' => $slug, 'id' => $id]),
-                    'fields' => $this->fieldsFor($slug, $id, $fieldRows),
-                ];
+                    filterName: Str::lower($name),
+                    url: route('revisions.index', ['entity' => $slug, 'id' => $id]),
+                    fields: $this->fieldsFor($slug, $id, $fieldRows),
+                );
             })
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
     }
 
     /**
-     * @param  Collection<int, object>  $fieldRows
-     * @return Collection<int, object{field: string, label: string, count: int, url: string, entity: string}>
+     * @param  Collection<int, Revision>  $fieldRows
+     * @return Collection<int, RevisionTreeField>
      */
     private function fieldsFor(string $slug, int $id, Collection $fieldRows): Collection
     {
@@ -191,13 +184,13 @@ class ProjectRevisionsBrowser
 
         return collect(array_keys(AutosavableFields::fieldsFor($slug)))
             ->filter(fn (string $field) => $countByField->has($field))
-            ->map(fn (string $field) => (object) [
-                'field' => $field,
-                'label' => Str::headline($field),
-                'count' => (int) $countByField->get($field)->revision_count,
-                'url' => route('revisions.index', ['entity' => $slug, 'id' => $id, 'field' => $field]),
-                'entity' => $slug,
-            ])
+            ->map(fn (string $field) => new RevisionTreeField(
+                field: $field,
+                label: Str::headline($field),
+                count: (int) $countByField->get($field)->getAttribute('revision_count'),
+                url: route('revisions.index', ['entity' => $slug, 'id' => $id, 'field' => $field]),
+                entity: $slug,
+            ))
             ->values();
     }
 }

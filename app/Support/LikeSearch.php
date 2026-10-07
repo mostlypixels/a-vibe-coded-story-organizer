@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * A "contains" search that reads `%` and `_` in the user's text as plain characters.
@@ -15,8 +16,10 @@ class LikeSearch
     public const ESCAPE = '!';
 
     /**
-     * @param  Builder<*>  $query
-     * @return Builder<*>
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
      */
     public static function whereContains(Builder $query, string $column, string $term): Builder
     {

@@ -12,7 +12,7 @@ parameters:
         - database/seeders/data (?)
 
     # Start low and raise the level one step at a time. Fix the code, do not add a baseline.
-    level: 2
+    level: 3
 
     # Models declare casts in a casts() method. Without this, Larastan ignores them
     # and types every date as a string.
