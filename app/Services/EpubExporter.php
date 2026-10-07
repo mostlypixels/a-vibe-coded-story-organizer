@@ -56,9 +56,6 @@ class EpubExporter
     /** The shared stylesheet name in the package and Blade layout. */
     public const STYLESHEET_FILENAME = 'styles.css';
 
-    /** The fallback BCP-47 language code. */
-    private const DEFAULT_LANGUAGE = 'en';
-
     /** EPUB 3 supports XHTML5, navigation, and accessibility metadata. */
     private const EPUB_VERSION = EPub::BOOK_VERSION_EPUB3;
 
@@ -939,6 +936,6 @@ class EpubExporter
     /** Returns the book's BCP-47 code or the fallback language. */
     private function language(Book $book): string
     {
-        return $book->language?->value ?? self::DEFAULT_LANGUAGE;
+        return $book->language->value;
     }
 }

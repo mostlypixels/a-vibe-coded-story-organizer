@@ -119,7 +119,7 @@ class ProjectNavigation
         $this->user = $request->user();
         $this->project = $this->routeProject ?? $this->user?->activeProject;
         $this->routeBook = $context->book;
-        $this->book = $this->routeBook ?? $this->project?->lastBook ?? $this->project?->books()->first();
+        $this->book = $this->routeBook ?? $this->project->lastBook ?? $this->project?->books()->first();
 
         $this->homeActive = $request->routeIs('projects.show');
 

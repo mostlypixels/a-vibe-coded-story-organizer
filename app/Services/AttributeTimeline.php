@@ -52,7 +52,7 @@ class AttributeTimeline
 
             // setRelation attaches endEvent without marking the model dirty, so this
             // display decoration can never be accidentally persisted.
-            $value->setRelation('endEvent', $next?->startEvent ?? $endEvent);
+            $value->setRelation('endEvent', $next->startEvent ?? $endEvent);
 
             return $value;
         });

@@ -93,12 +93,12 @@ class CodexEntrySaver
                     $project,
                     $validated['new_inception_event_title'] ?? null,
                     $validated['new_inception_event_datetime'] ?? null,
-                )?->id ?? $validated['inception_event_id'] ?? null,
+                )->id ?? $validated['inception_event_id'] ?? null,
                 'termination_event_id' => $this->createInlineEvent(
                     $project,
                     $validated['new_termination_event_title'] ?? null,
                     $validated['new_termination_event_datetime'] ?? null,
-                )?->id ?? $validated['termination_event_id'] ?? null,
+                )->id ?? $validated['termination_event_id'] ?? null,
             ];
 
             $termsBefore = $this->referenceTerms($entry->name, $entry->aliases()->pluck('alias')->all());

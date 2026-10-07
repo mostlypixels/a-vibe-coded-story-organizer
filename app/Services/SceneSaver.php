@@ -76,7 +76,7 @@ class SceneSaver
             $chapter->project(),
             $validated['new_event_title'] ?? null,
             $validated['new_event_datetime'] ?? null,
-        )?->id ?? $validated['event_id'] ?? null;
+        )->id ?? $validated['event_id'] ?? null;
     }
 
     /** @param  array<string, mixed>  $validated */

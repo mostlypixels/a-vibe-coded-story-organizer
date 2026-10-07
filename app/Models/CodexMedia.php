@@ -63,7 +63,7 @@ class CodexMedia extends Model
         static::creating(function (CodexMedia $media) {
             // Position is scoped to (entry, collection) so reference images and
             // reference files each get their own independent sequence.
-            if (is_null($media->position)) {
+            if ($media->getAttribute('position') === null) {
                 $media->position = static::where('codex_entry_id', $media->codex_entry_id)
                     ->where('collection', $media->collection)
                     ->max('position') + 1;

@@ -487,7 +487,7 @@ class ArchiveValidator
 
         if (! in_array($sniffedMime, ImportRules::IMAGE_MIME_TYPES, true)
             || $imageInfo === false
-            || ($imageInfo['mime'] ?? null) !== $sniffedMime) {
+            || $imageInfo['mime'] !== $sniffedMime) {
             throw ImportValidationException::mediaContentMismatch($archivePath);
         }
     }
@@ -501,7 +501,7 @@ class ArchiveValidator
 
         $imageInfo = getimagesizefromstring($bytes);
 
-        if ($sniffedMime !== $declaredMime || $imageInfo === false || ($imageInfo['mime'] ?? null) !== $declaredMime) {
+        if ($sniffedMime !== $declaredMime || $imageInfo === false || $imageInfo['mime'] !== $declaredMime) {
             throw ImportValidationException::mediaContentMismatch($archivePath);
         }
     }

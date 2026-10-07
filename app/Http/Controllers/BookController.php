@@ -95,10 +95,8 @@ class BookController extends Controller
 
         return view('books.show', [
             'book' => $book,
-            // A book with no scenes has no row to sum, so sum() itself already
-            // returns 0 rather than null — the ?? 0 just keeps that explicit,
-            // matching the same rule everywhere else a total is shown.
-            'wordCount' => $book->sceneQuery()->sum('word_count') ?? 0,
+            // sum() returns 0, not null, for a book with no scenes.
+            'wordCount' => $book->sceneQuery()->sum('word_count'),
             'recentScenes' => $recentlyEdited->scenes($book),
         ]);
     }

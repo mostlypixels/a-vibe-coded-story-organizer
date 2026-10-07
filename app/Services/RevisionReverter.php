@@ -79,7 +79,7 @@ class RevisionReverter
                     $row->field,
                     $baseHashes[$row->field] ?? '',
                     // No predecessor means the field was empty before the save.
-                    (string) ($this->predecessorOf($entity, $row)?->value ?? ''),
+                    (string) ($this->predecessorOf($entity, $row)->value ?? ''),
                     $label,
                     $user,
                 ))

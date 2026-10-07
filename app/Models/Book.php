@@ -216,7 +216,7 @@ class Book extends Model implements Revisionable
     protected static function booted(): void
     {
         static::creating(function (Book $book) {
-            if (is_null($book->position)) {
+            if ($book->getAttribute('position') === null) {
                 $book->position = static::where('project_id', $book->project_id)->max('position') + 1;
             }
         });

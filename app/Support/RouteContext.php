@@ -32,7 +32,7 @@ final class RouteContext
     public static function resolve(Request $request): self
     {
         $book = $request->route('book')
-            ?? $request->route('act')?->book
+            ?? $request->route('act')->book
             ?? $request->route('chapter')?->book()
             ?? $request->route('scene')?->book();
 
@@ -41,9 +41,9 @@ final class RouteContext
         }
 
         $project = $request->route('project')
-            ?? $request->route('plotline')?->project
-            ?? $request->route('event')?->project
-            ?? $request->route('codexEntry')?->project
+            ?? $request->route('plotline')->project
+            ?? $request->route('event')->project
+            ?? $request->route('codexEntry')->project
             ?? $request->route('codexAttribute')?->project;
 
         return new self($project, null);

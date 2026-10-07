@@ -49,7 +49,7 @@ class CodexAttribute extends Model
     {
         static::creating(function (CodexAttribute $attribute) {
             // Display order on the sheet, scoped to the project.
-            if (is_null($attribute->position)) {
+            if ($attribute->getAttribute('position') === null) {
                 $attribute->position = static::where('project_id', $attribute->project_id)->max('position') + 1;
             }
         });
