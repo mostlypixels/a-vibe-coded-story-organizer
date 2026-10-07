@@ -19,8 +19,9 @@ use Illuminate\Http\Request;
  * answer.
  *
  * A route outside the manuscript ({project}, {plotline}, {event},
- * {codexEntry}, {codexAttribute}) resolves a project and no book — the
- * timeline and codex stay project-wide, not book-scoped.
+ * {codexEntry}, {codexAttribute}, {challenge}) resolves a project and no
+ * book — the timeline, codex and challenges stay project-wide, not
+ * book-scoped.
  */
 final class RouteContext
 {
@@ -44,7 +45,8 @@ final class RouteContext
             ?? $request->route('plotline')->project
             ?? $request->route('event')->project
             ?? $request->route('codexEntry')->project
-            ?? $request->route('codexAttribute')?->project;
+            ?? $request->route('codexAttribute')->project
+            ?? $request->route('challenge')?->project;
 
         return new self($project, null);
     }

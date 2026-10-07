@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-07 — Challenge edit page knows its project
+
+### Fixed
+
+- The Edit Challenge page shows the project navigation and the project name in its tab title.
+
 ## 2026-10-07 — Page-specific tab titles (#319)
 
 ### Changed

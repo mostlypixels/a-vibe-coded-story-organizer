@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\Challenge;
 use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Scene;
@@ -56,9 +57,12 @@ class PageTitleTest extends TestCase
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create(['name' => 'Melusine']);
 
-        $response = $this->actingAs($user)->get(route('projects.challenges.create', $project));
+        $challenge = Challenge::factory()->for($project)->create();
 
-        $response->assertSee('<title>New Challenge - Melusine - AVCSO</title>', false);
+        $this->actingAs($user)->get(route('projects.challenges.create', $project))
+            ->assertSee('<title>New Challenge - Melusine - AVCSO</title>', false);
+        $this->actingAs($user)->get(route('challenges.edit', $challenge))
+            ->assertSee('<title>Edit Challenge - Melusine - AVCSO</title>', false);
     }
 
     public function test_a_project_page_leads_with_the_project_name(): void

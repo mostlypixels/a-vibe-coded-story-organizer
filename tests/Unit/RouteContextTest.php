@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Models\Act;
+use App\Models\Challenge;
 use App\Models\Chapter;
 use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
@@ -138,6 +139,17 @@ class RouteContextTest extends TestCase
         $attribute = CodexAttribute::factory()->for($project)->create();
 
         $context = $this->contextFor('codex-attributes.edit', [$attribute]);
+
+        $this->assertTrue($context->project->is($project));
+        $this->assertNull($context->book);
+    }
+
+    public function test_a_challenge_route_resolves_the_project_and_no_book(): void
+    {
+        [$project] = $this->projectWithBook($this->user);
+        $challenge = Challenge::factory()->for($project)->create();
+
+        $context = $this->contextFor('challenges.edit', [$challenge]);
 
         $this->assertTrue($context->project->is($project));
         $this->assertNull($context->book);
