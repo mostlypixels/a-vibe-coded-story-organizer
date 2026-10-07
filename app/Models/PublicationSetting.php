@@ -94,6 +94,7 @@ class PublicationSetting extends Model
         'appendix_include_images' => 'boolean',
     ];
 
+    /** @return BelongsTo<Book, $this> */
     public function book(): BelongsTo
     {
         return $this->belongsTo(Book::class);

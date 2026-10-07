@@ -59,6 +59,7 @@ class User extends Authenticatable
         ];
     }
 
+    /** @return HasMany<Project, $this> */
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
@@ -68,6 +69,8 @@ class User extends Authenticatable
      * The user's import attempts (checkpoint records). ProjectImporter creates
      * them through this relation because Import.user_id is deliberately not
      * mass-assignable — same ownership rule as projects().
+     *
+     * @return HasMany<Import, $this>
      */
     public function imports(): HasMany
     {
@@ -78,6 +81,8 @@ class User extends Authenticatable
      * The last project page the user successfully loaded. Written only by
      * TrackActiveProject; never mass-assignable (not in $fillable), so it can only be
      * set through that middleware.
+     *
+     * @return BelongsTo<Project, $this>
      */
     public function activeProject(): BelongsTo
     {

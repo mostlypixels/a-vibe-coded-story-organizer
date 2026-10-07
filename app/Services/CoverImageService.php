@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Book;
+use App\Models\Chapter;
+use App\Models\Project;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\File;
 use Illuminate\Http\UploadedFile;
@@ -94,7 +96,7 @@ class CoverImageService
      *
      * @param  string  $directory  The directory under the media disk (e.g., 'book-covers').
      */
-    public function saveWithCover(Model $model, ?UploadedFile $upload, bool $remove, string $directory): void
+    public function saveWithCover(Project|Book|Chapter $model, ?UploadedFile $upload, bool $remove, string $directory): void
     {
         $previous = $model->cover_image;
         $stored = $upload !== null ? $this->store($upload, $directory) : null;

@@ -17,6 +17,7 @@ class CodexAlias extends Model
         'alias',
     ];
 
+    /** @return BelongsTo<CodexEntry, $this> */
     public function entry(): BelongsTo
     {
         return $this->belongsTo(CodexEntry::class, 'codex_entry_id');

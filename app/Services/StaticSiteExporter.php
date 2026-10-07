@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
 use App\Models\Act;
 use App\Models\Book;
@@ -11,6 +12,7 @@ use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\Event;
+use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\PublicationSetting;
 use App\Models\Scene;
@@ -19,7 +21,6 @@ use App\Models\WordCountSnapshot;
 use App\Support\RichText;
 use App\Support\StoryNumbering;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -412,7 +413,7 @@ class StaticSiteExporter
                 'id' => $attribute->id,
                 'name' => $attribute->name,
                 'applies_to' => $attribute->applies_to
-                    ? $attribute->applies_to->map(fn ($type) => $type->value)->values()->all()
+                    ? $attribute->applies_to->map(fn (CodexEntryType $type) => $type->value)->values()->all()
                     : [],
                 'position' => $attribute->position,
             ])->all();
@@ -658,7 +659,7 @@ class StaticSiteExporter
     }
 
     /** Builds an entity directory from its stable ID and cosmetic slug. */
-    private function entityDir(Model $model): string
+    private function entityDir(Act|Chapter|Scene|Plotline|CodexEntry $model): string
     {
         return $this->slugDir($model->id, $model->name);
     }

@@ -25,11 +25,13 @@ class CodexAttribute extends Model
         'applies_to' => AsEnumCollection::class.':'.CodexEntryType::class,
     ];
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
+    /** @return HasMany<CodexAttributeValue, $this> */
     public function values(): HasMany
     {
         return $this->hasMany(CodexAttributeValue::class);

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\CodexEntryType;
 use App\Models\Book;
+use App\Models\Contracts\Revisionable;
 use App\Models\Project;
 use ArrayIterator;
 use Countable;
@@ -308,7 +309,7 @@ class Breadcrumbs implements Countable, IteratorAggregate
      * leading number reads as the story number the act/chapter/scene headings
      * show, and the two are not the same value.
      */
-    private function readCrumb(Model $model): Crumb
+    private function readCrumb(Model&Revisionable $model): Crumb
     {
         return new Crumb(
             __(':name (#:id)', ['name' => $model->revisionDisplayName(), 'id' => $model->getKey()]),

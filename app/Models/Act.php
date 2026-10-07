@@ -6,6 +6,7 @@ use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Models\Concerns\SumsSceneWords;
+use App\Models\Contracts\Revisionable;
 use App\Services\CoverImageService;
 use App\Services\WordCountSnapshotRecorder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
-class Act extends Model
+class Act extends Model implements Revisionable
 {
     use HasFactory;
     use HasRevisions;
@@ -28,11 +29,13 @@ class Act extends Model
         'position',
     ];
 
+    /** @return BelongsTo<Book, $this> */
     public function book(): BelongsTo
     {
         return $this->belongsTo(Book::class);
     }
 
+    /** @return HasMany<Chapter, $this> */
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class);
@@ -48,6 +51,8 @@ class Act extends Model
      * any other relation. Callers that order or select on it must qualify the
      * columns (`scenes.position`), since the join brings `chapters`' own
      * `name`/`position` into scope.
+     *
+     * @return HasManyThrough<Scene, Chapter, $this>
      */
     public function scenes(): HasManyThrough
     {

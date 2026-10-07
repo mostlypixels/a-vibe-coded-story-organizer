@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\RevisionOrigin;
+use App\Models\Contracts\Revisionable;
 use App\Models\Revision;
 use App\Models\User;
 use App\Rules\NoAutosaveConflict;
@@ -31,13 +32,13 @@ class RevisionRecorder
     public function __construct(private readonly RevisionSummarizer $summarizer) {}
 
     /** Returns or creates this request's save ID for an entity. */
-    public function currentSaveId(Model $entity): string
+    public function currentSaveId(Model&Revisionable $entity): string
     {
         return $this->saveIds[$this->saveKey($entity)] ??= (string) Str::ulid();
     }
 
     /** Starts a separate save point for an undo. */
-    public function startNewSave(Model $entity): void
+    public function startNewSave(Model&Revisionable $entity): void
     {
         unset($this->saveIds[$this->saveKey($entity)]);
     }
@@ -51,7 +52,7 @@ class RevisionRecorder
      * @param  bool  $coalesce  False keeps both sides of a resolved conflict as separate rows.
      */
     public function record(
-        Model $entity,
+        Model&Revisionable $entity,
         string $field,
         string $value,
         User $user,
@@ -122,7 +123,7 @@ class RevisionRecorder
      *
      * @throws ValidationException When another tab saved newer text, as {@see NoAutosaveConflict} reports it.
      */
-    public function saveWithManualCheckpoint(Model $entity, array $data, array $baseHashes, User $user, callable $save): mixed
+    public function saveWithManualCheckpoint(Model&Revisionable $entity, array $data, array $baseHashes, User $user, callable $save): mixed
     {
         return DB::transaction(function () use ($entity, $data, $baseHashes, $user, $save) {
             // The form request checked the hashes before this transaction. An autosave
@@ -137,7 +138,7 @@ class RevisionRecorder
             }
 
             // A first-ever save seeds its baseline with this timestamp, and the save overwrites it.
-            $heldSince = $entity->updated_at;
+            $heldSince = $entity->getAttribute('updated_at');
             $before = AutosavableFields::snapshotFieldsBeforeUpdate($entity, $data);
 
             $result = $save();
@@ -155,7 +156,7 @@ class RevisionRecorder
      * {@see saveWithManualCheckpoint()} does this for you.
      */
     public function recordManualChanges(
-        Model $entity,
+        Model&Revisionable $entity,
         array $before,
         User $user,
         ?string $label = null,
@@ -188,7 +189,7 @@ class RevisionRecorder
      * @param  DateTimeInterface|null  $heldSince  When that value began to apply.
      */
     public function ensureBaseline(
-        Model $entity,
+        Model&Revisionable $entity,
         string $field,
         ?string $previousValue = null,
         ?DateTimeInterface $heldSince = null,
@@ -198,7 +199,7 @@ class RevisionRecorder
         }
 
         $current = $previousValue ?? $entity->getAttribute($field);
-        $heldSince ??= $entity->updated_at;
+        $heldSince ??= $entity->getAttribute('updated_at');
 
         if ($current === null || $current === '') {
             return;
@@ -220,7 +221,7 @@ class RevisionRecorder
     }
 
     /** Returns the latest revision for a field. */
-    public function lastRevisionFor(Model $entity, string $field): ?Revision
+    public function lastRevisionFor(Model&Revisionable $entity, string $field): ?Revision
     {
         return $entity->revisions()->where('field', $field)->latest('created_at')->latest('id')->first();
     }
@@ -231,7 +232,7 @@ class RevisionRecorder
      * > [!IMPORTANT]
      * > A summary failure must never prevent the revision write.
      */
-    private function summarize(Model $entity, string $field, string $value, ?string $previousValue): RevisionSummary
+    private function summarize(Model&Revisionable $entity, string $field, string $value, ?string $previousValue): RevisionSummary
     {
         try {
             $kind = AutosavableFields::kindOf(AutosavableFields::slugFor($entity::class), $field);
@@ -250,7 +251,7 @@ class RevisionRecorder
     }
 
     /** Returns the value before a new or coalesced revision. */
-    private function predecessorValue(Model $entity, string $field, ?Revision $before = null): ?string
+    private function predecessorValue(Model&Revisionable $entity, string $field, ?Revision $before = null): ?string
     {
         $revisions = $entity->revisions()->where('field', $field);
 
@@ -269,13 +270,13 @@ class RevisionRecorder
     /**
      * The {@see self::$saveIds} memo key for one entity.
      */
-    private function saveKey(Model $entity): string
+    private function saveKey(Model&Revisionable $entity): string
     {
         return $entity::class.':'.$entity->getKey();
     }
 
     /** Returns the open automatic revision within the field's window. */
-    private function openAutomaticRevision(Model $entity, string $field): ?Revision
+    private function openAutomaticRevision(Model&Revisionable $entity, string $field): ?Revision
     {
         $slug = AutosavableFields::slugFor($entity::class);
         $window = AutosavableFields::windowSeconds($slug, $field);

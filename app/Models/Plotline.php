@@ -4,12 +4,13 @@ namespace App\Models;
 
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
+use App\Models\Contracts\Revisionable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class Plotline extends Model
+class Plotline extends Model implements Revisionable
 {
     use HasFactory;
     use HasRevisions;
@@ -29,6 +30,7 @@ class Plotline extends Model
         ];
     }
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
@@ -42,6 +44,7 @@ class Plotline extends Model
         return $this->project;
     }
 
+    /** @return BelongsToMany<Event, $this> */
     public function events(): BelongsToMany
     {
         return $this->belongsToMany(Event::class);

@@ -6,6 +6,7 @@ use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
+use App\Models\Contracts\Revisionable;
 use App\Services\AttributeTimeline;
 use App\Services\CodexMediaService;
 use App\Support\Age;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class CodexEntry extends Model
+class CodexEntry extends Model implements Revisionable
 {
     use HasFactory;
     use HasRevisions;
@@ -45,16 +46,19 @@ class CodexEntry extends Model
         });
     }
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
+    /** @return BelongsTo<Event, $this> */
     public function inceptionEvent(): BelongsTo
     {
         return $this->belongsTo(Event::class);
     }
 
+    /** @return BelongsTo<Event, $this> */
     public function terminationEvent(): BelongsTo
     {
         return $this->belongsTo(Event::class);
@@ -68,11 +72,13 @@ class CodexEntry extends Model
         return $this->project;
     }
 
+    /** @return HasMany<CodexAlias, $this> */
     public function aliases(): HasMany
     {
         return $this->hasMany(CodexAlias::class);
     }
 
+    /** @return BelongsToMany<Tag, $this> */
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class);
@@ -82,17 +88,21 @@ class CodexEntry extends Model
      * Scenes whose contents reference this entry by name or alias (whole-word match).
      * A derived cache maintained by SceneReferenceMatcher — never edited by hand.
      * The pivot has no columns of its own (plain belongsToMany, no pivot model).
+     *
+     * @return BelongsToMany<Scene, $this>
      */
     public function referencingScenes(): BelongsToMany
     {
         return $this->belongsToMany(Scene::class, 'scene_codex_entry');
     }
 
+    /** @return HasMany<CodexMedia, $this> */
     public function media(): HasMany
     {
         return $this->hasMany(CodexMedia::class);
     }
 
+    /** @return HasMany<CodexAttributeValue, $this> */
     public function attributeValues(): HasMany
     {
         return $this->hasMany(CodexAttributeValue::class);
@@ -102,6 +112,8 @@ class CodexEntry extends Model
      * The cover image: the single media row in the Cover collection.
      * This is the single source of truth — there is deliberately no
      * cover_media_id FK on codex_entries.
+     *
+     * @return HasOne<CodexMedia, $this>
      */
     public function cover(): HasOne
     {

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\RevisionOrigin;
+use App\Models\Contracts\Revisionable;
 use App\Models\Revision;
 use App\Support\AutosavableFields;
 use App\Support\LikeSearch;
@@ -32,7 +33,7 @@ class RevisionHistory
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return LengthAwarePaginatorContract<int, SavePoint>
      */
-    public function forEntity(Model $entity, array $filters = [], int $page = 1): LengthAwarePaginatorContract
+    public function forEntity(Model&Revisionable $entity, array $filters = [], int $page = 1): LengthAwarePaginatorContract
     {
         $perPage = $this->perPage();
         $page = max(1, $page);
@@ -56,7 +57,7 @@ class RevisionHistory
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return Collection<int, SavePoint>
      */
-    public function savePoints(Model $entity, array $filters = []): Collection
+    public function savePoints(Model&Revisionable $entity, array $filters = []): Collection
     {
         $groups = $this->groupQuery($entity, $filters)->get();
 
@@ -68,7 +69,7 @@ class RevisionHistory
      *
      * @return array<string, string> Headline by field, in registry order.
      */
-    public function fieldOptions(Model $entity): array
+    public function fieldOptions(Model&Revisionable $entity): array
     {
         $withHistory = $entity->revisions()->getQuery()->reorder()->distinct()->pluck('field')->all();
 
@@ -87,7 +88,7 @@ class RevisionHistory
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return Builder<Revision>
      */
-    private function groupQuery(Model $entity, array $filters): Builder
+    private function groupQuery(Model&Revisionable $entity, array $filters): Builder
     {
         return $this->rowQuery($entity, $filters)
             ->select('save_id')
@@ -99,7 +100,7 @@ class RevisionHistory
     }
 
     /** @param array{field?: ?string, label?: ?string, manualOnly?: bool} $filters */
-    private function countGroups(Model $entity, array $filters): int
+    private function countGroups(Model&Revisionable $entity, array $filters): int
     {
         return $this->rowQuery($entity, $filters)->distinct()->count('save_id');
     }
@@ -111,7 +112,7 @@ class RevisionHistory
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return Builder<Revision>
      */
-    private function rowQuery(Model $entity, array $filters): Builder
+    private function rowQuery(Model&Revisionable $entity, array $filters): Builder
     {
         $field = $filters['field'] ?? null;
         $label = trim((string) ($filters['label'] ?? ''));
@@ -129,7 +130,7 @@ class RevisionHistory
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return Collection<int, SavePoint>
      */
-    private function foldGroups(Model $entity, Collection $groups, array $filters, int $limit): Collection
+    private function foldGroups(Model&Revisionable $entity, Collection $groups, array $filters, int $limit): Collection
     {
         $rendered = $groups->take($limit)->values();
 
@@ -147,12 +148,12 @@ class RevisionHistory
             return new SavePoint(
                 saveId: $group->save_id,
                 // Aggregate aliases do not pass through model casts.
-                savedAt: Carbon::parse($group->saved_at),
+                savedAt: Carbon::parse($group->getAttribute('saved_at')),
                 authorName: $rows->first()?->user?->name,
                 label: $rows->pluck('label')->filter()->first(),
                 origin: SavePoint::dominantOrigin($rows->pluck('origin')),
                 isCurrent: $group->save_id === $currentSaveId,
-                lastRevisionId: (int) $group->last_id,
+                lastRevisionId: (int) $group->getAttribute('last_id'),
                 previousSaveId: $groups->get($index + 1)?->save_id,
                 entries: $this->entriesFor($entity, $rows),
             );
@@ -167,7 +168,7 @@ class RevisionHistory
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
      * @return Collection<string, Collection<int, Revision>>
      */
-    private function rowsFor(Model $entity, array $saveIds, array $filters): Collection
+    private function rowsFor(Model&Revisionable $entity, array $saveIds, array $filters): Collection
     {
         return $entity->revisions()
             ->getQuery()
@@ -187,7 +188,7 @@ class RevisionHistory
      * @param  Collection<int, Revision>  $rows
      * @return Collection<int, SaveEntry> Entries in registry field order.
      */
-    private function entriesFor(Model $entity, Collection $rows): Collection
+    private function entriesFor(Model&Revisionable $entity, Collection $rows): Collection
     {
         $kinds = AutosavableFields::fieldsForModel($entity::class);
         $byField = $rows->keyBy('field');
@@ -214,7 +215,7 @@ class RevisionHistory
     }
 
     /** Returns the unfiltered newest save point that represents current state. */
-    private function currentSaveId(Model $entity): ?string
+    private function currentSaveId(Model&Revisionable $entity): ?string
     {
         return $this->groupQuery($entity, [])->first()?->save_id;
     }

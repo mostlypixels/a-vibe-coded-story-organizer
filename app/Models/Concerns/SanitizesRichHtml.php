@@ -23,6 +23,8 @@ trait SanitizesRichHtml
 {
     /**
      * Sanitize the shared `description` rich-HTML field on write.
+     *
+     * @return Attribute<?string, ?string>
      */
     protected function description(): Attribute
     {

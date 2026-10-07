@@ -7,6 +7,7 @@ use App\Enums\StoryOverviewMode;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
+use App\Models\Contracts\Revisionable;
 use App\Services\CoverImageService;
 use App\Services\WordCountSnapshotRecorder;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,7 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * > project name through every rename. {@see hasOwnName()} is the single
  * > predicate that decides how visible the book layer is in the UI.
  */
-class Book extends Model
+class Book extends Model implements Revisionable
 {
     use HasFactory;
     use HasRevisions;
@@ -58,6 +59,7 @@ class Book extends Model
         'overview_render_mode' => StoryOverviewMode::class,
     ];
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
@@ -69,11 +71,13 @@ class Book extends Model
         return $this->cover_image !== null ? route('books.cover', $this) : null;
     }
 
+    /** @return HasMany<Act, $this> */
     public function acts(): HasMany
     {
         return $this->hasMany(Act::class);
     }
 
+    /** @return HasOne<PublicationSetting, $this> */
     public function publicationSetting(): HasOne
     {
         return $this->hasOne(PublicationSetting::class);
@@ -125,6 +129,8 @@ class Book extends Model
      * caller's `orderBy()` ambiguous.
      *
      * Nested `whereIn` subqueries, for the same reason as {@see Project::sceneQuery()}.
+     *
+     * @return Builder<Chapter>
      */
     public function chapterQuery(): Builder
     {
@@ -135,6 +141,8 @@ class Book extends Model
      * Every scene in this book, as a query to build on. The two-level twin of
      * {@see self::chapterQuery()} — scenes reach the book through
      * chapter → act.
+     *
+     * @return Builder<Scene>
      */
     public function sceneQuery(): Builder
     {

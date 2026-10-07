@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  */
 trait SumsSceneWords
 {
+    /** @return Attribute<int, never> */
     protected function wordCount(): Attribute
     {
         return Attribute::get(fn (mixed $value): int => (int) $value);
