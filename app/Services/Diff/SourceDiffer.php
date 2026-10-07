@@ -176,6 +176,6 @@ class SourceDiffer
             array_slice($words, $start, $end - $start),
         );
 
-        return new DiffSpan($change, array_values($tokens));
+        return new DiffSpan($change, $tokens);
     }
 }

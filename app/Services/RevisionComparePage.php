@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Contracts\Revisionable;
 use App\Support\AutosavableFields;
 use App\Support\FieldComparison;
 use App\Support\SavePoint;
@@ -32,7 +33,7 @@ class RevisionComparePage
      *     savesApart: int,
      * }
      */
-    public function build(Model $entity, ?string $field, ?string $fromId, ?string $toId): array
+    public function build(Model&Revisionable $entity, ?string $field, ?string $fromId, ?string $toId): array
     {
         // Field filters do not limit the save-point pickers.
         $points = $this->history->savePoints($entity);

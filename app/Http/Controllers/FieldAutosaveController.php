@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\RevisionConflictException;
 use App\Http\Requests\AutosaveFieldRequest;
+use App\Models\Scene;
 use App\Services\FieldAutosaver;
 use App\Services\ReferencingScenes;
 use App\Support\AutosavableFields;
@@ -54,7 +55,7 @@ class FieldAutosaveController extends Controller
         ];
 
         // The scene editor shows this list. The same partial renders it on page load.
-        if ($result->referencesSynced) {
+        if ($result->referencesSynced && $model instanceof Scene) {
             $payload['referenced_entries_html'] = view('codex.partials.referenced-entries', [
                 'referencedEntries' => $referencingScenes->forScene($model),
                 'scene' => $model,

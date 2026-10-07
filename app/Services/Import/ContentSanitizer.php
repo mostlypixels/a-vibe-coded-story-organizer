@@ -8,6 +8,7 @@ use App\Rules\ValidMarkdown;
 use App\Services\HtmlSanitizer;
 use App\Support\AuthorMarkdown;
 use App\Support\CanonicalPunctuation;
+use Illuminate\Support\Facades\Validator;
 use Throwable;
 
 /**
@@ -49,14 +50,7 @@ class ContentSanitizer
      */
     public function assertMarkdownAllowed(string $markdown): string
     {
-        // Convert the validation callback to the import exception type.
-        $markdownIsInvalid = false;
-
-        (new ValidMarkdown)->validate('contents', $markdown, function () use (&$markdownIsInvalid): void {
-            $markdownIsInvalid = true;
-        });
-
-        if ($markdownIsInvalid) {
+        if (Validator::make(['contents' => $markdown], ['contents' => [new ValidMarkdown]])->fails()) {
             throw ImportValidationException::invalidMarkdown();
         }
 

@@ -75,7 +75,9 @@ trait JumpsToListPosition
      * this page. That row carries the `#<prefix>-<id>` anchor, and an id must
      * stay unique in the document.
      *
-     * @param  Collection<int, Model>  $rows  The rows on this page.
+     * @template TModel of Model
+     *
+     * @param  Collection<int, TModel>  $rows  The rows on this page.
      * @param  string  $groupAttribute  'chapter_id' | 'act_id'.
      * @return array{highlightId: ?int, anchorRowId: ?int}
      */

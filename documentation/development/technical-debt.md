@@ -14,11 +14,12 @@ Known shortcuts that the code keeps on purpose. Each entry says what bites and w
 > [!WARNING]
 > The storage panel and the purges on the Revisions page already scope to the user's own projects. The retention window does not.
 
-## Static analysis at level 4
+## Static analysis stops at level 5
 
-- **Where:** `phpstan.neon` sets `level: 4`.
-- **Risk:** Larastan does not check argument types yet. Level 5 reports about 20 errors.
-- **Pay off:** raise to level 5, then stop. Level 6 adds mostly docblock work. Levels 7 and 8 report hundreds of possible nulls from Eloquent relations, which cost more than they find. Fix the code. Do not add a baseline or an inline ignore.
+- **Where:** `phpstan.neon` sets `level: 5`.
+- **Risk:** Larastan does not ask for missing parameter and array types. Level 6 reports about 70 errors.
+- **Why it stays:** level 6 is mostly docblock work and rarely finds a bug. Levels 7 and 8 report hundreds of possible nulls from Eloquent relations, which cost more than they find.
+- **Pay off:** raise to level 6 when there is time for docblock work. Fix the code. Do not add a baseline or an inline ignore.
 
 > [!NOTE]
 > Give each relation a generic `@return`, for example `HasMany<Chapter, $this>`. Type revision code as `Model&Revisionable`. Without these, Larastan sees a plain `Model` and reports every property as undefined.
