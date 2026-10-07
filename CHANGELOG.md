@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-07 — Page-specific tab titles
+## 2026-10-07 — Page-specific tab titles (#319)
 
 ### Changed
 
