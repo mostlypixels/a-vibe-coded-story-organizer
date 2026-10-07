@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-07 — Static analysis level 4
+## 2026-10-07 — Static analysis level 4 (#316)
 
 ### Changed
 
