@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-07 — Update Laravel and Flysystem
+
+### Fixed
+
+- Laravel and the file storage library are updated to fix two low-severity security flaws.
+
 ## 2026-10-06 — Update the Markdown library (#309)
 
 ### Fixed
