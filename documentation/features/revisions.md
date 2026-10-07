@@ -112,6 +112,7 @@ Two tabs on one field overwrite each other. Most of the time the writer forgot t
   - *Keep mine* saves this tab's text over the newer text.
   - *Load saved text* saves this tab's text, then saves the newer text again.
   - Both send `new_revision`, so History keeps each text in its own row. A coalesced save would erase the other text.
+- **Same moment.** `FieldAutosaver` checks the hash and writes in one transaction, on a locked row. Two saves that arrive together cannot both pass. A save of the text that is already stored is not a conflict.
 
 - **Manual Save.** A locked tab cannot save. The form sends `base_hashes[field]`, the live hash of each autosaved field.
   - `resources/js/autosave/submit.js` holds the submit until every autosave settles. Else the blur autosave from the Save click changes the hash, and the server sees a false conflict. A conflict stops the submit and shows the choice.

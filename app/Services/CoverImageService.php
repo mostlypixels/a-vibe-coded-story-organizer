@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\File;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
@@ -88,8 +89,8 @@ class CoverImageService
     /**
      * Save `$model` with a new cover, no cover, or the same cover. The caller fills the other columns first.
      *
-     * The old file goes only after a successful save, so a failed save never points at a deleted file.
-     * A failed save deletes the new file, so it leaves no orphan.
+     * The old file goes only after the commit, so a failed save never points at a deleted file.
+     * A failed save or a rollback deletes the new file, so it leaves no orphan.
      *
      * @param  string  $directory  The directory under the media disk (e.g., 'book-covers').
      */
@@ -112,8 +113,14 @@ class CoverImageService
             throw $exception;
         }
 
+        // The caller can wrap this save in a transaction that fails later.
+        // Outside a transaction, afterCommit() runs at once and afterRollBack() never runs.
+        if ($stored !== null) {
+            DB::afterRollBack(fn () => $this->delete($stored));
+        }
+
         if ($stored !== null || $remove) {
-            $this->delete($previous);
+            DB::afterCommit(fn () => $this->delete($previous));
         }
     }
 

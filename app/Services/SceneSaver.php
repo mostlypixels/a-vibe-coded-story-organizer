@@ -51,7 +51,7 @@ class SceneSaver
     {
         $attributes = $this->sceneAttributes($validated);
 
-        DB::transaction(fn () => $this->recorder->saveWithManualCheckpoint($scene, $attributes, $user, function () use ($scene, $chapter, $validated, $attributes) {
+        $this->recorder->saveWithManualCheckpoint($scene, $attributes, $user, function () use ($scene, $chapter, $validated, $attributes) {
             $scene->fill($attributes + ['event_id' => $this->eventId($chapter, $validated)]);
 
             if ($scene->chapter_id !== $chapter->id) {
@@ -61,7 +61,7 @@ class SceneSaver
             $scene->save();
 
             $this->syncRelations($scene, $validated);
-        }));
+        });
     }
 
     /**
