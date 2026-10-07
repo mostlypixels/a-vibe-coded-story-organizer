@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReadsBaseHashes;
 use App\Rules\NoAutosaveConflict;
 use App\Support\AutosavableFields;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateActRequest extends FormRequest
 {
+    use ReadsBaseHashes;
+
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('act')->book->project);
@@ -27,6 +30,6 @@ class UpdateActRequest extends FormRequest
     /** @return array<int, callable> */
     public function after(): array
     {
-        return [new NoAutosaveConflict($this->route('act'), (array) $this->input('base_hashes', []))];
+        return [new NoAutosaveConflict($this->route('act'), $this->baseHashes())];
     }
 }

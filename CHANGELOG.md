@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-07 — Manual save conflict check
+
+### Fixed
+
+- A full-form save no longer overwrites text that another tab autosaved while the save was in progress.
+
 ## 2026-10-07 — Safer saves (#311)
 
 ### Fixed

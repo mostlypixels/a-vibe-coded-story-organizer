@@ -137,7 +137,7 @@ class BookController extends Controller
         // remove checkbox) out of the plain attribute update and resolve it separately.
         $data = $request->safe()->except(['cover_image', 'remove_cover_image']);
 
-        $recorder->saveWithManualCheckpoint($book, $data, $request->user(), function () use ($request, $book, $data) {
+        $recorder->saveWithManualCheckpoint($book, $data, $request->baseHashes(), $request->user(), function () use ($request, $book, $data) {
             $book->fill($data);
             $this->coverImageService->saveWithCover(
                 $book,

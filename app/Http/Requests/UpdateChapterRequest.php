@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReadsBaseHashes;
 use App\Rules\NoAutosaveConflict;
 use App\Support\AutosavableFields;
 use App\Support\CodexMediaRules;
@@ -10,6 +11,8 @@ use Illuminate\Validation\Rule;
 
 class UpdateChapterRequest extends FormRequest
 {
+    use ReadsBaseHashes;
+
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('chapter')->project());
@@ -37,6 +40,6 @@ class UpdateChapterRequest extends FormRequest
     /** @return array<int, callable> */
     public function after(): array
     {
-        return [new NoAutosaveConflict($this->route('chapter'), (array) $this->input('base_hashes', []))];
+        return [new NoAutosaveConflict($this->route('chapter'), $this->baseHashes())];
     }
 }

@@ -45,13 +45,14 @@ class SceneSaver
 
     /**
      * @param  array<string, mixed>  $validated
+     * @param  array<mixed>  $baseHashes  The `base_hashes` that the edit form sent.
      * @param  User  $user  Credited on the manual revision checkpoint.
      */
-    public function update(Scene $scene, Chapter $chapter, array $validated, User $user): void
+    public function update(Scene $scene, Chapter $chapter, array $validated, array $baseHashes, User $user): void
     {
         $attributes = $this->sceneAttributes($validated);
 
-        $this->recorder->saveWithManualCheckpoint($scene, $attributes, $user, function () use ($scene, $chapter, $validated, $attributes) {
+        $this->recorder->saveWithManualCheckpoint($scene, $attributes, $baseHashes, $user, function () use ($scene, $chapter, $validated, $attributes) {
             $scene->fill($attributes + ['event_id' => $this->eventId($chapter, $validated)]);
 
             if ($scene->chapter_id !== $chapter->id) {

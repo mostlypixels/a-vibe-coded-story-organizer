@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReadsBaseHashes;
 use App\Rules\NoAutosaveConflict;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Same rules as StoreSceneRequest, for the book that holds the scene. */
 class UpdateSceneRequest extends FormRequest
 {
+    use ReadsBaseHashes;
+
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('scene')->project());
@@ -32,6 +35,6 @@ class UpdateSceneRequest extends FormRequest
     /** @return array<int, callable> */
     public function after(): array
     {
-        return [new NoAutosaveConflict($this->route('scene'), (array) $this->input('base_hashes', []))];
+        return [new NoAutosaveConflict($this->route('scene'), $this->baseHashes())];
     }
 }

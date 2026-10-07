@@ -213,6 +213,7 @@ class CodexEntryController extends Controller
             $codexEntry,
             $request->validated(),
             CodexMediaUploads::fromRequest($request),
+            $request->baseHashes(),
             $request->user(),
         );
 

@@ -131,7 +131,7 @@ class EventController extends Controller
     {
         $data = $request->safe()->except('plotlines');
 
-        $recorder->saveWithManualCheckpoint($event, $data, $request->user(), function () use ($request, $event, $data) {
+        $recorder->saveWithManualCheckpoint($event, $data, $request->baseHashes(), $request->user(), function () use ($request, $event, $data) {
             $event->update($data);
             $event->plotlines()->sync($request->validated('plotlines'));
         });

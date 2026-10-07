@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\SceneStatus;
+use App\Http\Requests\UpdateSceneRequest;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\Scene;
@@ -58,6 +59,29 @@ class ManualSaveConflictTest extends TestCase
 
         $scene->refresh();
         $this->assertSame('Newer text', $scene->contents);
+        $this->assertNotSame('Renamed', $scene->name);
+    }
+
+    public function test_an_autosave_that_lands_after_validation_keeps_its_text(): void
+    {
+        $user = User::factory()->create();
+        $scene = $this->sceneFor($user, 'Text the page loaded');
+
+        // This callback runs after the form request has validated the hashes.
+        $this->app->afterResolving(UpdateSceneRequest::class, fn () => Scene::query()
+            ->whereKey($scene->id)
+            ->update(['contents' => 'Autosaved in another tab']));
+
+        $this->actingAs($user)
+            ->from(route('scenes.edit', $scene))
+            ->put(route('scenes.update', $scene), $this->scenePayload($scene, [
+                'base_hashes' => ['contents' => FieldHash::of('Text the page loaded')],
+            ]))
+            ->assertRedirect(route('scenes.edit', $scene))
+            ->assertSessionHasErrors('base_hashes.contents');
+
+        $scene->refresh();
+        $this->assertSame('Autosaved in another tab', $scene->contents);
         $this->assertNotSame('Renamed', $scene->name);
     }
 

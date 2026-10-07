@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\BookLanguage;
+use App\Http\Requests\Concerns\ReadsBaseHashes;
 use App\Rules\NoAutosaveConflict;
 use App\Rules\ValidIsbn;
 use App\Support\AutosavableFields;
@@ -13,6 +14,8 @@ use Illuminate\Validation\Rule;
 /** Uses the same rich-text rules as the autosave endpoint. */
 class UpdateBookRequest extends FormRequest
 {
+    use ReadsBaseHashes;
+
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('book')->project);
@@ -64,6 +67,6 @@ class UpdateBookRequest extends FormRequest
     /** @return array<int, callable> */
     public function after(): array
     {
-        return [new NoAutosaveConflict($this->route('book'), (array) $this->input('base_hashes', []))];
+        return [new NoAutosaveConflict($this->route('book'), $this->baseHashes())];
     }
 }
