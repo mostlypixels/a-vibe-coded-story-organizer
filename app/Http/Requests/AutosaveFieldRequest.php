@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Contracts\Revisionable;
 use App\Support\AutosavableFields;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -15,7 +16,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class AutosaveFieldRequest extends FormRequest
 {
-    private ?Model $autosavable = null;
+    private (Model&Revisionable)|null $autosavable = null;
 
     public function authorize(): bool
     {
@@ -35,12 +36,12 @@ class AutosaveFieldRequest extends FormRequest
         ];
     }
 
-    public function autosavable(): Model
+    public function autosavable(): Model&Revisionable
     {
         if ($this->autosavable === null) {
-            [$modelClass] = AutosavableFields::resolveField($this->route('entity'), $this->route('field'));
+            AutosavableFields::resolveField($this->route('entity'), $this->route('field'));
 
-            $this->autosavable = $modelClass::findOrFail($this->route('id'));
+            $this->autosavable = AutosavableFields::find($this->route('entity'), $this->route('id'));
         }
 
         return $this->autosavable;

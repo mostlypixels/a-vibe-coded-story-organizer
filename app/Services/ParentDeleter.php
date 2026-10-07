@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Act;
+use App\Models\Book;
+use App\Models\Chapter;
+use App\Models\Scene;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,7 +35,7 @@ class ParentDeleter
      * @param  string  $childrenRelation  The HasMany relation on both parents, e.g. `chapters`.
      * @param  string  $parentRelation  The inverse BelongsTo on the child, e.g. `act`.
      */
-    public function delete(Model $parent, ?Model $destination, string $childrenRelation, string $parentRelation): void
+    public function delete(Book|Act|Chapter $parent, Book|Act|Chapter|null $destination, string $childrenRelation, string $parentRelation): void
     {
         DB::transaction(function () use ($parent, $destination, $childrenRelation, $parentRelation) {
             if ($destination !== null) {
@@ -44,13 +47,13 @@ class ParentDeleter
         });
     }
 
-    private function moveChildren(Model $from, Model $to, string $childrenRelation, string $parentRelation): void
+    private function moveChildren(Book|Act|Chapter $from, Book|Act|Chapter $to, string $childrenRelation, string $parentRelation): void
     {
         // Each save raises the destination maximum, so the next child lands after it.
         $from->{$childrenRelation}()
             ->orderBy('position')
             ->get()
-            ->each(function (Model $child) use ($to, $parentRelation) {
+            ->each(function (Act|Chapter|Scene $child) use ($to, $parentRelation) {
                 $child->moveToEndOf($to, $parentRelation);
                 $child->save();
             });

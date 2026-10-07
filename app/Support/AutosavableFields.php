@@ -7,6 +7,7 @@ use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
+use App\Models\Contracts\Revisionable;
 use App\Models\Event;
 use App\Models\Plotline;
 use App\Models\Project;
@@ -74,10 +75,16 @@ class AutosavableFields
         return array_keys(self::REGISTRY);
     }
 
-    /** @return class-string */
+    /** @return class-string<Model&Revisionable> */
     public static function modelFor(string $slug): string
     {
         return self::REGISTRY[$slug][0];
+    }
+
+    /** One registered entity by slug and id, or a 404. */
+    public static function find(string $slug, int|string $id): Model&Revisionable
+    {
+        return self::modelFor($slug)::query()->findOrFail($id);
     }
 
     /**
@@ -126,7 +133,7 @@ class AutosavableFields
     /**
      * Rejects unknown fields. The router has already validated the slug.
      *
-     * @return array{0: class-string, 1: array<string, FieldKind>}
+     * @return array{0: class-string<Model&Revisionable>, 1: array<string, FieldKind>}
      */
     public static function resolveField(string $slug, string $field): array
     {

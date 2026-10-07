@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Models\Act;
+use App\Models\Book;
+use App\Models\Chapter;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Project;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Scene;
 
 /**
  * The controller half of a "move up / move down" action.
@@ -24,10 +27,9 @@ trait ReordersSiblings
      * Authorize the reorder against the owning Project, then move `$model` one
      * step through its sibling set.
      *
-     * @param  Model  $model  A model using {@see HasSiblingPosition}.
      * @param  bool  $up  Towards position 1, rather than away from it.
      */
-    protected function reorderSibling(Model $model, Project $project, bool $up): void
+    protected function reorderSibling(Book|Act|Chapter|Scene $model, Project $project, bool $up): void
     {
         $this->authorize('update', $project);
 

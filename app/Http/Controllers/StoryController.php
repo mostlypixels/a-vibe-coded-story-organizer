@@ -87,9 +87,9 @@ class StoryController extends Controller
             ->orderBy('position')
             ->get()
             ->each(function ($act) {
-                $act->chapters = $act->chapters->sortBy('position')->each(function ($chapter) {
-                    $chapter->scenes = $chapter->scenes->sortBy('position');
-                });
+                $act->setRelation('chapters', $act->chapters->sortBy('position')->each(function ($chapter) {
+                    $chapter->setRelation('scenes', $chapter->scenes->sortBy('position'));
+                }));
             });
 
         // Scenes are already eager-loaded above, so this sums an in-memory

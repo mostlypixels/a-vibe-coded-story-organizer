@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\FieldKind;
+use App\Models\Contracts\Revisionable;
 use App\Models\Revision;
 use App\Support\AutosavableFields;
 use App\Support\EntitySnapshot;
@@ -42,7 +43,7 @@ class RevisionSnapshot
      * The entity as of one save point: for every registered field, the newest
      * revision at or before that moment.
      */
-    public function asOf(Model $entity, SavePoint $point): EntitySnapshot
+    public function asOf(Model&Revisionable $entity, SavePoint $point): EntitySnapshot
     {
         $fields = [];
 
@@ -64,7 +65,7 @@ class RevisionSnapshot
      * > the two could have drifted, trust the column and treat this as history's
      * > account of it.
      */
-    public function current(Model $entity): EntitySnapshot
+    public function current(Model&Revisionable $entity): EntitySnapshot
     {
         $fields = [];
 
@@ -84,7 +85,7 @@ class RevisionSnapshot
      * Written as `created_at < :t OR (created_at = :t AND id <= :lastId)`
      * because no supported engine agrees on row-value comparison syntax.
      */
-    private function newestAtOrBefore(Model $entity, string $field, SavePoint $point): ?Revision
+    private function newestAtOrBefore(Model&Revisionable $entity, string $field, SavePoint $point): ?Revision
     {
         return $this->newestQuery($entity, $field)
             ->where(fn (Builder $query) => $query
@@ -100,7 +101,7 @@ class RevisionSnapshot
      *
      * @return Builder<Revision>
      */
-    private function newestQuery(Model $entity, string $field): Builder
+    private function newestQuery(Model&Revisionable $entity, string $field): Builder
     {
         return $entity->revisions()
             ->getQuery()
@@ -115,7 +116,7 @@ class RevisionSnapshot
     /**
      * @return array<string, FieldKind>
      */
-    private function registeredFields(Model $entity): array
+    private function registeredFields(Model&Revisionable $entity): array
     {
         return AutosavableFields::fieldsForModel($entity::class);
     }

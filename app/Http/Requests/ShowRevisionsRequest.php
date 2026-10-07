@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Contracts\Revisionable;
 use App\Support\AutosavableFields;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -14,7 +15,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class ShowRevisionsRequest extends FormRequest
 {
-    private ?Model $revisionable = null;
+    private (Model&Revisionable)|null $revisionable = null;
 
     public function authorize(): bool
     {
@@ -35,9 +36,9 @@ class ShowRevisionsRequest extends FormRequest
         ];
     }
 
-    public function revisionable(): Model
+    public function revisionable(): Model&Revisionable
     {
-        return $this->revisionable ??= AutosavableFields::modelFor($this->route('entity'))::findOrFail($this->route('id'));
+        return $this->revisionable ??= AutosavableFields::find($this->route('entity'), $this->route('id'));
     }
 
     /** Null means all fields. An unregistered field is a 404, like an unknown page. */

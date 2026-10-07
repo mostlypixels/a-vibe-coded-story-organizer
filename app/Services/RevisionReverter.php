@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\RevisionOrigin;
 use App\Exceptions\RevisionConflictException;
+use App\Models\Contracts\Revisionable;
 use App\Models\Revision;
 use App\Models\User;
 use App\Support\AutosavableFields;
@@ -29,7 +30,7 @@ class RevisionReverter
      *
      * @throws RevisionConflictException When the stored value changed.
      */
-    public function revertField(Model $entity, Revision $revision, string $baseHash, User $user): string
+    public function revertField(Model&Revisionable $entity, Revision $revision, string $baseHash, User $user): string
     {
         $this->assertUnchanged($entity, $revision->field, $baseHash);
 
@@ -55,7 +56,7 @@ class RevisionReverter
      *
      * @throws RevisionConflictException When any stored value changed.
      */
-    public function revertSave(Model $entity, Collection $group, array $baseHashes, User $user): array
+    public function revertSave(Model&Revisionable $entity, Collection $group, array $baseHashes, User $user): array
     {
         // The earliest row's predecessor holds the value from before the save.
         $rows = $group->sortBy([['created_at', 'asc'], ['id', 'asc']])->unique('field');
@@ -92,7 +93,7 @@ class RevisionReverter
      *
      * @throws RevisionConflictException
      */
-    public function assertUnchanged(Model $entity, string $field, string $baseHash): void
+    public function assertUnchanged(Model&Revisionable $entity, string $field, string $baseHash): void
     {
         if ($baseHash !== FieldHash::of($entity->getAttribute($field))) {
             throw RevisionConflictException::valueChangedElsewhere($field);
@@ -105,7 +106,7 @@ class RevisionReverter
      *
      * @throws RevisionConflictException
      */
-    private function assertStillUnchanged(Model $entity, string $field, string $baseHash): void
+    private function assertStillUnchanged(Model&Revisionable $entity, string $field, string $baseHash): void
     {
         $storedValue = $entity->newQuery()
             ->whereKey($entity->getKey())
@@ -123,7 +124,7 @@ class RevisionReverter
      * Current rules apply to the old value. The recorded revision uses the value
      * after model mutators run. The locked hash check prevents concurrent overwrite.
      */
-    private function restore(Model $entity, string $field, string $baseHash, string $value, string $label, User $user): string
+    private function restore(Model&Revisionable $entity, string $field, string $baseHash, string $value, string $label, User $user): string
     {
         $slug = AutosavableFields::slugFor($entity::class);
 
@@ -151,7 +152,7 @@ class RevisionReverter
     }
 
     /** Returns the preceding revision by creation time and ID. */
-    private function predecessorOf(Model $entity, Revision $row): ?Revision
+    private function predecessorOf(Model&Revisionable $entity, Revision $row): ?Revision
     {
         return $entity->revisions()
             ->where('field', $row->field)

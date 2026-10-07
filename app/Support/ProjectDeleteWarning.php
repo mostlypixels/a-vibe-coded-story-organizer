@@ -67,14 +67,14 @@ class ProjectDeleteWarning
             // three books, not two, once there is more than one.
             [$project->books_count > 1 ? $project->books_count : 0, '{1} :count book|[2,*] :count books'],
             [$project->acts_count, '{1} :count act|[2,*] :count acts'],
-            [$project->chapters_count, '{1} :count chapter|[2,*] :count chapters'],
-            [$project->scenes_count, '{1} :count scene (:words)|[2,*] :count scenes (:words)'],
+            [$project->getAttribute('chapters_count'), '{1} :count chapter|[2,*] :count chapters'],
+            [$project->getAttribute('scenes_count'), '{1} :count scene (:words)|[2,*] :count scenes (:words)'],
             [$project->plotlines_count, '{1} :count plotline|[2,*] :count plotlines'],
             [$project->events_count, '{1} :count event|[2,*] :count events'],
             [$project->codex_entries_count, '{1} :count codex entry|[2,*] :count codex entries'],
         ];
 
-        $words = WordCountFormat::text((int) $project->scene_words_sum);
+        $words = WordCountFormat::text((int) $project->getAttribute('scene_words_sum'));
         $nonZero = [];
 
         foreach ($categories as [$count, $choicePattern]) {

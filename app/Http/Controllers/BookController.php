@@ -52,7 +52,7 @@ class BookController extends Controller
         // A book with no scenes has no row in $wordCounts (SQL GROUP BY has
         // nothing to group). A book with no scenes renders "0 words", not blank.
         foreach ($books as $book) {
-            $book->word_count = $wordCounts[$book->id] ?? 0;
+            $book->setAttribute('word_count', $wordCounts[$book->id] ?? 0);
         }
 
         return view('books.index', [

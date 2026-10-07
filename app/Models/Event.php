@@ -4,13 +4,14 @@ namespace App\Models;
 
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
+use App\Models\Contracts\Revisionable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Event extends Model
+class Event extends Model implements Revisionable
 {
     use HasFactory;
     use HasRevisions;
@@ -31,6 +32,7 @@ class Event extends Model
         ];
     }
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
@@ -53,6 +55,7 @@ class Event extends Model
         return 'title';
     }
 
+    /** @return BelongsToMany<Plotline, $this> */
     public function plotlines(): BelongsToMany
     {
         return $this->belongsToMany(Plotline::class);
@@ -60,6 +63,8 @@ class Event extends Model
 
     /**
      * Scenes that happen during this event.
+     *
+     * @return HasMany<Scene, $this>
      */
     public function scenes(): HasMany
     {
@@ -68,6 +73,8 @@ class Event extends Model
 
     /**
      * Codex attribute values that start at this event. They are deleted with it.
+     *
+     * @return HasMany<CodexAttributeValue, $this>
      */
     public function attributeValues(): HasMany
     {
@@ -76,6 +83,8 @@ class Event extends Model
 
     /**
      * Scenes that mention this event (many-to-many).
+     *
+     * @return BelongsToMany<Scene, $this>
      */
     public function mentioningScenes(): BelongsToMany
     {

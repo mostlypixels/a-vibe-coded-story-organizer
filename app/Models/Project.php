@@ -6,6 +6,7 @@ use App\Enums\CodexEntryType;
 use App\Enums\Genre;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
+use App\Models\Contracts\Revisionable;
 use App\Services\CodexMediaService;
 use App\Services\CoverImageService;
 use App\Support\PlotlineColors;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Collection;
 
-class Project extends Model
+class Project extends Model implements Revisionable
 {
     use HasFactory;
     use HasRevisions;
@@ -38,6 +39,7 @@ class Project extends Model
         'import_unfinished' => 'boolean',
     ];
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -57,11 +59,13 @@ class Project extends Model
         return $this;
     }
 
+    /** @return HasMany<Plotline, $this> */
     public function plotlines(): HasMany
     {
         return $this->hasMany(Plotline::class);
     }
 
+    /** @return HasMany<Event, $this> */
     public function events(): HasMany
     {
         return $this->hasMany(Event::class);
@@ -77,6 +81,8 @@ class Project extends Model
      * The join brings `books.name` and `books.position` into scope, so a caller
      * that orders or selects on this relation must qualify its columns
      * (`acts.position`) — the same trap {@see self::chapterQuery()} documents.
+     *
+     * @return HasManyThrough<Act, Book, $this>
      */
     public function acts(): HasManyThrough
     {
@@ -88,6 +94,8 @@ class Project extends Model
      * because "the project's first book" is a concept the app relies on —
      * the picker, the navigation fallback and the book index all mean the same
      * first book.
+     *
+     * @return HasMany<Book, $this>
      */
     public function books(): HasMany
     {
@@ -99,17 +107,21 @@ class Project extends Model
      * The book the writer was last in, or null before any book page is visited.
      * Written by the route-tracking middleware only — `last_book_id` is not
      * fillable, like `users.active_project_id`.
+     *
+     * @return BelongsTo<Book, $this>
      */
     public function lastBook(): BelongsTo
     {
         return $this->belongsTo(Book::class, 'last_book_id');
     }
 
+    /** @return HasMany<CodexEntry, $this> */
     public function codexEntries(): HasMany
     {
         return $this->hasMany(CodexEntry::class);
     }
 
+    /** @return HasMany<CodexAttribute, $this> */
     public function codexAttributes(): HasMany
     {
         return $this->hasMany(CodexAttribute::class);
@@ -132,6 +144,7 @@ class Project extends Model
             ->values();
     }
 
+    /** @return HasMany<Tag, $this> */
     public function tags(): HasMany
     {
         return $this->hasMany(Tag::class);
@@ -139,12 +152,15 @@ class Project extends Model
 
     /**
      * Ordered by nothing — callers order by recorded_on themselves.
+     *
+     * @return HasMany<WordCountSnapshot, $this>
      */
     public function wordCountSnapshots(): HasMany
     {
         return $this->hasMany(WordCountSnapshot::class);
     }
 
+    /** @return HasMany<Challenge, $this> */
     public function challenges(): HasMany
     {
         return $this->hasMany(Challenge::class)->orderByDesc('starts_on');
@@ -168,6 +184,8 @@ class Project extends Model
      * have bought.
      *
      * Nested `whereIn` subqueries, for the same reason as {@see self::sceneQuery()}.
+     *
+     * @return Builder<Chapter>
      */
     public function chapterQuery(): Builder
     {
@@ -182,6 +200,8 @@ class Project extends Model
      *
      * Nested `whereIn` subqueries, not `whereHas`: SQLite then walks the parent-key
      * indexes down from the project. `whereHas` reads every scene of every project.
+     *
+     * @return Builder<Scene>
      */
     public function sceneQuery(): Builder
     {

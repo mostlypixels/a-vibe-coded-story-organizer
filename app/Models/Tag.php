@@ -18,11 +18,13 @@ class Tag extends Model
         'name',
     ];
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
+    /** @return BelongsToMany<CodexEntry, $this> */
     public function entries(): BelongsToMany
     {
         return $this->belongsToMany(CodexEntry::class);

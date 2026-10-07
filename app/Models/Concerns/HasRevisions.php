@@ -55,6 +55,8 @@ trait HasRevisions
      *
      * The ID breaks ties between revisions in the same second. Without it, the
      * database returns tied rows in a random order.
+     *
+     * @return MorphMany<Revision, $this>
      */
     public function revisions(): MorphMany
     {

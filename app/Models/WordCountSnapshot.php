@@ -35,6 +35,8 @@ class WordCountSnapshot extends Model
      * one column break the day: the recorder upserts 'Y-m-d', so a row an
      * Eloquent save wrote for the same day misses the unique key and the day
      * gets two rows. A range query on 'Y-m-d' also drops its last day.
+     *
+     * @return Attribute<CarbonImmutable, CarbonImmutable|DateTimeInterface|string>
      */
     protected function recordedOn(): Attribute
     {
@@ -44,6 +46,7 @@ class WordCountSnapshot extends Model
         );
     }
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);

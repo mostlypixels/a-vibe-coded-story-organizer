@@ -82,7 +82,7 @@ trait JumpsToListPosition
     protected function landedHighlight(Request $request, Collection $rows, string $groupAttribute): array
     {
         $highlightId = $request->filled('highlight') ? (int) $request->query('highlight') : null;
-        $anchorRowId = $highlightId ? $rows->firstWhere($groupAttribute, $highlightId)?->id : null;
+        $anchorRowId = $highlightId ? $rows->firstWhere($groupAttribute, $highlightId)?->getKey() : null;
 
         return ['highlightId' => $highlightId, 'anchorRowId' => $anchorRowId];
     }

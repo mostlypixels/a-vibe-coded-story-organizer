@@ -41,6 +41,8 @@ class Import extends Model
 
     /**
      * The importing user (owner). Drives ImportPolicy's ownership check.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -51,6 +53,8 @@ class Import extends Model
      * The Project being built. Nullable — there is no project yet while the
      * import sits at phase = pending, and it becomes null again if that project
      * is deleted out from under an orphaned import row (nullOnDelete).
+     *
+     * @return BelongsTo<Project, $this>
      */
     public function project(): BelongsTo
     {

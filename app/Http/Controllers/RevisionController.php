@@ -7,6 +7,7 @@ use App\Exceptions\RevisionConflictException;
 use App\Http\Requests\RevertRevisionRequest;
 use App\Http\Requests\RevertSaveRequest;
 use App\Http\Requests\ShowRevisionsRequest;
+use App\Models\Contracts\Revisionable;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Services\RevisionComparePage;
@@ -123,7 +124,7 @@ class RevisionController extends Controller
     }
 
     /** Returns a revision's save ID, or null for a missing or stale ID. */
-    private function saveIdOf(Model $model, mixed $revisionId): ?string
+    private function saveIdOf(Model&Revisionable $model, mixed $revisionId): ?string
     {
         if (! is_numeric($revisionId)) {
             return null;
@@ -170,7 +171,7 @@ class RevisionController extends Controller
     }
 
     /** A revision of a deleted entity is a 404, but only after the project check. */
-    private function revisionableOrFail(Revision $revision): Model
+    private function revisionableOrFail(Revision $revision): Model&Revisionable
     {
         $this->authorize('update', $revision->owningProject());
 
@@ -178,9 +179,9 @@ class RevisionController extends Controller
     }
 
     /** Resolves the entity and authorizes history access through its project. */
-    private function resolveEntity(string $entity, int $id): Model
+    private function resolveEntity(string $entity, int $id): Model&Revisionable
     {
-        $model = AutosavableFields::modelFor($entity)::findOrFail($id);
+        $model = AutosavableFields::find($entity, $id);
 
         $this->authorize('view', $model->revisionProject());
 

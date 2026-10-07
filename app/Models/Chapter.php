@@ -6,6 +6,7 @@ use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Models\Concerns\SumsSceneWords;
+use App\Models\Contracts\Revisionable;
 use App\Services\CoverImageService;
 use App\Services\WordCountSnapshotRecorder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Chapter extends Model
+class Chapter extends Model implements Revisionable
 {
     use HasFactory;
     use HasRevisions;
@@ -28,6 +29,7 @@ class Chapter extends Model
         'position',
     ];
 
+    /** @return BelongsTo<Act, $this> */
     public function act(): BelongsTo
     {
         return $this->belongsTo(Act::class);
@@ -50,6 +52,7 @@ class Chapter extends Model
         return $this->book()->project;
     }
 
+    /** @return HasMany<Scene, $this> */
     public function scenes(): HasMany
     {
         return $this->hasMany(Scene::class);

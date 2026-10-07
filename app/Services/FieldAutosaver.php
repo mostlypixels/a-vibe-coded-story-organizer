@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\RevisionOrigin;
 use App\Events\SceneContentsChanged;
 use App\Exceptions\RevisionConflictException;
+use App\Models\Contracts\Revisionable;
 use App\Models\Scene;
 use App\Models\User;
 use App\Support\AutosavableFields;
@@ -37,7 +38,7 @@ class FieldAutosaver
      *
      * @throws RevisionConflictException When the stored value no longer matches `$baseHash`.
      */
-    public function save(Model $model, string $field, ?string $value, string $baseHash, User $user, bool $runMatcher = false, bool $newRevision = false): AutosaveResult
+    public function save(Model&Revisionable $model, string $field, ?string $value, string $baseHash, User $user, bool $runMatcher = false, bool $newRevision = false): AutosaveResult
     {
         // The hash check and the write must be one step, or two tabs both pass the
         // check and the second overwrites the first. The row lock does this on most
@@ -53,21 +54,21 @@ class FieldAutosaver
      * Replace the in-memory attributes with the locked row, so a save that landed
      * after the model loaded counts. The conflict reply also reads the stored text from here.
      */
-    private function loadLockedRow(Model $model): void
+    private function loadLockedRow(Model&Revisionable $model): void
     {
         $locked = $model->newQuery()->whereKey($model->getKey())->lockForUpdate()->firstOrFail();
 
         $model->setRawAttributes($locked->getAttributes(), sync: true);
     }
 
-    private function saveLocked(Model $model, string $field, ?string $value, string $baseHash, User $user, bool $runMatcher, bool $newRevision): AutosaveResult
+    private function saveLocked(Model&Revisionable $model, string $field, ?string $value, string $baseHash, User $user, bool $runMatcher, bool $newRevision): AutosaveResult
     {
         $currentValue = (string) ($model->getAttribute($field) ?? '');
 
         // The save below overwrites both of these, and the baseline seeded further
         // down needs them as they are now: it stands for the value the writer
         // started from, and for the moment that value started to hold.
-        $heldSince = $model->updated_at;
+        $heldSince = $model->getAttribute('updated_at');
 
         $model->{$field} = $value ?? ''; // mutators run here, e.g. SanitizesRichHtml for rich fields.
 
@@ -117,7 +118,7 @@ class FieldAutosaver
 
         return new AutosaveResult(
             value: $storedValue,
-            wordCount: $this->wordCount($model, $field, $storedValue, $isSceneContents),
+            wordCount: $this->wordCount($model, $field, $storedValue),
             // record() already returned the row it wrote or coalesced into, so the
             // lookup is only needed for the no-op branch, where the client still
             // wants to know which revision its text currently corresponds to.
@@ -136,9 +137,9 @@ class FieldAutosaver
      * share the model but not that column) has nothing stored to read, so it is
      * counted here, on the value that was actually persisted.
      */
-    private function wordCount(Model $model, string $field, string $storedValue, bool $isSceneContents): int
+    private function wordCount(Model&Revisionable $model, string $field, string $storedValue): int
     {
-        if ($isSceneContents) {
+        if ($model instanceof Scene && $field === 'contents') {
             return $model->word_count;
         }
 

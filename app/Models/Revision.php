@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RevisionOrigin;
+use App\Models\Contracts\Revisionable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\MassPrunable;
@@ -66,6 +67,7 @@ class Revision extends Model
         ];
     }
 
+    /** @return MorphTo<Model&Revisionable, $this> */
     public function revisionable(): MorphTo
     {
         return $this->morphTo();
@@ -103,6 +105,8 @@ class Revision extends Model
      * see App\Services\RevisionRecorder::ensureBaseline()). The history page
      * eager-loads this and selects only `id`/`name`. It never pulls in anything
      * from `revisions.value`.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {

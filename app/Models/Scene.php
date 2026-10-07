@@ -7,6 +7,7 @@ use App\Enums\SceneStatus;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
+use App\Models\Contracts\Revisionable;
 use App\Services\WordCountSnapshotRecorder;
 use App\Support\AuthorMarkdown;
 use App\Support\WordCounter;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class Scene extends Model
+class Scene extends Model implements Revisionable
 {
     use HasFactory;
     use HasRevisions;
@@ -38,6 +39,7 @@ class Scene extends Model
         'share_expires_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<Chapter, $this> */
     public function chapter(): BelongsTo
     {
         return $this->belongsTo(Chapter::class);
@@ -70,6 +72,8 @@ class Scene extends Model
 
     /**
      * The single event this scene happens during (optional).
+     *
+     * @return BelongsTo<Event, $this>
      */
     public function event(): BelongsTo
     {
@@ -78,6 +82,8 @@ class Scene extends Model
 
     /**
      * Events this scene mentions (many-to-many, optional).
+     *
+     * @return BelongsToMany<Event, $this>
      */
     public function mentionedEvents(): BelongsToMany
     {
@@ -88,6 +94,8 @@ class Scene extends Model
      * Codex entries whose name or an alias appears as a whole word in this scene's
      * contents. A derived cache maintained by SceneReferenceMatcher — never edited by
      * hand. The pivot has no columns of its own (plain belongsToMany, no pivot model).
+     *
+     * @return BelongsToMany<CodexEntry, $this>
      */
     public function codexReferences(): BelongsToMany
     {
@@ -97,6 +105,8 @@ class Scene extends Model
     /**
      * Sanitize the `notes` rich-HTML field on write. `contents` deliberately has no
      * mutator: it stays Markdown-only (ValidMarkdown + AuthorMarkdown rendering).
+     *
+     * @return Attribute<?string, ?string>
      */
     protected function notes(): Attribute
     {
@@ -112,6 +122,8 @@ class Scene extends Model
      * Rendering `contents` (unlike the rich-HTML fields) is safe by our convention:
      * it is Markdown gated by ValidMarkdown, echoed with {!! !!} only here and in those
      * views. Returns an empty string when there are no contents.
+     *
+     * @return Attribute<string, never>
      */
     protected function renderedContents(): Attribute
     {
