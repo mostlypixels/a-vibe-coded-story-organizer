@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-07 — Technical debt list (#313)
+
+### Added
+
+- The developer documentation lists known technical debt, its risk, and when to fix it.
+
 ## 2026-10-07 — Manual save conflict check (#312)
 
 ### Fixed

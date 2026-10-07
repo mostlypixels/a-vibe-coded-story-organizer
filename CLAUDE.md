@@ -29,7 +29,7 @@ Run the native server or the Docker stack, never both. They share port 8000 and 
 - Keep controllers, Blade templates, and Eloquent models thin.
 - Reuse an existing project pattern before you create a new one.
 - Do not add an abstraction until a second caller needs it.
-- Explain and document technical debt.
+- Explain and document technical debt in [technical debt](documentation/development/technical-debt.md).
 
 Put logic in these locations:
 
