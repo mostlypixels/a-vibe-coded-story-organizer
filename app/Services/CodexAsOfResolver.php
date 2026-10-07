@@ -33,7 +33,7 @@ class CodexAsOfResolver
      * An entry that does not exist at $moment (before inception, after termination) is
      * dropped entirely — the panel never shows a "not yet" or "gone" state.
      *
-     * @return Collection<int, array{type: CodexEntryType, entries: Collection<int, array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: ?string}>, age: ?Age}>}>
+     * @return Collection<int, array{type: CodexEntryType, entries: Collection<int, array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: string}>, age: ?Age}>}>
      */
     public function resolve(Project $project, ?Event $moment): Collection
     {
@@ -61,7 +61,7 @@ class CodexAsOfResolver
      *
      * @param  Collection<int, CodexEntry>  $entries
      * @param  Collection<int, CodexAttribute>  $attributes
-     * @return Collection<int, array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: ?string}>, age: ?Age}>
+     * @return Collection<int, array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: string}>, age: ?Age}>
      */
     private function entriesForType(Collection $entries, Collection $attributes, CodexEntryType $type, ?Event $moment): Collection
     {

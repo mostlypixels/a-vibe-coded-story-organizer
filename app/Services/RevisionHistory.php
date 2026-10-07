@@ -11,6 +11,7 @@ use App\Support\SaveEntry;
 use App\Support\SavePoint;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
@@ -166,7 +167,7 @@ class RevisionHistory
      *
      * @param  list<string>  $saveIds
      * @param  array{field?: ?string, label?: ?string, manualOnly?: bool}  $filters
-     * @return Collection<string, Collection<int, Revision>>
+     * @return Collection<array-key, EloquentCollection<int, Revision>> Rows keyed by save ID.
      */
     private function rowsFor(Model&Revisionable $entity, array $saveIds, array $filters): Collection
     {

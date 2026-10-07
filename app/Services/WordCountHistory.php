@@ -113,7 +113,7 @@ class WordCountHistory
     /**
      * The range's rows as `Y-m-d => cumulative total`.
      *
-     * @return Collection<string, int>
+     * @return Collection<string, int<0, max>>
      */
     private function totalsInRange(Project $project, CarbonImmutable $from, CarbonImmutable $to): Collection
     {

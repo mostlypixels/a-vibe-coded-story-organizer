@@ -175,7 +175,11 @@ class RevisionController extends Controller
     {
         $this->authorize('update', $revision->owningProject());
 
-        return $revision->revisionable ?? abort(404);
+        $entity = $revision->revisionable;
+
+        abort_unless($entity instanceof Revisionable, 404);
+
+        return $entity;
     }
 
     /** Resolves the entity and authorizes history access through its project. */

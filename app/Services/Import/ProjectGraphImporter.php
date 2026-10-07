@@ -223,7 +223,11 @@ class ProjectGraphImporter
         return $validator->validated();
     }
 
-    /** Reuses the main plotline and bookend events, then imports the timeline graph. */
+    /**
+     * Reuses the main plotline and bookend events, then imports the timeline graph.
+     *
+     * @param  array<string, array<int, int>>  $idMaps
+     */
     public function importTimeline(string $dataPath, Project $project, array &$idMaps): void
     {
         $dataPath = $this->normalizePath($dataPath);
@@ -324,6 +328,8 @@ class ProjectGraphImporter
      *
      * > [!WARNING]
      * > Update the auto-created first book. Insert only the remaining books.
+     *
+     * @param  array<string, array<int, int>>  $idMaps
      */
     public function importStory(string $dataPath, Project $project, array &$idMaps): void
     {
@@ -440,7 +446,10 @@ class ProjectGraphImporter
             ?? throw ImportValidationException::invalidDescriptorValue($descriptorPath, 'overview_render_mode');
     }
 
-    /** @param array<int, string> $copiedCovers Paths to remove after a rollback. */
+    /**
+     * @param  array<string, array<int, int>>  $idMaps
+     * @param  array<int, string>  $copiedCovers  Paths to remove after a rollback.
+     */
     private function importActs(string $dataPath, Book $book, string $bookDirectory, array &$idMaps, array &$copiedCovers): void
     {
         foreach ($this->readEntityDescriptors($dataPath, "{$bookDirectory}/acts/*/act.json") as $actItem) {
@@ -458,6 +467,8 @@ class ProjectGraphImporter
     /**
      * Imports codex definitions, tags, entries, values, links, and media.
      * A failure removes files that the database transaction cannot roll back.
+     *
+     * @param  array<string, array<int, int>>  $idMaps
      */
     public function importCodex(string $dataPath, Project $project, array &$idMaps): void
     {
@@ -492,7 +503,10 @@ class ProjectGraphImporter
         }
     }
 
-    /** @param array<int, string> $copiedCovers Paths to remove after a rollback. */
+    /**
+     * @param  array<string, array<int, int>>  $idMaps
+     * @param  array<int, string>  $copiedCovers  Paths to remove after a rollback.
+     */
     private function importChapters(string $dataPath, Act $act, string $actDirectory, array &$idMaps, array &$copiedCovers): void
     {
         foreach ($this->readEntityDescriptors($dataPath, "{$actDirectory}/chapters/*/chapter.json") as $chapterItem) {
@@ -537,7 +551,10 @@ class ProjectGraphImporter
         return $path;
     }
 
-    /** @param array{path: string, directory: string, data: array<string, mixed>} $item */
+    /**
+     * @param  array{path: string, directory: string, data: array<string, mixed>}  $item
+     * @param  array<string, array<int, int>>  $idMaps
+     */
     private function importScene(string $dataPath, Chapter $chapter, array $item, array &$idMaps): void
     {
         $data = $item['data'];
@@ -564,6 +581,7 @@ class ProjectGraphImporter
 
     /**
      * @param  array{path: string, directory: string, data: array<string, mixed>}  $item
+     * @param  array<string, array<int, int>>  $idMaps
      * @param  array<int, string>  $copiedPaths
      */
     private function importCodexEntry(string $dataPath, Project $project, array $item, array &$idMaps, array &$copiedPaths): void
