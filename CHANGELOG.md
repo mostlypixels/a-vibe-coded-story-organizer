@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-07 — Page-specific tab titles (#319)
+
+### Changed
+
+- Browser tab titles now name the page first, such as "Le guet-apens - Edit - Marius", so open tabs differ.
+- Account, profile, admin, onboarding and revision history pages have their own tab titles.
+
 ## 2026-10-07 — Remove stale theme handoff (#318)
 
 ### Removed

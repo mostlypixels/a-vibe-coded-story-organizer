@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout :title="__('Account')">
     <x-page-heading>{{ __('Account') }}</x-page-heading>
 
     <div class="grid gap-6 md:grid-cols-2">

@@ -50,6 +50,7 @@ class RevisionsLayout extends Component
         public ?string $entity = null,
         public ?int $id = null,
         public ?string $field = null,
+        public ?string $title = null,
     ) {
         $this->tree = $browser->tree($project);
     }

@@ -2,7 +2,7 @@
     use Illuminate\Support\Str;
 @endphp
 
-<x-revisions-layout :project="$project" :entity="$entity" :id="$id" :field="$field">
+<x-revisions-layout :project="$project" :entity="$entity" :id="$id" :field="$field" :title="$heading">
     <x-slot name="header">
         <div class="min-w-0">
             <x-breadcrumbs :items="$breadcrumbTrail" />

@@ -7,7 +7,7 @@
 
         <x-robots-meta />
 
-        <title>{{ $pageTitle }}</title>
+        <title>{{ $pageTitle->withPage($title ?? null) }}</title>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 

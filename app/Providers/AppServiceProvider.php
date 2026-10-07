@@ -52,11 +52,12 @@ class AppServiceProvider extends ServiceProvider
         // Route context sets the title and breadcrumbs. Stored context sets the main navigation.
         View::composer(['layouts.navigation', 'layouts.app'], function ($view) {
             $navigation = new ProjectNavigation(request());
+            // Pages outside a project use their header instead of breadcrumbs.
+            $breadcrumbs = new Breadcrumbs($navigation, request());
 
             $view->with('navigation', $navigation)
-                ->with('pageTitle', new PageTitle($navigation->routeProject, $navigation->routeBook))
-                // Pages outside a project use their header instead of breadcrumbs.
-                ->with('breadcrumbs', new Breadcrumbs($navigation, request()));
+                ->with('pageTitle', PageTitle::forRequest($navigation, $breadcrumbs, request()))
+                ->with('breadcrumbs', $breadcrumbs);
         });
 
         // Error pages must not infer navigation from a failed route.

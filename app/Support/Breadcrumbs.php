@@ -54,6 +54,17 @@ class Breadcrumbs implements Countable, IteratorAggregate
         return $this->crumbs === [];
     }
 
+    public function current(): ?Crumb
+    {
+        foreach ($this->crumbs as $crumb) {
+            if ($crumb->current) {
+                return $crumb;
+            }
+        }
+
+        return null;
+    }
+
     public function count(): int
     {
         return count($this->crumbs);

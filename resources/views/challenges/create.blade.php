@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout :title="__('New Challenge')">
     <x-page-heading>
         {{ __('New Challenge') }}
     </x-page-heading>

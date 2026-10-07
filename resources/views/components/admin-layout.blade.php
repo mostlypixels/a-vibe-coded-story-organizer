@@ -1,4 +1,6 @@
-<x-app-layout>
+@props(['title' => null])
+
+<x-app-layout :title="$title">
     @isset($header)
         <x-slot name="header">
             {{ $header }}
