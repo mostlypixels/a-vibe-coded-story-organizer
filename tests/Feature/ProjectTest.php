@@ -12,12 +12,14 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use App\Models\WordCountSnapshot;
+use App\Services\RevisionRecorder;
 use Carbon\CarbonImmutable;
 use Dom\HTMLDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Tests\TestCase;
 
 class ProjectTest extends TestCase
@@ -158,6 +160,29 @@ class ProjectTest extends TestCase
         $this->assertSame('My Novel', $project->name);
         $this->assertNotNull($project->cover_image);
         Storage::disk('media')->assertExists($project->cover_image);
+    }
+
+    public function test_a_failed_revision_write_undoes_the_update_and_keeps_the_old_cover(): void
+    {
+        Storage::fake('media');
+        $oldPath = 'project-covers/old-cover.jpg';
+        Storage::disk('media')->put($oldPath, 'contents');
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create(['name' => 'Old Name', 'cover_image' => $oldPath]);
+
+        $this->partialMock(RevisionRecorder::class, fn ($mock) => $mock
+            ->shouldReceive('recordManualChanges')->andThrow(new RuntimeException('Revision write failed.')));
+
+        $this->actingAs($user)->put(route('projects.update', $project), [
+            'name' => 'New Name',
+            'description' => 'New description',
+            'cover_image' => UploadedFile::fake()->image('cover.jpg'),
+        ])->assertServerError();
+
+        $project = $project->fresh();
+        $this->assertSame('Old Name', $project->name);
+        $this->assertSame($oldPath, $project->cover_image);
+        $this->assertSame([$oldPath], Storage::disk('media')->allFiles());
     }
 
     public function test_saving_the_edit_form_records_a_labeled_manual_revision_for_a_changed_autosaved_field(): void

@@ -38,6 +38,27 @@ class FieldAutosaverTest extends TestCase
         $this->assertSame(Revision::query()->latest('id')->value('id'), $result->revisionId);
     }
 
+    /** Two tabs load the same text. The second save must not overwrite the first. */
+    public function test_a_save_from_another_tab_after_the_model_loaded_is_a_conflict(): void
+    {
+        $user = User::factory()->create();
+        $act = $this->actFor($user);
+        $staleAct = Act::findOrFail($act->id);
+
+        app(FieldAutosaver::class)->save($act, 'description', '<p>First tab</p>', FieldHash::of('<p>Old</p>'), $user);
+
+        try {
+            app(FieldAutosaver::class)->save($staleAct, 'description', '<p>Second tab</p>', FieldHash::of('<p>Old</p>'), $user);
+            $this->fail('A save over newer text must throw.');
+        } catch (RevisionConflictException) {
+            // Expected.
+        }
+
+        $this->assertSame('<p>First tab</p>', $act->fresh()->description);
+        // The controller answers the conflict with the stored text, so the model must hold it.
+        $this->assertSame('<p>First tab</p>', $staleAct->description);
+    }
+
     public function test_a_stale_base_hash_throws_and_writes_nothing(): void
     {
         $user = User::factory()->create();

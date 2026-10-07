@@ -6,6 +6,7 @@ use App\Models\Book;
 use App\Services\CoverImageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Tests\TestCase;
@@ -37,5 +38,49 @@ class CoverImageServiceTest extends TestCase
         Storage::disk('media')->assertExists($oldPath);
         $this->assertSame([$oldPath], Storage::disk('media')->allFiles());
         $this->assertSame($oldPath, $book->fresh()->cover_image);
+    }
+
+    public function test_a_rollback_after_the_save_deletes_the_new_file_and_keeps_the_old_one(): void
+    {
+        Storage::fake('media');
+        $oldPath = 'book-covers/old-cover.jpg';
+        Storage::disk('media')->put($oldPath, 'contents');
+        $book = Book::factory()->create(['cover_image' => $oldPath]);
+
+        try {
+            DB::transaction(function () use ($book) {
+                app(CoverImageService::class)->saveWithCover(
+                    $book,
+                    UploadedFile::fake()->image('new-cover.jpg'),
+                    false,
+                    CoverImageService::BOOK_COVER_DIRECTORY,
+                );
+
+                throw new RuntimeException('A later write failed.');
+            });
+            $this->fail('The transaction did not throw.');
+        } catch (RuntimeException) {
+        }
+
+        $this->assertSame([$oldPath], Storage::disk('media')->allFiles());
+        $this->assertSame($oldPath, $book->fresh()->cover_image);
+    }
+
+    public function test_a_commit_deletes_the_old_file(): void
+    {
+        Storage::fake('media');
+        $oldPath = 'book-covers/old-cover.jpg';
+        Storage::disk('media')->put($oldPath, 'contents');
+        $book = Book::factory()->create(['cover_image' => $oldPath]);
+
+        DB::transaction(fn () => app(CoverImageService::class)->saveWithCover(
+            $book,
+            UploadedFile::fake()->image('new-cover.jpg'),
+            false,
+            CoverImageService::BOOK_COVER_DIRECTORY,
+        ));
+
+        $this->assertSame([$book->fresh()->cover_image], Storage::disk('media')->allFiles());
+        $this->assertNotSame($oldPath, $book->fresh()->cover_image);
     }
 }

@@ -10,6 +10,7 @@ use App\Support\RevisionSummary;
 use DateTimeInterface;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -104,6 +105,11 @@ class RevisionRecorder
      * Runs `$save`, then records the autosaved fields it changed as one manual checkpoint.
      *
      * The snapshot comes first, because `$save` overwrites the old values in memory.
+     * The save and the revisions commit together, so a saved change always has its revision.
+     *
+     * > [!WARNING]
+     * > A rollback cannot undo a file operation in `$save`. Delete old files only after
+     * > the commit, as {@see CoverImageService::saveWithCover()} does.
      *
      * @template TResult
      *
@@ -117,11 +123,13 @@ class RevisionRecorder
         $heldSince = $entity->updated_at;
         $before = AutosavableFields::snapshotFieldsBeforeUpdate($entity, $data);
 
-        $result = $save();
+        return DB::transaction(function () use ($entity, $user, $save, $heldSince, $before) {
+            $result = $save();
 
-        $this->recordManualChanges($entity, $before, $user, heldSince: $heldSince);
+            $this->recordManualChanges($entity, $before, $user, heldSince: $heldSince);
 
-        return $result;
+            return $result;
+        });
     }
 
     /**
@@ -199,12 +207,6 @@ class RevisionRecorder
     public function lastRevisionFor(Model $entity, string $field): ?Revision
     {
         return $entity->revisions()->where('field', $field)->latest('created_at')->latest('id')->first();
-    }
-
-    /** Returns the latest stored value for a field. */
-    public function lastValueFor(Model $entity, string $field): ?string
-    {
-        return $this->lastRevisionFor($entity, $field)?->value;
     }
 
     /**

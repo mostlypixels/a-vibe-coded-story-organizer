@@ -12,6 +12,7 @@ use App\Support\AutosaveResult;
 use App\Support\FieldHash;
 use App\Support\WordCounter;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Saves one autosaved field and records its automatic revision.
@@ -38,19 +39,47 @@ class FieldAutosaver
      */
     public function save(Model $model, string $field, ?string $value, string $baseHash, User $user, bool $runMatcher = false, bool $newRevision = false): AutosaveResult
     {
-        $currentValue = (string) ($model->getAttribute($field) ?? '');
+        // The hash check and the write must be one step, or two tabs both pass the
+        // check and the second overwrites the first. The row lock does this on most
+        // engines. SQLite has no row lock, but its IMMEDIATE transactions do the same.
+        return DB::transaction(function () use ($model, $field, $value, $baseHash, $user, $runMatcher, $newRevision) {
+            $this->loadLockedRow($model);
 
-        if ($baseHash !== FieldHash::of($currentValue)) {
-            throw RevisionConflictException::valueChangedElsewhere($field);
-        }
+            return $this->saveLocked($model, $field, $value, $baseHash, $user, $runMatcher, $newRevision);
+        });
+    }
+
+    /**
+     * Replace the in-memory attributes with the locked row, so a save that landed
+     * after the model loaded counts. The conflict reply also reads the stored text from here.
+     */
+    private function loadLockedRow(Model $model): void
+    {
+        $locked = $model->newQuery()->whereKey($model->getKey())->lockForUpdate()->firstOrFail();
+
+        $model->setRawAttributes($locked->getAttributes(), sync: true);
+    }
+
+    private function saveLocked(Model $model, string $field, ?string $value, string $baseHash, User $user, bool $runMatcher, bool $newRevision): AutosaveResult
+    {
+        $currentValue = (string) ($model->getAttribute($field) ?? '');
 
         // The save below overwrites both of these, and the baseline seeded further
         // down needs them as they are now: it stands for the value the writer
         // started from, and for the moment that value started to hold.
         $heldSince = $model->updated_at;
 
-        $model->{$field} = $value ?? '';
-        $model->save(); // mutators run here, e.g. SanitizesRichHtml for rich fields.
+        $model->{$field} = $value ?? ''; // mutators run here, e.g. SanitizesRichHtml for rich fields.
+
+        // Another save of the same text, such as "Save and stay" during a blur flush, is not a conflict.
+        if ($baseHash !== FieldHash::of($currentValue) && (string) $model->getAttribute($field) !== $currentValue) {
+            // The conflict reply sends the stored text, not the rejected text.
+            $model->discardChanges();
+
+            throw RevisionConflictException::valueChangedElsewhere($field);
+        }
+
+        $model->save();
 
         // Read back from memory, not with a fresh() round-trip. SanitizesRichHtml is
         // an `Attribute::make(set:)` mutator, so it ran at *assignment* above and the
@@ -69,11 +98,9 @@ class FieldAutosaver
         // The baseline is seeded from the values captured above, and only inside
         // this branch: a save that changed nothing must leave the field with no
         // revisions at all, baseline included.
-        // A manual save can land between the hash check and the write. It
-        // already recorded this value, so a second revision is a duplicate.
         $recorded = null;
 
-        if ($storedValue !== $currentValue && $storedValue !== $this->recorder->lastValueFor($model, $field)) {
+        if ($storedValue !== $currentValue) {
             $this->recorder->ensureBaseline($model, $field, $currentValue, $heldSince);
 
             $recorded = $this->recorder->record($model, $field, $storedValue, $user, RevisionOrigin::Automatic, coalesce: ! $newRevision);

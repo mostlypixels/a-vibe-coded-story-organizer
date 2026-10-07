@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-07 — Safer saves
+
+### Fixed
+
+- Two tabs that autosave the same field at the same moment no longer overwrite each other; the second gets the conflict choice.
+- A save that fails while it records history now leaves the entity and its cover unchanged.
+
 ## 2026-10-07 — Update Laravel and Flysystem (#310)
 
 ### Fixed
