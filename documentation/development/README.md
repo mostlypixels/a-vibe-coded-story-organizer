@@ -9,3 +9,4 @@
 | [Best practices](best-practices.md) | Architecture, security, tests, and database work |
 | [Code style](code-style.md) | Formatting, naming, PHP, Blade, and frontend conventions |
 | [Dependencies](dependencies.md) | npm overrides and maintenance rules |
+| [Technical debt](technical-debt.md) | Known shortcuts, their risk, and when to fix them |
