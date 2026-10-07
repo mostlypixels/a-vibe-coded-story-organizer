@@ -7,7 +7,7 @@ use App\Models\Book;
 use App\Models\CodexEntry;
 use App\Models\Project;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -236,8 +236,10 @@ class ProjectNavigation
             ->when($this->project, fn ($query) => $query->whereKeyNot($this->project->getKey()))
             ->orderBy('name')
             ->limit(self::PICKER_PROJECT_LIMIT)
-            ->with(['books' => fn (HasMany $query) => $query->orderBy('position')->limit(self::PICKER_BOOK_LIMIT)->chaperone('project')])
-            ->get(['id', 'name']);
+            ->with(['books' => fn (Relation $query) => $query->orderBy('position')->limit(self::PICKER_BOOK_LIMIT)])
+            ->get(['id', 'name'])
+            // Each book knows its project, so a book display name runs no query.
+            ->each(fn (Project $project) => $project->books->each->setRelation('project', $project));
     }
 
     /** Whether the page currently shown belongs to this codex type. */

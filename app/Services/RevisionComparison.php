@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Contracts\Revisionable;
 use App\Models\Revision;
 use App\Support\AutosavableFields;
 use App\Support\EntitySnapshot;
@@ -48,7 +49,7 @@ class RevisionComparison
      *                              which pair of values that field is compared over.
      * @return Collection<int, FieldComparison>
      */
-    public function between(Model $entity, SavePoint $from, SavePoint $to, ?string $field = null): Collection
+    public function between(Model&Revisionable $entity, SavePoint $from, SavePoint $to, ?string $field = null): Collection
     {
         $before = $this->snapshots->asOf($entity, $from);
         $after = $this->snapshots->asOf($entity, $to);

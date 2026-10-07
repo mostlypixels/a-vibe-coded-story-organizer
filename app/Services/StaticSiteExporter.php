@@ -686,7 +686,7 @@ class StaticSiteExporter
         return [$linkKey => $filename];
     }
 
-    /** @param array<string, mixed> $data */
+    /** @param array<array-key, mixed> $data A JSON object or a JSON list. */
     private function addJson(ZipArchive $zip, string $path, array $data): void
     {
         $this->addFromString(

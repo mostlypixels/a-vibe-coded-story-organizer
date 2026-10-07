@@ -9,7 +9,7 @@ use App\Models\Chapter;
 use App\Models\Scene;
 use App\Services\RecentlyEdited;
 use App\Support\StoryNumbering;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -126,7 +126,7 @@ class StoryController extends Controller
         // names and positions only — no scenes, no contents.
         $tocActs = $book->acts()
             ->select(['id', 'name', 'position'])
-            ->with(['chapters' => fn (HasMany $query) => $query
+            ->with(['chapters' => fn (Relation $query) => $query
                 ->select(['id', 'name', 'position', 'act_id'])
                 ->orderBy('position'),
             ])

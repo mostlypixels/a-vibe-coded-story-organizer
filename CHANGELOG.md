@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-07 — Static analysis level 5
+
+### Changed
+
+- Static analysis now runs at Larastan level 5, which checks the types of function arguments.
+
 ## 2026-10-07 — Static analysis level 4 (#316)
 
 ### Changed

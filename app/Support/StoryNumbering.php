@@ -6,7 +6,7 @@ use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\Scene;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use RuntimeException;
 
@@ -57,9 +57,9 @@ final class StoryNumbering
     {
         $acts = $book->acts()
             ->select(['id', 'position'])
-            ->with(['chapters' => function (HasMany $query) {
+            ->with(['chapters' => function (Relation $query) {
                 $query->select(['id', 'act_id', 'position'])
-                    ->with(['scenes' => function (HasMany $query) {
+                    ->with(['scenes' => function (Relation $query) {
                         $query->select(['id', 'chapter_id', 'position']);
                     }]);
             }])
