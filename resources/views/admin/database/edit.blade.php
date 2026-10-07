@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin-layout :title="__('Database configuration')">
     <x-slot name="header">
         <x-heading level="2">
             {{ __('Configuration') }}

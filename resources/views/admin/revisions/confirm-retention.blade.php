@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin-layout :title="__('Confirm lower retention window')">
     <x-slot name="header">
         <x-heading level="2">
             {{ __('Configuration') }}

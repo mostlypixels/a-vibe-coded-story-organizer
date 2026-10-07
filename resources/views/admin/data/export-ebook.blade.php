@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin-layout :title="__('Export ebook')">
     <x-slot name="header">
         <x-heading level="2">
             {{ __('Configuration') }}

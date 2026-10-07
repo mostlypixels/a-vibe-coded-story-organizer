@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout :title="__('Projects')">
     <x-slot name="header">
         <x-heading level="2">
             {{ __('Projects') }}

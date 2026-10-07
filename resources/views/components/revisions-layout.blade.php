@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout :title="$title">
     @isset($header)
         <x-slot name="header">
             {{ $header }}
