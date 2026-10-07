@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-07 — Remove stale theme handoff (#318)
+
+### Removed
+
+- `.claude/theme-handoff.md`, an agent note for the theme work that shipped in August.
+
 ## 2026-10-07 — Static analysis level 5 (#317)
 
 ### Changed
