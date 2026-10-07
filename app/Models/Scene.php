@@ -171,7 +171,7 @@ class Scene extends Model implements Revisionable
     protected static function booted(): void
     {
         static::creating(function (Scene $scene) {
-            if (is_null($scene->position)) {
+            if ($scene->getAttribute('position') === null) {
                 $scene->position = static::where('chapter_id', $scene->chapter_id)->max('position') + 1;
             }
         });

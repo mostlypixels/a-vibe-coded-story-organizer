@@ -79,7 +79,7 @@ class Act extends Model implements Revisionable
     protected static function booted(): void
     {
         static::creating(function (Act $act) {
-            if (is_null($act->position)) {
+            if ($act->getAttribute('position') === null) {
                 $act->position = static::where('book_id', $act->book_id)->max('position') + 1;
             }
         });

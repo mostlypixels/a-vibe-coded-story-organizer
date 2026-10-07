@@ -37,7 +37,7 @@ class WordCountSeries
             fn (DailyWordCount $day) => $day->date->isSameDay($date),
         );
 
-        return $day?->written ?? 0;
+        return $day->written ?? 0;
     }
 
     /**
@@ -46,7 +46,7 @@ class WordCountSeries
      */
     public function currentTotal(): int
     {
-        return $this->days->last()?->total ?? 0;
+        return $this->days->last()->total ?? 0;
     }
 
     /**

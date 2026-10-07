@@ -83,7 +83,7 @@ class Chapter extends Model implements Revisionable
     protected static function booted(): void
     {
         static::creating(function (Chapter $chapter) {
-            if (is_null($chapter->position)) {
+            if ($chapter->getAttribute('position') === null) {
                 $chapter->position = static::where('act_id', $chapter->act_id)->max('position') + 1;
             }
         });

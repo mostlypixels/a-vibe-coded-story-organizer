@@ -71,10 +71,9 @@ class ProjectController extends Controller
         $this->authorize('view', $project);
 
         // One grouped query for the project total. sceneQuery()
-        // already walks chapter -> act -> project (see its own docblock); sum() returns 0
-        // rather than NULL when the project has no scenes, but the ?? 0 is kept explicit
-        // so this line reads the same "never blank" rule as the withSum sites above.
-        $wordCount = $project->sceneQuery()->sum('word_count') ?? 0;
+        // already walks chapter -> act -> project (see its own docblock). sum() returns 0,
+        // not null, when the project has no scenes.
+        $wordCount = $project->sceneQuery()->sum('word_count');
 
         // Where the writer left off, in two lists. Scenes carry the story: an
         // act or a chapter changes rarely, and a scene row names its act and

@@ -12,14 +12,8 @@ parameters:
         - database/seeders/data (?)
 
     # Start low and raise the level one step at a time. Fix the code, do not add a baseline.
-    level: 3
+    level: 4
 
     # Models declare casts in a casts() method. Without this, Larastan ignores them
     # and types every date as a string.
     parseModelCastsMethod: true
-
-    ignoreErrors:
-        # A false positive: the closure writes these variables by reference.
-        -
-            identifier: closure.unusedUse
-            path: app/Services/Diff/HtmlTokenizer.php

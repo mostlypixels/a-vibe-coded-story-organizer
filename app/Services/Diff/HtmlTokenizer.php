@@ -460,16 +460,6 @@ class HtmlTokenizer
         $word = '';
         $marks = [];
 
-        $flush = function () use (&$tokens, &$word, &$marks): void {
-            if ($word === '') {
-                return;
-            }
-
-            $tokens[] = new InlineToken($word, array_values(array_unique($marks)));
-            $word = '';
-            $marks = [];
-        };
-
         foreach ($segments as $segment) {
             // DELIM_CAPTURE keeps the separators, so a whitespace run inside a
             // segment still ends the word it follows.
@@ -481,7 +471,7 @@ class HtmlTokenizer
                 }
 
                 if (preg_match('/^[\s\x{00A0}]+$/u', $piece) === 1) {
-                    $flush();
+                    $this->flushWord($tokens, $word, $marks);
 
                     continue;
                 }
@@ -494,9 +484,26 @@ class HtmlTokenizer
             }
         }
 
-        $flush();
+        $this->flushWord($tokens, $word, $marks);
 
         return $tokens;
+    }
+
+    /**
+     * End the current word, if there is one.
+     *
+     * @param  list<InlineToken>  $tokens
+     * @param  list<string>  $marks
+     */
+    private function flushWord(array &$tokens, string &$word, array &$marks): void
+    {
+        if ($word === '') {
+            return;
+        }
+
+        $tokens[] = new InlineToken($word, array_values(array_unique($marks)));
+        $word = '';
+        $marks = [];
     }
 
     /**

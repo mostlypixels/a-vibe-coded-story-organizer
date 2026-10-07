@@ -203,11 +203,11 @@ class StaticSiteExporter
             'name' => $book->name,
             'position' => $book->position,
             'project_id' => $book->project_id,
-            'language' => $book->language?->value,
+            'language' => $book->language->value,
             'author' => $book->author,
             'publisher' => $book->publisher,
             'isbn' => $book->isbn,
-            'overview_render_mode' => $book->overview_render_mode?->value,
+            'overview_render_mode' => $book->overview_render_mode->value,
         ];
         $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $book->description);
         $json += $this->addFieldFile($zip, $dir, 'rights_file', 'rights.txt', $book->rights);
@@ -296,7 +296,7 @@ class StaticSiteExporter
             'id' => $scene->id,
             'name' => $scene->name,
             'position' => $scene->position,
-            'status' => $scene->status?->value,
+            'status' => $scene->status->value,
             'chapter_id' => $scene->chapter_id,
             'event_id' => $scene->event_id,
             'mentioned_event_ids' => $scene->mentionedEvents->pluck('id')->all(),
@@ -374,7 +374,7 @@ class StaticSiteExporter
         $json = [
             'id' => $event->id,
             'title' => $event->title,
-            'event_datetime' => $event->event_datetime?->toIso8601String(),
+            'event_datetime' => $event->event_datetime->toIso8601String(),
             'is_fixed' => $event->is_fixed,
             'project_id' => $event->project_id,
             'plotline_ids' => $event->plotlines->pluck('id')->all(),

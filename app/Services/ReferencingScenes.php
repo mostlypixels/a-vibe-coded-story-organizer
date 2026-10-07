@@ -30,8 +30,8 @@ class ReferencingScenes
             ->get()
             ->sortBy(fn (Scene $scene) => [
                 $scene->event === null ? 1 : 0,
-                $scene->event?->event_datetime?->timestamp ?? 0,
-                $scene->event?->id ?? 0,
+                $scene->event?->event_datetime->timestamp ?? 0,
+                $scene->event->id ?? 0,
                 ...StoryOrder::sceneKey($scene),
             ])
             ->values();

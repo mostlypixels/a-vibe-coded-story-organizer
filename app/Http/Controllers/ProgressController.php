@@ -38,7 +38,7 @@ class ProgressController extends Controller
         // The live SUM, not the last snapshot: the strip must never disagree
         // with the dashboard header while a save is still catching up to a
         // snapshot row.
-        $totalWords = (int) ($project->sceneQuery()->sum('word_count') ?? 0);
+        $totalWords = (int) $project->sceneQuery()->sum('word_count');
 
         [$from, $to] = $this->resolveRange($request, $project);
         $series = $this->history->series($project, $from, $to);
