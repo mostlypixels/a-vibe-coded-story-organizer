@@ -200,7 +200,7 @@ class ChapterController extends Controller
         // remove checkbox and the non-fillable act_id) out of the plain attribute fill.
         $data = $request->safe()->except(['act_id', 'cover_image', 'remove_cover_image']);
 
-        $recorder->saveWithManualCheckpoint($chapter, $data, $request->user(), function () use ($request, $chapter, $act, $data) {
+        $recorder->saveWithManualCheckpoint($chapter, $data, $request->baseHashes(), $request->user(), function () use ($request, $chapter, $act, $data) {
             $chapter->fill($data);
 
             if ($chapter->act_id !== $act->id) {

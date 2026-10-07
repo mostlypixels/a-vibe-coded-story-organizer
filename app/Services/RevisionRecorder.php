@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\RevisionOrigin;
 use App\Models\Revision;
 use App\Models\User;
+use App\Rules\NoAutosaveConflict;
 use App\Support\AutosavableFields;
 use App\Support\RevisionSummary;
 use DateTimeInterface;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -114,16 +116,30 @@ class RevisionRecorder
      * @template TResult
      *
      * @param  array<string, mixed>  $data  The form values that `$save` applies.
+     * @param  array<mixed>  $baseHashes  The `base_hashes` that the edit form sent.
      * @param  callable(): TResult  $save
      * @return TResult
+     *
+     * @throws ValidationException When another tab saved newer text, as {@see NoAutosaveConflict} reports it.
      */
-    public function saveWithManualCheckpoint(Model $entity, array $data, User $user, callable $save): mixed
+    public function saveWithManualCheckpoint(Model $entity, array $data, array $baseHashes, User $user, callable $save): mixed
     {
-        // A first-ever save seeds its baseline with this timestamp, and the save overwrites it.
-        $heldSince = $entity->updated_at;
-        $before = AutosavableFields::snapshotFieldsBeforeUpdate($entity, $data);
+        return DB::transaction(function () use ($entity, $data, $baseHashes, $user, $save) {
+            // The form request checked the hashes before this transaction. An autosave
+            // can land after that check, so check again on the locked row.
+            $locked = $entity->newQuery()->whereKey($entity->getKey())->lockForUpdate()->firstOrFail();
+            $entity->setRawAttributes($locked->getAttributes(), sync: true);
 
-        return DB::transaction(function () use ($entity, $user, $save, $heldSince, $before) {
+            $errors = NoAutosaveConflict::errors($entity, $baseHashes);
+
+            if ($errors !== []) {
+                throw ValidationException::withMessages($errors);
+            }
+
+            // A first-ever save seeds its baseline with this timestamp, and the save overwrites it.
+            $heldSince = $entity->updated_at;
+            $before = AutosavableFields::snapshotFieldsBeforeUpdate($entity, $data);
+
             $result = $save();
 
             $this->recordManualChanges($entity, $before, $user, heldSince: $heldSince);

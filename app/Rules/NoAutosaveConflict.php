@@ -2,6 +2,7 @@
 
 namespace App\Rules;
 
+use App\Services\RevisionRecorder;
 use App\Support\AutosavableFields;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Validator;
@@ -16,6 +17,10 @@ use Illuminate\Validation\Validator;
  *
  * It is a hook, not a rule on `base_hashes`, so the hashes stay out of `validated()`.
  * The savers fill models from `validated()`.
+ *
+ * > [!WARNING]
+ * > This hook runs before the save transaction, so an autosave can still land after it.
+ * > {@see RevisionRecorder::saveWithManualCheckpoint()} repeats the check on the locked row.
  */
 final class NoAutosaveConflict
 {
@@ -27,13 +32,30 @@ final class NoAutosaveConflict
 
     public function __invoke(Validator $validator): void
     {
-        foreach (AutosavableFields::currentHashes($this->model) as $field => $currentHash) {
-            $sent = $this->baseHashes[$field] ?? null;
+        foreach (self::errors($this->model, $this->baseHashes) as $key => $message) {
+            $validator->errors()->add($key, $message);
+        }
+    }
+
+    /**
+     * One error per autosaved field whose stored text is newer than the page.
+     *
+     * @param  array<mixed>  $baseHashes
+     * @return array<string, string> Keyed `base_hashes.<field>`.
+     */
+    public static function errors(Model $model, array $baseHashes): array
+    {
+        $errors = [];
+
+        foreach (AutosavableFields::currentHashes($model) as $field => $currentHash) {
+            $sent = $baseHashes[$field] ?? null;
 
             // A form without the hash (an old page, no JavaScript) saves as before.
             if (is_string($sent) && $sent !== $currentHash) {
-                $validator->errors()->add("base_hashes.$field", __('This text was changed in another tab or on another device.'));
+                $errors["base_hashes.$field"] = __('This text was changed in another tab or on another device.');
             }
         }
+
+        return $errors;
     }
 }

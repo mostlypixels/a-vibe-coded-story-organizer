@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReadsBaseHashes;
 use App\Rules\NoAutosaveConflict;
 use App\Support\AutosavableFields;
 use App\Support\CodexMediaRules;
@@ -10,6 +11,8 @@ use Illuminate\Foundation\Http\FormRequest;
 /** Uses the same description rule as the autosave endpoint. */
 class UpdateProjectRequest extends FormRequest
 {
+    use ReadsBaseHashes;
+
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('project'));
@@ -56,6 +59,6 @@ class UpdateProjectRequest extends FormRequest
     /** @return array<int, callable> */
     public function after(): array
     {
-        return [new NoAutosaveConflict($this->route('project'), (array) $this->input('base_hashes', []))];
+        return [new NoAutosaveConflict($this->route('project'), $this->baseHashes())];
     }
 }

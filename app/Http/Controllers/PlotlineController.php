@@ -82,7 +82,7 @@ class PlotlineController extends Controller
     {
         $data = $request->validated();
 
-        $recorder->saveWithManualCheckpoint($plotline, $data, $request->user(), fn () => $plotline->update($data));
+        $recorder->saveWithManualCheckpoint($plotline, $data, $request->baseHashes(), $request->user(), fn () => $plotline->update($data));
 
         return $this->redirectAfterSave(
             $request,

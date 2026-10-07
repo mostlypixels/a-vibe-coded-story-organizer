@@ -135,7 +135,7 @@ class ProjectController extends Controller
         // remove checkbox) out of the plain attribute update and resolve it separately.
         $data = $request->safe()->except(['cover_image', 'remove_cover_image']);
 
-        $recorder->saveWithManualCheckpoint($project, $data, $request->user(), function () use ($request, $project, $data) {
+        $recorder->saveWithManualCheckpoint($project, $data, $request->baseHashes(), $request->user(), function () use ($request, $project, $data) {
             $project->fill($data);
             $this->coverImageService->saveWithCover(
                 $project,

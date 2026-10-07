@@ -160,7 +160,7 @@ class ActController extends Controller
     {
         $data = $request->validated();
 
-        $recorder->saveWithManualCheckpoint($act, $data, $request->user(), fn () => $act->update($data));
+        $recorder->saveWithManualCheckpoint($act, $data, $request->baseHashes(), $request->user(), fn () => $act->update($data));
 
         return $this->redirectAfterSave($request, ['acts.edit', $act], ['books.acts.index', $act->book]);
     }

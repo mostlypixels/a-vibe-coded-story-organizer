@@ -77,13 +77,14 @@ class CodexEntrySaver
 
     /**
      * @param  array<string, mixed>  $validated
+     * @param  array<mixed>  $baseHashes  The `base_hashes` that the edit form sent.
      * @param  User  $user  Credited on the manual revision checkpoint.
      */
-    public function update(CodexEntry $entry, array $validated, CodexMediaUploads $uploads, User $user): void
+    public function update(CodexEntry $entry, array $validated, CodexMediaUploads $uploads, array $baseHashes, User $user): void
     {
         $project = $entry->project;
 
-        $pathsToDelete = DB::transaction(function () use ($project, $entry, $validated, $uploads, $user) {
+        $pathsToDelete = DB::transaction(function () use ($project, $entry, $validated, $uploads, $baseHashes, $user) {
             $data = [
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
@@ -102,7 +103,7 @@ class CodexEntrySaver
 
             $termsBefore = $this->referenceTerms($entry->name, $entry->aliases()->pluck('alias')->all());
 
-            $this->recorder->saveWithManualCheckpoint($entry, $data, $user, function () use ($project, $entry, $validated, $data, $termsBefore) {
+            $this->recorder->saveWithManualCheckpoint($entry, $data, $baseHashes, $user, function () use ($project, $entry, $validated, $data, $termsBefore) {
                 $entry->update($data);
 
                 $this->syncAliases($entry, $validated['aliases'] ?? []);

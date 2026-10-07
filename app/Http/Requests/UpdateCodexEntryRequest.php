@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ReadsBaseHashes;
 use App\Rules\NoAutosaveConflict;
 use App\Rules\WithinEventWindow;
 use App\Support\AutosavableFields;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 
 class UpdateCodexEntryRequest extends FormRequest
 {
+    use ReadsBaseHashes;
+
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('codexEntry')->project);
@@ -63,6 +66,6 @@ class UpdateCodexEntryRequest extends FormRequest
     /** @return array<int, callable> */
     public function after(): array
     {
-        return [new NoAutosaveConflict($this->route('codexEntry'), (array) $this->input('base_hashes', []))];
+        return [new NoAutosaveConflict($this->route('codexEntry'), $this->baseHashes())];
     }
 }

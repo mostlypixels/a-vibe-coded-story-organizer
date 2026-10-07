@@ -241,7 +241,7 @@ class SceneController extends Controller
         $validated = $request->validated();
         $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
 
-        $saver->update($scene, $chapter, $validated, $request->user());
+        $saver->update($scene, $chapter, $validated, $request->baseHashes(), $request->user());
 
         return $this->redirectAfterSave($request, ['scenes.edit', $scene], ['books.scenes.index', $book]);
     }

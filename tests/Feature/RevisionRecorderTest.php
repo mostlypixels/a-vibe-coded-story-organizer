@@ -10,7 +10,9 @@ use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\RevisionRecorder;
+use App\Support\FieldHash;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
@@ -140,7 +142,7 @@ class RevisionRecorderTest extends TestCase
         $user = User::factory()->create();
         $data = ['notes' => 'New notes', 'description' => 'Same description'];
 
-        $result = $this->recorder->saveWithManualCheckpoint($scene, $data, $user, fn () => $scene->update($data));
+        $result = $this->recorder->saveWithManualCheckpoint($scene, $data, [], $user, fn () => $scene->update($data));
 
         $this->assertTrue($result);
         $this->assertSame(0, $scene->revisions()->where('field', 'description')->count());
@@ -148,6 +150,26 @@ class RevisionRecorderTest extends TestCase
             ['Old notes', 'New notes'],
             $scene->revisions()->where('field', 'notes')->reorder('id')->pluck('value')->all(),
         );
+    }
+
+    /** An autosave from another tab can land after the form request validated the hashes. */
+    public function test_save_with_manual_checkpoint_rejects_text_saved_after_validation(): void
+    {
+        $scene = Scene::factory()->create(['notes' => 'Old notes']);
+        $staleScene = Scene::findOrFail($scene->id);
+        $user = User::factory()->create();
+        $scene->update(['notes' => 'Autosaved elsewhere']);
+        $data = ['notes' => 'Form notes'];
+
+        try {
+            $this->recorder->saveWithManualCheckpoint($staleScene, $data, ['notes' => FieldHash::of('Old notes')], $user, fn () => $staleScene->update($data));
+            $this->fail('A save over newer text must throw.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('base_hashes.notes', $exception->errors());
+        }
+
+        $this->assertSame('Autosaved elsewhere', $scene->fresh()->notes);
+        $this->assertSame(0, $scene->revisions()->count());
     }
 
     public function test_record_manual_changes_always_inserts_a_fresh_row_even_immediately_after_an_automatic_one(): void
