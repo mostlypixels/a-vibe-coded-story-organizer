@@ -17,6 +17,7 @@ import { moveScene } from './scene-reorder';
 import { saveQuickEvent } from './quick-event';
 import { registerQuickCodexEntry } from './quick-codex-entry';
 import { registerAppearanceSwitcher } from './appearance-switcher';
+import { registerLinkPicker } from './notes/linkPicker';
 
 window.Alpine = Alpine;
 
@@ -35,6 +36,7 @@ registerDateField(Alpine);
 registerDropdown(Alpine);
 registerQuickCodexEntry(Alpine);
 registerAppearanceSwitcher(Alpine);
+registerLinkPicker(Alpine);
 
 Alpine.start();
 

@@ -9,6 +9,7 @@ use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Contracts\Revisionable;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
@@ -61,9 +62,11 @@ class AutosavableFields
         ], 'events.edit'],
         'scene' => [Scene::class, [
             'description' => FieldKind::Rich,
-            'notes' => FieldKind::Rich,
             'contents' => FieldKind::Markdown,
         ], 'scenes.edit'],
+        'note' => [Note::class, [
+            'body' => FieldKind::Rich,
+        ], 'notes.edit'],
         'codex' => [CodexEntry::class, [
             'description' => FieldKind::Rich,
         ], 'codex.edit'],

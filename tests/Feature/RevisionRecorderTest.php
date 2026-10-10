@@ -108,67 +108,64 @@ class RevisionRecorderTest extends TestCase
     {
         $scene = Scene::factory()->create([
             'description' => 'Same description',
-            'notes' => 'Old notes',
-            'contents' => 'Same contents',
+            'contents' => 'Old contents',
         ]);
         $user = User::factory()->create();
 
         $before = [
             'description' => 'Same description',
-            'notes' => 'Old notes',
-            'contents' => 'Same contents',
+            'contents' => 'Old contents',
         ];
 
         // Simulates the caller having already applied the form's new values to the
         // model (App\Support\AutosavableFields::snapshotFieldsBeforeUpdate()'s
-        // contract) — only 'notes' actually differs from $before.
-        $scene->notes = 'New notes';
+        // contract) — only 'contents' actually differs from $before.
+        $scene->contents = 'New contents';
 
         $this->recorder->recordManualChanges($scene, $before, $user, 'Saved 24 July 10:43');
 
         $this->assertSame(0, $scene->revisions()->where('field', 'description')->count());
-        $this->assertSame(0, $scene->revisions()->where('field', 'contents')->count());
 
-        $notesRevision = $scene->revisions()->where('field', 'notes')->latest('created_at')->latest('id')->first();
-        $this->assertNotNull($notesRevision);
-        $this->assertSame(RevisionOrigin::Manual, $notesRevision->origin);
-        $this->assertSame('New notes', $notesRevision->value);
-        $this->assertSame('Saved 24 July 10:43', $notesRevision->label);
+        $contentsRevision = $scene->revisions()->where('field', 'contents')->latest('created_at')->latest('id')->first();
+        $this->assertNotNull($contentsRevision);
+        $this->assertSame(RevisionOrigin::Manual, $contentsRevision->origin);
+        $this->assertSame('New contents', $contentsRevision->value);
+        $this->assertSame('Saved 24 July 10:43', $contentsRevision->label);
     }
 
     public function test_save_with_manual_checkpoint_records_the_change_that_the_callback_saves(): void
     {
-        $scene = Scene::factory()->create(['notes' => 'Old notes', 'description' => 'Same description']);
+        $scene = Scene::factory()->create(['contents' => 'Old contents', 'description' => 'Same description']);
         $user = User::factory()->create();
-        $data = ['notes' => 'New notes', 'description' => 'Same description'];
+        $data = ['contents' => 'New contents', 'description' => 'Same description'];
 
         $result = $this->recorder->saveWithManualCheckpoint($scene, $data, [], $user, fn () => $scene->update($data));
 
         $this->assertTrue($result);
         $this->assertSame(0, $scene->revisions()->where('field', 'description')->count());
         $this->assertSame(
-            ['Old notes', 'New notes'],
-            $scene->revisions()->where('field', 'notes')->reorder('id')->pluck('value')->all(),
+            ['Old contents', 'New contents'],
+            $scene->revisions()->where('field', 'contents')->reorder('id')->pluck('value')->all(),
         );
     }
 
     /** An autosave from another tab can land after the form request validated the hashes. */
     public function test_save_with_manual_checkpoint_rejects_text_saved_after_validation(): void
     {
-        $scene = Scene::factory()->create(['notes' => 'Old notes']);
+        $scene = Scene::factory()->create(['description' => 'Old description']);
         $staleScene = Scene::findOrFail($scene->id);
         $user = User::factory()->create();
-        $scene->update(['notes' => 'Autosaved elsewhere']);
-        $data = ['notes' => 'Form notes'];
+        $scene->update(['description' => 'Autosaved elsewhere']);
+        $data = ['description' => 'Form description'];
 
         try {
-            $this->recorder->saveWithManualCheckpoint($staleScene, $data, ['notes' => FieldHash::of('Old notes')], $user, fn () => $staleScene->update($data));
+            $this->recorder->saveWithManualCheckpoint($staleScene, $data, ['description' => FieldHash::of('Old description')], $user, fn () => $staleScene->update($data));
             $this->fail('A save over newer text must throw.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('base_hashes.notes', $exception->errors());
+            $this->assertArrayHasKey('base_hashes.description', $exception->errors());
         }
 
-        $this->assertSame('Autosaved elsewhere', $scene->fresh()->notes);
+        $this->assertSame('Autosaved elsewhere', $scene->fresh()->description);
         $this->assertSame(0, $scene->revisions()->count());
     }
 
@@ -283,16 +280,16 @@ class RevisionRecorderTest extends TestCase
 
     public function test_ensure_baseline_does_nothing_when_the_current_value_is_null(): void
     {
-        $scene = Scene::factory()->create(['notes' => null]);
+        $scene = Scene::factory()->create(['description' => null]);
 
-        $this->recorder->ensureBaseline($scene, 'notes');
+        $this->recorder->ensureBaseline($scene, 'description');
 
         $this->assertSame(
             0,
             Revision::query()
                 ->where('revisionable_type', Scene::class)
                 ->where('revisionable_id', $scene->id)
-                ->where('field', 'notes')
+                ->where('field', 'description')
                 ->count(),
         );
     }
@@ -308,7 +305,7 @@ class RevisionRecorderTest extends TestCase
 
         // The older row has the field that sorts first, so a timestamp-only order returns it first.
         $older = $this->sceneRevision($scene, 'contents');
-        $newer = $this->sceneRevision($scene, 'notes');
+        $newer = $this->sceneRevision($scene, 'description');
 
         $this->assertTrue($scene->revisions()->first()->is($newer));
         $this->assertSame([$newer->id, $older->id], $scene->revisions()->pluck('id')->all());

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\FieldKind;
 use App\Enums\SceneStatus;
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Scene extends Model implements Revisionable
 {
     use HasFactory;
+    use HasNotes;
     use HasRevisions;
     use HasSiblingPosition;
     use SanitizesRichHtml;
@@ -28,7 +30,6 @@ class Scene extends Model implements Revisionable
         'name',
         'description',
         'contents',
-        'notes',
         'status',
         'position',
         'event_id',
@@ -100,19 +101,6 @@ class Scene extends Model implements Revisionable
     public function codexReferences(): BelongsToMany
     {
         return $this->belongsToMany(CodexEntry::class, 'scene_codex_entry');
-    }
-
-    /**
-     * Sanitize the `notes` rich-HTML field on write. `contents` deliberately has no
-     * mutator: it stays Markdown-only (ValidMarkdown + AuthorMarkdown rendering).
-     *
-     * @return Attribute<?string, ?string>
-     */
-    protected function notes(): Attribute
-    {
-        return Attribute::make(
-            set: fn (?string $value): ?string => $this->cleanRichHtml($value),
-        );
     }
 
     /**

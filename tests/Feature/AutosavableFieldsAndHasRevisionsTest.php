@@ -8,6 +8,7 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
@@ -36,7 +37,7 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
     public function test_slugs_returns_exactly_the_expected_slugs(): void
     {
         $this->assertEqualsCanonicalizing(
-            ['project', 'book', 'act', 'chapter', 'plotline', 'event', 'scene', 'codex'],
+            ['project', 'book', 'act', 'chapter', 'plotline', 'event', 'scene', 'codex', 'note'],
             AutosavableFields::slugs(),
         );
     }
@@ -60,9 +61,9 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
             'plotline.description' => ['plotline', 'description', Plotline::class, FieldKind::Rich],
             'event.description' => ['event', 'description', Event::class, FieldKind::Rich],
             'scene.description' => ['scene', 'description', Scene::class, FieldKind::Rich],
-            'scene.notes' => ['scene', 'notes', Scene::class, FieldKind::Rich],
             'scene.contents' => ['scene', 'contents', Scene::class, FieldKind::Markdown],
             'codex.description' => ['codex', 'description', CodexEntry::class, FieldKind::Rich],
+            'note.body' => ['note', 'body', Note::class, FieldKind::Rich],
         ];
     }
 
@@ -84,11 +85,11 @@ class AutosavableFieldsAndHasRevisionsTest extends TestCase
 
     public function test_resolve_field_returns_the_model_class_and_field_map_for_a_registered_pair(): void
     {
-        [$modelClass, $fields] = AutosavableFields::resolveField('scene', 'notes');
+        [$modelClass, $fields] = AutosavableFields::resolveField('scene', 'description');
 
         $this->assertSame(Scene::class, $modelClass);
         $this->assertSame(
-            ['description' => FieldKind::Rich, 'notes' => FieldKind::Rich, 'contents' => FieldKind::Markdown],
+            ['description' => FieldKind::Rich, 'contents' => FieldKind::Markdown],
             $fields,
         );
     }

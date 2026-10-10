@@ -136,7 +136,7 @@ class ChapterController extends Controller
 
         $this->authorize('view', $book->project);
 
-        $chapter->load(['scenes', 'act'])->loadCount('scenes')->loadSum('scenes as word_count', 'word_count');
+        $chapter->load(['scenes', 'act', 'notes'])->loadCount('scenes')->loadSum('scenes as word_count', 'word_count');
 
         return view('chapters.show', [
             'chapter' => $chapter,
@@ -171,7 +171,7 @@ class ChapterController extends Controller
 
         // Feeds the delete-with-move dialog's honest cascade summary: a chapter is a
         // one-level entity, so only its direct children (scenes) are counted.
-        $chapter->loadCount('scenes');
+        $chapter->loadCount('scenes')->load('notes');
 
         // Every *other* chapter in the same book is a candidate destination for
         // moving this chapter's scenes. An empty list collapses the dialog to

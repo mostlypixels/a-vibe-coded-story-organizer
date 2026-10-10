@@ -14,7 +14,7 @@ use Throwable;
  *
  * Copies the rows the entry owns: aliases, media (each with its own copied file),
  * attribute values, and the tag pivots. Tags are re-attached, never re-created —
- * `Tag::count()` does not change. The derived `scene_codex_entry` pivot is never
+ * `Tag::count()` does not change. The note links are re-attached too; no note is copied. The derived `scene_codex_entry` pivot is never
  * copied; SceneReferenceMatcher rebuilds it.
  *
  * > [!WARNING]
@@ -65,6 +65,7 @@ class CodexEntryDuplicator
                 );
 
                 $copy->tags()->sync($entry->tags->modelKeys());
+                $copy->notes()->sync($entry->notes()->pluck('notes.id'));
 
                 return $copy;
             });

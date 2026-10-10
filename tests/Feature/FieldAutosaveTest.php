@@ -227,10 +227,10 @@ class FieldAutosaveTest extends TestCase
         $user = User::factory()->create();
         $act = $this->actFor($user);
 
-        // `notes` is a registered field on Scene but not on Act — the shared
+        // `contents` is a registered field on Scene but not on Act — the shared
         // AutosavableFields::resolveField() 404s it before any write happens.
         $this->actingAs($user)->patchJson(
-            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'notes']),
+            route('autosave.update', ['entity' => 'act', 'id' => $act->id, 'field' => 'contents']),
             ['value' => 'x', 'base_hash' => $this->hashOf(null)],
         )->assertNotFound();
     }
@@ -459,10 +459,10 @@ class FieldAutosaveTest extends TestCase
     public function test_run_matcher_on_a_field_other_than_scene_contents_returns_no_codex_references_list(): void
     {
         $user = User::factory()->create();
-        $scene = $this->sceneFor($user, ['notes' => 'Old.']);
+        $scene = $this->sceneFor($user, ['description' => 'Old.']);
 
         $this->actingAs($user)->patchJson(
-            route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'notes']),
+            route('autosave.update', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'description']),
             ['value' => 'New.', 'base_hash' => $this->hashOf('Old.'), 'run_matcher' => true],
         )->assertOk()->assertJsonMissingPath('referenced_entries_html');
     }

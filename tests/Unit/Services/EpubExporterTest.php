@@ -8,6 +8,7 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
+use App\Models\Note;
 use App\Models\Project;
 use App\Models\PublicationSetting;
 use App\Models\Scene;
@@ -144,6 +145,30 @@ class EpubExporterTest extends TestCase
         $this->assertCount(2, $tree->first()->chapters);
         $this->assertTrue($tree->first()->chapters->first()->is($withScenes));
         $this->assertTrue($tree->first()->chapters->last()->is($empty));
+    }
+
+    public function test_notes_linked_to_the_book_never_reach_the_epub(): void
+    {
+        [$project, $book] = $this->projectWithBook();
+        $scene = Scene::factory()->for(Chapter::factory()->for(Act::factory()->for($book)))->create();
+        $note = Note::factory()->for($project)->create(['title' => 'Secret plan', 'body' => '<p>Zanzibar twist.</p>']);
+        $note->linkTo($book);
+        $note->linkTo($scene);
+
+        $path = $this->exporter()->export($book);
+
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($path) === true);
+        try {
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $contents = (string) $zip->getFromIndex($i);
+                $this->assertStringNotContainsString('Zanzibar', $contents);
+                $this->assertStringNotContainsString('Secret plan', $contents);
+            }
+        } finally {
+            $zip->close();
+            @unlink($path);
+        }
     }
 
     public function test_it_keeps_acts_whose_chapters_are_all_empty(): void

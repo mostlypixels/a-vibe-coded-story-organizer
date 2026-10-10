@@ -12,6 +12,7 @@ use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\Tag;
@@ -1258,6 +1259,22 @@ class CodexEntryTest extends TestCase
 
         $this->assertSame([$tag->id], $copy->tags()->pluck('tags.id')->all());
         $this->assertSame(1, Tag::count());
+    }
+
+    public function test_duplicating_an_entry_links_the_copy_to_the_same_notes(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $note = Note::factory()->for($project)->create();
+        $note->linkTo($entry);
+
+        $this->actingAs($user)->post(route('codex.duplicate', $entry), ['name' => 'Copy']);
+        $copy = CodexEntry::where('name', 'Copy')->firstOrFail();
+
+        $this->assertSame([$note->id], $copy->notes()->pluck('notes.id')->all());
+        $this->assertSame([$note->id], $entry->notes()->pluck('notes.id')->all());
+        $this->assertSame(1, Note::count());
     }
 
     public function test_deleting_the_original_leaves_the_copys_media_file_on_disk(): void

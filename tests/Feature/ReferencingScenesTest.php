@@ -157,6 +157,5 @@ class ReferencingScenesTest extends TestCase
 
         $this->assertSame('A long scene', $loaded->name);
         $this->assertArrayNotHasKey('contents', $loaded->getAttributes());
-        $this->assertArrayNotHasKey('notes', $loaded->getAttributes());
     }
 }

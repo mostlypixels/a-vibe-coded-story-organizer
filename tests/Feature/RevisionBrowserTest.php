@@ -77,14 +77,14 @@ class RevisionBrowserTest extends TestCase
         $chapter = Chapter::factory()->for($act)->create();
         $scene = Scene::factory()->for($chapter)->create(['name' => 'Scene One']);
 
-        // Only `notes` has history — `description` and `contents` must not appear.
-        $this->revisionFor(Scene::class, $scene->id, $project->id, 'notes');
+        // Only `contents` has history — `description` must not appear.
+        $this->revisionFor(Scene::class, $scene->id, $project->id, 'contents');
 
         $response = $this->actingAs($user)->get(route('projects.revisions.index', $project));
 
         $response->assertOk();
         $response->assertSee(
-            route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'notes']),
+            route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']),
             false,
         );
         $response->assertDontSee(
@@ -149,8 +149,8 @@ class RevisionBrowserTest extends TestCase
         $first = Scene::factory()->for($chapter)->create(['name' => 'Beta Scene']);
         $second = Scene::factory()->for($chapter)->create(['name' => 'Ärger']);
 
-        $this->revisionFor(Scene::class, $first->id, $project->id, 'notes');
-        $this->revisionFor(Scene::class, $second->id, $project->id, 'notes');
+        $this->revisionFor(Scene::class, $first->id, $project->id, 'contents');
+        $this->revisionFor(Scene::class, $second->id, $project->id, 'contents');
 
         $response = $this->actingAs($user)->get(route('projects.revisions.index', $project));
 
@@ -172,7 +172,7 @@ class RevisionBrowserTest extends TestCase
         $scene = Scene::factory()->for($chapter)->create();
 
         $this->revisionFor(Act::class, $act->id, $project->id, 'description');
-        $this->revisionFor(Scene::class, $scene->id, $project->id, 'notes');
+        $this->revisionFor(Scene::class, $scene->id, $project->id, 'contents');
 
         // Viewing the Act's history: its group opens, the Scene group stays collapsed.
         $response = $this->actingAs($user)->get(
@@ -216,7 +216,7 @@ class RevisionBrowserTest extends TestCase
         $scene = Scene::factory()->for($chapter)->create();
 
         $this->revisionFor(Act::class, $act->id, $project->id, 'description');
-        $this->revisionFor(Scene::class, $scene->id, $project->id, 'notes');
+        $this->revisionFor(Scene::class, $scene->id, $project->id, 'contents');
 
         $response = $this->actingAs($user)->get(
             route('revisions.index', ['entity' => 'act', 'id' => $act->id])
@@ -256,8 +256,8 @@ class RevisionBrowserTest extends TestCase
         $this->revisionFor(Act::class, $actTwo->id, $project->id, 'description');
         $this->revisionFor(Chapter::class, $chapterOne->id, $project->id, 'description');
         $this->revisionFor(Chapter::class, $chapterTwo->id, $project->id, 'description');
-        $this->revisionFor(Scene::class, $sceneOne->id, $project->id, 'notes');
-        $this->revisionFor(Scene::class, $sceneTwo->id, $project->id, 'notes');
+        $this->revisionFor(Scene::class, $sceneOne->id, $project->id, 'contents');
+        $this->revisionFor(Scene::class, $sceneTwo->id, $project->id, 'contents');
 
         $plotline = Plotline::factory()->for($project)->create(['name' => 'Main Thread']);
         $this->revisionFor(Plotline::class, $plotline->id, $project->id, 'description');

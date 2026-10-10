@@ -6,6 +6,7 @@ use App\Enums\Genre;
 use App\Http\Requests\StoreOnboardingRequest;
 use App\Services\InstallsDemoProjects;
 use App\Services\SeedsGenreBundle;
+use App\Services\StarterNoteCategories;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -32,13 +33,15 @@ class OnboardingController extends Controller
         return view('onboarding');
     }
 
-    public function store(StoreOnboardingRequest $request, SeedsGenreBundle $action): RedirectResponse
+    public function store(StoreOnboardingRequest $request, SeedsGenreBundle $action, StarterNoteCategories $starterCategories): RedirectResponse
     {
         $project = $action->seed(
             $request->user(),
             Genre::from($request->string('genre')->toString()),
             $request->string('name')->toString(),
         );
+
+        $starterCategories->createFor($project);
 
         return redirect()->route('projects.show', $project)->with('status', 'onboarding-seeded');
     }

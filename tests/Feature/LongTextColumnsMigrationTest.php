@@ -29,7 +29,7 @@ class LongTextColumnsMigrationTest extends TestCase
             'chapters' => ['description'],
             'plotlines' => ['description'],
             'events' => ['description'],
-            'scenes' => ['description', 'notes', 'contents'],
+            'scenes' => ['description', 'contents'],
             'codex_entries' => ['description'],
         ];
     }

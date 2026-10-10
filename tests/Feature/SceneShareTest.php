@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Act;
 use App\Models\Chapter;
+use App\Models\Note;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
@@ -328,14 +329,17 @@ class SceneShareTest extends TestCase
             ->assertSee('Chapter 3', escape: false);
     }
 
-    public function test_the_public_page_never_exposes_scene_notes(): void
+    public function test_the_public_page_never_exposes_linked_notes(): void
     {
-        [, $token] = $this->sharedScene([
-            'notes' => 'PRIVATE-AUTHOR-NOTES-DO-NOT-LEAK',
-        ]);
+        [$scene, $token] = $this->sharedScene();
+        Note::factory()->for($scene->project())->create([
+            'title' => 'PRIVATE-NOTE-TITLE',
+            'body' => '<p>PRIVATE-AUTHOR-NOTES-DO-NOT-LEAK</p>',
+        ])->linkTo($scene);
 
         $this->get(route('shared.scenes.show', $token))
             ->assertOk()
+            ->assertDontSee('PRIVATE-NOTE-TITLE')
             ->assertDontSee('PRIVATE-AUTHOR-NOTES-DO-NOT-LEAK');
     }
 

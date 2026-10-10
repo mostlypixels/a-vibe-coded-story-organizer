@@ -64,6 +64,15 @@
     {{ __('Tags') }}
 </x-responsive-nav-link>
 
+<x-navigation.section-heading>{{ __('Notes') }}</x-navigation.section-heading>
+
+<x-responsive-nav-link
+    :href="route('projects.notes.index', $navigation->project)"
+    :active="$navigation->notesActive"
+    :aria-current="$navigation->notesActive ? 'page' : false">
+    {{ __('Notes') }}
+</x-responsive-nav-link>
+
 <x-navigation.section-heading>{{ __('Tools') }}</x-navigation.section-heading>
 
 <x-responsive-nav-link :href="route('projects.tools.home', $navigation->project)" :active="$navigation->toolsHomeActive">

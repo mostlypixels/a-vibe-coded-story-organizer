@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 class SearchDomainTest extends TestCase
 {
     /**
-     * One SearchResults whose eight properties each hold a distinct one-element
+     * One SearchResults whose nine properties each hold a distinct one-element
      * collection, so rowsFrom() can be proven to read the right property.
      */
     private function results(): SearchResults
@@ -24,6 +24,7 @@ class SearchDomainTest extends TestCase
             characters: collect(['characters']),
             locations: collect(['locations']),
             organizations: collect(['organizations']),
+            notes: collect(['notes']),
         );
     }
 
@@ -39,6 +40,7 @@ class SearchDomainTest extends TestCase
         $this->assertSame(['characters'], SearchDomain::Characters->rowsFrom($results)->all());
         $this->assertSame(['locations'], SearchDomain::Locations->rowsFrom($results)->all());
         $this->assertSame(['organizations'], SearchDomain::Organizations->rowsFrom($results)->all());
+        $this->assertSame(['notes'], SearchDomain::Notes->rowsFrom($results)->all());
     }
 
     /**
@@ -55,6 +57,7 @@ class SearchDomainTest extends TestCase
         $this->assertSame('codex.edit', SearchDomain::Characters->editRoute());
         $this->assertSame('codex.edit', SearchDomain::Locations->editRoute());
         $this->assertSame('codex.edit', SearchDomain::Organizations->editRoute());
+        $this->assertSame('notes.edit', SearchDomain::Notes->editRoute());
     }
 
     /**
@@ -70,6 +73,7 @@ class SearchDomainTest extends TestCase
         $this->assertSame('codex.show', SearchDomain::Characters->viewRoute());
         $this->assertSame('codex.show', SearchDomain::Locations->viewRoute());
         $this->assertSame('codex.show', SearchDomain::Organizations->viewRoute());
+        $this->assertSame('notes.show', SearchDomain::Notes->viewRoute());
 
         foreach (SearchDomain::cases() as $domain) {
             $this->assertNotSame($domain->editRoute(), $domain->viewRoute());
@@ -83,9 +87,10 @@ class SearchDomainTest extends TestCase
     public function test_name_field_matches_the_pre_refactor_literal_per_domain(): void
     {
         $this->assertSame('title', SearchDomain::Events->nameField());
+        $this->assertSame('title', SearchDomain::Notes->nameField());
 
         foreach (SearchDomain::cases() as $domain) {
-            if ($domain === SearchDomain::Events) {
+            if (in_array($domain, [SearchDomain::Events, SearchDomain::Notes], true)) {
                 continue;
             }
 
@@ -108,12 +113,13 @@ class SearchDomainTest extends TestCase
         $this->assertFalse(SearchDomain::Characters->carriesBook());
         $this->assertFalse(SearchDomain::Locations->carriesBook());
         $this->assertFalse(SearchDomain::Organizations->carriesBook());
+        $this->assertFalse(SearchDomain::Notes->carriesBook());
     }
 
     public function test_route_keys_returns_every_domains_value(): void
     {
         $this->assertSame(
-            ['plotlines', 'events', 'acts', 'chapters', 'scenes', 'characters', 'locations', 'organizations'],
+            ['plotlines', 'events', 'acts', 'chapters', 'scenes', 'characters', 'locations', 'organizations', 'notes'],
             SearchDomain::routeKeys(),
         );
     }
@@ -121,7 +127,7 @@ class SearchDomainTest extends TestCase
     /**
      * Every domain belongs to exactly one section, and every section's domain
      * list is non-empty. Together, the union of every section's domains must
-     * be all eight — the grouping has one definition, not three.
+     * be every domain — the grouping has one definition, not three.
      */
     public function test_section_covers_every_domain_exactly_once(): void
     {
@@ -133,6 +139,7 @@ class SearchDomainTest extends TestCase
         $this->assertSame(SearchSection::Codex, SearchDomain::Characters->section());
         $this->assertSame(SearchSection::Codex, SearchDomain::Locations->section());
         $this->assertSame(SearchSection::Codex, SearchDomain::Organizations->section());
+        $this->assertSame(SearchSection::Notes, SearchDomain::Notes->section());
 
         $union = collect(SearchSection::cases())
             ->flatMap(fn (SearchSection $section) => $section->domains())

@@ -9,6 +9,7 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
@@ -246,11 +247,11 @@ class SearchTest extends TestCase
     {
         $user = User::factory()->create();
         $project = Project::factory()->for($user)->create();
-        // Scene.notes is stored rich HTML (see RichTextFields) — the preview must show
+        // Scene.description is stored rich HTML (see RichTextFields) — the preview must show
         // the reader's plain text, not the raw <p>/<strong> markup.
         $this->sceneFor($project, [
             'name' => 'The Opening Scene',
-            'notes' => '<p>A fearsome <strong>zephyrqux</strong> stalks the moor.</p>',
+            'description' => '<p>A fearsome <strong>zephyrqux</strong> stalks the moor.</p>',
         ]);
 
         $response = $this->actingAs($user)
@@ -623,6 +624,50 @@ class SearchTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_notes_render_as_their_own_section_linking_to_the_read_page(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $note = Note::factory()->for($project)->create(['title' => 'Zephyrqux research', 'body' => '<p>about zephyrqux</p>']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux']));
+
+        $response->assertOk();
+        $response->assertSee('Zephyrqux research');
+        $response->assertSee('Title, Body');
+        $response->assertSee(route('notes.show', $note), false);
+    }
+
+    public function test_the_notes_domain_page_paginates(): void
+    {
+        $user = User::factory()->create(['page_size' => 50]);
+        $project = Project::factory()->for($user)->create();
+        Note::factory()->for($project)->count(60)->sequence(
+            fn ($sequence) => ['title' => "Zephyrqux {$sequence->index}", 'body' => '<p>x</p>']
+        )->create();
+        Plotline::factory()->for($project)->create(['name' => 'Zephyrqux plot', 'description' => '']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.domain', ['project' => $project, 'domain' => 'notes', 'q' => 'zephyrqux', 'page' => 2]));
+
+        $response->assertOk();
+        $paginator = $response->viewData('paginator');
+        $this->assertSame(60, $paginator->total());
+        $this->assertCount(10, $paginator);
+        $response->assertDontSee('Zephyrqux plot');
+    }
+
+    public function test_a_non_owner_cannot_view_the_notes_domain_page(): void
+    {
+        $project = Project::factory()->for(User::factory())->create();
+        Note::factory()->for($project)->create(['title' => 'Zephyrqux']);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('projects.search.domain', ['project' => $project, 'domain' => 'notes', 'q' => 'zephyrqux']))
+            ->assertForbidden();
+    }
+
     public function test_an_unknown_domain_404s(): void
     {
         $user = User::factory()->create();
@@ -982,7 +1027,7 @@ class SearchTest extends TestCase
         $response->assertOk();
         $response->assertSee('Zephyrqux scene');
         $response->assertDontSee('Zephyrqux plot');
-        $response->assertSee('Plotlines, events and the codex belong to the whole project. Clear the book filter to search them.');
+        $response->assertSee('Plotlines, events, notes and the codex belong to the whole project. Clear the book filter to search them.');
     }
 
     public function test_unchecking_a_domain_renders_no_table_and_no_explanatory_line(): void
@@ -998,7 +1043,7 @@ class SearchTest extends TestCase
         $response->assertOk();
         $response->assertSee('Zephyrqux scene');
         $response->assertDontSee('Zephyrqux plot');
-        $response->assertDontSee('Plotlines, events and the codex belong to the whole project.');
+        $response->assertDontSee('Plotlines, events, notes and the codex belong to the whole project.');
     }
 
     public function test_the_filter_summary_names_an_active_book_filter_and_clear_drops_every_filter(): void

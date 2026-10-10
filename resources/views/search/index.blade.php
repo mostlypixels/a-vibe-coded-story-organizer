@@ -66,7 +66,7 @@
                 <div class="space-y-8">
                     @if ($scope->bookId !== null)
                         <p class="text-sm text-content-muted">
-                            {{ __('Plotlines, events and the codex belong to the whole project. Clear the book filter to search them.') }}
+                            {{ __('Plotlines, events, notes and the codex belong to the whole project. Clear the book filter to search them.') }}
                         </p>
                     @endif
 
@@ -90,6 +90,12 @@
                             <x-search.result-table :domain="\App\Enums\SearchDomain::Characters" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
                             <x-search.result-table :domain="\App\Enums\SearchDomain::Locations" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
                             <x-search.result-table :domain="\App\Enums\SearchDomain::Organizations" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
+                        </x-search.section>
+                    @endif
+
+                    @if ($results->hasNotesMatches())
+                        <x-search.section :title="__('Notes')">
+                            <x-search.result-table :domain="\App\Enums\SearchDomain::Notes" :results="$results" :project="$project" :query="$query" :mode="$mode" :scope="$scope" />
                         </x-search.section>
                     @endif
                 </div>

@@ -133,8 +133,8 @@ class FieldAutosaver
      * Scene.contents is the one field with a stored column: Scene's
      * `saving` hook has already recounted it as part of this save, so
      * reading $model->word_count reuses that number instead of recounting it a
-     * second time. Every other field (including Scene.description/notes, which
-     * share the model but not that column) has nothing stored to read, so it is
+     * second time. Every other field (including Scene.description, which
+     * shares the model but not that column) has nothing stored to read, so it is
      * counted here, on the value that was actually persisted.
      */
     private function wordCount(Model&Revisionable $model, string $field, string $storedValue): int

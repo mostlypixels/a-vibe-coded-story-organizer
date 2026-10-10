@@ -28,9 +28,10 @@ trait ResolvesIndexSorting
      *
      * @param  list<string>  $sortable  The columns this page allows sorting by.
      * @param  string  $default  The column used when `?sort=` is absent or unrecognised.
+     * @param  string  $defaultDirection  Used with the default column when `?direction=` is absent.
      * @return array{0: string, 1: string} `direction` is always exactly `asc` or `desc`.
      */
-    protected function resolveSorting(Request $request, array $sortable, string $default): array
+    protected function resolveSorting(Request $request, array $sortable, string $default, string $defaultDirection = 'asc'): array
     {
         // Strict comparison: query values arrive as strings or null, and a loose
         // in_array() against a string list has surprising edge cases.
@@ -38,6 +39,12 @@ trait ResolvesIndexSorting
             ? (string) $request->query('sort')
             : $default;
 
-        return [$sort, $request->query('direction') === 'desc' ? 'desc' : 'asc'];
+        $direction = $request->query('direction');
+
+        if ($direction === null) {
+            return [$sort, $sort === $default ? $defaultDirection : 'asc'];
+        }
+
+        return [$sort, $direction === 'desc' ? 'desc' : 'asc'];
     }
 }

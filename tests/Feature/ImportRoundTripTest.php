@@ -16,6 +16,8 @@ use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\Event;
 use App\Models\Import;
+use App\Models\Note;
+use App\Models\NoteCategory;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Revision;
@@ -144,7 +146,6 @@ class ImportRoundTripTest extends TestCase
         $importedSceneB = $scenes->firstWhere('name', 'Scene B');
         $this->assertSame('Some *prose* with **bold**.', $importedSceneB->contents);
         $this->assertSame(SceneStatus::ToEdit, $importedSceneA->status);
-        $this->assertSame('<p>Editor notes.</p>', $importedSceneA->notes);
 
         // ---- Cross-references resolve to NEW ids -----------------------
         // Scene B "happens during" the non-fixed Great Battle event; the id is a
@@ -586,6 +587,77 @@ class ImportRoundTripTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Notes
+    // ------------------------------------------------------------------
+
+    public function test_notes_categories_and_every_link_type_survive_a_round_trip_with_new_ids(): void
+    {
+        $owner = User::factory()->create();
+        $source = $this->seedSourceProject($owner);
+
+        $book = $source->books()->orderBy('position')->firstOrFail();
+        $act = $book->acts()->where('name', 'Act One')->firstOrFail();
+        $chapter = $act->chapters()->firstOrFail();
+        $scene = $chapter->scenes()->where('name', 'Scene A')->firstOrFail();
+        $plotline = $source->plotlines()->where('name', 'Side Quest')->firstOrFail();
+        $event = $source->events()->where('title', 'The Great Battle')->firstOrFail();
+        $entry = $source->codexEntries()->firstOrFail();
+
+        $research = NoteCategory::factory()->for($source)->create(['name' => 'Research']);
+        $places = NoteCategory::factory()->for($source)->create(['name' => 'Places', 'parent_id' => $research->id]);
+        $rivers = NoteCategory::factory()->for($source)->create(['name' => 'Rivers', 'parent_id' => $places->id]);
+
+        $linked = Note::factory()->for($source)->create([
+            'title' => 'Everything', 'note_category_id' => $rivers->id, 'body' => '<p>All the <em>links</em>.</p>',
+        ]);
+        foreach ([$book, $act, $chapter, $scene, $source->startEvent(), $event, $plotline, $entry] as $target) {
+            $linked->linkTo($target);
+        }
+        Note::factory()->for($source)->create(['title' => 'Loose', 'body' => null]);
+
+        $zipPath = $this->exportZip($source, includeMedia: false);
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertSessionHasNoErrors();
+
+        $imported = $importer->projects()->sole();
+        $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
+
+        // Only the archive's categories: import never adds the starter set.
+        $categories = $imported->noteCategories()->get()->keyBy('name');
+        $this->assertSame(['Places', 'Research', 'Rivers'], $categories->keys()->sort()->values()->all());
+        $this->assertNull($categories['Research']->parent_id);
+        $this->assertSame($categories['Research']->id, $categories['Places']->parent_id);
+        $this->assertSame($categories['Places']->id, $categories['Rivers']->parent_id);
+        $this->assertNotContains($rivers->id, $categories->pluck('id')->all());
+
+        $this->assertSame(['Everything', 'Loose'], $imported->notes()->orderBy('title')->pluck('title')->all());
+        $note = $imported->notes()->where('title', 'Everything')->firstOrFail();
+        $this->assertSame($categories['Rivers']->id, $note->note_category_id);
+        $this->assertSame($linked->body, $note->body);
+        $this->assertNull($imported->notes()->where('title', 'Loose')->firstOrFail()->body);
+
+        // Every link points at the imported row, never the source row.
+        $importedBook = $imported->books()->orderBy('position')->firstOrFail();
+        $importedAct = $importedBook->acts()->where('name', 'Act One')->firstOrFail();
+        $importedChapter = $importedAct->chapters()->firstOrFail();
+        $importedScene = $importedChapter->scenes()->where('name', 'Scene A')->firstOrFail();
+
+        $this->assertSame([$importedBook->id], $note->books()->pluck('books.id')->all());
+        $this->assertSame([$importedAct->id], $note->acts()->pluck('acts.id')->all());
+        $this->assertSame([$importedChapter->id], $note->chapters()->pluck('chapters.id')->all());
+        $this->assertSame([$importedScene->id], $note->scenes()->pluck('scenes.id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$imported->startEvent()->id, $imported->events()->where('title', 'The Great Battle')->firstOrFail()->id],
+            $note->events()->pluck('events.id')->all(),
+        );
+        $this->assertSame([$imported->plotlines()->where('name', 'Side Quest')->firstOrFail()->id], $note->plotlines()->pluck('plotlines.id')->all());
+        $this->assertSame([$imported->codexEntries()->firstOrFail()->id], $note->codexEntries()->pluck('codex_entries.id')->all());
+    }
+
+    // ------------------------------------------------------------------
     // Fixtures & helpers
     // ------------------------------------------------------------------
 
@@ -680,7 +752,7 @@ class ImportRoundTripTest extends TestCase
         ]);
         Scene::factory()->for($chapter)->create([
             'name' => 'Scene A', 'position' => 1, 'status' => SceneStatus::ToEdit,
-            'contents' => 'Opening lines.', 'notes' => '<p>Editor notes.</p>',
+            'contents' => 'Opening lines.',
         ]);
         $sceneB->mentionedEvents()->attach($project->startEvent());
 

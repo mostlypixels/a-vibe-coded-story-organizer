@@ -3,6 +3,7 @@
 use App\Support\AutosavableFields;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Delete revisions whose entity row is gone.
@@ -16,6 +17,12 @@ return new class extends Migration
     {
         foreach (AutosavableFields::slugs() as $slug) {
             $model = new (AutosavableFields::modelFor($slug));
+
+            // The registry is read live, so it can name a model whose table a
+            // later migration creates. That table holds no revisions yet.
+            if (! Schema::hasTable($model->getTable())) {
+                continue;
+            }
 
             DB::table('revisions')
                 ->where('revisionable_type', $model->getMorphClass())

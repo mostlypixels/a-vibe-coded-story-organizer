@@ -6,6 +6,7 @@ use App\Enums\BookLanguage;
 use App\Enums\SceneStatus;
 use App\Enums\StoryOverviewMode;
 use App\Exceptions\ImportValidationException;
+use App\Models\Note;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Models\Scene;
@@ -534,6 +535,102 @@ class ProjectGraphImporterTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Notes
+    // ------------------------------------------------------------------
+
+    public function test_an_old_scene_notes_file_imports_as_a_note_linked_to_the_scene(): void
+    {
+        // The fixture is a version 5 layout: Scene B carries a `notes_file`.
+        [$project] = $this->runFullImport(User::factory()->create());
+
+        $note = $project->notes()->sole();
+        $this->assertSame(Note::titleForSceneNotes('Scene B'), $note->title);
+        $this->assertSame('<p>Tighten the ending.</p>', $note->body);
+        $this->assertNull($note->note_category_id);
+        $this->assertSame(
+            [$project->sceneQuery()->where('scenes.name', 'Scene B')->value('scenes.id')],
+            $note->scenes()->pluck('scenes.id')->all(),
+        );
+        $this->assertSame(0, $project->noteCategories()->count());
+    }
+
+    public function test_categories_listed_child_first_import_parents_first(): void
+    {
+        $this->writeFixtureFile('data/notes/categories.json', json_encode([
+            ['id' => 3, 'parent_id' => 2, 'name' => 'Rivers'],
+            ['id' => 2, 'parent_id' => 1, 'name' => 'Places'],
+            ['id' => 1, 'parent_id' => null, 'name' => 'Research'],
+        ]));
+        $this->writeFixtureFile('data/notes/10-wet/note.json', json_encode([
+            'id' => 10, 'category_id' => 3, 'title' => 'Wet', 'links' => [['type' => 'codex', 'id' => 400]],
+        ]));
+
+        [$project, $idMaps] = $this->runFullImport(User::factory()->create());
+
+        $rivers = $project->noteCategories()->where('name', 'Rivers')->sole();
+        $this->assertSame('Places', $rivers->parent->name);
+        $this->assertSame('Research', $rivers->parent->parent->name);
+
+        $note = $project->notes()->where('title', 'Wet')->sole();
+        $this->assertSame($rivers->id, $note->note_category_id);
+        $this->assertSame([$idMaps[ProjectGraphImporter::MAP_ENTRIES][400]], $note->codexEntries()->pluck('codex_entries.id')->all());
+    }
+
+    public function test_a_category_tree_deeper_than_the_limit_is_rejected(): void
+    {
+        $this->writeFixtureFile('data/notes/categories.json', json_encode([
+            ['id' => 1, 'parent_id' => null, 'name' => 'One'],
+            ['id' => 2, 'parent_id' => 1, 'name' => 'Two'],
+            ['id' => 3, 'parent_id' => 2, 'name' => 'Three'],
+            ['id' => 4, 'parent_id' => 3, 'name' => 'Four'],
+        ]));
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('parent_id');
+
+        $this->runFullImport(User::factory()->create());
+    }
+
+    public function test_a_note_link_to_an_id_missing_from_the_archive_throws_and_rolls_back_the_phase(): void
+    {
+        $this->writeFixtureFile('data/notes/categories.json', json_encode([
+            ['id' => 1, 'parent_id' => null, 'name' => 'Research'],
+        ]));
+        $this->writeFixtureFile('data/notes/10-broken/note.json', json_encode([
+            'id' => 10, 'category_id' => 1, 'title' => 'Broken', 'links' => [['type' => 'scene', 'id' => 999999]],
+        ]));
+
+        $importer = $this->importer();
+        $project = $importer->importProject($this->fixtureRoot, User::factory()->create());
+        $idMaps = [];
+        $importer->importTimeline($this->fixtureRoot, $project, $idMaps);
+        $importer->importStory($this->fixtureRoot, $project, $idMaps);
+        $importer->importCodex($this->fixtureRoot, $project, $idMaps);
+
+        try {
+            $importer->importNotes($this->fixtureRoot, $project, $idMaps);
+            $this->fail('A link to an unknown id must throw, never be silently dropped.');
+        } catch (ImportValidationException $exception) {
+            $this->assertStringContainsString('links.id', $exception->getMessage());
+        }
+
+        $this->assertSame(0, $project->notes()->count());
+        $this->assertSame(0, $project->noteCategories()->count());
+    }
+
+    public function test_a_note_link_with_an_unknown_type_is_rejected(): void
+    {
+        $this->writeFixtureFile('data/notes/10-odd/note.json', json_encode([
+            'id' => 10, 'category_id' => null, 'title' => 'Odd', 'links' => [['type' => 'App\\Models\\Scene', 'id' => 300]],
+        ]));
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('links.type');
+
+        $this->runFullImport(User::factory()->create());
+    }
+
+    // ------------------------------------------------------------------
     // Fixture + helpers
     // ------------------------------------------------------------------
 
@@ -543,7 +640,7 @@ class ProjectGraphImporterTest extends TestCase
     }
 
     /**
-     * Run all four phases in order, exactly as ProjectImporter does.
+     * Run every phase in order, exactly as ProjectImporter does.
      *
      * @return array{0: Project, 1: array<string, array<int, int>>}
      */
@@ -556,6 +653,7 @@ class ProjectGraphImporterTest extends TestCase
         $importer->importTimeline($this->fixtureRoot, $project, $idMaps);
         $importer->importStory($this->fixtureRoot, $project, $idMaps);
         $importer->importCodex($this->fixtureRoot, $project, $idMaps);
+        $importer->importNotes($this->fixtureRoot, $project, $idMaps);
 
         return [$project, $idMaps];
     }

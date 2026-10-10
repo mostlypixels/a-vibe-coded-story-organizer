@@ -10,6 +10,8 @@ use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\StoreCodexAttributeRequest;
 use App\Http\Requests\StoreCodexEntryRequest;
 use App\Http\Requests\StoreEventRequest;
+use App\Http\Requests\StoreNoteCategoryRequest;
+use App\Http\Requests\StoreNoteRequest;
 use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\StoreSceneRequest;
 use App\Http\Requests\StoreTagRequest;
@@ -42,6 +44,7 @@ class ArchiveValidator
         'plotline.json' => ['id', 'name', 'color', 'is_main', 'project_id'],
         'event.json' => ['id', 'title', 'event_datetime', 'is_fixed', 'project_id', 'plotline_ids'],
         'entry.json' => ['id', 'name', 'type', 'project_id', 'aliases', 'tag_ids', 'attribute_values', 'media'],
+        'note.json' => ['id', 'category_id', 'title', 'links'],
     ];
 
     /** @var array<int, string> */
@@ -56,6 +59,7 @@ class ArchiveValidator
         'data/tags.json' => ['id', 'name'],
         'data/word-count-snapshots.json' => ['recorded_on', 'word_count'],
         'data/challenges.json' => ['name', 'recurrence', 'starts_on', 'ends_on', 'target_words'],
+        'data/notes/categories.json' => ['id', 'parent_id', 'name'],
     ];
 
     /** @var array<int, string> */
@@ -292,6 +296,7 @@ class ArchiveValidator
             'data/tags.json' => StoreTagRequest::fieldRules(),
             'data/codex/attributes.json' => StoreCodexAttributeRequest::fieldRules(),
             'data/challenges.json' => StoreChallengeRequest::fieldRules(),
+            'data/notes/categories.json' => StoreNoteCategoryRequest::fieldRules(),
             'data/word-count-snapshots.json' => self::SNAPSHOT_RULES,
             default => match (basename($path)) {
                 'book.json' => UpdateBookRequest::fieldRules(),
@@ -301,6 +306,7 @@ class ArchiveValidator
                 'plotline.json' => StorePlotlineRequest::fieldRules(),
                 'event.json' => StoreEventRequest::fieldRules(),
                 'entry.json' => StoreCodexEntryRequest::fieldRules(),
+                'note.json' => StoreNoteRequest::fieldRules(),
                 default => [],
             },
         };

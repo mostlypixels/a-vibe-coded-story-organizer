@@ -3,12 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\RevisionOrigin;
-use App\Models\Act;
 use App\Models\Book;
-use App\Models\Chapter;
 use App\Models\Project;
 use App\Models\Revision;
-use App\Models\Scene;
 use App\Models\User;
 use App\View\Components\RevisionsLayout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,25 +33,23 @@ class RevertSaveTest extends TestCase
         $this->saveC = (string) Str::ulid();
     }
 
-    private function sceneFor(User $user): Scene
+    private function bookFor(User $user): Book
     {
-        $act = Act::factory()->for(Book::factory()->for(Project::factory()->for($user)->create()))->create();
-
-        return Scene::factory()->for(Chapter::factory()->for($act)->create())->create([
+        return Book::factory()->for(Project::factory()->for($user)->create())->create([
             // The live state: what save B and save C left behind.
             'description' => '<p>D2</p>',
-            'notes' => '<p>N2</p>',
-            'contents' => 'C1',
+            'dedication' => 'N2',
+            'rights' => 'C1',
         ]);
     }
 
-    private function revision(Scene $scene, string $saveId, string $field, string $value, int $minutesAgo): Revision
+    private function revision(Book $book, string $saveId, string $field, string $value, int $minutesAgo): Revision
     {
         return Revision::factory()->create([
-            'revisionable_type' => Scene::class,
-            'revisionable_id' => $scene->id,
-            'project_id' => $scene->chapter->act->book->project->id,
-            'user_id' => $scene->chapter->act->book->project->user_id,
+            'revisionable_type' => Book::class,
+            'revisionable_id' => $book->id,
+            'project_id' => $book->project->id,
+            'user_id' => $book->project->user_id,
             'save_id' => $saveId,
             'field' => $field,
             'value' => $value,
@@ -66,27 +61,27 @@ class RevertSaveTest extends TestCase
     /**
      * The three save points above, in order.
      */
-    private function withHistory(Scene $scene): Scene
+    private function withHistory(Book $book): Book
     {
-        $this->revision($scene, $this->saveA, 'description', '<p>D1</p>', 30);
-        $this->revision($scene, $this->saveA, 'notes', '<p>N1</p>', 30);
-        $this->revision($scene, $this->saveB, 'description', '<p>D2</p>', 20);
-        $this->revision($scene, $this->saveB, 'notes', '<p>N2</p>', 20);
-        $this->revision($scene, $this->saveC, 'contents', 'C1', 10);
+        $this->revision($book, $this->saveA, 'description', '<p>D1</p>', 30);
+        $this->revision($book, $this->saveA, 'dedication', 'N1', 30);
+        $this->revision($book, $this->saveB, 'description', '<p>D2</p>', 20);
+        $this->revision($book, $this->saveB, 'dedication', 'N2', 20);
+        $this->revision($book, $this->saveC, 'rights', 'C1', 10);
 
-        return $scene;
+        return $book;
     }
 
     /**
      * @param  array<string, string>  $overrides
      * @return array<string, string>
      */
-    private function hashesFor(Scene $scene, array $overrides = []): array
+    private function hashesFor(Book $book, array $overrides = []): array
     {
         $hashes = [];
 
-        foreach (['description', 'notes', 'contents'] as $field) {
-            $hashes[$field] = hash('sha256', (string) ($scene->getAttribute($field) ?? ''));
+        foreach (['description', 'dedication', 'rights'] as $field) {
+            $hashes[$field] = hash('sha256', (string) ($book->getAttribute($field) ?? ''));
         }
 
         return [...$hashes, ...$overrides];
@@ -102,28 +97,28 @@ class RevertSaveTest extends TestCase
     public function test_undoing_a_save_restores_every_field_it_touched(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
-        $this->undo($user, $this->saveB, $this->hashesFor($scene))->assertRedirect();
+        $this->undo($user, $this->saveB, $this->hashesFor($book))->assertRedirect();
 
-        $scene->refresh();
-        $this->assertSame('<p>D1</p>', $scene->description);
-        $this->assertSame('<p>N1</p>', $scene->notes);
+        $book->refresh();
+        $this->assertSame('<p>D1</p>', $book->description);
+        $this->assertSame('N1', $book->dedication);
     }
 
     public function test_the_undo_is_recorded_as_one_new_save_point_of_revert_rows(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
-        $this->undo($user, $this->saveB, $this->hashesFor($scene));
+        $this->undo($user, $this->saveB, $this->hashesFor($book));
 
         $reverts = Revision::query()->where('origin', RevisionOrigin::Revert)->get();
 
         $this->assertCount(2, $reverts);
         $this->assertCount(1, $reverts->pluck('save_id')->unique(), 'the undo must be ONE save point');
         $this->assertNotContains($reverts->first()->save_id, [$this->saveA, $this->saveB, $this->saveC]);
-        $this->assertEqualsCanonicalizing(['description', 'notes'], $reverts->pluck('field')->all());
+        $this->assertEqualsCanonicalizing(['description', 'dedication'], $reverts->pluck('field')->all());
 
         // Additive: the rows it undid are still there, untouched.
         $this->assertSame(2, Revision::query()->where('save_id', $this->saveB)->count());
@@ -132,54 +127,54 @@ class RevertSaveTest extends TestCase
     public function test_a_field_the_save_did_not_touch_is_left_alone(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
-        $this->undo($user, $this->saveB, $this->hashesFor($scene));
+        $this->undo($user, $this->saveB, $this->hashesFor($book));
 
-        $scene->refresh();
-        $this->assertSame('C1', $scene->contents, 'undo must not roll the whole entity back');
+        $book->refresh();
+        $this->assertSame('C1', $book->rights, 'undo must not roll the whole entity back');
         $this->assertSame(
             0,
-            Revision::query()->where('field', 'contents')->where('origin', RevisionOrigin::Revert)->count(),
+            Revision::query()->where('field', 'rights')->where('origin', RevisionOrigin::Revert)->count(),
         );
     }
 
     public function test_it_redirects_to_the_edit_form_with_a_flash_naming_the_restored_fields(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
-        $response = $this->undo($user, $this->saveB, $this->hashesFor($scene));
+        $response = $this->undo($user, $this->saveB, $this->hashesFor($book));
 
-        $response->assertRedirect(route('scenes.edit', $scene));
+        $response->assertRedirect(route('books.edit', $book));
         $response->assertSessionHas('status', 'reverted-save');
-        $response->assertSessionHas('restored_fields', ['Description', 'Notes']);
+        $response->assertSessionHas('restored_fields', ['Description', 'Dedication']);
     }
 
     public function test_a_stale_hash_on_any_field_writes_nothing_at_all(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
         $countBefore = Revision::count();
 
-        // Description's hash is correct; notes' is not. All-or-nothing means
+        // Description's hash is correct; dedication's is not. All-or-nothing means
         // description must not be restored either.
-        $response = $this->undo($user, $this->saveB, $this->hashesFor($scene, ['notes' => 'stale']));
+        $response = $this->undo($user, $this->saveB, $this->hashesFor($book, ['dedication' => 'stale']));
 
         $response->assertRedirect();
         $response->assertSessionHas(RevisionsLayout::ERROR_KEY);
 
-        $scene->refresh();
-        $this->assertSame('<p>D2</p>', $scene->description);
-        $this->assertSame('<p>N2</p>', $scene->notes);
+        $book->refresh();
+        $this->assertSame('<p>D2</p>', $book->description);
+        $this->assertSame('N2', $book->dedication);
         $this->assertSame($countBefore, Revision::count());
     }
 
     public function test_a_value_that_no_longer_passes_todays_rules_fails_without_storing(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
         // The rule tightened after the value was recorded — the exact case
         // re-validating on revert exists to catch.
@@ -187,31 +182,31 @@ class RevertSaveTest extends TestCase
 
         $countBefore = Revision::count();
 
-        $this->undo($user, $this->saveB, $this->hashesFor($scene))->assertRedirect();
+        $this->undo($user, $this->saveB, $this->hashesFor($book))->assertRedirect();
 
-        $scene->refresh();
-        $this->assertSame('<p>D2</p>', $scene->description);
-        $this->assertSame('<p>N2</p>', $scene->notes);
+        $book->refresh();
+        $this->assertSame('<p>D2</p>', $book->description);
+        $this->assertSame('N2', $book->dedication);
         $this->assertSame($countBefore, Revision::count());
     }
 
     public function test_undoing_the_undo_moves_forward_again(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
-        $this->undo($user, $this->saveB, $this->hashesFor($scene));
+        $this->undo($user, $this->saveB, $this->hashesFor($book));
 
-        $scene->refresh();
+        $book->refresh();
         $undoSaveId = Revision::query()->where('origin', RevisionOrigin::Revert)->value('save_id');
 
         // The undo is a save point like any other, so it can be undone in turn —
         // which puts the text back where it was before the first undo.
-        $this->undo($user, $undoSaveId, $this->hashesFor($scene))->assertRedirect();
+        $this->undo($user, $undoSaveId, $this->hashesFor($book))->assertRedirect();
 
-        $scene->refresh();
-        $this->assertSame('<p>D2</p>', $scene->description);
-        $this->assertSame('<p>N2</p>', $scene->notes);
+        $book->refresh();
+        $this->assertSame('<p>D2</p>', $book->description);
+        $this->assertSame('N2', $book->dedication);
     }
 
     /**
@@ -221,15 +216,15 @@ class RevertSaveTest extends TestCase
     public function test_the_current_save_point_can_be_undone_like_any_other(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
-        // C is the newest save point: it set contents to "C1", and nothing set
-        // contents before it, so undoing it empties the field.
-        $this->undo($user, $this->saveC, $this->hashesFor($scene))->assertRedirect();
+        // C is the newest save point: it set rights to "C1", and nothing set
+        // rights before it, so undoing it empties the field.
+        $this->undo($user, $this->saveC, $this->hashesFor($book))->assertRedirect();
 
-        $scene->refresh();
-        $this->assertSame('', $scene->contents);
-        $this->assertSame('<p>D2</p>', $scene->description, 'only the field that save touched moves');
+        $book->refresh();
+        $this->assertSame('', $book->rights);
+        $this->assertSame('<p>D2</p>', $book->description, 'only the field that save touched moves');
     }
 
     /**
@@ -241,26 +236,26 @@ class RevertSaveTest extends TestCase
     public function test_undoing_a_save_that_created_a_field_empties_it(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
-        $this->undo($user, $this->saveC, $this->hashesFor($scene));
+        $this->undo($user, $this->saveC, $this->hashesFor($book));
 
-        $this->assertSame('', $scene->refresh()->contents);
+        $this->assertSame('', $book->refresh()->rights);
         $this->assertSame(
             1,
-            Revision::query()->where('field', 'contents')->where('origin', RevisionOrigin::Revert)->count(),
+            Revision::query()->where('field', 'rights')->where('origin', RevisionOrigin::Revert)->count(),
         );
     }
 
     public function test_a_non_owner_gets_403(): void
     {
         $owner = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($owner));
+        $book = $this->withHistory($this->bookFor($owner));
 
-        $this->undo(User::factory()->create(), $this->saveB, $this->hashesFor($scene))->assertForbidden();
+        $this->undo(User::factory()->create(), $this->saveB, $this->hashesFor($book))->assertForbidden();
 
-        $scene->refresh();
-        $this->assertSame('<p>D2</p>', $scene->description);
+        $book->refresh();
+        $this->assertSame('<p>D2</p>', $book->description);
         $this->assertSame(0, Revision::query()->where('origin', RevisionOrigin::Revert)->count());
     }
 
@@ -271,13 +266,13 @@ class RevertSaveTest extends TestCase
      */
     public function test_a_guest_is_sent_to_login(): void
     {
-        $scene = $this->withHistory($this->sceneFor(User::factory()->create()));
+        $book = $this->withHistory($this->bookFor(User::factory()->create()));
 
         $this->post(route('revisions.saves.revert', $this->saveB), [
-            'base_hashes' => $this->hashesFor($scene),
+            'base_hashes' => $this->hashesFor($book),
         ])->assertRedirect(route('login'));
 
-        $this->assertSame('<p>D2</p>', $scene->refresh()->description);
+        $this->assertSame('<p>D2</p>', $book->refresh()->description);
         $this->assertSame(0, Revision::query()->where('origin', RevisionOrigin::Revert)->count());
     }
 
@@ -293,7 +288,7 @@ class RevertSaveTest extends TestCase
     public function test_the_group_lookup_never_hydrates_the_value_column(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
         $lookups = [];
         DB::listen(function ($query) use (&$lookups) {
@@ -305,7 +300,7 @@ class RevertSaveTest extends TestCase
             }
         });
 
-        $this->undo($user, $this->saveB, $this->hashesFor($scene))->assertRedirect();
+        $this->undo($user, $this->saveB, $this->hashesFor($book))->assertRedirect();
 
         $this->assertNotEmpty($lookups, 'the listener caught nothing — the assertions below would pass vacuously');
 
@@ -326,7 +321,7 @@ class RevertSaveTest extends TestCase
     public function test_an_unknown_save_id_404s_and_a_malformed_one_never_reaches_the_controller(): void
     {
         $user = User::factory()->create();
-        $this->withHistory($this->sceneFor($user));
+        $this->withHistory($this->bookFor($user));
 
         // Well-formed ULID, no such group.
         $this->actingAs($user)->post(route('revisions.saves.revert', (string) Str::ulid()), [
@@ -342,12 +337,12 @@ class RevertSaveTest extends TestCase
     public function test_a_save_revert_without_base_hashes_fails_validation_and_writes_nothing(): void
     {
         $user = User::factory()->create();
-        $scene = $this->withHistory($this->sceneFor($user));
+        $book = $this->withHistory($this->bookFor($user));
 
         $this->actingAs($user)
             ->post(route('revisions.saves.revert', $this->saveB), [])
             ->assertSessionHasErrors('base_hashes');
 
-        $this->assertSame('<p>D2</p>', $scene->fresh()->description);
+        $this->assertSame('<p>D2</p>', $book->fresh()->description);
     }
 }

@@ -10,6 +10,7 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Support\AccentFolder;
@@ -26,7 +27,7 @@ use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
 /**
- * Searches stored text across one project's story, timeline, and codex entities.
+ * Searches stored text across one project's story, timeline, codex, and notes.
  *
  * Matching runs in PHP for portable accent folding. It is case-insensitive and
  * accent-insensitive. AND terms can match different fields on the same entity.
@@ -44,7 +45,6 @@ class ProjectSearch
         'name' => 'Name',
         'description' => 'Description',
         'contents' => 'Contents',
-        'notes' => 'Notes',
     ];
 
     private const EVENT_FIELDS = ['title' => 'Title', 'description' => 'Description'];
@@ -52,6 +52,8 @@ class ProjectSearch
     private const PLOTLINE_FIELDS = ['name' => 'Name', 'description' => 'Description'];
 
     private const CODEX_ENTRY_FIELDS = ['name' => 'Name', 'description' => 'Description'];
+
+    private const NOTE_FIELDS = ['title' => 'Title', 'body' => 'Body'];
 
     /**
      * Run the search and return the grouped result set.
@@ -86,6 +88,7 @@ class ProjectSearch
             characters: $this->codexRowsOfType($codexRows, CodexEntryType::Character),
             locations: $this->codexRowsOfType($codexRows, CodexEntryType::Location),
             organizations: $this->codexRowsOfType($codexRows, CodexEntryType::Organization),
+            notes: $this->rowsFor(SearchDomain::Notes, $project, $terms, $mode, $books, $scope),
         );
     }
 
@@ -206,6 +209,10 @@ class ProjectSearch
                     ->orderBy('event_datetime')->orderBy('id'),
                 self::EVENT_FIELDS,
             ],
+            SearchDomain::Notes => [
+                Note::query()->where('project_id', $project->id)->orderBy('title')->orderBy('id'),
+                self::NOTE_FIELDS,
+            ],
             SearchDomain::Acts => [
                 $this->scopedActQuery($project, $scope),
                 self::ACT_FIELDS,
@@ -233,7 +240,7 @@ class ProjectSearch
                         // from selectContentsThatMayMatch().
                         ->addSelect([
                             'scenes.id', 'scenes.chapter_id', 'scenes.name', 'scenes.description',
-                            'scenes.notes', 'scenes.position', 'acts.book_id as book_id',
+                            'scenes.position', 'acts.book_id as book_id',
                         ])
                         ->orderBy('books.position')->orderBy('books.id')
                         ->orderBy('acts.position')->orderBy('acts.id')
@@ -529,6 +536,7 @@ class ProjectSearch
             characters: collect(),
             locations: collect(),
             organizations: collect(),
+            notes: collect(),
         );
     }
 }

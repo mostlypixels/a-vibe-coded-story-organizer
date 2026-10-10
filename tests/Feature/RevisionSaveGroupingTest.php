@@ -48,16 +48,15 @@ class RevisionSaveGroupingTest extends TestCase
         $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
         $scene = Scene::factory()->for($chapter)->create([
             'description' => '<p>Old description</p>',
-            'notes' => '<p>Old notes</p>',
+            'contents' => 'Old contents',
         ]);
 
         $this->actingAs($user)->put(route('scenes.update', $scene), [
             'chapter_id' => $chapter->id,
             'name' => $scene->name,
             'status' => $scene->status->value,
-            'contents' => $scene->contents,
+            'contents' => 'New contents',
             'description' => '<p>New description</p>',
-            'notes' => '<p>New notes</p>',
         ])->assertRedirect();
 
         $manualSaveIds = Revision::query()

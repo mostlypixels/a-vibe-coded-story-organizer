@@ -36,6 +36,7 @@ class ProjectRevisionsBrowser
         'plotline' => 'Plotlines',
         'event' => 'Events',
         'codex' => 'Codex',
+        'note' => 'Notes',
     ];
 
     /** @var list<string> Entity slugs that group under books. */

@@ -15,6 +15,8 @@ use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\Event;
+use App\Models\Note;
+use App\Models\NoteCategory;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\PublicationSetting;
@@ -102,9 +104,8 @@ class ExportTest extends TestCase
 
         $manifest = json_decode($raw, true);
         $this->assertIsArray($manifest, 'data/manifest.json is not valid JSON.');
-        // The word-count-challenges feature bumped this to 5 — see
-        // StaticSiteExporter::DATA_VERSION.
-        $this->assertSame(5, $manifest['version']);
+        // See StaticSiteExporter::DATA_VERSION.
+        $this->assertSame(6, $manifest['version']);
         $this->assertSame($project->id, $manifest['project_id']);
         $this->assertTrue($manifest['includes_media']);
         $this->assertArrayHasKey('exported_at', $manifest);
@@ -247,6 +248,78 @@ class ExportTest extends TestCase
         $response->assertOk();
 
         return $this->openExport($response);
+    }
+
+    // ---------------------------------------------------------------------
+    // data/notes/: categories, notes, links
+    // ---------------------------------------------------------------------
+
+    public function test_notes_and_categories_export_with_links_as_type_keys(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $scene = Scene::factory()->for(Chapter::factory()->for(Act::factory()->for($book)))->create();
+        $entry = CodexEntry::factory()->for($project)->create();
+
+        $parent = NoteCategory::factory()->for($project)->create(['name' => 'Research']);
+        $child = NoteCategory::factory()->for($project)->create(['name' => 'Rivers', 'parent_id' => $parent->id]);
+        $note = Note::factory()->for($project)->create([
+            'title' => 'Fountain research',
+            'note_category_id' => $child->id,
+            'body' => '<p>The fountain runs dry.</p>',
+        ]);
+        $note->linkTo($scene);
+        $note->linkTo($entry);
+        $empty = Note::factory()->for($project)->create(['title' => 'Empty', 'body' => null]);
+
+        $zip = $this->exportZip($user, $project);
+
+        $categories = json_decode($zip->getFromName('data/notes/categories.json'), true);
+        $this->assertSame([
+            ['id' => $parent->id, 'parent_id' => null, 'name' => 'Research'],
+            ['id' => $child->id, 'parent_id' => $parent->id, 'name' => 'Rivers'],
+        ], $categories);
+
+        $dir = "data/notes/{$note->id}-fountain-research";
+        $json = json_decode($zip->getFromName("{$dir}/note.json"), true);
+        $this->assertSame($note->id, $json['id']);
+        $this->assertSame($child->id, $json['category_id']);
+        $this->assertSame('Fountain research', $json['title']);
+        $this->assertSame('body.html', $json['body_file']);
+        $this->assertSame([
+            ['type' => 'scene', 'id' => $scene->id],
+            ['type' => 'codex', 'id' => $entry->id],
+        ], $json['links']);
+        $this->assertSame('<p>The fountain runs dry.</p>', $zip->getFromName("{$dir}/body.html"));
+
+        // An empty body writes neither the file nor the link key.
+        $emptyJson = json_decode($zip->getFromName("data/notes/{$empty->id}-empty/note.json"), true);
+        $this->assertArrayNotHasKey('body_file', $emptyJson);
+
+        $zip->close();
+    }
+
+    public function test_notes_never_reach_the_books_reading_layer(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $scene = Scene::factory()->for(Chapter::factory()->for(Act::factory()->for($book)))->create();
+        Note::factory()->for($project)->create(['title' => 'Secret plan', 'body' => '<p>Zanzibar twist.</p>'])->linkTo($scene);
+
+        $zip = $this->exportZip($user, $project);
+
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $name = $zip->getNameIndex($index);
+            if (! str_starts_with($name, 'books/')) {
+                continue;
+            }
+
+            $contents = $zip->getFromIndex($index);
+            $this->assertStringNotContainsString('Zanzibar', $contents, "{$name} must not carry a note body.");
+            $this->assertStringNotContainsString('Secret plan', $contents, "{$name} must not carry a note title.");
+        }
+
+        $zip->close();
     }
 
     // ---------------------------------------------------------------------
@@ -534,15 +607,15 @@ class ExportTest extends TestCase
         [$project, $book] = $this->projectWithBook($user);
         $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
 
-        $scene = Scene::factory()->for($chapter)->create(['notes' => null]);
+        $scene = Scene::factory()->for($chapter)->create(['description' => null]);
 
         $zip = $this->exportZip($user, $project);
 
         $sceneDir = $this->sceneDir($book, $scene);
-        $this->assertFalse($zip->getFromName("{$sceneDir}/notes.html"), 'notes.html should be omitted for a null notes field.');
+        $this->assertFalse($zip->getFromName("{$sceneDir}/description.html"), 'description.html should be omitted for a null description field.');
 
         $sceneJson = json_decode($zip->getFromName("{$sceneDir}/scene.json"), true);
-        $this->assertArrayNotHasKey('notes_file', $sceneJson);
+        $this->assertArrayNotHasKey('description_file', $sceneJson);
 
         $zip->close();
     }

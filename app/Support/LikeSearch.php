@@ -16,10 +16,10 @@ class LikeSearch
     public const ESCAPE = '!';
 
     /**
-     * @template TModel of Model
+     * @template TQuery of Builder<covariant Model>
      *
-     * @param  Builder<TModel>  $query
-     * @return Builder<TModel>
+     * @param  TQuery  $query
+     * @return TQuery
      */
     public static function whereContains(Builder $query, string $column, string $term): Builder
     {

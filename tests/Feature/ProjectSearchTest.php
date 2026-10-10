@@ -9,6 +9,7 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
@@ -91,6 +92,69 @@ class ProjectSearchTest extends TestCase
         $this->assertCount(0, $results->organizations);
     }
 
+    public function test_a_note_matches_by_title_and_by_body_text_inside_html(): void
+    {
+        $project = $this->project();
+
+        Note::factory()->for($project)->create(['title' => 'Zephyrqux map', 'body' => '<p>x</p>']);
+        Note::factory()->for($project)->create(['title' => 'Plain', 'body' => '<h2>Heading</h2><p>The <strong>zephyrqux</strong> river</p>']);
+        Note::factory()->for($project)->create(['title' => 'Other', 'body' => '<p>nothing</p>']);
+
+        $results = $this->search($project, 'zephyrqux');
+
+        $this->assertCount(2, $results->notes);
+        $this->assertSame(['Body'], $results->notes[0]->fieldLabels);
+        $this->assertSame(['Title'], $results->notes[1]->fieldLabels);
+        $this->assertStringNotContainsString('<strong>', $results->notes[0]->snippet);
+    }
+
+    public function test_a_note_match_folds_accents(): void
+    {
+        $project = $this->project();
+
+        Note::factory()->for($project)->create(['title' => 'Plain', 'body' => '<p>Le château de la forêt</p>']);
+
+        $this->assertCount(1, $this->search($project, 'foret chateau')->notes);
+    }
+
+    public function test_another_projects_note_never_appears(): void
+    {
+        $project = $this->project();
+        Note::factory()->for($this->project())->create(['title' => 'Zephyrqux', 'body' => '<p>zephyrqux</p>']);
+
+        $this->assertCount(0, $this->search($project, 'zephyrqux')->notes);
+        $this->assertCount(0, app(ProjectSearch::class)->searchDomain($project, SearchDomain::Notes, 'zephyrqux', SearchMode::AllTerms));
+    }
+
+    public function test_a_scene_does_not_match_on_the_body_of_a_linked_note(): void
+    {
+        $project = $this->project();
+        $scene = Scene::factory()->for($this->chapterIn($project))->create(['name' => 'plain', 'description' => 'x', 'contents' => 'x']);
+        Note::factory()->for($project)->create(['title' => 'plain', 'body' => '<p>zephyrqux</p>'])->linkTo($scene);
+
+        $results = $this->search($project, 'zephyrqux');
+
+        $this->assertCount(0, $results->scenes);
+        $this->assertCount(1, $results->notes);
+    }
+
+    public function test_notes_ignore_the_chapter_range_but_a_book_scope_hides_them(): void
+    {
+        $project = $this->project();
+        $book = $project->books()->first();
+        Note::factory()->for($project)->create(['title' => 'Zephyrqux', 'body' => '<p>x</p>']);
+
+        $domainScope = new SearchScope(domains: [SearchDomain::Notes]);
+        $this->assertCount(1, $this->searchScoped($project, 'zephyrqux', $domainScope)->notes);
+        $this->assertCount(0, $this->searchScoped($project, 'zephyrqux', new SearchScope(bookId: $book->id))->notes);
+        $this->assertCount(0, $this->searchScoped($project, 'zephyrqux', new SearchScope(domains: [SearchDomain::Scenes]))->notes);
+    }
+
+    private function searchScoped(Project $project, string $query, SearchScope $scope): SearchResults
+    {
+        return app(ProjectSearch::class)->search($project, $query, SearchMode::AllTerms, $scope);
+    }
+
     public function test_codex_entries_split_into_one_column_per_type(): void
     {
         $project = $this->project();
@@ -114,14 +178,13 @@ class ProjectSearchTest extends TestCase
         Scene::factory()->for($chapter)->create([
             'name' => 'plain',
             'contents' => 'here lurks the moonglaive',
-            'notes' => '<p>and also the sunspear</p>',
-            'description' => 'x',
+            'description' => '<p>and also the sunspear</p>',
         ]);
 
         $results = $this->search($project, 'moonglaive sunspear', SearchMode::AllTerms);
 
         $this->assertCount(1, $results->scenes, 'one row per matched entity');
-        $this->assertSame(['Contents', 'Notes'], $results->scenes->first()->fieldLabels);
+        $this->assertSame(['Description', 'Contents'], $results->scenes->first()->fieldLabels);
     }
 
     public function test_and_mode_does_not_match_when_a_term_is_absent(): void
@@ -132,7 +195,6 @@ class ProjectSearchTest extends TestCase
         Scene::factory()->for($chapter)->create([
             'name' => 'plain',
             'contents' => 'here lurks the moonglaive',
-            'notes' => null,
             'description' => 'x',
         ]);
 
@@ -164,7 +226,7 @@ class ProjectSearchTest extends TestCase
         $match = Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'the red dragon flies', 'description' => 'x']);
         Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'the dragon is red', 'description' => 'x']);
         // Words present but split across two fields must not satisfy an exact phrase.
-        Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'a red thing', 'notes' => '<p>a dragon</p>', 'description' => 'x']);
+        Scene::factory()->for($chapter)->create(['name' => 'plain', 'contents' => 'a red thing', 'description' => '<p>a dragon</p>']);
 
         $results = $this->search($project, 'red dragon', SearchMode::ExactPhrase);
 
@@ -185,8 +247,7 @@ class ProjectSearchTest extends TestCase
         Scene::factory()->for($chapter)->create([
             'name' => 'plain',
             'contents' => 'plain',
-            'notes' => '<h2>Chapter One</h2><p>She waited.</p>',
-            'description' => 'x',
+            'description' => '<h2>Chapter One</h2><p>She waited.</p>',
         ]);
 
         $snippet = $this->search($project, 'waited')->scenes->first()->snippet;
@@ -210,8 +271,7 @@ class ProjectSearchTest extends TestCase
         Scene::factory()->for($chapter)->create([
             'name' => 'plain',
             'contents' => 'plain',
-            'notes' => '<h2>Chapter One</h2><p>She waited.</p>',
-            'description' => 'x',
+            'description' => '<h2>Chapter One</h2><p>She waited.</p>',
         ]);
 
         // Within one block: matches.
@@ -252,21 +312,20 @@ class ProjectSearchTest extends TestCase
         Scene::factory()->for($chapter)->create([
             'name' => 'plain',
             'contents' => 'the glimmerstone glows',
-            'notes' => '<p>notes about the glimmerstone</p>',
-            'description' => 'x',
+            'description' => '<p>notes about the glimmerstone</p>',
         ]);
 
         $results = $this->search($project, 'glimmerstone');
 
         // One row per matched entity; every matched field is listed, in the
-        // declared field order (contents before notes).
+        // declared field order (description before contents).
         $this->assertCount(1, $results->scenes);
         $row = $results->scenes->first();
-        $this->assertSame(['Contents', 'Notes'], $row->fieldLabels);
-        $this->assertSame('Contents, Notes', $row->matchedFields());
-        // The text preview comes from the FIRST matching field (contents here).
+        $this->assertSame(['Description', 'Contents'], $row->fieldLabels);
+        $this->assertSame('Description, Contents', $row->matchedFields());
+        // The text preview comes from the FIRST matching field (description here).
         $this->assertStringContainsString('<mark', $row->snippet);
-        $this->assertStringContainsString('glows', $row->snippet);
+        $this->assertStringContainsString('notes about', $row->snippet);
     }
 
     public function test_results_are_isolated_to_the_searched_project(): void
@@ -366,6 +425,7 @@ class ProjectSearchTest extends TestCase
         Event::factory()->count(3)->for($project)->create(['description' => 'countword']);
         Scene::factory()->count(5)->for($chapter)->create(['name' => 'plain', 'contents' => 'countword', 'description' => 'x']);
         CodexEntry::factory()->count(3)->for($project)->character()->create(['description' => 'countword']);
+        Note::factory()->count(2)->for($project)->create(['body' => '<p>countword</p>']);
 
         DB::connection()->enableQueryLog();
 
@@ -376,8 +436,8 @@ class ProjectSearchTest extends TestCase
 
         // One query per searchable entity type, plus one naming the Act/Chapter/Scene
         // rows' books (ProjectSearch::booksById()) — no N+1 across matched rows.
-        $this->assertCount(7, $queries);
-        $this->assertGreaterThanOrEqual(14, $results->count());
+        $this->assertCount(8, $queries);
+        $this->assertGreaterThanOrEqual(16, $results->count());
     }
 
     public function test_act_chapter_and_scene_rows_carry_their_own_book(): void
@@ -438,8 +498,7 @@ class ProjectSearchTest extends TestCase
         Scene::factory()->for($chapter)->create([
             'name' => 'plain',
             'contents' => 'a **dragonfly** appeared',   // term sits inside Markdown emphasis
-            'notes' => '<p>the <em>ghostwind</em> howled</p>', // term sits inside raw HTML
-            'description' => 'x',
+            'description' => '<p>the <em>ghostwind</em> howled</p>', // term sits inside raw HTML
         ]);
 
         $markdown = $this->search($project, 'dragonfly');
@@ -448,7 +507,7 @@ class ProjectSearchTest extends TestCase
 
         $html = $this->search($project, 'ghostwind');
         $this->assertCount(1, $html->scenes);
-        $this->assertSame(['Notes'], $html->scenes->first()->fieldLabels);
+        $this->assertSame(['Description'], $html->scenes->first()->fieldLabels);
     }
 
     public function test_an_unaccented_term_matches_accented_data(): void

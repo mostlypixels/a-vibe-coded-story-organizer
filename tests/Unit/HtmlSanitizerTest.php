@@ -288,14 +288,14 @@ class HtmlSanitizerTest extends TestCase
             'Plotline.description',
             'Event.description',
             'Scene.description',
-            'Scene.notes',
             'CodexEntry.description',
+            'Note.body',
         ], RichTextFields::all());
     }
 
     public function test_rich_text_fields_scene_contents_is_not_rich(): void
     {
-        $this->assertTrue(RichTextFields::isRich(Scene::class, 'notes'));
+        $this->assertFalse(RichTextFields::isRich(Scene::class, 'notes'));
         $this->assertTrue(RichTextFields::isRich(Scene::class, 'description'));
         $this->assertFalse(RichTextFields::isRich(Scene::class, 'contents'));
     }

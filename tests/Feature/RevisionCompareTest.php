@@ -44,7 +44,7 @@ class RevisionCompareTest extends TestCase
      * One revision of a Scene field, in a save point of its own.
      *
      * A Scene is the entity used wherever a test needs *several* registered
-     * fields (description, notes, contents); an Act registers only one.
+     * fields (description, contents); an Act registers only one.
      */
     private function sceneRevision(Scene $scene, string $field, ?string $value, $at): Revision
     {
@@ -187,9 +187,9 @@ class RevisionCompareTest extends TestCase
         $scene = $this->sceneFor($user);
 
         // The two chosen points both touched the description. A save between
-        // them changed the notes — comparing two *states* has to report that.
+        // them changed the contents — comparing two *states* has to report that.
         $from = $this->sceneRevision($scene, 'description', '<p>Old</p>', now()->subDays(3));
-        $this->sceneRevision($scene, 'notes', '<p>A note appeared.</p>', now()->subDays(2));
+        $this->sceneRevision($scene, 'contents', 'A note appeared.', now()->subDays(2));
         $to = $this->sceneRevision($scene, 'description', '<p>New</p>', now());
 
         $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
@@ -197,7 +197,7 @@ class RevisionCompareTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertSee('Notes');
+        $response->assertSee('Contents');
         $response->assertSee('A note appeared.');
     }
 
@@ -213,11 +213,10 @@ class RevisionCompareTest extends TestCase
             'from' => $from->save_id, 'to' => $to->save_id,
         ]));
 
-        // A Scene registers description, notes and contents; only the first
-        // changed, and the other two collapse into one muted line rather than
-        // two empty sections.
+        // A Scene registers description and contents; only the first changed,
+        // and the other collapses into one muted line rather than an empty section.
         $response->assertOk();
-        $response->assertSee('2 other fields unchanged (Notes, Contents)');
+        $response->assertSee('1 other field unchanged (Contents)');
     }
 
     public function test_a_field_that_did_not_exist_at_the_older_point_reads_as_new(): void
@@ -226,7 +225,7 @@ class RevisionCompareTest extends TestCase
         $scene = $this->sceneFor($user);
 
         $from = $this->sceneRevision($scene, 'description', '<p>Something</p>', now()->subDay());
-        $to = $this->sceneRevision($scene, 'notes', '<p>A brand new note.</p>', now());
+        $to = $this->sceneRevision($scene, 'contents', 'A brand new note.', now());
 
         $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
             'from' => $from->save_id, 'to' => $to->save_id,
@@ -243,7 +242,7 @@ class RevisionCompareTest extends TestCase
         $scene = $this->sceneFor($user);
 
         $from = $this->sceneRevision($scene, 'description', '<p>Old</p>', now()->subDays(2));
-        $this->sceneRevision($scene, 'notes', '<p>Noted.</p>', now()->subDay());
+        $this->sceneRevision($scene, 'contents', 'Noted.', now()->subDay());
         $to = $this->sceneRevision($scene, 'description', '<p>New</p>', now());
 
         $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
@@ -472,14 +471,14 @@ class RevisionCompareTest extends TestCase
         $user = User::factory()->create();
         $scene = $this->sceneFor($user);
 
-        // The notes start existing between the two points, so the older column
+        // The contents start existing between the two points, so the older column
         // has no revision to show and nothing to restore.
         $from = $this->sceneRevision($scene, 'description', '<p>Unchanged.</p>', now()->subDays(2));
         $this->sceneRevision($scene, 'description', '<p>Changed.</p>', now()->subDay());
-        $to = $this->sceneRevision($scene, 'notes', '<p>A brand new note.</p>', now());
+        $to = $this->sceneRevision($scene, 'contents', 'A brand new note.', now());
 
         $response = $this->actingAs($user)->get($this->sceneCompareUrl($scene, [
-            'from' => $from->save_id, 'to' => $to->save_id, 'field' => 'notes',
+            'from' => $from->save_id, 'to' => $to->save_id, 'field' => 'contents',
         ]));
 
         $response->assertOk();

@@ -93,7 +93,7 @@ class ActController extends Controller
     {
         $this->authorize('view', $act->book->project);
 
-        $act->load('chapters.scenes')->loadCount(['chapters', 'scenes']);
+        $act->load('chapters.scenes', 'notes')->loadCount(['chapters', 'scenes']);
 
         return view('acts.show', [
             'act' => $act,
@@ -127,7 +127,7 @@ class ActController extends Controller
         // Counts feed the delete-with-move dialog's honest cascade summary: an act's
         // direct children (chapters) plus its grandchildren (scenes, counted through
         // the chapters) — both are destroyed by a plain cascade delete.
-        $act->loadCount('chapters');
+        $act->loadCount('chapters')->load('notes');
         $sceneCount = $act->scenes()->count();
 
         // Every *other* act in the same book is a candidate destination for moving

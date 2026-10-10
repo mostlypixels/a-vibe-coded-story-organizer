@@ -14,6 +14,7 @@ use App\Services\AttributeTimeline;
 use App\Support\PlotlineColors;
 use Database\Seeders\Concerns\BackfillsSceneWordCounts;
 use Database\Seeders\Concerns\SeedsChallenges;
+use Database\Seeders\Concerns\SeedsNotes;
 use Database\Seeders\Concerns\SeedsWordCountHistory;
 use Database\Seeders\Concerns\SyncsCodexReferences;
 use Illuminate\Database\Seeder;
@@ -22,6 +23,7 @@ class MelusineSeederFr extends Seeder
 {
     use BackfillsSceneWordCounts;
     use SeedsChallenges;
+    use SeedsNotes;
     use SeedsWordCountHistory;
     use SyncsCodexReferences;
 
@@ -458,6 +460,28 @@ class MelusineSeederFr extends Seeder
         // Last, once scenes and codex entries both exist: see
         // SyncsCodexReferences for why seeding has to do this itself.
         $this->syncCodexReferences($project);
+
+        // Notes link to a scene and a codex entry, so they come after both exist.
+        $this->seedNotes($project, [
+            [
+                'title' => 'Plan de l\'histoire',
+                'category' => ['Planning'],
+                'body' => '<h2>Premier acte</h2><p>La malédiction de Pressine et la rencontre à la fontaine.</p><h2>Deuxième acte</h2><p>Le mariage, les neuf fils et le serment rompu.</p><h2>Troisième acte</h2><p>La fuite de Mélusine et la ruine de Lusignan.</p>',
+            ],
+            [
+                'title' => 'Les plus anciennes versions',
+                'category' => ['Research', 'Sources médiévales'],
+                'body' => '<p>Deux versions à comparer avant le prochain jet :</p><ul><li>Jean d\'Arras, prose, 1393.</li><li>Coudrette, vers, vers 1401.</li></ul>',
+                'codex' => 'Mélusine',
+            ],
+            [
+                'title' => 'La malédiction du samedi',
+                'category' => ['Continuity'],
+                'body' => '<p>Mélusine prend une forme de serpent de la taille aux pieds <strong>chaque samedi</strong>. Raymondin ne doit jamais regarder. Vérifier qu\'aucune scène ne rompt cette règle avant la scène du trou de serrure.</p>',
+                'scene' => 'Ce que Raymondin vit',
+                'codex' => 'Mélusine',
+            ],
+        ]);
     }
 
     /**

@@ -35,11 +35,7 @@
             </x-card>
         @endif
 
-        @if (filled($scene->notes))
-            <x-card :title="__('Notes')" icon="tabler-note">
-                <x-rich-text :html="$scene->notes" />
-            </x-card>
-        @endif
+        <x-notes-card :notes="$scene->notes" :linkable="$scene" />
 
         @if ($scene->event)
             <x-card :title="__('Happens during')" icon="tabler-calendar-event">

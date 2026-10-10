@@ -54,10 +54,6 @@
                     </div>
 
                     <div>
-                        <x-autosave-field entity="scene" :model="$scene" field="notes" :label="__('Notes')" :rows="6" />
-                    </div>
-
-                    <div>
                         <x-input-label :value="__('Mentions events')" />
                         <p class="text-sm text-content-muted">{{ __('Other events this scene refers to (optional).') }}</p>
                         <x-event-picker name="mentioned_events" :events="$events" :selected="old('mentioned_events', $scene->mentionedEvents->pluck('id')->all())" />
@@ -66,6 +62,8 @@
 
                 </form>
         </x-card>
+
+        <x-notes-card :notes="$scene->notes" :linkable="$scene" />
 
         <x-slot:sidebar>
             <x-edit-actions

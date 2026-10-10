@@ -870,9 +870,9 @@ describe('accessibleNameAttributes', () => {
     });
 
     it('keeps an id that the label already has', () => {
-        document.body.innerHTML = '<label id="own" for="notes">Notes</label><textarea id="notes"></textarea>';
+        document.body.innerHTML = '<label id="own" for="description">Description</label><textarea id="description"></textarea>';
 
-        expect(accessibleNameAttributes(document.getElementById('notes'))['aria-labelledby']).toBe('own');
+        expect(accessibleNameAttributes(document.getElementById('description'))['aria-labelledby']).toBe('own');
     });
 
     it('falls back to the textarea aria-label', () => {

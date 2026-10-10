@@ -97,7 +97,7 @@ class HtmlSanitizationTest extends TestCase
             ->assertDontSee('onerror', false);
     }
 
-    public function test_scene_notes_is_sanitized_as_html_but_contents_stays_markdown(): void
+    public function test_scene_description_is_sanitized_as_html_but_contents_stays_markdown(): void
     {
         $user = User::factory()->create();
         [, $book] = $this->projectWithBook($user);
@@ -112,17 +112,16 @@ Some **markdown** with a [link](https://example.com).';
             ->post(route('books.scenes.store', $book), [
                 'chapter_id' => $chapter->id,
                 'name' => 'A scene',
-                'description' => null,
+                'description' => self::MALICIOUS_HTML,
                 'contents' => $markdownContents,
-                'notes' => self::MALICIOUS_HTML,
                 'status' => SceneStatus::Draft->value,
             ])
             ->assertRedirect(route('books.scenes.index', $book));
 
         $scene = Scene::first();
 
-        // notes: sanitized rich HTML.
-        $this->assertSanitized($scene->notes);
+        // description: sanitized rich HTML.
+        $this->assertSanitized($scene->description);
 
         // contents: stored verbatim as Markdown (not HTML-mangled), still valid Markdown.
         $this->assertSame($markdownContents, $scene->contents);

@@ -147,13 +147,13 @@ class WordCountSnapshotTest extends TestCase
         $this->assertSame(5, $snapshots[1]->word_count);
     }
 
-    public function test_saving_only_notes_and_status_records_nothing(): void
+    public function test_saving_only_description_and_status_records_nothing(): void
     {
         $user = User::factory()->create();
         $scene = $this->emptySceneFor($user);
         $project = $this->projectOf($scene);
 
-        $scene->update(['notes' => 'A note', 'status' => SceneStatus::Final]);
+        $scene->update(['description' => 'A note', 'status' => SceneStatus::Final]);
 
         $this->assertCount(0, $this->snapshotsFor($project));
     }

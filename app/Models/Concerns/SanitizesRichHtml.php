@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  * DB can never hold unsafe HTML regardless of how the row was written.
  *
  * Every model using the trait has a `description` rich field, so the shared mutator
- * lives here. A model with an additional rich field (Scene.notes) adds its own
+ * lives here. A model with another rich field (Note.body) adds its own
  * mutator that delegates to cleanRichHtml().
  */
 trait SanitizesRichHtml

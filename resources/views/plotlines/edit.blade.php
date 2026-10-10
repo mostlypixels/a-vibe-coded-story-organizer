@@ -25,6 +25,8 @@
             </form>
         </x-card>
 
+        <x-notes-card :notes="$plotline->notes" :linkable="$plotline" />
+
         <x-slot:sidebar>
             <x-edit-actions
                 form="plotline-edit-form"

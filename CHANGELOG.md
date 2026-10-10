@@ -17,6 +17,21 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-10 — Project notes
+
+### Added
+
+- A Notes section per project for research, synopsis and continuity, with long rich text and history.
+- Notes link to any number of books, acts, chapters, scenes, events, plotlines and codex entries.
+- Each of those pages shows its notes, with buttons to add a new note or link an existing one.
+- Nestable note categories, with six starter categories in each new project.
+- Long notes show a table of contents, and project search finds notes.
+
+### Changed
+
+- Scene notes are now ordinary notes linked to their scene; the old scene notes field is gone.
+- Project exports include notes; older exports import their scene notes as linked notes.
+
 ## 2026-10-07 — Challenge edit page knows its project (#320)
 
 ### Fixed

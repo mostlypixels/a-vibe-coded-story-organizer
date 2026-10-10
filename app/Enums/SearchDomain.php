@@ -8,7 +8,7 @@ use App\Support\SearchResults;
 use Illuminate\Support\Collection;
 
 /**
- * The eight search-result columns rendered on the search page (and, per column,
+ * The search-result columns rendered on the search page (and, per column,
  * a dedicated "see all" page). Characters, Locations, and Organizations all come
  * from the one {@see CodexEntry} search split by type, but they stay
  * separate domains — the split by type is exactly what makes them separate
@@ -28,6 +28,7 @@ enum SearchDomain: string
     case Characters = 'characters';
     case Locations = 'locations';
     case Organizations = 'organizations';
+    case Notes = 'notes';
 
     /**
      * The column heading text.
@@ -43,6 +44,7 @@ enum SearchDomain: string
             self::Characters => 'Characters',
             self::Locations => 'Locations',
             self::Organizations => 'Organizations',
+            self::Notes => 'Notes',
         };
     }
 
@@ -57,6 +59,7 @@ enum SearchDomain: string
             self::Acts => 'acts.edit',
             self::Chapters => 'chapters.edit',
             self::Scenes => 'scenes.edit',
+            self::Notes => 'notes.edit',
             self::Characters, self::Locations, self::Organizations => 'codex.edit',
         };
     }
@@ -72,6 +75,7 @@ enum SearchDomain: string
             self::Acts => 'acts.show',
             self::Chapters => 'chapters.show',
             self::Scenes => 'scenes.show',
+            self::Notes => 'notes.show',
             self::Characters, self::Locations, self::Organizations => 'codex.show',
         };
     }
@@ -81,7 +85,7 @@ enum SearchDomain: string
      */
     public function nameField(): string
     {
-        return $this === self::Events ? 'title' : 'name';
+        return in_array($this, [self::Events, self::Notes], true) ? 'title' : 'name';
     }
 
     /**
@@ -93,19 +97,20 @@ enum SearchDomain: string
             self::Plotlines, self::Events => SearchSection::Timeline,
             self::Acts, self::Chapters, self::Scenes => SearchSection::Story,
             self::Characters, self::Locations, self::Organizations => SearchSection::Codex,
+            self::Notes => SearchSection::Notes,
         };
     }
 
     /**
      * Whether this domain's rows belong to a book. Acts, Chapters, and Scenes
-     * hang off the manuscript; Plotlines, Events, and the three Codex domains
+     * hang off the manuscript; Plotlines, Events, Notes, and the three Codex domains
      * stay project-wide and never carry one.
      */
     public function carriesBook(): bool
     {
         return match ($this) {
             self::Acts, self::Chapters, self::Scenes => true,
-            self::Plotlines, self::Events, self::Characters, self::Locations, self::Organizations => false,
+            self::Plotlines, self::Events, self::Characters, self::Locations, self::Organizations, self::Notes => false,
         };
     }
 
@@ -125,6 +130,7 @@ enum SearchDomain: string
             self::Characters => $results->characters,
             self::Locations => $results->locations,
             self::Organizations => $results->organizations,
+            self::Notes => $results->notes,
         };
     }
 

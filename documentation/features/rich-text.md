@@ -46,7 +46,7 @@ Keep these surfaces aligned:
 
 ### Decorative classes
 
-Rich HTML fields — descriptions, `Scene.notes`, codex — accept block alignment and named
+Rich HTML fields — descriptions, note bodies, codex — accept block alignment and named
 text colour, closed class sets defined once in `App\Support\RichTextFields`:
 
 - Alignment: `ALIGNMENTS` (`center`, `right`, `justify`), written as `rt-align-<name>` on

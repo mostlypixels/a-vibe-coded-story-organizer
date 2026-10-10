@@ -6,6 +6,7 @@ use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
@@ -25,8 +26,9 @@ class RichTextFields
         Chapter::class => ['description'],
         Plotline::class => ['description'],
         Event::class => ['description'],
-        Scene::class => ['description', 'notes'],
+        Scene::class => ['description'],
         CodexEntry::class => ['description'],
+        Note::class => ['body'],
     ];
 
     /** @var list<string> Tags that the editor can produce and the sanitizer permits. */

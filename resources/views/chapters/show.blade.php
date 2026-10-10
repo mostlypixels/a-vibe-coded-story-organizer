@@ -61,6 +61,8 @@
                 </x-table>
             </x-card>
         @endif
+
+        <x-notes-card :notes="$chapter->notes" :linkable="$chapter" />
     </div>
 
     @if ($chapter->scenes_count > 0)

@@ -23,12 +23,19 @@ use Illuminate\Database\Eloquent\Model;
  */
 class InstallsDemoProjects
 {
+    public function __construct(private StarterNoteCategories $starterCategories) {}
+
     public function install(User $user): void
     {
+        $existing = $user->projects()->pluck('id');
+
         Model::unguarded(fn () => Model::withoutEvents(function () use ($user): void {
             app(MelusineSeederEn::class)->forUser($user)->run();
             app(MelusineSeederFr::class)->forUser($user)->run();
             app(MelusineSeederIt::class)->forUser($user)->run();
         }));
+
+        // Only the new demo projects get starters, so a category the writer deleted stays deleted.
+        $user->projects()->whereNotIn('id', $existing)->each($this->starterCategories->createFor(...));
     }
 }

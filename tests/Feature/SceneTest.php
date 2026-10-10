@@ -11,6 +11,7 @@ use App\Models\Chapter;
 use App\Models\CodexAlias;
 use App\Models\CodexEntry;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
@@ -145,20 +146,23 @@ class SceneTest extends TestCase
             ->assertSee('<strong>rendered</strong>', false);
     }
 
-    public function test_the_show_page_renders_the_notes_card_and_omits_it_when_notes_are_empty(): void
+    public function test_the_scene_pages_list_linked_notes_and_have_no_notes_field(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
-        $withNotes = Scene::factory()->for($chapter)->create(['notes' => 'Remember the foreshadowing.']);
-        $withoutNotes = Scene::factory()->for($chapter)->create(['notes' => null]);
+        $scene = Scene::factory()->for($chapter)->create();
+        Note::factory()->for($scene->project())->create(['title' => 'Remember the foreshadowing'])->linkTo($scene);
 
-        $this->actingAs($user)->get(route('scenes.show', $withNotes))
-            ->assertOk()
-            ->assertSee('Remember the foreshadowing.');
+        foreach (['scenes.show', 'scenes.edit'] as $route) {
+            $this->actingAs($user)->get(route($route, $scene))
+                ->assertOk()
+                ->assertSee('Remember the foreshadowing')
+                ->assertDontSee('name="notes"', false);
+        }
 
-        $this->actingAs($user)->get(route('scenes.show', $withoutNotes))
+        $this->actingAs($user)->get(route('books.scenes.create', $chapter->act->book))
             ->assertOk()
-            ->assertDontSee("<h3 class=\"text-lg font-semibold text-content\">\n    Notes\n</h3>", false);
+            ->assertDontSee('name="notes"', false);
     }
 
     public function test_the_show_page_lists_referenced_codex_entries_ordered_by_type_then_name(): void
@@ -1561,14 +1565,13 @@ class SceneTest extends TestCase
         $this->assertNull($copy->share_expires_at);
     }
 
-    public function test_duplicating_a_scene_copies_status_contents_and_notes_verbatim(): void
+    public function test_duplicating_a_scene_copies_status_and_contents_verbatim(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
         $scene = Scene::factory()->for($chapter)->create([
             'status' => SceneStatus::Final,
             'contents' => 'Some **markdown** contents.',
-            'notes' => 'Private notes.',
         ]);
 
         $this->actingAs($user)->post(route('scenes.duplicate', $scene), ['name' => 'Copy']);
@@ -1576,7 +1579,22 @@ class SceneTest extends TestCase
 
         $this->assertSame(SceneStatus::Final, $copy->status);
         $this->assertSame($scene->contents, $copy->contents);
-        $this->assertSame('Private notes.', $copy->notes);
+    }
+
+    public function test_duplicating_a_scene_links_the_copy_to_the_same_notes(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create();
+        $note = Note::factory()->for($scene->project())->create();
+        $note->linkTo($scene);
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $scene), ['name' => 'Copy']);
+        $copy = Scene::where('name', 'Copy')->firstOrFail();
+
+        $this->assertSame([$note->id], $copy->notes()->pluck('notes.id')->all());
+        $this->assertSame([$note->id], $scene->notes()->pluck('notes.id')->all());
+        $this->assertSame(1, Note::count());
     }
 
     public function test_duplicating_a_scene_recomputes_rather_than_copies_word_count(): void

@@ -12,6 +12,8 @@ User
     ├── Plotline
     ├── Event
     ├── CodexEntry
+    ├── Note
+    ├── NoteCategory
     ├── WordCountSnapshot
     └── Book
         └── Act
@@ -86,6 +88,7 @@ Routes use shallow resources.
 | Feature | Reference |
 | --- | --- |
 | Codex and temporal attributes | [Codex](../features/codex.md) |
+| Notes, categories, and links | [Notes](../features/notes.md) |
 | Autosave and history | [Revisions](../features/revisions.md) |
 | Rich HTML and Markdown editing | [Rich text](../features/rich-text.md) |
 | Counts, history, and goals | [Writing progress](../features/writing-progress.md) |

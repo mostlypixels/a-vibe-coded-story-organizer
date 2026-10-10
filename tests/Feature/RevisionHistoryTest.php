@@ -134,14 +134,14 @@ class RevisionHistoryTest extends TestCase
         $saveId = (string) Str::ulid();
 
         $this->sceneRevision($scene, ['save_id' => $saveId, 'field' => 'description', 'summary_html' => '<ins>a new description</ins>', 'change_count' => 1]);
-        $this->sceneRevision($scene, ['save_id' => $saveId, 'field' => 'notes', 'summary_html' => '<ins>a new note</ins>', 'change_count' => 1]);
+        $this->sceneRevision($scene, ['save_id' => $saveId, 'field' => 'contents', 'summary_html' => '<ins>a new note</ins>', 'change_count' => 1]);
 
         $response = $this->actingAs($user)->get(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id]));
 
         $response->assertOk();
         // One save, two fields — not two rows that happen to share a timestamp.
         $this->assertSame(1, substr_count($response->getContent(), 'aria-labelledby="save-'));
-        $response->assertSeeInOrder(['Description', 'a new description', 'Notes', 'a new note']);
+        $response->assertSeeInOrder(['Description', 'a new description', 'Contents', 'a new note']);
     }
 
     public function test_save_points_are_listed_newest_first(): void
@@ -230,7 +230,7 @@ class RevisionHistoryTest extends TestCase
         $scene = $this->sceneFor($user);
 
         $this->sceneRevision($scene, ['field' => 'description', 'summary_html' => '<ins>desc change</ins>', 'change_count' => 1]);
-        $this->sceneRevision($scene, ['field' => 'notes', 'summary_html' => '<ins>note change</ins>', 'change_count' => 1, 'created_at' => now()->subDay()]);
+        $this->sceneRevision($scene, ['field' => 'contents', 'summary_html' => '<ins>note change</ins>', 'change_count' => 1, 'created_at' => now()->subDay()]);
 
         $response = $this->actingAs($user)->get(route('revisions.index', [
             'entity' => 'scene', 'id' => $scene->id, 'field' => 'description',
@@ -286,7 +286,7 @@ class RevisionHistoryTest extends TestCase
         $scene = $this->sceneFor($user);
 
         $this->sceneRevision($scene, ['field' => 'description', 'origin' => RevisionOrigin::Manual, 'label' => 'Wanted rewrite']);
-        $this->sceneRevision($scene, ['field' => 'notes', 'origin' => RevisionOrigin::Manual, 'label' => 'Wanted rewrite', 'created_at' => now()->subDay()]);
+        $this->sceneRevision($scene, ['field' => 'contents', 'origin' => RevisionOrigin::Manual, 'label' => 'Wanted rewrite', 'created_at' => now()->subDay()]);
         $this->sceneRevision($scene, ['field' => 'description', 'origin' => RevisionOrigin::Automatic, 'label' => 'Wanted rewrite', 'created_at' => now()->subDays(2)]);
         $this->sceneRevision($scene, ['field' => 'description', 'origin' => RevisionOrigin::Manual, 'label' => 'Some other note', 'created_at' => now()->subDays(3)]);
 
@@ -432,14 +432,12 @@ class RevisionHistoryTest extends TestCase
         $user = User::factory()->create();
         $scene = $this->sceneFor($user);
 
-        foreach (['description', 'notes'] as $field) {
-            $this->sceneRevision($scene, ['field' => $field]);
-        }
+        $this->sceneRevision($scene, ['field' => 'description']);
 
         $response = $this->actingAs($user)->get(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id]));
 
         $response->assertOk();
-        $response->assertSee(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'notes']), escape: false);
+        $response->assertSee(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'description']), escape: false);
         $response->assertDontSee(route('revisions.index', ['entity' => 'scene', 'id' => $scene->id, 'field' => 'contents']), escape: false);
     }
 

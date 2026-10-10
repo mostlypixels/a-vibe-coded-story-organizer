@@ -99,6 +99,8 @@
             </x-card>
         @endif
 
+        <x-notes-card :notes="$event->notes" :linkable="$event" />
+
         @if ($lifespanEntries['inceptions']->isNotEmpty() || $lifespanEntries['terminations']->isNotEmpty())
             <x-card :title="__('Codex entries')" icon="entity-codex">
                 <div class="space-y-4">
