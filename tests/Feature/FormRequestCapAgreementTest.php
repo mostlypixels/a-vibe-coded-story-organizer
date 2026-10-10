@@ -7,6 +7,7 @@ use App\Http\Requests\StoreBookRequest;
 use App\Http\Requests\StoreChapterRequest;
 use App\Http\Requests\StoreCodexEntryRequest;
 use App\Http\Requests\StoreEventRequest;
+use App\Http\Requests\StoreNoteRequest;
 use App\Http\Requests\StorePlotlineRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\StoreSceneRequest;
@@ -15,6 +16,7 @@ use App\Http\Requests\UpdateBookRequest;
 use App\Http\Requests\UpdateChapterRequest;
 use App\Http\Requests\UpdateCodexEntryRequest;
 use App\Http\Requests\UpdateEventRequest;
+use App\Http\Requests\UpdateNoteRequest;
 use App\Http\Requests\UpdatePlotlineRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Requests\UpdateSceneRequest;
@@ -22,6 +24,7 @@ use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
@@ -54,6 +57,7 @@ class FormRequestCapAgreementTest extends TestCase
         'event' => [StoreEventRequest::class, UpdateEventRequest::class],
         'scene' => [StoreSceneRequest::class, UpdateSceneRequest::class],
         'codex' => [StoreCodexEntryRequest::class, UpdateCodexEntryRequest::class],
+        'note' => [StoreNoteRequest::class, UpdateNoteRequest::class],
     ];
 
     /**
@@ -81,6 +85,7 @@ class FormRequestCapAgreementTest extends TestCase
             'plotline' => Plotline::factory()->for($project)->create(),
             'event' => Event::factory()->for($project)->create(),
             'codexEntry' => CodexEntry::factory()->for($project)->create(),
+            'note' => Note::factory()->for($project)->create(),
         ];
     }
 

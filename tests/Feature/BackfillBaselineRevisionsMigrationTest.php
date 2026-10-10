@@ -48,7 +48,6 @@ class BackfillBaselineRevisionsMigrationTest extends TestCase
         $event = Event::factory()->for($project)->create(['description' => 'event description']);
         $scene = Scene::factory()->for($chapter)->create([
             'description' => 'scene description',
-            'notes' => 'scene notes',
             'contents' => 'scene contents',
         ]);
         $codexEntry = CodexEntry::factory()->for($project)->create(['description' => 'codex description']);
@@ -68,7 +67,6 @@ class BackfillBaselineRevisionsMigrationTest extends TestCase
             [$plotline, 'description', 'plotline description'],
             [$event, 'description', 'event description'],
             [$scene, 'description', 'scene description'],
-            [$scene, 'notes', 'scene notes'],
             [$scene, 'contents', 'scene contents'],
             [$codexEntry, 'description', 'codex description'],
         ];
@@ -92,7 +90,7 @@ class BackfillBaselineRevisionsMigrationTest extends TestCase
 
     public function test_a_field_left_null_or_empty_gets_no_baseline_row(): void
     {
-        $scene = Scene::factory()->create(['notes' => null]);
+        $scene = Scene::factory()->create(['description' => null]);
 
         $this->runBackfillMigration();
 
@@ -101,19 +99,19 @@ class BackfillBaselineRevisionsMigrationTest extends TestCase
             Revision::query()
                 ->where('revisionable_type', Scene::class)
                 ->where('revisionable_id', $scene->id)
-                ->where('field', 'notes')
+                ->where('field', 'description')
                 ->count(),
         );
 
-        // The scene's other registered fields (description, contents) are
-        // non-empty by the factory's default state, and still get seeded —
+        // The scene's other registered field (contents) is non-empty by the
+        // factory's default state, and still gets seeded —
         // proves the migration skips only the empty field, not the whole row.
         $this->assertSame(
             1,
             Revision::query()
                 ->where('revisionable_type', Scene::class)
                 ->where('revisionable_id', $scene->id)
-                ->where('field', 'description')
+                ->where('field', 'contents')
                 ->count(),
         );
     }

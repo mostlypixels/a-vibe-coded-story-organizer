@@ -81,6 +81,8 @@
             </div>
         </x-card>
 
+        <x-notes-card :notes="$book->notes" :linkable="$book" />
+
         <x-slot:sidebar>
             @if ($isLastBook)
                 <x-edit-actions form="book-edit-form" :history-model="$book" />

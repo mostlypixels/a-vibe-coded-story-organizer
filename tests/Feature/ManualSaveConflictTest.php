@@ -38,7 +38,6 @@ class ManualSaveConflictTest extends TestCase
             'name' => 'Renamed',
             'description' => (string) $scene->description,
             'contents' => 'My text',
-            'notes' => (string) $scene->notes,
             'status' => SceneStatus::Draft->value,
         ], $overrides);
     }

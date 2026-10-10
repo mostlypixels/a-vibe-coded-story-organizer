@@ -66,7 +66,7 @@ class PlotlineController extends Controller
     {
         $this->authorize('view', $plotline->project);
 
-        $plotline->load(['events' => fn ($query) => $query->orderBy('event_datetime')]);
+        $plotline->load(['events' => fn ($query) => $query->orderBy('event_datetime'), 'notes']);
 
         return view('plotlines.show', ['plotline' => $plotline]);
     }
@@ -74,6 +74,8 @@ class PlotlineController extends Controller
     public function edit(Plotline $plotline): View
     {
         $this->authorize('update', $plotline->project);
+
+        $plotline->load('notes');
 
         return view('plotlines.edit', ['plotline' => $plotline]);
     }

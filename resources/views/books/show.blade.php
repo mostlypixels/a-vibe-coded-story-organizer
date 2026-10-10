@@ -8,7 +8,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-9">
+        <div class="lg:col-span-9 space-y-6">
             <x-recent-list
                 :title="__('Recent scenes')"
                 icon="entity-scene"
@@ -17,6 +17,8 @@
                 :all-label="__('View all scenes')"
                 :noun="__('scenes')"
             />
+
+            <x-notes-card :notes="$book->notes" :linkable="$book" />
         </div>
 
         <div class="lg:col-span-3">

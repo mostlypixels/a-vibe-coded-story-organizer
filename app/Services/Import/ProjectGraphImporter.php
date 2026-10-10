@@ -5,6 +5,7 @@ namespace App\Services\Import;
 use App\Enums\BookLanguage;
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
+use App\Enums\NoteLinkType;
 use App\Enums\SceneStatus;
 use App\Enums\StoryOverviewMode;
 use App\Exceptions\ImportValidationException;
@@ -13,6 +14,8 @@ use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
+use App\Models\Note;
+use App\Models\NoteCategory;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\CodexMediaService;
@@ -24,7 +27,7 @@ use Illuminate\Support\Facades\Validator;
 use Throwable;
 
 /**
- * Imports a validated archive in resumable project, timeline, story, and codex phases.
+ * Imports a validated archive in resumable project, timeline, story, codex, and notes phases.
  *
  * Each phase has its own transaction and persisted ID maps. All references must
  * resolve to remapped IDs. The importer reuses auto-created anchors and the first
@@ -53,6 +56,10 @@ class ProjectGraphImporter
     public const MAP_ATTRIBUTES = 'attributes';
 
     public const MAP_ENTRIES = 'entries';
+
+    public const MAP_NOTE_CATEGORIES = 'note_categories';
+
+    private const NOTE_CATEGORIES_FILE = 'data/notes/categories.json';
 
     public function __construct(
         private ContentSanitizer $contentSanitizer,
@@ -504,6 +511,146 @@ class ProjectGraphImporter
     }
 
     /**
+     * Imports note categories, notes and their links. It runs last, so every link
+     * target is already in `$idMaps`. It never adds the starter categories.
+     *
+     * An archive before version 6 keeps scene notes in a scene `notes_file`. Each
+     * one becomes a note linked to its scene, with no category.
+     *
+     * @param  array<string, array<int, int>>  $idMaps
+     */
+    public function importNotes(string $dataPath, Project $project, array &$idMaps): void
+    {
+        $dataPath = $this->normalizePath($dataPath);
+
+        $categories = $this->readJsonIfPresent($dataPath, self::NOTE_CATEGORIES_FILE);
+        $notes = $this->readEntityDescriptors($dataPath, 'data/notes/*/note.json');
+        $scenes = $this->readEntityDescriptors($dataPath, 'data/books/*/acts/*/chapters/*/scenes/*/scene.json');
+
+        DB::transaction(function () use ($dataPath, $project, &$idMaps, $categories, $notes, $scenes): void {
+            $this->importNoteCategories($project, $categories, $idMaps);
+
+            foreach ($notes as $item) {
+                $this->importNote($dataPath, $project, $item, $idMaps);
+            }
+
+            foreach ($scenes as $item) {
+                $this->importLegacySceneNotes($dataPath, $project, $item, $idMaps);
+            }
+        });
+    }
+
+    /**
+     * Creates parents before children, in any archive order. A parent that never
+     * resolves (absent, or a cycle) and a tree deeper than the limit are errors.
+     *
+     * @param  array<mixed>  $categories
+     * @param  array<string, array<int, int>>  $idMaps
+     */
+    private function importNoteCategories(Project $project, array $categories, array &$idMaps): void
+    {
+        $depths = [];
+
+        while ($categories !== []) {
+            $created = false;
+
+            foreach ($categories as $key => $data) {
+                $parentId = $data['parent_id'] === null ? null : (int) $data['parent_id'];
+
+                if ($parentId !== null && ! isset($depths[$parentId])) {
+                    continue; // the parent is not created yet
+                }
+
+                $depth = $parentId === null ? 1 : $depths[$parentId] + 1;
+                if ($depth > NoteCategory::MAX_DEPTH) {
+                    throw ImportValidationException::invalidDescriptorValue(self::NOTE_CATEGORIES_FILE, 'parent_id');
+                }
+
+                $category = $project->noteCategories()->create([
+                    'name' => $data['name'],
+                    'parent_id' => $parentId === null ? null : $idMaps[self::MAP_NOTE_CATEGORIES][$parentId],
+                ]);
+                $idMaps[self::MAP_NOTE_CATEGORIES][(int) $data['id']] = $category->id;
+                $depths[(int) $data['id']] = $depth;
+
+                unset($categories[$key]);
+                $created = true;
+            }
+
+            if (! $created) {
+                throw ImportValidationException::unresolvedReference(self::NOTE_CATEGORIES_FILE, 'parent_id');
+            }
+        }
+    }
+
+    /**
+     * @param  array{path: string, directory: string, data: array<string, mixed>}  $item
+     * @param  array<string, array<int, int>>  $idMaps
+     */
+    private function importNote(string $dataPath, Project $project, array $item, array $idMaps): void
+    {
+        $data = $item['data'];
+
+        if (! is_array($data['links'])) {
+            throw ImportValidationException::invalidDescriptorValue($item['path'], 'links');
+        }
+
+        $note = $project->notes()->create([
+            'title' => $data['title'],
+            'note_category_id' => $data['category_id'] === null
+                ? null
+                : $this->resolveId($idMaps, self::MAP_NOTE_CATEGORIES, $data['category_id'], $item['path'], 'category_id'),
+            'body' => $this->readHtmlField($dataPath, $item['directory'], $data, 'body_file'),
+        ]);
+
+        foreach ($data['links'] as $link) {
+            $type = is_array($link) ? NoteLinkType::tryFrom((string) ($link['type'] ?? '')) : null;
+            if ($type === null) {
+                throw ImportValidationException::invalidDescriptorValue($item['path'], 'links.type');
+            }
+
+            $targetId = $this->resolveId($idMaps, $this->linkMap($type), $link['id'] ?? null, $item['path'], 'links.id');
+            $note->{$type->noteRelation()}()->syncWithoutDetaching([$targetId]);
+        }
+    }
+
+    /** The ID map that holds the link targets of a type. */
+    private function linkMap(NoteLinkType $type): string
+    {
+        return match ($type) {
+            NoteLinkType::Book => self::MAP_BOOKS,
+            NoteLinkType::Act => self::MAP_ACTS,
+            NoteLinkType::Chapter => self::MAP_CHAPTERS,
+            NoteLinkType::Scene => self::MAP_SCENES,
+            NoteLinkType::Event => self::MAP_EVENTS,
+            NoteLinkType::Plotline => self::MAP_PLOTLINES,
+            NoteLinkType::Codex => self::MAP_ENTRIES,
+        };
+    }
+
+    /**
+     * Applies the scene notes migration rule: a blank value makes no note.
+     *
+     * @param  array{path: string, directory: string, data: array<string, mixed>}  $item
+     * @param  array<string, array<int, int>>  $idMaps
+     */
+    private function importLegacySceneNotes(string $dataPath, Project $project, array $item, array $idMaps): void
+    {
+        $body = $this->readHtmlField($dataPath, $item['directory'], $item['data'], 'notes_file');
+
+        if ($body === null || trim($body) === '') {
+            return;
+        }
+
+        $note = $project->notes()->create([
+            'title' => Note::titleForSceneNotes((string) $item['data']['name']),
+            'body' => $body,
+        ]);
+
+        $note->scenes()->attach($this->resolveId($idMaps, self::MAP_SCENES, $item['data']['id'], $item['path'], 'id'));
+    }
+
+    /**
      * @param  array<string, array<int, int>>  $idMaps
      * @param  array<int, string>  $copiedCovers  Paths to remove after a rollback.
      */
@@ -569,7 +716,6 @@ class ProjectGraphImporter
                 : $this->resolveId($idMaps, self::MAP_EVENTS, $data['event_id'], $item['path'], 'event_id'),
             'contents' => $this->readMarkdownField($dataPath, $item['directory'], $data),
             'description' => $this->readHtmlField($dataPath, $item['directory'], $data),
-            'notes' => $this->readHtmlField($dataPath, $item['directory'], $data, 'notes_file'),
         ], fn (mixed $value): bool => $value !== null));
         $idMaps[self::MAP_SCENES][(int) $data['id']] = $scene->id;
 

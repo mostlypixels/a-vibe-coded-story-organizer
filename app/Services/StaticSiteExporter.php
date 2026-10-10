@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
+use App\Enums\NoteLinkType;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Challenge;
@@ -12,6 +13,8 @@ use App\Models\CodexAttribute;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
 use App\Models\Event;
+use App\Models\Note;
+use App\Models\NoteCategory;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\PublicationSetting;
@@ -36,7 +39,7 @@ use ZipArchive;
 class StaticSiteExporter
 {
     /** Bump this version only when the data layout changes incompatibly. */
-    private const DATA_VERSION = 5;
+    private const DATA_VERSION = 6;
 
     /** Builds a temporary ZIP and removes partial files after a failure. */
     public function export(Project $project, bool $includeMedia): string
@@ -57,6 +60,7 @@ class StaticSiteExporter
             $this->addBooks($zip, $project, $includeMedia);
             $this->addTimeline($zip, $project);
             $this->addCodex($zip, $project, $includeMedia);
+            $this->addNotes($zip, $project);
             $this->addBooksReadingLayer($zip, $project);
         } catch (\Throwable $e) {
             $zip->close();
@@ -303,7 +307,6 @@ class StaticSiteExporter
         ];
         $json += $this->addFieldFile($zip, $dir, 'contents_file', 'contents.md', $scene->contents);
         $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $scene->description);
-        $json += $this->addFieldFile($zip, $dir, 'notes_file', 'notes.html', $scene->notes);
 
         $this->addJson($zip, "{$dir}/scene.json", $json);
     }
@@ -509,6 +512,55 @@ class StaticSiteExporter
             CodexMediaCollection::ReferenceImage => sprintf('reference-images/%02d-%s', $media->position, $name),
             CodexMediaCollection::ReferenceFile => sprintf('reference-files/%02d-%s', $media->position, $name),
         };
+    }
+
+    /**
+     * Writes note categories and each note with its links. Notes stay out of the books layer.
+     * A link `type` is the {@see NoteLinkType} value, never a class name.
+     */
+    private function addNotes(ZipArchive $zip, Project $project): void
+    {
+        $categories = $project->noteCategories()->orderBy('id')->get()
+            ->map(fn (NoteCategory $category): array => [
+                'id' => $category->id,
+                'parent_id' => $category->parent_id,
+                'name' => $category->name,
+            ])->all();
+
+        $this->addJson($zip, 'data/notes/categories.json', $categories);
+
+        $notes = $project->notes()
+            ->with(array_map(fn (NoteLinkType $type): string => $type->noteRelation(), NoteLinkType::cases()))
+            ->orderBy('id')
+            ->get();
+
+        foreach ($notes as $note) {
+            $dir = 'data/notes/'.$this->slugDir($note->id, $note->title);
+
+            $json = [
+                'id' => $note->id,
+                'category_id' => $note->note_category_id,
+                'title' => $note->title,
+                'links' => $this->noteLinks($note),
+            ];
+            $json += $this->addFieldFile($zip, $dir, 'body_file', 'body.html', $note->body);
+
+            $this->addJson($zip, "{$dir}/note.json", $json);
+        }
+    }
+
+    /** @return array<int, array{type: string, id: int}> */
+    private function noteLinks(Note $note): array
+    {
+        $links = [];
+
+        foreach (NoteLinkType::cases() as $type) {
+            foreach ($note->getRelation($type->noteRelation())->sortBy('id') as $target) {
+                $links[] = ['type' => $type->value, 'id' => (int) $target->getKey()];
+            }
+        }
+
+        return $links;
     }
 
     /** Writes the human reading layer in book order. */

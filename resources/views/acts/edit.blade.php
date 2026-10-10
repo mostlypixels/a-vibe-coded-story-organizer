@@ -23,6 +23,8 @@
             </form>
         </x-card>
 
+        <x-notes-card :notes="$act->notes" :linkable="$act" />
+
         <x-slot:sidebar>
             @if ($act->chapters_count > 0)
                 <x-edit-actions form="act-edit-form" :history-model="$act">

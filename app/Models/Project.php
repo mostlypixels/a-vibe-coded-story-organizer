@@ -65,6 +65,18 @@ class Project extends Model implements Revisionable
         return $this->hasMany(Plotline::class);
     }
 
+    /** @return HasMany<Note, $this> */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(Note::class);
+    }
+
+    /** @return HasMany<NoteCategory, $this> */
+    public function noteCategories(): HasMany
+    {
+        return $this->hasMany(NoteCategory::class);
+    }
+
     /** @return HasMany<Event, $this> */
     public function events(): HasMany
     {

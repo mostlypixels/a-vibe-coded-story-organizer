@@ -91,6 +91,13 @@
     </x-dropdown>
 </div>
 
+<x-nav-link
+    :href="route('projects.notes.index', $navigation->project)"
+    :active="$navigation->notesActive"
+    :aria-current="$navigation->notesActive ? 'page' : false">
+    {{ __('Notes') }}
+</x-nav-link>
+
 <div class="flex items-center">
     <x-dropdown align="left" width="48" hover>
         <x-slot name="trigger">

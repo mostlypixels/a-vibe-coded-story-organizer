@@ -210,7 +210,7 @@ class ContentSanitizerTest extends TestCase
     // No false positives on the app's own export output
     // ------------------------------------------------------------------
 
-    public function test_a_real_exported_description_notes_and_contents_pass_unchanged(): void
+    public function test_a_real_exported_description_and_contents_pass_unchanged(): void
     {
         Storage::fake('media');
 
@@ -220,13 +220,13 @@ class ContentSanitizerTest extends TestCase
         $act = Act::factory()->for($book)->create(['name' => 'Act one']);
         $chapter = Chapter::factory()->for($act)->create(['name' => 'Chapter one']);
 
-        // description/notes pass through the SanitizesRichHtml mutator on save,
+        // description passes through the SanitizesRichHtml mutator on save,
         // exactly as a normally-authored scene's would; contents stays raw Markdown.
         Scene::factory()->for($chapter)->create([
             'name' => 'Scene one',
             'description' => '<p>The <strong>inciting</strong> incident — with a '.
-                '<a href="https://example.com/notes">reference</a> &amp; "quotes".</p>',
-            'notes' => '<h3>Reminders</h3><ul><li>Fix the pacing</li><li>Check the <em>timeline</em></li></ul>',
+                '<a href="https://example.com/notes">reference</a> &amp; "quotes".</p>'.
+                '<h3>Reminders</h3><ul><li>Fix the pacing</li><li>Check the <em>timeline</em></li></ul>',
             'contents' => "# The reveal\n\nShe said \"run\" & *he did*.\n\n> No turning back.\n\n- door\n- corridor\n",
         ]);
 
@@ -239,10 +239,8 @@ class ContentSanitizerTest extends TestCase
             $sceneFiles = $this->sceneContentFiles($zip);
             $zip->close();
 
-            foreach (['description.html', 'notes.html'] as $fragment) {
-                $this->assertArrayHasKey($fragment, $sceneFiles);
-                $this->sanitizer->assertHtmlAllowed($sceneFiles[$fragment]);
-            }
+            $this->assertArrayHasKey('description.html', $sceneFiles);
+            $this->sanitizer->assertHtmlAllowed($sceneFiles['description.html']);
 
             $this->assertArrayHasKey('contents.md', $sceneFiles);
             $this->sanitizer->assertMarkdownAllowed($sceneFiles['contents.md']);
@@ -252,7 +250,7 @@ class ContentSanitizerTest extends TestCase
     }
 
     /**
-     * Pull the exported scene's three content files out of the archive, keyed
+     * Pull the exported scene's content files out of the archive, keyed
      * by basename — located by suffix so the test doesn't depend on the
      * exporter's directory-slug scheme.
      *
@@ -266,7 +264,7 @@ class ContentSanitizerTest extends TestCase
             $name = (string) $zip->getNameIndex($index);
             $basename = basename($name);
 
-            if (str_contains($name, '/scenes/') && in_array($basename, ['description.html', 'notes.html', 'contents.md'], true)) {
+            if (str_contains($name, '/scenes/') && in_array($basename, ['description.html', 'contents.md'], true)) {
                 $files[$basename] = (string) $zip->getFromIndex($index);
             }
         }

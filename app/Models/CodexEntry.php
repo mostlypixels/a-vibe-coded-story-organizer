@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Models\Contracts\Revisionable;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class CodexEntry extends Model implements Revisionable
 {
     use HasFactory;
+    use HasNotes;
     use HasRevisions;
     use SanitizesRichHtml;
 

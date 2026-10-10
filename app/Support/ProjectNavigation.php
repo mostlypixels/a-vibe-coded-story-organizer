@@ -75,6 +75,8 @@ class ProjectNavigation
 
     public readonly bool $codexActive;
 
+    public readonly bool $notesActive;
+
     public readonly bool $searchActive;
 
     /** The Account page and its Profile/Configuration destinations. */
@@ -149,6 +151,8 @@ class ProjectNavigation
         $this->tagsActive = $request->routeIs('projects.tags.*', 'tags.*');
         $this->activeCodexType = $this->resolveActiveCodexType($request);
         $this->codexActive = $request->routeIs('projects.codex.*', 'codex.*') || $this->attributesActive || $this->tagsActive;
+
+        $this->notesActive = $request->routeIs('projects.notes.*', 'notes.*');
 
         $this->searchActive = $request->routeIs('projects.search.*');
 

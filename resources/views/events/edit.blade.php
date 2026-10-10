@@ -40,6 +40,8 @@
             </form>
         </x-card>
 
+        <x-notes-card :notes="$event->notes" :linkable="$event" />
+
         <x-slot:sidebar>
             <x-edit-actions
                 form="event-edit-form"

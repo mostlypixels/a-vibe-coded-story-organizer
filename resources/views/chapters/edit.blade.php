@@ -40,6 +40,8 @@
             </form>
         </x-card>
 
+        <x-notes-card :notes="$chapter->notes" :linkable="$chapter" />
+
         <x-slot:sidebar>
             @if ($chapter->scenes_count > 0)
                 <x-edit-actions form="chapter-edit-form" :history-model="$chapter">

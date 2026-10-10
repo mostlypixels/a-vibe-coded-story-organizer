@@ -9,8 +9,8 @@ use App\Services\RevisionSnapshot;
  * What every one of an entity's registered fields held at one moment.
  *
  * The concept this whole feature turns on: **a save point is a moment, not a
- * set of values.** A save that touched only `notes` still implies a state for
- * `description` and `contents` — whatever they happened to hold then. Comparing
+ * set of values.** A save that touched only `description` still implies a state
+ * for `contents` — whatever it happened to hold then. Comparing
  * two snapshots therefore answers "everything about this scene that differs
  * between these two moments", including fields neither save wrote directly but
  * that changed in between.

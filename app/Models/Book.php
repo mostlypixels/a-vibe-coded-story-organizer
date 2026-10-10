@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BookLanguage;
 use App\Enums\StoryOverviewMode;
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
@@ -33,6 +34,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Book extends Model implements Revisionable
 {
     use HasFactory;
+    use HasNotes;
     use HasRevisions;
     use HasSiblingPosition;
     use SanitizesRichHtml;
@@ -251,6 +253,11 @@ class Book extends Model implements Revisionable
             Revision::deleteFor($book->acts());
             Revision::deleteFor($book->chapterQuery());
             Revision::deleteFor($book->sceneQuery());
+
+            // The same holds for the note links of each child.
+            Notable::deleteFor($book->acts());
+            Notable::deleteFor($book->chapterQuery());
+            Notable::deleteFor($book->sceneQuery());
         });
 
         // The book's manuscript cascades at the database level, several levels

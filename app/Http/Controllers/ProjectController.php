@@ -10,6 +10,7 @@ use App\Services\CoverImageService;
 use App\Services\RecentlyEdited;
 use App\Services\RevisionRecorder;
 use App\Services\SceneReferenceMatcher;
+use App\Services\StarterNoteCategories;
 use App\Services\WordCountHistory;
 use App\Support\Flash;
 use App\Support\ProjectDeleteWarning;
@@ -59,9 +60,10 @@ class ProjectController extends Controller
         return view('projects.create');
     }
 
-    public function store(StoreProjectRequest $request): RedirectResponse
+    public function store(StoreProjectRequest $request, StarterNoteCategories $starterCategories): RedirectResponse
     {
         $project = $request->user()->projects()->create($request->validated());
+        $starterCategories->createFor($project);
 
         return redirect()->route('projects.show', $project);
     }

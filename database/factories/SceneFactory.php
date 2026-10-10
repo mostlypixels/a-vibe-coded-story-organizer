@@ -26,7 +26,6 @@ class SceneFactory extends Factory
             'name' => fake()->words(3, true),
             'description' => fake()->sentence(),
             'contents' => fake()->paragraph(),
-            'notes' => null,
             'status' => SceneStatus::Draft,
         ];
     }

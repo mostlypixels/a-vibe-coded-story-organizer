@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 class Act extends Model implements Revisionable
 {
     use HasFactory;
+    use HasNotes;
     use HasRevisions;
     use HasSiblingPosition;
     use SanitizesRichHtml;
@@ -94,6 +96,10 @@ class Act extends Model implements Revisionable
             // The cascade also skips the HasRevisions hook of each child.
             Revision::deleteFor($act->chapters());
             Revision::deleteFor($act->scenes());
+
+            // The same holds for the note links of each child.
+            Notable::deleteFor($act->chapters());
+            Notable::deleteFor($act->scenes());
         });
 
         // The act's chapters and their scenes cascade at the database level, two

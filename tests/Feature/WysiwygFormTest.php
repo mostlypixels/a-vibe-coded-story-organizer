@@ -78,10 +78,6 @@ class WysiwygFormTest extends TestCase
         foreach ($descriptionForms as $url) {
             $this->assertHasTextarea($url, $user, 'description');
         }
-
-        // Scene `notes` is also a rich-HTML editor; its textarea must survive too.
-        $this->assertHasTextarea(route('books.scenes.create', $book), $user, 'notes');
-        $this->assertHasTextarea(route('scenes.edit', $scene), $user, 'notes');
     }
 
     public function test_scene_contents_is_a_markdown_mode_wysiwyg(): void
@@ -123,7 +119,7 @@ class WysiwygFormTest extends TestCase
             $content = $this->actingAs($user)->get($url)->assertOk()->getContent();
 
             $start = strpos($content, 'name="contents"');
-            $end = strpos($content, 'name="notes"', $start);
+            $end = strpos($content, 'Mentions events', $start);
             $this->assertIsInt($start);
             $this->assertIsInt($end);
 

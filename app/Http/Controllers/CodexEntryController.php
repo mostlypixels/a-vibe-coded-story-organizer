@@ -114,7 +114,7 @@ class CodexEntryController extends Controller
     {
         $this->authorize('view', $codexEntry->project);
 
-        $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent.scenes', 'inceptionEvent', 'terminationEvent');
+        $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent.scenes', 'inceptionEvent', 'terminationEvent', 'notes');
 
         $project = $codexEntry->project;
         $media = CodexEntryMedia::of($codexEntry);
@@ -175,7 +175,7 @@ class CodexEntryController extends Controller
     {
         $this->authorize('update', $codexEntry->project);
 
-        $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent', 'inceptionEvent', 'terminationEvent');
+        $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent', 'inceptionEvent', 'terminationEvent', 'notes');
 
         $project = $codexEntry->project;
         $startEvent = $project->startEvent();

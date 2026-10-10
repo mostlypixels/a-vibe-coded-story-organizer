@@ -93,6 +93,8 @@ class BookController extends Controller
     {
         $this->authorize('view', $book->project);
 
+        $book->load('notes');
+
         return view('books.show', [
             'book' => $book,
             // sum() returns 0, not null, for a book with no scenes.
@@ -108,7 +110,7 @@ class BookController extends Controller
         // Counts feed the delete-with-move dialog's honest cascade summary: a
         // book's direct children (acts) plus its grandchildren (chapters) and
         // great-grandchildren (scenes) — all destroyed by a plain cascade delete.
-        $book->loadCount('acts');
+        $book->loadCount('acts')->load('notes');
         $chapterCount = $book->chapterQuery()->count();
         $sceneCount = $book->sceneQuery()->count();
 

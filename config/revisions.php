@@ -60,6 +60,7 @@ return [
 
     'caps' => [
         'scene.contents' => 1_000_000,
+        'note.body' => 500_000,
         'book.rights' => 1_000,
 
         // Front/back matter: a dedication or preface is a page or two, not a

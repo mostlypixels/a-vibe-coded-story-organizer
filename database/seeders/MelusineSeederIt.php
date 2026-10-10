@@ -14,6 +14,7 @@ use App\Services\AttributeTimeline;
 use App\Support\PlotlineColors;
 use Database\Seeders\Concerns\BackfillsSceneWordCounts;
 use Database\Seeders\Concerns\SeedsChallenges;
+use Database\Seeders\Concerns\SeedsNotes;
 use Database\Seeders\Concerns\SeedsWordCountHistory;
 use Database\Seeders\Concerns\SyncsCodexReferences;
 use Illuminate\Database\Seeder;
@@ -22,6 +23,7 @@ class MelusineSeederIt extends Seeder
 {
     use BackfillsSceneWordCounts;
     use SeedsChallenges;
+    use SeedsNotes;
     use SeedsWordCountHistory;
     use SyncsCodexReferences;
 
@@ -458,6 +460,28 @@ class MelusineSeederIt extends Seeder
         // Last, once scenes and codex entries both exist: see
         // SyncsCodexReferences for why seeding has to do this itself.
         $this->syncCodexReferences($project);
+
+        // Notes link to a scene and a codex entry, so they come after both exist.
+        $this->seedNotes($project, [
+            [
+                'title' => 'Schema della storia',
+                'category' => ['Planning'],
+                'body' => '<h2>Primo atto</h2><p>La maledizione di Pressina e l\'incontro alla fontana.</p><h2>Secondo atto</h2><p>Il matrimonio, i nove figli e il giuramento infranto.</p><h2>Terzo atto</h2><p>La fuga di Melusina e la rovina di Lusignano.</p>',
+            ],
+            [
+                'title' => 'Le versioni più antiche',
+                'category' => ['Research', 'Fonti medievali'],
+                'body' => '<p>Due versioni da confrontare prima della prossima bozza:</p><ul><li>Jean d\'Arras, prosa, 1393.</li><li>Coudrette, versi, circa 1401.</li></ul>',
+                'codex' => 'Melusina',
+            ],
+            [
+                'title' => 'La maledizione del sabato',
+                'category' => ['Continuity'],
+                'body' => '<p>Melusina assume forma di serpente dalla vita in giù <strong>ogni sabato</strong>. Raimondino non deve mai guardare. Controllare che nessuna scena rompa questa regola prima della scena del buco della serratura.</p>',
+                'scene' => 'Ciò che Raimondino vide',
+                'codex' => 'Melusina',
+            ],
+        ]);
     }
 
     /**

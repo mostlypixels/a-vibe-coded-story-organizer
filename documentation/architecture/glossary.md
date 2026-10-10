@@ -40,6 +40,12 @@ Use this page for project-specific terms. For implementation details, follow the
 
 **Baseline** — The required attribute value anchored to the Start event. It prevents a gap before the first later value. See [Codex attributes](../features/codex.md#temporal-attributes).
 
+**Note** — A titled rich-text page about the story, such as research or a synopsis. It belongs to a project, sits in at most one category, and can link to many story entities. See [Notes](../features/notes.md).
+
+**Note category** — A project folder for notes. Categories nest up to three levels. Deleting one moves its notes and sub-categories up a level.
+
+**Link (note)** — A `notables` row that joins a note to a book, act, chapter, scene, event, plotline, or Codex entry of the same project. Deleting the entity removes the link and keeps the note.
+
 **Duplicate** — A copy of one scene or Codex entry and its owned rows. It is not an archive import or a revision.
 
 ## Revisions and diffs

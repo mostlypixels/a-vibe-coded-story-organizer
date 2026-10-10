@@ -151,7 +151,7 @@ describe('registerAutosaveField store dirty tracking', () => {
     it('an edit made in the editor marks the field dirty, though it fires no input event', () => {
         vi.useFakeTimers();
 
-        const { field, edit } = mountEditorField({ entity: 'scene', id: 42, field: 'notes', url: '/scenes/42', baseHash: 'abc' });
+        const { field, edit } = mountEditorField({ entity: 'scene', id: 42, field: 'description', url: '/scenes/42', baseHash: 'abc' });
 
         edit('<p>written in the editor</p>');
 
@@ -165,7 +165,7 @@ describe('registerAutosaveField store dirty tracking', () => {
             patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
         };
 
-        const { edit } = mountEditorField({ entity: 'scene', id: 42, field: 'notes', url: '/scenes/42', baseHash: 'abc' });
+        const { edit } = mountEditorField({ entity: 'scene', id: 42, field: 'description', url: '/scenes/42', baseHash: 'abc' });
 
         edit('<p>to be deleted</p>');
         await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
@@ -183,7 +183,7 @@ describe('registerAutosaveField store dirty tracking', () => {
         vi.useFakeTimers();
         window.axios = { patch: vi.fn() };
 
-        const { field, edit } = mountEditorField({ entity: 'scene', id: 42, field: 'notes', url: '/scenes/42', baseHash: 'abc' });
+        const { field, edit } = mountEditorField({ entity: 'scene', id: 42, field: 'description', url: '/scenes/42', baseHash: 'abc' });
 
         field.destroy();
         edit('<p>after teardown</p>');
@@ -520,7 +520,7 @@ describe('registerAutosaveField store dirty tracking', () => {
             patch: vi.fn().mockResolvedValue({ status: 200, headers: {}, data: { hash: 'new-hash' } }),
         };
 
-        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'notes', url: '/scenes/42', baseHash: 'abc' });
+        const { field, textarea } = mountField({ entity: 'scene', id: 42, field: 'description', url: '/scenes/42', baseHash: 'abc' });
 
         textarea.value = 'Melchior';
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -650,7 +650,7 @@ describe('registerAutosaveField store dirty tracking', () => {
         });
 
         it('a tab on another field stays unlocked', () => {
-            const other = mountField({ ...scene, field: 'notes' });
+            const other = mountField({ ...scene, field: 'description' });
             mountField(scene);
 
             expect(other.field.locked).toBe(false);

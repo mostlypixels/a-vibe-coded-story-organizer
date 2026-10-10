@@ -9,7 +9,7 @@ use App\Models\ImportSetting;
 class ImportRules
 {
     /** @var array<int, int> Manifest versions that match the current archive layout. */
-    public const SUPPORTED_MANIFEST_VERSIONS = [4, 5];
+    public const SUPPORTED_MANIFEST_VERSIONS = [4, 5, 6];
 
     /** Default archive size in kilobytes. Runtime validation uses {@see ImportSetting}. */
     public const DEFAULT_MAX_ARCHIVE_KILOBYTES = 204800;
@@ -41,6 +41,7 @@ class ImportRules
         'data/books/',
         'data/timeline/',
         'data/codex/',
+        'data/notes/',
         'books/',
     ];
 

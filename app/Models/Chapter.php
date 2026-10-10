@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Chapter extends Model implements Revisionable
 {
     use HasFactory;
+    use HasNotes;
     use HasRevisions;
     use HasSiblingPosition;
     use SanitizesRichHtml;
@@ -99,6 +101,9 @@ class Chapter extends Model implements Revisionable
 
             // The cascade to scenes skips their HasRevisions hook.
             Revision::deleteFor($chapter->scenes());
+
+            // The same holds for the note links of each scene.
+            Notable::deleteFor($chapter->scenes());
         });
 
         // The chapter's scenes cascade at the database level, which fires no

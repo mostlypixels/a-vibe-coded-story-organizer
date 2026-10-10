@@ -137,7 +137,7 @@ class SceneController extends Controller
 
         $this->authorize('view', $book->project);
 
-        $scene->load('chapter.act', 'event', 'mentionedEvents');
+        $scene->load('chapter.act', 'event', 'mentionedEvents', 'notes');
 
         return view('scenes.show', [
             'scene' => $scene,
@@ -203,7 +203,7 @@ class SceneController extends Controller
 
         $this->authorize('update', $project);
 
-        $scene->load('event', 'mentionedEvents');
+        $scene->load('event', 'mentionedEvents', 'notes');
 
         [$positionInChapter, $totalInChapter] = $scene->siblingRank();
         $shareDurations = config('sharing.scene_link_durations');

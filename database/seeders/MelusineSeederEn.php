@@ -14,6 +14,7 @@ use App\Services\AttributeTimeline;
 use App\Support\PlotlineColors;
 use Database\Seeders\Concerns\BackfillsSceneWordCounts;
 use Database\Seeders\Concerns\SeedsChallenges;
+use Database\Seeders\Concerns\SeedsNotes;
 use Database\Seeders\Concerns\SeedsWordCountHistory;
 use Database\Seeders\Concerns\SyncsCodexReferences;
 use Illuminate\Database\Seeder;
@@ -22,6 +23,7 @@ class MelusineSeederEn extends Seeder
 {
     use BackfillsSceneWordCounts;
     use SeedsChallenges;
+    use SeedsNotes;
     use SeedsWordCountHistory;
     use SyncsCodexReferences;
 
@@ -458,6 +460,28 @@ class MelusineSeederEn extends Seeder
         // Last, once scenes and codex entries both exist: see
         // SyncsCodexReferences for why seeding has to do this itself.
         $this->syncCodexReferences($project);
+
+        // Notes link to a scene and a codex entry, so they come after both exist.
+        $this->seedNotes($project, [
+            [
+                'title' => 'Story outline',
+                'category' => ['Planning'],
+                'body' => '<h2>Act one</h2><p>The curse of Pressine and the meeting at the fountain.</p><h2>Act two</h2><p>The marriage, the nine sons and the broken oath.</p><h2>Act three</h2><p>The flight of Mélusine and the ruin of Lusignan.</p>',
+            ],
+            [
+                'title' => 'The oldest tellings',
+                'category' => ['Research', 'Medieval sources'],
+                'body' => '<p>Two versions to compare before the next draft:</p><ul><li>Jean d\'Arras, prose, 1393.</li><li>Coudrette, verse, about 1401.</li></ul>',
+                'codex' => 'Mélusine',
+            ],
+            [
+                'title' => 'The Saturday curse',
+                'category' => ['Continuity'],
+                'body' => '<p>Mélusine takes serpent form below the waist <strong>every Saturday</strong>. Raymondin may never look. Check that no scene breaks this rule before the keyhole scene.</p>',
+                'scene' => 'What Raymondin Saw',
+                'codex' => 'Mélusine',
+            ],
+        ]);
     }
 
     /**

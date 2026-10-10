@@ -339,6 +339,36 @@ class ArchiveValidatorTest extends TestCase
         (new ArchiveValidator)->validate($path);
     }
 
+    public function test_rejects_a_note_missing_its_links(): void
+    {
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip);
+            $zip->addFromString('data/notes/1-plan/note.json', json_encode([
+                'id' => 1, 'category_id' => null, 'title' => 'Plan',
+            ]));
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('missing the required "links" field');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
+    public function test_rejects_a_note_category_with_a_blank_name(): void
+    {
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $this->addValidBaseline($zip);
+            $zip->addFromString('data/notes/categories.json', json_encode([
+                ['id' => 1, 'parent_id' => null, 'name' => ''],
+            ]));
+        });
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('invalid value for "name"');
+
+        (new ArchiveValidator)->validate($path);
+    }
+
     // ------------------------------------------------------------------
     // Check 6 — content-sniffed media
     // ------------------------------------------------------------------

@@ -13,7 +13,7 @@ Use this page to find the current technical documentation.
 | Section | Contents |
 | --- | --- |
 | [Architecture](architecture/README.md) | Domain model, ownership, authorization, routing, and cross-cutting invariants |
-| [Features](features/README.md) | Codex, revisions, rich text, and writing progress |
+| [Features](features/README.md) | Codex, notes, revisions, rich text, and writing progress |
 | [Export and import](export-import/README.md) | Archive contract and EPUB generation |
 | [Interface](interface/README.md) | Blade components, themes, and fonts |
 | [Development](development/README.md) | Docker, conventions, dependencies, and working practices |

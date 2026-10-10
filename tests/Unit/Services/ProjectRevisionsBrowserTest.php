@@ -57,18 +57,18 @@ class ProjectRevisionsBrowserTest extends TestCase
         $this->revisionFor(Project::class, $project->id, $project->id, 'description', 1);
         $this->revisionFor(Act::class, $act->id, $project->id, 'description', 2);
         $this->revisionFor(Scene::class, $scene->id, $project->id, 'description', 1);
-        $this->revisionFor(Scene::class, $scene->id, $project->id, 'notes', 3);
+        $this->revisionFor(Scene::class, $scene->id, $project->id, 'contents', 3);
 
         $tree = $this->browser->tree($project);
 
         // Groups appear in the declared order, and only the ones with revisions.
         $this->assertSame(['Project', 'Acts', 'Scenes'], $tree->pluck('label')->all());
 
-        // The Scene lists Description before Notes (registry field order), with
-        // the right counts; its never-revised `contents` field is absent.
+        // The Scene lists Description before Contents (registry field order), with
+        // the right counts.
         $sceneGroup = $tree->firstWhere('type', 'scene');
         $sceneEntity = $sceneGroup->books->first()->entities->firstWhere('id', $scene->id);
-        $this->assertSame(['Description', 'Notes'], $sceneEntity->fields->pluck('label')->all());
+        $this->assertSame(['Description', 'Contents'], $sceneEntity->fields->pluck('label')->all());
         $this->assertSame([1, 3], $sceneEntity->fields->pluck('count')->all());
     }
 
@@ -126,8 +126,8 @@ class ProjectRevisionsBrowserTest extends TestCase
         $this->revisionFor(Act::class, $actTwo->id, $project->id, 'description', 1);
         $this->revisionFor(Chapter::class, $chapterOne->id, $project->id, 'description', 1);
         $this->revisionFor(Chapter::class, $chapterTwo->id, $project->id, 'description', 1);
-        $this->revisionFor(Scene::class, $sceneOne->id, $project->id, 'notes', 1);
-        $this->revisionFor(Scene::class, $sceneTwo->id, $project->id, 'notes', 1);
+        $this->revisionFor(Scene::class, $sceneOne->id, $project->id, 'description', 1);
+        $this->revisionFor(Scene::class, $sceneTwo->id, $project->id, 'description', 1);
 
         $tree = $this->browser->tree($project);
 

@@ -90,7 +90,7 @@ class EventController extends Controller
     {
         $this->authorize('view', $event->project);
 
-        $event->load('plotlines', 'scenes.chapter.act.book', 'mentioningScenes.chapter.act.book');
+        $event->load('plotlines', 'scenes.chapter.act.book', 'mentioningScenes.chapter.act.book', 'notes');
         $event->loadCount(EventDeleteWarning::countRelations());
 
         // Scenes come back in insertion order; readers expect manuscript order.
@@ -109,7 +109,7 @@ class EventController extends Controller
     {
         $this->authorize('update', $event->project);
 
-        $event->load('plotlines', 'scenes', 'mentioningScenes');
+        $event->load('plotlines', 'scenes', 'mentioningScenes', 'notes');
         $event->loadCount(EventDeleteWarning::countRelations());
 
         [$windowMin, $windowMax] = EventWindow::forEvent($event->project, $event);

@@ -52,10 +52,6 @@
                         <x-wysiwyg id="contents" name="contents" :value="old('contents')" :rows="12" markdown />
                     </x-field>
 
-                    <x-field name="notes" :label="__('Notes')">
-                        <x-wysiwyg id="notes" name="notes" :value="old('notes')" :rows="6" />
-                    </x-field>
-
                     <div>
                         <x-input-label :value="__('Mentions events')" />
                         <p class="text-sm text-content-muted">{{ __('Other events this scene refers to (optional).') }}</p>

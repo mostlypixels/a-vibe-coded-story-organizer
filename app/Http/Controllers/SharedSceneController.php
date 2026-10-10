@@ -28,7 +28,7 @@ class SharedSceneController extends Controller
      *  - live token              → the read-only public scene page
      *
      * Only `name`, `description`, `contents`, and the chapter/act titles are
-     * rendered — `notes` is private and never leaves the owner's screen.
+     * rendered. Notes linked to the scene are private and never leave the owner's screen.
      */
     public function show(string $token): View|Response
     {

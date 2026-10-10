@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\CodexEntryType;
+use App\Enums\NoteLinkType;
 use App\Enums\SearchDomain;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ActController;
@@ -24,6 +25,9 @@ use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportSettingController;
 use App\Http\Controllers\MediaFileController;
+use App\Http\Controllers\NoteCategoryController;
+use App\Http\Controllers\NoteController;
+use App\Http\Controllers\NoteLinkController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PageSizeController;
 use App\Http\Controllers\PlotlineController;
@@ -143,6 +147,25 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
     Route::resource('projects.plotlines', PlotlineController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
+        ->shallow();
+
+    Route::resource('projects.notes', NoteController::class)
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
+        ->shallow();
+
+    Route::get('/projects/{project}/notes/candidates', [NoteLinkController::class, 'noteCandidates'])
+        ->name('notes.candidates');
+    Route::get('/notes/{note}/link-candidates', [NoteLinkController::class, 'candidates'])
+        ->name('notes.link-candidates');
+    Route::post('/notes/{note}/links', [NoteLinkController::class, 'store'])->name('notes.links.store');
+    Route::delete('/notes/{note}/links/{type}/{id}', [NoteLinkController::class, 'destroy'])
+        ->whereIn('type', array_column(NoteLinkType::cases(), 'value'))
+        ->whereNumber('id')
+        ->name('notes.links.destroy');
+
+    Route::resource('projects.note-categories', NoteCategoryController::class)
+        ->only(['store', 'update', 'destroy'])
+        ->parameters(['note-categories' => 'noteCategory'])
         ->shallow();
 
     // No index: the Progress page lists challenges.

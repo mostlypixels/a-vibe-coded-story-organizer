@@ -24,6 +24,7 @@ owns it:
 | `data/books/<id>-slug/` | one book: publication metadata, matter pages, cover, publication setting, and its `act → chapter → scene` tree | per book |
 | `data/timeline/` | plotlines and events | the project, shared by every book |
 | `data/codex/`, `data/tags.json` | codex entries, attribute definitions, tags, media | the project, shared by every book |
+| `data/notes/` | note categories, notes, and their links | the project, shared by every book |
 | `data/word-count-snapshots.json` | the writing history | the project |
 | `data/challenges.json` | word-count challenges | the project |
 
@@ -40,7 +41,7 @@ The archive's root descriptor, written once per export:
 
 ```json
 {
-  "version": 5,
+  "version": 6,
   "project_id": 42,
   "exported_at": "2026-08-17T14:03:11+00:00",
   "includes_media": true
@@ -62,12 +63,14 @@ additive changes (a new optional field, a new entity type folder) do **not** bum
 an importer must ignore keys it does not recognize.
 
 > [!IMPORTANT]
-> **Versions 4 and 5 are supported.** `ImportRules::SUPPORTED_MANIFEST_VERSIONS = [4, 5]` —
+> **Versions 4, 5, and 6 are supported.** `ImportRules::SUPPORTED_MANIFEST_VERSIONS = [4, 5, 6]` —
 > older archives are rejected outright. Version 4 moved the manuscript under
 > `data/books/<id>-slug/acts/`, gave each book its own `publication-setting.json`, and renamed
 > the reading layer `book/` → `books/`; a relocated path is exactly the breaking change this
 > number exists for. Version 5 only **adds** `data/challenges.json` — additive, so a version-4
-> archive still imports cleanly with no challenges. There is no migration path between
+> archive still imports cleanly with no challenges. Version 6 moves scene notes out of `scene.json`
+> (the `notes_file` key) into `data/notes/`. A version-4 or version-5 scene `notes_file` still imports:
+> it becomes a note linked to its scene (see [The Notes branch](#the-notes-branch)). There is no migration path between
 > breaking versions: pre-V1, nobody holds an archive they cannot simply re-export.
 
 Revision history is not exported. It is large, is not restored, and imported rows would not qualify for automatic pruning.
@@ -79,7 +82,7 @@ A content field is never inlined into JSON — it is written as a **sibling file
 identical in every branch:
 
 - `contents.md` — raw Markdown (scene prose, `contents` column, verbatim — **not** rendered).
-- `description.html`, `notes.html` — the stored **sanitized HTML fragment** (no `<!doctype>`,
+- `description.html`, `body.html` — the stored **sanitized HTML fragment** (no `<!doctype>`,
   no wrapper, not re-rendered).
 - `dedication.md`, `acknowledgements.md`, `preface.md`, `postface.md` — a book's four
   front-/back-matter fields, raw Markdown like `contents.md` (never rich HTML, never
@@ -141,7 +144,6 @@ data/books/<id>-slug/
         scene.json        (see below)
         contents.md
         description.html
-        notes.html
 ```
 
 `book.json`:
@@ -203,8 +205,7 @@ data/books/<id>-slug/
   "event_id": 40,
   "mentioned_event_ids": [41, 55],
   "contents_file": "contents.md",
-  "description_file": "description.html",
-  "notes_file": "notes.html"
+  "description_file": "description.html"
 }
 ```
 
@@ -557,6 +558,26 @@ Import checks these limits before it reads or extracts a file. `ImportRules` hol
 
 Why: a small compressed upload can expand to fill the disk. The limits follow the upload
 limits, so a real export always fits.
+
+## The Notes branch
+
+`data/notes/` holds the project's note categories, notes, and links. Notes belong to the project, not to a book, and a note can link to entities of several books.
+
+```
+data/notes/
+  categories.json         [{ id, parent_id, name }]
+  <id>-slug/
+    note.json             { id, category_id, title, links, body_file? }
+    body.html
+```
+
+`links` is a list of `{ "type": "scene", "id": 87 }`. `type` is a `NoteLinkType` value (`book`, `act`, `chapter`, `scene`, `event`, `plotline`, `codex`), never a class name. `category_id` is `null` for a note with no category.
+
+- The import runs last, in its own phase, so every link target is already in `$idMaps`.
+- Categories may come in any order. The import rejects a tree deeper than `NoteCategory::MAX_DEPTH`, and a `parent_id` that never resolves (absent or a cycle).
+- A link with an unknown `type`, or a target id that no entity of the archive owns, is an import error.
+- An import creates only the archive's categories. It never adds the starter categories.
+- A scene `notes_file` in an older archive becomes a note titled `Notes: <scene name>`, linked to the scene, in no category. A blank value makes no note.
 
 ## The `books/` reading layer
 

@@ -45,6 +45,7 @@ final class RouteContext
             ?? $request->route('plotline')->project
             ?? $request->route('event')->project
             ?? $request->route('codexEntry')->project
+            ?? $request->route('note')->project
             ?? $request->route('codexAttribute')->project
             ?? $request->route('challenge')?->project;
 

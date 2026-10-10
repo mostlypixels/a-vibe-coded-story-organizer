@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Models\Contracts\Revisionable;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Plotline extends Model implements Revisionable
 {
     use HasFactory;
+    use HasNotes;
     use HasRevisions;
     use SanitizesRichHtml;
 

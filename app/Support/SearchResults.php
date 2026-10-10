@@ -8,11 +8,12 @@ use Illuminate\Support\Collection;
 /**
  * The grouped result set of a project search, shaped for the results view.
  *
- * The view renders three sections, each a stack of full-width result tables
+ * The view renders sections, each a stack of full-width result tables
  * (one per entity type, like the entity list pages):
  *   - Timeline: Plotlines, Events
  *   - Story:    Acts, Chapters, Scenes
  *   - Codex:    Characters, Locations, Organizations (one table per CodexEntryType)
+ *   - Notes:    Notes (one project-wide table)
  *
  * Tables with no matches are hidden, and a section whose tables are all empty
  * is skipped entirely — the has*Matches() helpers below drive that so the view
@@ -34,6 +35,7 @@ class SearchResults
      * @param  Collection<int, SearchResultRow>  $characters
      * @param  Collection<int, SearchResultRow>  $locations
      * @param  Collection<int, SearchResultRow>  $organizations
+     * @param  Collection<int, SearchResultRow>  $notes
      */
     public function __construct(
         public readonly Collection $plotlines,
@@ -44,6 +46,7 @@ class SearchResults
         public readonly Collection $characters,
         public readonly Collection $locations,
         public readonly Collection $organizations,
+        public readonly Collection $notes,
     ) {}
 
     /**
@@ -63,6 +66,7 @@ class SearchResults
             $this->characters,
             $this->locations,
             $this->organizations,
+            $this->notes,
         ])->flatten();
     }
 
@@ -105,6 +109,14 @@ class SearchResults
     public function hasCodexMatches(): bool
     {
         return $this->hasMatchesIn(SearchSection::Codex);
+    }
+
+    /**
+     * True when any Note matched.
+     */
+    public function hasNotesMatches(): bool
+    {
+        return $this->hasMatchesIn(SearchSection::Notes);
     }
 
     /**
