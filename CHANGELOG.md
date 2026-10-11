@@ -17,6 +17,20 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-11 — Docker database volume (#323)
+
+### Added
+
+- `make db-from-native` copies the native database and uploaded images into Docker; `make db-to-host` saves a Docker database snapshot.
+
+### Changed
+
+- Docker keeps its database in a named volume and its files in `storage-docker/`, which makes queries about 40 times faster on Windows.
+
+### Fixed
+
+- `make clean` no longer deletes the native database; it resets only Docker data.
+
 ## 2026-10-11 — Scene viewpoint (#322)
 
 ### Added

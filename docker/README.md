@@ -5,6 +5,8 @@ Config files consumed by the images defined in the root `Dockerfile` /
 
 - `entrypoint.sh` — container boot: generates `APP_KEY` if unset, runs pending
   migrations, clears config/cache.
+- `db-from-native.sh` — one-off copy of the native database and `storage/app`
+  into Docker; run by `make db-from-native`.
 - `nginx.conf` — serves the Laravel app (production image only).
 - `supervisord.conf` — runs PHP-FPM, Nginx, the queue worker, and the scheduler
   as sibling processes.

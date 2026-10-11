@@ -23,6 +23,12 @@ services:
       # file access per component made big pages 10x slower (#288). A real env var
       # wins over .env, so the native server keeps storage/framework/views.
       - VIEW_COMPILED_PATH=/tmp/views
+      # The database sits in a named volume: on the Windows bind mount each query cost
+      # 196 ms against 4.7 ms inside the container (#298), and native and Docker could
+      # corrupt one shared file. Storage gets its own folder, so each runtime only
+      # deletes and purges its own files. A real env var wins over .env.
+      - DB_DATABASE=/var/lib/imagoldfish/database.sqlite
+      - LARAVEL_STORAGE_PATH=/app/storage-docker
     ports:
       - "${APP_PORT:-8000}:80"
       - "${VITE_PORT:-5173}:5173"
@@ -36,6 +42,7 @@ services:
       - .:/app
       - /app/node_modules
       - /app/vendor
+      - dbdata:/var/lib/imagoldfish
     networks:
       - a-vibe-coded-story-organizer
     depends_on:
@@ -60,6 +67,9 @@ services:
       - "${MAILPIT_UI_PORT:-8025}:8025"
     networks:
       - a-vibe-coded-story-organizer
+
+volumes:
+  dbdata:
 
 networks:
   a-vibe-coded-story-organizer:

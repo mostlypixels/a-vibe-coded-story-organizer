@@ -24,7 +24,16 @@ if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
     fi
 fi
 
-# Run pending migrations (creates database/database.sqlite on first run)
+# The database lives in a named volume and storage in its own folder (see
+# docker-compose.dev.yml). Create their folders now; `migrate` creates the database file.
+if [ -n "$DB_DATABASE" ]; then
+    mkdir -p "$(dirname "$DB_DATABASE")"
+fi
+if [ -n "$LARAVEL_STORAGE_PATH" ]; then
+    mkdir -p "$LARAVEL_STORAGE_PATH/app/private/media" "$LARAVEL_STORAGE_PATH/app/public" "$LARAVEL_STORAGE_PATH/framework/cache/data" "$LARAVEL_STORAGE_PATH/framework/sessions" "$LARAVEL_STORAGE_PATH/framework/testing" "$LARAVEL_STORAGE_PATH/logs"
+fi
+
+# Run pending migrations
 echo "Running migrations..."
 php artisan migrate --force
 
@@ -58,6 +67,11 @@ php artisan media:move-to-private
 # (database.sqlite, cache/log files) would otherwise be root-owned and
 # unwritable by the app.
 chown -R laravel:laravel database storage bootstrap/cache
+for path in "$(dirname "${DB_DATABASE:-/nonexistent}")" "${LARAVEL_STORAGE_PATH:-}"; do
+    if [ -d "$path" ]; then
+        chown -R laravel:laravel "$path"
+    fi
+done
 
 # node_modules and vendor are anonymous volumes (see docker-compose.dev.yml)
 # populated from the image's `RUN npm install` / `RUN composer install`
