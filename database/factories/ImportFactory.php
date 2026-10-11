@@ -25,9 +25,11 @@ class ImportFactory extends Factory
             'project_id' => null,
             'archive_path' => 'imports/'.fake()->uuid().'.zip',
             'archive_original_name' => fake()->slug().'.zip',
+            'archive_sha256' => hash('sha256', fake()->uuid()),
             'phase' => ImportPhase::Pending,
             'id_maps' => null,
-            'queued' => false,
+            'running_since' => null,
+            'queued_at' => null,
             'failure_message' => null,
         ];
     }

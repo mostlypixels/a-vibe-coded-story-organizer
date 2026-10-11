@@ -125,7 +125,7 @@ class ImportTest extends TestCase
 
         $response->assertOk();
         $imports = $response->viewData('imports');
-        $this->assertSame([$stalled->id], $imports->pluck('id')->all());
+        $this->assertSame([$stalled->id], $imports->pluck('import.id')->all());
         $this->assertNotNull($response->viewData('importSetting'));
     }
 
@@ -164,11 +164,83 @@ class ImportTest extends TestCase
         // The archive's original name and the human phase label are shown.
         $response->assertSee($import->archiveOriginalName());
         $response->assertSee(ImportPhase::Story->label());
-        // Both Resume and Discard actions target this import.
+        // The Resume action targets this import.
         $response->assertSee(route('admin.data.imports.resume', $import));
-        $response->assertSee(route('admin.data.imports.destroy', $import));
         $response->assertSee(__('Resume'));
-        $response->assertSee(__('Discard'));
+        // The Discard button's click handler opens the delete confirmation.
+        $response->assertSee("\$dispatch('open-confirm-delete'", false);
+    }
+
+    public function test_a_queued_import_shows_waiting_to_start_and_only_discard(): void
+    {
+        $user = User::factory()->create();
+        $import = Import::factory()->for($user)->create(['queued_at' => now()]);
+
+        $this->actingAs($user)
+            ->get(route('admin.data.import.index'))
+            ->assertOk()
+            ->assertSee('data-import-state="queued"', false)
+            ->assertSee(__('Waiting to start'))
+            ->assertSee("\$dispatch('open-confirm-delete'", false)
+            ->assertDontSee(route('admin.data.imports.resume', $import))
+            ->assertSee('importStatus(', false);
+    }
+
+    public function test_a_running_import_shows_its_phase_and_no_actions(): void
+    {
+        $user = User::factory()->create();
+        $import = Import::factory()->for($user)->phase(ImportPhase::Story)
+            ->create(['queued_at' => now(), 'running_since' => now()]);
+
+        $this->actingAs($user)
+            ->get(route('admin.data.import.index'))
+            ->assertOk()
+            ->assertSee('data-import-state="running"', false)
+            ->assertSee(ImportPhase::Story->label())
+            ->assertDontSee(route('admin.data.imports.resume', $import))
+            ->assertDontSee("\$dispatch('open-confirm-delete'", false)
+            ->assertSee('importStatus(', false);
+    }
+
+    public function test_a_stalled_import_shows_its_failure_and_does_not_poll(): void
+    {
+        $user = User::factory()->create();
+        $import = Import::factory()->for($user)->phase(ImportPhase::Story)
+            ->create(['failure_message' => 'The import took too long.']);
+
+        $this->actingAs($user)
+            ->get(route('admin.data.import.index'))
+            ->assertOk()
+            ->assertSee('data-import-state="stalled"', false)
+            ->assertSee(ImportPhase::Story->label())
+            ->assertSee('The import took too long.')
+            ->assertSee(route('admin.data.imports.resume', $import))
+            ->assertSee("\$dispatch('open-confirm-delete'", false)
+            ->assertDontSee(__('Import anyway'))
+            ->assertDontSee('importStatus(', false);
+    }
+
+    public function test_a_duplicate_import_offers_import_anyway_and_does_not_poll(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->create(['user_id' => $user->id, 'name' => 'Melusine']);
+        $earlier = Import::factory()->for($user)->phase(ImportPhase::Completed)
+            ->create(['project_id' => $project->id, 'archive_sha256' => str_repeat('a', 64)]);
+        $duplicate = Import::factory()->for($user)->create(['archive_sha256' => str_repeat('a', 64)]);
+
+        $response = $this->actingAs($user)->get(route('admin.data.import.index'));
+
+        $response->assertOk()
+            ->assertSee('data-import-state="duplicate"', false)
+            ->assertSee(__('You imported this archive on :date as :project.', [
+                'date' => $earlier->updated_at->isoFormat('LL'),
+                'project' => 'Melusine',
+            ]))
+            ->assertSee(__('Import anyway'))
+            ->assertSee(route('admin.data.imports.resume', $duplicate))
+            ->assertSee("\$dispatch('open-confirm-delete'", false)
+            ->assertDontSee(__('Resume'))
+            ->assertDontSee('importStatus(', false);
     }
 
     public function test_a_completed_import_leaves_the_in_progress_list_empty(): void
@@ -485,6 +557,34 @@ class ImportTest extends TestCase
         $this->assertSame(ImportPhase::Completed, $import->refresh()->phase);
     }
 
+    /** @return array<string, array{bool}> */
+    public static function runModeProvider(): array
+    {
+        return ['inline' => [false], 'background' => [true]];
+    }
+
+    #[DataProvider('runModeProvider')]
+    public function test_resume_of_a_running_import_flashes_and_neither_runs_nor_queues(bool $inBackground): void
+    {
+        Queue::fake();
+        config(['import.run_in_background' => $inBackground]);
+
+        $owner = User::factory()->create();
+        $import = app(ProjectImporter::class)->start($this->makeValidUpload(), $owner);
+        $import->forceFill(['running_since' => now()])->save();
+
+        $this->actingAs($owner)
+            ->post(route('admin.data.imports.resume', $import))
+            ->assertRedirect(route('admin.data.import.index'))
+            ->assertSessionHas('status', __('This import is already running.'));
+
+        Queue::assertNothingPushed();
+        $import->refresh();
+        $this->assertSame(ImportPhase::Pending, $import->phase);
+        $this->assertNull($import->queued_at);
+        $this->assertSame(0, Project::count());
+    }
+
     public function test_a_non_owner_cannot_resume_another_users_import(): void
     {
         $import = app(ProjectImporter::class)->start($this->makeValidUpload(), User::factory()->create());
@@ -521,6 +621,78 @@ class ImportTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
+    // Status — GET admin.data.imports.status
+    // ---------------------------------------------------------------------
+
+    /** @return array<string, array{string, array<string, mixed>, string}> */
+    public static function statusStateProvider(): array
+    {
+        return [
+            'queued' => ['queued', ['queued_at' => '-1 minute'], 'Pending'],
+            'running' => ['running', ['running_since' => 'now'], 'Pending'],
+            'stalled' => ['stalled', ['phase' => ImportPhase::Story, 'failure_message' => 'Boom.'], 'Story imported'],
+            'stalled with a crashed claim' => ['stalled', ['running_since' => '-1 day'], 'Pending'],
+        ];
+    }
+
+    /** @param  array<string, mixed>  $attributes */
+    #[DataProvider('statusStateProvider')]
+    public function test_the_owner_gets_the_state_of_an_unfinished_import(string $state, array $attributes, string $label): void
+    {
+        $owner = User::factory()->create();
+        foreach (['queued_at', 'running_since'] as $column) {
+            if (isset($attributes[$column])) {
+                $attributes[$column] = now()->modify($attributes[$column]);
+            }
+        }
+        $import = Import::factory()->for($owner)->create($attributes);
+
+        $this->actingAs($owner)
+            ->getJson(route('admin.data.imports.status', $import))
+            ->assertOk()
+            ->assertExactJson([
+                'state' => $state,
+                'phase' => $import->phase->value,
+                'label' => $label,
+                'failure_message' => $import->failure_message,
+                'project_url' => null,
+            ]);
+    }
+
+    public function test_the_owner_gets_the_project_url_of_a_completed_import(): void
+    {
+        $owner = User::factory()->create();
+        $project = Project::factory()->create(['user_id' => $owner->id]);
+        $import = Import::factory()->for($owner)->phase(ImportPhase::Completed)->create(['project_id' => $project->id]);
+
+        $this->actingAs($owner)
+            ->getJson(route('admin.data.imports.status', $import))
+            ->assertOk()
+            ->assertJson([
+                'state' => 'completed',
+                'phase' => 'completed',
+                'label' => 'Completed',
+                'project_url' => route('projects.show', $project),
+            ]);
+    }
+
+    public function test_a_non_owner_cannot_read_the_status_of_another_users_import(): void
+    {
+        $import = Import::factory()->create();
+
+        $this->actingAs(User::factory()->create())
+            ->getJson(route('admin.data.imports.status', $import))
+            ->assertForbidden();
+    }
+
+    public function test_a_guest_is_redirected_to_login_for_the_status_route(): void
+    {
+        $import = Import::factory()->create();
+
+        $this->get(route('admin.data.imports.status', $import))->assertRedirect(route('login'));
+    }
+
+    // ---------------------------------------------------------------------
     // Import settings — PATCH admin.data.import-settings
     // ---------------------------------------------------------------------
 
@@ -529,15 +701,13 @@ class ImportTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->patch(route('admin.data.import-settings'), [
                 'max_archive_megabytes' => 50,
-                'run_in_background' => '1',
             ])
             ->assertRedirect(route('admin.data.import.index'));
 
         $setting = ImportSetting::current();
 
-        // 50 MB persisted as kilobytes (50 * 1024), background mode on.
+        // 50 MB persisted as kilobytes (50 * 1024).
         $this->assertSame(50 * 1024, $setting->max_archive_kilobytes);
-        $this->assertTrue($setting->run_in_background);
         $this->assertSame(1, ImportSetting::count());
     }
 
@@ -616,15 +786,34 @@ class ImportTest extends TestCase
             ->assertSee('max="8"', escape: false);
     }
 
+    public function test_the_import_page_shows_the_run_mode_as_read_only_text(): void
+    {
+        $user = User::factory()->create();
+
+        config(['import.run_in_background' => true]);
+        $this->actingAs($user)
+            ->get(route('admin.data.import.index'))
+            ->assertOk()
+            ->assertSee(__('Imports run in the background.'))
+            ->assertSee('data-run-mode="background"', escape: false)
+            ->assertDontSee('name="run_in_background"', escape: false);
+
+        config(['import.run_in_background' => false]);
+        $this->actingAs($user)
+            ->get(route('admin.data.import.index'))
+            ->assertSee(__('Imports run during the upload.'))
+            ->assertSee('data-run-mode="inline"', escape: false);
+    }
+
     // ---------------------------------------------------------------------
-    // Queued mode — ImportSetting.run_in_background
+    // Queued mode — config import.run_in_background
     // ---------------------------------------------------------------------
 
     public function test_synchronous_mode_never_pushes_a_job_and_imports_inline(): void
     {
         Queue::fake();
 
-        // Default is synchronous (run_in_background = false).
+        // Default is synchronous (import.run_in_background = false).
         $user = User::factory()->create();
 
         $this->actingAs($user)
@@ -641,7 +830,7 @@ class ImportTest extends TestCase
     {
         Queue::fake();
 
-        ImportSetting::current()->update(['run_in_background' => true]);
+        config(['import.run_in_background' => true]);
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
@@ -650,11 +839,11 @@ class ImportTest extends TestCase
         // Redirected to the Import tab with the "queued" flash — the graph phases
         // were deferred, so no project exists yet.
         $response->assertRedirect(route('admin.data.import.index'));
-        $response->assertSessionHas('status', __('Import queued.'));
+        $response->assertSessionHas('status', __('Import started.'));
         Queue::assertPushed(ProjectImportJob::class);
 
         $import = Import::firstOrFail();
-        $this->assertTrue($import->queued);
+        $this->assertNotNull($import->queued_at);
         $this->assertSame(ImportPhase::Pending, $import->phase);
         $this->assertSame(0, Project::count());
 
@@ -670,7 +859,7 @@ class ImportTest extends TestCase
     {
         Queue::fake();
 
-        ImportSetting::current()->update(['run_in_background' => true]);
+        config(['import.run_in_background' => true]);
 
         $this->actingAs(User::factory()->create())
             ->post(route('admin.data.import'), ['archive' => $this->makeZipSlipUpload()])
@@ -683,7 +872,7 @@ class ImportTest extends TestCase
         $this->assertSame(0, Project::count());
     }
 
-    public function test_resume_follows_the_current_toggle_value_not_the_original(): void
+    public function test_resume_follows_the_current_config_value_not_the_original(): void
     {
         Queue::fake();
 
@@ -694,8 +883,8 @@ class ImportTest extends TestCase
         $import = app(ProjectImporter::class)->start($this->makeValidUpload(), $owner);
         $this->assertSame(ImportPhase::Pending, $import->phase);
 
-        // Flip the toggle ON between the initial attempt and the resume.
-        ImportSetting::current()->update(['run_in_background' => true]);
+        // Flip the config ON between the initial attempt and the resume.
+        config(['import.run_in_background' => true]);
 
         $this->actingAs($owner)
             ->post(route('admin.data.imports.resume', $import))
@@ -706,12 +895,147 @@ class ImportTest extends TestCase
         // running inline, so the import is still pending and now flagged queued.
         Queue::assertPushed(ProjectImportJob::class);
         $this->assertSame(ImportPhase::Pending, $import->refresh()->phase);
-        $this->assertTrue($import->queued);
+        $this->assertNotNull($import->queued_at);
+    }
+
+    // ---------------------------------------------------------------------
+    // Duplicate archives
+    // ---------------------------------------------------------------------
+
+    #[DataProvider('runModeProvider')]
+    public function test_an_archive_already_importing_is_refused_without_a_row_or_a_file(bool $inBackground): void
+    {
+        Queue::fake();
+        config(['import.run_in_background' => $inBackground]);
+
+        $owner = User::factory()->create();
+        $upload = $this->makeValidUpload();
+        $stalled = app(ProjectImporter::class)->start($upload, $owner);
+        $files = Storage::disk('local')->allFiles('imports');
+
+        $this->actingAs($owner)
+            ->from(route('admin.data.import.index'))
+            ->post(route('admin.data.import'), ['archive' => $upload])
+            ->assertRedirect(route('admin.data.import.index'))
+            ->assertSessionHasErrors(['archive' => 'This archive is already being imported. Resume or discard it below.']);
+
+        $this->assertSame([$stalled->id], Import::pluck('id')->all());
+        $this->assertSame($files, Storage::disk('local')->allFiles('imports'));
+        Queue::assertNothingPushed();
+    }
+
+    #[DataProvider('runModeProvider')]
+    public function test_a_completed_duplicate_makes_a_pending_row_and_neither_runs_nor_queues(bool $inBackground): void
+    {
+        Queue::fake();
+        config(['import.run_in_background' => $inBackground]);
+
+        $owner = User::factory()->create();
+        $upload = $this->makeValidUpload();
+        $earlier = $this->importCompleted($upload, $owner);
+
+        $this->actingAs($owner)
+            ->post(route('admin.data.import'), ['archive' => $upload])
+            ->assertRedirect(route('admin.data.import.index'))
+            ->assertSessionHas('warning')
+            ->assertSessionMissing('status');
+
+        $duplicate = Import::whereKeyNot($earlier->id)->firstOrFail();
+        $this->assertSame(ImportPhase::Pending, $duplicate->phase);
+        $this->assertNull($duplicate->queued_at);
+        $this->assertSame($earlier->id, $duplicate->duplicateOf()?->id);
+        $this->assertSame(1, Project::count());
+        Storage::disk('local')->assertExists($duplicate->archive_path);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_the_import_page_shows_the_duplicate_warning(): void
+    {
+        $owner = User::factory()->create();
+        $upload = $this->makeValidUpload();
+        $this->importCompleted($upload, $owner);
+
+        $this->actingAs($owner)
+            ->followingRedirects()
+            ->post(route('admin.data.import'), ['archive' => $upload])
+            ->assertOk()
+            ->assertSee(__('You already imported this archive. Import anyway, or discard it below.'));
+    }
+
+    public function test_resume_on_a_duplicate_row_imports_it(): void
+    {
+        $owner = User::factory()->create();
+        $upload = $this->makeValidUpload();
+        $this->importCompleted($upload, $owner);
+        $this->actingAs($owner)->post(route('admin.data.import'), ['archive' => $upload]);
+        $duplicate = Import::where('phase', ImportPhase::Pending)->firstOrFail();
+
+        $this->actingAs($owner)
+            ->post(route('admin.data.imports.resume', $duplicate))
+            ->assertRedirect(route('admin.data.import.index'));
+
+        $this->assertSame(ImportPhase::Completed, $duplicate->refresh()->phase);
+        $this->assertSame(2, Project::count());
+    }
+
+    #[DataProvider('runModeProvider')]
+    public function test_a_duplicate_of_a_deleted_project_imports_normally(bool $inBackground): void
+    {
+        Queue::fake();
+        config(['import.run_in_background' => $inBackground]);
+
+        $owner = User::factory()->create();
+        $upload = $this->makeValidUpload();
+        $this->importCompleted($upload, $owner)->project->delete();
+
+        $response = $this->actingAs($owner)
+            ->post(route('admin.data.import'), ['archive' => $upload]);
+
+        $response->assertSessionMissing('warning');
+
+        if ($inBackground) {
+            $response->assertRedirect(route('admin.data.import.index'));
+            Queue::assertPushed(ProjectImportJob::class);
+        } else {
+            $this->assertSame(1, Project::count());
+            $this->assertSame(2, Import::where('phase', ImportPhase::Completed)->count());
+        }
+    }
+
+    public function test_another_users_import_of_the_same_archive_is_not_a_duplicate(): void
+    {
+        $upload = $this->makeValidUpload();
+        $this->importCompleted($upload, User::factory()->create());
+        $other = User::factory()->create();
+
+        $this->actingAs($other)
+            ->post(route('admin.data.import'), ['archive' => $upload])
+            ->assertRedirect(route('projects.show', $other->projects()->firstOrFail()))
+            ->assertSessionMissing('warning');
+    }
+
+    public function test_a_stored_import_keeps_the_sha256_of_its_archive(): void
+    {
+        $upload = $this->makeValidUpload();
+
+        $import = app(ProjectImporter::class)->start($upload, User::factory()->create());
+
+        $this->assertSame(hash_file('sha256', $upload->getRealPath()), $import->archive_sha256);
     }
 
     // ---------------------------------------------------------------------
     // Fixtures
     // ---------------------------------------------------------------------
+
+    /** Imports the upload to the end, so a project and a completed row exist. */
+    private function importCompleted(UploadedFile $upload, User $owner): Import
+    {
+        $importer = app(ProjectImporter::class);
+        $import = $importer->start($upload, $owner);
+        $importer->run($import);
+
+        return $import->refresh();
+    }
 
     /**
      * A complete, valid export archive as an UploadedFile: manifest, project,

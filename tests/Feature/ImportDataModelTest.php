@@ -28,7 +28,6 @@ class ImportDataModelTest extends TestCase
     {
         config([
             'import.default_max_archive_kilobytes' => 204800,
-            'import.default_run_in_background' => false,
         ]);
 
         $this->assertSame(0, ImportSetting::count());
@@ -36,7 +35,6 @@ class ImportDataModelTest extends TestCase
         $setting = ImportSetting::current();
 
         $this->assertSame(204800, $setting->max_archive_kilobytes);
-        $this->assertFalse($setting->run_in_background);
         $this->assertSame(1, ImportSetting::count());
     }
 
@@ -48,16 +46,6 @@ class ImportDataModelTest extends TestCase
 
         $this->assertSame(1, ImportSetting::count());
         $this->assertSame($first->id, $again->id);
-    }
-
-    public function test_run_in_background_is_cast_to_a_real_boolean(): void
-    {
-        $setting = ImportSetting::current();
-        $setting->update(['run_in_background' => 1]);
-
-        $fresh = $setting->fresh();
-        $this->assertIsBool($fresh->run_in_background);
-        $this->assertTrue($fresh->run_in_background);
     }
 
     // ---------------------------------------------------------------------
@@ -145,5 +133,30 @@ class ImportDataModelTest extends TestCase
         $fresh = $import->fresh();
         $this->assertNotNull($fresh, 'Import row must survive its project being deleted.');
         $this->assertNull($fresh->project_id);
+    }
+    // ---------------------------------------------------------------------
+    // Run state
+    // ---------------------------------------------------------------------
+
+    public function test_is_running_is_true_only_for_a_fresh_claim(): void
+    {
+        config(['import.timeout_seconds' => 1800]);
+
+        $this->assertFalse(Import::factory()->make()->isRunning());
+        $this->assertTrue(Import::factory()->make(['running_since' => now()->subMinute()])->isRunning());
+
+        // An older claim is a crashed run.
+        $this->assertFalse(Import::factory()->make(['running_since' => now()->subSeconds(1801)])->isRunning());
+    }
+
+    public function test_is_queued_needs_a_queue_time_no_fresh_claim_and_no_terminal_phase(): void
+    {
+        $this->assertFalse(Import::factory()->make()->isQueued());
+        $this->assertTrue(Import::factory()->make(['queued_at' => now()])->isQueued());
+        $this->assertTrue(Import::factory()->phase(ImportPhase::Story)->make(['queued_at' => now()])->isQueued());
+
+        $this->assertFalse(Import::factory()->make(['queued_at' => now(), 'running_since' => now()])->isQueued());
+        $this->assertFalse(Import::factory()->phase(ImportPhase::Completed)->make(['queued_at' => now()])->isQueued());
+        $this->assertFalse(Import::factory()->phase(ImportPhase::Failed)->make(['queued_at' => now()])->isQueued());
     }
 }

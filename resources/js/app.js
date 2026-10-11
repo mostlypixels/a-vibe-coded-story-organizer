@@ -18,6 +18,7 @@ import { saveQuickEvent } from './quick-event';
 import { registerQuickCodexEntry } from './quick-codex-entry';
 import { registerAppearanceSwitcher } from './appearance-switcher';
 import { registerLinkPicker } from './notes/linkPicker';
+import { registerImportStatus } from './import-status';
 
 window.Alpine = Alpine;
 
@@ -37,6 +38,7 @@ registerDropdown(Alpine);
 registerQuickCodexEntry(Alpine);
 registerAppearanceSwitcher(Alpine);
 registerLinkPicker(Alpine);
+registerImportStatus(Alpine);
 
 Alpine.start();
 

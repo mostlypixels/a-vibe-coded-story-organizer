@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ImportAlreadyRunningException;
 use App\Exceptions\ImportValidationException;
 use App\Http\Requests\ImportProjectRequest;
 use App\Jobs\ProjectImportJob;
 use App\Models\Import;
-use App\Models\ImportSetting;
 use App\Services\ProjectImporter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Throwable;
 
@@ -20,9 +21,9 @@ use Throwable;
  * redirects and flash/error feedback.
  *
  * Whether an import runs inline within the request or is dispatched to the
- * queue depends on ImportSetting::current()->run_in_background, read live at
+ * queue depends on config('import.run_in_background'), read at
  * submit time. Validation (ProjectImporter::start()) is always
- * synchronous regardless of that toggle — only the graph-import phases (run())
+ * synchronous regardless of that flag — only the graph-import phases (run())
  * are ever queued.
  */
 class ImportController extends Controller
@@ -57,11 +58,18 @@ class ImportController extends Controller
             return back()->withErrors(['archive' => $exception->getMessage()]);
         }
 
+        // The writer already imported this archive: keep the row, but let them choose
+        // "Import anyway" on the import page.
+        if ($import->duplicateOf() !== null) {
+            return redirect()->route('admin.data.import.index')
+                ->with('warning', __('You already imported this archive. Import anyway, or discard it below.'));
+        }
+
         // Background mode is opt-in and read live here (the toggle can change
         // between attempts). When on, only the graph-import phases are deferred;
         // validation above already ran synchronously, so a bad archive never
         // reaches the queue.
-        if ($queued = $this->queueInBackground($import)) {
+        if ($queued = $this->queueInBackground($import, __('Import started.'))) {
             return $queued;
         }
 
@@ -79,6 +87,26 @@ class ImportController extends Controller
     }
 
     /**
+     * Progress of one import, polled by the import page. Owner-only.
+     */
+    public function status(Import $import): JsonResponse
+    {
+        $this->authorize('view', $import);
+
+        $state = $import->state();
+
+        return response()->json([
+            'state' => $state,
+            'phase' => $import->phase->value,
+            'label' => __($import->phase->label()),
+            'failure_message' => $import->failure_message,
+            'project_url' => $state === 'completed' && $import->project !== null
+                ? route('projects.show', $import->project)
+                : null,
+        ]);
+    }
+
+    /**
      * Resume a stalled import from its last committed checkpoint.
      *
      * Unlike store(), an Import row DOES have an owner by now, so this uses the
@@ -89,14 +117,22 @@ class ImportController extends Controller
     {
         $this->authorize('resume', $import);
 
+        // Never queue a second job for an import that runs now.
+        if ($import->isRunning()) {
+            return $this->alreadyRunning();
+        }
+
         // Follow the CURRENT toggle value, not whatever it was when the import
         // was first started — the setting may have changed between attempts.
-        if ($queued = $this->queueInBackground($import)) {
+        if ($queued = $this->queueInBackground($import, __('Import queued.'))) {
             return $queued;
         }
 
         try {
             $this->importer->run($import);
+        } catch (ImportAlreadyRunningException) {
+            // Another run took the claim after the check above.
+            return $this->alreadyRunning();
         } catch (Throwable) {
             // A repeated failure leaves the row resumable again with a fresh
             // failure_message; the Import tab surfaces it either way.
@@ -120,23 +156,29 @@ class ImportController extends Controller
     }
 
     /**
-     * Queues the import when the background toggle is on, and returns the
+     * Queues the import when background mode is on, and returns the
      * redirect for that case. Returns null when the caller must run it inline.
      */
-    private function queueInBackground(Import $import): ?RedirectResponse
+    private function queueInBackground(Import $import, string $flash): ?RedirectResponse
     {
-        if (! ImportSetting::current()->run_in_background) {
+        if (! config('import.run_in_background')) {
             return null;
         }
 
         // Mark the row as queued so the Import tab can distinguish "queued,
         // maybe still running" from "ran inline and crashed". A queue worker
         // (`php artisan queue:work`) must be running for it to progress.
-        $import->update(['queued' => true]);
+        $import->update(['queued_at' => now()]);
 
         ProjectImportJob::dispatch($import);
 
         return redirect()->route('admin.data.import.index')
-            ->with('status', __('Import queued.'));
+            ->with('status', $flash);
+    }
+
+    private function alreadyRunning(): RedirectResponse
+    {
+        return redirect()->route('admin.data.import.index')
+            ->with('status', __('This import is already running.'));
     }
 }

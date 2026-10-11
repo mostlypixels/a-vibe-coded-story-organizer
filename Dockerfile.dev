@@ -35,7 +35,8 @@ RUN docker-php-ext-install \
     xml \
     bcmath \
     mbstring \
-    gd
+    gd \
+    pcntl
 
 # docker-php-ext-install's own build-dependency virtual package is installed
 # and purged within that single RUN layer above, so phpize/autoconf/gcc are

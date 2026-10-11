@@ -225,11 +225,16 @@ class ImportRoundTripTest extends TestCase
         $this->assertSame(0, Revision::query()->count());
 
         // ------------------------------------------------------------------
-        // Re-import the SAME zip a second time (same importer): a distinct,
-        // name-disambiguated project — never a collision or an overwrite.
+        // Re-import the SAME zip a second time (same importer): the upload is a
+        // duplicate, so it waits for "Import anyway" (the resume route). Then a
+        // distinct, name-disambiguated project — never a collision or an overwrite.
         // ------------------------------------------------------------------
         $this->actingAs($importer)
-            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)]);
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertSessionHas('warning');
+        $this->assertSame(1, $importer->projects()->count());
+
+        $this->post(route('admin.data.imports.resume', $importer->imports()->where('phase', ImportPhase::Pending)->firstOrFail()));
 
         $this->assertSame(2, $importer->projects()->count(), 'a second import creates a second project, never overwrites the first');
         $second = $importer->projects()->orderByDesc('id')->firstOrFail();

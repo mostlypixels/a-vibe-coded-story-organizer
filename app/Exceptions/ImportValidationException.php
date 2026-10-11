@@ -22,6 +22,15 @@ use RuntimeException;
 class ImportValidationException extends RuntimeException
 {
     /**
+     * The same archive is queued, running, or stalled for this user.
+     * The writer resumes or discards that import instead of starting another.
+     */
+    public static function alreadyImporting(): self
+    {
+        return new self('This archive is already being imported. Resume or discard it below.');
+    }
+
+    /**
      * The upload could not be opened as a zip at all (wrong format or corrupt).
      */
     public static function notAZip(): self

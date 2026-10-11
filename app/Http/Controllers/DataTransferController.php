@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ImportPhase;
+use App\Models\Import;
 use App\Models\ImportSetting;
 use App\Support\ServerUploadLimit;
 use Illuminate\Http\Request;
@@ -61,7 +62,7 @@ class DataTransferController extends Controller
 
     /**
      * The import page: upload form + the global ImportSetting singleton (size
-     * cap + background toggle) + the user's still-in-progress imports.
+     * cap + read-only run mode) + the user's still-in-progress imports.
      */
     public function import(Request $request, ServerUploadLimit $serverUploadLimit): View
     {
@@ -70,12 +71,34 @@ class DataTransferController extends Controller
         $imports = $request->user()->imports()
             ->where('phase', '!=', ImportPhase::Completed)
             ->latest()
-            ->get();
+            ->get()
+            ->map(fn (Import $import) => $this->importRow($import));
 
         return view('admin.data.import', [
             'importSetting' => ImportSetting::current(),
             'imports' => $imports,
+            'runInBackground' => (bool) config('import.run_in_background'),
             'serverUploadMegabytes' => $serverUploadLimit->megabytes(),
         ]);
+    }
+
+    /**
+     * One row of the in-progress list: queued, running, stalled or duplicate.
+     * A duplicate row never started and waits for "Import anyway" or Discard.
+     *
+     * @return array{import: Import, state: string, duplicate: array{date: string, project: string}|null}
+     */
+    private function importRow(Import $import): array
+    {
+        $earlier = $import->duplicateOf();
+
+        return [
+            'import' => $import,
+            'state' => $earlier === null ? $import->state() : 'duplicate',
+            'duplicate' => $earlier === null ? null : [
+                'date' => $earlier->updated_at->isoFormat('LL'),
+                'project' => $earlier->project->name,
+            ],
+        ];
     }
 }
