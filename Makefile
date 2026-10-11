@@ -1,4 +1,4 @@
-.PHONY: help up down build rebuild logs shell tinker test lint analyse migrate seed demo fresh fresh-install-onboardable fresh-install-testable ps restart clean guard-native
+.PHONY: help up down build rebuild logs shell tinker test lint analyse migrate seed demo fresh fresh-install-onboardable fresh-install-testable ps restart clean db-to-host db-from-native guard-native
 
 # `docker compose` (v2, a subcommand) rather than `docker-compose` (v1, a separate
 # Python binary that reached end of life in 2023).
@@ -6,21 +6,8 @@ COMPOSE_DEV = docker compose -f docker-compose.dev.yml
 COMPOSE_PROD = docker compose
 APP_EXEC = $(COMPOSE_DEV) exec -u laravel app
 
-# Deleting the dev database has to be written twice, because Make runs recipes
-# through a different shell per platform: /bin/sh on macOS/Linux, but cmd.exe on
-# Windows, where `rm` simply does not exist and the recipe would abort. `OS` is set
-# to Windows_NT by Windows itself, which is the usual way to tell them apart.
-# Note the Windows branch also needs backslashes and an existence check, since
-# `del` errors on a missing file whereas `rm -f` does not.
-ifeq ($(OS),Windows_NT)
-    REMOVE_DEV_DATABASE = if exist database\database.sqlite del /f /q database\database.sqlite
-else
-    REMOVE_DEV_DATABASE = rm -f database/database.sqlite
-endif
-
-# The native server (scripts/serve-app.sh) publishes the same port and writes the
-# same database/database.sqlite. Two servers on one SQLite file corrupt it, so the
-# PID file it records blocks `make up`.
+# The native server (scripts/serve-app.sh) publishes the same port, so the PID
+# file it records blocks `make up`.
 #
 # Make tests for the file itself rather than a shell `if`: recipes run through
 # cmd.exe or sh depending on how Make was started, and no `if` syntax suits both.
@@ -51,10 +38,12 @@ help:
 	@echo "  make fresh           - Fresh database migration and seed"
 	@echo "  make fresh-install-onboardable - Fresh DB, admin only, no projects (try onboarding)"
 	@echo "  make fresh-install-testable    - Fresh DB with demo + second user"
+	@echo "  make db-to-host      - Save a snapshot to storage-docker/app/backups"
+	@echo "  make db-from-native  - Replace Docker data with the native database and storage/app"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make restart         - Restart containers"
-	@echo "  make clean           - Remove containers and volumes"
+	@echo "  make clean           - Remove containers, the database volume and storage-docker/"
 	@echo ""
 
 guard-native:
@@ -136,9 +125,27 @@ fresh-install-testable:
 # Kept as the default fresh reset. Same as fresh-install-testable.
 fresh: fresh-install-testable
 
+# Resets Docker data only: the dbdata volume and storage-docker/. The native
+# database/database.sqlite and storage/ are never touched. A one-off container deletes
+# the folder, because `rm` does not exist in cmd.exe and the folder may hold files
+# owned by root.
 clean:
+	$(COMPOSE_DEV) stop
+	$(COMPOSE_DEV) run --rm --no-deps --entrypoint rm app -rf /app/storage-docker
 	$(COMPOSE_DEV) down -v
-	$(REMOVE_DEV_DATABASE)
+
+# Snapshot of the Docker database in storage-docker/app/backups, which Explorer and
+# PhpStorm can open. Safe while the app runs (VACUUM INTO).
+db-to-host:
+	$(APP_EXEC) php artisan db:backup --name=docker --path=/app/storage-docker/app/backups
+
+# One-time copy of the native data into Docker; it replaces what Docker holds. The
+# one-off container runs docker/db-from-native.sh with the stack down. The script
+# keeps a snapshot of the old Docker database first. `migrate` runs in the entrypoint.
+db-from-native: guard-native
+	$(COMPOSE_DEV) down
+	$(COMPOSE_DEV) run --rm --no-deps --entrypoint sh app /app/docker/db-from-native.sh
+	$(COMPOSE_DEV) up -d
 
 # Production commands
 prod-up:

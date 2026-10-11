@@ -50,9 +50,8 @@ if [ -f "$PID_FILE" ]; then
     rm -f "$PID_FILE"
 fi
 
-# The Docker stack (docker-compose.dev.yml) publishes the same port and writes
-# the same database/database.sqlite. Two servers on one SQLite file across the
-# WSL2 bind mount corrupt it, so refuse the port instead of competing for it.
+# The Docker stack (docker-compose.dev.yml) publishes the same port. Refuse the
+# port instead of competing for it.
 if curl -sf "$URL" -o /dev/null --max-time 5; then
     echo "ERROR: something already answers at $URL — refusing to start a second server." >&2
     if docker ps --filter "publish=$PORT" --format '{{.Names}}' 2>/dev/null | grep -q .; then
