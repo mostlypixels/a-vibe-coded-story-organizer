@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-11 — Docker database volume
+## 2026-10-11 — Docker database volume (#323)
 
 ### Added
 
