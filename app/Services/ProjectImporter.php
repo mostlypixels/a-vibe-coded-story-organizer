@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ImportPhase;
+use App\Exceptions\ImportAlreadyRunningException;
 use App\Exceptions\ImportValidationException;
 use App\Models\Import;
 use App\Models\User;
@@ -10,6 +11,7 @@ use App\Services\Import\ArchiveValidator;
 use App\Services\Import\ProjectGraphImporter;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -37,6 +39,9 @@ class ProjectImporter
     /** Delete passes before a working folder counts as stuck. */
     private const DELETE_ATTEMPTS = 3;
 
+    /** Suffix of the folder that holds an unpack in progress. */
+    private const PARTIAL_SUFFIX = '.partial';
+
     /** @var array<int, ImportPhase> Phases in checkpoint order. */
     private const GRAPH_PHASES = [
         ImportPhase::Project,
@@ -54,13 +59,21 @@ class ProjectImporter
 
     /**
      * Validates before it stores files or creates the pending import.
+     * An unfinished import of the same archive refuses the upload. A completed one
+     * leaves the new row at Pending: {@see Import::duplicateOf()} tells the caller not to run it.
      *
-     * @throws ImportValidationException When validation fails.
+     * @throws ImportValidationException When validation fails or the archive is already importing.
      */
     public function start(UploadedFile $archive, User $user): Import
     {
         // Validate the upload before storage or database writes.
         $this->archiveValidator->validate((string) $archive->getRealPath());
+
+        $hash = hash_file('sha256', (string) $archive->getRealPath());
+
+        if ($this->findUnfinished($user, $hash) !== null) {
+            throw ImportValidationException::alreadyImporting();
+        }
 
         $uuid = (string) Str::uuid();
         $archivePath = $archive->storeAs(self::DIRECTORY, "{$uuid}.zip", self::DISK);
@@ -69,27 +82,81 @@ class ProjectImporter
             throw new RuntimeException('Unable to store the uploaded import archive.');
         }
 
-        try {
-            $this->extract(
-                $this->disk()->path($archivePath),
-                $this->disk()->path(self::DIRECTORY."/{$uuid}"),
-            );
-        } catch (Throwable $exception) {
-            // Remove files when extraction fails before the tracking row exists.
-            $this->disk()->delete($archivePath);
-
-            throw $exception;
-        }
-
+        // run() extracts the ZIP, so the long unpack happens in the job, not the request.
         return $user->imports()->create([
             'archive_path' => $archivePath,
             'archive_original_name' => $archive->getClientOriginalName(),
+            'archive_sha256' => $hash,
             'phase' => ImportPhase::Pending,
         ]);
     }
 
-    /** Runs remaining phases and saves a safe failure message without losing the checkpoint. */
+    /** Finds the user's queued, running, or stalled import of the same archive bytes. */
+    private function findUnfinished(User $user, string $hash): ?Import
+    {
+        return $user->imports()
+            ->where('archive_sha256', $hash)
+            ->where('phase', '!=', ImportPhase::Completed)
+            ->first();
+    }
+
+    /**
+     * Runs remaining phases and saves a safe failure message without losing the checkpoint.
+     *
+     * @throws ImportAlreadyRunningException When another run holds a fresh claim.
+     */
     public function run(Import $import): void
+    {
+        $claimedAt = $this->claim($import);
+
+        try {
+            $this->runPhases($import);
+        } finally {
+            $this->release($import, $claimedAt);
+        }
+    }
+
+    /**
+     * Takes the run claim with one conditional UPDATE, so two runs cannot both win.
+     * A claim older than `import.timeout_seconds` is a crashed run and is taken over.
+     * The claim is a column, not a cache lock, because the import page reads it.
+     *
+     * @throws ImportAlreadyRunningException
+     */
+    private function claim(Import $import): CarbonInterface
+    {
+        $now = now();
+
+        $claimed = Import::query()
+            ->whereKey($import->getKey())
+            ->where(function (Builder $query) use ($now): void {
+                $query->whereNull('running_since')
+                    ->orWhere('running_since', '<', $now->copy()->subSeconds(config('import.timeout_seconds')));
+            })
+            ->update(['running_since' => $now, 'queued_at' => null]);
+
+        if ($claimed === 0) {
+            throw new ImportAlreadyRunningException;
+        }
+
+        // Reload the checkpoint: a crashed run can have saved phases after this model was read.
+        $import->refresh();
+
+        return $now;
+    }
+
+    /** Clears the claim only if it is still this run's: a takeover owns it after a timeout. */
+    private function release(Import $import, CarbonInterface $claimedAt): void
+    {
+        Import::query()
+            ->whereKey($import->getKey())
+            ->where('running_since', $claimedAt)
+            ->update(['running_since' => null]);
+
+        $import->forceFill(['running_since' => null])->syncOriginalAttribute('running_since');
+    }
+
+    private function runPhases(Import $import): void
     {
         if (in_array($import->phase, [ImportPhase::Completed, ImportPhase::Failed], true)) {
             return; // terminal — nothing to run
@@ -97,9 +164,17 @@ class ProjectImporter
 
         $dataPath = $this->extractionPath($import);
 
-        // Re-extract the kept ZIP when temporary extracted files are missing.
+        // Extract the kept ZIP on the first run, or again when the extracted files are gone.
         if (! is_dir($dataPath)) {
-            $this->extract($this->disk()->path($import->archive_path), $dataPath);
+            try {
+                $this->extract($import);
+            } catch (Throwable $exception) {
+                $import->update(['failure_message' => $exception instanceof ImportValidationException
+                    ? $exception->getMessage()
+                    : 'The import could not unpack the archive. You can resume it or discard it.']);
+
+                throw $exception;
+            }
         }
 
         $idMaps = $import->id_maps ?? [];
@@ -229,21 +304,34 @@ class ProjectImporter
             : "The import failed while importing the {$phase->value} data. You can resume it or discard it.";
     }
 
-    /** Extracts an archive after all entry names pass validation. */
-    private function extract(string $zipPath, string $destination): void
+    /**
+     * Extracts the validated archive into a side folder, then renames the folder.
+     *
+     * > [!WARNING]
+     * > A job timeout can stop the unpack. A partial folder at the final path looks complete
+     * > to the next run. The side folder makes the next run extract again.
+     */
+    private function extract(Import $import): void
     {
+        $partialDirectory = $this->extractedDirectory($import).self::PARTIAL_SUFFIX;
+        $this->deleteDirectory($partialDirectory);
+
         $zip = new ZipArchive;
 
-        if ($zip->open($zipPath) !== true) {
+        if ($zip->open($this->disk()->path($import->archive_path)) !== true) {
             throw ImportValidationException::notAZip();
         }
 
         try {
-            if (! $zip->extractTo($destination)) {
+            if (! $zip->extractTo($this->disk()->path($partialDirectory))) {
                 throw new RuntimeException('Unable to extract the import archive.');
             }
         } finally {
             $zip->close();
+        }
+
+        if (! rename($this->disk()->path($partialDirectory), $this->extractionPath($import))) {
+            throw new RuntimeException('Unable to move the extracted import archive.');
         }
     }
 
@@ -252,6 +340,7 @@ class ProjectImporter
     {
         $this->disk()->delete($import->archive_path);
         $this->deleteDirectory($this->extractedDirectory($import));
+        $this->deleteDirectory($this->extractedDirectory($import).self::PARTIAL_SUFFIX);
     }
 
     /**

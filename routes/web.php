@@ -123,6 +123,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
         // Store creates a project. Resume and destroy authorize the existing import.
         Route::post('/data/import', [ImportController::class, 'store'])->name('data.import');
+        Route::get('/data/imports/{import}/status', [ImportController::class, 'status'])->name('data.imports.status');
         Route::post('/data/imports/{import}/resume', [ImportController::class, 'resume'])->name('data.imports.resume');
         Route::delete('/data/imports/{import}', [ImportController::class, 'destroy'])->name('data.imports.destroy');
         Route::patch('/data/import-settings', [ImportSettingController::class, 'update'])->name('data.import-settings');

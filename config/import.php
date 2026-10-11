@@ -27,21 +27,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default background mode
+    | Background mode
     |--------------------------------------------------------------------------
     |
     | Whether imports run via the queued ProjectImportJob (true) or inline in
-    | the request (false) by default. Synchronous is the safe default; queued is
-    | opt-in. Validation always runs synchronously regardless of this toggle —
-    | only the graph-import phases are ever queued.
-    |
-    | Like default_max_archive_kilobytes, this seeds ImportSetting::current()'s
-    | lazy-create path and is mirrored by the import_settings.run_in_background
-    | column default. Keep the two equal.
+    | the request (false). This is a fact about the runtime, not a writer
+    | setting: it is true only where a queue worker runs (Docker). Validation
+    | always runs in the request; only the graph-import phases are queued.
     |
     */
 
-    'default_run_in_background' => (bool) env('IMPORT_RUN_IN_BACKGROUND', false),
+    'run_in_background' => (bool) env('IMPORT_RUN_IN_BACKGROUND', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Run timeout (seconds)
+    |--------------------------------------------------------------------------
+    |
+    | The longest time one import run can hold its claim (`running_since`).
+    | An older claim counts as a crashed run, and a new run can take it over.
+    | ProjectImportJob uses the same value as its queue timeout.
+    |
+    | Keep the queue `retry_after` (DB_QUEUE_RETRY_AFTER, 1860 in Docker) above
+    | this value. Otherwise a second worker takes the job while it still runs.
+    |
+    */
+
+    'timeout_seconds' => (int) env('IMPORT_TIMEOUT_SECONDS', 1800),
 
     /*
     |--------------------------------------------------------------------------

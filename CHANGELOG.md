@@ -17,6 +17,26 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-11 — Import timeout
+
+### Added
+
+- The import page shows each import's progress live and warns when you upload an archive you already imported.
+- Docker runs imports in the background, so a large import no longer times out the upload.
+
+### Changed
+
+- A second upload of an import that is still running or stalled is refused.
+- An import that takes too long stops with a message. You can resume or discard it.
+
+### Fixed
+
+- A double click on Import or Resume no longer starts two runs.
+
+### Removed
+
+- The "run in background" checkbox on the import settings. The environment now decides.
+
 ## 2026-10-11 — Docker database volume (#323)
 
 ### Added

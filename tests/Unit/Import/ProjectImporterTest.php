@@ -3,7 +3,9 @@
 namespace Tests\Unit\Import;
 
 use App\Enums\ImportPhase;
+use App\Exceptions\ImportAlreadyRunningException;
 use App\Exceptions\ImportValidationException;
+use App\Jobs\ProjectImportJob;
 use App\Models\Import;
 use App\Models\Project;
 use App\Models\Revision;
@@ -17,6 +19,8 @@ use App\Services\ProjectImporter;
 use App\Services\SceneReferenceMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Queue\TimeoutExceededException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Mockery;
@@ -64,7 +68,7 @@ class ProjectImporterTest extends TestCase
     // start()
     // ------------------------------------------------------------------
 
-    public function test_start_returns_a_pending_import_with_the_archive_stored_and_extracted(): void
+    public function test_start_returns_a_pending_import_with_the_archive_stored_but_not_extracted(): void
     {
         $user = User::factory()->create();
 
@@ -79,11 +83,52 @@ class ProjectImporterTest extends TestCase
         $this->assertStringStartsWith('imports/', $import->archive_path);
         Storage::disk('local')->assertExists($import->archive_path);
 
-        // ...and extracted next to it, ready for run() to read.
-        $extractedDirectory = Storage::disk('local')->path(Str::beforeLast($import->archive_path, '.zip'));
-        $this->assertDirectoryExists($extractedDirectory);
-        $this->assertFileExists($extractedDirectory.'/data/manifest.json');
-        $this->assertFileExists($extractedDirectory.'/data/project/project.json');
+        // ...but not extracted: the long unpack belongs to run(), not the request.
+        $this->assertDirectoryDoesNotExist($this->extractedPath($import));
+    }
+
+    public function test_run_extracts_the_archive_that_start_stored_and_completes(): void
+    {
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+
+        $importer->run($import);
+
+        $this->assertSame(ImportPhase::Completed, $import->refresh()->phase);
+        $this->assertSame('Fixture project', $import->project?->name);
+    }
+
+    public function test_run_extracts_again_over_a_partial_unpack_left_by_a_killed_run(): void
+    {
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+        // A killed unpack leaves only the side folder, with some of the files.
+        mkdir($this->extractedPath($import).'.partial/data', 0777, true);
+        file_put_contents($this->extractedPath($import).'.partial/data/manifest.json', '{');
+
+        $importer->run($import);
+
+        $this->assertSame(ImportPhase::Completed, $import->refresh()->phase);
+        $this->assertDirectoryDoesNotExist($this->extractedPath($import).'.partial');
+    }
+
+    public function test_an_extraction_failure_saves_a_failure_message_and_keeps_the_import(): void
+    {
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+        Storage::disk('local')->put($import->archive_path, 'no longer a zip');
+
+        try {
+            $importer->run($import);
+            $this->fail('A broken archive must throw.');
+        } catch (ImportValidationException) {
+            // expected
+        }
+
+        $import->refresh();
+        $this->assertSame(ImportPhase::Pending, $import->phase);
+        $this->assertNotNull($import->failure_message);
+        $this->assertNull($import->running_since);
     }
 
     public function test_start_on_an_invalid_archive_throws_and_creates_no_import_row(): void
@@ -213,6 +258,100 @@ class ProjectImporterTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // run() — the run claim
+    // ------------------------------------------------------------------
+
+    public function test_run_refuses_an_import_with_a_fresh_claim(): void
+    {
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+        $claimedAt = now()->subMinute()->startOfSecond();
+        $import->forceFill(['running_since' => $claimedAt])->save();
+
+        try {
+            $importer->run($import);
+            $this->fail('A fresh claim must block a second run.');
+        } catch (ImportAlreadyRunningException $exception) {
+            $this->assertSame('This import is already running.', $exception->getMessage());
+        }
+
+        $import->refresh();
+        $this->assertSame(ImportPhase::Pending, $import->phase);
+        $this->assertSame(0, Project::count());
+        // The other run keeps its claim.
+        $this->assertTrue($claimedAt->equalTo($import->running_since));
+    }
+
+    public function test_run_takes_over_a_stale_claim_and_completes(): void
+    {
+        config(['import.timeout_seconds' => 1800]);
+
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+        $import->forceFill(['running_since' => now()->subSeconds(1801)])->save();
+
+        $importer->run($import);
+
+        $import->refresh();
+        $this->assertSame(ImportPhase::Completed, $import->phase);
+        $this->assertNull($import->running_since);
+    }
+
+    public function test_run_clears_the_claim_and_the_queue_time(): void
+    {
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+        $import->update(['queued_at' => now()]);
+
+        $importer->run($import);
+
+        $import->refresh();
+        $this->assertNull($import->running_since);
+        $this->assertNull($import->queued_at);
+    }
+
+    public function test_the_claim_is_held_during_the_run_and_the_queue_time_is_cleared_when_it_starts(): void
+    {
+        $graphImporter = Mockery::mock(
+            ProjectGraphImporter::class,
+            [
+                app(ContentSanitizer::class),
+                app(CodexMediaService::class),
+                app(CoverImageService::class),
+            ],
+        )->makePartial();
+
+        $seen = null;
+        $graphImporter->shouldReceive('importTimeline')->andReturnUsing(function () use (&$seen): void {
+            $seen = Import::firstOrFail();
+            throw new RuntimeException('stop');
+        });
+        $this->instance(ProjectGraphImporter::class, $graphImporter);
+
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+        $import->update(['queued_at' => now()]);
+
+        try {
+            $importer->run($import);
+        } catch (RuntimeException) {
+            // expected
+        }
+
+        $this->assertNotNull($seen);
+        $this->assertTrue($seen->isRunning());
+        $this->assertNull($seen->queued_at);
+    }
+
+    public function test_run_releases_the_claim_after_a_phase_exception(): void
+    {
+        $import = $this->startAndStallAtCodex(User::factory()->create());
+
+        $this->assertSame(ImportPhase::Story, $import->phase);
+        $this->assertNull($import->running_since);
+    }
+
+    // ------------------------------------------------------------------
     // discard()
     // ------------------------------------------------------------------
 
@@ -243,12 +382,97 @@ class ProjectImporterTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // ProjectImportJob
+    // ------------------------------------------------------------------
+
+    public function test_the_job_runs_once_with_the_import_timeout(): void
+    {
+        config(['import.timeout_seconds' => 1234]);
+
+        $job = new ProjectImportJob(Import::factory()->create());
+
+        $this->assertSame(1, $job->tries);
+        $this->assertTrue($job->failOnTimeout);
+        $this->assertTrue($job->deleteWhenMissingModels);
+        $this->assertSame(1234, $job->timeout);
+    }
+
+    public function test_the_queue_payload_carries_the_import_timeout(): void
+    {
+        config(['import.timeout_seconds' => 1234, 'queue.default' => 'database']);
+
+        ProjectImportJob::dispatch(Import::factory()->create());
+
+        $payload = json_decode(DB::table('jobs')->value('payload'), true);
+
+        // The worker reads this key. A timeout() method on the job never reaches it.
+        $this->assertSame(1234, $payload['timeout']);
+        $this->assertTrue($payload['failOnTimeout']);
+    }
+
+    public function test_the_job_on_a_running_import_returns_without_a_change(): void
+    {
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+        $claimedAt = now()->subMinute()->startOfSecond();
+        $import->forceFill(['running_since' => $claimedAt])->save();
+
+        (new ProjectImportJob($import))->handle($importer);
+
+        $import->refresh();
+        $this->assertSame(ImportPhase::Pending, $import->phase);
+        $this->assertNull($import->failure_message);
+        $this->assertTrue($claimedAt->equalTo($import->running_since));
+        $this->assertSame(0, Project::count());
+    }
+
+    public function test_a_timed_out_job_saves_a_message_clears_the_claim_and_stays_resumable(): void
+    {
+        config(['import.timeout_seconds' => 1800]);
+
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+        $import->forceFill(['running_since' => now()])->save();
+
+        (new ProjectImportJob($import))->failed(new TimeoutExceededException('timed out'));
+
+        $import->refresh();
+        $this->assertSame(
+            'The import took longer than 30 minutes and stopped. You can resume it or discard it.',
+            $import->failure_message,
+        );
+        $this->assertNull($import->running_since);
+
+        $importer->run($import);
+
+        $this->assertSame(ImportPhase::Completed, $import->refresh()->phase);
+    }
+
+    public function test_a_failed_job_keeps_the_phase_failure_message(): void
+    {
+        $import = $this->startAndStallAtCodex(User::factory()->create());
+        $message = $import->failure_message;
+        $this->assertNotNull($message);
+
+        (new ProjectImportJob($import))->failed(new RuntimeException('boom'));
+
+        $import->refresh();
+        $this->assertSame($message, $import->failure_message);
+        $this->assertSame(ImportPhase::Story, $import->phase);
+    }
+
+    // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
 
     private function importer(): ProjectImporter
     {
         return app(ProjectImporter::class);
+    }
+
+    private function extractedPath(Import $import): string
+    {
+        return Storage::disk('local')->path(Str::beforeLast($import->archive_path, '.zip'));
     }
 
     /**

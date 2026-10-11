@@ -24,9 +24,10 @@ class Import extends Model
         'project_id',
         'archive_path',
         'archive_original_name',
+        'archive_sha256',
         'phase',
         'id_maps',
-        'queued',
+        'queued_at',
         'failure_message',
     ];
 
@@ -35,7 +36,8 @@ class Import extends Model
         return [
             'phase' => ImportPhase::class,
             'id_maps' => 'array',
-            'queued' => 'boolean',
+            'running_since' => 'datetime',
+            'queued_at' => 'datetime',
         ];
     }
 
@@ -59,6 +61,62 @@ class Import extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * True while a run holds a fresh claim. A claim older than
+     * `import.timeout_seconds` is a crashed run and does not count.
+     */
+    public function isRunning(): bool
+    {
+        return $this->running_since !== null
+            && $this->running_since->gt(now()->subSeconds(config('import.timeout_seconds')));
+    }
+
+    /** True when a job waits for a worker: queued, not started, and not finished. */
+    public function isQueued(): bool
+    {
+        return $this->queued_at !== null
+            && ! $this->isRunning()
+            && ! in_array($this->phase, [ImportPhase::Completed, ImportPhase::Failed], true);
+    }
+
+    /**
+     * The row state the import page shows: completed, running, queued or stalled.
+     * A stalled row waits for Resume or Discard.
+     */
+    public function state(): string
+    {
+        return match (true) {
+            $this->phase === ImportPhase::Completed => 'completed',
+            $this->isRunning() => 'running',
+            $this->isQueued() => 'queued',
+            default => 'stalled',
+        };
+    }
+
+    /**
+     * The earlier completed import of the same archive, while its project exists.
+     * Only a row that never started has a duplicate: a started row is the writer's choice.
+     */
+    public function duplicateOf(): ?self
+    {
+        if ($this->archive_sha256 === null
+            || $this->phase !== ImportPhase::Pending
+            || $this->queued_at !== null
+            || $this->running_since !== null
+            || $this->failure_message !== null) {
+            return null;
+        }
+
+        return self::query()
+            ->where('user_id', $this->user_id)
+            ->where('archive_sha256', $this->archive_sha256)
+            ->where('phase', ImportPhase::Completed)
+            ->whereNotNull('project_id')
+            ->whereKeyNot($this->getKey())
+            ->latest('updated_at')
+            ->first();
     }
 
     /**

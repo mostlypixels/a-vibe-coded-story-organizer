@@ -7,7 +7,7 @@ use App\Models\ImportSetting;
 use Illuminate\Http\RedirectResponse;
 
 /**
- * Persists the global import settings (archive size cap + background mode).
+ * Persists the global import settings (archive size cap).
  *
  * Thin, mirroring GeneralSettingsController::update(): resolve the singleton ->
  * (authorize in the Form Request) -> update -> redirect. Lives on the Export &
@@ -17,8 +17,7 @@ use Illuminate\Http\RedirectResponse;
 class ImportSettingController extends Controller
 {
     /**
-     * Persist the size cap (MB → KB converted by the request) and background
-     * toggle to the singleton row.
+     * Persist the size cap (MB → KB converted by the request) to the singleton row.
      */
     public function update(UpdateImportSettingRequest $request): RedirectResponse
     {

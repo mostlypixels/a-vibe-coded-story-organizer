@@ -15,6 +15,11 @@ use App\Models\User;
  */
 class ImportPolicy
 {
+    public function view(User $user, Import $import): bool
+    {
+        return $user->id === $import->user_id;
+    }
+
     public function resume(User $user, Import $import): bool
     {
         return $user->id === $import->user_id;

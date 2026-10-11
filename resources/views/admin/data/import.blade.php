@@ -20,6 +20,10 @@
         </div>
     @endif
 
+    @if (session('warning'))
+        <x-alert variant="warning" class="mb-6">{{ session('warning') }}</x-alert>
+    @endif
+
     <x-card icon="tabler-settings" class="max-w-md mb-8">
         <x-slot name="header">
             <x-heading level="4" icon="tabler-settings">{{ __('Import settings') }}</x-heading>
@@ -45,22 +49,9 @@
                 />
             </x-field>
 
-            <div class="flex items-start gap-3">
-                <input
-                    type="checkbox"
-                    id="run_in_background"
-                    name="run_in_background"
-                    value="1"
-                    @checked(old('run_in_background', $importSetting->run_in_background))
-                    class="mt-1 rounded-sm border-border-strong text-link shadow-xs focus:ring-focus"
-                >
-                <div>
-                    <x-input-label for="run_in_background" :value="__('Process imports in the background')" />
-                    <p class="mt-1 text-sm text-content-muted">
-                        {{ __('Requires a running queue worker (php artisan queue:work). Leave this off unless you\'ve set one up — imports will otherwise sit queued forever.') }}
-                    </p>
-                </div>
-            </div>
+            <p class="text-sm text-content-muted" data-run-mode="{{ $runInBackground ? 'background' : 'inline' }}">
+                {{ $runInBackground ? __('Imports run in the background.') : __('Imports run during the upload.') }}
+            </p>
 
             <x-button variant="primary">{{ __('Save') }}</x-button>
         </form>
@@ -96,27 +87,59 @@
             <div class="mt-8 space-y-3" aria-labelledby="imports-heading">
                 <x-heading level="4" id="imports-heading">{{ __('In-progress imports') }}</x-heading>
 
-                @foreach ($imports as $import)
-                    <div class="flex items-center justify-between rounded-md border border-border p-4">
+                @foreach ($imports as $row)
+                    @php($import = $row['import'])
+                    @php($polling = in_array($row['state'], ['queued', 'running'], true))
+                    <div
+                        class="flex items-center justify-between gap-4 rounded-md border border-border p-4"
+                        data-import-state="{{ $row['state'] }}"
+                        @if ($polling)
+                            x-data="importStatus({{ Js::from(route('admin.data.imports.status', $import)) }}, {{ Js::from($row['state']) }}, {{ Js::from(__($import->phase->label())) }})"
+                            x-bind:data-import-state="state"
+                        @endif
+                    >
                         <div>
                             <p class="text-sm font-medium text-content">{{ $import->archiveOriginalName() }}</p>
-                            <p class="text-sm text-content-muted">
-                                {{ __('Status: :phase', ['phase' => $import->phase->label()]) }}
-                                @if ($import->failure_message)
-                                    &mdash; {{ $import->failure_message }}
+                            <p class="text-sm text-content-muted" aria-live="polite">
+                                @if ($polling)
+                                    <span x-show="state === 'queued'" @style(['display: none' => $row['state'] !== 'queued'])>{{ __('Waiting to start') }}</span>
+                                    <span x-show="state === 'running'" class="inline-flex items-center gap-2" @style(['display: none' => $row['state'] !== 'running'])>
+                                        <x-tabler-loader-2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+                                        <span x-text="label">{{ __($import->phase->label()) }}</span>
+                                    </span>
+                                    <span x-show="state === 'completed'" style="display: none">{{ __('Done') }}</span>
+                                @elseif ($row['state'] === 'duplicate')
+                                    {{ __('You imported this archive on :date as :project.', $row['duplicate']) }}
+                                @else
+                                    {{ __($import->phase->label()) }}
+                                    @if ($import->failure_message)
+                                        &mdash; {{ $import->failure_message }}
+                                    @endif
                                 @endif
                             </p>
                         </div>
 
                         <div class="flex gap-2">
-                            <form method="POST" action="{{ route('admin.data.imports.resume', $import) }}">
-                                @csrf
-                                <x-button variant="secondary">{{ __('Resume') }}</x-button>
-                            </form>
-                            <x-delete-button
-                                :action="route('admin.data.imports.destroy', $import)"
-                                :confirm="__('Discard this import? Anything already created will be deleted.')"
-                            >{{ __('Discard') }}</x-delete-button>
+                            @if ($polling)
+                                <x-button variant="secondary" href="#" x-show="state === 'completed'" x-bind:href="projectUrl" style="display: none">{{ __('Open project') }}</x-button>
+                                {{-- No Discard while a run holds the import: it would delete rows under a running phase. --}}
+                                @if ($row['state'] === 'queued')
+                                    <x-delete-button
+                                        x-show="state === 'queued'"
+                                        :action="route('admin.data.imports.destroy', $import)"
+                                        :confirm="__('Discard this import? Anything already created will be deleted.')"
+                                    >{{ __('Discard') }}</x-delete-button>
+                                @endif
+                            @else
+                                <form method="POST" action="{{ route('admin.data.imports.resume', $import) }}">
+                                    @csrf
+                                    <x-button variant="secondary">{{ $row['state'] === 'duplicate' ? __('Import anyway') : __('Resume') }}</x-button>
+                                </form>
+                                <x-delete-button
+                                    :action="route('admin.data.imports.destroy', $import)"
+                                    :confirm="__('Discard this import? Anything already created will be deleted.')"
+                                >{{ __('Discard') }}</x-delete-button>
+                            @endif
                         </div>
                     </div>
                 @endforeach

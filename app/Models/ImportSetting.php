@@ -7,9 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Application-wide import policy — a singleton.
  *
- * Exactly one row ever exists: the whole application shares one import size cap
- * and default run mode. Like {@see CrawlerSetting} this model is global (no
- * owning Project or User), so it is deliberately outside ProjectPolicy's
+ * Exactly one row ever exists: the whole application shares one import size cap.
+ * Like {@see CrawlerSetting} this model is global (no owning Project or User), so it is deliberately outside ProjectPolicy's
  * authorization walk — any authenticated user may edit it (settings vs. the
  * per-attempt {@see Import} tracking record). See documentation/export-import/archive-format.md.
  *
@@ -20,15 +19,7 @@ class ImportSetting extends Model
 {
     protected $fillable = [
         'max_archive_kilobytes',
-        'run_in_background',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'run_in_background' => 'boolean',
-        ];
-    }
 
     /**
      * Return the singleton row, lazily creating it from config defaults on first
@@ -42,7 +33,6 @@ class ImportSetting extends Model
     {
         return static::firstOr(fn () => static::create([
             'max_archive_kilobytes' => config('import.default_max_archive_kilobytes'),
-            'run_in_background' => config('import.default_run_in_background'),
         ]));
     }
 }

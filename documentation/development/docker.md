@@ -78,6 +78,18 @@ Compiled Blade views go to `/tmp/views` inside the container, not to the bind mo
 
 Cache, sessions, and queues use the database. There is no Redis service. Add Redis only when deployment needs justify another service.
 
+## Imports and the queue worker
+
+`IMPORT_RUN_IN_BACKGROUND=true` is set in both Compose files. A project import runs in the queue worker, not in the upload request, so a long import cannot hit the web timeout.
+
+- **Job limits:** `ProjectImportJob` sets `tries = 1` and its own timeout from `IMPORT_TIMEOUT_SECONDS` (1800 s). They override the worker command (`--tries=3`).
+- **`pcntl`:** both Dockerfiles install it. The worker enforces the job timeout only with `pcntl`. Native Windows PHP has none; native imports run inline.
+- **`retry_after`:** `DB_QUEUE_RETRY_AFTER=1860` must stay above the job timeout. Otherwise a second worker takes the job while the first still runs.
+- **Web timeout:** `fastcgi_read_timeout 300s` in `docker/nginx.conf` matches `max_execution_time`. The nginx default of 60 s cut off an inline import that PHP still allowed.
+
+> [!WARNING]
+> Rebuild once after you pull this change: `make rebuild`, then recreate the container. A running container keeps its old image (no `pcntl`) and its old environment.
+
 ## Moving data into Docker
 
 Copy the native data into Docker once, to work on your real projects there:
