@@ -142,7 +142,8 @@ class CodexAsOfTest extends TestCase
         [$project, $book] = $this->projectWithBook($user);
 
         $inception = Event::factory()->for($project)->create(['event_datetime' => '1980-01-01']);
-        CodexEntry::factory()->for($project)->character()->create([
+        // A location: the edit page lists every character in the viewpoint field.
+        CodexEntry::factory()->for($project)->location()->create([
             'name' => 'Melusine',
             'inception_event_id' => $inception->id,
         ]);
@@ -164,7 +165,8 @@ class CodexAsOfTest extends TestCase
 
         $inception = Event::factory()->for($project)->create(['event_datetime' => '1980-01-01']);
         $termination = Event::factory()->for($project)->create(['event_datetime' => '2000-01-01']);
-        CodexEntry::factory()->for($project)->character()->create([
+        // A location: the edit page lists every character in the viewpoint field.
+        CodexEntry::factory()->for($project)->location()->create([
             'name' => 'Melusine',
             'inception_event_id' => $inception->id,
             'termination_event_id' => $termination->id,

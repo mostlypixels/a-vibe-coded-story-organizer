@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-11 — Scene viewpoint (#322)
+
+### Added
+
+- A scene can name its viewpoint (POV) character, and export and import keep it.
+
 ## 2026-10-10 — Project notes (#321)
 
 ### Added

@@ -536,6 +536,62 @@ class SceneTest extends TestCase
         $this->assertNull(Scene::first()->event_id);
     }
 
+    public function test_a_scene_can_be_created_with_a_viewpoint_character(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $book = $chapter->act->book;
+        $character = CodexEntry::factory()->character()->for($book->project)->create();
+
+        $this->actingAs($user)
+            ->post(route('books.scenes.store', $book), $this->validPayload($chapter, ['viewpoint_character_id' => $character->id]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($character->id, Scene::first()->viewpoint_character_id);
+    }
+
+    public function test_the_edit_form_offers_only_the_project_characters_as_viewpoint(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->book->project;
+        $oliver = CodexEntry::factory()->character()->for($project)->create(['name' => 'Oliver']);
+        CodexEntry::factory()->location()->for($project)->create(['name' => 'Gardenia House']);
+        $scene = Scene::factory()->for($chapter)->create(['viewpoint_character_id' => $oliver->id]);
+
+        $this->actingAs($user)
+            ->get(route('scenes.edit', $scene))
+            ->assertOk()
+            ->assertSee('<option value="'.$oliver->id.'" selected', false)
+            ->assertDontSee('Gardenia House');
+    }
+
+    public function test_saving_the_edit_form_with_no_viewpoint_clears_it(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $character = CodexEntry::factory()->character()->for($chapter->act->book->project)->create();
+        $scene = Scene::factory()->for($chapter)->create(['viewpoint_character_id' => $character->id]);
+
+        $this->actingAs($user)
+            ->put(route('scenes.update', $scene), $this->validPayload($chapter, ['viewpoint_character_id' => '']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($scene->fresh()->viewpoint_character_id);
+    }
+
+    public function test_deleting_the_viewpoint_character_clears_the_scene_viewpoint(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $character = CodexEntry::factory()->character()->for($chapter->act->book->project)->create();
+        $scene = Scene::factory()->for($chapter)->create(['viewpoint_character_id' => $character->id]);
+
+        $this->actingAs($user)->delete(route('codex.destroy', $character));
+
+        $this->assertNull($scene->fresh()->viewpoint_character_id);
+    }
+
     public function test_a_scene_can_happen_during_an_existing_event(): void
     {
         $user = User::factory()->create();
@@ -670,6 +726,14 @@ class SceneTest extends TestCase
             'mentioned event from another project' => [
                 fn (Chapter $chapter) => ['mentioned_events' => [Event::factory()->for(Project::factory()->for($chapter->act->book->project->user))->create()->id]],
                 'mentioned_events.0',
+            ],
+            'viewpoint character from another project' => [
+                fn (Chapter $chapter) => ['viewpoint_character_id' => CodexEntry::factory()->character()->for(Project::factory()->for($chapter->act->book->project->user))->create()->id],
+                'viewpoint_character_id',
+            ],
+            'viewpoint that is not a character' => [
+                fn (Chapter $chapter) => ['viewpoint_character_id' => CodexEntry::factory()->location()->for($chapter->act->book->project)->create()->id],
+                'viewpoint_character_id',
             ],
             'new event title without a date' => [fn (Chapter $chapter) => ['new_event_title' => 'A new event'], 'new_event_datetime'],
             'new event date without a title' => [fn (Chapter $chapter) => ['new_event_datetime' => now()->addWeek()->format('Y-m-d H:i:s')], 'new_event_title'],
@@ -1443,6 +1507,18 @@ class SceneTest extends TestCase
         $this->assertSame('duplicated', session('status'));
         $this->assertSame($chapter->id, $copy->chapter_id);
         $this->assertSame(2, Scene::count());
+    }
+
+    public function test_duplicating_a_scene_copies_its_viewpoint(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $character = CodexEntry::factory()->character()->for($chapter->act->book->project)->create();
+        $scene = Scene::factory()->for($chapter)->create(['viewpoint_character_id' => $character->id]);
+
+        $this->actingAs($user)->post(route('scenes.duplicate', $scene), ['name' => 'Copy']);
+
+        $this->assertSame($character->id, Scene::where('name', 'Copy')->firstOrFail()->viewpoint_character_id);
     }
 
     public function test_a_non_owner_cannot_duplicate_a_scene(): void

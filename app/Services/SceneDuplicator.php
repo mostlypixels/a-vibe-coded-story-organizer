@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\DB;
  * Duplicates a scene into a new row in the same chapter, right after the
  * original. See documentation/architecture/README.md -> Duplicating entities.
  *
- * Copies `description`, `contents`, `status`, `chapter_id`, `event_id`, the
- * `event_scene` "mentions" pivot, and the note links. No note is copied. Never copies `share_token` or
+ * Copies `description`, `contents`, `status`, `chapter_id`, `event_id`,
+ * `viewpoint_character_id`, the `event_scene` "mentions" pivot, and the note links. No note
+ * is copied. Never copies `share_token` or
  * `share_expires_at` — a copy is always unshared, and `scenes.share_token`
  * carries a unique index that a copied value would violate. `word_count` is
  * left to Scene's own `saving` hook.
@@ -38,6 +39,7 @@ class SceneDuplicator
                 'contents' => $scene->contents,
                 'status' => $scene->status,
                 'event_id' => $scene->event_id,
+                'viewpoint_character_id' => $scene->viewpoint_character_id,
                 'position' => $position,
             ]);
 

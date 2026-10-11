@@ -303,6 +303,7 @@ class StaticSiteExporter
             'status' => $scene->status->value,
             'chapter_id' => $scene->chapter_id,
             'event_id' => $scene->event_id,
+            'viewpoint_character_id' => $scene->viewpoint_character_id,
             'mentioned_event_ids' => $scene->mentionedEvents->pluck('id')->all(),
         ];
         $json += $this->addFieldFile($zip, $dir, 'contents_file', 'contents.md', $scene->contents);

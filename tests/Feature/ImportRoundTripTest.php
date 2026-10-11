@@ -657,6 +657,28 @@ class ImportRoundTripTest extends TestCase
         $this->assertSame([$imported->codexEntries()->firstOrFail()->id], $note->codexEntries()->pluck('codex_entries.id')->all());
     }
 
+    public function test_a_scene_viewpoint_survives_a_round_trip_and_points_at_the_imported_character(): void
+    {
+        $owner = User::factory()->create();
+        [$source, $chapter] = $this->seedReferenceSkeleton($owner);
+        $oliver = CodexEntry::factory()->character()->for($source)->create(['name' => 'Oliver']);
+        Scene::factory()->for($chapter)->create(['name' => 'Seen by Oliver', 'viewpoint_character_id' => $oliver->id]);
+        Scene::factory()->for($chapter)->create(['name' => 'No viewpoint']);
+
+        $zipPath = $this->exportZip($source, includeMedia: false);
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertSessionHasNoErrors();
+
+        $imported = $importer->projects()->sole();
+        $importedOliver = $imported->codexEntries()->where('name', 'Oliver')->sole();
+        $this->assertNotSame($oliver->id, $importedOliver->id);
+        $this->assertSame($importedOliver->id, $imported->sceneQuery()->where('name', 'Seen by Oliver')->sole()->viewpoint_character_id);
+        $this->assertNull($imported->sceneQuery()->where('name', 'No viewpoint')->sole()->viewpoint_character_id);
+    }
+
     // ------------------------------------------------------------------
     // Fixtures & helpers
     // ------------------------------------------------------------------
