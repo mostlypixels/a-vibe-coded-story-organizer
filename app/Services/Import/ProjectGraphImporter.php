@@ -17,6 +17,7 @@ use App\Models\CodexEntry;
 use App\Models\Note;
 use App\Models\NoteCategory;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Models\User;
 use App\Services\CodexMediaService;
 use App\Services\CoverImageService;
@@ -475,6 +476,9 @@ class ProjectGraphImporter
      * Imports codex definitions, tags, entries, values, links, and media.
      * A failure removes files that the database transaction cannot roll back.
      *
+     * The story phase runs first, so the scene viewpoints link here, after the
+     * characters exist.
+     *
      * @param  array<string, array<int, int>>  $idMaps
      */
     public function importCodex(string $dataPath, Project $project, array &$idMaps): void
@@ -501,6 +505,10 @@ class ProjectGraphImporter
 
                 foreach ($this->readEntityDescriptors($dataPath, 'data/codex/*/*/entry.json') as $item) {
                     $this->importCodexEntry($dataPath, $project, $item, $idMaps, $copiedPaths);
+                }
+
+                foreach ($this->readEntityDescriptors($dataPath, 'data/books/*/acts/*/chapters/*/scenes/*/scene.json') as $item) {
+                    $this->linkSceneViewpoint($item, $idMaps);
                 }
             });
         } catch (Throwable $exception) {
@@ -723,6 +731,30 @@ class ProjectGraphImporter
         if ($mentionedEventIds !== []) {
             $scene->mentionedEvents()->attach($mentionedEventIds);
         }
+    }
+
+    /**
+     * An archive from before the viewpoint field has no `viewpoint_character_id` key.
+     *
+     * @param  array{path: string, directory: string, data: array<string, mixed>}  $item
+     * @param  array<string, array<int, int>>  $idMaps
+     */
+    private function linkSceneViewpoint(array $item, array $idMaps): void
+    {
+        $sourceId = $item['data']['viewpoint_character_id'] ?? null;
+
+        if ($sourceId === null) {
+            return;
+        }
+
+        $characterId = $this->resolveId($idMaps, self::MAP_ENTRIES, $sourceId, $item['path'], 'viewpoint_character_id');
+
+        if (CodexEntry::find($characterId)?->type !== CodexEntryType::Character) {
+            throw ImportValidationException::invalidDescriptorValue($item['path'], 'viewpoint_character_id');
+        }
+
+        Scene::whereKey($this->resolveId($idMaps, self::MAP_SCENES, $item['data']['id'], $item['path'], 'id'))
+            ->update(['viewpoint_character_id' => $characterId]);
     }
 
     /**

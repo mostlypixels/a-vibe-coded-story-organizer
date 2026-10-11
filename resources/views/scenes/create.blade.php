@@ -44,6 +44,8 @@
                         </x-select>
                     </x-field>
 
+                    @include('scenes.partials.viewpoint-field', ['selected' => old('viewpoint_character_id')])
+
                     <x-field name="description" :label="__('Description')">
                         <x-wysiwyg id="description" name="description" :value="old('description')" :rows="4" />
                     </x-field>

@@ -203,6 +203,7 @@ data/books/<id>-slug/
   "status": "to_edit",
   "chapter_id": 12,
   "event_id": 40,
+  "viewpoint_character_id": 9,
   "mentioned_event_ids": [41, 55],
   "contents_file": "contents.md",
   "description_file": "description.html"
@@ -214,6 +215,7 @@ data/books/<id>-slug/
 | `status`              | The `SceneStatus` **enum value** (machine form, e.g. `"to_edit"`), not the label. |
 | `event_id`            | The "happens during" event (nullable), by stable id.                         |
 | `mentioned_event_ids` | Ids from the `event_scene` pivot — events referenced but not the primary one. |
+| `viewpoint_character_id` | The viewpoint (POV) Character codex entry (nullable), by stable id. Optional: an older archive has no key. The codex phase links it, after the characters exist. |
 | `*_file`              | Present only when the field is non-empty (see the null-handling rule above).  |
 
 > [!NOTE]

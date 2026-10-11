@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CodexEntryType;
 use App\Http\Controllers\Concerns\JumpsToListPosition;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ReordersSiblings;
@@ -181,6 +182,7 @@ class SceneController extends Controller
             // The timeline is shared by every book in the project, so the event
             // list and its bounds stay project-wide.
             'events' => $this->eventsFor($project),
+            'characters' => $this->charactersFor($project),
             'windowMin' => $windowMin,
             'windowMax' => $windowMax,
         ]);
@@ -216,6 +218,7 @@ class SceneController extends Controller
             'book' => $book,
             'chapters' => $this->chaptersFor($book),
             'events' => $this->eventsFor($project),
+            'characters' => $this->charactersFor($project),
             'windowMin' => $windowMin,
             'windowMax' => $windowMax,
             'numbering' => StoryNumbering::forBook($book),
@@ -293,6 +296,11 @@ class SceneController extends Controller
     private function chaptersFor(Book $book): Collection
     {
         return $book->chaptersInStoryOrder();
+    }
+
+    private function charactersFor(Project $project): Collection
+    {
+        return $project->codexEntries()->where('type', CodexEntryType::Character)->orderBy('name')->get();
     }
 
     private function eventsFor(Project $project): Collection

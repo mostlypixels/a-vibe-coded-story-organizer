@@ -45,6 +45,8 @@
                         </x-select>
                     </x-field>
 
+                    @include('scenes.partials.viewpoint-field', ['selected' => old('viewpoint_character_id', $scene->viewpoint_character_id)])
+
                     <div>
                         <x-autosave-field entity="scene" :model="$scene" field="description" :label="__('Description')" />
                     </div>

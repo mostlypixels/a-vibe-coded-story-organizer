@@ -272,9 +272,10 @@ class ReferenceListTest extends TestCase
     {
         $scene = $this->sceneIn($project, 'The coronation');
 
+        // Locations: the edit page lists every character in the viewpoint field.
         $entries = collect(range(1, $count))->map(fn (int $i) => CodexEntry::factory()
             ->for($project)
-            ->character()
+            ->location()
             ->create(['name' => 'Referenced entry '.chr(64 + $i)]));
 
         $scene->codexReferences()->attach($entries->pluck('id'));

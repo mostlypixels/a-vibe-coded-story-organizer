@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\CodexEntryType;
 use App\Enums\SceneStatus;
 use App\Models\Book;
 use App\Rules\WithinEventWindow;
@@ -64,6 +65,13 @@ class StoreSceneRequest extends FormRequest
             'event_id' => ['nullable', 'integer', Rule::exists('events', 'id')->where('project_id', $project->id)],
             'new_event_title' => ['nullable', 'string', 'max:255', 'required_with:new_event_datetime'],
             'new_event_datetime' => ['nullable', 'date', 'required_with:new_event_title', new WithinEventWindow($project)],
+            'viewpoint_character_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('codex_entries', 'id')
+                    ->where('project_id', $project->id)
+                    ->where('type', CodexEntryType::Character->value),
+            ],
             'mentioned_events' => ['nullable', 'array'],
             'mentioned_events.*' => ['integer', Rule::exists('events', 'id')->where('project_id', $project->id)],
         ];

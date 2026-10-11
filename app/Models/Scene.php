@@ -33,6 +33,7 @@ class Scene extends Model implements Revisionable
         'status',
         'position',
         'event_id',
+        'viewpoint_character_id',
     ];
 
     protected $casts = [
@@ -79,6 +80,16 @@ class Scene extends Model implements Revisionable
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    /**
+     * The character whose viewpoint (POV) this scene uses (optional).
+     *
+     * @return BelongsTo<CodexEntry, $this>
+     */
+    public function viewpointCharacter(): BelongsTo
+    {
+        return $this->belongsTo(CodexEntry::class, 'viewpoint_character_id');
     }
 
     /**
