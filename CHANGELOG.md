@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-13 — Story overview scene display
+
+### Added
+
+- The Story overview can show each scene's description or its full text. Description is the default.
+- A scene with no description shows the first 100 words of its text.
+
 ## 2026-10-13 — Page width (#325)
 
 ### Added

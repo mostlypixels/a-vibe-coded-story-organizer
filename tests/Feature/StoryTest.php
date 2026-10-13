@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\StoryOverviewMode;
+use App\Enums\StoryOverviewSceneDisplay;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
@@ -759,5 +760,115 @@ class StoryTest extends TestCase
             ->assertOk()
             ->assertSee('Alpha Scene')
             ->assertSee('Omega Scene');
+    }
+
+    // ---------------------------------------------------------------------
+    // Scene display: description (default) or content.
+    // ---------------------------------------------------------------------
+
+    public function test_the_overview_shows_scene_descriptions_by_default(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        Scene::factory()->for($chapter)->create([
+            'description' => '<p>Quorvex description</p>',
+            'contents' => 'Zabrillo contents',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('books.story.overview', $book))
+            ->assertOk()
+            ->assertSee('Quorvex description')
+            ->assertDontSee('Zabrillo contents');
+    }
+
+    public function test_a_scene_without_a_description_shows_its_first_hundred_words(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        Scene::factory()->for($chapter)->create([
+            'description' => '<p></p>',
+            'contents' => '**First** '.trim(str_repeat('word ', 99)).' Hundredfirst',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('books.story.overview', $book))
+            ->assertOk()
+            ->assertSee('First word')
+            ->assertDontSee('<strong>First</strong>', false)
+            ->assertDontSee('Hundredfirst')
+            ->assertSee('...');
+    }
+
+    public function test_content_display_shows_the_scene_contents(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $book->update(['overview_scene_display' => StoryOverviewSceneDisplay::Content]);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        Scene::factory()->for($chapter)->create([
+            'description' => '<p>Quorvex description</p>',
+            'contents' => 'Zabrillo contents',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('books.story.overview', $book))
+            ->assertOk()
+            ->assertSee('Zabrillo contents')
+            ->assertDontSee('Quorvex description');
+    }
+
+    public function test_owner_can_switch_the_scene_display(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->patch(route('books.story.overview.mode', $book), [
+                'overview_scene_display' => StoryOverviewSceneDisplay::Content->value,
+            ])
+            ->assertRedirect(route('books.story.overview', $book));
+
+        $this->assertSame(StoryOverviewSceneDisplay::Content, $book->fresh()->overview_scene_display);
+        $this->assertSame(StoryOverviewMode::Chapter, $book->fresh()->overview_render_mode);
+    }
+
+    public function test_an_invalid_scene_display_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->patch(route('books.story.overview.mode', $book), [
+                'overview_scene_display' => 'not-a-real-display',
+            ])
+            ->assertSessionHasErrors('overview_scene_display');
+    }
+
+    public function test_the_mode_switch_needs_at_least_one_field(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+
+        $this->actingAs($user)
+            ->patch(route('books.story.overview.mode', $book), [])
+            ->assertSessionHasErrors(['overview_render_mode', 'overview_scene_display']);
+    }
+
+    public function test_a_non_owner_cannot_switch_the_scene_display(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        [, $book] = $this->projectWithBook($owner);
+
+        $this->actingAs($other)
+            ->patch(route('books.story.overview.mode', $book), [
+                'overview_scene_display' => StoryOverviewSceneDisplay::Content->value,
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(StoryOverviewSceneDisplay::Description, $book->fresh()->overview_scene_display);
     }
 }
