@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-13 — Story overview scene display
+## 2026-10-13 — Story overview scene display (#326)
 
 ### Added
 
