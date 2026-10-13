@@ -4,7 +4,7 @@ namespace Tests\Unit\Support;
 
 use App\Support\ScaleLabel;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class ScaleLabelTest extends TestCase
 {
@@ -16,6 +16,8 @@ class ScaleLabelTest extends TestCase
             'times from a percentage' => ['115%', 'times', '1.15×'],
             'times from a whole ratio' => ['1', 'times', '1×'],
             'times from a decimal ratio' => ['1.25', 'times', '1.25×'],
+            'width below full' => ['70%', 'width', '70%'],
+            'width at full' => ['100%', 'width', 'Full width'],
             'unknown format' => ['1.25', 'ratio', '1.25'],
         ];
     }

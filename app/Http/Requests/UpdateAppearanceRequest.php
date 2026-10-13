@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Support\PageWidth;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -31,6 +32,7 @@ class UpdateAppearanceRequest extends FormRequest
             'manuscript_leading' => ['nullable', Rule::in(array_keys(config('fonts.leading')))],
             'ui_leading' => ['nullable', Rule::in(array_keys(config('fonts.leading')))],
             'locale' => ['nullable', Rule::in(array_keys(config('locales.supported')))],
+            'page_width' => ['nullable', 'integer', Rule::in(PageWidth::steps())],
         ];
     }
 }

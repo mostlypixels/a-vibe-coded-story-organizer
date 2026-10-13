@@ -75,6 +75,24 @@ describe('neighbourSlug', () => {
     });
 });
 
+describe('neighbourSlug with page width steps', () => {
+    const widths = [50, 60, 70, 80, 90, 100];
+
+    it('clamps at 50 and 100', () => {
+        expect(neighbourSlug(widths, 50, -1)).toBe(50);
+        expect(neighbourSlug(widths, 100, 1)).toBe(100);
+    });
+
+    it('moves one step', () => {
+        expect(neighbourSlug(widths, 70, 1)).toBe(80);
+        expect(neighbourSlug(widths, 70, -1)).toBe(60);
+    });
+
+    it('does not find a string step in an integer list', () => {
+        expect(neighbourSlug(widths, '70', 1)).toBeNull();
+    });
+});
+
 describe('createSaveQueue', () => {
     it('keeps one request in flight and replaces the queued value of a field', async () => {
         const first = deferred();

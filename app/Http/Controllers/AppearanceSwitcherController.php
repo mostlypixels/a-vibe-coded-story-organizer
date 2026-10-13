@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\ThemeStyleBlock;
 use App\Support\AppearancePreviewMap;
 use App\Support\FontChoice;
+use App\Support\PageWidth;
 use App\Support\ScaleLabel;
 use App\Support\ThemePreset;
 use Illuminate\View\View;
@@ -35,6 +36,7 @@ class AppearanceSwitcherController extends Controller
             'manuscript_scale' => [config('fonts.manuscript_scales'), 'times'],
             'ui_leading' => [config('fonts.leading'), 'times'],
             'manuscript_leading' => [config('fonts.leading'), 'times'],
+            'page_width' => [PageWidth::options(), 'width'],
         ];
 
         return view('appearance.switcher', [
@@ -60,6 +62,7 @@ class AppearanceSwitcherController extends Controller
                     'manuscript_scale' => $fonts->manuscriptScaleSlug,
                     'ui_leading' => $fonts->uiLeadingSlug,
                     'manuscript_leading' => $fonts->leadingSlug,
+                    'page_width' => PageWidth::resolve($user?->page_width),
                 ],
                 'messages' => ['failed' => __('Could not save. Try again.')],
             ],

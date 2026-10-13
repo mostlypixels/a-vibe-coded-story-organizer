@@ -8,6 +8,7 @@ export const PREVIEW_PROPERTIES = {
     manuscript_scale: '--manuscript-scale',
     manuscript_leading: '--manuscript-leading',
     ui_leading: '--tw-leading',
+    page_width: '--page-width',
 };
 
 export const BLOCK_FIELDS = ['theme_slug'];

@@ -9,4 +9,4 @@
         auth()->user()?->manuscript_leading,
         auth()->user()?->ui_leading,
     )
-) !!}</style>
+) !!}:root{--page-width:{{ \App\Support\PageWidth::css(\App\Support\PageWidth::resolve(auth()->user()?->page_width)) }}}</style>

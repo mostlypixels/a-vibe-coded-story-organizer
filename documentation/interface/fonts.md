@@ -46,7 +46,7 @@ The controls remain native radios. Keyboard navigation and form submission work 
 
 ## Quick switcher
 
-The palette button in the top bar opens a panel of font families, sizes and line spacing for the interface and the manuscript. The panel is a fragment from `admin.appearance.switcher`, fetched on the first open.
+The palette button in the top bar opens a panel of font families, sizes and line spacing for the interface and the manuscript, and the [page width](page-width.md). The panel is a fragment from `admin.appearance.switcher`, fetched on the first open.
 
 - Preview values come from `AppearancePreviewMap::build()`, the same map the Appearance page uses. The JS rejects any slug not in the map.
 - Each change sends one `PATCH admin.appearance.update` with that one field. It changes one column.

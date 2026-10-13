@@ -14,7 +14,7 @@ use App\Services\ThemeStyleBlock;
 final class AppearancePreviewMap
 {
     /**
-     * @return array<string, array<string, mixed>> one entry per stored appearance field
+     * @return array<string, array<int|string, mixed>> one entry per stored appearance field
      */
     public static function build(ThemeStyleBlock $themeStyle): array
     {
@@ -32,6 +32,7 @@ final class AppearancePreviewMap
             // Already multiplied per surface, so the browser never does that maths.
             'manuscript_leading' => FontChoice::lineHeightsFor('manuscript'),
             'ui_leading' => FontChoice::lineHeightsFor('ui'),
+            'page_width' => PageWidth::options(),
         ];
     }
 }

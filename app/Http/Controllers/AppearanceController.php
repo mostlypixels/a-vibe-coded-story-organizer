@@ -8,6 +8,7 @@ use App\Support\AppearancePreviewMap;
 use App\Support\DateFormat;
 use App\Support\FontChoice;
 use App\Support\LocaleChoice;
+use App\Support\PageWidth;
 use App\Support\ThemePreset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
@@ -47,6 +48,8 @@ class AppearanceController extends Controller
                 $user?->manuscript_leading,
                 $user?->ui_leading,
             ),
+            'pageWidths' => PageWidth::options(),
+            'activePageWidth' => PageWidth::resolve($user?->page_width),
             'locales' => LocaleChoice::all(),
             'activeLocale' => LocaleChoice::resolve($user?->locale)->slug,
             // Keyed by slug so the picker can show a live sample without a round trip.
