@@ -6,7 +6,7 @@
     <div class="space-y-6">
         <div class="flex items-center justify-end gap-4">
             @can('update', $book->project)
-                <x-story-mode-switch :book="$book" :mode="$book->overview_render_mode" :chapter-id="$currentChapter?->id" />
+                <x-story-mode-switch :book="$book" :mode="$book->overview_render_mode" :scene-display="$book->overview_scene_display" :chapter-id="$currentChapter?->id" />
             @endcan
             <x-word-count :count="$wordCount" />
         </div>
@@ -59,7 +59,7 @@
 
                         <x-chapter-pager :book="$book" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
 
-                        <x-story-chapter :chapter="$currentChapter" :numbering="$numbering" />
+                        <x-story-chapter :chapter="$currentChapter" :numbering="$numbering" :scene-display="$book->overview_scene_display" />
 
                         <x-chapter-pager :book="$book" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
                     </div>

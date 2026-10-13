@@ -6,7 +6,7 @@
     <div class="space-y-6">
         <div class="flex items-center justify-end gap-4">
             @can('update', $book->project)
-                <x-story-mode-switch :book="$book" :mode="$book->overview_render_mode" />
+                <x-story-mode-switch :book="$book" :mode="$book->overview_render_mode" :scene-display="$book->overview_scene_display" />
             @endcan
             <x-word-count :count="$wordCount" />
         </div>
@@ -53,7 +53,7 @@
                         </div>
 
                         @forelse ($act->chapters as $chapter)
-                            <x-story-chapter :chapter="$chapter" :numbering="$numbering" />
+                            <x-story-chapter :chapter="$chapter" :numbering="$numbering" :scene-display="$book->overview_scene_display" />
                         @empty
                             <p class="text-sm text-content-muted">{{ __('No chapters in this act yet.') }}</p>
                         @endforelse

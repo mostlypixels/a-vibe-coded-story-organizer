@@ -8,6 +8,7 @@ use App\Enums\CodexMediaCollection;
 use App\Enums\NoteLinkType;
 use App\Enums\SceneStatus;
 use App\Enums\StoryOverviewMode;
+use App\Enums\StoryOverviewSceneDisplay;
 use App\Exceptions\ImportValidationException;
 use App\Http\Requests\UpdatePublicationSettingRequest;
 use App\Models\Act;
@@ -413,6 +414,7 @@ class ProjectGraphImporter
             'publisher' => $data['publisher'] ?? null,
             'isbn' => $data['isbn'] ?? null,
             'overview_render_mode' => $this->parseOverviewRenderMode($data['overview_render_mode'] ?? null, $bookItem['path']),
+            'overview_scene_display' => $this->parseOverviewSceneDisplay($data['overview_scene_display'] ?? null, $bookItem['path']),
             // Rights is plain text, not rich HTML.
             'rights' => $this->readFieldFile($dataPath, $directory, $data, 'rights_file'),
             'dedication' => $this->readMarkdownField($dataPath, $directory, $data, 'dedication_file'),
@@ -423,7 +425,7 @@ class ProjectGraphImporter
         ];
 
         // Omit null values so database defaults apply.
-        foreach (['language', 'overview_render_mode'] as $key) {
+        foreach (['language', 'overview_render_mode', 'overview_scene_display'] as $key) {
             if ($attributes[$key] === null) {
                 unset($attributes[$key]);
             }
@@ -452,6 +454,17 @@ class ProjectGraphImporter
 
         return StoryOverviewMode::tryFrom((string) $mode)
             ?? throw ImportValidationException::invalidDescriptorValue($descriptorPath, 'overview_render_mode');
+    }
+
+    /** Returns null for the database default and rejects unknown scene displays. */
+    private function parseOverviewSceneDisplay(mixed $display, string $descriptorPath): ?StoryOverviewSceneDisplay
+    {
+        if ($display === null) {
+            return null;
+        }
+
+        return StoryOverviewSceneDisplay::tryFrom((string) $display)
+            ?? throw ImportValidationException::invalidDescriptorValue($descriptorPath, 'overview_scene_display');
     }
 
     /**

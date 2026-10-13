@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BookLanguage;
 use App\Enums\StoryOverviewMode;
+use App\Enums\StoryOverviewSceneDisplay;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
@@ -54,11 +55,13 @@ class Book extends Model implements Revisionable
         'postface',
         'position',
         'overview_render_mode',
+        'overview_scene_display',
     ];
 
     protected $casts = [
         'language' => BookLanguage::class,
         'overview_render_mode' => StoryOverviewMode::class,
+        'overview_scene_display' => StoryOverviewSceneDisplay::class,
     ];
 
     /** @return BelongsTo<Project, $this> */

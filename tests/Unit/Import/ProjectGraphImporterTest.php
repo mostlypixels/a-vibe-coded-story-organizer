@@ -5,6 +5,7 @@ namespace Tests\Unit\Import;
 use App\Enums\BookLanguage;
 use App\Enums\SceneStatus;
 use App\Enums\StoryOverviewMode;
+use App\Enums\StoryOverviewSceneDisplay;
 use App\Exceptions\ImportValidationException;
 use App\Models\Note;
 use App\Models\Project;
@@ -185,6 +186,7 @@ class ProjectGraphImporterTest extends TestCase
         $this->assertSame('Imaginary Press', $book->publisher);
         $this->assertSame('978-0-306-40615-7', $book->isbn);
         $this->assertSame(StoryOverviewMode::Whole, $book->overview_render_mode);
+        $this->assertSame(StoryOverviewSceneDisplay::Content, $book->overview_scene_display);
         $this->assertSame('All rights reserved.', $book->rights);
         $this->assertSame('For *everyone*.', $book->dedication);
         $this->assertStringContainsString('<em>only</em>', (string) $book->description);
@@ -730,7 +732,7 @@ class ProjectGraphImporterTest extends TestCase
         $this->writeFixtureFile(self::BOOK_DIR.'/book.json', json_encode([
             'id' => 50, 'name' => null, 'position' => 1, 'project_id' => 900,
             'language' => 'fr', 'author' => 'Jane Author', 'publisher' => 'Imaginary Press',
-            'isbn' => '978-0-306-40615-7', 'overview_render_mode' => 'whole',
+            'isbn' => '978-0-306-40615-7', 'overview_render_mode' => 'whole', 'overview_scene_display' => 'content',
             'description_file' => 'description.html', 'rights_file' => 'rights.txt',
             'dedication_file' => 'dedication.md',
         ]));

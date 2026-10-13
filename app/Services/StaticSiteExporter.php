@@ -212,6 +212,7 @@ class StaticSiteExporter
             'publisher' => $book->publisher,
             'isbn' => $book->isbn,
             'overview_render_mode' => $book->overview_render_mode->value,
+            'overview_scene_display' => $book->overview_scene_display->value,
         ];
         $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $book->description);
         $json += $this->addFieldFile($zip, $dir, 'rights_file', 'rights.txt', $book->rights);

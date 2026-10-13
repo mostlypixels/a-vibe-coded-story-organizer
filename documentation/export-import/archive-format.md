@@ -159,6 +159,7 @@ data/books/<id>-slug/
   "publisher": "Small Press",
   "isbn": "978-3-16-148410-0",
   "overview_render_mode": "chapter",
+  "overview_scene_display": "description",
   "description_file": "description.html",
   "rights_file": "rights.txt",
   "dedication_file": "dedication.md",
@@ -174,6 +175,7 @@ data/books/<id>-slug/
 | `name`                  | **Nullable, and written literally as `null`** — see the warning below.     |
 | `language`              | The `BookLanguage` **enum value** (e.g. `"en"`).                           |
 | `overview_render_mode`  | The `StoryOverviewMode` **enum value** (`"chapter"` or `"whole"`).         |
+| `overview_scene_display`| The `StoryOverviewSceneDisplay` **enum value** (`"description"` or `"content"`). |
 | `position`              | Order within the project; replayed verbatim on import.                     |
 | `*_file`                | Present only when the field is non-empty (the null-handling rule).         |
 

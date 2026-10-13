@@ -11,12 +11,14 @@ use App\Models\Concerns\SanitizesRichHtml;
 use App\Models\Contracts\Revisionable;
 use App\Services\WordCountSnapshotRecorder;
 use App\Support\AuthorMarkdown;
+use App\Support\RichText;
 use App\Support\WordCounter;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 
 class Scene extends Model implements Revisionable
 {
@@ -129,6 +131,18 @@ class Scene extends Model implements Revisionable
         return Attribute::make(
             get: fn (): string => AuthorMarkdown::render($this->contents),
         );
+    }
+
+    /** The editor can store markup with no text, such as `<p></p>`. */
+    public function hasDescription(): bool
+    {
+        return RichText::toPlainText($this->description) !== '';
+    }
+
+    /** The first words of the contents as plain text, on one line. */
+    public function contentsExcerpt(int $words = 100): string
+    {
+        return Str::of(RichText::toPlainText($this->renderedContents))->squish()->words($words)->toString();
     }
 
     /**

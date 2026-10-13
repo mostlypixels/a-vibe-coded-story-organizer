@@ -7,6 +7,7 @@ use App\Enums\ChapterTitleFormat;
 use App\Enums\CodexEntryType;
 use App\Enums\SceneStatus;
 use App\Enums\StoryOverviewMode;
+use App\Enums\StoryOverviewSceneDisplay;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
@@ -677,6 +678,7 @@ class ExportTest extends TestCase
             'publisher' => 'Acme Press',
             'isbn' => '978-3-16-148410-0',
             'overview_render_mode' => StoryOverviewMode::Whole,
+            'overview_scene_display' => StoryOverviewSceneDisplay::Content,
             'rights' => 'All rights reserved.',
         ]);
 
@@ -694,6 +696,7 @@ class ExportTest extends TestCase
         $this->assertSame('Acme Press', $bookJson['publisher']);
         $this->assertSame('978-3-16-148410-0', $bookJson['isbn']);
         $this->assertSame('whole', $bookJson['overview_render_mode']);
+        $this->assertSame('content', $bookJson['overview_scene_display']);
 
         // rights is plain text, not rich HTML — written as .txt, never .html.
         $this->assertSame('rights.txt', $bookJson['rights_file']);
