@@ -99,17 +99,30 @@
                     @if ($entry->inceptionEvent)
                         <div class="flex gap-2">
                             <dt class="text-content-muted">{{ $entry->type->inceptionLabel() }}:</dt>
-                            <dd class="text-content">{{ $entry->inceptionEvent->title }} &mdash; <x-date :value="$entry->inceptionEvent->event_datetime" /></dd>
+                            <dd class="text-content">{{ $entry->inceptionEvent->title }} &mdash; <x-date :value="$entry->inceptionEvent->event_datetime" :approximate="$entry->inceptionEvent->is_approximate" /></dd>
                         </div>
                     @endif
 
                     @if ($entry->terminationEvent)
                         <div class="flex gap-2">
                             <dt class="text-content-muted">{{ $entry->type->terminationLabel() }}:</dt>
-                            <dd class="text-content">{{ $entry->terminationEvent->title }} &mdash; <x-date :value="$entry->terminationEvent->event_datetime" /></dd>
+                            <dd class="text-content">{{ $entry->terminationEvent->title }} &mdash; <x-date :value="$entry->terminationEvent->event_datetime" :approximate="$entry->terminationEvent->is_approximate" /></dd>
                         </div>
                     @endif
                 </dl>
+            </x-card>
+        @endif
+
+        @if ($entry->eventsHere->isNotEmpty())
+            <x-card :title="__('Events here')" icon="tabler-calendar-event">
+                <ul class="space-y-1 text-sm">
+                    @foreach ($entry->eventsHere as $event)
+                        <li>
+                            <a href="{{ route('events.show', $event) }}" class="text-link hover:text-link-hover">{{ $event->title }}</a>
+                            <span class="text-content-muted">&mdash; <x-date :value="$event->event_datetime" :approximate="$event->is_approximate" /></span>
+                        </li>
+                    @endforeach
+                </ul>
             </x-card>
         @endif
 

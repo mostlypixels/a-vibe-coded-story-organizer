@@ -684,6 +684,35 @@ class ImportRoundTripTest extends TestCase
         $this->assertNull($imported->sceneQuery()->where('name', 'No viewpoint')->sole()->viewpoint_character_id);
     }
 
+    public function test_event_locations_and_the_approximate_flag_survive_a_round_trip(): void
+    {
+        $owner = User::factory()->create();
+        [$source] = $this->seedReferenceSkeleton($owner);
+        $manor = CodexEntry::factory()->location()->for($source)->create(['name' => 'Russelby Manor']);
+        $garden = CodexEntry::factory()->location()->for($source)->create(['name' => 'Rose Garden']);
+        $ball = Event::factory()->for($source)->create(['title' => 'The Ball', 'is_approximate' => true]);
+        $ball->locations()->attach([$manor->id, $garden->id]);
+        Event::factory()->for($source)->create(['title' => 'Nowhere']);
+
+        $zipPath = $this->exportZip($source, includeMedia: false);
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertSessionHasNoErrors();
+
+        $imported = $importer->projects()->sole();
+        $importedBall = $imported->events()->where('title', 'The Ball')->sole();
+        $this->assertTrue($importedBall->is_approximate);
+        $this->assertEqualsCanonicalizing(
+            $imported->codexEntries()->whereIn('name', ['Russelby Manor', 'Rose Garden'])->pluck('id')->all(),
+            $importedBall->locations()->pluck('codex_entries.id')->all(),
+        );
+        $nowhere = $imported->events()->where('title', 'Nowhere')->sole();
+        $this->assertFalse($nowhere->is_approximate);
+        $this->assertSame(0, $nowhere->locations()->count());
+    }
+
     // ------------------------------------------------------------------
     // Fixtures & helpers
     // ------------------------------------------------------------------

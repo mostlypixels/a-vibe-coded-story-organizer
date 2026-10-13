@@ -15,6 +15,7 @@ use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
+use App\Models\Event;
 use App\Models\Note;
 use App\Models\NoteCategory;
 use App\Models\Project;
@@ -300,6 +301,7 @@ class ProjectGraphImporter
                 $row->update([
                     'title' => $item['data']['title'],
                     'event_datetime' => $item['data']['event_datetime'],
+                    'is_approximate' => (bool) ($item['data']['is_approximate'] ?? false),
                     'description' => $this->readHtmlField($dataPath, $item['directory'], $item['data']),
                 ]);
                 $idMaps[self::MAP_EVENTS][(int) $item['data']['id']] = $row->id;
@@ -318,6 +320,7 @@ class ProjectGraphImporter
                 $event = $project->events()->create([
                     'title' => $item['data']['title'],
                     'event_datetime' => $item['data']['event_datetime'],
+                    'is_approximate' => (bool) ($item['data']['is_approximate'] ?? false),
                     'is_fixed' => false,
                     'description' => $this->readHtmlField($dataPath, $item['directory'], $item['data']),
                 ]);
@@ -489,8 +492,8 @@ class ProjectGraphImporter
      * Imports codex definitions, tags, entries, values, links, and media.
      * A failure removes files that the database transaction cannot roll back.
      *
-     * The story phase runs first, so the scene viewpoints link here, after the
-     * characters exist.
+     * The story and timeline phases run first, so the scene viewpoints and the
+     * event locations link here, after the codex entries exist.
      *
      * @param  array<string, array<int, int>>  $idMaps
      */
@@ -522,6 +525,10 @@ class ProjectGraphImporter
 
                 foreach ($this->readEntityDescriptors($dataPath, 'data/books/*/acts/*/chapters/*/scenes/*/scene.json') as $item) {
                     $this->linkSceneViewpoint($item, $idMaps);
+                }
+
+                foreach ($this->readEntityDescriptors($dataPath, 'data/timeline/events/*/event.json') as $item) {
+                    $this->linkEventLocations($item, $idMaps);
                 }
             });
         } catch (Throwable $exception) {
@@ -768,6 +775,30 @@ class ProjectGraphImporter
 
         Scene::whereKey($this->resolveId($idMaps, self::MAP_SCENES, $item['data']['id'], $item['path'], 'id'))
             ->update(['viewpoint_character_id' => $characterId]);
+    }
+
+    /**
+     * An archive from before event locations has no `location_ids` key.
+     *
+     * @param  array{path: string, directory: string, data: array<string, mixed>}  $item
+     * @param  array<string, array<int, int>>  $idMaps
+     */
+    private function linkEventLocations(array $item, array $idMaps): void
+    {
+        $locationIds = array_values(array_unique(
+            $this->resolveIds($idMaps, self::MAP_ENTRIES, $item['data']['location_ids'] ?? [], $item['path'], 'location_ids'),
+        ));
+
+        if ($locationIds === []) {
+            return;
+        }
+
+        if (CodexEntry::whereKey($locationIds)->where('type', CodexEntryType::Location)->count() !== count($locationIds)) {
+            throw ImportValidationException::invalidDescriptorValue($item['path'], 'location_ids');
+        }
+
+        Event::findOrFail($this->resolveId($idMaps, self::MAP_EVENTS, $item['data']['id'], $item['path'], 'id'))
+            ->locations()->sync($locationIds);
     }
 
     /**

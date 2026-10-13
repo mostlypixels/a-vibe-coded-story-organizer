@@ -67,6 +67,16 @@ class CodexEntry extends Model implements Revisionable
     }
 
     /**
+     * Events that happen at this entry. Only a Location entry has them.
+     *
+     * @return BelongsToMany<Event, $this>
+     */
+    public function eventsHere(): BelongsToMany
+    {
+        return $this->belongsToMany(Event::class);
+    }
+
+    /**
      * The project that owns this codex entry's revisions (see HasRevisions).
      */
     public function revisionProject(): Project

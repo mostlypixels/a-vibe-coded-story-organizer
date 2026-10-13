@@ -63,7 +63,7 @@
                                         <span aria-hidden="true">&#9679;</span>
                                         <span>
                                             {{ $period->startEvent->title }}
-                                            <x-date class="block text-xs font-normal text-content-subtle" :value="$period->startEvent->event_datetime" />
+                                            <x-date class="block text-xs font-normal text-content-subtle" :value="$period->startEvent->event_datetime" :approximate="$period->startEvent->is_approximate" />
                                         </span>
                                     </span>
                                     <label class="sr-only" for="period_{{ $period->id }}">{{ __('Value from :event', ['event' => $period->startEvent->title]) }}</label>

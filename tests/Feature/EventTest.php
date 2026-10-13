@@ -343,6 +343,136 @@ class EventTest extends TestCase
         ])->assertForbidden();
     }
 
+    // --- Approximate date and locations -------------------------------------
+
+    public function test_an_event_can_be_created_with_an_approximate_date_and_locations(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $manor = CodexEntry::factory()->location()->for($project)->create();
+        $garden = CodexEntry::factory()->location()->for($project)->create();
+
+        $this->actingAs($user)->post(route('projects.events.store', $project), [
+            'title' => 'The Ball',
+            'event_datetime' => now()->addWeek()->format('Y-m-d H:i:s'),
+            'is_approximate' => '1',
+            'plotlines' => [$project->plotlines()->first()->id],
+            'locations' => [$manor->id, $garden->id],
+        ])->assertSessionHasNoErrors();
+
+        $event = Event::where('title', 'The Ball')->sole();
+        $this->assertTrue($event->is_approximate);
+        $this->assertEqualsCanonicalizing([$manor->id, $garden->id], $event->locations->pluck('id')->all());
+    }
+
+    public function test_an_unchecked_approximate_box_clears_the_flag_and_no_locations_clears_them(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $plotline = $project->plotlines()->first();
+        $event = Event::factory()->for($project)->create(['is_approximate' => true]);
+        $event->plotlines()->attach($plotline);
+        $event->locations()->attach(CodexEntry::factory()->location()->for($project)->create());
+
+        $this->actingAs($user)->put(route('events.update', $event), [
+            'title' => $event->title,
+            'event_datetime' => $event->event_datetime->format('Y-m-d H:i:s'),
+            'plotlines' => [$plotline->id],
+        ])->assertSessionHasNoErrors();
+
+        $event->refresh();
+        $this->assertFalse($event->is_approximate);
+        $this->assertSame(0, $event->locations()->count());
+    }
+
+    public function test_an_event_location_must_be_a_location_entry_of_the_same_project(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $character = CodexEntry::factory()->character()->for($project)->create();
+        $foreignLocation = CodexEntry::factory()->location()->create();
+        $event = Event::factory()->for($project)->create();
+
+        foreach ([$character, $foreignLocation] as $entry) {
+            $this->actingAs($user)->put(route('events.update', $event), [
+                'title' => $event->title,
+                'event_datetime' => $event->event_datetime->format('Y-m-d H:i:s'),
+                'plotlines' => [$project->plotlines()->first()->id],
+                'locations' => [$entry->id],
+            ])->assertSessionHasErrors('locations.0');
+        }
+
+        $this->assertSame(0, $event->locations()->count());
+    }
+
+    public function test_the_edit_page_offers_only_the_projects_locations(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        CodexEntry::factory()->location()->for($project)->create(['name' => 'Russelby Manor']);
+        CodexEntry::factory()->character()->for($project)->create(['name' => 'Oliver Twist']);
+        $event = Event::factory()->for($project)->create();
+
+        $this->actingAs($user)->get(route('events.edit', $event))
+            ->assertOk()
+            ->assertSee('Russelby Manor')
+            ->assertDontSee('Oliver Twist')
+            ->assertSee('name="is_approximate"', false);
+    }
+
+    public function test_an_approximate_date_shows_circa_and_no_time(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $event = Event::factory()->for($project)->create([
+            'title' => 'The Ball',
+            'event_datetime' => now()->addWeek()->setTime(14, 30),
+            'is_approximate' => true,
+        ]);
+
+        $this->actingAs($user)->get(route('events.show', $event))
+            ->assertOk()
+            ->assertSee('c. ')
+            ->assertDontSee('14:30')
+            ->assertDontSee('2:30');
+    }
+
+    public function test_the_show_page_lists_the_locations_and_the_location_lists_its_events(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $manor = CodexEntry::factory()->location()->for($project)->create(['name' => 'Russelby Manor']);
+        $event = Event::factory()->for($project)->create(['title' => 'The Ball']);
+        $event->locations()->attach($manor);
+
+        $this->actingAs($user)->get(route('events.show', $event))
+            ->assertOk()
+            ->assertSee('Russelby Manor')
+            ->assertSee(route('codex.show', $manor));
+
+        $this->actingAs($user)->get(route('codex.show', $manor))
+            ->assertOk()
+            ->assertSee('Events here')
+            ->assertSee(route('events.show', $event));
+    }
+
+    public function test_a_non_owner_cannot_set_event_locations(): void
+    {
+        $owner = User::factory()->create();
+        $project = Project::factory()->for($owner)->create();
+        $manor = CodexEntry::factory()->location()->for($project)->create();
+        $event = Event::factory()->for($project)->create();
+
+        $this->actingAs(User::factory()->create())->put(route('events.update', $event), [
+            'title' => $event->title,
+            'event_datetime' => $event->event_datetime->format('Y-m-d H:i:s'),
+            'plotlines' => [$project->plotlines()->first()->id],
+            'locations' => [$manor->id],
+        ])->assertForbidden();
+
+        $this->assertSame(0, $event->locations()->count());
+    }
+
     // --- Edit / update -----------------------------------------------------
 
     public function test_an_event_can_be_updated(): void

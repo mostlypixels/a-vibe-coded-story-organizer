@@ -20,6 +20,10 @@
                     <x-date-field name="event_datetime" :value="old('event_datetime')" :min="$windowMin" :max="$windowMax" required />
                 </x-field>
 
+                @include('events.partials.approximate-field', ['checked' => old('is_approximate')])
+
+                @include('events.partials.location-field', ['selected' => old('locations', [])])
+
                 <div>
                     <x-input-label :value="__('Plotlines')" />
                     <div class="mt-2 space-y-2">

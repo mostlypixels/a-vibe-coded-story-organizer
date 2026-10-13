@@ -7,7 +7,7 @@
                     <x-badge>{{ __('Fixed') }}</x-badge>
                 @endif
             </x-heading>
-            <p class="text-sm text-content-muted"><x-date :value="$event->event_datetime" with-time /></p>
+            <p class="text-sm text-content-muted"><x-date :value="$event->event_datetime" :approximate="$event->is_approximate" with-time /></p>
         </div>
 
         <div class="flex shrink-0 items-center gap-1">
@@ -34,6 +34,16 @@
                             <span class="inline-block h-2 w-2 rounded-full" style="background-color: {{ $plotline->color }}"></span>
                             {{ $plotline->name }}
                         </a>
+                    @endforeach
+                </div>
+            </x-card>
+        @endif
+
+        @if ($event->locations->isNotEmpty())
+            <x-card :title="__('Locations')" icon="entity-codex">
+                <div class="flex flex-wrap items-center gap-3">
+                    @foreach ($event->locations as $location)
+                        <a href="{{ route('codex.show', $location) }}" class="text-sm text-link hover:text-link-hover">{{ $location->name }}</a>
                     @endforeach
                 </div>
             </x-card>

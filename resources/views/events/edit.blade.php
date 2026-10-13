@@ -24,6 +24,10 @@
                     @endif
                 </x-field>
 
+                @include('events.partials.approximate-field', ['checked' => session()->hasOldInput() ? old('is_approximate') : $event->is_approximate])
+
+                @include('events.partials.location-field', ['selected' => session()->hasOldInput() ? old('locations', []) : $event->locations->pluck('id')->all()])
+
                 <div>
                     <x-input-label :value="__('Plotlines')" />
                     <div class="mt-2 space-y-2">

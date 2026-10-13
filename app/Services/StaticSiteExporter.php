@@ -349,6 +349,7 @@ class StaticSiteExporter
             'plotlines' => fn ($query) => $query->orderBy('name'),
             'events' => fn ($query) => $query->orderBy('event_datetime')->orderBy('id'),
             'events.plotlines',
+            'events.locations',
         ]);
 
         foreach ($project->plotlines as $plotline) {
@@ -371,7 +372,7 @@ class StaticSiteExporter
         }
     }
 
-    /** Writes one event, its plotline IDs, and its rich description. */
+    /** Writes one event, its plotline and location IDs, and its rich description. */
     private function addEvent(ZipArchive $zip, Event $event): void
     {
         $dir = 'data/timeline/events/'.$this->slugDir($event->id, $event->title);
@@ -380,9 +381,11 @@ class StaticSiteExporter
             'id' => $event->id,
             'title' => $event->title,
             'event_datetime' => $event->event_datetime->toIso8601String(),
+            'is_approximate' => $event->is_approximate,
             'is_fixed' => $event->is_fixed,
             'project_id' => $event->project_id,
             'plotline_ids' => $event->plotlines->pluck('id')->all(),
+            'location_ids' => $event->locations->pluck('id')->sort()->values()->all(),
         ];
         $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $event->description);
 

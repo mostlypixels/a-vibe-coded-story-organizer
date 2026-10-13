@@ -115,6 +115,7 @@ class CodexEntryController extends Controller
         $this->authorize('view', $codexEntry->project);
 
         $codexEntry->load('aliases', 'tags', 'media', 'attributeValues.startEvent.scenes', 'inceptionEvent', 'terminationEvent', 'notes');
+        $codexEntry->load(['eventsHere' => fn ($query) => $query->orderBy('event_datetime')->orderBy('events.id')]);
 
         $project = $codexEntry->project;
         $media = CodexEntryMedia::of($codexEntry);

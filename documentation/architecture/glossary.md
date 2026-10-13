@@ -26,7 +26,7 @@ Use this page for project-specific terms. For implementation details, follow the
 
 **Main plotline** — The auto-created plotline with `is_main = true`. It stays first and cannot be deleted.
 
-**Event** — A dated timeline item. An event belongs to a project and can belong to several plotlines.
+**Event** — A dated timeline item. An event belongs to a project and can belong to several plotlines. It can happen at several Location codex entries. An approximate event has a guessed date: pages show "c." and no time, and the timeline still sorts by the date.
 
 **Bookend events** — The fixed Start and End events. Other events must remain within their dates. The events cannot be deleted, but their dates can change if they still contain all other events.
 

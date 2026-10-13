@@ -40,7 +40,7 @@
         @if ($scene->event)
             <x-card :title="__('Happens during')" icon="tabler-calendar-event">
                 <a href="{{ route('events.show', $scene->event) }}" class="text-link hover:text-link-hover">{{ $scene->event->title }}</a>
-                <span class="text-sm text-content-muted"> &middot; <x-date :value="$scene->event->event_datetime" with-time /></span>
+                <span class="text-sm text-content-muted"> &middot; <x-date :value="$scene->event->event_datetime" :approximate="$scene->event->is_approximate" with-time /></span>
             </x-card>
         @endif
 
@@ -57,7 +57,7 @@
                             <x-table-cell>
                                 <a href="{{ route('events.show', $event) }}" class="text-link hover:text-link-hover">{{ $event->title }}</a>
                             </x-table-cell>
-                            <x-table-cell muted><x-date :value="$event->event_datetime" /></x-table-cell>
+                            <x-table-cell muted><x-date :value="$event->event_datetime" :approximate="$event->is_approximate" /></x-table-cell>
                         </x-table-row>
                     @endforeach
                 </x-table>

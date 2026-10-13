@@ -24,6 +24,7 @@ class Event extends Model implements Revisionable
         'description',
         'event_datetime',
         'is_fixed',
+        'is_approximate',
     ];
 
     protected function casts(): array
@@ -31,6 +32,7 @@ class Event extends Model implements Revisionable
         return [
             'event_datetime' => 'datetime',
             'is_fixed' => 'boolean',
+            'is_approximate' => 'boolean',
         ];
     }
 
@@ -91,5 +93,15 @@ class Event extends Model implements Revisionable
     public function mentioningScenes(): BelongsToMany
     {
         return $this->belongsToMany(Scene::class);
+    }
+
+    /**
+     * Location codex entries where this event happens.
+     *
+     * @return BelongsToMany<CodexEntry, $this>
+     */
+    public function locations(): BelongsToMany
+    {
+        return $this->belongsToMany(CodexEntry::class);
     }
 }
