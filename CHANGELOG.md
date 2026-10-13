@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-14 — Event locations and approximate dates
+## 2026-10-14 — Event locations and approximate dates (#327)
 
 ### Added
 
