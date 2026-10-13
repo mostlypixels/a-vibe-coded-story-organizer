@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-13 — Page width (#325)
+
+### Added
+
+- A "Page width" setting on the Appearance page sets how much of the window the page fills, from 50 % to full width.
+- The quick switcher has a "Width" row to make the page narrower or wider.
+
 ## 2026-10-11 — Import timeout (#324)
 
 ### Added

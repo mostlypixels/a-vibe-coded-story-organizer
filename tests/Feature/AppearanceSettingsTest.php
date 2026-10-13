@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\ThemeStyleBlock;
 use App\Support\FontChoice;
+use App\Support\PageWidth;
 use App\Support\ThemePreset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -536,5 +537,135 @@ class AppearanceSettingsTest extends TestCase
 
         $this->assertSame('atkinson', $userA->fresh()->ui_font);
         $this->assertSame('literata', $userB->fresh()->ui_font);
+    }
+
+    // ---------------------------------------------------------------------
+    // Page width
+    // ---------------------------------------------------------------------
+
+    public function test_patch_with_a_valid_page_width_saves_it_and_redirects(): void
+    {
+        $user = User::factory()->create(['page_width' => null]);
+
+        $this->actingAs($user)
+            ->patch(route('admin.appearance.update'), ['page_width' => 50])
+            ->assertRedirect(route('admin.appearance.edit'));
+
+        $this->assertSame(50, $user->fresh()->page_width);
+    }
+
+    public function test_json_patch_with_a_valid_page_width_answers_204_and_saves_it(): void
+    {
+        $user = User::factory()->create(['page_width' => null]);
+
+        $this->actingAs($user)
+            ->patchJson(route('admin.appearance.update'), ['page_width' => 50])
+            ->assertNoContent();
+
+        $this->assertSame(50, $user->fresh()->page_width);
+    }
+
+    public function test_patch_with_an_invalid_page_width_fails_and_leaves_the_column_unchanged(): void
+    {
+        $user = User::factory()->create(['page_width' => 80]);
+
+        foreach ([55, 45, 110, 'wide'] as $value) {
+            $this->actingAs($user)
+                ->patchJson(route('admin.appearance.update'), ['page_width' => $value])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('page_width');
+        }
+
+        $this->assertSame(80, $user->fresh()->page_width);
+    }
+
+    public function test_patch_with_a_null_page_width_resets_it_to_the_default(): void
+    {
+        $user = User::factory()->create(['page_width' => 90]);
+
+        $this->actingAs($user)
+            ->patchJson(route('admin.appearance.update'), ['page_width' => null])
+            ->assertNoContent();
+
+        $this->assertNull($user->fresh()->page_width);
+    }
+
+    public function test_the_app_layout_renders_the_chosen_page_width(): void
+    {
+        $user = User::factory()->create(['page_width' => 50]);
+
+        $html = $this->actingAs($user)->get(route('admin.appearance.edit'))->getContent();
+
+        $this->assertStringContainsString(':root{--page-width:50%}', $html);
+        $this->assertStringContainsString('md:max-w-(--page-width)', $html);
+    }
+
+    public function test_a_null_or_off_list_page_width_renders_the_default(): void
+    {
+        $null = User::factory()->create(['page_width' => null]);
+        $stale = User::factory()->create(['page_width' => 55]);
+
+        foreach ([$null, $stale] as $user) {
+            $html = $this->actingAs($user)->get(route('admin.appearance.edit'))->getContent();
+
+            $this->assertStringContainsString(':root{--page-width:70%}', $html);
+        }
+    }
+
+    public function test_the_edit_page_shows_the_page_width_track_with_the_saved_step_checked(): void
+    {
+        $user = User::factory()->create(['page_width' => 90]);
+
+        $html = $this->actingAs($user)->get(route('admin.appearance.edit'))->getContent();
+
+        foreach (PageWidth::steps() as $step) {
+            $this->assertMatchesRegularExpression('/id="page-width-'.$step.'"/', $html);
+        }
+
+        $this->assertMatchesRegularExpression('/id="page-width-90"[^>]*checked/', $html);
+        $this->assertDoesNotMatchRegularExpression('/id="page-width-70"[^>]*checked/', $html);
+        $this->assertStringContainsString('Full width', $html);
+    }
+
+    public function test_the_edit_page_marks_the_default_step_for_a_user_without_a_saved_width(): void
+    {
+        $user = User::factory()->create(['page_width' => null]);
+
+        $html = $this->actingAs($user)->get(route('admin.appearance.edit'))->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="page-width-'.config('page_width.default').'"[^>]*checked/',
+            $html,
+        );
+    }
+
+    public function test_a_failed_validation_keeps_the_old_page_width_checked(): void
+    {
+        $user = User::factory()->create(['page_width' => 80]);
+
+        $html = $this->actingAs($user)
+            ->followingRedirects()
+            ->from(route('admin.appearance.edit'))
+            ->patch(route('admin.appearance.update'), ['page_width' => 60, 'theme_slug' => 'nonesuch'])
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/id="page-width-60"[^>]*checked/', $html);
+    }
+
+    public function test_a_page_width_patch_leaves_the_other_appearance_columns_and_other_users_untouched(): void
+    {
+        $user = User::factory()->create(['theme_slug' => 'daylight', 'ui_font' => 'atkinson', 'page_size' => 250]);
+        $other = User::factory()->create(['page_width' => 90]);
+
+        $this->actingAs($user)
+            ->patchJson(route('admin.appearance.update'), ['page_width' => 60])
+            ->assertNoContent();
+
+        $fresh = $user->fresh();
+        $this->assertSame(60, $fresh->page_width);
+        $this->assertSame('daylight', $fresh->theme_slug);
+        $this->assertSame('atkinson', $fresh->ui_font);
+        $this->assertSame(250, $fresh->page_size);
+        $this->assertSame(90, $other->fresh()->page_width);
     }
 }

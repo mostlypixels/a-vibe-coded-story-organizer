@@ -6,7 +6,8 @@ namespace App\Support;
 final class ScaleLabel
 {
     /**
-     * @param  string  $format  `px` (percentage of 16px), `times` (multiplier);
+     * @param  string  $format  `px` (percentage of 16px), `times` (multiplier),
+     *                          `width` (page width; 100% reads "Full width");
      *                          any other format returns the value unchanged
      */
     public static function format(string $value, string $format): string
@@ -18,6 +19,7 @@ final class ScaleLabel
         return match ($format) {
             'px' => round($number / 100 * 16).'px',
             'times' => rtrim(rtrim(number_format($multiplier, 2), '0'), '.').'×',
+            'width' => $value === '100%' ? __('Full width') : $value,
             default => $value,
         };
     }

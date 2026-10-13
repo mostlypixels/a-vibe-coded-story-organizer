@@ -87,6 +87,9 @@
 
   --manuscript-scale: 100%;
   --manuscript-leading: 1.6;
+
+  /* The theme-style block overrides this with the user's page width. */
+  --page-width: 70%;
 }
 
 /* Override Typography after the plugin so prose uses theme and manuscript tokens. */

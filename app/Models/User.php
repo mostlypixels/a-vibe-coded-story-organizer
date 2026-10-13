@@ -34,6 +34,7 @@ class User extends Authenticatable
         'manuscript_leading',
         'ui_leading',
         'page_size',
+        'page_width',
     ];
 
     /**
@@ -56,6 +57,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'page_width' => 'integer',
         ];
     }
 

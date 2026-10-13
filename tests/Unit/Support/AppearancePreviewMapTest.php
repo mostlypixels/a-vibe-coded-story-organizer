@@ -5,12 +5,13 @@ namespace Tests\Unit\Support;
 use App\Services\ThemeStyleBlock;
 use App\Support\AppearancePreviewMap;
 use App\Support\FontChoice;
+use App\Support\PageWidth;
 use App\Support\ThemePreset;
 use Tests\TestCase;
 
 class AppearancePreviewMapTest extends TestCase
 {
-    public function test_the_map_holds_the_seven_appearance_fields(): void
+    public function test_the_map_holds_one_entry_per_appearance_field(): void
     {
         $map = AppearancePreviewMap::build(app(ThemeStyleBlock::class));
 
@@ -22,6 +23,7 @@ class AppearancePreviewMapTest extends TestCase
             'manuscript_scale',
             'manuscript_leading',
             'ui_leading',
+            'page_width',
         ], array_keys($map));
     }
 
@@ -53,5 +55,16 @@ class AppearancePreviewMapTest extends TestCase
         $this->assertSame(config('fonts.manuscript_scales'), $map['manuscript_scale']);
         $this->assertSame(FontChoice::lineHeightsFor('ui'), $map['ui_leading']);
         $this->assertSame(FontChoice::lineHeightsFor('manuscript'), $map['manuscript_leading']);
+    }
+
+    public function test_page_width_is_keyed_by_every_step_with_its_css_value(): void
+    {
+        $map = AppearancePreviewMap::build(app(ThemeStyleBlock::class));
+
+        $this->assertSame(array_keys($map['page_width']), PageWidth::steps());
+
+        foreach (PageWidth::steps() as $step) {
+            $this->assertSame(PageWidth::css($step), $map['page_width'][$step]);
+        }
     }
 }

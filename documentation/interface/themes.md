@@ -39,7 +39,7 @@ The unlayered block must outrank Tailwind’s theme layer so runtime values take
 
 ## Quick switcher
 
-The palette button in the top bar opens a panel of theme swatches and font controls. The panel is a fragment from `admin.appearance.switcher`, fetched on the first open.
+The palette button in the top bar opens a panel of theme swatches, font controls and the [page width](page-width.md). The panel is a fragment from `admin.appearance.switcher`, fetched on the first open.
 
 - Preview values come from `AppearancePreviewMap::build()`, the same map the Appearance page uses. The JS rejects any slug not in the map.
 - Each change sends one `PATCH admin.appearance.update` with that one field. It changes one column.

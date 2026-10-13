@@ -92,6 +92,36 @@
         </div>
     @endforeach
 
+    <div class="space-y-2">
+        <span class="block text-sm font-medium text-content">{{ __('Page width') }}</span>
+
+        <div class="flex items-center gap-2 text-sm">
+            <span class="w-16 text-content-muted">{{ __('Width') }}</span>
+
+            <button
+                type="button"
+                aria-label="{{ __('Narrower page') }}"
+                x-on:click="step('page_width', -1)"
+                x-bind:disabled="!canStep('page_width', -1)"
+                class="rounded-md border border-border p-1 text-content hover:bg-neutral disabled:opacity-40"
+            ><x-tabler-minus class="h-4 w-4" aria-hidden="true" /></button>
+
+            <span
+                class="min-w-12 text-center text-content"
+                aria-live="polite"
+                x-text="labels.page_width[active.page_width]"
+            >{{ $config['labels']['page_width'][$config['active']['page_width']] }}</span>
+
+            <button
+                type="button"
+                aria-label="{{ __('Wider page') }}"
+                x-on:click="step('page_width', 1)"
+                x-bind:disabled="!canStep('page_width', 1)"
+                class="rounded-md border border-border p-1 text-content hover:bg-neutral disabled:opacity-40"
+            ><x-tabler-plus class="h-4 w-4" aria-hidden="true" /></button>
+        </div>
+    </div>
+
     <p
         role="alert"
         class="text-sm text-danger"

@@ -26,6 +26,8 @@ const maps = {
     },
 };
 
+const pageWidthMaps = { page_width: { 50: '50%', 70: '70%', 100: '100%' } };
+
 function mountFontPreview(Alpine) {
     const form = document.createElement('form');
     document.body.appendChild(form);
@@ -66,6 +68,15 @@ describe('resolvePreview', () => {
 
     it('is a no-op for an unknown theme slug', () => {
         expect(resolvePreview(maps, 'theme_slug', 'nonesuch')).toBeNull();
+    });
+
+    it('resolves a page width step to the --page-width property', () => {
+        expect(resolvePreview(pageWidthMaps, 'page_width', 70)).toEqual({ '--page-width': '70%' });
+        expect(resolvePreview(pageWidthMaps, 'page_width', '100')).toEqual({ '--page-width': '100%' });
+    });
+
+    it('is a no-op for a page width step the map does not list', () => {
+        expect(resolvePreview(pageWidthMaps, 'page_width', 75)).toBeNull();
     });
 
     it('is a no-op for a field no map lists', () => {

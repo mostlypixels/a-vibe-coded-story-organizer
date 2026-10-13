@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\PageWidth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -101,6 +102,32 @@ class AppearanceSwitcherTest extends TestCase
         $this->assertSame('airy', $config['active']['manuscript_leading']);
         $this->assertArrayHasKey('theme_slug', $config['previewMap']);
         $this->assertArrayHasKey('failed', $config['messages']);
+    }
+
+    public function test_the_panel_has_a_width_row_with_integer_steps_and_the_stored_step_active(): void
+    {
+        $html = $this->actingAs(User::factory()->create(['page_width' => 90]))
+            ->get(route('admin.appearance.switcher'))
+            ->getContent();
+        $config = $this->panelConfig($html);
+
+        $this->assertStringContainsString('aria-label="Narrower page"', $html);
+        $this->assertStringContainsString('aria-label="Wider page"', $html);
+        $this->assertSame(config('page_width.steps'), $config['steps']['page_width']);
+        $this->assertSame(90, $config['active']['page_width']);
+        $this->assertSame('90%', $config['labels']['page_width'][90]);
+        $this->assertSame('Full width', $config['labels']['page_width'][100]);
+        $this->assertSame(PageWidth::css(90), $config['previewMap']['page_width'][90]);
+    }
+
+    public function test_a_null_or_off_list_page_width_activates_the_default_as_an_integer(): void
+    {
+        foreach ([null, 55] as $stored) {
+            $user = User::factory()->create(['page_width' => $stored]);
+            $config = $this->panelConfig($this->actingAs($user)->get(route('admin.appearance.switcher'))->getContent());
+
+            $this->assertSame(config('page_width.default'), $config['active']['page_width']);
+        }
     }
 
     public function test_stored_slugs_no_longer_in_config_fall_back_without_error(): void

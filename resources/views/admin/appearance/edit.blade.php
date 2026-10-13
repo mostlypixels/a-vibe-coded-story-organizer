@@ -14,6 +14,7 @@
         $selectedLeading = old('manuscript_leading', $fonts->leadingSlug);
         $selectedUiLeading = old('ui_leading', $fonts->uiLeadingSlug);
         $selectedLocale = old('locale', $activeLocale);
+        $selectedPageWidth = (int) old('page_width', $activePageWidth);
     @endphp
 
     {{-- Disable radio restoration because it does not trigger the live preview. --}}
@@ -154,6 +155,25 @@
                 >
                     {{ __('Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.') }}
                 </div>
+            </div>
+        </x-card>
+
+        <x-card icon="tabler-layout-sidebar" class="max-w-5xl mt-6">
+            <x-slot name="header">
+                <x-heading level="3" icon="tabler-layout-sidebar">{{ __('Layout') }}</x-heading>
+                <p class="mt-1 text-sm text-content-muted">
+                    {{ __('How much of the window the page content fills on a wide screen.') }}
+                </p>
+            </x-slot>
+
+            <div class="max-w-xl">
+                <x-setting-track
+                    name="page_width"
+                    format="width"
+                    :legend="__('Page width')"
+                    :options="$pageWidths"
+                    :selected="$selectedPageWidth"
+                />
             </div>
         </x-card>
 
