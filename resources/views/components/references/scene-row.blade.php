@@ -15,7 +15,7 @@
     <x-table-cell top muted>{{ $scene->chapter->name }}</x-table-cell>
     <x-table-cell top muted>
         @if ($scene->event)
-            {{ $scene->event->title }} &mdash; <x-date :value="$scene->event->event_datetime" />
+            {{ $scene->event->title }} &mdash; <x-date :value="$scene->event->event_datetime" :approximate="$scene->event->is_approximate" />
         @else
             &mdash;
         @endif

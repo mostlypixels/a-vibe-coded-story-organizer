@@ -18,6 +18,12 @@ class UpdateEventRequest extends FormRequest
         return $this->user()->can('update', $this->route('event')->project);
     }
 
+    /** An unchecked checkbox sends nothing. */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['is_approximate' => $this->boolean('is_approximate')]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -27,6 +33,7 @@ class UpdateEventRequest extends FormRequest
 
         return [
             ...$fieldRules,
+            ...StoreEventRequest::locationRules($this->route('event')->project_id),
             'description' => AutosavableFields::validationRule('event', 'description'),
             // The Start and End events must remain the first and last events.
             'event_datetime' => [...$fieldRules['event_datetime'], new WithinEventWindow($this->route('event')->project, $this->route('event'))],

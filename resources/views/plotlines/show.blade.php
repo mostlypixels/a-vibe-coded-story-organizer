@@ -39,7 +39,7 @@
                             <x-table-cell>
                                 <a href="{{ route('events.show', $event) }}" class="text-link hover:text-link-hover">{{ $event->title }}</a>
                             </x-table-cell>
-                            <x-table-cell muted><x-date :value="$event->event_datetime" /></x-table-cell>
+                            <x-table-cell muted><x-date :value="$event->event_datetime" :approximate="$event->is_approximate" /></x-table-cell>
                         </x-table-row>
                     @endforeach
                 </x-table>

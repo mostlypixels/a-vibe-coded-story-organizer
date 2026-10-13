@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CodexEntryType;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Controllers\Concerns\ValidatesIndexFilters;
 use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
+use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Project;
 use App\Services\CodexAsOfResolver;
@@ -18,8 +20,10 @@ use App\Support\Flash;
 use App\Support\LikeSearch;
 use App\Support\PageSize;
 use App\Support\StoryOrder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class EventController extends Controller
@@ -72,6 +76,7 @@ class EventController extends Controller
             'selectedPlotlines' => session()->hasOldInput()
                 ? array_map('intval', old('plotlines', []))
                 : $project->plotlines->where('is_main', true)->pluck('id')->all(),
+            'locations' => $this->locationsFor($project),
             'windowMin' => $windowMin,
             'windowMax' => $windowMax,
         ]);
@@ -79,9 +84,12 @@ class EventController extends Controller
 
     public function store(StoreEventRequest $request, Project $project): RedirectResponse
     {
-        $event = $project->events()->create($request->safe()->except('plotlines'));
+        DB::transaction(function () use ($request, $project) {
+            $event = $project->events()->create($request->safe()->except(['plotlines', 'locations']));
 
-        $event->plotlines()->sync($request->validated('plotlines'));
+            $event->plotlines()->sync($request->validated('plotlines'));
+            $event->locations()->sync($request->validated('locations') ?? []);
+        });
 
         return redirect()->route('projects.events.index', $project);
     }
@@ -90,7 +98,7 @@ class EventController extends Controller
     {
         $this->authorize('view', $event->project);
 
-        $event->load('plotlines', 'scenes.chapter.act.book', 'mentioningScenes.chapter.act.book', 'notes');
+        $event->load('plotlines', 'locations', 'scenes.chapter.act.book', 'mentioningScenes.chapter.act.book', 'notes');
         $event->loadCount(EventDeleteWarning::countRelations());
 
         // Scenes come back in insertion order; readers expect manuscript order.
@@ -109,7 +117,7 @@ class EventController extends Controller
     {
         $this->authorize('update', $event->project);
 
-        $event->load('plotlines', 'scenes', 'mentioningScenes', 'notes');
+        $event->load('plotlines', 'locations', 'scenes', 'mentioningScenes', 'notes');
         $event->loadCount(EventDeleteWarning::countRelations());
 
         [$windowMin, $windowMax] = EventWindow::forEvent($event->project, $event);
@@ -117,6 +125,7 @@ class EventController extends Controller
         return view('events.edit', [
             'event' => $event,
             'project' => $event->project->load('plotlines'),
+            'locations' => $this->locationsFor($event->project),
             'windowMin' => $windowMin,
             'windowMax' => $windowMax,
             'deleteConfirm' => EventDeleteWarning::for($event),
@@ -129,11 +138,12 @@ class EventController extends Controller
 
     public function update(UpdateEventRequest $request, Event $event, RevisionRecorder $recorder): RedirectResponse
     {
-        $data = $request->safe()->except('plotlines');
+        $data = $request->safe()->except(['plotlines', 'locations']);
 
         $recorder->saveWithManualCheckpoint($event, $data, $request->baseHashes(), $request->user(), function () use ($request, $event, $data) {
             $event->update($data);
             $event->plotlines()->sync($request->validated('plotlines'));
+            $event->locations()->sync($request->validated('locations') ?? []);
         });
 
         return $this->redirectAfterSave($request, ['events.edit', $event], ['projects.events.index', $event->project]);
@@ -149,5 +159,11 @@ class EventController extends Controller
         $event->delete();
 
         return redirect()->route('projects.events.index', $project)->with(Flash::SUCCESS, __('Event deleted.'));
+    }
+
+    /** @return Collection<int, CodexEntry> */
+    private function locationsFor(Project $project): Collection
+    {
+        return $project->codexEntries()->where('type', CodexEntryType::Location)->orderBy('name')->get();
     }
 }

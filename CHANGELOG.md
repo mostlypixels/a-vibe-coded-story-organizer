@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-14 — Event locations and approximate dates (#327)
+
+### Added
+
+- An event can mark its date as approximate. Pages show "c." and the date, with no time.
+- An event can link to the Location codex entries where it happens. A location page lists its events.
+- Export and import keep both.
+
 ## 2026-10-13 — Story overview scene display (#326)
 
 ### Added

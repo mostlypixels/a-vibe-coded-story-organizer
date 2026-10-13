@@ -390,9 +390,11 @@ data/timeline/events/<id>-slug/
   "id": 40,
   "title": "The Great Battle",
   "event_datetime": "2026-05-01T09:30:00+00:00",
+  "is_approximate": false,
   "is_fixed": false,
   "project_id": 42,
   "plotline_ids": [7, 9],
+  "location_ids": [12],
   "description_file": "description.html"
 }
 ```
@@ -402,7 +404,9 @@ data/timeline/events/<id>-slug/
 | `title`          | Events have no `name` column — the directory slug is built from `title`.      |
 | `event_datetime` | A stable **ISO-8601** string (the `datetime` cast serialized).               |
 | `is_fixed`       | Boolean. `true` for the Start/End bookends; part of the lossless contract.   |
+| `is_approximate` | Boolean. The date is a guess. Optional: an older archive has no key (`false`). |
 | `plotline_ids`   | Ids from the `event_plotline` pivot (`Event::plotlines`), by stable id.       |
+| `location_ids`   | Location codex entries from the `codex_entry_event` pivot, by stable id. Optional: an older archive has no key. The codex phase links them, after the entries exist. |
 
 > [!NOTE]
 > **Import-time dedup concern.** The app auto-creates the main plotline, the Start/End

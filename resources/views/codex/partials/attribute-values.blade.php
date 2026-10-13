@@ -25,7 +25,7 @@
                                     @if ($row === $sheet['baseline'])
                                         &mdash;
                                     @else
-                                        <x-date :value="$row->startEvent->event_datetime" />
+                                        <x-date :value="$row->startEvent->event_datetime" :approximate="$row->startEvent->is_approximate" />
                                     @endif
                                 </x-table-cell>
                                 <x-table-cell top>

@@ -42,7 +42,7 @@
                                 <div class="mt-1 text-sm text-content-muted"><x-rich-text-excerpt :html="$event->description" /></div>
                             @endif
                         </x-table-cell>
-                        <x-table-cell muted nowrap><x-date :value="$event->event_datetime" with-time /></x-table-cell>
+                        <x-table-cell muted nowrap><x-date :value="$event->event_datetime" :approximate="$event->is_approximate" with-time /></x-table-cell>
                         <x-table-cell sm class="text-content-subtle">
                             <div class="flex items-center gap-3 flex-wrap">
                                 @foreach ($event->plotlines as $plotline)
