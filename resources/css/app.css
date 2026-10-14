@@ -568,6 +568,13 @@ blockquote[data-callout-type='caution']::before {
 .rt-color-blue { color: var(--color-info-surface-content); }
 .rt-color-grey { color: var(--color-content-subtle); }
 
+/* An `entity:` link whose target is gone. EntityLinkResolver writes it; the `title` says why. */
+.entity-link-missing {
+    color: var(--color-content-subtle);
+    text-decoration: line-through;
+    cursor: help;
+}
+
 /*
  * `x-diff` signals changes with tint, a gutter glyph, and hidden text.
  * Clear marker decoration so author-supplied `<s>` and `<u>` keep their meaning.

@@ -579,13 +579,27 @@ data/notes/
     body.html
 ```
 
-`links` is a list of `{ "type": "scene", "id": 87 }`. `type` is a `NoteLinkType` value (`book`, `act`, `chapter`, `scene`, `event`, `plotline`, `codex`), never a class name. `category_id` is `null` for a note with no category.
+`links` is a list of `{ "type": "scene", "id": 87 }`. `type` is a `LinkTargetType` value (`book`, `act`, `chapter`, `scene`, `event`, `plotline`, `codex`), never a class name. `category_id` is `null` for a note with no category.
 
-- The import runs last, in its own phase, so every link target is already in `$idMaps`.
+- The notes import runs after the other branches, in its own phase, so every link target is already in `$idMaps`.
 - Categories may come in any order. The import rejects a tree deeper than `NoteCategory::MAX_DEPTH`, and a `parent_id` that never resolves (absent or a cycle).
-- A link with an unknown `type`, or a target id that no entity of the archive owns, is an import error.
+- A link with an unknown `type`, the `note` type, or a target id that no entity of the archive owns, is an import error.
 - An import creates only the archive's categories. It never adds the starter categories.
 - A scene `notes_file` in an older archive becomes a note titled `Notes: <scene name>`, linked to the scene, in no category. A blank value makes no note.
+
+## Entity links in text
+
+A rich-HTML field file and a scene's `contents.md` can hold links to other entities of the project. The link is an `href` in HTML and a link destination in Markdown, in one form:
+
+```
+<a href="entity:scene/87">the keyhole scene</a>
+[the keyhole scene](entity:scene/87)
+```
+
+`entity:<type>/<id>`: `<type>` is a `LinkTargetType` value (`book`, `act`, `chapter`, `scene`, `event`, `plotline`, `codex`, `note`). `<id>` is the archive id of the target, the same stable id as in its JSON. The export writes the text as stored and needs no change.
+
+- `ImportPhase::Links` runs after the notes. It rewrites each `<id>` to the new id, then rebuilds `entity_links` for the project, in one transaction.
+- An id that no entity of the archive owns is not an error, unlike a note link. The text can cite a target that the writer deleted before the export. The link becomes its plain text.
 
 ## The `books/` reading layer
 

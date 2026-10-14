@@ -477,7 +477,7 @@ class MelusineSeederFr extends Seeder
             [
                 'title' => 'La malédiction du samedi',
                 'category' => ['Continuity'],
-                'body' => '<p>Mélusine prend une forme de serpent de la taille aux pieds <strong>chaque samedi</strong>. Raymondin ne doit jamais regarder. Vérifier qu\'aucune scène ne rompt cette règle avant la scène du trou de serrure.</p>',
+                'body' => '<p>Mélusine prend une forme de serpent de la taille aux pieds <strong>chaque samedi</strong>. Raymondin ne doit jamais regarder. Vérifier qu\'aucune scène ne rompt cette règle avant la <a href="{scene}">scène du trou de serrure</a>.</p>',
                 'scene' => 'Ce que Raymondin vit',
                 'codex' => 'Mélusine',
             ],

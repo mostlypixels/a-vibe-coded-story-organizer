@@ -26,12 +26,21 @@ Render author Markdown only through that method. `AuthorMarkdown::renderUnsaniti
 
 The allow-list contains supported structural and formatting markup, including headings through `h4`, links with HTTP(S), tables, task lists, images, and callout attributes.
 
+Links also take the `entity:` scheme, the in-app link to a project entity:
+
+- Form: `entity:<type>/<id>`. `<type>` is a `LinkTargetType` value. `<id>` is digits.
+- The same form in HTML (`<a href="entity:scene/42">`) and in scene Markdown (`[text](entity:scene/42)`).
+- `App\Support\Purifier\EntityUriScheme` validates it in both sanitizer profiles. It removes a link with an unknown type, a host, a query or a fragment, and any `entity:` image source.
+- `App\Support\EntityLinks` finds, rewrites and strips these links.
+- `App\Services\EntityLinkResolver` turns them into route URLs on read views: `x-rich-text`, `Scene::renderedContents`, and the revision views (`x-diff`, `x-revision-version`). A missing target, or an id from another project, becomes a struck `.entity-link-missing` span with the link text only.
+
 Keep these surfaces aligned:
 
-1. `RichTextFields` allow-list.
-2. Tiptap extension configuration.
-3. Toolbar and slash-menu commands.
-4. Sanitizer tests and round-trip tests.
+1. `RichTextFields` allow-list, `ALLOWED_SCHEMES` included.
+2. `HtmlSanitizer` and `ContentSanitizer` (imports).
+3. Tiptap extension configuration: link `protocols`, and `ENTITY_LINK_TYPES` in `resources/js/wysiwyg.js`, which the URL dialog checks.
+4. Toolbar and slash-menu commands.
+5. Sanitizer tests and round-trip tests.
 
 ### Two sanitizer profiles
 
@@ -75,7 +84,7 @@ back to drive behaviour.
 
 ### Render through components
 
-- Use `x-rich-text` for complete rich HTML.
+- Use `x-rich-text` for complete rich HTML. Its `project` prop is required: it scopes the `entity:` links.
 - Use `x-rich-text-excerpt` for escaped excerpts.
 - Use `{!! !!}` only for content that a documented server path prepared.
 

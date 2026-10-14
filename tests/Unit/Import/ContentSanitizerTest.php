@@ -109,6 +109,28 @@ class ContentSanitizerTest extends TestCase
         $this->sanitizer->assertHtmlAllowed('<a href="javascript:alert(1)">click me</a>');
     }
 
+    public function test_html_with_an_entity_link_passes(): void
+    {
+        $html = '<p>See <a href="entity:scene/42">the ball</a> and <a href="entity:note/7">a note</a>.</p>';
+
+        $this->assertSame($html, $this->sanitizer->assertHtmlAllowed($html));
+    }
+
+    public function test_html_with_a_malformed_entity_link_is_rejected(): void
+    {
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('HTML content that is not allowed');
+
+        $this->sanitizer->assertHtmlAllowed('<p><a href="entity:unknown/1">x</a></p>');
+    }
+
+    public function test_markdown_with_an_entity_link_passes(): void
+    {
+        $markdown = 'See [the ball](entity:scene/42).';
+
+        $this->assertSame($markdown, $this->sanitizer->assertMarkdownAllowed($markdown));
+    }
+
     // ------------------------------------------------------------------
     // assertMarkdownAllowed — happy path
     // ------------------------------------------------------------------

@@ -73,7 +73,7 @@
                         </x-slot>
 
                         <x-revision-panel :title="__('What changed')">
-                            <x-diff :html="$comparison->result->html" :kind="$comparison->kind" />
+                            <x-diff :html="$comparison->result->html" :kind="$comparison->kind" :project="$project" />
                         </x-revision-panel>
 
                         <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -83,6 +83,7 @@
                                 :label="__('Older')"
                                 :base-hash="$baseHashes[$comparison->field]"
                                 :is-current="$from->isCurrent"
+                                :project="$project"
                             />
                             <x-revision-version
                                 :revision="$comparison->to"
@@ -90,6 +91,7 @@
                                 :label="__('Newer')"
                                 :base-hash="$baseHashes[$comparison->field]"
                                 :is-current="$to->isCurrent"
+                                :project="$project"
                             />
                         </div>
                     </x-card>

@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\CodexEntryType;
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
 use App\Enums\SearchDomain;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ActController;
@@ -160,7 +160,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->name('notes.link-candidates');
     Route::post('/notes/{note}/links', [NoteLinkController::class, 'store'])->name('notes.links.store');
     Route::delete('/notes/{note}/links/{type}/{id}', [NoteLinkController::class, 'destroy'])
-        ->whereIn('type', array_column(NoteLinkType::cases(), 'value'))
+        ->whereIn('type', array_column(LinkTargetType::noteLinkableCases(), 'value'))
         ->whereNumber('id')
         ->name('notes.links.destroy');
 

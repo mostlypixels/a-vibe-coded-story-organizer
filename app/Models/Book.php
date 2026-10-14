@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BookLanguage;
 use App\Enums\StoryOverviewMode;
 use App\Enums\StoryOverviewSceneDisplay;
+use App\Models\Concerns\HasEntityLinks;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
@@ -34,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class Book extends Model implements Revisionable
 {
+    use HasEntityLinks;
     use HasFactory;
     use HasNotes;
     use HasRevisions;
@@ -261,6 +263,11 @@ class Book extends Model implements Revisionable
             Notable::deleteFor($book->acts());
             Notable::deleteFor($book->chapterQuery());
             Notable::deleteFor($book->sceneQuery());
+
+            // The same holds for the `entity:` link rows, as source and as target.
+            EntityLink::deleteFor($book->acts());
+            EntityLink::deleteFor($book->chapterQuery());
+            EntityLink::deleteFor($book->sceneQuery());
         });
 
         // The book's manuscript cascades at the database level, several levels

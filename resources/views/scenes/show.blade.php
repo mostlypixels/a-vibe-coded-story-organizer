@@ -25,7 +25,7 @@
     <div class="space-y-6">
         @if (filled($scene->description))
             <x-card :title="__('Description')" icon="tabler-align-left">
-                <x-rich-text :html="$scene->description" />
+                <x-rich-text :html="$scene->description" :project="$scene->project()" />
             </x-card>
         @endif
 

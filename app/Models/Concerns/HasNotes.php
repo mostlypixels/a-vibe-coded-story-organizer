@@ -7,7 +7,7 @@ use App\Models\Note;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 /**
- * Applied to every model a note can link to (see App\Enums\NoteLinkType).
+ * Applied to every model a note can link to (see App\Enums\LinkTargetType::noteLinkable()).
  */
 trait HasNotes
 {

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
@@ -35,36 +35,37 @@ class NotesCardTest extends TestCase
         $this->project = Project::factory()->for($this->owner)->create();
     }
 
-    /** @return array<string, array{NoteLinkType, string, string}> */
+    /** @return array<string, array{LinkTargetType, string, string}> */
     public static function linkableTypes(): array
     {
         $routes = [
-            'book' => [NoteLinkType::Book, 'books.show', 'books.edit'],
-            'act' => [NoteLinkType::Act, 'acts.show', 'acts.edit'],
-            'chapter' => [NoteLinkType::Chapter, 'chapters.show', 'chapters.edit'],
-            'scene' => [NoteLinkType::Scene, 'scenes.show', 'scenes.edit'],
-            'event' => [NoteLinkType::Event, 'events.show', 'events.edit'],
-            'plotline' => [NoteLinkType::Plotline, 'plotlines.show', 'plotlines.edit'],
-            'codex' => [NoteLinkType::Codex, 'codex.show', 'codex.edit'],
+            'book' => [LinkTargetType::Book, 'books.show', 'books.edit'],
+            'act' => [LinkTargetType::Act, 'acts.show', 'acts.edit'],
+            'chapter' => [LinkTargetType::Chapter, 'chapters.show', 'chapters.edit'],
+            'scene' => [LinkTargetType::Scene, 'scenes.show', 'scenes.edit'],
+            'event' => [LinkTargetType::Event, 'events.show', 'events.edit'],
+            'plotline' => [LinkTargetType::Plotline, 'plotlines.show', 'plotlines.edit'],
+            'codex' => [LinkTargetType::Codex, 'codex.show', 'codex.edit'],
         ];
 
         return $routes;
     }
 
-    private function makeFor(NoteLinkType $type): Model
+    private function makeFor(LinkTargetType $type): Model
     {
         $book = $this->project->books()->first();
         $act = fn () => Act::factory()->for($book)->create();
         $chapter = fn () => Chapter::factory()->for($act())->create();
 
         return match ($type) {
-            NoteLinkType::Book => $book,
-            NoteLinkType::Act => $act(),
-            NoteLinkType::Chapter => $chapter(),
-            NoteLinkType::Scene => Scene::factory()->for($chapter())->create(),
-            NoteLinkType::Event => Event::factory()->for($this->project)->create(),
-            NoteLinkType::Plotline => Plotline::factory()->for($this->project)->create(),
-            NoteLinkType::Codex => CodexEntry::factory()->for($this->project)->create(),
+            LinkTargetType::Book => $book,
+            LinkTargetType::Act => $act(),
+            LinkTargetType::Chapter => $chapter(),
+            LinkTargetType::Scene => Scene::factory()->for($chapter())->create(),
+            LinkTargetType::Event => Event::factory()->for($this->project)->create(),
+            LinkTargetType::Plotline => Plotline::factory()->for($this->project)->create(),
+            LinkTargetType::Codex => CodexEntry::factory()->for($this->project)->create(),
+            LinkTargetType::Note => $this->fail('A note has no Notes card.'),
         };
     }
 
@@ -74,7 +75,7 @@ class NotesCardTest extends TestCase
     }
 
     #[DataProvider('linkableTypes')]
-    public function test_read_and_edit_pages_list_linked_notes_only(NoteLinkType $type, string $showRoute, string $editRoute): void
+    public function test_read_and_edit_pages_list_linked_notes_only(LinkTargetType $type, string $showRoute, string $editRoute): void
     {
         $entity = $this->makeFor($type);
         $linked = $this->noteFor('Linked fountain note');
@@ -94,7 +95,7 @@ class NotesCardTest extends TestCase
     }
 
     #[DataProvider('linkableTypes')]
-    public function test_the_card_offers_new_note_and_the_link_picker(NoteLinkType $type, string $showRoute, string $editRoute): void
+    public function test_the_card_offers_new_note_and_the_link_picker(LinkTargetType $type, string $showRoute, string $editRoute): void
     {
         $entity = $this->makeFor($type);
 
@@ -112,7 +113,7 @@ class NotesCardTest extends TestCase
 
     public function test_the_card_lists_notes_by_title(): void
     {
-        $plotline = $this->makeFor(NoteLinkType::Plotline);
+        $plotline = $this->makeFor(LinkTargetType::Plotline);
         $this->noteFor('Zebra')->linkTo($plotline);
         $this->noteFor('apple')->linkTo($plotline);
 
@@ -123,7 +124,7 @@ class NotesCardTest extends TestCase
 
     public function test_a_page_runs_the_same_queries_for_one_note_or_many(): void
     {
-        $plotline = $this->makeFor(NoteLinkType::Plotline);
+        $plotline = $this->makeFor(LinkTargetType::Plotline);
         $this->noteFor('First')->linkTo($plotline);
 
         $countQueries = function () use ($plotline): int {
@@ -148,7 +149,7 @@ class NotesCardTest extends TestCase
 
     public function test_a_scene_page_lists_the_linked_note(): void
     {
-        $scene = $this->makeFor(NoteLinkType::Scene);
+        $scene = $this->makeFor(LinkTargetType::Scene);
         $this->noteFor('Fresh linked note')->linkTo($scene);
 
         foreach (['scenes.show', 'scenes.edit'] as $route) {
@@ -162,7 +163,7 @@ class NotesCardTest extends TestCase
     public function test_a_non_owner_cannot_open_the_pages_that_carry_the_card(): void
     {
         $other = User::factory()->create();
-        $plotline = $this->makeFor(NoteLinkType::Plotline);
+        $plotline = $this->makeFor(LinkTargetType::Plotline);
         $this->noteFor('Secret')->linkTo($plotline);
 
         foreach (['plotlines.show', 'plotlines.edit'] as $route) {

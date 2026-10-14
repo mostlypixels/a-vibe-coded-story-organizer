@@ -53,7 +53,7 @@
                         </div>
 
                         @forelse ($act->chapters as $chapter)
-                            <x-story-chapter :chapter="$chapter" :numbering="$numbering" :scene-display="$book->overview_scene_display" />
+                            <x-story-chapter :chapter="$chapter" :project="$book->project" :numbering="$numbering" :scene-display="$book->overview_scene_display" />
                         @empty
                             <p class="text-sm text-content-muted">{{ __('No chapters in this act yet.') }}</p>
                         @endforelse

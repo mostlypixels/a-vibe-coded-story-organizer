@@ -49,6 +49,7 @@ class ProjectImporter
         ImportPhase::Story,
         ImportPhase::Codex,
         ImportPhase::Notes,
+        ImportPhase::Links,
     ];
 
     public function __construct(
@@ -282,6 +283,7 @@ class ProjectImporter
             ImportPhase::Story => $this->graphImporter->importStory($dataPath, $import->project, $idMaps),
             ImportPhase::Codex => $this->graphImporter->importCodex($dataPath, $import->project, $idMaps),
             ImportPhase::Notes => $this->graphImporter->importNotes($dataPath, $import->project, $idMaps),
+            ImportPhase::Links => $this->graphImporter->importLinks($import->project, $idMaps),
             default => throw new RuntimeException("\"{$phase->value}\" is not a runnable import phase."),
         };
     }

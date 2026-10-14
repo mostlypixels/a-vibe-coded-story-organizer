@@ -1,13 +1,13 @@
 {{-- The Links card on the note edit page. It sits outside the note <form>: Alpine posts it. --}}
 @php
-    use App\Enums\NoteLinkType;
+    use App\Enums\LinkTargetType;
 @endphp
 
 <div
     x-data="linkPicker({
         candidatesUrl: @js(route('notes.link-candidates', $note)),
         storeUrl: @js(route('notes.links.store', $note)),
-        type: @js(NoteLinkType::Scene->value),
+        type: @js(LinkTargetType::Scene->value),
         dialog: 'note-link',
         refreshSelector: '[data-note-links]',
         failureMessage: @js(__('The link was not saved. Check your connection and try again.')),
@@ -31,7 +31,7 @@
             <div>
                 <x-input-label for="note-link-type" :value="__('Type')" />
                 <x-select id="note-link-type" class="mt-1 block w-full sm:text-sm" x-model="type" x-on:change="search()">
-                    @foreach (NoteLinkType::cases() as $type)
+                    @foreach (LinkTargetType::noteLinkableCases() as $type)
                         <option value="{{ $type->value }}">{{ __($type->label()) }}</option>
                     @endforeach
                 </x-select>

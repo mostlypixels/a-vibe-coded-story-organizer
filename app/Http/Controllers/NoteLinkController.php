@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
 use App\Http\Requests\StoreNoteLinkRequest;
 use App\Models\Book;
 use App\Models\Note;
@@ -34,7 +34,7 @@ class NoteLinkController extends Controller
     {
         $this->authorize('update', $note->project);
 
-        $note->unlink(NoteLinkType::from($type), $id);
+        $note->unlink(LinkTargetType::from($type), $id);
 
         return $request->expectsJson() ? response()->noContent() : back();
     }
@@ -46,11 +46,11 @@ class NoteLinkController extends Controller
         $this->authorize('view', $project);
 
         $request->validate([
-            'type' => ['required', 'string', Rule::enum(NoteLinkType::class)],
+            'type' => ['required', 'string', Rule::enum(LinkTargetType::class)->only(LinkTargetType::noteLinkableCases())],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $type = NoteLinkType::from($request->string('type')->value());
+        $type = LinkTargetType::from($request->string('type')->value());
         $column = $type->labelColumn();
 
         $rows = $type->queryFor($project)

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasEntityLinks;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Event extends Model implements Revisionable
 {
+    use HasEntityLinks;
     use HasFactory;
     use HasNotes;
     use HasRevisions;

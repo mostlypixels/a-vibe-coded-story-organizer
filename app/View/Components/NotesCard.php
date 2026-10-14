@@ -2,7 +2,7 @@
 
 namespace App\View\Components;
 
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
@@ -24,7 +24,7 @@ use Illuminate\View\View;
  */
 class NotesCard extends Component
 {
-    public readonly NoteLinkType $type;
+    public readonly LinkTargetType $type;
 
     public readonly Project $project;
 
@@ -34,7 +34,7 @@ class NotesCard extends Component
     /** @param Collection<int, Note> $notes */
     public function __construct(Collection $notes, public readonly Model $linkable)
     {
-        $this->type = NoteLinkType::fromModel($linkable);
+        $this->type = LinkTargetType::fromModel($linkable);
         $this->project = $this->projectOf($linkable);
         $this->notes = $notes->sortBy(fn ($note) => mb_strtolower($note->title))->values();
     }

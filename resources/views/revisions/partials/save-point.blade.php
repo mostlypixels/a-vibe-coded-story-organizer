@@ -55,7 +55,7 @@
                         </dt>
                         <dd class="min-w-0 flex-1 text-sm">
                             @if ($entry->summaryHtml)
-                                <x-diff :html="$entry->summaryHtml" :kind="$entry->kind" inline />
+                                <x-diff :html="$entry->summaryHtml" :kind="$entry->kind" :project="$project" inline />
                             @else
                                 <span class="text-content-subtle italic">{{ __('No summary recorded.') }}</span>
                             @endif

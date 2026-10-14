@@ -7,14 +7,17 @@ use App\Enums\SceneStatus;
 use App\Enums\StoryOverviewMode;
 use App\Enums\StoryOverviewSceneDisplay;
 use App\Exceptions\ImportValidationException;
+use App\Models\EntityLink;
 use App\Models\Note;
 use App\Models\Project;
 use App\Models\Revision;
 use App\Models\Scene;
 use App\Models\User;
+use App\Services\EntityLinkIndex;
 use App\Services\Import\ProjectGraphImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Tests\TestCase;
 
 /** Test import phases against an extracted archive fixture. */
@@ -632,6 +635,69 @@ class ProjectGraphImporterTest extends TestCase
         $this->runFullImport(User::factory()->create());
     }
 
+    public function test_a_note_to_note_link_is_rejected(): void
+    {
+        $this->writeFixtureFile('data/notes/10-a/note.json', json_encode([
+            'id' => 10, 'category_id' => null, 'title' => 'A', 'links' => [['type' => 'note', 'id' => 11]],
+        ]));
+        $this->writeFixtureFile('data/notes/11-b/note.json', json_encode([
+            'id' => 11, 'category_id' => null, 'title' => 'B', 'links' => [],
+        ]));
+
+        $this->expectException(ImportValidationException::class);
+        $this->expectExceptionMessage('links.type');
+
+        $this->runFullImport(User::factory()->create());
+    }
+
+    // ------------------------------------------------------------------
+    // Entity links in text
+    // ------------------------------------------------------------------
+
+    public function test_entity_links_in_text_point_at_the_new_ids_for_each_target_type(): void
+    {
+        $this->writeEntityLinkFixture();
+
+        [$project, $idMaps] = $this->runFullImport(User::factory()->create());
+
+        $this->assertEntityLinksRemapped($project, $idMaps);
+    }
+
+    public function test_a_failed_links_phase_rolls_back_and_a_rerun_gives_the_same_result(): void
+    {
+        $this->writeEntityLinkFixture();
+
+        $importer = $this->importer();
+        $project = $importer->importProject($this->fixtureRoot, User::factory()->create());
+        $idMaps = [];
+        $importer->importTimeline($this->fixtureRoot, $project, $idMaps);
+        $importer->importStory($this->fixtureRoot, $project, $idMaps);
+        $importer->importCodex($this->fixtureRoot, $project, $idMaps);
+        $importer->importNotes($this->fixtureRoot, $project, $idMaps);
+
+        $failingIndex = new class extends EntityLinkIndex
+        {
+            public function syncProject(Project $project): void
+            {
+                throw new RuntimeException('Index failure.');
+            }
+        };
+
+        try {
+            app()->make(ProjectGraphImporter::class, ['entityLinkIndex' => $failingIndex])->importLinks($project, $idMaps);
+            $this->fail('The failing index must stop the phase.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Index failure.', $exception->getMessage());
+        }
+
+        // The rollback keeps the archive ids, so a rerun maps them again.
+        $this->assertStringContainsString('entity:scene/300', (string) $project->notes()->where('title', 'Hub')->sole()->body);
+
+        $importer->importLinks($project, $idMaps);
+
+        $this->assertEntityLinksRemapped($project, $idMaps);
+    }
+
     // ------------------------------------------------------------------
     // Fixture + helpers
     // ------------------------------------------------------------------
@@ -656,8 +722,87 @@ class ProjectGraphImporterTest extends TestCase
         $importer->importStory($this->fixtureRoot, $project, $idMaps);
         $importer->importCodex($this->fixtureRoot, $project, $idMaps);
         $importer->importNotes($this->fixtureRoot, $project, $idMaps);
+        $importer->importLinks($project, $idMaps);
 
         return [$project, $idMaps];
+    }
+
+    /**
+     * Note 10 links to every target type. Note 11, the codex entry and scene A link
+     * back. Each text also holds one link to an id that the archive does not own.
+     */
+    private function writeEntityLinkFixture(): void
+    {
+        $this->writeFixtureFile('data/notes/10-hub/note.json', json_encode([
+            'id' => 10, 'category_id' => null, 'title' => 'Hub', 'links' => [], 'body_file' => 'body.html',
+        ]));
+        $this->writeFixtureFile('data/notes/10-hub/body.html', '<p>'
+            .'<a href="entity:book/50">book</a> <a href="entity:act/100">act</a> '
+            .'<a href="entity:chapter/200">chapter</a> <a href="entity:scene/300">scene</a> '
+            .'<a href="entity:event/802">event</a> <a href="entity:plotline/701">plotline</a> '
+            .'<a href="entity:codex/400">codex</a> <a href="entity:note/11">note</a> '
+            .'<a href="entity:scene/999999">gone scene</a></p>');
+
+        $this->writeFixtureFile('data/notes/11-spoke/note.json', json_encode([
+            'id' => 11, 'category_id' => null, 'title' => 'Spoke', 'links' => [], 'body_file' => 'body.html',
+        ]));
+        $this->writeFixtureFile('data/notes/11-spoke/body.html', '<p>Back to <a href="entity:note/10">the hub</a>.</p>');
+
+        $this->writeFixtureFile('data/codex/character/400-alice-harker/description.html', '<p>She sees <a href="entity:event/802">the reveal</a> and <a href="entity:note/12">a lost note</a>.</p>');
+
+        $sceneDir = self::ACT_DIR.'/chapters/200-chapter-one/scenes/301-scene-a';
+        $this->mutateFixtureJson("{$sceneDir}/scene.json", fn (array $data): array => [...$data, 'contents_file' => 'contents.md']);
+        $this->writeFixtureFile("{$sceneDir}/contents.md", 'Meet [Alice](entity:codex/400) in [scene B](entity:scene/300). [Lost](entity:codex/999) here.');
+    }
+
+    /**
+     * @param  array<string, array<int, int>>  $idMaps
+     */
+    private function assertEntityLinksRemapped(Project $project, array $idMaps): void
+    {
+        $hub = $project->notes()->where('title', 'Hub')->sole();
+        $expected = [
+            'book' => $idMaps[ProjectGraphImporter::MAP_BOOKS][50],
+            'act' => $idMaps[ProjectGraphImporter::MAP_ACTS][100],
+            'chapter' => $idMaps[ProjectGraphImporter::MAP_CHAPTERS][200],
+            'scene' => $idMaps[ProjectGraphImporter::MAP_SCENES][300],
+            'event' => $idMaps[ProjectGraphImporter::MAP_EVENTS][802],
+            'plotline' => $idMaps[ProjectGraphImporter::MAP_PLOTLINES][701],
+            'codex' => $idMaps[ProjectGraphImporter::MAP_ENTRIES][400],
+            'note' => $idMaps[ProjectGraphImporter::MAP_NOTES][11],
+        ];
+
+        foreach ($expected as $type => $newId) {
+            $this->assertStringContainsString("href=\"entity:{$type}/{$newId}\">{$type}</a>", (string) $hub->body);
+        }
+        $this->assertStringContainsString(' gone scene</p>', (string) $hub->body);
+        $this->assertStringNotContainsString('999999', (string) $hub->body);
+
+        $spoke = $project->notes()->where('title', 'Spoke')->sole();
+        $this->assertStringContainsString('href="entity:note/'.$hub->id.'"', (string) $spoke->body);
+
+        $entry = $project->codexEntries()->sole();
+        $this->assertSame(
+            '<p>She sees <a href="entity:event/'.$expected['event'].'">the reveal</a> and a lost note.</p>',
+            $entry->description,
+        );
+
+        $sceneA = $project->sceneQuery()->where('scenes.name', 'Scene A')->sole();
+        $this->assertSame(
+            "Meet [Alice](entity:codex/{$expected['codex']}) in [scene B](entity:scene/{$expected['scene']}). Lost here.",
+            trim((string) $sceneA->contents),
+        );
+
+        // The index holds the new targets only, one row for each distinct link.
+        $rows = EntityLink::query()->where('project_id', $project->id)
+            ->get()->map(fn (EntityLink $row): string => "{$row->target_type}/{$row->target_id}")->sort()->values()->all();
+        $this->assertSame(collect([
+            ...array_map(fn (string $type, int $id): string => "{$type}/{$id}", array_keys($expected), $expected),
+            "note/{$hub->id}",
+            "event/{$expected['event']}",
+            "codex/{$expected['codex']}",
+            "scene/{$expected['scene']}",
+        ])->sort()->values()->all(), $rows);
     }
 
     /**

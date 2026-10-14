@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasEntityLinks;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Act extends Model implements Revisionable
 {
+    use HasEntityLinks;
     use HasFactory;
     use HasNotes;
     use HasRevisions;
@@ -100,6 +102,10 @@ class Act extends Model implements Revisionable
             // The same holds for the note links of each child.
             Notable::deleteFor($act->chapters());
             Notable::deleteFor($act->scenes());
+
+            // The same holds for the `entity:` link rows, as source and as target.
+            EntityLink::deleteFor($act->chapters());
+            EntityLink::deleteFor($act->scenes());
         });
 
         // The act's chapters and their scenes cascade at the database level, two

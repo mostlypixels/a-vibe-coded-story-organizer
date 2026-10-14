@@ -39,7 +39,7 @@
 
         @if (filled($note->body))
             <x-card>
-                <x-rich-text :html="$outline->html" />
+                <x-rich-text :html="$outline->html" :project="$note->project" />
             </x-card>
         @endif
 

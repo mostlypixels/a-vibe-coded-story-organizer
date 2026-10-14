@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
 use App\Http\Controllers\Concerns\RedirectsAfterSave;
 use App\Http\Controllers\Concerns\ResolvesIndexSorting;
 use App\Http\Controllers\Concerns\ValidatesIndexFilters;
@@ -39,7 +39,7 @@ class NoteController extends Controller
         $this->validateIndexFilters($request);
         $request->validate([
             'category' => ['nullable', 'string'],
-            'linked' => ['nullable', Rule::enum(NoteLinkType::class)],
+            'linked' => ['nullable', Rule::enum(LinkTargetType::class)->only(LinkTargetType::noteLinkableCases())],
             'book' => ['nullable', 'integer', Rule::exists('books', 'id')->where('project_id', $project->id)],
         ]);
 
@@ -54,7 +54,7 @@ class NoteController extends Controller
             ->addSelect(['links_count' => Notable::query()->selectRaw('count(*)')->whereColumn('notables.note_id', 'notes.id')])
             ->when($category === 'none', fn ($query) => $query->whereNull('note_category_id'))
             ->when(ctype_digit((string) $category), fn ($query) => $query->where('note_category_id', (int) $category))
-            ->when($request->filled('linked'), fn ($query) => $query->whereHas(NoteLinkType::from($request->query('linked'))->noteRelation()))
+            ->when($request->filled('linked'), fn ($query) => $query->whereHas(LinkTargetType::from($request->query('linked'))->noteRelation()))
             ->when($request->filled('book'), fn ($query) => $this->whereLinkedInBook($query, (int) $request->query('book')))
             ->when($request->filled('search'), fn ($query) => LikeSearch::whereContains($query, 'title', $request->query('search')))
             ->orderBy($sort, $direction)
@@ -106,7 +106,7 @@ class NoteController extends Controller
             'categoryTree' => NoteCategoryTree::for($project),
             'categoryId' => $categoryId,
             'link' => $linkTarget ? $link : null,
-            'linkType' => $linkTarget ? NoteLinkType::fromModel($linkTarget) : null,
+            'linkType' => $linkTarget ? LinkTargetType::fromModel($linkTarget) : null,
             'linkTarget' => $linkTarget,
         ]);
     }

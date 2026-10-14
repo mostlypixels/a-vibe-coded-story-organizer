@@ -4,13 +4,16 @@ namespace App\Models;
 
 use App\Enums\FieldKind;
 use App\Enums\SceneStatus;
+use App\Models\Concerns\HasEntityLinks;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Models\Contracts\Revisionable;
+use App\Services\EntityLinkResolver;
 use App\Services\WordCountSnapshotRecorder;
 use App\Support\AuthorMarkdown;
+use App\Support\EntityLinks;
 use App\Support\RichText;
 use App\Support\WordCounter;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -22,6 +25,7 @@ use Illuminate\Support\Str;
 
 class Scene extends Model implements Revisionable
 {
+    use HasEntityLinks;
     use HasFactory;
     use HasNotes;
     use HasRevisions;
@@ -123,13 +127,20 @@ class Scene extends Model implements Revisionable
      * Rendering `contents` (unlike the rich-HTML fields) is safe by our convention:
      * it is Markdown gated by ValidMarkdown, echoed with {!! !!} only here and in those
      * views. Returns an empty string when there are no contents.
+     * The `entity:` links become app URLs. The project loads only when the text has a link.
      *
      * @return Attribute<string, never>
      */
     protected function renderedContents(): Attribute
     {
         return Attribute::make(
-            get: fn (): string => AuthorMarkdown::render($this->contents),
+            get: function (): string {
+                $html = AuthorMarkdown::render($this->contents);
+
+                return EntityLinks::find($html) === []
+                    ? $html
+                    : app(EntityLinkResolver::class)->render($html, $this->project());
+            },
         );
     }
 
@@ -139,10 +150,10 @@ class Scene extends Model implements Revisionable
         return RichText::toPlainText($this->description) !== '';
     }
 
-    /** The first words of the contents as plain text, on one line. */
+    /** The first words of the contents as plain text, on one line. It keeps the link text and runs no link lookup. */
     public function contentsExcerpt(int $words = 100): string
     {
-        return Str::of(RichText::toPlainText($this->renderedContents))->squish()->words($words)->toString();
+        return Str::of(RichText::toPlainText(AuthorMarkdown::render($this->contents)))->squish()->words($words)->toString();
     }
 
     /**

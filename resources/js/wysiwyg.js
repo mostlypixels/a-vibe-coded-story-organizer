@@ -401,6 +401,19 @@ const TextColor = Mark.create({
     },
 });
 
+/**
+ * `LinkTargetType` values. Keep in step with that enum: the sanitizer removes an
+ * `entity:` link with any other type.
+ */
+const ENTITY_LINK_TYPES = ['book', 'act', 'chapter', 'scene', 'event', 'plotline', 'codex', 'note'];
+
+const ENTITY_HREF = new RegExp(`^entity:(${ENTITY_LINK_TYPES.join('|')})/\\d+$`);
+
+/** True for an in-app link that the sanitizer keeps, for example `entity:scene/42`. */
+export function isEntityHref(url) {
+    return ENTITY_HREF.test(url);
+}
+
 /** Translation keys. `App\Support\ScriptTranslations::wysiwyg()` supplies the text. */
 export const EDITOR_MESSAGES = {
     refusedUrl: 'Use a web address that starts with http:// or https://.',
@@ -604,7 +617,7 @@ export function buildExtensions(
             link: {
                 openOnClick: false,
                 autolink: true,
-                protocols: ['http', 'https'],
+                protocols: ['http', 'https', 'entity'],
                 HTMLAttributes: { rel: null, target: null },
             },
             // MarkdownUnderline replaces the stock extension in both formats.
@@ -799,12 +812,14 @@ export function registerWysiwyg(Alpine) {
 
                 // Keep output within the allow-list. Give a reason, so the writer
                 // does not think that the click failed.
-                if (!/^https?:\/\//i.test(url)) {
+                const isLink = this.urlForm.kind === 'link';
+
+                if (!/^https?:\/\//i.test(url) && !(isLink && isEntityHref(url))) {
                     this.urlForm.error = t(EDITOR_MESSAGES.refusedUrl);
                     return;
                 }
 
-                if (this.urlForm.kind === 'link') {
+                if (isLink) {
                     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
                 } else {
                     editor.chain().focus().setImage({ src: url, alt: this.urlForm.alt.trim() }).run();

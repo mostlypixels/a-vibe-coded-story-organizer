@@ -477,7 +477,7 @@ class MelusineSeederEn extends Seeder
             [
                 'title' => 'The Saturday curse',
                 'category' => ['Continuity'],
-                'body' => '<p>Mélusine takes serpent form below the waist <strong>every Saturday</strong>. Raymondin may never look. Check that no scene breaks this rule before the keyhole scene.</p>',
+                'body' => '<p>Mélusine takes serpent form below the waist <strong>every Saturday</strong>. Raymondin may never look. Check that no scene breaks this rule before the <a href="{scene}">keyhole scene</a>.</p>',
                 'scene' => 'What Raymondin Saw',
                 'codex' => 'Mélusine',
             ],

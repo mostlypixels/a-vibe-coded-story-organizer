@@ -10,6 +10,7 @@ use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
+use App\Support\Purifier\EntityUriScheme;
 
 /**
  * Defines rich-HTML fields and the sanitizer allow-list.
@@ -92,8 +93,13 @@ class RichTextFields
     /** Prefix of a colour class. The name after it is one of {@see self::TEXT_COLORS}. */
     public const COLOR_CLASS_PREFIX = 'rt-color-';
 
-    /** @var list<string> Relative URLs remain valid without an entry here. */
-    public const ALLOWED_SCHEMES = ['http', 'https'];
+    /**
+     * Relative URLs remain valid without an entry here. `entity` is the in-app link
+     * that {@see EntityUriScheme} validates.
+     *
+     * @var list<string>
+     */
+    public const ALLOWED_SCHEMES = ['http', 'https', 'entity'];
 
     /** @return list<string> Rich-HTML fields as "Model.field" strings. */
     public static function all(): array

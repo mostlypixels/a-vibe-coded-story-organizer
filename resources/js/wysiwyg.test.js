@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Editor } from '@tiptap/core';
-import { EDITOR_MESSAGES, accessibleNameAttributes, buildExtensions, buildSlashItems, registerWysiwyg, slashRenderer } from './wysiwyg.js';
+import { EDITOR_MESSAGES, accessibleNameAttributes, buildExtensions, buildSlashItems, isEntityHref, registerWysiwyg, slashRenderer } from './wysiwyg.js';
 
 const projectRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -73,6 +73,42 @@ describe('table round-trip', () => {
         const markdownOut = markdownEditor(merged).getMarkdown();
         expect(markdownOut).not.toContain('colspan');
         expect(markdownOut).toContain('merged');
+    });
+});
+
+describe('entity link round-trip', () => {
+    it('markdown keeps an entity: href', () => {
+        const source = 'See [the ball](entity:scene/42) and [**a note**](entity:note/7).';
+        const first = markdownEditor(source).getMarkdown();
+
+        expect(first).toBe(source);
+        expect(markdownEditor(first).getMarkdown()).toBe(first);
+    });
+
+    it('html keeps an entity: href', () => {
+        const source = '<p>See <a href="entity:scene/42">the ball</a> and <a href="https://example.com">web</a>.</p>';
+        const first = htmlEditor(source).getHTML();
+
+        expect(first).toBe(source);
+        expect(htmlEditor(first).getHTML()).toBe(first);
+    });
+
+    it('the link type list agrees with LinkTargetType.php', () => {
+        const enumValues = [...readSource('app/Enums/LinkTargetType.php').matchAll(/case \w+ = '([a-z]+)';/g)].map((found) => found[1]);
+        const jsValues = sourceList(readSource('resources/js/wysiwyg.js'), 'ENTITY_LINK_TYPES');
+
+        expect(jsValues).toEqual(enumValues);
+    });
+
+    it.each([
+        ['entity:scene/42', true],
+        ['entity:note/7', true],
+        ['entity:unknown/1', false],
+        ['entity:scene/abc', false],
+        ['entity:scene/1?x', false],
+        ['entity://host/1', false],
+    ])('isEntityHref(%s) is %s, as the sanitizer decides', (href, expected) => {
+        expect(isEntityHref(href)).toBe(expected);
     });
 });
 
@@ -812,6 +848,36 @@ describe('translated strings — Laravel supplies the text', () => {
 
         expect(component.$refs.textarea.value).toContain('<a href="https://example.com">Hello</a>');
         expect(component.$dispatch).toHaveBeenCalledWith('close-modal', 'url-dialog-test');
+        component.destroy();
+    });
+
+    it('applies an entity link typed in the dialog', () => {
+        const { component } = mount(french);
+        component.$refs.textarea.value = '<p>Hello</p>';
+        component.init();
+        component.cmd('selectAll');
+
+        component.setLink();
+        component.urlForm.url = 'entity:scene/42';
+        component.applyUrl();
+
+        expect(component.$refs.textarea.value).toContain('<a href="entity:scene/42">Hello</a>');
+        component.destroy();
+    });
+
+    it.each([
+        ['setLink', 'entity:planet/1'],
+        ['setImage', 'entity:scene/42'],
+    ])('%s refuses %s, which the sanitizer would strip', (method, url) => {
+        const { component } = mount(french);
+        component.init();
+
+        component[method]();
+        component.urlForm.url = url;
+        component.applyUrl();
+
+        expect(component.urlForm.error).not.toBe('');
+        expect(component.$refs.textarea.value).not.toContain('entity:');
         component.destroy();
     });
 

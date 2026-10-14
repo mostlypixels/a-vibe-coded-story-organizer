@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CodexEntry;
+use App\Models\EntityLink;
 use App\Models\Notable;
 use App\Models\Note;
 use App\Models\Project;
@@ -86,6 +87,24 @@ class MelusineSeederTest extends TestCase
             );
             $this->assertCount(3, $linked);
         }
+    }
+
+    /** Model events are off while seeding, so the seeder syncs the index itself. */
+    public function test_the_seed_note_link_to_a_scene_has_its_index_row(): void
+    {
+        $owner = User::factory()->create();
+
+        $this->seedFor($owner);
+
+        $note = Note::where('title', 'The Saturday curse')->firstOrFail();
+        $scene = $note->project->sceneQuery()->where('scenes.name', 'What Raymondin Saw')->firstOrFail();
+
+        $this->assertStringContainsString('href="entity:scene/'.$scene->id.'"', $note->body);
+        $this->assertSame(
+            [['body', 'scene', $scene->id]],
+            EntityLink::query()->where('source_type', $note->getMorphClass())->where('source_id', $note->id)
+                ->get()->map(fn (EntityLink $row): array => [$row->source_field, $row->target_type, $row->target_id])->all(),
+        );
     }
 
     public function test_re_running_keeps_the_demo_notes_single(): void

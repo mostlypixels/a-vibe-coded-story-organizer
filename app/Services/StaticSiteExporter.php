@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Challenge;
@@ -521,7 +521,7 @@ class StaticSiteExporter
 
     /**
      * Writes note categories and each note with its links. Notes stay out of the books layer.
-     * A link `type` is the {@see NoteLinkType} value, never a class name.
+     * A link `type` is the {@see LinkTargetType} value, never a class name.
      */
     private function addNotes(ZipArchive $zip, Project $project): void
     {
@@ -535,7 +535,7 @@ class StaticSiteExporter
         $this->addJson($zip, 'data/notes/categories.json', $categories);
 
         $notes = $project->notes()
-            ->with(array_map(fn (NoteLinkType $type): string => $type->noteRelation(), NoteLinkType::cases()))
+            ->with(array_map(fn (LinkTargetType $type): string => $type->noteRelation(), LinkTargetType::noteLinkableCases()))
             ->orderBy('id')
             ->get();
 
@@ -559,7 +559,7 @@ class StaticSiteExporter
     {
         $links = [];
 
-        foreach (NoteLinkType::cases() as $type) {
+        foreach (LinkTargetType::noteLinkableCases() as $type) {
             foreach ($note->getRelation($type->noteRelation())->sortBy('id') as $target) {
                 $links[] = ['type' => $type->value, 'id' => (int) $target->getKey()];
             }
