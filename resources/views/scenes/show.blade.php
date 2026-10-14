@@ -37,6 +37,8 @@
 
         <x-notes-card :notes="$scene->notes" :linkable="$scene" />
 
+        <x-linked-from-card :target="$scene" />
+
         @if ($scene->event)
             <x-card :title="__('Happens during')" icon="tabler-calendar-event">
                 <a href="{{ route('events.show', $scene->event) }}" class="text-link hover:text-link-hover">{{ $scene->event->title }}</a>

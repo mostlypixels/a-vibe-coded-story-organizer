@@ -93,6 +93,7 @@
                 :markdown="$kind === FieldKind::Markdown"
                 :form="$form"
                 :quick-codex-entry="$quickCodexEntry"
+                :project="$model->revisionProject()"
             />
         @endif
 

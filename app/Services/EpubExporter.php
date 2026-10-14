@@ -13,6 +13,7 @@ use App\Models\CodexMedia;
 use App\Models\PublicationSetting;
 use App\Models\Scene;
 use App\Support\AuthorMarkdown;
+use App\Support\EntityLinks;
 use App\Support\Markdown\StrikethroughSExtension;
 use App\Support\RichText;
 use App\Support\StoryNumbering;
@@ -233,7 +234,7 @@ class EpubExporter
             'number' => $numbering->act($act),
             'name' => $act->name,
             'showDescription' => $settings->include_act_descriptions,
-            'description' => RichText::toXhtmlFragment($act->description),
+            'description' => $this->richFragment($act->description),
             'language' => $this->language($book),
         ];
     }
@@ -263,7 +264,7 @@ class EpubExporter
         $scenes = $chapter->scenes->map(fn (Scene $scene): array => [
             'id' => $scene->id,
             'title' => trim($scene->name ?? ''),
-            'description' => RichText::toXhtmlFragment($scene->description),
+            'description' => $this->richFragment($scene->description),
             'body' => $this->renderSceneContents($scene),
         ])->all();
 
@@ -273,7 +274,7 @@ class EpubExporter
             'heading' => $settings->chapter_title_format->format($number, $chapter->name),
             'number' => $number,
             'showChapterDescription' => $settings->include_chapter_descriptions,
-            'chapterDescription' => RichText::toXhtmlFragment($chapter->description),
+            'chapterDescription' => $this->richFragment($chapter->description),
             'showSceneTitles' => $settings->include_scene_titles,
             'showSceneDescriptions' => $settings->include_scene_descriptions,
             'sceneAnchors' => $settings->table_of_contents_depth->includesScenes(),
@@ -500,7 +501,7 @@ class EpubExporter
         return view('exports.epub.appendix-entry', [
             'name' => $entry->name,
             'imagePath' => $imagePath,
-            'description' => RichText::toXhtmlFragment($entry->description),
+            'description' => $this->richFragment($entry->description),
             'language' => $this->language($book),
         ])->render();
     }
@@ -910,10 +911,19 @@ class EpubExporter
      */
     private function renderAuthorMarkdown(string $markdown): string
     {
-        return app(HtmlSanitizer::class)->clean(
+        return EntityLinks::stripAnchors(app(HtmlSanitizer::class)->clean(
             (string) $this->converter()->convert($markdown),
             RichTextProfile::Structural,
-        );
+        ));
+    }
+
+    /**
+     * Rich HTML as an XHTML fragment. A reading system cannot follow an `entity:` link,
+     * so each link keeps its text only.
+     */
+    private function richFragment(?string $html): string
+    {
+        return RichText::toXhtmlFragment(EntityLinks::stripAnchors((string) $html));
     }
 
     /** Builds one isolated CommonMark converter per export. */

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\LinkTargetType;
 use App\Http\Requests\StoreNoteLinkRequest;
-use App\Models\Book;
 use App\Models\Note;
 use App\Models\Project;
 use App\Support\LikeSearch;
@@ -20,9 +19,6 @@ use Illuminate\Validation\Rule;
  */
 class NoteLinkController extends Controller
 {
-    /** The picker shows this many candidates at most. */
-    private const CANDIDATE_LIMIT = 20;
-
     public function store(StoreNoteLinkRequest $request, Note $note): RedirectResponse|Response
     {
         $note->linkTo($request->target());
@@ -51,21 +47,8 @@ class NoteLinkController extends Controller
         ]);
 
         $type = LinkTargetType::from($request->string('type')->value());
-        $column = $type->labelColumn();
 
-        $rows = $type->queryFor($project)
-            ->when($request->filled('q'), fn ($query) => LikeSearch::whereContains($query, $column, $request->string('q')->value()))
-            ->orderBy($column)
-            ->limit(self::CANDIDATE_LIMIT)
-            ->get();
-
-        return response()->json($rows->map(function ($row) use ($type, $project) {
-            if ($row instanceof Book) {
-                $row->setRelation('project', $project);
-            }
-
-            return ['type' => $type->value, 'id' => $row->getKey(), 'label' => $type->labelFor($row)];
-        })->values());
+        return response()->json($type->candidates($project, $request->string('q')->value()));
     }
 
     /** Notes of the project that an entity can link to: `[{id, title}]`. */
@@ -78,7 +61,7 @@ class NoteLinkController extends Controller
         $notes = $project->notes()
             ->when($request->filled('q'), fn ($query) => LikeSearch::whereContains($query, 'title', $request->string('q')->value()))
             ->orderBy('title')
-            ->limit(self::CANDIDATE_LIMIT)
+            ->limit(LinkTargetType::CANDIDATE_LIMIT)
             ->get(['id', 'title']);
 
         return response()->json($notes->map(fn (Note $note) => ['id' => $note->id, 'title' => $note->title])->values());

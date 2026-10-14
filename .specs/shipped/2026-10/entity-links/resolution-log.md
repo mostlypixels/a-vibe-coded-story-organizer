@@ -25,10 +25,19 @@ file already record what was built. Bullets under the headings below, root cause
 - More components than `x-rich-text` take a required `project` prop: `x-diff`, `x-revision-version` and `x-story-chapter`. They pass it on to the resolver.
 - `Scene::contentsExcerpt()` renders with `AuthorMarkdown::render()`, not `renderedContents`. It is plain text, so the link lookup is waste on the Story overview.
 - The public shared scene page resolves links too. A reader without an account gets a link to a login page. Caller decision open: strip links there, as the exports do.
+  - Resolved in exports: the shared page strips links (`Scene::linklessContents` and `EntityLinks::stripAnchors()` on the description).
+- Exports use `EntityLinks::stripAnchors()` (HTML anchors only), not `strip()`. In rendered or stored HTML, Markdown-shaped text is literal, for example a code span. `strip()` would unwrap it.
+- The static site strips only the `books/` reading pages. The `data/` layer keeps the links: the archive format says it is lossless, and the import needs them. The task test "no `entity:` in the output" holds for `books/` only.
 - `HasEntityLinks` is on `Book` too, though a book has no link field. Without it, deleting one book leaves the rows that point at it. `EntityLinkIndex::fieldsOf()` returns `[]` for Book, so its save hook does nothing.
 - `ProjectGraphImporter::linkMap()` now returns the `notes` map for `note`, not a `LogicException`. The Links phase needs it. The `noteLinkable()` check in `importNote()` still rejects a `note` pivot link.
 - New `LinkTargetType::tryFromModel()`: `forget()` and `EntityLink::deleteFor()` also get a Project, which is a source but never a target.
+- `x-wysiwyg` takes an optional `project` prop, not a required one: the new project page has no project. Without it, no "Link to…" button, slash item or dialog. `x-autosave-field` passes `$model->revisionProject()`; create pages pass their project.
+- The shared search module (`resources/js/candidate-search.js`) also holds the arrow-key highlight (`highlighted`, `move()`). The note-link picker carries it unused.
+- In the dialog, the search box comes before the type select. `x-modal` focuses the first focusable element, and the keyboard flow starts in the search box.
+- The search box is a `role="combobox"` with `aria-controls`. `DisclosureToggleTest::assertTogglesControlExistingPanels()` now skips comboboxes: they are not disclosure toggles.
 - The seed link is a `{scene}` placeholder in a note body. `SeedsNotes` swaps it for the href of the note's own scene. All three Melusine locales have it, on "The Saturday curse".
+- The "Linked from" card is `x-linked-from-card` (class component, takes the target model). It sits on the read pages only, not the edit pages. A source with links in two fields shows once; a text that links to itself is not listed.
+- `NotesCard::projectOf()` moved to `LinkTargetType::projectOf()`, now also used by the new card.
 
 ## Issues → resolutions
 
@@ -43,4 +52,11 @@ file already record what was built. Bullets under the headings below, root cause
 - `syncSource()` reads `revisionProject()` only when there are rows to insert. For a scene it walks chapter → act → book → project, and autosave would pay it on every keystroke batch.
 - The import phases before Links create rows with `create()`, so the save hook indexes links with archive ids. The Links phase `syncProject()` replaces them. A stalled import keeps these wrong rows until a resume. Accepted: the project is marked `import_unfinished`.
 - `ProjectGraphImporter` takes `EntityLinkIndex` in its constructor. Tests that build it by hand (`ProjectImporterTest` mocks, `realImporter()`) pass it too.
+- The Tiptap link mark is inclusive (`autolink: true`), so text typed after an inserted label joined the link. Fix: `pickLinkTarget()` runs `unsetMark('link')` after the insert. Test: the Vitest "inserts the label … the next text is not linked".
+- The dialog opens under the pointer of the toolbar button. With `mouseenter`, the result under the still pointer took the highlight, and Enter picked the wrong target. Browser run only; Vitest missed it. Fix: `mousemove` sets the highlight.
+- The dev database is behind five migrations, `entity_links` among them, so the dev server cannot show the card. The runtime check used a throwaway SQLite file (`DB_DATABASE`) and `php artisan serve` on another port. The dev database stays untouched.
+- `npm run build` does not remove `public/hot` while the Docker Vite server runs, so `assets-state.sh` fails on it and on the pending migrations. Not caused by this task.
+- The Docker Vite dev server was wedged (8 h CPU, `app.css` did not answer in 150 s). The browser check set `public/hot` aside to use the build, then put it back.
 - Tiptap Markdown moves a mark inside a link: `**[x](entity:note/7)**` saves as `[**x**](entity:note/7)`. Same meaning; round-trip tests use the serializer order.
+- A task 02 browser check edited dev note 3 ("Fountain research") and left its body empty. Earlier content, if any, is lost. Later tasks were told to use throwaway records only.
+- A task 04 shell edit wiped nine model files. Seven came back from HEAD; Note and Scene were rebuilt by replaying the earlier task edits, then checked by diff and the full suite. Later tasks were told to edit with the Edit/Write tools only.

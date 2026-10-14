@@ -403,6 +403,15 @@
     color: var(--color-content-subtle);
 }
 
+/* An `entity:` link in the editor. It looks different from a web link, because a click does not open it. */
+.tiptap a[href^='entity:'] {
+    border-radius: var(--radius-sm);
+    background-color: var(--color-accent-surface);
+    color: var(--color-accent-content);
+    text-decoration-style: dotted;
+    cursor: text;
+}
+
 /* The suggestion plugin positions this slash-command menu. */
 .wysiwyg-slash {
     z-index: 50;

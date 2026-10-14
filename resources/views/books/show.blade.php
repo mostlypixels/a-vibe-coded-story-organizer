@@ -19,6 +19,8 @@
             />
 
             <x-notes-card :notes="$book->notes" :linkable="$book" />
+
+            <x-linked-from-card :target="$book" />
         </div>
 
         <div class="lg:col-span-3">

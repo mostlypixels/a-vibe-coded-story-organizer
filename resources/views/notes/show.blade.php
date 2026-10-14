@@ -48,5 +48,7 @@
                 @include('notes.partials.link-list', ['note' => $note, 'groups' => $linkGroups])
             </x-card>
         @endif
+
+        <x-linked-from-card :target="$note" />
     </div>
 </x-app-layout>

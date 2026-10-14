@@ -128,6 +128,8 @@
 
         <x-notes-card :notes="$entry->notes" :linkable="$entry" />
 
+        <x-linked-from-card :target="$entry" />
+
         @if ($referencingScenes->isNotEmpty())
             <x-card :title="__('Referenced in scenes')" icon="entity-scene">
                 <x-references.scene-table

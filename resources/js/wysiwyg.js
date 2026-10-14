@@ -11,6 +11,7 @@ import { Subscript } from '@tiptap/extension-subscript';
 import { Superscript } from '@tiptap/extension-superscript';
 import { Typography } from '@tiptap/extension-typography';
 import { Plugin } from '@tiptap/pm/state';
+import { candidateSearch } from './candidate-search.js';
 import { normalizePunctuation } from './punctuation.js';
 import { translate } from './translate.js';
 
@@ -414,6 +415,34 @@ export function isEntityHref(url) {
     return ENTITY_HREF.test(url);
 }
 
+/**
+ * Stops a click on an `entity:` link. The browser does not know the scheme,
+ * so a Ctrl+click would ask the system for an app to open it.
+ */
+const EntityLinkClicks = Extension.create({
+    name: 'entityLinkClicks',
+
+    addProseMirrorPlugins() {
+        return [
+            new Plugin({
+                props: {
+                    handleDOMEvents: {
+                        click: (_view, event) => {
+                            const anchor = event.target?.closest?.('a[href]');
+
+                            if (anchor && anchor.getAttribute('href').startsWith('entity:')) {
+                                event.preventDefault();
+                            }
+
+                            return false;
+                        },
+                    },
+                },
+            }),
+        ];
+    },
+});
+
 /** Translation keys. `App\Support\ScriptTranslations::wysiwyg()` supplies the text. */
 export const EDITOR_MESSAGES = {
     refusedUrl: 'Use a web address that starts with http:// or https://.',
@@ -424,7 +453,7 @@ export const EDITOR_MESSAGES = {
  * Build commands that both editor formats can serialize without loss.
  * Each title is a translation key, and `strings` holds the text.
  */
-export function buildSlashItems(format, onLink, onImage, onCodexEntry = null, strings = {}) {
+export function buildSlashItems(format, onLink, onImage, onCodexEntry = null, strings = {}, onEntityLink = null) {
     const at = (editor, range) => editor.chain().focus().deleteRange(range);
 
     const items = [
@@ -451,6 +480,15 @@ export function buildSlashItems(format, onLink, onImage, onCodexEntry = null, st
         { title: 'Task list', keywords: ['todo', 'checklist', 'checkbox'], run: ({ editor, range }) => at(editor, range).toggleTaskList().run() },
         { title: 'Callout', keywords: ['note', 'tip', 'warning', 'alert', 'callout'], run: ({ editor, range }) => at(editor, range).setCallout({ type: 'note' }).run() },
     ];
+
+    // An editor outside a project has no link targets.
+    if (onEntityLink) {
+        items.splice(items.findIndex((item) => item.title === 'Link') + 1, 0, {
+            title: 'Link to…',
+            keywords: ['link', 'entity', 'internal', 'scene', 'note', 'codex'],
+            run: ({ editor, range }) => { at(editor, range).run(); onEntityLink(); },
+        });
+    }
 
     // Only the scene editor supplies this callback, so no other editor offers the item.
     if (onCodexEntry) {
@@ -577,8 +615,8 @@ export function slashRenderer(strings = {}) {
     };
 }
 
-function slashExtension(format, onLink, onImage, onCodexEntry, strings) {
-    const menuItems = buildSlashItems(format, onLink, onImage, onCodexEntry, strings);
+function slashExtension(format, onLink, onImage, onCodexEntry, strings, onEntityLink) {
+    const menuItems = buildSlashItems(format, onLink, onImage, onCodexEntry, strings, onEntityLink);
 
     return Extension.create({
         name: 'slashCommands',
@@ -607,7 +645,7 @@ function slashExtension(format, onLink, onImage, onCodexEntry, strings) {
 
 export function buildExtensions(
     format,
-    { placeholder = '', onLink = () => {}, onImage = () => {}, onCodexEntry = null, strings = {} } = {},
+    { placeholder = '', onLink = () => {}, onImage = () => {}, onCodexEntry = null, onEntityLink = null, strings = {} } = {},
 ) {
     const isMarkdown = format === 'markdown';
 
@@ -640,7 +678,8 @@ export function buildExtensions(
         TaskItem,
         TaskList,
         Callout,
-        slashExtension(format, onLink, onImage, onCodexEntry, strings),
+        EntityLinkClicks,
+        slashExtension(format, onLink, onImage, onCodexEntry, strings, onEntityLink),
     ];
 
     if (!isMarkdown) {
@@ -687,6 +726,17 @@ export function registerWysiwyg(Alpine) {
             tick: 0,
             // The link and image dialog. `kind` is 'link' or 'image'.
             urlForm: { kind: null, url: '', alt: '', error: '' },
+            // The "Link to…" dialog. Null for an editor outside a project.
+            linkTarget: config.linkTargetsUrl
+                ? {
+                    ...candidateSearch({
+                        url: config.linkTargetsUrl,
+                        params: (search) => ({ type: search.type }),
+                        failureMessage: config.linkTargetFailure,
+                    }),
+                    type: 'scene',
+                }
+                : null,
 
             init() {
                 const textarea = this.$refs.textarea;
@@ -714,6 +764,7 @@ export function registerWysiwyg(Alpine) {
                     strings: config.strings,
                     onLink: () => this.setLink(),
                     onImage: () => this.setImage(),
+                    onEntityLink: this.linkTarget ? () => this.openLinkTarget() : null,
                     // An event, so this generic editor never imports the scene dialog.
                     // The name matches OPEN_EVENT in resources/js/quick-codex-entry.js.
                     onCodexEntry: config.quickCodexEntry
@@ -826,6 +877,33 @@ export function registerWysiwyg(Alpine) {
                 }
 
                 this.$dispatch('close-modal', config.urlDialog);
+            },
+
+            openLinkTarget() {
+                if (!editor || !this.linkTarget) return;
+
+                this.linkTarget.resetSearch();
+                this.$dispatch('open-modal', config.linkTargetDialog);
+                this.linkTarget.search();
+            },
+
+            // A selection becomes the link text. With no selection, the label of the target is the text.
+            pickLinkTarget(candidate) {
+                if (!editor || !candidate) return;
+
+                const href = `entity:${candidate.type}/${candidate.id}`;
+
+                if (editor.state.selection.empty) {
+                    editor.chain().focus()
+                        .insertContent({ type: 'text', text: candidate.label, marks: [{ type: 'link', attrs: { href } }] })
+                        // The link mark is inclusive, so text typed next would join the link.
+                        .unsetMark('link')
+                        .run();
+                } else {
+                    editor.chain().focus().setLink({ href }).run();
+                }
+
+                this.$dispatch('close-modal', config.linkTargetDialog);
             },
 
             setCalloutType(type) {

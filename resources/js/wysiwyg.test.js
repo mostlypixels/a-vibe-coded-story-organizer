@@ -911,13 +911,108 @@ describe('translated strings — Laravel supplies the text', () => {
     it('ScriptTranslations.php lists every key the editor looks up', () => {
         const php = readSource('app/Support/ScriptTranslations.php');
         const keys = [
-            ...buildSlashItems('html', () => {}, () => {}, () => {}).map((item) => item.title),
+            ...buildSlashItems('html', () => {}, () => {}, () => {}, {}, () => {}).map((item) => item.title),
             ...Object.values(EDITOR_MESSAGES),
         ];
 
         for (const key of keys) {
             expect(php.includes(`'${key}'`) || php.includes(`"${key}"`), key).toBe(true);
         }
+    });
+});
+
+describe('"Link to…" dialog', () => {
+    function mount(value, config = { linkTargetsUrl: '/projects/1/link-targets', linkTargetDialog: 'link-target-test' }) {
+        const el = document.createElement('div');
+        const textarea = document.createElement('textarea');
+        const editorMount = document.createElement('div');
+        textarea.value = value;
+        el.appendChild(textarea);
+        el.appendChild(editorMount);
+        document.body.appendChild(el);
+
+        const factories = {};
+        registerWysiwyg({ data: (name, factory) => { factories[name] = factory; } });
+
+        const component = factories.wysiwyg({ format: 'html', ...config });
+        component.$el = el;
+        component.$refs = { textarea, editor: editorMount };
+        component.$dispatch = vi.fn();
+        component.init();
+
+        return component;
+    }
+
+    afterEach(() => {
+        delete window.axios;
+        document.body.innerHTML = '';
+    });
+
+    it('sets an entity href on the selected text', () => {
+        const component = mount('<p>Hello</p>');
+        component.cmd('selectAll');
+
+        component.pickLinkTarget({ type: 'note', id: 7, label: 'Research' });
+
+        expect(component.$refs.textarea.value).toBe('<p><a href="entity:note/7">Hello</a></p>');
+        expect(component.$dispatch).toHaveBeenCalledWith('close-modal', 'link-target-test');
+        component.destroy();
+    });
+
+    it('inserts the label as link text when nothing is selected, and the next text is not linked', () => {
+        const component = mount('<p>See:</p>');
+        component.cmd('focus', 'end');
+
+        component.pickLinkTarget({ type: 'scene', id: 42, label: 'The fountain' });
+        component.cmd('insertContent', ' now');
+
+        expect(component.$refs.textarea.value).toBe('<p>See:<a href="entity:scene/42">The fountain</a> now</p>');
+        component.destroy();
+    });
+
+    it('searches the picked type and ignores a slow old response', async () => {
+        let resolveOld;
+        window.axios = {
+            get: vi.fn()
+                .mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve; }))
+                .mockResolvedValueOnce({ data: [{ type: 'codex', id: 2, label: 'Melusine' }] }),
+        };
+        const component = mount('<p></p>');
+
+        component.openLinkTarget();
+        const old = window.axios.get.mock.results[0].value;
+        component.linkTarget.type = 'codex';
+        component.linkTarget.query = 'mel';
+        await component.linkTarget.search();
+        resolveOld({ data: [{ type: 'scene', id: 1, label: 'Old' }] });
+        await old;
+
+        expect(component.$dispatch).toHaveBeenCalledWith('open-modal', 'link-target-test');
+        expect(window.axios.get).toHaveBeenLastCalledWith('/projects/1/link-targets', { params: { q: 'mel', type: 'codex' } });
+        expect(component.linkTarget.results).toEqual([{ type: 'codex', id: 2, label: 'Melusine' }]);
+        component.destroy();
+    });
+
+    it('arrow keys wrap through the results', () => {
+        const component = mount('<p></p>');
+        component.linkTarget.results = [{ id: 1 }, { id: 2 }];
+
+        component.linkTarget.move(1);
+        expect(component.linkTarget.highlightedResult()).toEqual({ id: 2 });
+        component.linkTarget.move(1);
+        expect(component.linkTarget.highlightedResult()).toEqual({ id: 1 });
+        component.linkTarget.move(-1);
+        expect(component.linkTarget.highlightedResult()).toEqual({ id: 2 });
+        component.destroy();
+    });
+
+    it('is absent for an editor outside a project', () => {
+        const component = mount('<p></p>', {});
+
+        expect(component.linkTarget).toBeNull();
+        expect(buildSlashItems('html', () => {}, () => {}).map((item) => item.title)).not.toContain('Link to…');
+        expect(buildSlashItems('html', () => {}, () => {}, null, {}, () => {}).map((item) => item.title)).toContain('Link to…');
+        component.destroy();
     });
 });
 

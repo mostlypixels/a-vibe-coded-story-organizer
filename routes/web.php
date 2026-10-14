@@ -24,6 +24,7 @@ use App\Http\Controllers\FieldAutosaveController;
 use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportSettingController;
+use App\Http\Controllers\LinkTargetController;
 use App\Http\Controllers\MediaFileController;
 use App\Http\Controllers\NoteCategoryController;
 use App\Http\Controllers\NoteController;
@@ -156,6 +157,8 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
     Route::get('/projects/{project}/notes/candidates', [NoteLinkController::class, 'noteCandidates'])
         ->name('notes.candidates');
+    Route::get('/projects/{project}/link-targets', [LinkTargetController::class, 'index'])
+        ->name('projects.link-targets');
     Route::get('/notes/{note}/link-candidates', [NoteLinkController::class, 'candidates'])
         ->name('notes.link-candidates');
     Route::post('/notes/{note}/links', [NoteLinkController::class, 'store'])->name('notes.links.store');

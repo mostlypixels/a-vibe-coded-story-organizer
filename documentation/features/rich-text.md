@@ -117,7 +117,33 @@ longer tell an author's strike from a deleted word.
 - Image resize and table merge or split are disabled for Markdown because Markdown cannot preserve them.
 - Underline, subscript, and superscript use raw inline HTML in Markdown.
 - Callouts serialize as GitHub-style blockquotes.
-- Link and image URLs accept HTTP(S) only.
+- Link and image URLs accept HTTP(S) only. The URL dialog also accepts a valid `entity:` link.
+
+### Link to…
+
+The toolbar button and the slash item **Link to…** open a dialog that searches the project for a link target.
+
+- `x-wysiwyg` takes an optional `project` prop. With it, the editor gets the `projects.link-targets` URL and shows the dialog. Without it (the new project page), the editor offers web links only.
+- `x-autosave-field` passes `revisionProject()` of its model. Create pages pass their project.
+- The dialog has a search box, a type select (every `LinkTargetType`) and a result list. Arrow keys move in the results, Enter picks, Escape closes.
+- A pick on selected text sets `href="entity:<type>/<id>"`. With no selection, the label of the target becomes the link text.
+- `resources/js/candidate-search.js` holds the search, debounce and response order. The note-link picker (`resources/js/notes/linkPicker.js`) uses it too.
+- In the editor, an `entity:` link has its own style (`.tiptap a[href^='entity:']`). A click does not open it.
+- No dead-link check in the editor. Read views show a missing target as `.entity-link-missing`.
+
+> [!WARNING]
+> The dialog state is reactive Alpine data, but the Tiptap `Editor` stays in the closure of `registerWysiwyg`. An Alpine proxy around the editor breaks ProseMirror state.
+
+### Linked from
+
+Every target read page (book, act, chapter, scene, event, plotline, codex entry, note) shows a **Linked from** card next to the Notes card. It uses `x-linked-from-card` (`App\View\Components\LinkedFromCard`).
+
+- It lists the texts that link to the entity, from the `entity_links` index. Each row shows the source title, its type, its link fields (Description, Prose, Text) and a link to the source.
+- A source with links in two fields shows once.
+- The card is hidden when the list is empty.
+- It runs one query for the rows and one for each source type, whatever the number of sources.
+- It lists sources of the same project only. A link can name a target id of another project. That target must not list the source.
+- A text that links to its own entity is not listed.
 
 ### Smart punctuation
 

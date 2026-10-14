@@ -192,6 +192,38 @@ class EpubExportTest extends TestCase
         }
     }
 
+    public function test_entity_links_keep_only_their_text_in_the_book(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['position' => 1, 'description' => '<p>Act <a href="entity:scene/9">actlink</a></p>']);
+        $chapter = Chapter::factory()->for($act)->create(['position' => 1, 'description' => '<p>Chap <a href="entity:act/9">chaplink</a></p>']);
+        Scene::factory()->for($chapter)->create([
+            'position' => 1,
+            'description' => '<p>Desc <a href="entity:event/9">desclink</a></p>',
+            'contents' => 'Behind [the keyhole](entity:scene/9) she waited, `[code](entity:scene/9)`.',
+        ]);
+        PublicationSetting::factory()->for($book)->create([
+            'include_act_descriptions' => true,
+            'include_chapter_descriptions' => true,
+            'include_scene_descriptions' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('admin.data.export.epub'), [
+            'book_id' => $book->id,
+        ])->assertOk();
+
+        $pages = implode('', $this->packagedFiles($response, '#\.xhtml$#'));
+
+        foreach (['actlink', 'chaplink', 'desclink', 'the keyhole'] as $text) {
+            $this->assertStringContainsString($text, $pages);
+        }
+        $this->assertStringNotContainsString('<a href="entity:', $pages);
+        // Markdown-shaped text in a code span stays as written.
+        $this->assertStringContainsString('[code](entity:scene/9)', $pages);
+        $this->assertStringNotContainsString('[the keyhole]', $pages);
+    }
+
     /** Regression for #168: raw HTML in matter pages skipped the sanitizer. */
     public function test_matter_pages_are_sanitized_and_export_as_valid_xhtml(): void
     {

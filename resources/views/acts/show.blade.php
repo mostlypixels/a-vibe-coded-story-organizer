@@ -67,6 +67,8 @@
         @endif
 
         <x-notes-card :notes="$act->notes" :linkable="$act" />
+
+        <x-linked-from-card :target="$act" />
     </div>
 
     @if ($act->chapters_count > 0)

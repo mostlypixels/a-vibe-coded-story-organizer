@@ -638,8 +638,9 @@ class StaticSiteExporter
                 // Use the same formatted heading as the contents entry.
                 'chapterTitle' => $settings->chapter_title_format->format($numbering->chapter($chapter), $chapter->name),
                 // Use the shared scene renderer so the app and archive match.
+                // Links keep their text only: the reading pages have no page for a target.
                 'renderedScenes' => $chapter->scenes->map(
-                    fn (Scene $scene): string => $scene->renderedContents
+                    fn (Scene $scene): string => $scene->linklessContents
                 )->all(),
                 'prevHref' => $previous,
                 'nextHref' => $next,

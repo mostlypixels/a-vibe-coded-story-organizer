@@ -47,6 +47,7 @@ final class ScriptTranslations
         'Inline code',
         'Code block',
         'Link',
+        'Link to…',
         'Horizontal rule',
         'Table',
         'Image',

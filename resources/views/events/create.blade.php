@@ -13,7 +13,7 @@
                 </x-field>
 
                 <x-field name="description" :label="__('Description')">
-                    <x-wysiwyg id="description" name="description" :value="old('description')" :rows="4" />
+                    <x-wysiwyg id="description" name="description" :value="old('description')" :rows="4" :project="$project" />
                 </x-field>
 
                 <x-field name="event_datetime" :label="__('Date & Time')">

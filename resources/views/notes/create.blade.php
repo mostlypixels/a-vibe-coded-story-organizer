@@ -26,7 +26,7 @@
                 </x-field>
 
                 <x-field name="body" :label="__('Body')">
-                    <x-wysiwyg id="body" name="body" :value="old('body')" :rows="12" />
+                    <x-wysiwyg id="body" name="body" :value="old('body')" :rows="12" :project="$project" />
                 </x-field>
             </form>
         </x-card>

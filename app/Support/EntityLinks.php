@@ -116,6 +116,12 @@ class EntityLinks
         }, $html, -1, $count, PREG_UNMATCHED_AS_NULL);
     }
 
+    /** Unwraps every HTML entity link to its inner HTML. Use it on HTML, where Markdown-shaped text is literal. */
+    public static function stripAnchors(string $html): string
+    {
+        return self::replaceAnchors($html, static fn (LinkTargetType $type, int $id, string $anchor, string $text): string => $text);
+    }
+
     /** Unwraps every entity link to its text. */
     public static function strip(string $text): string
     {

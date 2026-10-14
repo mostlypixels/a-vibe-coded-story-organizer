@@ -100,6 +100,13 @@ class EntityLinksTest extends TestCase
         $this->assertSame('<p><a href="https://example.com">web</a> <em>a</em></p> **b**', EntityLinks::strip($text));
     }
 
+    public function test_strip_anchors_unwraps_html_links_and_leaves_markdown_shaped_text(): void
+    {
+        $html = '<p><a href="https://example.com">web</a> <a href="entity:scene/1"><em>a</em></a></p><pre>[b](entity:note/2)</pre>';
+
+        $this->assertSame('<p><a href="https://example.com">web</a> <em>a</em></p><pre>[b](entity:note/2)</pre>', EntityLinks::stripAnchors($html));
+    }
+
     public function test_parse_target_reads_only_known_type_and_digits(): void
     {
         $this->assertSame(['type' => LinkTargetType::Note, 'id' => 7], EntityLinks::parseTarget('note/7'));

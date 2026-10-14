@@ -47,5 +47,7 @@
         @endif
 
         <x-notes-card :notes="$plotline->notes" :linkable="$plotline" />
+
+        <x-linked-from-card :target="$plotline" />
     </div>
 </x-app-layout>

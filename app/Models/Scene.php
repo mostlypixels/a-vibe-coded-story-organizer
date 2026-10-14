@@ -144,6 +144,22 @@ class Scene extends Model implements Revisionable
         );
     }
 
+    /**
+     * Like {@see renderedContents()}, but each `entity:` link keeps only its text.
+     * Use it where a reader cannot open the targets: the shared page and the static site.
+     *
+     * > [!WARNING]
+     * > Do not strip `renderedContents`: it already holds app URLs, so no link is left to find.
+     *
+     * @return Attribute<string, never>
+     */
+    protected function linklessContents(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => EntityLinks::stripAnchors(AuthorMarkdown::render($this->contents)),
+        );
+    }
+
     /** The editor can store markup with no text, such as `<p></p>`. */
     public function hasDescription(): bool
     {

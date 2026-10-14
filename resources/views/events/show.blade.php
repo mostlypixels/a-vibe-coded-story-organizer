@@ -111,6 +111,8 @@
 
         <x-notes-card :notes="$event->notes" :linkable="$event" />
 
+        <x-linked-from-card :target="$event" />
+
         @if ($lifespanEntries['inceptions']->isNotEmpty() || $lifespanEntries['terminations']->isNotEmpty())
             <x-card :title="__('Codex entries')" icon="entity-codex">
                 <div class="space-y-4">

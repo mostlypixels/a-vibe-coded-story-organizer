@@ -11,6 +11,7 @@ use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
+use App\Support\LikeSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
@@ -32,6 +33,9 @@ enum LinkTargetType: string
     case Plotline = 'plotline';
     case Codex = 'codex';
     case Note = 'note';
+
+    /** A picker shows this many candidates at most. */
+    public const CANDIDATE_LIMIT = 20;
 
     /** @return class-string<Model> */
     public function modelClass(): string
@@ -138,6 +142,44 @@ enum LinkTargetType: string
             self::Plotline => Plotline::query()->where('plotlines.project_id', $project->id),
             self::Codex => CodexEntry::query()->where('codex_entries.project_id', $project->id),
             self::Note => Note::query()->where('notes.project_id', $project->id),
+        };
+    }
+
+    /**
+     * Rows of this type whose label contains `$search`, as picker candidates.
+     * Both candidate endpoints use it, so the limit and search rule stay equal.
+     *
+     * @return list<array{type: string, id: int, label: string}>
+     */
+    public function candidates(Project $project, ?string $search, int $limit = self::CANDIDATE_LIMIT): array
+    {
+        $column = $this->labelColumn();
+
+        return $this->queryFor($project)
+            ->when(filled($search), fn (Builder $query) => LikeSearch::whereContains($query, $column, (string) $search))
+            ->orderBy($column)
+            ->limit($limit)
+            ->get()
+            ->map(function (Model $row) use ($project): array {
+                // displayName() falls back to the project's name.
+                if ($row instanceof Book) {
+                    $row->setRelation('project', $project);
+                }
+
+                return ['type' => $this->value, 'id' => $row->getKey(), 'label' => $this->labelFor($row)];
+            })
+            ->values()
+            ->all();
+    }
+
+    /** The project that owns a target row. */
+    public static function projectOf(Model $model): Project
+    {
+        return match (true) {
+            $model instanceof Act => $model->book->project,
+            $model instanceof Chapter, $model instanceof Scene => $model->project(),
+            $model instanceof Book, $model instanceof Event, $model instanceof Plotline, $model instanceof CodexEntry, $model instanceof Note => $model->project,
+            default => throw new InvalidArgumentException($model::class.' is not a linkable type.'),
         };
     }
 

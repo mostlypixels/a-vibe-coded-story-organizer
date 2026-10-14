@@ -7,12 +7,14 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Js;
 use Tests\TestCase;
 
 /**
@@ -78,6 +80,51 @@ class WysiwygFormTest extends TestCase
         foreach ($descriptionForms as $url) {
             $this->assertHasTextarea($url, $user, 'description');
         }
+    }
+
+    public function test_every_project_editor_renders_the_link_target_endpoint_of_its_project(): void
+    {
+        [$user, $project, $book, $act, $chapter, $scene, $plotline, $event, $entry] = $this->fixture();
+        $note = Note::factory()->for($project)->create();
+        $endpoint = Js::from(route('projects.link-targets', $project))->toHtml();
+
+        $editorPages = [
+            route('projects.edit', $project),
+            route('books.acts.create', $book),
+            route('acts.edit', $act),
+            route('books.chapters.create', $book),
+            route('chapters.edit', $chapter),
+            route('projects.plotlines.create', $project),
+            route('plotlines.edit', $plotline),
+            route('projects.events.create', $project),
+            route('events.edit', $event),
+            route('books.scenes.create', $book),
+            route('scenes.edit', $scene),
+            route('projects.codex.create', [$project, 'characters']),
+            route('codex.edit', $entry),
+            route('projects.notes.create', $project),
+            route('notes.edit', $note),
+        ];
+
+        foreach ($editorPages as $url) {
+            $this->actingAs($user)
+                ->get($url)
+                ->assertOk()
+                ->assertSee($endpoint, false)
+                ->assertSee('aria-label="Link to…"', false);
+        }
+    }
+
+    public function test_an_editor_outside_a_project_has_no_link_to_dialog(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.create'))
+            ->assertOk()
+            ->assertSee('linkTargetsUrl: null', false)
+            ->assertDontSee('aria-label="Link to…"', false)
+            ->assertDontSee('data-link-target-dialog', false);
     }
 
     public function test_scene_contents_is_a_markdown_mode_wysiwyg(): void
