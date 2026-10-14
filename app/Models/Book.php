@@ -161,6 +161,8 @@ class Book extends Model implements Revisionable
      *
      * Story order is `(acts.position, acts.id, chapters.position, chapters.id)`,
      * never `name` or `position` alone — both are per-parent and gappy.
+     *
+     * @return Collection<int, Chapter>
      */
     public function chaptersInStoryOrder(): Collection
     {
