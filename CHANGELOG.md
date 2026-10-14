@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-14 — Vite watch in Docker
+## 2026-10-14 — Vite watch in Docker (#329)
 
 ### Fixed
 
