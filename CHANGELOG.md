@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-14 — Scene reviewer agent (#330)
+
+### Added
+
+- A `scene-reviewer` Claude agent checks a scene for language, name and plot problems and saves a fix list as a TODO note.
+- Artisan commands `scene:review-context`, `scene:show`, `scene:search` and `scene:review-note` support the agent.
+
 ## 2026-10-14 — Vite watch in Docker (#329)
 
 ### Fixed
