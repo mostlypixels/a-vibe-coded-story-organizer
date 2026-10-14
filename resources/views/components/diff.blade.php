@@ -1,7 +1,9 @@
+{{-- `project` scopes the `entity:` links of a visual diff. A source diff shows them as typed. --}}
 @props([
     'html' => null,
     'inline' => false,
     'kind' => null,
+    'project',
 ])
 
 
@@ -15,6 +17,6 @@
 
 @if (filled($html))
     <div {{ $attributes->merge(['class' => "revision-diff {$variant}"]) }}>
-        {!! $html !!}
+        {!! $isSource ? $html : app(\App\Services\EntityLinkResolver::class)->render($html, $project) !!}
     </div>
 @endif

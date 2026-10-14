@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Enums\RichTextProfile;
+use App\Support\EntityLinks;
+use App\Support\Purifier\EntityUriScheme;
 use App\Support\RichTextFields;
 use HTMLPurifier;
 use HTMLPurifier_Config;
+use HTMLPurifier_URISchemeRegistry;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -47,6 +50,8 @@ class HtmlSanitizer
         $config = HTMLPurifier_Config::createDefault();
         $config->set('HTML.Allowed', RichTextFields::purifierAllowedHtml());
         $config->set('URI.AllowedSchemes', RichTextFields::purifierAllowedSchemes());
+        // HTMLPurifier has no class for a custom scheme. The registry is global.
+        HTMLPurifier_URISchemeRegistry::instance()->register(EntityLinks::SCHEME, new EntityUriScheme);
         // HTMLPurifier reads this as a lookup table, so the names are the keys.
         // An empty set permits no class at all, which is what Structural needs.
         $config->set('Attr.AllowedClasses', $profile === RichTextProfile::Rich

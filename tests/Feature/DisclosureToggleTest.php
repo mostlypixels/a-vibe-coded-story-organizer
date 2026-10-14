@@ -193,7 +193,8 @@ class DisclosureToggleTest extends TestCase
     private function assertTogglesControlExistingPanels(string $html): array
     {
         $document = $this->document($html);
-        $toggles = iterator_to_array($document->querySelectorAll('[aria-controls]'));
+        // A combobox names its result list with aria-controls too, but it is not a toggle.
+        $toggles = iterator_to_array($document->querySelectorAll('[aria-controls]:not([role="combobox"])'));
 
         foreach ($toggles as $toggle) {
             $id = $toggle->getAttribute('aria-controls');

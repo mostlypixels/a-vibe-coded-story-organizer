@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
 use App\Models\Act;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
@@ -41,29 +41,30 @@ class NoteLinkControllerTest extends TestCase
         $this->note = Note::factory()->for($this->project)->create(['title' => 'Research']);
     }
 
-    /** @return array<string, array{NoteLinkType}> */
+    /** @return array<string, array{LinkTargetType}> */
     public static function linkTypes(): array
     {
         return array_combine(
-            array_map(fn (NoteLinkType $case) => $case->value, NoteLinkType::cases()),
-            array_map(fn (NoteLinkType $case) => [$case], NoteLinkType::cases()),
+            array_map(fn (LinkTargetType $case) => $case->value, LinkTargetType::noteLinkableCases()),
+            array_map(fn (LinkTargetType $case) => [$case], LinkTargetType::noteLinkableCases()),
         );
     }
 
     /** One row of the type in the given project, named `$name`. */
-    private function makeFor(NoteLinkType $type, Project $project, string $name = 'Target'): Model
+    private function makeFor(LinkTargetType $type, Project $project, string $name = 'Target'): Model
     {
         $book = $project->books()->first();
         $chapter = fn (array $attributes = []) => Chapter::factory()->for(Act::factory()->for($book)->create())->create($attributes);
 
         return match ($type) {
-            NoteLinkType::Book => tap($book)->update(['name' => $name]),
-            NoteLinkType::Act => Act::factory()->for($book)->create(['name' => $name]),
-            NoteLinkType::Chapter => $chapter(['name' => $name]),
-            NoteLinkType::Scene => Scene::factory()->for($chapter())->create(['name' => $name]),
-            NoteLinkType::Event => Event::factory()->for($project)->create(['title' => $name]),
-            NoteLinkType::Plotline => Plotline::factory()->for($project)->create(['name' => $name]),
-            NoteLinkType::Codex => CodexEntry::factory()->for($project)->create(['name' => $name]),
+            LinkTargetType::Book => tap($book)->update(['name' => $name]),
+            LinkTargetType::Act => Act::factory()->for($book)->create(['name' => $name]),
+            LinkTargetType::Chapter => $chapter(['name' => $name]),
+            LinkTargetType::Scene => Scene::factory()->for($chapter())->create(['name' => $name]),
+            LinkTargetType::Event => Event::factory()->for($project)->create(['title' => $name]),
+            LinkTargetType::Plotline => Plotline::factory()->for($project)->create(['name' => $name]),
+            LinkTargetType::Codex => CodexEntry::factory()->for($project)->create(['name' => $name]),
+            LinkTargetType::Note => Note::factory()->for($project)->create(['title' => $name]),
         };
     }
 
@@ -75,7 +76,7 @@ class NoteLinkControllerTest extends TestCase
     // --- Store and destroy -------------------------------------------------
 
     #[DataProvider('linkTypes')]
-    public function test_owner_links_and_unlinks_each_type(NoteLinkType $type): void
+    public function test_owner_links_and_unlinks_each_type(LinkTargetType $type): void
     {
         $target = $this->makeFor($type, $this->project);
 
@@ -94,7 +95,7 @@ class NoteLinkControllerTest extends TestCase
     }
 
     #[DataProvider('linkTypes')]
-    public function test_a_target_from_another_project_is_a_validation_error(NoteLinkType $type): void
+    public function test_a_target_from_another_project_is_a_validation_error(LinkTargetType $type): void
     {
         $foreign = $this->makeFor($type, Project::factory()->for($this->other)->create());
 
@@ -117,9 +118,36 @@ class NoteLinkControllerTest extends TestCase
             ->assertJsonValidationErrors('id');
     }
 
+    public function test_a_note_to_note_link_is_rejected(): void
+    {
+        $other = $this->makeFor(LinkTargetType::Note, $this->project);
+
+        $this->actingAs($this->owner)
+            ->postJson(route('notes.links.store', $this->note), ['type' => 'note', 'id' => $other->getKey()])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('type');
+
+        $this->actingAs($this->owner)
+            ->delete('/notes/'.$this->note->id.'/links/note/'.$other->getKey())
+            ->assertNotFound();
+
+        $this->assertSame(0, $this->linkCount());
+    }
+
+    public function test_the_create_page_ignores_a_note_link_key(): void
+    {
+        $other = $this->makeFor(LinkTargetType::Note, $this->project, 'Other note');
+
+        $this->actingAs($this->owner)
+            ->post(route('projects.notes.store', $this->project), ['title' => 'New', 'link' => 'note:'.$other->getKey()])
+            ->assertSessionHasErrors('link');
+
+        $this->assertSame(0, Notable::query()->count());
+    }
+
     public function test_storing_an_existing_link_is_a_no_op(): void
     {
-        $scene = $this->makeFor(NoteLinkType::Scene, $this->project);
+        $scene = $this->makeFor(LinkTargetType::Scene, $this->project);
 
         foreach ([1, 2] as $attempt) {
             $this->actingAs($this->owner)
@@ -139,7 +167,7 @@ class NoteLinkControllerTest extends TestCase
 
     public function test_a_non_owner_cannot_link_or_unlink(): void
     {
-        $scene = $this->makeFor(NoteLinkType::Scene, $this->project);
+        $scene = $this->makeFor(LinkTargetType::Scene, $this->project);
         $this->note->linkTo($scene);
 
         $this->actingAs($this->other)
@@ -156,7 +184,7 @@ class NoteLinkControllerTest extends TestCase
     // --- Candidates ---------------------------------------------------------
 
     #[DataProvider('linkTypes')]
-    public function test_link_candidates_return_only_this_projects_rows(NoteLinkType $type): void
+    public function test_link_candidates_return_only_this_projects_rows(LinkTargetType $type): void
     {
         $mine = $this->makeFor($type, $this->project, 'Melusine');
         $this->makeFor($type, Project::factory()->for($this->other)->create(), 'Melusine abroad');
@@ -171,6 +199,10 @@ class NoteLinkControllerTest extends TestCase
     {
         $this->actingAs($this->owner)
             ->getJson(route('notes.link-candidates', ['note' => $this->note, 'type' => 'tag']))
+            ->assertJsonValidationErrors('type');
+
+        $this->actingAs($this->owner)
+            ->getJson(route('notes.link-candidates', ['note' => $this->note, 'type' => 'note']))
             ->assertJsonValidationErrors('type');
     }
 
@@ -200,7 +232,7 @@ class NoteLinkControllerTest extends TestCase
 
     public function test_read_and_edit_pages_list_the_links(): void
     {
-        $scene = $this->makeFor(NoteLinkType::Scene, $this->project, 'The fountain');
+        $scene = $this->makeFor(LinkTargetType::Scene, $this->project, 'The fountain');
         $this->note->linkTo($scene);
 
         $this->actingAs($this->owner)->get(route('notes.show', $this->note))

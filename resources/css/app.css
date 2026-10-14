@@ -403,6 +403,15 @@
     color: var(--color-content-subtle);
 }
 
+/* An `entity:` link in the editor. It looks different from a web link, because a click does not open it. */
+.tiptap a[href^='entity:'] {
+    border-radius: var(--radius-sm);
+    background-color: var(--color-accent-surface);
+    color: var(--color-accent-content);
+    text-decoration-style: dotted;
+    cursor: text;
+}
+
 /* The suggestion plugin positions this slash-command menu. */
 .wysiwyg-slash {
     z-index: 50;
@@ -567,6 +576,13 @@ blockquote[data-callout-type='caution']::before {
 .rt-color-amber { color: var(--color-warning-surface-content); }
 .rt-color-blue { color: var(--color-info-surface-content); }
 .rt-color-grey { color: var(--color-content-subtle); }
+
+/* An `entity:` link whose target is gone. EntityLinkResolver writes it; the `title` says why. */
+.entity-link-missing {
+    color: var(--color-content-subtle);
+    text-decoration: line-through;
+    cursor: help;
+}
 
 /*
  * `x-diff` signals changes with tint, a gutter glyph, and hidden text.

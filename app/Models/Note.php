@@ -2,7 +2,8 @@
 
 namespace App\Models;
 
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
+use App\Models\Concerns\HasEntityLinks;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Models\Contracts\Revisionable;
@@ -15,6 +16,7 @@ use Illuminate\Support\Collection;
 
 class Note extends Model implements Revisionable
 {
+    use HasEntityLinks;
     use HasFactory;
     use HasRevisions;
     use SanitizesRichHtml;
@@ -73,16 +75,16 @@ class Note extends Model implements Revisionable
 
     /**
      * Links the note to an entity. Linking twice is a no-op. The caller must
-     * resolve `$target` through {@see NoteLinkType::queryFor()}.
+     * resolve `$target` through {@see LinkTargetType::queryFor()}.
      */
     public function linkTo(Model $target): void
     {
-        $relation = NoteLinkType::fromModel($target)->noteRelation();
+        $relation = LinkTargetType::fromModel($target)->noteRelation();
 
         $this->{$relation}()->syncWithoutDetaching([$target->getKey()]);
     }
 
-    public function unlink(NoteLinkType $type, int $id): void
+    public function unlink(LinkTargetType $type, int $id): void
     {
         $this->{$type->noteRelation()}()->detach($id);
     }
@@ -90,16 +92,16 @@ class Note extends Model implements Revisionable
     /**
      * The linked entities, grouped by type, in the enum order. Empty types are left out.
      *
-     * @return array<string, array{type: NoteLinkType, items: Collection<int, Model>}>
+     * @return array<string, array{type: LinkTargetType, items: Collection<int, Model>}>
      */
     public function linkGroups(): array
     {
-        $this->loadMissing(array_map(fn (NoteLinkType $type) => $type->noteRelation(), NoteLinkType::cases()));
+        $this->loadMissing(array_map(fn (LinkTargetType $type) => $type->noteRelation(), LinkTargetType::noteLinkableCases()));
         $this->books->each(fn (Book $book) => $book->setRelation('project', $this->project));
 
         $groups = [];
 
-        foreach (NoteLinkType::cases() as $type) {
+        foreach (LinkTargetType::noteLinkableCases() as $type) {
             /** @var Collection<int, Model> $items */
             $items = $this->getRelation($type->noteRelation());
 

@@ -25,7 +25,7 @@
     <div class="space-y-6">
         @if (filled($scene->description))
             <x-card :title="__('Description')" icon="tabler-align-left">
-                <x-rich-text :html="$scene->description" />
+                <x-rich-text :html="$scene->description" :project="$scene->project()" />
             </x-card>
         @endif
 
@@ -36,6 +36,8 @@
         @endif
 
         <x-notes-card :notes="$scene->notes" :linkable="$scene" />
+
+        <x-linked-from-card :target="$scene" />
 
         @if ($scene->event)
             <x-card :title="__('Happens during')" icon="tabler-calendar-event">

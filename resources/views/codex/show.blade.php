@@ -84,7 +84,7 @@
                 @if (filled($entry->description))
                     <div class="{{ $hasSidebar ? 'md:col-span-9' : 'md:col-span-12' }}">
                         <x-card :title="__('Description')" icon="tabler-align-left">
-                            <x-rich-text :html="$entry->description" />
+                            <x-rich-text :html="$entry->description" :project="$project" />
                         </x-card>
                     </div>
                 @endif
@@ -127,6 +127,8 @@
         @endif
 
         <x-notes-card :notes="$entry->notes" :linkable="$entry" />
+
+        <x-linked-from-card :target="$entry" />
 
         @if ($referencingScenes->isNotEmpty())
             <x-card :title="__('Referenced in scenes')" icon="entity-scene">

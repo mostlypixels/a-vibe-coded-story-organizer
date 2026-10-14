@@ -12,6 +12,7 @@ use App\Models\Revision;
 use App\Models\User;
 use App\Services\CodexMediaService;
 use App\Services\CoverImageService;
+use App\Services\EntityLinkIndex;
 use App\Services\Import\ArchiveValidator;
 use App\Services\Import\ContentSanitizer;
 use App\Services\Import\ProjectGraphImporter;
@@ -224,6 +225,39 @@ class ProjectImporterTest extends TestCase
         );
     }
 
+    public function test_a_links_phase_failure_checkpoints_at_notes_and_a_resume_completes(): void
+    {
+        $graphImporter = Mockery::mock(
+            ProjectGraphImporter::class,
+            [
+                app(ContentSanitizer::class),
+                app(CodexMediaService::class),
+                app(CoverImageService::class),
+                app(EntityLinkIndex::class),
+            ],
+        )->makePartial();
+        $graphImporter->shouldReceive('importLinks')->andThrow(new RuntimeException('boom'));
+        $this->instance(ProjectGraphImporter::class, $graphImporter);
+
+        $importer = $this->importer();
+        $import = $importer->start($this->makeValidUpload(), User::factory()->create());
+
+        try {
+            $importer->run($import);
+            $this->fail('The stubbed links phase must throw.');
+        } catch (RuntimeException) {
+            // expected
+        }
+
+        $this->assertSame(ImportPhase::Notes, $import->refresh()->phase);
+        $this->assertArrayHasKey(ProjectGraphImporter::MAP_SCENES, $import->id_maps);
+
+        $this->realImporter()->run($import);
+
+        $this->assertSame(ImportPhase::Completed, $import->refresh()->phase);
+        $this->assertSame(1, Project::count());
+    }
+
     public function test_running_a_stalled_import_again_completes_only_the_remaining_phases(): void
     {
         $user = User::factory()->create();
@@ -318,6 +352,7 @@ class ProjectImporterTest extends TestCase
                 app(ContentSanitizer::class),
                 app(CodexMediaService::class),
                 app(CoverImageService::class),
+                app(EntityLinkIndex::class),
             ],
         )->makePartial();
 
@@ -490,6 +525,7 @@ class ProjectImporterTest extends TestCase
                 app(ContentSanitizer::class),
                 app(CodexMediaService::class),
                 app(CoverImageService::class),
+                app(EntityLinkIndex::class),
             ),
             app(SceneReferenceMatcher::class),
         );
@@ -508,6 +544,7 @@ class ProjectImporterTest extends TestCase
                 app(ContentSanitizer::class),
                 app(CodexMediaService::class),
                 app(CoverImageService::class),
+                app(EntityLinkIndex::class),
             ],
         )->makePartial();
         $graphImporter->shouldReceive('importCodex')->andThrow(new RuntimeException('boom'));

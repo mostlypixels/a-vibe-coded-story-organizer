@@ -4,6 +4,7 @@
     'label',
     'baseHash',
     'isCurrent' => false,
+    'project',
 ])
 
 <x-revision-panel :title="$label">
@@ -25,9 +26,9 @@
     @elseif (blank($revision->value))
         <p class="text-sm italic text-content-muted">{{ __('Empty.') }}</p>
     @elseif ($kind === \App\Enums\FieldKind::Rich)
-        <x-rich-text :html="$revision->value" />
+        <x-rich-text :html="$revision->value" :project="$project" />
     @elseif ($kind === \App\Enums\FieldKind::Markdown)
-        <div class="prose prose-sm max-w-none text-content-muted">{!! \App\Support\AuthorMarkdown::render($revision->value) !!}</div>
+        <div class="prose prose-sm max-w-none text-content-muted">{!! app(\App\Services\EntityLinkResolver::class)->render(\App\Support\AuthorMarkdown::render($revision->value), $project) !!}</div>
     @else
         <p class="whitespace-pre-wrap text-sm text-content-muted">{{ $revision->value }}</p>
     @endif

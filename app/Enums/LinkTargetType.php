@@ -7,18 +7,23 @@ use App\Models\Book;
 use App\Models\Chapter;
 use App\Models\CodexEntry;
 use App\Models\Event;
+use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
+use App\Support\LikeSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
+use LogicException;
 
 /**
- * The kinds of entity a note can link to. Routes, validation, the picker and the
- * archive all read this list, so a new kind is added here only.
+ * The kinds of entity a link can point to: a note link or an `entity:` text link.
+ * Routes, validation, the pickers and the archive all read this list, so a new kind
+ * is added here only. The values are stored in `notables` rows and archives: never
+ * change them.
  */
-enum NoteLinkType: string
+enum LinkTargetType: string
 {
     case Book = 'book';
     case Act = 'act';
@@ -27,6 +32,10 @@ enum NoteLinkType: string
     case Event = 'event';
     case Plotline = 'plotline';
     case Codex = 'codex';
+    case Note = 'note';
+
+    /** A picker shows this many candidates at most. */
+    public const CANDIDATE_LIMIT = 20;
 
     /** @return class-string<Model> */
     public function modelClass(): string
@@ -39,6 +48,7 @@ enum NoteLinkType: string
             self::Event => Event::class,
             self::Plotline => Plotline::class,
             self::Codex => CodexEntry::class,
+            self::Note => Note::class,
         };
     }
 
@@ -52,6 +62,7 @@ enum NoteLinkType: string
             self::Event => 'Event',
             self::Plotline => 'Plotline',
             self::Codex => 'Codex entry',
+            self::Note => 'Note',
         };
     }
 
@@ -65,7 +76,23 @@ enum NoteLinkType: string
             self::Event => 'events.show',
             self::Plotline => 'plotlines.show',
             self::Codex => 'codex.show',
+            self::Note => 'notes.show',
         };
+    }
+
+    /**
+     * True when a note-link pivot row can point at this type. A note links to
+     * another note only through an `entity:` text link.
+     */
+    public function noteLinkable(): bool
+    {
+        return $this !== self::Note;
+    }
+
+    /** @return list<self> */
+    public static function noteLinkableCases(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $type): bool => $type->noteLinkable()));
     }
 
     /** The `Note` relation that holds links of this type. */
@@ -79,13 +106,17 @@ enum NoteLinkType: string
             self::Event => 'events',
             self::Plotline => 'plotlines',
             self::Codex => 'codexEntries',
+            self::Note => throw new LogicException('A note is not a note-link target.'),
         };
     }
 
     /** The column the picker searches and sorts by. */
     public function labelColumn(): string
     {
-        return $this === self::Event ? 'title' : 'name';
+        return match ($this) {
+            self::Event, self::Note => 'title',
+            default => 'name',
+        };
     }
 
     /** The name to show for a row of this type. A book without a name shows the project's. */
@@ -110,10 +141,56 @@ enum NoteLinkType: string
             self::Event => Event::query()->where('events.project_id', $project->id),
             self::Plotline => Plotline::query()->where('plotlines.project_id', $project->id),
             self::Codex => CodexEntry::query()->where('codex_entries.project_id', $project->id),
+            self::Note => Note::query()->where('notes.project_id', $project->id),
+        };
+    }
+
+    /**
+     * Rows of this type whose label contains `$search`, as picker candidates.
+     * Both candidate endpoints use it, so the limit and search rule stay equal.
+     *
+     * @return list<array{type: string, id: int, label: string}>
+     */
+    public function candidates(Project $project, ?string $search, int $limit = self::CANDIDATE_LIMIT): array
+    {
+        $column = $this->labelColumn();
+
+        return $this->queryFor($project)
+            ->when(filled($search), fn (Builder $query) => LikeSearch::whereContains($query, $column, (string) $search))
+            ->orderBy($column)
+            ->limit($limit)
+            ->get()
+            ->map(function (Model $row) use ($project): array {
+                // displayName() falls back to the project's name.
+                if ($row instanceof Book) {
+                    $row->setRelation('project', $project);
+                }
+
+                return ['type' => $this->value, 'id' => $row->getKey(), 'label' => $this->labelFor($row)];
+            })
+            ->values()
+            ->all();
+    }
+
+    /** The project that owns a target row. */
+    public static function projectOf(Model $model): Project
+    {
+        return match (true) {
+            $model instanceof Act => $model->book->project,
+            $model instanceof Chapter, $model instanceof Scene => $model->project(),
+            $model instanceof Book, $model instanceof Event, $model instanceof Plotline, $model instanceof CodexEntry, $model instanceof Note => $model->project,
+            default => throw new InvalidArgumentException($model::class.' is not a linkable type.'),
         };
     }
 
     public static function fromModel(Model $model): self
+    {
+        return self::tryFromModel($model)
+            ?? throw new InvalidArgumentException($model::class.' is not a linkable type.');
+    }
+
+    /** Null for a model that no link can point to, for example a Project. */
+    public static function tryFromModel(Model $model): ?self
     {
         foreach (self::cases() as $case) {
             $class = $case->modelClass();
@@ -123,6 +200,6 @@ enum NoteLinkType: string
             }
         }
 
-        throw new InvalidArgumentException($model::class.' is not a linkable type.');
+        return null;
     }
 }

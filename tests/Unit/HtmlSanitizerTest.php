@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Services\HtmlSanitizer;
 use App\Support\RichTextFields;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class HtmlSanitizerTest extends TestCase
@@ -126,6 +127,39 @@ class HtmlSanitizerTest extends TestCase
 
         $this->assertStringContainsString('href="https://example.com"', $output);
         $this->assertStringContainsString('safe', $output);
+    }
+
+    /** @return array<string, array{RichTextProfile}> */
+    public static function profileProvider(): array
+    {
+        return [
+            'rich' => [RichTextProfile::Rich],
+            'structural' => [RichTextProfile::Structural],
+        ];
+    }
+
+    #[DataProvider('profileProvider')]
+    public function test_it_keeps_entity_links(RichTextProfile $profile): void
+    {
+        $html = '<p><a href="entity:scene/42">ball</a> <a href="entity:note/7">note</a></p>';
+
+        $this->assertSame($html, app(HtmlSanitizer::class)->clean($html, $profile));
+    }
+
+    #[DataProvider('profileProvider')]
+    public function test_it_removes_malformed_entity_links_but_keeps_the_text(RichTextProfile $profile): void
+    {
+        foreach (['entity:unknown/1', 'entity:scene/abc', 'entity:scene/1?x', 'entity:scene/1#x', 'entity://host/1', 'entity:/scene/1'] as $href) {
+            $output = app(HtmlSanitizer::class)->clean('<p><a href="'.$href.'">text</a></p>', $profile);
+
+            $this->assertStringNotContainsString('entity:', $output, $href);
+            $this->assertStringContainsString('text', $output, $href);
+        }
+    }
+
+    public function test_an_image_source_is_never_an_entity_link(): void
+    {
+        $this->assertStringNotContainsString('entity:', $this->clean('<img src="entity:scene/42" alt="x">'));
     }
 
     public function test_it_preserves_a_table_fragment_unchanged(): void

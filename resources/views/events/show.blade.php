@@ -22,7 +22,7 @@
     <div class="space-y-6">
         @if (filled($event->description))
             <x-card :title="__('Description')" icon="tabler-align-left">
-                <x-rich-text :html="$event->description" />
+                <x-rich-text :html="$event->description" :project="$event->project" />
             </x-card>
         @endif
 
@@ -110,6 +110,8 @@
         @endif
 
         <x-notes-card :notes="$event->notes" :linkable="$event" />
+
+        <x-linked-from-card :target="$event" />
 
         @if ($lifespanEntries['inceptions']->isNotEmpty() || $lifespanEntries['terminations']->isNotEmpty())
             <x-card :title="__('Codex entries')" icon="entity-codex">

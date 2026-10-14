@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasEntityLinks;
 use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\HasSiblingPosition;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Chapter extends Model implements Revisionable
 {
+    use HasEntityLinks;
     use HasFactory;
     use HasNotes;
     use HasRevisions;
@@ -104,6 +106,9 @@ class Chapter extends Model implements Revisionable
 
             // The same holds for the note links of each scene.
             Notable::deleteFor($chapter->scenes());
+
+            // The same holds for the `entity:` link rows, as source and as target.
+            EntityLink::deleteFor($chapter->scenes());
         });
 
         // The chapter's scenes cascade at the database level, which fires no

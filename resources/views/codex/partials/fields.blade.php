@@ -10,7 +10,7 @@
                     <x-autosave-field entity="codex" :model="$entry" field="description" :label="__('Description')" :rows="10" />
                 @else
                     <x-input-label for="description" :value="__('Description')" />
-                    <x-wysiwyg id="description" name="description" :value="old('description', $entry?->description)" :rows="10" />
+                    <x-wysiwyg id="description" name="description" :value="old('description', $entry?->description)" :rows="10" :project="$project" />
                     <x-input-error :messages="$errors->get('description')" class="mt-2" />
                 @endif
             </div>

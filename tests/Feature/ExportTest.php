@@ -1314,6 +1314,38 @@ class ExportTest extends TestCase
         $zip->close();
     }
 
+    public function test_reading_pages_keep_link_text_while_the_data_layer_keeps_the_links(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create(['position' => 1]);
+        $chapter = Chapter::factory()->for($act)->create(['position' => 1]);
+        $target = Scene::factory()->for($chapter)->create(['position' => 1, 'contents' => 'Target.']);
+        $href = 'entity:scene/'.$target->id;
+        Scene::factory()->for($chapter)->create([
+            'position' => 2,
+            'contents' => "Behind [the keyhole]({$href}) she waited.",
+        ]);
+
+        $zip = $this->exportZip($user, $project);
+
+        $page = $zip->getFromName('books/01/01/01.html');
+        $this->assertStringContainsString('the keyhole', $page);
+        $this->assertStringNotContainsString('entity:', $page);
+        $this->assertStringNotContainsString(route('scenes.show', $target), $page);
+
+        // The data layer is lossless: the import needs the links.
+        $stored = '';
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            if (str_ends_with($zip->getNameIndex($index), '/contents.md')) {
+                $stored .= $zip->getFromIndex($index);
+            }
+        }
+        $this->assertStringContainsString("[the keyhole]({$href})", $stored);
+
+        $zip->close();
+    }
+
     // ---------------------------------------------------------------------
     // Continuous numbering in the books/ layer
     // ---------------------------------------------------------------------

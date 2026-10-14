@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\FieldKind;
+use App\Models\Project;
 use App\Services\RevisionDiffer;
 use App\Services\RevisionSummarizer;
 use Illuminate\Support\Facades\Blade;
@@ -14,8 +15,8 @@ class DiffComponentTest extends TestCase
     private function render(string $html, string $extra = ''): string
     {
         return Blade::render(
-            '<x-diff :html="$html" '.$extra.' />',
-            ['html' => $html, 'kind' => FieldKind::Rich],
+            '<x-diff :html="$html" :project="$project" '.$extra.' />',
+            ['html' => $html, 'kind' => FieldKind::Rich, 'project' => new Project],
         );
     }
 
@@ -150,8 +151,8 @@ class DiffComponentTest extends TestCase
         $source = app(RevisionDiffer::class)->diff(FieldKind::Markdown, 'Hello world', 'Hello **world**')->html;
 
         $rendered = Blade::render(
-            '<x-diff :html="$html" :kind="$kind" />',
-            ['html' => $source, 'kind' => FieldKind::Markdown],
+            '<x-diff :html="$html" :kind="$kind" :project="$project" />',
+            ['html' => $source, 'kind' => FieldKind::Markdown, 'project' => new Project],
         );
 
         $this->assertStringContainsString('revision-diff--source', $rendered);
@@ -169,8 +170,8 @@ class DiffComponentTest extends TestCase
             $diff = app(RevisionDiffer::class)->diff($kind, 'before', 'after')->html;
 
             $rendered = Blade::render(
-                '<x-diff :html="$html" :kind="$kind" />',
-                ['html' => $diff, 'kind' => $kind],
+                '<x-diff :html="$html" :kind="$kind" :project="$project" />',
+                ['html' => $diff, 'kind' => $kind, 'project' => new Project],
             );
 
             $this->assertStringContainsString('revision-diff', $rendered, "{$kind->value} failed to render");

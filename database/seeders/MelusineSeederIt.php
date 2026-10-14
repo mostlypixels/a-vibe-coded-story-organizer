@@ -477,7 +477,7 @@ class MelusineSeederIt extends Seeder
             [
                 'title' => 'La maledizione del sabato',
                 'category' => ['Continuity'],
-                'body' => '<p>Melusina assume forma di serpente dalla vita in giù <strong>ogni sabato</strong>. Raimondino non deve mai guardare. Controllare che nessuna scena rompa questa regola prima della scena del buco della serratura.</p>',
+                'body' => '<p>Melusina assume forma di serpente dalla vita in giù <strong>ogni sabato</strong>. Raimondino non deve mai guardare. Controllare che nessuna scena rompa questa regola prima della <a href="{scene}">scena del buco della serratura</a>.</p>',
                 'scene' => 'Ciò che Raimondino vide',
                 'codex' => 'Melusina',
             ],

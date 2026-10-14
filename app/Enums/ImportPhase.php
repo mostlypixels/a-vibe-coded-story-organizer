@@ -7,7 +7,7 @@ namespace App\Enums;
  *
  * `phase` on an `Import` row records the LAST successfully completed phase;
  * resuming a stalled import starts at the next one. The graph-import
- * phases (Project → Timeline → Story → Codex → Notes) each commit as their own
+ * phases (Project → Timeline → Story → Codex → Notes → Links) each commit as their own
  * transaction, checkpointed onto the Import row so a crash mid-import is
  * recoverable.
  *
@@ -24,6 +24,7 @@ enum ImportPhase: string
     case Story = 'story';
     case Codex = 'codex';
     case Notes = 'notes';
+    case Links = 'links';
     case Completed = 'completed';
     case Failed = 'failed';
 
@@ -39,6 +40,7 @@ enum ImportPhase: string
             self::Story => 'Story imported',
             self::Codex => 'Codex imported',
             self::Notes => 'Notes imported',
+            self::Links => 'Links imported',
             self::Completed => 'Completed',
             self::Failed => 'Failed',
         };

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Scene;
+use App\Support\EntityLinks;
 use App\Support\StoryNumbering;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Response;
@@ -51,6 +52,8 @@ class SharedSceneController extends Controller
 
         return view('shared.scenes.show', [
             'scene' => $scene,
+            // A reader without an account cannot open the targets of `entity:` links.
+            'description' => EntityLinks::stripAnchors((string) $scene->description),
             // One extra query (two indexed columns, over one book) to derive
             // the continuous chapter number — accepted per expanded/ui.md; measure
             // before adding a cache.

@@ -29,6 +29,8 @@ Two render paths must remain separate.
 
 Markdown does not use the XHTML helper. Rich HTML does not use the Markdown converter.
 
+Both paths keep only the text of an `entity:` link, through `EntityLinks::stripAnchors()`. A reading system cannot open a target. The static site `books/` pages and the shared scene page follow the same rule; the `data/` layer keeps the links.
+
 ## Package validation
 
 `validatePackage()` runs during every export.

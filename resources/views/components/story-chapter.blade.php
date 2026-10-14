@@ -1,4 +1,4 @@
-@props(['chapter', 'numbering', 'sceneDisplay' => \App\Enums\StoryOverviewSceneDisplay::default()])
+@props(['chapter', 'project', 'numbering', 'sceneDisplay' => \App\Enums\StoryOverviewSceneDisplay::default()])
 
 <x-collapsible-card icon="entity-chapter">
     <x-slot:header>
@@ -65,7 +65,7 @@
                 @if ($sceneDisplay === \App\Enums\StoryOverviewSceneDisplay::Content)
                     <x-scene-prose :scene="$scene" id="scene-{{ $scene->id }}-prose" x-show="open" x-transition class="text-[0.8125rem]" />
                 @elseif ($scene->hasDescription())
-                    <x-rich-text :html="$scene->description" id="scene-{{ $scene->id }}-prose" data-scene-description x-show="open" x-transition />
+                    <x-rich-text :html="$scene->description" :project="$project" id="scene-{{ $scene->id }}-prose" data-scene-description x-show="open" x-transition />
                 @else
                     <p id="scene-{{ $scene->id }}-prose" data-scene-excerpt x-show="open" x-transition class="text-sm text-content-muted">{{ $scene->contentsExcerpt(100) }}</p>
                 @endif

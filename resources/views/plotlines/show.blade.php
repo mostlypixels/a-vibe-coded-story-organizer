@@ -22,7 +22,7 @@
     <div class="space-y-6">
         @if (filled($plotline->description))
             <x-card :title="__('Description')" icon="tabler-align-left">
-                <x-rich-text :html="$plotline->description" />
+                <x-rich-text :html="$plotline->description" :project="$plotline->project" />
             </x-card>
         @endif
 
@@ -47,5 +47,7 @@
         @endif
 
         <x-notes-card :notes="$plotline->notes" :linkable="$plotline" />
+
+        <x-linked-from-card :target="$plotline" />
     </div>
 </x-app-layout>

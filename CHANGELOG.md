@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-14 — Entity links (#328)
+
+### Added
+
+- Rich text and scene text can link to a book, act, chapter, scene, event, plotline, codex entry or note, through a "Link to…" editor dialog.
+- Each linkable page shows a "Linked from" card with the texts that link to it.
+- A link to a deleted item shows as struck-through text.
+
+### Changed
+
+- Export and import keep these links. EPUB, the static site and shared scene pages show only the link text.
+
 ## 2026-10-14 — Event locations and approximate dates (#327)
 
 ### Added

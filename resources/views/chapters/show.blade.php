@@ -36,7 +36,7 @@
     <div class="space-y-6">
         @if (filled($chapter->description))
             <x-card :title="__('Description')" icon="tabler-align-left">
-                <x-rich-text :html="$chapter->description" />
+                <x-rich-text :html="$chapter->description" :project="$chapter->project()" />
             </x-card>
         @endif
 
@@ -63,6 +63,8 @@
         @endif
 
         <x-notes-card :notes="$chapter->notes" :linkable="$chapter" />
+
+        <x-linked-from-card :target="$chapter" />
     </div>
 
     @if ($chapter->scenes_count > 0)

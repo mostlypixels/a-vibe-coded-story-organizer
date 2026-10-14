@@ -39,7 +39,7 @@
 
         @if (filled($note->body))
             <x-card>
-                <x-rich-text :html="$outline->html" />
+                <x-rich-text :html="$outline->html" :project="$note->project" />
             </x-card>
         @endif
 
@@ -48,5 +48,7 @@
                 @include('notes.partials.link-list', ['note' => $note, 'groups' => $linkGroups])
             </x-card>
         @endif
+
+        <x-linked-from-card :target="$note" />
     </div>
 </x-app-layout>

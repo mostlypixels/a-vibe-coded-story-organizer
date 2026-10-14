@@ -47,11 +47,11 @@
                     @include('scenes.partials.viewpoint-field', ['selected' => old('viewpoint_character_id')])
 
                     <x-field name="description" :label="__('Description')">
-                        <x-wysiwyg id="description" name="description" :value="old('description')" :rows="4" />
+                        <x-wysiwyg id="description" name="description" :value="old('description')" :rows="4" :project="$book->project" />
                     </x-field>
 
                     <x-field name="contents" :label="__('Contents')">
-                        <x-wysiwyg id="contents" name="contents" :value="old('contents')" :rows="12" markdown />
+                        <x-wysiwyg id="contents" name="contents" :value="old('contents')" :rows="12" markdown :project="$book->project" />
                     </x-field>
 
                     <div>

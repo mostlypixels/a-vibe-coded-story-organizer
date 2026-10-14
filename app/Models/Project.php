@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CodexEntryType;
 use App\Enums\Genre;
+use App\Models\Concerns\HasEntityLinks;
 use App\Models\Concerns\HasRevisions;
 use App\Models\Concerns\SanitizesRichHtml;
 use App\Models\Contracts\Revisionable;
@@ -20,6 +21,7 @@ use Illuminate\Support\Collection;
 
 class Project extends Model implements Revisionable
 {
+    use HasEntityLinks;
     use HasFactory;
     use HasRevisions;
     use SanitizesRichHtml;

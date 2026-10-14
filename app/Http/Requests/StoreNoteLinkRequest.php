@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
 use App\Rules\NoteLinkTarget;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -21,10 +21,10 @@ class StoreNoteLinkRequest extends FormRequest
      */
     public function rules(): array
     {
-        $type = NoteLinkType::tryFrom((string) $this->input('type'));
+        $type = LinkTargetType::tryFrom((string) $this->input('type'));
 
         return [
-            'type' => ['required', 'string', Rule::enum(NoteLinkType::class)],
+            'type' => ['required', 'string', Rule::enum(LinkTargetType::class)->only(LinkTargetType::noteLinkableCases())],
             // An unknown type already fails above; the target rule needs a valid one.
             'id' => array_filter(['required', 'integer', $type ? new NoteLinkTarget($this->route('note')->project, $type) : null]),
         ];
@@ -33,7 +33,7 @@ class StoreNoteLinkRequest extends FormRequest
     /** The resolved target. Call it only after validation passes. */
     public function target(): Model
     {
-        return NoteLinkTarget::resolve($this->route('note')->project, NoteLinkType::from($this->string('type')->value()), $this->input('id'))
+        return NoteLinkTarget::resolve($this->route('note')->project, LinkTargetType::from($this->string('type')->value()), $this->input('id'))
             ?? throw new LogicException('The link target is not valid.');
     }
 }

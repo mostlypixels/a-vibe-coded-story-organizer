@@ -16,11 +16,11 @@
                     <x-tabler-chevron-down class="h-4 w-4 text-content-muted transition-transform" x-bind:class="{ 'rotate-180': open }" />
                 </button>
                 <div id="scene-description" x-show="open" x-transition class="px-6 pb-4">
-                    <x-rich-text :html="$scene->description" />
+                    <x-rich-text :html="$description" :project="$scene->project()" />
                 </div>
             </div>
         @endif
 
-        <x-scene-prose :scene="$scene" />
+        <x-scene-prose :scene="$scene" linkless />
     </div>
 </x-public-layout>

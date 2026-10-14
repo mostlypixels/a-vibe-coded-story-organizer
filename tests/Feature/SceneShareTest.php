@@ -286,6 +286,27 @@ class SceneShareTest extends TestCase
      * unauthenticated, which makes the visitor — not just the author — the one
      * exposed. AuthorMarkdown::render() sanitizes for exactly this reason.
      */
+    public function test_entity_links_show_only_their_text_on_the_public_page(): void
+    {
+        [$scene, $token] = $this->sharedScene();
+        $target = Scene::factory()->for($scene->chapter)->create();
+        $href = 'entity:scene/'.$target->id;
+        $scene->forceFill([
+            'contents' => "Behind [the keyhole]({$href}) she waited.",
+            'description' => "<p>See <a href=\"{$href}\">the lock</a>.</p>",
+        ])->save();
+
+        $response = $this->get(route('shared.scenes.show', $token));
+
+        $response->assertOk();
+        $response->assertSee('the keyhole', escape: false);
+        $response->assertSee('the lock', escape: false);
+        $response->assertDontSee('entity:', escape: false);
+        $response->assertDontSee(route('scenes.show', $target), escape: false);
+        $response->assertDontSee('>the keyhole</a>', escape: false);
+        $response->assertDontSee('>the lock</a>', escape: false);
+    }
+
     public function test_raw_html_in_scene_contents_cannot_run_on_the_public_page(): void
     {
         [, $token] = $this->sharedScene([

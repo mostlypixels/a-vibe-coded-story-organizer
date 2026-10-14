@@ -14,6 +14,7 @@ use App\Models\CodexAttribute;
 use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
 use App\Models\CodexMedia;
+use App\Models\EntityLink;
 use App\Models\Event;
 use App\Models\Import;
 use App\Models\Note;
@@ -28,6 +29,8 @@ use App\Services\Import\ProjectGraphImporter;
 use App\Services\ProjectImporter;
 use App\Services\SceneReferenceMatcher;
 use App\Services\StaticSiteExporter;
+use Database\Seeders\MelusineSeederEn;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -660,6 +663,36 @@ class ImportRoundTripTest extends TestCase
         );
         $this->assertSame([$imported->plotlines()->where('name', 'Side Quest')->firstOrFail()->id], $note->plotlines()->pluck('plotlines.id')->all());
         $this->assertSame([$imported->codexEntries()->firstOrFail()->id], $note->codexEntries()->pluck('codex_entries.id')->all());
+    }
+
+    public function test_the_seed_entity_link_and_its_index_row_survive_a_round_trip(): void
+    {
+        $owner = User::factory()->create();
+        Model::unguarded(fn () => Model::withoutEvents(
+            fn () => app(MelusineSeederEn::class)->forUser($owner)->run(),
+        ));
+        $source = $owner->projects()->sole();
+        $sourceScene = $source->sceneQuery()->where('scenes.name', 'What Raymondin Saw')->sole();
+
+        $zipPath = $this->exportZip($source, includeMedia: false);
+        $importer = User::factory()->create();
+
+        $this->actingAs($importer)
+            ->post(route('admin.data.import'), ['archive' => $this->upload($zipPath)])
+            ->assertSessionHasNoErrors();
+
+        $imported = $importer->projects()->sole();
+        $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
+
+        $note = $imported->notes()->where('title', 'The Saturday curse')->sole();
+        $scene = $imported->sceneQuery()->where('scenes.name', 'What Raymondin Saw')->sole();
+        $this->assertNotSame($sourceScene->id, $scene->id);
+        $this->assertStringContainsString('href="entity:scene/'.$scene->id.'"', (string) $note->body);
+        $this->assertSame(
+            [['body', 'scene', $scene->id]],
+            EntityLink::query()->where('source_type', $note->getMorphClass())->where('source_id', $note->id)
+                ->get()->map(fn (EntityLink $row): array => [$row->source_field, $row->target_type, $row->target_id])->all(),
+        );
     }
 
     public function test_a_scene_viewpoint_survives_a_round_trip_and_points_at_the_imported_character(): void

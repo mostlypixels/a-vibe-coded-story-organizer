@@ -28,9 +28,10 @@ A note has no aliases, matcher, attributes, or timeline. Do not add them: a note
 
 ## Links
 
-A note links to zero or more books, acts, chapters, scenes, events, plotlines, and codex entries of the **same** project. `App\Enums\NoteLinkType` lists the kinds. Routes, validation, the picker, and the archive read it.
+A note links to zero or more books, acts, chapters, scenes, events, plotlines, and codex entries of the **same** project. `App\Enums\LinkTargetType` lists the kinds. Routes, validation, the picker, and the archive read it.
 
-- Resolve a target with `NoteLinkType::queryFor($project)`. Never trust a raw id: a guessed id must not link across projects.
+- Resolve a target with `LinkTargetType::queryFor($project)`. Never trust a raw id: a guessed id must not link across projects.
+- `LinkTargetType` also has `note`, a target of `entity:` text links only. `noteLinkable()` is false for it, and `noteLinkableCases()` leaves it out. A note → note link row is a 422 on store and an import error.
 - Each linkable type shows a **Notes** card (`x-notes-card`) on its read and edit pages, with "New note" and "Link a note".
 - `notes.create?link=scene:12` pre-fills one link.
 - `Note::linkTo()` links twice as a no-op.
@@ -40,10 +41,14 @@ A note links to zero or more books, acts, chapters, scenes, events, plotlines, a
 `notables` has no foreign key on the target, because the target is polymorphic. Deleting the target must delete its link rows. The note stays.
 
 - `HasNotes` removes the links of one deleted entity in a `deleted` hook.
+- `entity:` text links have the same problem. `entity_links` indexes them, with no foreign key on the source or the target. `HasEntityLinks` removes the rows where a deleted model is the source or the target. The text keeps the link; it renders as missing.
+- `HasEntityLinks` also syncs the rows on save, when a link field changed. `EntityLinkIndex::fieldsOf()` lists the link fields: every rich-HTML field, and `Scene.contents`.
 - A database cascade fires no model events.
 
 > [!WARNING]
-> Book, Act, and Chapter delete their children with a cascade. Their `deleting` hooks call `Notable::deleteFor()` for the cascaded children, next to `Revision::deleteFor()`. A new parent that cascades to a linkable type must do the same, or dead link rows remain.
+> Book, Act, and Chapter delete their children with a cascade. Their `deleting` hooks call `Notable::deleteFor()` and `EntityLink::deleteFor()` for the cascaded children, next to `Revision::deleteFor()`. A new parent that cascades to a linkable type must do the same, or dead link rows remain.
+>
+> A write that skips model events (a seeder, a query-builder update) must call `EntityLinkIndex::sync()` or `syncProject()` itself.
 
 ## Categories
 

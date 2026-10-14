@@ -9,7 +9,7 @@
  * `refreshSelector`. A full reload would lose unsaved edits in the page form.
  */
 
-export const DEFAULT_DEBOUNCE_MS = 250;
+import { candidateSearch } from '../candidate-search.js';
 
 /** Replace the element under `selector` with its copy from a fresh render of the page. */
 export async function refreshList(selector) {
@@ -25,25 +25,23 @@ export async function refreshList(selector) {
 
 export function registerLinkPicker(Alpine) {
     Alpine.data('linkPicker', (config = {}) => ({
-        type: config.type ?? '',
-        query: '',
-        results: [],
-        searching: false,
-        busy: false,
-        error: '',
+        ...candidateSearch({
+            url: config.candidatesUrl,
+            // The entity side searches notes only, so it sends no type.
+            params: (picker) => (picker.entitySide() ? {} : { type: picker.type }),
+            debounceMs: config.debounceMs,
+            failureMessage: config.searchFailureMessage ?? config.failureMessage,
+        }),
 
-        // Each search gets a number, so a slow old response cannot replace a newer one.
-        searchSeq: 0,
-        searchTimer: null,
+        type: config.type ?? '',
+        busy: false,
 
         entitySide() {
             return Boolean(config.linkType);
         },
 
         open() {
-            this.query = '';
-            this.results = [];
-            this.error = '';
+            this.resetSearch();
             this.busy = false;
             window.dispatchEvent(new CustomEvent('open-modal', { detail: config.dialog }));
             this.search();
@@ -51,38 +49,6 @@ export function registerLinkPicker(Alpine) {
 
         close() {
             window.dispatchEvent(new CustomEvent('close-modal', { detail: config.dialog }));
-        },
-
-        queueSearch() {
-            clearTimeout(this.searchTimer);
-            this.searchTimer = setTimeout(() => this.search(), config.debounceMs ?? DEFAULT_DEBOUNCE_MS);
-        },
-
-        async search() {
-            clearTimeout(this.searchTimer);
-
-            const seq = ++this.searchSeq;
-            const params = { q: this.query };
-
-            if (!this.entitySide()) params.type = this.type;
-
-            this.searching = true;
-
-            try {
-                const response = await window.axios.get(config.candidatesUrl, { params });
-
-                if (seq !== this.searchSeq) return;
-
-                this.results = response.data;
-                this.error = '';
-            } catch {
-                if (seq !== this.searchSeq) return;
-
-                this.results = [];
-                this.error = config.searchFailureMessage ?? config.failureMessage;
-            }
-
-            this.searching = false;
         },
 
         label(candidate) {

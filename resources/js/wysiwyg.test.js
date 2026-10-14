@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Editor } from '@tiptap/core';
-import { EDITOR_MESSAGES, accessibleNameAttributes, buildExtensions, buildSlashItems, registerWysiwyg, slashRenderer } from './wysiwyg.js';
+import { EDITOR_MESSAGES, accessibleNameAttributes, buildExtensions, buildSlashItems, isEntityHref, registerWysiwyg, slashRenderer } from './wysiwyg.js';
 
 const projectRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -73,6 +73,42 @@ describe('table round-trip', () => {
         const markdownOut = markdownEditor(merged).getMarkdown();
         expect(markdownOut).not.toContain('colspan');
         expect(markdownOut).toContain('merged');
+    });
+});
+
+describe('entity link round-trip', () => {
+    it('markdown keeps an entity: href', () => {
+        const source = 'See [the ball](entity:scene/42) and [**a note**](entity:note/7).';
+        const first = markdownEditor(source).getMarkdown();
+
+        expect(first).toBe(source);
+        expect(markdownEditor(first).getMarkdown()).toBe(first);
+    });
+
+    it('html keeps an entity: href', () => {
+        const source = '<p>See <a href="entity:scene/42">the ball</a> and <a href="https://example.com">web</a>.</p>';
+        const first = htmlEditor(source).getHTML();
+
+        expect(first).toBe(source);
+        expect(htmlEditor(first).getHTML()).toBe(first);
+    });
+
+    it('the link type list agrees with LinkTargetType.php', () => {
+        const enumValues = [...readSource('app/Enums/LinkTargetType.php').matchAll(/case \w+ = '([a-z]+)';/g)].map((found) => found[1]);
+        const jsValues = sourceList(readSource('resources/js/wysiwyg.js'), 'ENTITY_LINK_TYPES');
+
+        expect(jsValues).toEqual(enumValues);
+    });
+
+    it.each([
+        ['entity:scene/42', true],
+        ['entity:note/7', true],
+        ['entity:unknown/1', false],
+        ['entity:scene/abc', false],
+        ['entity:scene/1?x', false],
+        ['entity://host/1', false],
+    ])('isEntityHref(%s) is %s, as the sanitizer decides', (href, expected) => {
+        expect(isEntityHref(href)).toBe(expected);
     });
 });
 
@@ -815,6 +851,36 @@ describe('translated strings — Laravel supplies the text', () => {
         component.destroy();
     });
 
+    it('applies an entity link typed in the dialog', () => {
+        const { component } = mount(french);
+        component.$refs.textarea.value = '<p>Hello</p>';
+        component.init();
+        component.cmd('selectAll');
+
+        component.setLink();
+        component.urlForm.url = 'entity:scene/42';
+        component.applyUrl();
+
+        expect(component.$refs.textarea.value).toContain('<a href="entity:scene/42">Hello</a>');
+        component.destroy();
+    });
+
+    it.each([
+        ['setLink', 'entity:planet/1'],
+        ['setImage', 'entity:scene/42'],
+    ])('%s refuses %s, which the sanitizer would strip', (method, url) => {
+        const { component } = mount(french);
+        component.init();
+
+        component[method]();
+        component.urlForm.url = url;
+        component.applyUrl();
+
+        expect(component.urlForm.error).not.toBe('');
+        expect(component.$refs.textarea.value).not.toContain('entity:');
+        component.destroy();
+    });
+
     it('inserts an image with its alt text', () => {
         const { component } = mount(french);
         component.init();
@@ -845,13 +911,108 @@ describe('translated strings — Laravel supplies the text', () => {
     it('ScriptTranslations.php lists every key the editor looks up', () => {
         const php = readSource('app/Support/ScriptTranslations.php');
         const keys = [
-            ...buildSlashItems('html', () => {}, () => {}, () => {}).map((item) => item.title),
+            ...buildSlashItems('html', () => {}, () => {}, () => {}, {}, () => {}).map((item) => item.title),
             ...Object.values(EDITOR_MESSAGES),
         ];
 
         for (const key of keys) {
             expect(php.includes(`'${key}'`) || php.includes(`"${key}"`), key).toBe(true);
         }
+    });
+});
+
+describe('"Link to…" dialog', () => {
+    function mount(value, config = { linkTargetsUrl: '/projects/1/link-targets', linkTargetDialog: 'link-target-test' }) {
+        const el = document.createElement('div');
+        const textarea = document.createElement('textarea');
+        const editorMount = document.createElement('div');
+        textarea.value = value;
+        el.appendChild(textarea);
+        el.appendChild(editorMount);
+        document.body.appendChild(el);
+
+        const factories = {};
+        registerWysiwyg({ data: (name, factory) => { factories[name] = factory; } });
+
+        const component = factories.wysiwyg({ format: 'html', ...config });
+        component.$el = el;
+        component.$refs = { textarea, editor: editorMount };
+        component.$dispatch = vi.fn();
+        component.init();
+
+        return component;
+    }
+
+    afterEach(() => {
+        delete window.axios;
+        document.body.innerHTML = '';
+    });
+
+    it('sets an entity href on the selected text', () => {
+        const component = mount('<p>Hello</p>');
+        component.cmd('selectAll');
+
+        component.pickLinkTarget({ type: 'note', id: 7, label: 'Research' });
+
+        expect(component.$refs.textarea.value).toBe('<p><a href="entity:note/7">Hello</a></p>');
+        expect(component.$dispatch).toHaveBeenCalledWith('close-modal', 'link-target-test');
+        component.destroy();
+    });
+
+    it('inserts the label as link text when nothing is selected, and the next text is not linked', () => {
+        const component = mount('<p>See:</p>');
+        component.cmd('focus', 'end');
+
+        component.pickLinkTarget({ type: 'scene', id: 42, label: 'The fountain' });
+        component.cmd('insertContent', ' now');
+
+        expect(component.$refs.textarea.value).toBe('<p>See:<a href="entity:scene/42">The fountain</a> now</p>');
+        component.destroy();
+    });
+
+    it('searches the picked type and ignores a slow old response', async () => {
+        let resolveOld;
+        window.axios = {
+            get: vi.fn()
+                .mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve; }))
+                .mockResolvedValueOnce({ data: [{ type: 'codex', id: 2, label: 'Melusine' }] }),
+        };
+        const component = mount('<p></p>');
+
+        component.openLinkTarget();
+        const old = window.axios.get.mock.results[0].value;
+        component.linkTarget.type = 'codex';
+        component.linkTarget.query = 'mel';
+        await component.linkTarget.search();
+        resolveOld({ data: [{ type: 'scene', id: 1, label: 'Old' }] });
+        await old;
+
+        expect(component.$dispatch).toHaveBeenCalledWith('open-modal', 'link-target-test');
+        expect(window.axios.get).toHaveBeenLastCalledWith('/projects/1/link-targets', { params: { q: 'mel', type: 'codex' } });
+        expect(component.linkTarget.results).toEqual([{ type: 'codex', id: 2, label: 'Melusine' }]);
+        component.destroy();
+    });
+
+    it('arrow keys wrap through the results', () => {
+        const component = mount('<p></p>');
+        component.linkTarget.results = [{ id: 1 }, { id: 2 }];
+
+        component.linkTarget.move(1);
+        expect(component.linkTarget.highlightedResult()).toEqual({ id: 2 });
+        component.linkTarget.move(1);
+        expect(component.linkTarget.highlightedResult()).toEqual({ id: 1 });
+        component.linkTarget.move(-1);
+        expect(component.linkTarget.highlightedResult()).toEqual({ id: 2 });
+        component.destroy();
+    });
+
+    it('is absent for an editor outside a project', () => {
+        const component = mount('<p></p>', {});
+
+        expect(component.linkTarget).toBeNull();
+        expect(buildSlashItems('html', () => {}, () => {}).map((item) => item.title)).not.toContain('Link to…');
+        expect(buildSlashItems('html', () => {}, () => {}, null, {}, () => {}).map((item) => item.title)).toContain('Link to…');
+        component.destroy();
     });
 });
 

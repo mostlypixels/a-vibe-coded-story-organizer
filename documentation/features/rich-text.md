@@ -26,12 +26,21 @@ Render author Markdown only through that method. `AuthorMarkdown::renderUnsaniti
 
 The allow-list contains supported structural and formatting markup, including headings through `h4`, links with HTTP(S), tables, task lists, images, and callout attributes.
 
+Links also take the `entity:` scheme, the in-app link to a project entity:
+
+- Form: `entity:<type>/<id>`. `<type>` is a `LinkTargetType` value. `<id>` is digits.
+- The same form in HTML (`<a href="entity:scene/42">`) and in scene Markdown (`[text](entity:scene/42)`).
+- `App\Support\Purifier\EntityUriScheme` validates it in both sanitizer profiles. It removes a link with an unknown type, a host, a query or a fragment, and any `entity:` image source.
+- `App\Support\EntityLinks` finds, rewrites and strips these links.
+- `App\Services\EntityLinkResolver` turns them into route URLs on read views: `x-rich-text`, `Scene::renderedContents`, and the revision views (`x-diff`, `x-revision-version`). A missing target, or an id from another project, becomes a struck `.entity-link-missing` span with the link text only.
+
 Keep these surfaces aligned:
 
-1. `RichTextFields` allow-list.
-2. Tiptap extension configuration.
-3. Toolbar and slash-menu commands.
-4. Sanitizer tests and round-trip tests.
+1. `RichTextFields` allow-list, `ALLOWED_SCHEMES` included.
+2. `HtmlSanitizer` and `ContentSanitizer` (imports).
+3. Tiptap extension configuration: link `protocols`, and `ENTITY_LINK_TYPES` in `resources/js/wysiwyg.js`, which the URL dialog checks.
+4. Toolbar and slash-menu commands.
+5. Sanitizer tests and round-trip tests.
 
 ### Two sanitizer profiles
 
@@ -75,7 +84,7 @@ back to drive behaviour.
 
 ### Render through components
 
-- Use `x-rich-text` for complete rich HTML.
+- Use `x-rich-text` for complete rich HTML. Its `project` prop is required: it scopes the `entity:` links.
 - Use `x-rich-text-excerpt` for escaped excerpts.
 - Use `{!! !!}` only for content that a documented server path prepared.
 
@@ -108,7 +117,33 @@ longer tell an author's strike from a deleted word.
 - Image resize and table merge or split are disabled for Markdown because Markdown cannot preserve them.
 - Underline, subscript, and superscript use raw inline HTML in Markdown.
 - Callouts serialize as GitHub-style blockquotes.
-- Link and image URLs accept HTTP(S) only.
+- Link and image URLs accept HTTP(S) only. The URL dialog also accepts a valid `entity:` link.
+
+### Link to…
+
+The toolbar button and the slash item **Link to…** open a dialog that searches the project for a link target.
+
+- `x-wysiwyg` takes an optional `project` prop. With it, the editor gets the `projects.link-targets` URL and shows the dialog. Without it (the new project page), the editor offers web links only.
+- `x-autosave-field` passes `revisionProject()` of its model. Create pages pass their project.
+- The dialog has a search box, a type select (every `LinkTargetType`) and a result list. Arrow keys move in the results, Enter picks, Escape closes.
+- A pick on selected text sets `href="entity:<type>/<id>"`. With no selection, the label of the target becomes the link text.
+- `resources/js/candidate-search.js` holds the search, debounce and response order. The note-link picker (`resources/js/notes/linkPicker.js`) uses it too.
+- In the editor, an `entity:` link has its own style (`.tiptap a[href^='entity:']`). A click does not open it.
+- No dead-link check in the editor. Read views show a missing target as `.entity-link-missing`.
+
+> [!WARNING]
+> The dialog state is reactive Alpine data, but the Tiptap `Editor` stays in the closure of `registerWysiwyg`. An Alpine proxy around the editor breaks ProseMirror state.
+
+### Linked from
+
+Every target read page (book, act, chapter, scene, event, plotline, codex entry, note) shows a **Linked from** card next to the Notes card. It uses `x-linked-from-card` (`App\View\Components\LinkedFromCard`).
+
+- It lists the texts that link to the entity, from the `entity_links` index. Each row shows the source title, its type, its link fields (Description, Prose, Text) and a link to the source.
+- A source with links in two fields shows once.
+- The card is hidden when the list is empty.
+- It runs one query for the rows and one for each source type, whatever the number of sources.
+- It lists sources of the same project only. A link can name a target id of another project. That target must not list the source.
+- A text that links to its own entity is not listed.
 
 ### Smart punctuation
 

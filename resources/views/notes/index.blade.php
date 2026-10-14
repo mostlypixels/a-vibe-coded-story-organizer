@@ -30,7 +30,7 @@
 
                 <x-select name="linked" class="text-sm" aria-label="{{ __('Linked to') }}">
                     <option value="">{{ __('Any link') }}</option>
-                    @foreach (\App\Enums\NoteLinkType::cases() as $type)
+                    @foreach (\App\Enums\LinkTargetType::noteLinkableCases() as $type)
                         <option value="{{ $type->value }}" @selected(request('linked') === $type->value)>{{ __($type->label()) }}</option>
                     @endforeach
                 </x-select>

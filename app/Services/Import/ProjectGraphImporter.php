@@ -5,7 +5,7 @@ namespace App\Services\Import;
 use App\Enums\BookLanguage;
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
-use App\Enums\NoteLinkType;
+use App\Enums\LinkTargetType;
 use App\Enums\SceneStatus;
 use App\Enums\StoryOverviewMode;
 use App\Enums\StoryOverviewSceneDisplay;
@@ -23,6 +23,11 @@ use App\Models\Scene;
 use App\Models\User;
 use App\Services\CodexMediaService;
 use App\Services\CoverImageService;
+use App\Services\EntityLinkIndex;
+use App\Support\EntityLinks;
+use Closure;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +35,7 @@ use Illuminate\Support\Facades\Validator;
 use Throwable;
 
 /**
- * Imports a validated archive in resumable project, timeline, story, codex, and notes phases.
+ * Imports a validated archive in resumable project, timeline, story, codex, notes, and links phases.
  *
  * Each phase has its own transaction and persisted ID maps. All references must
  * resolve to remapped IDs. The importer reuses auto-created anchors and the first
@@ -62,12 +67,17 @@ class ProjectGraphImporter
 
     public const MAP_NOTE_CATEGORIES = 'note_categories';
 
+    public const MAP_NOTES = 'notes';
+
     private const NOTE_CATEGORIES_FILE = 'data/notes/categories.json';
+
+    private const LINK_BATCH_SIZE = 200;
 
     public function __construct(
         private ContentSanitizer $contentSanitizer,
         private CodexMediaService $codexMediaService,
         private CoverImageService $coverImageService,
+        private EntityLinkIndex $entityLinkIndex,
     ) {}
 
     /**
@@ -559,7 +569,7 @@ class ProjectGraphImporter
             $this->importNoteCategories($project, $categories, $idMaps);
 
             foreach ($notes as $item) {
-                $this->importNote($dataPath, $project, $item, $idMaps);
+                $idMaps[self::MAP_NOTES][(int) $item['data']['id']] = $this->importNote($dataPath, $project, $item, $idMaps);
             }
 
             foreach ($scenes as $item) {
@@ -614,8 +624,9 @@ class ProjectGraphImporter
     /**
      * @param  array{path: string, directory: string, data: array<string, mixed>}  $item
      * @param  array<string, array<int, int>>  $idMaps
+     * @return int The new note id.
      */
-    private function importNote(string $dataPath, Project $project, array $item, array $idMaps): void
+    private function importNote(string $dataPath, Project $project, array $item, array $idMaps): int
     {
         $data = $item['data'];
 
@@ -632,27 +643,97 @@ class ProjectGraphImporter
         ]);
 
         foreach ($data['links'] as $link) {
-            $type = is_array($link) ? NoteLinkType::tryFrom((string) ($link['type'] ?? '')) : null;
-            if ($type === null) {
+            $type = is_array($link) ? LinkTargetType::tryFrom((string) ($link['type'] ?? '')) : null;
+            if ($type === null || ! $type->noteLinkable()) {
                 throw ImportValidationException::invalidDescriptorValue($item['path'], 'links.type');
             }
 
             $targetId = $this->resolveId($idMaps, $this->linkMap($type), $link['id'] ?? null, $item['path'], 'links.id');
             $note->{$type->noteRelation()}()->syncWithoutDetaching([$targetId]);
         }
+
+        return $note->id;
     }
 
-    /** The ID map that holds the link targets of a type. */
-    private function linkMap(NoteLinkType $type): string
+    /**
+     * Points every `entity:` link in the new project's text at the new ids, then
+     * rebuilds the link index once. It runs after the notes, so every ID map is complete.
+     *
+     * A link to an id with no map entry becomes plain text. It is not an error: the
+     * text can cite a target that the writer deleted before the export.
+     *
+     * The rewrite saves quietly: an imported row has no revisions, and one
+     * index sync for the project is faster than one sync for each row.
+     *
+     * @param  array<string, array<int, int>>  $idMaps
+     */
+    public function importLinks(Project $project, array $idMaps): void
+    {
+        $remap = function (LinkTargetType $type, int $sourceId) use ($idMaps): ?string {
+            $newId = $idMaps[$this->linkMap($type)][$sourceId] ?? null;
+
+            return $newId === null ? null : EntityLinks::href($type, (int) $newId);
+        };
+
+        DB::transaction(function () use ($project, $remap): void {
+            $this->rewriteEntityLinks($project, $remap);
+
+            foreach (LinkTargetType::cases() as $type) {
+                $class = $type->modelClass();
+                $fields = EntityLinkIndex::fieldsOf($class);
+
+                if ($fields === []) {
+                    continue;
+                }
+
+                $model = new $class;
+                $sources = $type->queryFor($project)
+                    ->where(function (Builder $query) use ($model, $fields): void {
+                        foreach ($fields as $field) {
+                            $query->orWhere($model->qualifyColumn($field), 'like', '%'.EntityLinks::SCHEME.':%');
+                        }
+                    })
+                    ->lazyById(self::LINK_BATCH_SIZE, $model->getQualifiedKeyName(), $model->getKeyName());
+
+                foreach ($sources as $source) {
+                    $this->rewriteEntityLinks($source, $remap);
+                }
+            }
+
+            $this->entityLinkIndex->syncProject($project);
+        });
+    }
+
+    /** @param  Closure(LinkTargetType, int): ?string  $remap */
+    private function rewriteEntityLinks(Model $source, Closure $remap): void
+    {
+        foreach (EntityLinkIndex::fieldsOf($source::class) as $field) {
+            $text = (string) $source->getAttribute($field);
+            $rewritten = EntityLinks::rewrite($text, $remap);
+
+            // The set mutator sanitizes the HTML again. Skip it for a field with no change.
+            if ($rewritten !== $text) {
+                $source->setAttribute($field, $rewritten);
+            }
+        }
+
+        if ($source->isDirty()) {
+            $source->saveQuietly();
+        }
+    }
+
+    /** The ID map that holds the rows of a type. */
+    private function linkMap(LinkTargetType $type): string
     {
         return match ($type) {
-            NoteLinkType::Book => self::MAP_BOOKS,
-            NoteLinkType::Act => self::MAP_ACTS,
-            NoteLinkType::Chapter => self::MAP_CHAPTERS,
-            NoteLinkType::Scene => self::MAP_SCENES,
-            NoteLinkType::Event => self::MAP_EVENTS,
-            NoteLinkType::Plotline => self::MAP_PLOTLINES,
-            NoteLinkType::Codex => self::MAP_ENTRIES,
+            LinkTargetType::Book => self::MAP_BOOKS,
+            LinkTargetType::Act => self::MAP_ACTS,
+            LinkTargetType::Chapter => self::MAP_CHAPTERS,
+            LinkTargetType::Scene => self::MAP_SCENES,
+            LinkTargetType::Event => self::MAP_EVENTS,
+            LinkTargetType::Plotline => self::MAP_PLOTLINES,
+            LinkTargetType::Codex => self::MAP_ENTRIES,
+            LinkTargetType::Note => self::MAP_NOTES,
         };
     }
 
