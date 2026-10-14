@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-14 — Tidier note category sidebar
+## 2026-10-14 — Tidier note category sidebar (#332)
 
 ### Changed
 
