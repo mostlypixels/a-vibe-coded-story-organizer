@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-14 — Entity links
+## 2026-10-14 — Entity links (#328)
 
 ### Added
 
