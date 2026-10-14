@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-14 — Scene reviewer agent
+## 2026-10-14 — Scene reviewer agent (#330)
 
 ### Added
 
