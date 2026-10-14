@@ -68,6 +68,12 @@ class NoteController extends Controller
             'direction' => $direction,
             'categoryTree' => NoteCategoryTree::for($project),
             'category' => $category,
+            // Unfiltered totals by category id. Uncategorized notes are under the "" key.
+            'noteCounts' => $project->notes()
+                ->select('note_category_id')
+                ->selectRaw('count(*) as total')
+                ->groupBy('note_category_id')
+                ->pluck('total', 'note_category_id'),
             // displayName() of an unnamed book reads the project.
             'books' => $project->books->each->setRelation('project', $project),
         ]);

@@ -196,6 +196,38 @@ class NoteControllerTest extends TestCase
             ->assertDontSee('Foreign note');
     }
 
+    public function test_the_sidebar_counts_the_notes_in_each_category(): void
+    {
+        $books = NoteCategory::factory()->for($this->project)->create(['name' => 'Books']);
+        NoteCategory::factory()->for($this->project)->create(['name' => 'Empty']);
+        Note::factory()->for($this->project)->count(2)->create(['note_category_id' => $books->id]);
+        Note::factory()->for($this->project)->create(['note_category_id' => null]);
+
+        // A filter narrows the table, not the counts.
+        $this->actingAs($this->owner)->get(route('projects.notes.index', [$this->project, 'search' => 'zzz']))
+            ->assertOk()
+            ->assertSee(__('All notes').' (3)')
+            ->assertSee(__('Uncategorized').' (1)')
+            ->assertSee('Books (2)')
+            ->assertSee('Empty (0)');
+    }
+
+    public function test_the_category_edit_buttons_hide_behind_a_toggle(): void
+    {
+        $index = route('projects.notes.index', $this->project);
+
+        $this->actingAs($this->owner)->get($index)
+            ->assertOk()
+            ->assertDontSee(__('Edit categories'));
+
+        NoteCategory::factory()->for($this->project)->create();
+
+        $this->actingAs($this->owner)->get($index)
+            ->assertOk()
+            ->assertSee(__('Edit categories'))
+            ->assertSee('x-show="editing" style="display: none"', false);
+    }
+
     public function test_the_notes_menu_link_is_current_on_note_pages(): void
     {
         $note = Note::factory()->for($this->project)->create();

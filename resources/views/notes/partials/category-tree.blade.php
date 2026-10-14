@@ -9,13 +9,46 @@
         .($active ? 'bg-neutral font-semibold text-content' : 'text-content-muted');
 @endphp
 
-<nav aria-label="{{ __('Note categories') }}" class="space-y-3">
+{{-- Edit and delete buttons stay hidden until asked for, so the list reads as navigation. --}}
+<nav aria-label="{{ __('Note categories') }}" class="space-y-3" x-data="{ editing: false }">
+    <div class="flex items-center gap-1">
+        <h2 class="min-w-0 flex-1 px-2 text-sm font-semibold text-content">{{ __('Categories') }}</h2>
+
+        <x-icon-button
+            type="button"
+            icon="plus"
+            variant="ghost"
+            :label="__('New category')"
+            x-on:click="$dispatch('open-note-category', {{ Js::from([
+                'action' => route('projects.note-categories.store', $project),
+                'method' => 'POST',
+                'title' => __('New category'),
+                'name' => '',
+                'parentId' => null,
+                'blocked' => $blockedForNew,
+            ]) }})"
+        />
+
+        @if ($rows !== [])
+            <x-icon-button
+                type="button"
+                icon="pencil"
+                variant="ghost"
+                :label="__('Edit categories')"
+                aria-pressed="false"
+                x-on:click="editing = ! editing"
+                x-bind:aria-pressed="editing.toString()"
+                x-bind:class="{ 'bg-neutral': editing }"
+            />
+        @endif
+    </div>
+
     <ul class="space-y-1">
         <li class="flex">
-            <a href="{{ $link(null) }}" @class([$itemClass($category === null)]) @if ($category === null) aria-current="page" @endif>{{ __('All notes') }}</a>
+            <a href="{{ $link(null) }}" @class([$itemClass($category === null)]) @if ($category === null) aria-current="page" @endif>{{ __('All notes') }} ({{ $noteCounts->sum() }})</a>
         </li>
         <li class="flex">
-            <a href="{{ $link('none') }}" @class([$itemClass($category === 'none')]) @if ($category === 'none') aria-current="page" @endif>{{ __('Uncategorized') }}</a>
+            <a href="{{ $link('none') }}" @class([$itemClass($category === 'none')]) @if ($category === 'none') aria-current="page" @endif>{{ __('Uncategorized') }} ({{ $noteCounts->get('', 0) }})</a>
         </li>
 
         @foreach ($rows as $row)
@@ -25,51 +58,39 @@
                 $parentName = $names->get($item->parent_id);
             @endphp
             <li class="flex items-center gap-1 {{ $indents[$row['depth']] }}">
-                <a href="{{ $link((string) $item->id) }}" @class([$itemClass($active)]) @if ($active) aria-current="page" @endif>{{ $item->name }}</a>
+                <a href="{{ $link((string) $item->id) }}" @class([$itemClass($active)]) @if ($active) aria-current="page" @endif>{{ $item->name }} ({{ $noteCounts->get($item->id, 0) }})</a>
 
-                <x-icon-button
-                    type="button"
-                    icon="pencil"
-                    variant="ghost"
-                    :label="__('Edit category')"
-                    x-data=""
-                    x-on:click="$dispatch('open-note-category', {{ Js::from([
-                        'action' => route('note-categories.update', $item),
-                        'method' => 'PATCH',
-                        'title' => __('Edit category'),
-                        'name' => $item->name,
-                        'parentId' => $item->parent_id,
-                        'blocked' => $categoryTree->blockedParentIds($item->id),
-                    ]) }})"
-                />
+                <span class="flex items-center gap-1" x-show="editing" style="display: none">
+                    <x-icon-button
+                        type="button"
+                        icon="pencil"
+                        variant="ghost"
+                        :label="__('Edit category')"
+                        x-data=""
+                        x-on:click="$dispatch('open-note-category', {{ Js::from([
+                            'action' => route('note-categories.update', $item),
+                            'method' => 'PATCH',
+                            'title' => __('Edit category'),
+                            'name' => $item->name,
+                            'parentId' => $item->parent_id,
+                            'blocked' => $categoryTree->blockedParentIds($item->id),
+                        ]) }})"
+                    />
 
-                <x-icon-delete-button
-                    :action="route('note-categories.destroy', $item)"
-                    :confirm="$parentName
-                        ? __('Delete :name? Its notes and sub-categories move to :parent.', ['name' => $item->name, 'parent' => $parentName])
-                        : __('Delete :name? Its notes and sub-categories move to the top level.', ['name' => $item->name])"
-                    :label="__('Delete category')"
-                />
+                    <x-icon-delete-button
+                        :action="route('note-categories.destroy', $item)"
+                        :confirm="$parentName
+                            ? __('Delete :name? Its notes and sub-categories move to :parent.', ['name' => $item->name, 'parent' => $parentName])
+                            : __('Delete :name? Its notes and sub-categories move to the top level.', ['name' => $item->name])"
+                        :label="__('Delete category')"
+                    />
+                </span>
             </li>
         @endforeach
     </ul>
 
     <x-input-error :messages="$errors->get('name')" />
     <x-input-error :messages="$errors->get('parent_id')" />
-
-    <x-button
-        variant="secondary"
-        type="button"
-        x-data=""
-        x-on:click="$dispatch('open-note-category', {{ Js::from([
-            'action' => route('projects.note-categories.store', $project),
-            'method' => 'POST',
-            'title' => __('New category'),
-            'name' => '',
-            'parentId' => null,
-            'blocked' => $blockedForNew,
-        ]) }})"
-    >{{ __('New category') }}</x-button>
 </nav>
 
 <x-note-category-dialog :tree="$categoryTree" />

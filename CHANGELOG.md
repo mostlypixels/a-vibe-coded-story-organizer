@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-14 — Tidier note category sidebar (#332)
+
+### Changed
+
+- The note category sidebar has a "Categories" header with buttons to add a category and to show the edit and delete buttons.
+- Each note category in the sidebar shows its number of notes.
+
 ## 2026-10-14 — Book-wide review notes (#331)
 
 ### Changed
