@@ -101,8 +101,14 @@ export default defineConfig({
             // `vendor` is deliberately absent: app.css has an @source glob into
             // laravel/framework's pagination views, and a pass there is too cheap
             // to be worth the risk.
+            //
+            // Docker sets LARAVEL_STORAGE_PATH to storage-docker, so it needs its
+            // own entry: the storage glob does not match it. .scratchpad is
+            // agent scratch output and is never a source.
             ignored: [
                 '**/storage/**',
+                '**/storage-docker/**',
+                '**/.scratchpad/**',
                 '**/.claude/**',
                 '**/.specs/**',
                 '**/.idea/**',

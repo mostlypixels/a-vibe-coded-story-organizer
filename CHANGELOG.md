@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-14 — Vite watch in Docker
+
+### Fixed
+
+- The Docker dev server no longer polls Docker storage and scratch files, so Vite stops using a full CPU core.
+
 ## 2026-10-14 — Entity links (#328)
 
 ### Added
