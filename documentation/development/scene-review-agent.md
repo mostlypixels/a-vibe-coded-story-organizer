@@ -21,6 +21,7 @@ The agent reads and writes only through these commands. They run in the Docker a
 
 - Earlier scenes show only their description, except the last three (`--full`). A long book then stays small enough to read. The agent asks for more with `scene:show`.
 - Every codex name is listed, not only the matched ones: a misspelled name matches no entry.
+- A TODO note linked to nothing is book-wide. The context prints it, and the agent does not report its problems again in each scene.
 
 ## The review note
 

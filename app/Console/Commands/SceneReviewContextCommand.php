@@ -65,6 +65,7 @@ class SceneReviewContextCommand extends Command
         $this->printCodexNames($project->codexEntries()->with('aliases')->orderBy('name')->get());
         $this->printCodexAsOf($scene, $asOf);
         $this->printNotes($scene);
+        $this->printBookWideNotes($scene);
         $this->printEarlierScenes($scene, max(0, (int) $this->option('full')));
 
         $this->section('Scene contents (Markdown)');
@@ -134,6 +135,27 @@ class SceneReviewContextCommand extends Command
             $isReview = strcasecmp($category, SceneReviewNoteWriter::CATEGORY) === 0
                 && str_starts_with($note->title, SceneReviewNoteWriter::TITLE_PREFIX);
             $this->line("- {$note->title} [{$category}]".($isReview ? ' (earlier review)' : ''));
+            $this->line('    '.RichText::toPlainText($note->body));
+        }
+    }
+
+    /** An unlinked TODO note holds problems for the whole book, so the agent does not report them again. */
+    private function printBookWideNotes(Scene $scene): void
+    {
+        $this->section('Book-wide TODO notes (linked to nothing)');
+
+        $notes = $scene->project()->notes()
+            ->whereHas('category', fn ($query) => $query->whereRaw('lower(name) = ?', [mb_strtolower(SceneReviewNoteWriter::CATEGORY)]))
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('notables')->whereColumn('notables.note_id', 'notes.id'))
+            ->orderBy('id')
+            ->get();
+
+        if ($notes->isEmpty()) {
+            $this->line('None.');
+        }
+
+        foreach ($notes as $note) {
+            $this->line("- {$note->title}");
             $this->line('    '.RichText::toPlainText($note->body));
         }
     }

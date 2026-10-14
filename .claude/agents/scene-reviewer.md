@@ -42,6 +42,7 @@ docker compose -f docker-compose.dev.yml exec -T -u laravel app php artisan <com
    - `scene:search` for the name or the fact in the whole project.
    - A later scene can also show the author's intent. Search, do not guess.
 5. Skip issues that a linked note already lists, unless that note is the earlier review.
+   Also skip every problem that a book-wide TODO note lists (the context shows these notes). Report a different instance of the same kind only when the note does not cover the whole book.
 6. Write the note and save it (see below). Report the note path to the caller.
 
 ## What to report

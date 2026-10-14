@@ -163,6 +163,24 @@ class SceneReviewCommandsTest extends TestCase
             ->assertSuccessful();
     }
 
+    public function test_review_context_prints_only_unlinked_todo_notes_as_book_wide(): void
+    {
+        $todo = NoteCategory::factory()->create(['project_id' => $this->project->id, 'name' => 'TODO']);
+        $ideas = NoteCategory::factory()->create(['project_id' => $this->project->id, 'name' => 'Ideas']);
+        $scene = $this->scene('Ball');
+        $otherScene = $this->scene('Garden');
+        Note::factory()->create(['project_id' => $this->project->id, 'note_category_id' => $todo->id, 'title' => 'Many scenes', 'body' => '<p>Fix titles.</p>']);
+        Note::factory()->create(['project_id' => $this->project->id, 'note_category_id' => $ideas->id, 'title' => 'Plot idea']);
+        Note::factory()->create(['project_id' => $this->project->id, 'note_category_id' => $todo->id, 'title' => 'Garden fix'])->linkTo($otherScene);
+
+        $this->artisan('scene:review-context', ['scene' => $scene->id])
+            ->expectsOutputToContain('- Many scenes')
+            ->expectsOutputToContain('Fix titles.')
+            ->doesntExpectOutputToContain('Plot idea')
+            ->doesntExpectOutputToContain('Garden fix')
+            ->assertSuccessful();
+    }
+
     public function test_scene_show_prints_the_contents(): void
     {
         $scene = $this->scene('Opening', 'The first scene text.');

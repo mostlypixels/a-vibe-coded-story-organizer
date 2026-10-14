@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-14 — Book-wide review notes (#331)
+
+### Changed
+
+- The scene reviewer reads TODO notes that link to nothing as book-wide, and does not report their problems again per scene.
+
 ## 2026-10-14 — Scene reviewer agent (#330)
 
 ### Added
