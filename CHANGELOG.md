@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-15 — Faster Docker startup (#335)
+
+### Fixed
+
+- The Docker dev stack starts in about 7 seconds instead of about a minute.
+
 ## 2026-10-15 — Faster first page load in Docker (#334)
 
 ### Fixed

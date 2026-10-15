@@ -66,12 +66,22 @@ php artisan media:move-to-private
 # above), but php-fpm's workers run as laravel — anything just created here
 # (database.sqlite, cache/log files) would otherwise be root-owned and
 # unwritable by the app.
-chown -R laravel:laravel database storage bootstrap/cache
-for path in "$(dirname "${DB_DATABASE:-/nonexistent}")" "${LARAVEL_STORAGE_PATH:-}"; do
-    if [ -d "$path" ]; then
-        chown -R laravel:laravel "$path"
-    fi
-done
+chown -R laravel:laravel database bootstrap/cache
+if [ -d "$(dirname "${DB_DATABASE:-/nonexistent}")" ]; then
+    chown -R laravel:laravel "$(dirname "$DB_DATABASE")"
+fi
+
+# A walk over a Windows bind mount is slow: 31 s for storage, 26 s for
+# storage-docker. Skip storage when the app does not use it.
+if [ -z "$LARAVEL_STORAGE_PATH" ] || [ "$(realpath "$LARAVEL_STORAGE_PATH")" = "$(realpath storage)" ]; then
+    chown -R laravel:laravel storage
+elif [ -d "$LARAVEL_STORAGE_PATH" ]; then
+    # Fix the folders that setup writes to now. The full walk only repairs files
+    # that a root `docker exec` left, so it runs while the services start.
+    chown laravel:laravel "$LARAVEL_STORAGE_PATH" "$LARAVEL_STORAGE_PATH/app" "$LARAVEL_STORAGE_PATH/app/private" "$LARAVEL_STORAGE_PATH/app/private/media" "$LARAVEL_STORAGE_PATH/app/public"
+    chown -R laravel:laravel "$LARAVEL_STORAGE_PATH/framework" "$LARAVEL_STORAGE_PATH/logs"
+    chown -R laravel:laravel "$LARAVEL_STORAGE_PATH" &
+fi
 
 # node_modules and vendor are anonymous volumes (see docker-compose.dev.yml)
 # populated from the image's `RUN npm install` / `RUN composer install`
