@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-15 — Full notes on scene pages
+## 2026-10-15 — Full notes on scene pages (#333)
 
 ### Changed
 
