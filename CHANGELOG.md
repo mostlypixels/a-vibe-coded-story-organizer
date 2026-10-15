@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-15 — Faster first page load in Docker
+
+### Fixed
+
+- The first page load after the Docker stack starts takes seconds, not about four minutes.
+
 ## 2026-10-15 — Full notes on scene pages (#333)
 
 ### Changed
