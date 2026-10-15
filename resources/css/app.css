@@ -1,14 +1,17 @@
-@import 'tailwindcss';
+/*
+ * Name the sources. Auto-detection walks the whole project, ignored folders too,
+ * and on the Docker bind mount the first stylesheet took 225 s. Only these
+ * folders hold class names that render.
+ */
+@import 'tailwindcss' source(none);
 
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
+@source '../views';
+@source '../js';
+@source '../../app';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-
-/* Exclude prose that names Tailwind classes but cannot render them. */
-@source not '../../.specs';
-@source not '../../documentation';
-@source not '../../.claude';
 
 @theme {
   --font-sans:
