@@ -21,7 +21,9 @@
                         <li class="flex items-start justify-between gap-2 py-2 first:pt-0 last:pb-0" data-linked-note="{{ $note->id }}">
                             <div class="min-w-0">
                                 <a href="{{ route('notes.show', $note) }}" class="text-link hover:text-link-hover">{{ $note->title }}</a>
-                                @if (filled($note->body))
+                                @if ($expanded)
+                                    <x-rich-text :html="$note->body" :project="$project" class="mt-1" />
+                                @elseif (filled($note->body))
                                     <p class="text-sm text-content-muted"><x-rich-text-excerpt :html="$note->body" :limit="160" /></p>
                                 @endif
                             </div>

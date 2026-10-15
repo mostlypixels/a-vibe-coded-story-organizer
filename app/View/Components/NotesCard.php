@@ -24,8 +24,11 @@ class NotesCard extends Component
     /** @var Collection<int, Note> */
     public readonly Collection $notes;
 
-    /** @param Collection<int, Note> $notes */
-    public function __construct(Collection $notes, public readonly Model $linkable)
+    /**
+     * @param  Collection<int, Note>  $notes
+     * @param  bool  $expanded  Show each full note body, not an excerpt.
+     */
+    public function __construct(Collection $notes, public readonly Model $linkable, public readonly bool $expanded = false)
     {
         $this->type = LinkTargetType::fromModel($linkable);
         $this->project = LinkTargetType::projectOf($linkable);

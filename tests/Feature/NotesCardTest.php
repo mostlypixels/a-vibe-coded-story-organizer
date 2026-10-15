@@ -147,6 +147,27 @@ class NotesCardTest extends TestCase
         $this->assertSame($withOne, $many);
     }
 
+    public function test_scene_pages_show_the_full_note_and_other_pages_an_excerpt(): void
+    {
+        $scene = $this->makeFor(LinkTargetType::Scene);
+        $chapter = $scene->chapter;
+        $note = Note::factory()->for($this->project)->create([
+            'body' => '<p>'.str_repeat('Lorem ipsum ', 20).'</p><p>Tail sentence.</p>',
+        ]);
+        $note->linkTo($scene);
+        $note->linkTo($chapter);
+
+        foreach (['scenes.show', 'scenes.edit'] as $route) {
+            $this->actingAs($this->owner)->get(route($route, $scene))
+                ->assertOk()
+                ->assertSee('Tail sentence.');
+        }
+
+        $this->actingAs($this->owner)->get(route('chapters.show', $chapter))
+            ->assertOk()
+            ->assertDontSee('Tail sentence.');
+    }
+
     public function test_a_scene_page_lists_the_linked_note(): void
     {
         $scene = $this->makeFor(LinkTargetType::Scene);

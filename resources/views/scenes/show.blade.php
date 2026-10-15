@@ -35,7 +35,7 @@
             </x-card>
         @endif
 
-        <x-notes-card :notes="$scene->notes" :linkable="$scene" />
+        <x-notes-card :notes="$scene->notes" :linkable="$scene" expanded />
 
         <x-linked-from-card :target="$scene" />
 
