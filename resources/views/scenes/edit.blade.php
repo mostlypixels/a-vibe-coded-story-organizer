@@ -65,7 +65,7 @@
                 </form>
         </x-card>
 
-        <x-notes-card :notes="$scene->notes" :linkable="$scene" />
+        <x-notes-card :notes="$scene->notes" :linkable="$scene" expanded />
 
         <x-slot:sidebar>
             <x-edit-actions
