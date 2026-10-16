@@ -45,3 +45,21 @@ Known shortcuts that the code keeps on purpose. Each entry says what bites and w
 - **Risk:** a crash between the file write and the database commit leaves a file that no row points to. No user sees it. It only uses disk space.
 - **Why it stays:** a database rollback cannot remove a file, so the code puts the risk on the side that loses nothing.
 - **Pay off:** if disk use matters, add a sweep like `imports:purge` for the media disk.
+
+## Slow file access in Docker on Windows
+
+- **Where:** the `.:/app` bind mount in `docker-compose.dev.yml`.
+- **Risk:** each file check on the mount costs about 2.6 ms. Pages with many Blade components are slow. `/codex/1/edit` takes 1.1 s, but only 90 ms of that is PHP and SQL.
+- **Why it stays:** this cost occurs only in Docker on Windows. On Linux and in the native server, a file check costs almost nothing.
+- **Pay off:** move the clone into the WSL2 file system, for example `~/imagoldfish`. This gives the largest gain and needs no app change.
+
+One request makes about 1,500 file checks:
+
+| Source | Checks | Partial fix |
+|---|---|---|
+| `FileViewFinder` finds each view and component | ~500 | none |
+| `__()` looks for a lang file for a key with no match | ~400 | add `lang/en.json` |
+| Blade `isExpired` checks if each compiled view is out of date | ~580 | `view.check_cache_timestamps=false`; then each view edit needs `view:clear` |
+
+> [!NOTE]
+> `vendor/`, compiled views (`VIEW_COMPILED_PATH=/tmp/views`) and the database are already off the mount, for the same reason (#288, #298).
