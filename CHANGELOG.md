@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-16 — Docker file access recorded as technical debt
+## 2026-10-16 — Docker file access recorded as technical debt (#336)
 
 ### Added
 
