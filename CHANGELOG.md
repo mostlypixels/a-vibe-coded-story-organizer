@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-17 — Quieter "No event" marker
+## 2026-10-17 — Quieter "No event" marker (#338)
 
 ### Changed
 
