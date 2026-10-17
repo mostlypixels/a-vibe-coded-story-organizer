@@ -174,6 +174,25 @@ class NavigationTest extends TestCase
         return $sections;
     }
 
+    /** The desktop bar does not fit below `lg`. There it scrolls the page sideways (#286). */
+    public function test_the_desktop_nav_starts_at_the_lg_breakpoint(): void
+    {
+        $user = User::factory()->create();
+        [$project] = $this->projectWithBook($user);
+
+        $document = HTMLDocument::createFromString($this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->getContent(), LIBXML_NOERROR);
+
+        $classes = fn (?Element $element): array => explode(' ', (string) $element?->getAttribute('class'));
+        $menuButton = $document->querySelector('button[aria-controls="mobile-navigation"]');
+
+        $this->assertContains('lg:flex', $classes($document->getElementById('section-links')));
+        $this->assertContains('lg:hidden', $classes($document->getElementById('mobile-navigation')));
+        $this->assertContains('lg:hidden', $classes($menuButton?->parentElement));
+    }
+
     public function test_each_section_is_a_hub_link_plus_a_named_chevron(): void
     {
         $user = User::factory()->create();
