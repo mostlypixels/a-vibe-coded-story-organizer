@@ -124,6 +124,7 @@ class SceneController extends Controller
             // above — a scenes list filtered to one chapter must still start
             // counting from that chapter's true book-wide number.
             'numbering' => $numbering,
+            'showNoEvent' => $book->project->usesEvents(),
             // A name-sorted page covers no continuous range.
             'pageRange' => $sort === 'position' && $scenes->isNotEmpty()
                 ? $numbering->rangeLabel($scenes->first()->chapter, $scenes->last()->chapter)

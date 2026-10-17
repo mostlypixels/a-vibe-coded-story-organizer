@@ -111,6 +111,7 @@ class StoryController extends Controller
             // The tree is already fully eager-loaded above, so fromActs()
             // derives the numbering with zero extra queries.
             'numbering' => StoryNumbering::fromActs($acts),
+            'showNoEvent' => $book->project->usesEvents(),
         ]);
     }
 
@@ -163,6 +164,7 @@ class StoryController extends Controller
             'previousChapter' => $previousChapter,
             'nextChapter' => $nextChapter,
             'numbering' => StoryNumbering::forBook($book),
+            'showNoEvent' => $book->project->usesEvents(),
             'wordCount' => (int) $actWordCounts->sum(),
             'actWordCount' => $currentChapter === null
                 ? 0

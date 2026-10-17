@@ -59,7 +59,7 @@
 
                         <x-chapter-pager :book="$book" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
 
-                        <x-story-chapter :chapter="$currentChapter" :project="$book->project" :numbering="$numbering" :scene-display="$book->overview_scene_display" />
+                        <x-story-chapter :chapter="$currentChapter" :project="$book->project" :numbering="$numbering" :show-no-event="$showNoEvent" :scene-display="$book->overview_scene_display" />
 
                         <x-chapter-pager :book="$book" :previous="$previousChapter" :next="$nextChapter" :numbering="$numbering" />
                     </div>

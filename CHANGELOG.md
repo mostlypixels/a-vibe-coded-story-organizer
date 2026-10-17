@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-17 — Quieter "No event" marker
+
+### Changed
+
+- A scene with no event shows a muted "No event" badge instead of a red "Unassigned" marker.
+- Projects with no timeline events of their own show no event marker on scenes.
+
 ## 2026-10-17 — Nav fits the window (#337)
 
 ### Fixed

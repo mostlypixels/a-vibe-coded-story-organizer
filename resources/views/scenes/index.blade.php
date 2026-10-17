@@ -46,16 +46,9 @@
                 @forelse ($scenes as $scene)
                     @php
                         $highlighted = $highlightId !== null && $scene->chapter_id === $highlightId;
-                        // The missing-event marker wins: it reports a problem in the data,
-                        // while the highlight only reports where you landed.
-                        $markerClass = match (true) {
-                            ! $scene->event => 'border-l-4 border-danger',
-                            $highlighted => 'border-l-4 border-accent',
-                            default => '',
-                        };
                     @endphp
                     <x-table-row :striped="$loop->even" :highlighted="$highlighted" :id="$scene->id === $anchorRowId ? 'chapter-'.$highlightId : null">
-                        <x-table-cell :title="$scene->event ? null : __('This scene has no “happens during” event yet.')" muted nowrap class="{{ $markerClass }}">{{ $numbering->scene($scene) }}</x-table-cell>
+                        <x-table-cell muted nowrap @class(['border-l-4 border-accent' => $highlighted])>{{ $numbering->scene($scene) }}</x-table-cell>
                         <x-table-cell>
                             <a href="{{ route('scenes.show', $scene) }}" class="font-semibold text-content hover:text-link">{{ $scene->name }}</a>
                         </x-table-cell>
@@ -65,8 +58,8 @@
                         <x-table-cell sm>
                             @if ($scene->event)
                                 <span class="text-content-muted">{{ $scene->event->title }}</span>
-                            @else
-                                <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-danger px-2 py-0.5 text-xs font-medium text-danger-surface-content">{{ __('Unassigned') }}</span>
+                            @elseif ($showNoEvent)
+                                <x-no-event-badge />
                             @endif
                         </x-table-cell>
                         <x-table-cell align="right" muted nowrap>

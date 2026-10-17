@@ -225,6 +225,15 @@ class Project extends Model implements Revisionable
     }
 
     /**
+     * Many writers never use the timeline. A "No event" marker is only noise for them.
+     * The Start and End bookends do not count: every project has them.
+     */
+    public function usesEvents(): bool
+    {
+        return $this->events()->where('is_fixed', false)->exists();
+    }
+
+    /**
      * The project's Start bookend event (year 0001): the earliest is_fixed event,
      * created undeletable by booted() and the anchor for every attribute-timeline
      * baseline. Single source of truth for "the project's Start".
