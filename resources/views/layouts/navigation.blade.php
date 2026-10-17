@@ -8,7 +8,7 @@
                     </a>
                 </div>
 
-                <div class="hidden sm:flex">
+                <div class="hidden lg:flex">
                     <x-dropdown align="left" width="w-56" offset-classes="mt-0">
                         <x-slot name="trigger">
                             @if ($navigation->hasBook())
@@ -64,7 +64,7 @@
                     </x-dropdown>
                 </div>
 
-                <div id="section-links" class="hidden space-x-8 sm:-my-px sm:ms-6 sm:flex">
+                <div id="section-links" class="hidden space-x-4 lg:-my-px lg:ms-4 lg:flex">
                     @if ($navigation->hasProject())
                         <x-navigation.project-menu :navigation="$navigation" />
                     @endif
@@ -76,7 +76,7 @@
                     <x-navigation.appearance-switcher />
                 @endif
 
-                <div class="hidden sm:flex sm:items-center sm:ms-3 sm:pe-2">
+                <div class="hidden lg:flex lg:items-center lg:ms-3 lg:pe-2">
                     <x-dropdown align="right" width="48" hover>
                         <x-slot name="trigger">
                             <x-navigation.menu-link
@@ -108,7 +108,7 @@
                     </x-dropdown>
                 </div>
 
-                <div class="pe-2 flex items-center sm:hidden">
+                <div class="pe-2 flex items-center lg:hidden">
                     <button
                         type="button"
                         @click="open = ! open"
@@ -125,7 +125,7 @@
         </div>
     </div>
 
-    <div id="mobile-navigation" :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+    <div id="mobile-navigation" :class="{'block': open, 'hidden': ! open}" class="hidden lg:hidden">
         <div class="px-4 py-3 border-b border-nav-raised">
             <div class="text-xs uppercase tracking-wide text-nav-content-muted mb-2">{{ __('Project') }}</div>
 

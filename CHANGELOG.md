@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-17 — Nav fits the window (#337)
+
+### Fixed
+
+- Windows narrower than 1024 px use the menu button, so the top nav no longer scrolls the page sideways.
+
 ## 2026-10-16 — Docker file access recorded as technical debt (#336)
 
 ### Added
