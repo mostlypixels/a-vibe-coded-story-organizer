@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-17 — Nav fits the window
+## 2026-10-17 — Nav fits the window (#337)
 
 ### Fixed
 
