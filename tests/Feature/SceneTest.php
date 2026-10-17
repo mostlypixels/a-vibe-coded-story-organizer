@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\CodexEntryType;
 use App\Enums\RevisionOrigin;
 use App\Enums\SceneStatus;
+use App\Enums\StoryOverviewMode;
 use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
@@ -822,16 +823,35 @@ class SceneTest extends TestCase
         $this->assertCount(0, $mentions->fresh()->mentionedEvents);
     }
 
-    public function test_the_scenes_index_flags_unassigned_scenes(): void
+    public function test_the_scenes_index_marks_a_scene_with_no_event_when_the_project_uses_events(): void
     {
         $user = User::factory()->create();
         $chapter = $this->chapterFor($user);
+        $event = Event::factory()->for($chapter->act->book->project)->create();
+        Scene::factory()->for($chapter)->create(['event_id' => $event->id]);
         Scene::factory()->for($chapter)->create(['event_id' => null]);
 
         $this->actingAs($user)
             ->get(route('books.scenes.index', $chapter->act->book))
             ->assertOk()
-            ->assertSee('Unassigned');
+            ->assertSee('No event')
+            ->assertDontSee('border-l-4 border-danger');
+    }
+
+    public function test_no_page_marks_scenes_when_the_project_uses_no_events(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $book = $chapter->act->book;
+        Scene::factory()->for($chapter)->create(['event_id' => null]);
+
+        $noEventHint = 'This scene has no “happens during” event yet.';
+        $this->actingAs($user);
+        $this->get(route('books.scenes.index', $book))->assertOk()->assertDontSee($noEventHint);
+        $this->get(route('books.story.overview', $book))->assertOk()->assertDontSee($noEventHint);
+
+        $book->update(['overview_render_mode' => StoryOverviewMode::Whole]);
+        $this->get(route('books.story.overview', $book))->assertOk()->assertDontSee($noEventHint);
     }
 
     public function test_the_scene_form_renders_the_event_controls(): void
@@ -869,7 +889,8 @@ class SceneTest extends TestCase
             ->get(route('books.story.overview', $book))
             ->assertOk()
             ->assertSee('The Coronation')
-            ->assertSee('Unassigned');
+            ->assertSee('No event')
+            ->assertDontSee('border-l-danger');
     }
 
     // ---------------------------------------------------------------------

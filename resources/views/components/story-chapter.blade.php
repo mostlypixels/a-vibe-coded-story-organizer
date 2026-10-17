@@ -1,4 +1,4 @@
-@props(['chapter', 'project', 'numbering', 'sceneDisplay' => \App\Enums\StoryOverviewSceneDisplay::default()])
+@props(['chapter', 'project', 'numbering', 'showNoEvent' => false, 'sceneDisplay' => \App\Enums\StoryOverviewSceneDisplay::default()])
 
 <x-collapsible-card icon="entity-chapter">
     <x-slot:header>
@@ -13,7 +13,7 @@
 
     <div class="space-y-4">
         @forelse ($chapter->scenes as $scene)
-            <section x-data="{ open: true }" @unless($scene->event) title="{{ __('This scene has no “happens during” event yet.') }}" @endunless class="space-y-2 pb-4 border-b border-border last:border-b-0 last:pb-0 {{ $scene->event ? '' : 'border-l-4 border-l-danger pl-4' }}">
+            <section x-data="{ open: true }" class="space-y-2 pb-4 border-b border-border last:border-b-0 last:pb-0">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <button
                         type="button"
@@ -31,8 +31,8 @@
                     <div class="flex flex-wrap items-center gap-2">
                         @if ($scene->event)
                             <span class="text-xs text-content-muted">{{ __('Set during') }} {{ $scene->event->title }}</span>
-                        @else
-                            <span title="{{ __('This scene has no “happens during” event yet.') }}" class="inline-flex items-center rounded-md border border-danger px-2 py-0.5 text-xs font-medium text-danger-surface-content">{{ __('Unassigned') }}</span>
+                        @elseif ($showNoEvent)
+                            <x-no-event-badge />
                         @endif
                         <x-scene-status-badge :status="$scene->status" />
                         <x-icon-button

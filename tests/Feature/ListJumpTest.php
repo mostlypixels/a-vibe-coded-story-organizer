@@ -261,13 +261,10 @@ class ListJumpTest extends TestCase
      * marker. The missing-event marker wins on a scene with no event, because
      * that one reports a problem in the data.
      */
-    public function test_a_highlighted_row_carries_the_accent_marker_unless_its_event_is_missing(): void
+    public function test_each_highlighted_row_carries_the_accent_marker(): void
     {
         [$user, $book, $chapters] = $this->bookWithTwelveChapters();
         $target = $chapters[6];
-        $event = Event::factory()->for($book->project)->create();
-        $withEvent = $target->scenes()->orderBy('id')->pluck('id')->take(3);
-        Scene::whereIn('id', $withEvent)->update(['event_id' => $event->id]);
 
         $response = $this->actingAs($user)->get(route('books.scenes.index', [
             'book' => $book,
@@ -283,13 +280,8 @@ class ListJumpTest extends TestCase
         $plain->assertOk();
 
         $this->assertSame(
-            substr_count($plain->getContent(), 'border-l-4 border-accent') + 3,
+            substr_count($plain->getContent(), 'border-l-4 border-accent') + $target->scenes()->count(),
             substr_count($response->getContent(), 'border-l-4 border-accent')
-        );
-        // The chapter's two scenes with no event keep the missing-event marker.
-        $this->assertSame(
-            substr_count($plain->getContent(), 'border-l-4 border-danger'),
-            substr_count($response->getContent(), 'border-l-4 border-danger')
         );
     }
 
