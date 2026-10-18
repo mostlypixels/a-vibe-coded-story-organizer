@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-18 — Write page follows width and spacing settings
+## 2026-10-18 — Write page follows width and spacing settings (#340)
 
 ### Changed
 
