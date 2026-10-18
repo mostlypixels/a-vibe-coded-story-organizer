@@ -4,6 +4,13 @@
     {{ __('Dashboard') }}
 </x-nav-link>
 
+<x-nav-link
+    :href="route('projects.write', $navigation->project)"
+    :active="$navigation->writeActive"
+    :aria-current="$navigation->writeActive ? 'page' : false">
+    {{ __('Write') }}
+</x-nav-link>
+
 @if ($navigation->hasBook())
     <div class="flex items-center">
         <x-dropdown align="left" width="48" hover>

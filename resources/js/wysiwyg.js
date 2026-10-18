@@ -12,6 +12,7 @@ import { Superscript } from '@tiptap/extension-superscript';
 import { Typography } from '@tiptap/extension-typography';
 import { Plugin } from '@tiptap/pm/state';
 import { candidateSearch } from './candidate-search.js';
+import { createPositionTracker } from './editor/position.js';
 import { normalizePunctuation } from './punctuation.js';
 import { translate } from './translate.js';
 
@@ -718,6 +719,7 @@ export function registerWysiwyg(Alpine) {
         let form = null;
         let syncOnSubmit = null;
         let replaceContent = null;
+        let position = null;
         const t = (key) => translate(config.strings, key);
 
         return {
@@ -774,9 +776,16 @@ export function registerWysiwyg(Alpine) {
                         : null,
                 });
 
+                // A stored cursor replaces the autofocus at the end.
+                position = config.positionKey
+                    ? createPositionTracker({ key: config.positionKey, scroller: this.$el.closest('[data-position-scroll]') })
+                    : null;
+
                 editor = new Editor({
                     element: mount,
                     editable: !config.disabled,
+                    // The end of the text, so the writer can continue at once.
+                    autofocus: config.autofocus && !position?.saved ? 'end' : false,
                     content: textarea.value || '',
                     ...(isMarkdown ? { contentType: 'markdown' } : {}),
                     extensions,
@@ -813,9 +822,16 @@ export function registerWysiwyg(Alpine) {
                 this.$el.addEventListener('autosave:value-replaced', replaceContent);
 
                 this.ready = true;
+
+                // After the editor shows. A hidden editor has no height, so the scroll box cannot scroll.
+                if (position) {
+                    this.$nextTick(() => position.attach(editor));
+                }
             },
 
             destroy() {
+                // Before the editor goes, so the last cursor is saved.
+                position?.destroy();
                 this.$el.removeEventListener('autosave:value-replaced', replaceContent);
                 form?.removeEventListener('submit', syncOnSubmit);
                 editor?.destroy();

@@ -20,6 +20,20 @@ export function isGuardedSaveSubmit(event) {
     return !!submitter && submitter.closest?.('[data-guard-save]') !== null;
 }
 
+/**
+ * Wait for every autosave, then return true when nothing is left unsaved.
+ * A conflict or a network error leaves a field dirty, so the caller asks the writer.
+ */
+export async function settleAutosaves(store) {
+    try {
+        await store.flushAll();
+    } catch {
+        return false;
+    }
+
+    return !store.isDirty();
+}
+
 export function registerNavigationGuard(Alpine) {
     // Do not warn during a form submission that saves the data.
     let savingViaForm = false;
@@ -44,13 +58,23 @@ export function registerNavigationGuard(Alpine) {
                 return;
             }
 
-            if (!Alpine.store('autosave')?.isDirty()) {
+            const store = Alpine.store('autosave');
+
+            if (!store?.isDirty()) {
                 return;
             }
 
             event.preventDefault();
             this.pendingHref = anchor.href;
-            this.$dispatch('open-modal', 'unsaved-changes-guard');
+
+            // Typing right before a click is normal. Save first; ask only when the save fails.
+            return settleAutosaves(store).then((clean) => {
+                if (clean) {
+                    window.location.href = this.pendingHref;
+                } else {
+                    this.$dispatch('open-modal', 'unsaved-changes-guard');
+                }
+            });
         },
 
         confirmLeave() {

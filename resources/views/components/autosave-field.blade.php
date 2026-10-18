@@ -6,6 +6,9 @@
     'rows' => 4,
     'form' => null,
     'quickCodexEntry' => false,
+    'stickyToolbar' => false,
+    'autofocus' => false,
+    'positionKey' => null,
 ])
 
 @php
@@ -93,6 +96,9 @@
                 :markdown="$kind === FieldKind::Markdown"
                 :form="$form"
                 :quick-codex-entry="$quickCodexEntry"
+                :sticky-toolbar="$stickyToolbar"
+                :autofocus="$autofocus"
+                :position-key="$positionKey"
                 :project="$model->revisionProject()"
             />
         @endif

@@ -716,4 +716,81 @@ class NavigationTest extends TestCase
 
         $this->assertSame(1, $pickerQueries);
     }
+
+    /**
+     * The hrefs of the links in one menu, in page order.
+     *
+     * @return list<string>
+     */
+    private function menuHrefs(string $html, string $menuId): array
+    {
+        $menu = HTMLDocument::createFromString($html, LIBXML_NOERROR)->getElementById($menuId);
+        $hrefs = [];
+
+        foreach ($menu?->querySelectorAll('a') ?? [] as $link) {
+            $hrefs[] = $link->getAttribute('href');
+        }
+
+        return $hrefs;
+    }
+
+    public function test_write_follows_dashboard_in_both_menus(): void
+    {
+        $user = User::factory()->create();
+        [$project] = $this->projectWithBook($user);
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.show', $project))
+            ->assertOk()
+            ->getContent();
+
+        foreach (['section-links', 'mobile-navigation'] as $menuId) {
+            $hrefs = $this->menuHrefs($html, $menuId);
+            $dashboard = array_search(route('projects.show', $project), $hrefs, true);
+
+            $this->assertNotFalse($dashboard, "Dashboard in #$menuId");
+            $this->assertSame(route('projects.write', $project), $hrefs[$dashboard + 1] ?? null, "Write after Dashboard in #$menuId");
+        }
+
+        $this->assertLinkIsNotCurrent($html, route('projects.write', $project));
+    }
+
+    public function test_write_is_current_on_both_write_routes_and_dashboard_and_story_are_not(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $project = $chapter->act->book->project;
+        $scene = Scene::factory()->for($chapter)->create();
+        // A project without scenes stays on the empty Write page.
+        $emptyProject = Project::factory()->for($user)->create();
+
+        $pages = [
+            [route('scenes.write', $scene), $project],
+            [route('projects.write', $emptyProject), $emptyProject],
+        ];
+
+        foreach ($pages as [$url, $routeProject]) {
+            $html = $this->actingAs($user)->get($url)->assertOk()->getContent();
+            $writeHref = route('projects.write', $routeProject);
+
+            $this->assertLinkIsCurrent($html, $writeHref, "Write current on $url");
+            $this->assertMatchesRegularExpression(
+                '/<a(?=[^>]*href="'.preg_quote(e($writeHref), '/').'")(?=[^>]*border-accent text-start)[^>]*>/',
+                $html,
+                "Write highlighted in the responsive menu on $url",
+            );
+            // Dashboard marks its active state only with the accent underline.
+            $this->assertDoesNotMatchRegularExpression(
+                '/<a(?=[^>]*href="'.preg_quote(e(route('projects.show', $routeProject)), '/').'")(?=[^>]*border-accent)[^>]*>/',
+                $html,
+                "Dashboard not active on $url",
+            );
+        }
+
+        // The scene page is a scenes.* route, but the Write link owns it.
+        $this->assertTriggerIsNotActive(
+            $this->actingAs($user)->get(route('scenes.write', $scene))->getContent(),
+            'Story',
+        );
+    }
 }

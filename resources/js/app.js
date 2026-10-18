@@ -19,6 +19,10 @@ import { registerQuickCodexEntry } from './quick-codex-entry';
 import { registerAppearanceSwitcher } from './appearance-switcher';
 import { registerLinkPicker } from './notes/linkPicker';
 import { registerImportStatus } from './import-status';
+import { registerEditorToday } from './editor/today';
+import { registerEditorSceneSearch } from './editor/search';
+import { registerEditorCards } from './editor/cards';
+import { registerEditorLayout } from './editor/layout';
 
 window.Alpine = Alpine;
 
@@ -39,6 +43,10 @@ registerQuickCodexEntry(Alpine);
 registerAppearanceSwitcher(Alpine);
 registerLinkPicker(Alpine);
 registerImportStatus(Alpine);
+registerEditorToday(Alpine);
+registerEditorSceneSearch(Alpine);
+registerEditorCards(Alpine);
+registerEditorLayout(Alpine);
 
 Alpine.start();
 

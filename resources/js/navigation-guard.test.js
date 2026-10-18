@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isGuardedSaveSubmit, shouldIntercept } from './navigation-guard';
+import { isGuardedSaveSubmit, settleAutosaves, shouldIntercept } from './navigation-guard';
 
 function makeAnchor(overrides = {}) {
     return {
@@ -89,5 +89,28 @@ describe('isGuardedSaveSubmit', () => {
 
     it('does not suppress once a JS handler has preventDefault()ed the submit', () => {
         expect(isGuardedSaveSubmit(makeEvent({ defaultPrevented: true, submitter: makeSaveSubmitter() }))).toBe(false);
+    });
+});
+
+function makeStore({ flush = () => Promise.resolve(), dirtyAfter = false } = {}) {
+    let dirty = true;
+
+    return {
+        flushAll: () => flush().then(() => { dirty = dirtyAfter; }),
+        isDirty: () => dirty,
+    };
+}
+
+describe('settleAutosaves', () => {
+    it('is clean once every pending save lands', async () => {
+        await expect(settleAutosaves(makeStore())).resolves.toBe(true);
+    });
+
+    it('is not clean when a field stays dirty (a conflict)', async () => {
+        await expect(settleAutosaves(makeStore({ dirtyAfter: true }))).resolves.toBe(false);
+    });
+
+    it('is not clean when a save throws (a network error)', async () => {
+        await expect(settleAutosaves(makeStore({ flush: () => Promise.reject(new Error('offline')) }))).resolves.toBe(false);
     });
 });

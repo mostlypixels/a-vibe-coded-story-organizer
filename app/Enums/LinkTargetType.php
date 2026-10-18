@@ -156,7 +156,7 @@ enum LinkTargetType: string
         $column = $this->labelColumn();
 
         return $this->queryFor($project)
-            ->when(filled($search), fn (Builder $query) => LikeSearch::whereContains($query, $column, (string) $search))
+            ->when(filled($search), fn (Builder $query) => $this->whereMatches($query, $column, (string) $search))
             ->orderBy($column)
             ->limit($limit)
             ->get()
@@ -170,6 +170,26 @@ enum LinkTargetType: string
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * The label column matches. A codex entry also matches through its aliases,
+     * and the project scope stays outside the `or` group.
+     *
+     * @param  Builder<covariant Model>  $query
+     */
+    private function whereMatches(Builder $query, string $column, string $search): void
+    {
+        if ($this !== self::Codex) {
+            LikeSearch::whereContains($query, $column, $search);
+
+            return;
+        }
+
+        $query->where(function (Builder $group) use ($column, $search): void {
+            LikeSearch::whereContains($group, 'codex_entries.'.$column, $search);
+            $group->orWhereHas('aliases', fn (Builder $aliases) => LikeSearch::whereContains($aliases, 'codex_aliases.alias', $search));
+        });
     }
 
     /** The project that owns a target row. */

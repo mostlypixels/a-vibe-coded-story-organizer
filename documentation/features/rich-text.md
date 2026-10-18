@@ -118,6 +118,8 @@ longer tell an author's strike from a deleted word.
 - Underline, subscript, and superscript use raw inline HTML in Markdown.
 - Callouts serialize as GitHub-style blockquotes.
 - Link and image URLs accept HTTP(S) only. The URL dialog also accepts a valid `entity:` link.
+- `sticky-toolbar` (default `false`) keeps the toolbar at the top of the nearest scroll box. Only the [Write page](editor.md) sets it.
+- `autofocus` and `position-key` are opt-in too. `position-key` is a `localStorage` key that keeps scroll and cursor. The scroll box carries `data-position-scroll`.
 
 ### Link to…
 
@@ -130,6 +132,7 @@ The toolbar button and the slash item **Link to…** open a dialog that searches
 - `resources/js/candidate-search.js` holds the search, debounce and response order. The note-link picker (`resources/js/notes/linkPicker.js`) uses it too.
 - In the editor, an `entity:` link has its own style (`.tiptap a[href^='entity:']`). A click does not open it.
 - No dead-link check in the editor. Read views show a missing target as `.entity-link-missing`.
+- A codex entry matches by name and by alias (`LinkTargetType::candidates()`). The result label stays the entry name. Every picker gets this.
 
 > [!WARNING]
 > The dialog state is reactive Alpine data, but the Tiptap `Editor` stays in the closure of `registerWysiwyg`. An Alpine proxy around the editor breaks ProseMirror state.

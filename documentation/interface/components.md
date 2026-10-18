@@ -105,6 +105,15 @@ The modal panel has `role="dialog"` and `aria-modal="true"`. A screen reader rea
 
 See [Rich text](../features/rich-text.md) for security and serialization rules.
 
+## Write page
+
+| Component | Purpose |
+| --- | --- |
+| `x-editor-panel` | One side panel: header, collapse button, resize handle. A collapsed panel is a 40 px rail. Below `lg` an open panel is a drawer. Needs the Alpine `editorLayout` scope. |
+| `x-editor-card` | One read-only codex or note card. Keep its `data-card-*` hooks: `editorCards` copies the markup for new cards. |
+
+See [Write page](../features/editor.md).
+
 ## Related documentation
 
 - [Themes](themes.md)

@@ -70,8 +70,11 @@ class RecentlyEdited
             ));
     }
 
-    /** @return Collection<int, RecentItem> */
-    public function scenes(Project|Book $scope, int $limit = RecentItem::LIMIT): Collection
+    /**
+     * @param  string  $route  Named route that each row links to. The Write page passes `scenes.write`.
+     * @return Collection<int, RecentItem>
+     */
+    public function scenes(Project|Book $scope, int $limit = RecentItem::LIMIT, string $route = 'scenes.edit'): Collection
     {
         // The project dashboard mixes scenes from every book, so it names the
         // book too. A book-scoped list already sits in one book, so it leaves
@@ -92,7 +95,7 @@ class RecentlyEdited
         // Book numbers are gap-free too: a deleted book leaves a gap in `position`.
         $bookIds = $withBook ? $scope->books()->pluck('id') : collect();
 
-        return $scenes->map(function (Scene $scene) use ($withBook, $bookIds, &$numbering) {
+        return $scenes->map(function (Scene $scene) use ($withBook, $bookIds, $route, &$numbering) {
             $chapter = $scene->chapter;
             $book = $chapter->book();
             $numbers = $numbering[$book->id] ??= StoryNumbering::forBook($book);
@@ -108,7 +111,7 @@ class RecentlyEdited
 
             return new RecentItem(
                 label: $scene->name,
-                url: route('scenes.edit', $scene),
+                url: route($route, $scene),
                 updatedAt: $scene->updated_at,
                 contextSegments: $segments,
             );

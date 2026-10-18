@@ -102,6 +102,7 @@ class Breadcrumbs implements Countable, IteratorAggregate
         }
 
         $section = match (true) {
+            $navigation->writeActive => $this->writeTrail($navigation, $request),
             $navigation->searchActive => [new Crumb(__('Search'), current: true)],
             $navigation->storyActive => $this->storyTrail($navigation->routeBook, $request),
             $navigation->timelineActive => $this->timelineTrail($project, $request),
@@ -180,6 +181,26 @@ class Breadcrumbs implements Countable, IteratorAggregate
         return [...$bookCrumb, $section, ...$this->entityTrail(
             $book, $request, __('Scenes'), 'books.scenes.index', 'books.scenes.create', 'scenes.edit', 'scenes.show', 'scene', __('scene')
         )];
+    }
+
+    /**
+     * The empty Write page ends at "Write". A scene page adds its book and its name.
+     *
+     * @return list<Crumb>
+     */
+    private function writeTrail(ProjectNavigation $navigation, Request $request): array
+    {
+        $scene = $request->route('scene');
+
+        if ($scene === null) {
+            return [new Crumb(__('Write'), current: true)];
+        }
+
+        return [
+            ...$this->bookCrumb($navigation->routeBook, current: false),
+            new Crumb(__('Write'), route('projects.write', $navigation->routeProject)),
+            new Crumb($scene->name, current: true),
+        ];
     }
 
     /**

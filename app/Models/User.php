@@ -35,6 +35,7 @@ class User extends Authenticatable
         'ui_leading',
         'page_size',
         'page_width',
+        'editor_layout',
     ];
 
     /**
@@ -58,6 +59,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'page_width' => 'integer',
+            'editor_layout' => 'array',
         ];
     }
 

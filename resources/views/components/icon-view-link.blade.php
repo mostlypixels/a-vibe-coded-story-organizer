@@ -1,3 +1,3 @@
-@props(['href'])
+@props(['href', 'label' => null])
 
-<x-icon-button as="a" icon="eye" :label="__('View')" href="{{ $href }}" {{ $attributes }} />
+<x-icon-button as="a" icon="eye" :label="$label ?? __('View')" href="{{ $href }}" {{ $attributes }} />

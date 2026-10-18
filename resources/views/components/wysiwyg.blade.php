@@ -10,6 +10,11 @@
     'quickCodexEntry' => false,
     // The project to search for "Link to…". Without it, the editor offers web links only.
     'project' => null,
+    // Keeps the toolbar in view inside the nearest scroll box. Only the Write page asks for it.
+    'stickyToolbar' => false,
+    'autofocus' => false,
+    // The localStorage key that keeps the scroll position and the cursor. The scroll box has `data-position-scroll`.
+    'positionKey' => null,
 ])
 
 @php
@@ -32,6 +37,8 @@
         minHeight: @js($resolvedMinHeight),
         strings: @js(\App\Support\ScriptTranslations::wysiwyg()),
         quickCodexEntry: {{ $quickCodexEntry ? 'true' : 'false' }},
+        autofocus: {{ $autofocus ? 'true' : 'false' }},
+        positionKey: @js($positionKey),
         urlDialog: @js($urlDialog),
         linkTargetsUrl: @js($linkTargetsUrl),
         linkTargetDialog: @js($linkTargetDialog),
@@ -55,7 +62,11 @@
     <div x-show="ready" style="display: none;">
         <div class="rounded-md border border-border-strong shadow-xs focus-within:border-focus focus-within:ring-1 focus-within:ring-focus">
             @unless ($disabled)
-                <div class="flex flex-wrap items-center gap-0.5 rounded-t-md border-b border-border bg-surface-sunken px-2 py-1" role="toolbar" aria-label="{{ __('Formatting') }}">
+                {{-- A sticky toolbar uses -top-px: at a fractional scroll offset, top-0 can leave a one-pixel line of text above it. --}}
+                <div @class([
+                    'flex flex-wrap items-center gap-0.5 rounded-t-md border-b border-border bg-surface-sunken px-2 py-1',
+                    'sticky -top-px z-10' => $stickyToolbar,
+                ]) role="toolbar" aria-label="{{ __('Formatting') }}">
                     <x-wysiwyg.toolbar-dropdown
                         :items="$toolbar->styles()"
                         trigger-icon="pilcrow"

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\LinkTargetType;
 use App\Models\Act;
 use App\Models\Chapter;
+use App\Models\CodexAlias;
 use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Note;
@@ -90,6 +91,45 @@ class LinkTargetControllerTest extends TestCase
             ->getJson(route('projects.link-targets', ['project' => $this->project, 'type' => $type->value]))
             ->assertOk()
             ->assertJsonFragment(['label' => 'Raymondin']);
+    }
+
+    public function test_a_codex_alias_matches_the_entry_once_under_its_name(): void
+    {
+        $entry = CodexEntry::factory()->for($this->project)->create(['name' => 'Melusine']);
+        CodexAlias::factory()->for($entry, 'entry')->create(['alias' => 'The Serpent Queen']);
+        CodexAlias::factory()->for($entry, 'entry')->create(['alias' => 'Serpent of Lusignan']);
+        CodexEntry::factory()->for($this->project)->create(['name' => 'Raymondin']);
+
+        $this->actingAs($this->owner)
+            ->getJson(route('projects.link-targets', ['project' => $this->project, 'type' => 'codex', 'q' => 'Serpent']))
+            ->assertOk()
+            ->assertExactJson([['type' => 'codex', 'id' => $entry->id, 'label' => 'Melusine']]);
+    }
+
+    public function test_a_codex_alias_of_another_project_does_not_match(): void
+    {
+        $foreign = CodexEntry::factory()->for(Project::factory()->for($this->other)->create())->create(['name' => 'Foreign']);
+        CodexAlias::factory()->for($foreign, 'entry')->create(['alias' => 'Serpent']);
+
+        $this->actingAs($this->owner)
+            ->getJson(route('projects.link-targets', ['project' => $this->project, 'type' => 'codex', 'q' => 'Serpent']))
+            ->assertOk()
+            ->assertExactJson([]);
+    }
+
+    public function test_a_codex_name_or_alias_match_keeps_the_limit_and_order(): void
+    {
+        $b = CodexEntry::factory()->for($this->project)->create(['name' => 'Bravo']);
+        CodexAlias::factory()->for($b, 'entry')->create(['alias' => 'zeta']);
+        CodexEntry::factory()->for($this->project)->create(['name' => 'Zeta Prime']);
+        CodexEntry::factory()->for($this->project)->count(LinkTargetType::CANDIDATE_LIMIT + 3)->create(['name' => 'Zeta Twin']);
+
+        $response = $this->actingAs($this->owner)
+            ->getJson(route('projects.link-targets', ['project' => $this->project, 'type' => 'codex', 'q' => 'zeta']))
+            ->assertOk()
+            ->assertJsonCount(LinkTargetType::CANDIDATE_LIMIT);
+
+        $this->assertSame('Bravo', $response->json('0.label'));
     }
 
     public function test_the_list_is_limited(): void

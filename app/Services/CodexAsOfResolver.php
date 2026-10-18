@@ -8,6 +8,7 @@ use App\Models\CodexEntry;
 use App\Models\Event;
 use App\Models\Project;
 use App\Support\Age;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
@@ -71,19 +72,84 @@ class CodexAsOfResolver
 
         return $entries
             ->filter(fn (CodexEntry $entry) => $entry->type === $type)
-            ->map(fn (CodexEntry $entry) => [
-                'entry' => $entry,
-                'attributes' => $applicable
-                    ->map(fn (CodexAttribute $attribute) => [
-                        'name' => $attribute->name,
-                        'value' => $entry->attributeValueAt($attribute, $moment),
-                    ])
-                    ->filter(fn (array $attribute) => filled($attribute['value']))
-                    ->values(),
-                'age' => $entry->ageAt($moment),
-            ])
+            ->map(fn (CodexEntry $entry) => $this->rowFor($entry, $applicable, $moment))
             // An entry with nothing to show — no attributes and no age — is dropped.
             ->filter(fn (array $row) => $row['attributes']->isNotEmpty() || $row['age'] !== null)
             ->values();
+    }
+
+    /**
+     * Resolve one entry for a single card: its attributes and age as of $moment.
+     *
+     * Unlike resolve(), the entry is never dropped. An entry that does not exist at $moment
+     * comes back with `present` false, no attributes and no age, so the caller can say so.
+     *
+     * @return array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: string}>, age: ?Age, present: bool}
+     */
+    public function resolveEntry(CodexEntry $entry, ?Event $moment): array
+    {
+        return $this->resolveEntries($entry->project, collect([$entry]), $moment)->first();
+    }
+
+    /**
+     * Resolve several entries of one project like resolveEntry(), in the given order.
+     * The project's attributes load once, so the Write page makes no query per card.
+     *
+     * @param  Collection<int, CodexEntry>  $entries
+     * @return Collection<int, array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: string}>, age: ?Age, present: bool}>
+     */
+    public function resolveEntries(Project $project, Collection $entries, ?Event $moment): Collection
+    {
+        if ($entries->isEmpty()) {
+            return collect();
+        }
+
+        (new EloquentCollection($entries->all()))->loadMissing(['attributeValues.startEvent', 'inceptionEvent', 'terminationEvent']);
+
+        $attributes = $project->codexAttributes()->orderBy('position')->get();
+
+        return $entries
+            ->map(fn (CodexEntry $entry) => $this->cardRowFor($entry, $attributes, $moment))
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, CodexAttribute>  $attributes  All attributes of the project.
+     * @return array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: string}>, age: ?Age, present: bool}
+     */
+    private function cardRowFor(CodexEntry $entry, Collection $attributes, ?Event $moment): array
+    {
+        $present = $entry->existsAt($moment);
+        $applicable = $attributes
+            ->filter(fn (CodexAttribute $attribute) => $attribute->appliesTo($entry->type))
+            ->values();
+
+        return [
+            ...($present
+                ? $this->rowFor($entry, $applicable, $moment)
+                : ['entry' => $entry, 'attributes' => collect(), 'age' => null]),
+            'present' => $present,
+        ];
+    }
+
+    /**
+     * The attribute rows and age of one entry, given the attributes that apply to its type.
+     *
+     * @param  Collection<int, CodexAttribute>  $applicable
+     * @return array{entry: CodexEntry, attributes: Collection<int, array{name: string, value: string}>, age: ?Age}
+     */
+    private function rowFor(CodexEntry $entry, Collection $applicable, ?Event $moment): array
+    {
+        return [
+            'entry' => $entry,
+            'attributes' => $applicable
+                ->map(fn (CodexAttribute $attribute) => [
+                    'name' => $attribute->name,
+                    'value' => $entry->attributeValueAt($attribute, $moment),
+                ])
+                ->filter(fn (array $attribute) => filled($attribute['value']))
+                ->values(),
+            'age' => $entry->ageAt($moment),
+        ];
     }
 }
