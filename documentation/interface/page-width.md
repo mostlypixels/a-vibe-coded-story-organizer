@@ -12,6 +12,7 @@ Page width sets how much of the window the page content fills. It is a share of 
 - The step is an integer in the `users.page_width` column. `null` follows the default.
 - One control sets the width. The manuscript follows the page.
 - Navigation, breadcrumbs, guest, error and share pages ignore the setting.
+- On the Write page, the step is a share of the prose column between the side panels, not of the window. The panels already take their own width.
 
 ## Validation and resolution
 

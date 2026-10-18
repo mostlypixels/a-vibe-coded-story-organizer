@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-18 — Write page follows width and spacing settings (#340)
+
+### Changed
+
+- The Write page prose follows the page width setting, as a share of the space between the side panels.
+- The Write page editor has more room inside its frame, and the room grows with the manuscript spacing setting.
+
 ## 2026-10-18 — Write page (#339)
 
 ### Added

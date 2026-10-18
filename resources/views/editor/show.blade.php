@@ -37,7 +37,7 @@
 
         {{-- The scroll box of the prose. The sticky toolbar sticks to its top. --}}
         <section class="min-h-0 overflow-y-auto" aria-labelledby="editor-scene-title" data-editor-centre data-position-scroll>
-            <div class="mx-auto max-w-prose px-4 py-6">
+            <div class="mx-auto md:max-w-(--page-width) px-4 py-6">
                 <header class="mb-4 space-y-3">
                     @include('editor.partials.scene-pager')
 

@@ -398,6 +398,11 @@
     outline: none;
 }
 
+/* On the Write page, roomier manuscript spacing also gives the text more room inside the frame. */
+[data-editor-centre] .tiptap {
+    padding: calc(var(--manuscript-leading) * 0.5em) calc(var(--manuscript-leading) * 1em);
+}
+
 .tiptap p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;
