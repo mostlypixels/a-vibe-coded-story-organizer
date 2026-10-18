@@ -79,26 +79,31 @@ class FontConfigTest extends TestCase
     }
 
     /**
-     * `font-manuscript` reaches the two prose surfaces (rendered rich HTML and the
-     * WYSIWYG editable area) but not the toolbar, which stays chrome. CSS-in-JS
-     * (the Tiptap `editorProps.class` string) has no HTTP-rendered markup to
-     * assert on, so this is a source grep, the same shape as the `@font-face`
-     * drift check above.
+     * The manuscript settings apply only where the writer types: the Tiptap area and
+     * the textareas. Shown text, such as `x-rich-text` and every other `.prose`, uses the
+     * interface settings. The Tiptap class string is in JS, so this test reads the sources.
      */
-    public function test_prose_surfaces_carry_the_manuscript_face_and_the_toolbar_does_not(): void
+    public function test_only_writing_areas_carry_the_manuscript_style(): void
     {
-        $richText = file_get_contents(base_path('resources/views/components/rich-text.blade.php'));
-        $this->assertStringContainsString('font-manuscript', $richText);
-
         $wysiwygJs = file_get_contents(base_path('resources/js/wysiwyg.js'));
         $this->assertMatchesRegularExpression(
-            "/class:\s*'prose[^']*font-manuscript[^']*'/",
+            "/class:\s*'prose[^']*\bmanuscript\b[^']*'/",
             $wysiwygJs,
-            'The Tiptap editable-area class list must carry font-manuscript.',
+            'The Tiptap editable-area class list must carry manuscript.',
         );
 
         $wysiwygBlade = file_get_contents(base_path('resources/views/components/wysiwyg.blade.php'));
-        $this->assertStringNotContainsString('font-manuscript', $wysiwygBlade);
+        $this->assertStringContainsString("'class' => 'manuscript ", $wysiwygBlade);
+
+        $autosaveBlade = file_get_contents(base_path('resources/views/components/autosave-field.blade.php'));
+        $this->assertStringContainsString('class="manuscript ', $autosaveBlade);
+
+        $richText = file_get_contents(base_path('resources/views/components/rich-text.blade.php'));
+        $this->assertStringNotContainsString('manuscript', $richText);
+
+        $css = file_get_contents(base_path('resources/css/app.css'));
+        $this->assertSame(1, preg_match('/^\.prose \{(.*?)^\}/ms', $css, $prose));
+        $this->assertStringNotContainsString('manuscript', $prose[1], 'Plain .prose must not use the manuscript settings.');
     }
 
     /**

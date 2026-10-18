@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-18 — Manuscript style only where you write
+
+### Fixed
+
+- The manuscript font, size and line spacing apply only where you write, not to text the app shows.
+
 ## 2026-10-18 — Write page follows width and spacing settings (#340)
 
 ### Changed

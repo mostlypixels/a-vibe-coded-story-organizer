@@ -792,7 +792,7 @@ export function registerWysiwyg(Alpine) {
                     editorProps: {
                         attributes: {
                             ...accessibleNameAttributes(textarea),
-                            class:'prose prose-sm font-manuscript max-w-none focus:outline-hidden px-3 py-2',
+                            class:'prose prose-sm manuscript max-w-none focus:outline-hidden px-3 py-2',
                             style: config.minHeight ? `min-height: ${config.minHeight}` : '',
                         },
                     },

@@ -26,6 +26,13 @@ Requests validate slugs with `Rule::in(array_keys(...))`. `App\Support\FontChoic
 
 `App\Services\FontStyleBlock` writes the resolved values into the same style block as theme tokens.
 
+## Where the manuscript settings apply
+
+The `.manuscript` class sets the manuscript font, size and line spacing. Only writing areas use it: the Tiptap editor and the textareas of `x-wysiwyg` and `x-autosave-field`.
+
+- Shown text, such as `x-rich-text` and `x-scene-prose`, uses the interface settings.
+- `.prose` sets only colors. Do not add manuscript tokens to it: `.prose` is on many read-only views.
+
 ## Scale and line spacing
 
 - Interface scale changes the root font size.

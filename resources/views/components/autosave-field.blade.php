@@ -85,7 +85,7 @@
                 name="{{ $field }}"
                 rows="{{ $rows }}"
                 form="{{ $form }}"
-                class="mt-1 block w-full"
+                class="manuscript mt-1 block w-full"
             >{{ $shownValue }}</x-textarea>
         @else
             <x-wysiwyg
