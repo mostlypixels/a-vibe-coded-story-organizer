@@ -166,7 +166,8 @@ export function registerAutosaveField(Alpine) {
             const counter = this.$root.querySelector('[data-word-count]');
 
             if (counter && typeof wordCount === 'number') {
-                counter.dispatchEvent(new CustomEvent('word-count:reconcile', { detail: { wordCount } }));
+                // It bubbles, so the "Today" figure of the Write page can follow the count.
+                counter.dispatchEvent(new CustomEvent('word-count:reconcile', { detail: { wordCount }, bubbles: true }));
             }
         },
 

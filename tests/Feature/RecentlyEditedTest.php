@@ -15,6 +15,7 @@ use App\Models\Plotline;
 use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
+use App\Services\RecentlyEdited;
 use App\Support\RecentItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -60,6 +61,18 @@ class RecentlyEditedTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeInOrder(['Newer scene', 'Older scene']);
+    }
+
+    public function test_scene_rows_link_to_the_edit_page_unless_a_route_is_named(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+        $scene = Scene::factory()->for($chapter)->create();
+        $project = $chapter->act->book->project;
+        $service = app(RecentlyEdited::class);
+
+        $this->assertSame(route('scenes.edit', $scene), $service->scenes($project)->first()->url);
+        $this->assertSame(route('scenes.write', $scene), $service->scenes($project, 15, 'scenes.write')->first()->url);
     }
 
     public function test_the_story_home_shows_each_scenes_act_and_chapter_as_context(): void

@@ -17,6 +17,21 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-18 — Write page (#339)
+
+### Added
+
+- A "Write" page: the scene prose full height, with recent scenes and scene search on the left.
+- Codex and note cards on the right. Cards are saved per scene, and the scene's linked notes show as collapsed cards.
+- Previous and next scene links, and today's word progress, in the Write page header.
+- Panels resize, collapse and fold into drawers on small screens. The layout is saved on your account.
+- The Write page remembers the scroll position and cursor of each scene in this browser.
+
+### Changed
+
+- Codex search finds entries by alias as well as by name.
+- A click on an in-app link right after typing waits for the save, then follows the link. The "Unsaved changes" dialog shows only when the save fails.
+
 ## 2026-10-17 — Quieter "No event" marker (#338)
 
 ### Changed

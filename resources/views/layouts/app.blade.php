@@ -16,7 +16,12 @@
     {{-- The default text color prevents unreadable browser-black text in dark themes. --}}
     <body class="font-sans text-content antialiased">
         <x-skip-link />
-        <div class="min-h-screen bg-surface">
+        {{-- A full-height page caps the open phone menu, so the menu cannot push the page out of the window. --}}
+        <div @class([
+            'bg-surface',
+            'min-h-screen' => ! $fullHeight,
+            'flex h-dvh flex-col overflow-hidden [&_#mobile-navigation]:max-h-[60dvh] [&_#mobile-navigation]:overflow-y-auto' => $fullHeight,
+        ])>
             @include('layouts.navigation')
 
             @if (! $breadcrumbs->isEmpty())
@@ -36,26 +41,27 @@
                 </header>
             @endif
 
-            <main id="main-content" tabindex="-1" class="focus:outline-hidden">
-                <div class="py-12">
-                    <div class="md:max-w-(--page-width) mx-auto px-4 sm:px-6 lg:px-8">
-                        @if (session('status') === 'reverted-save')
-                            <x-alert variant="success" dismissible class="mb-6">
-                                {{ __('Save undone.') }}
-                                @if (session('restored_fields'))
-                                    {{ __('Restored: :fields.', ['fields' => implode(', ', session('restored_fields'))]) }}
-                                @endif
-                            </x-alert>
-                        @endif
+            @if ($fullHeight)
+                <main id="main-content" tabindex="-1" class="flex min-h-0 flex-1 flex-col focus:outline-hidden">
+                    <div class="shrink-0 px-4 [&>*]:mt-2 [&>*]:mb-0">
+                        @include('layouts.partials.flash')
+                    </div>
 
-                        @if (session(\App\Support\Flash::SUCCESS))
-                            <x-alert variant="success" dismissible class="mb-6">{{ session(\App\Support\Flash::SUCCESS) }}</x-alert>
-                        @endif
-
+                    <div class="min-h-0 flex-1">
                         {{ $slot }}
                     </div>
-                </div>
-            </main>
+                </main>
+            @else
+                <main id="main-content" tabindex="-1" class="focus:outline-hidden">
+                    <div class="py-12">
+                        <div class="md:max-w-(--page-width) mx-auto px-4 sm:px-6 lg:px-8">
+                            @include('layouts.partials.flash')
+
+                            {{ $slot }}
+                        </div>
+                    </div>
+                </main>
+            @endif
         </div>
 
         <x-autosave-status-badge />

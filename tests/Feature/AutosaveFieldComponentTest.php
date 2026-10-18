@@ -48,6 +48,30 @@ class AutosaveFieldComponentTest extends TestCase
         $this->assertStringContainsString('name="description"', $html);
     }
 
+    public function test_the_wysiwyg_toolbar_is_not_sticky_by_default(): void
+    {
+        $html = Blade::render('<x-wysiwyg name="notes" />');
+
+        $this->assertStringContainsString('role="toolbar"', $html);
+        $this->assertStringNotContainsString('sticky -top-px', $html);
+        $this->assertStringContainsString('autofocus: false', $html);
+    }
+
+    public function test_the_sticky_toolbar_and_autofocus_pass_through_the_autosave_field(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $act = Act::factory()->for($book)->create();
+
+        $html = Blade::render(
+            '<x-autosave-field entity="act" :model="$act" field="description" :sticky-toolbar="true" :autofocus="true" />',
+            ['act' => $act],
+        );
+
+        $this->assertMatchesRegularExpression('/class="[^"]*sticky -top-px[^"]*"\s+role="toolbar"/', $html);
+        $this->assertStringContainsString('autofocus: true', $html);
+    }
+
     public function test_the_status_text_uses_translated_words_not_the_state_key(): void
     {
         $user = User::factory()->create();

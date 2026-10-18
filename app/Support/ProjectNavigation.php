@@ -43,6 +43,9 @@ class ProjectNavigation
 
     public readonly bool $homeActive;
 
+    /** The Write page, on its project entry or on a scene. */
+    public readonly bool $writeActive;
+
     /** Each true only on its section's stub landing (projects.<section>.home). */
     public readonly bool $storyHomeActive;
 
@@ -124,6 +127,7 @@ class ProjectNavigation
         $this->book = $this->routeBook ?? $this->project->lastBook ?? $this->project?->books()->first();
 
         $this->homeActive = $request->routeIs('projects.show');
+        $this->writeActive = $request->routeIs('projects.write', 'scenes.write');
 
         $this->storyHomeActive = $request->routeIs('books.story.home');
         $this->timelineHomeActive = $request->routeIs('projects.timeline.home');
@@ -134,7 +138,8 @@ class ProjectNavigation
         $this->storyOverviewActive = $request->routeIs('books.story.overview');
         $this->actsActive = $request->routeIs('books.acts.*', 'acts.*');
         $this->chaptersActive = $request->routeIs('books.chapters.*', 'chapters.*');
-        $this->scenesActive = $request->routeIs('books.scenes.*', 'scenes.*');
+        // The Write page has its own nav link, so it does not light Story.
+        $this->scenesActive = $request->routeIs('books.scenes.*', 'scenes.*') && ! $this->writeActive;
         $this->storyActive = $request->routeIs('books.story.*')
             || $this->actsActive
             || $this->chaptersActive

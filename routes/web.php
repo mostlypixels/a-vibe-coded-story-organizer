@@ -17,6 +17,10 @@ use App\Http\Controllers\CodexEntryAttributeController;
 use App\Http\Controllers\CodexEntryController;
 use App\Http\Controllers\DatabaseConfigurationController;
 use App\Http\Controllers\DataTransferController;
+use App\Http\Controllers\EditorCardContentController;
+use App\Http\Controllers\EditorCardController;
+use App\Http\Controllers\EditorController;
+use App\Http\Controllers\EditorLayoutController;
 use App\Http\Controllers\EpubExportController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExportController;
@@ -96,6 +100,9 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::patch('/preferences/page-size', [PageSizeController::class, 'update'])
         ->name('preferences.page-size.update');
 
+    Route::patch('/preferences/editor-layout', [EditorLayoutController::class, 'update'])
+        ->name('preferences.editor-layout');
+
     // Global settings use one gate because they do not belong to a project.
     Route::middleware('can:access-admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/', fn () => redirect()->route('admin.settings.edit'))->name('index');
@@ -142,6 +149,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
 
     Route::resource('projects', ProjectController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+    Route::get('/projects/{project}/write', [EditorController::class, 'home'])->name('projects.write');
     Route::post('/projects/{project}/codex-references/sync', [ProjectController::class, 'syncCodexReferences'])
         ->name('projects.codex-references.sync');
     Route::delete('/projects/{project}/import-note', [ProjectController::class, 'dismissImportNote'])
@@ -159,6 +167,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->name('notes.candidates');
     Route::get('/projects/{project}/link-targets', [LinkTargetController::class, 'index'])
         ->name('projects.link-targets');
+    Route::get('/notes/{note}/card', [EditorCardContentController::class, 'note'])->name('notes.card');
     Route::get('/notes/{note}/link-candidates', [NoteLinkController::class, 'candidates'])
         ->name('notes.link-candidates');
     Route::post('/notes/{note}/links', [NoteLinkController::class, 'store'])->name('notes.links.store');
@@ -231,6 +240,8 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::patch('/scenes/{scene}/move-down', [SceneController::class, 'moveDown'])->name('scenes.move-down');
     Route::post('/scenes/{scene}/duplicate', [SceneController::class, 'duplicate'])->name('scenes.duplicate');
     Route::post('/scenes/{scene}/codex-entries', [SceneCodexEntryController::class, 'store'])->name('scenes.codex-entries.store');
+    Route::get('/scenes/{scene}/write', [EditorController::class, 'show'])->name('scenes.write');
+    Route::put('/scenes/{scene}/editor-cards', [EditorCardController::class, 'update'])->name('scenes.editor-cards.update');
     Route::get('/scenes/{scene}/codex-references', [SceneController::class, 'codexReferences'])
         ->name('scenes.codex-references.index');
 
@@ -254,6 +265,7 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     });
     Route::get('/codex/{codexEntry}/edit', [CodexEntryController::class, 'edit'])->name('codex.edit');
     Route::get('/codex/{codexEntry}', [CodexEntryController::class, 'show'])->name('codex.show');
+    Route::get('/codex/{codexEntry}/card', [EditorCardContentController::class, 'codex'])->name('codex.card');
     Route::get('/codex/{codexEntry}/scenes', [CodexEntryController::class, 'scenes'])->name('codex.scenes.index');
     Route::put('/codex/{codexEntry}', [CodexEntryController::class, 'update'])->name('codex.update');
     Route::delete('/codex/{codexEntry}', [CodexEntryController::class, 'destroy'])->name('codex.destroy');

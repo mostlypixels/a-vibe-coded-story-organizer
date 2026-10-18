@@ -4,6 +4,13 @@
     {{ __('Dashboard') }}
 </x-responsive-nav-link>
 
+<x-responsive-nav-link
+    :href="route('projects.write', $navigation->project)"
+    :active="$navigation->writeActive"
+    :aria-current="$navigation->writeActive ? 'page' : false">
+    {{ __('Write') }}
+</x-responsive-nav-link>
+
 @if ($navigation->hasBook())
     <x-navigation.section-heading>{{ __('Story') }}</x-navigation.section-heading>
 

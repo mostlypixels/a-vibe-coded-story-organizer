@@ -89,6 +89,7 @@ Routes use shallow resources.
 | --- | --- |
 | Codex and temporal attributes | [Codex](../features/codex.md) |
 | Notes, categories, and links | [Notes](../features/notes.md) |
+| Write page, cards, and panel layout | [Write page](../features/editor.md) |
 | Autosave and history | [Revisions](../features/revisions.md) |
 | Rich HTML and Markdown editing | [Rich text](../features/rich-text.md) |
 | Counts, history, and goals | [Writing progress](../features/writing-progress.md) |

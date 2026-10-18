@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\AttributeTimeline;
+use App\Services\CodexAsOfResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -231,6 +232,42 @@ class CodexAsOfTest extends TestCase
             ->assertOk()
             ->assertSee('Melusine')
             ->assertDontSee('Age ');
+    }
+
+    public function test_resolve_entry_agrees_with_resolve_for_a_present_entry(): void
+    {
+        [, $project, $event] = $this->makeScenario();
+        $resolver = app(CodexAsOfResolver::class);
+
+        $fromGroups = $resolver->resolve($project, $event)->first()['entries']->first();
+        $single = $resolver->resolveEntry($project->codexEntries()->firstOrFail(), $event);
+
+        $this->assertTrue($single['present']);
+        $this->assertSame($fromGroups['entry']->id, $single['entry']->id);
+        $this->assertEquals($fromGroups['attributes'], $single['attributes']);
+        $this->assertEquals($fromGroups['age'], $single['age']);
+        $this->assertSame('black', $single['attributes']->first()['value']);
+    }
+
+    public function test_resolve_entry_marks_an_entry_absent_before_inception_and_after_termination(): void
+    {
+        $project = Project::factory()->for(User::factory())->create();
+        $inception = Event::factory()->for($project)->create(['event_datetime' => '2000-01-01']);
+        $termination = Event::factory()->for($project)->create(['event_datetime' => '2010-01-01']);
+        $entry = CodexEntry::factory()->for($project)->character()->create([
+            'inception_event_id' => $inception->id,
+            'termination_event_id' => $termination->id,
+        ]);
+        $before = Event::factory()->for($project)->create(['event_datetime' => '1990-01-01']);
+        $during = Event::factory()->for($project)->create(['event_datetime' => '2005-01-01']);
+        $after = Event::factory()->for($project)->create(['event_datetime' => '2020-01-01']);
+        $resolver = app(CodexAsOfResolver::class);
+
+        $this->assertFalse($resolver->resolveEntry($entry, $before)['present']);
+        $this->assertTrue($resolver->resolveEntry($entry, $during)['present']);
+        $this->assertFalse($resolver->resolveEntry($entry, $after)['present']);
+        $this->assertTrue($resolver->resolveEntry($entry, null)['present']);
+        $this->assertTrue($resolver->resolveEntry($entry, $before)['attributes']->isEmpty());
     }
 
     public function test_non_owner_cannot_open_the_scene_edit_page(): void
