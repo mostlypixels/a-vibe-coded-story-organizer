@@ -55,7 +55,7 @@
         rows="{{ $rows }}"
         :disabled="$disabled"
         x-show="! ready"
-        {{ $attributes->merge(['class' => 'block w-full']) }}
+        {{ $attributes->merge(['class' => 'manuscript block w-full']) }}
     >{{ $value }}</x-textarea>
 
     {{-- Do not clip this wrapper because toolbar menus extend over the editor. --}}
