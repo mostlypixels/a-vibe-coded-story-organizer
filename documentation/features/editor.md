@@ -26,6 +26,8 @@ A full-height page for the prose of one scene, with a side panel on each side. `
 - `resolve()` fills defaults from `config/editor.php`, drops unknown keys and clamps widths. Never use the raw column.
 - The endpoint writes `$request->user()` only, like `PageSizeController`. It has no policy.
 - `layout.js` saves 500 ms after the last change. It always sends the full shape.
+- The prose follows the user's [page width](../interface/page-width.md), as a share of the centre column.
+- The editor padding scales with `--manuscript-leading` (half a line height above and below, one on each side), so the manuscript spacing setting also sets the room inside the frame. Other edit pages keep the compact padding.
 - Below `lg`, panels start collapsed and an open panel is a drawer over the prose. Stored widths do not apply, and a section toggle there is not saved.
 
 ## Cards

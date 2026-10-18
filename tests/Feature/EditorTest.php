@@ -88,6 +88,17 @@ class EditorTest extends TestCase
             ->assertDontSee(':description"', false);
     }
 
+    public function test_the_prose_column_follows_the_page_width_setting(): void
+    {
+        [$user, , $scene] = $this->ownedScene();
+        $user->update(['page_width' => 50]);
+
+        $html = $this->actingAs($user)->get(route('scenes.write', $scene))->assertOk()->getContent();
+
+        $this->assertStringContainsString(':root{--page-width:50%}', $html);
+        $this->assertMatchesRegularExpression('/<section[^>]*data-editor-centre[^>]*>\s*<div class="mx-auto md:max-w-\(--page-width\)/', $html);
+    }
+
     public function test_show_uses_the_stored_layout(): void
     {
         [$user, , $scene] = $this->ownedScene();
