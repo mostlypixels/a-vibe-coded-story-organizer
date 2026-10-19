@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-19 — New scenes open in the Write page
+## 2026-10-19 — New scenes open in the Write page (#343)
 
 ### Added
 
