@@ -17,6 +17,14 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-19 — Dev files stop piling up
+
+### Fixed
+
+- Test runs no longer write to the development log.
+- The revision, export and import cleanup jobs run every hour, so they also run on a development stack that is off at night.
+- Browser-check screenshots older than one week are deleted on the next run.
+
 ## 2026-10-19 — New scenes open in the Write page (#343)
 
 ### Added
