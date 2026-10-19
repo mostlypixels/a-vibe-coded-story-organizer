@@ -36,6 +36,18 @@ const args = process.argv.slice(2);
 const sessionIdx = args.indexOf('--session');
 const sessionName = sessionIdx >= 0 ? args[sessionIdx + 1] : 'default';
 
+// Browser runs leave screenshots behind on every check. Keep one week (issue #287).
+const KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+for (const dir of [path.join('chromium_cli', 'sessions'), path.join('chromium_cli', 'ft', 'shots')]) {
+  if (!fs.existsSync(dir)) continue;
+  for (const entry of fs.readdirSync(dir)) {
+    const full = path.join(dir, entry);
+    if (Date.now() - fs.statSync(full).mtimeMs > KEEP_MS) {
+      fs.rmSync(full, { recursive: true, force: true });
+    }
+  }
+}
+
 const sessionDir = path.join('chromium_cli', 'sessions', sessionName);
 const screenshotsDir = path.join(sessionDir, 'screenshots');
 fs.mkdirSync(screenshotsDir, { recursive: true });

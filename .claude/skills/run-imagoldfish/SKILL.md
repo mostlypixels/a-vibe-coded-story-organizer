@@ -149,7 +149,8 @@ EOF
 ```
 
 Screenshots land in `chromium_cli/sessions/<session>/screenshots/` inside
-this skill directory (latest also copied to `screenshot.png`). Read the PNG
+this skill directory (latest also copied to `screenshot.png`). Each run deletes
+sessions and `ft/shots` older than one week. Read the PNG
 with the Read tool to actually look at it — a blank or error-page screenshot
 means the flow didn't work, even if every driver command printed "ok".
 
