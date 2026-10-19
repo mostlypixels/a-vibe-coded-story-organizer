@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-19 — Dev files stop piling up
+## 2026-10-19 — Dev files stop piling up (#344)
 
 ### Fixed
 
