@@ -17,6 +17,8 @@ A full-height page for the prose of one scene, with a side panel on each side. `
 - Search uses the existing `projects.link-targets` endpoint (`LinkTargetType::candidates()`).
 - Scene routes authorize `update` on the scene's project. Card reads authorize `view` on the target's project.
 - A foreign scene, entry or note id is 404. Ids resolve through `LinkTargetType::queryFor($project)`.
+- A new scene opens here: `scenes.store` redirects to `scenes.write`. The create form has no prose field.
+- The left panel has a **New scene** dialog: chapter (default: the current one) and title. `books.scenes.quick-store` creates a Draft at the end of the chapter and returns the Write URL. The dialog flushes autosave before it leaves, like a link.
 - The page edits prose only (`scene.contents`, through `x-autosave-field`). Title, status, chapter and event stay on `scenes.edit`.
 
 ## Layout preference

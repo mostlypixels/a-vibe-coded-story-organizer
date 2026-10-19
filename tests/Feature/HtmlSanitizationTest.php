@@ -116,7 +116,7 @@ Some **markdown** with a [link](https://example.com).';
                 'contents' => $markdownContents,
                 'status' => SceneStatus::Draft->value,
             ])
-            ->assertRedirect(route('books.scenes.index', $book));
+            ->assertRedirect(route('scenes.write', Scene::first()));
 
         $scene = Scene::first();
 

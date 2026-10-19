@@ -71,7 +71,6 @@ class WysiwygFormTest extends TestCase
             route('plotlines.edit', $plotline),
             route('projects.events.create', $project),
             route('events.edit', $event),
-            route('books.scenes.create', $book),
             route('scenes.edit', $scene),
             route('projects.codex.create', [$project, 'characters']),
             route('codex.edit', $entry),
@@ -98,7 +97,6 @@ class WysiwygFormTest extends TestCase
             route('plotlines.edit', $plotline),
             route('projects.events.create', $project),
             route('events.edit', $event),
-            route('books.scenes.create', $book),
             route('scenes.edit', $scene),
             route('projects.codex.create', [$project, 'characters']),
             route('codex.edit', $entry),
@@ -135,7 +133,7 @@ class WysiwygFormTest extends TestCase
         // progressive-enhancement <textarea name="contents"> (so a JS-off submit still
         // works) AND be flagged data-format="markdown" (Underline/Strike dropped, value
         // serialized to CommonMark). This is distinct from the HTML-mode fields above.
-        foreach ([route('books.scenes.create', $book), route('scenes.edit', $scene)] as $url) {
+        foreach ([route('scenes.edit', $scene)] as $url) {
             $response = $this->actingAs($user)
                 ->get($url)
                 ->assertOk()
@@ -162,7 +160,7 @@ class WysiwygFormTest extends TestCase
     {
         [$user, $project, $book, , , $scene] = $this->fixture();
 
-        foreach ([route('books.scenes.create', $book), route('scenes.edit', $scene)] as $url) {
+        foreach ([route('scenes.edit', $scene)] as $url) {
             $content = $this->actingAs($user)->get($url)->assertOk()->getContent();
 
             $start = strpos($content, 'name="contents"');

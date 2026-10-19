@@ -1,3 +1,6 @@
+/** A script that leaves the page dispatches it when a save failed. Detail: `{ href }`. */
+export const ASK_EVENT = 'navigation-guard:ask';
+
 /** Return true only for a normal in-app navigation. */
 export function shouldIntercept(event, anchor) {
     if (!anchor || !anchor.href) return false;
@@ -45,10 +48,19 @@ export function registerNavigationGuard(Alpine) {
             // Run before component click handlers that can navigate.
             this._onClick = (event) => this.handleClick(event);
             document.addEventListener('click', this._onClick, true);
+
+            this._onAsk = (event) => this.ask(event.detail.href);
+            window.addEventListener(ASK_EVENT, this._onAsk);
         },
 
         destroy() {
             document.removeEventListener('click', this._onClick, true);
+            window.removeEventListener(ASK_EVENT, this._onAsk);
+        },
+
+        ask(href) {
+            this.pendingHref = href;
+            this.$dispatch('open-modal', 'unsaved-changes-guard');
         },
 
         handleClick(event) {
@@ -72,7 +84,7 @@ export function registerNavigationGuard(Alpine) {
                 if (clean) {
                     window.location.href = this.pendingHref;
                 } else {
-                    this.$dispatch('open-modal', 'unsaved-changes-guard');
+                    this.ask(this.pendingHref);
                 }
             });
         },

@@ -100,4 +100,5 @@
     </div>
 
     @include('scenes.partials.quick-codex-entry', ['scene' => $scene])
+    @include('editor.partials.new-scene-dialog')
 </x-app-layout>
