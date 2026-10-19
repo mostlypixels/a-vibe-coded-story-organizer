@@ -12,6 +12,7 @@ class CountPhrase
 {
     public static function make(int $count, string $singular, string $plural): string
     {
-        return trans_choice('{1} :count '.$singular.'|[2,*] :count '.$plural, $count, ['count' => $count]);
+        // A count of 0 matches no range, and the plural text then keeps its leading space.
+        return trim(trans_choice('{1} :count '.$singular.'|[2,*] :count '.$plural, $count, ['count' => $count]));
     }
 }

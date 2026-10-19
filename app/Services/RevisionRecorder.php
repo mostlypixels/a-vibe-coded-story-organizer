@@ -119,13 +119,14 @@ class RevisionRecorder
      * @param  array<string, mixed>  $data  The form values that `$save` applies.
      * @param  array<mixed>  $baseHashes  The `base_hashes` that the edit form sent.
      * @param  callable(): TResult  $save
+     * @param  string|null  $label  The revision label. Null gives the standard manual label.
      * @return TResult
      *
      * @throws ValidationException When another tab saved newer text, as {@see NoAutosaveConflict} reports it.
      */
-    public function saveWithManualCheckpoint(Model&Revisionable $entity, array $data, array $baseHashes, User $user, callable $save): mixed
+    public function saveWithManualCheckpoint(Model&Revisionable $entity, array $data, array $baseHashes, User $user, callable $save, ?string $label = null): mixed
     {
-        return DB::transaction(function () use ($entity, $data, $baseHashes, $user, $save) {
+        return DB::transaction(function () use ($entity, $data, $baseHashes, $user, $save, $label) {
             // The form request checked the hashes before this transaction. An autosave
             // can land after that check, so check again on the locked row.
             $locked = $entity->newQuery()->whereKey($entity->getKey())->lockForUpdate()->firstOrFail();
@@ -143,7 +144,7 @@ class RevisionRecorder
 
             $result = $save();
 
-            $this->recordManualChanges($entity, $before, $user, heldSince: $heldSince);
+            $this->recordManualChanges($entity, $before, $user, $label, $heldSince);
 
             return $result;
         });

@@ -18,7 +18,11 @@ PHP tests use separate in-memory SQLite databases. JavaScript tests use Vitest a
 
 Docker is the default way to run the app and provides the same commands. See [Docker development](documentation/development/docker.md). The native server is for when someone asks for it by name.
 
-Run the native server or the Docker stack, never both. They share port 8000 and `database/database.sqlite`, and two writers on one SQLite file corrupt it. Each start command refuses while the other holds the port.
+Run the native server or the Docker stack, never both. They share port 8000. Each start command refuses while the other holds the port.
+
+The two runtimes use different databases. Native uses `database/database.sqlite`. Docker uses the `dbdata` volume at `/var/lib/imagoldfish/database.sqlite` in the container. To read the data the running app shows, query the Docker database.
+
+For project data (scenes, notes, codex), use the `avcso` MCP tools first ([MCP server](documentation/development/mcp-server.md)). For other reads, use `bash scripts/db.sh`.
 
 `master` is protected. Ship changes through a branch and pull request. The `tests` check must pass before squash-merge.
 

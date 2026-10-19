@@ -17,6 +17,17 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-19 — MCP server for Claude Code (#342)
+
+### Added
+
+- An MCP server: Claude Code reads projects and saves scene reviews, notes and codex entries, without changing the prose.
+- `scripts/db.sh`: read-only SQL on the Docker database.
+
+### Changed
+
+- The `scene-reviewer` agent uses the MCP tools. The `scene:*` commands stay as a fallback.
+
 ## 2026-10-18 — Manuscript style only where you write (#341)
 
 ### Fixed
