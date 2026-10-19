@@ -6,6 +6,7 @@ use App\Models\Chapter;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\Concerns\CreatesInlineEvents;
+use App\Support\AutosavableFields;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -62,6 +63,29 @@ class SceneSaver
             $scene->save();
 
             $this->syncRelations($scene, $validated);
+        });
+    }
+
+    /**
+     * Changes only the sent detail fields, for a caller that has no full form.
+     *
+     * The codex references come from `contents`, which this method never touches, so
+     * they need no resync. A changed description records one manual revision.
+     *
+     * @param  array{name?: string, description?: ?string, status?: string, event_id?: ?int, viewpoint_character_id?: ?int}  $details
+     * @param  User  $user  Credited on the revision.
+     */
+    public function updateDetails(Scene $scene, array $details, User $user, string $label): void
+    {
+        $details = array_intersect_key($details, array_flip(['name', 'description', 'status', 'event_id', 'viewpoint_character_id']));
+
+        DB::transaction(function () use ($scene, $details, $user, $label) {
+            $heldSince = $scene->updated_at;
+            $before = AutosavableFields::snapshotFieldsBeforeUpdate($scene, $details);
+
+            $scene->fill($details)->save();
+
+            $this->recorder->recordManualChanges($scene, $before, $user, $label, $heldSince);
         });
     }
 

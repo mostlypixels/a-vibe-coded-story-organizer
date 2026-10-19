@@ -8,18 +8,24 @@ The `scene-reviewer` Claude agent (`.claude/agents/scene-reviewer.md`) checks on
 
 Ask Claude Code: "review scene 42 with the scene-reviewer agent". A scene name also works.
 
-## Artisan commands
+## MCP tools
 
-The agent reads and writes only through these commands. They run in the Docker app.
+The agent reads and writes through the `avcso` [MCP server](mcp-server.md). Docker must run (`make up`).
 
-| Command | Purpose |
+| Tool | Purpose |
 |---|---|
-| `scene:review-context` | Scene, book language, codex names and aliases, codex values at the scene moment, linked notes, earlier scenes |
-| `scene:show` | Full text of other scenes |
-| `scene:search` | The project search, as plain text |
-| `scene:review-note` | Creates or replaces the review note. HTML body on stdin or `--file` |
+| `scene-context` | Scene, book language, codex names and aliases, codex values at the scene moment, linked notes, earlier scenes |
+| `show` | Full text of other scenes |
+| `search` | The project search, as text |
+| `save-scene-review` | Creates or replaces the review note. HTML body in `body` |
 
-- Earlier scenes show only their description, except the last three (`--full`). A long book then stays small enough to read. The agent asks for more with `scene:show`.
+## Artisan fallback
+
+When the server is down, the agent uses the `scene:*` commands in the Docker app: `scene:review-context`, `scene:show`, `scene:search` and `scene:review-note` (HTML body on stdin or `--file`). They share their code with the tools.
+
+## Context
+
+- Earlier scenes show only their description, except the last three (`full`, or `--full` for the command). A long book then stays small enough to read. The agent asks for more with `show`.
 - Every codex name is listed, not only the matched ones: a misspelled name matches no entry.
 - A TODO note linked to nothing is book-wide. The context prints it, and the agent does not report its problems again in each scene.
 

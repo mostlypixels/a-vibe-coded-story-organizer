@@ -16,6 +16,7 @@ secrets from env, `set -euo pipefail`, header naming its callers) is documented 
 | `assets-state.sh` | Report whether the app would serve the build: stale `public/hot`, missing `public/build`, dev database behind migrations (exit 1 = at least one) | serve-app.sh, plan-implementer, run-imagoldfish |
 | `serve-app.sh [--port N]` | Refuse if another server holds the port (e.g. the Docker stack), pre-flight-check via `assets-state.sh`, then start `php artisan serve` in the background with a PID file; idempotent | run-imagoldfish |
 | `stop-app.sh` | Kill the exact dev-server PID recorded by serve-app.sh and remove the PID file; idempotent | run-imagoldfish |
+| `db.sh "<sql>"` | Run one read-only SQL statement (`sqlite3 -readonly`) on the Docker dev database; refuses when the container is down. Writes always fail | humans and agents; `.claude/settings.json` allows it in place of `sqlite3 *` |
 | `claude-usage.sh [--text\|--raw]` | Report Claude Code session/week limit usage as JSON (default); failures print one word (`unavailable`, `unparseable`) and exit 1 | plan-implementer |
 | `pr-land.sh <title> <body-file>` | Land the current feature branch on master: push, open PR, stamp the PR number onto the changelog heading, arm squash auto-merge, watch CI, merge, confirm MERGED, update local master | ship-pr |
 

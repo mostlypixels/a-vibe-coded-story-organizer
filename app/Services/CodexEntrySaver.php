@@ -79,12 +79,13 @@ class CodexEntrySaver
      * @param  array<string, mixed>  $validated
      * @param  array<mixed>  $baseHashes  The `base_hashes` that the edit form sent.
      * @param  User  $user  Credited on the manual revision checkpoint.
+     * @param  string|null  $label  The checkpoint label. Null gives the standard manual label.
      */
-    public function update(CodexEntry $entry, array $validated, CodexMediaUploads $uploads, array $baseHashes, User $user): void
+    public function update(CodexEntry $entry, array $validated, CodexMediaUploads $uploads, array $baseHashes, User $user, ?string $label = null): void
     {
         $project = $entry->project;
 
-        $pathsToDelete = DB::transaction(function () use ($project, $entry, $validated, $uploads, $baseHashes, $user) {
+        $pathsToDelete = DB::transaction(function () use ($project, $entry, $validated, $uploads, $baseHashes, $user, $label) {
             $data = [
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
@@ -114,7 +115,7 @@ class CodexEntrySaver
                 if ($termsBefore !== $termsAfter) {
                     $this->matcher->syncProject($project);
                 }
-            });
+            }, $label);
 
             return $this->queueMediaRemovals($entry, $uploads);
         });

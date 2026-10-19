@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "avcso": {
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "docker-compose.dev.yml",
+        "exec",
+        "-T",
+        "-u",
+        "laravel",
+        "app",
+        "php",
+        "artisan",
+        "mcp:start",
+        "avcso"
+      ]
+    }
+  }
+}

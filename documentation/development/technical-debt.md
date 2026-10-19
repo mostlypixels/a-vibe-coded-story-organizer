@@ -14,6 +14,13 @@ Known shortcuts that the code keeps on purpose. Each entry says what bites and w
 > [!WARNING]
 > The storage panel and the purges on the Revisions page already scope to the user's own projects. The retention window does not.
 
+## MCP tools skip authorization
+
+- **Where:** `app/Mcp/Tools/`. A tool has no request user and calls no policy. It acts as the project owner (`$project->user`).
+- **Risk:** any client of the server can read and annotate every project on the install.
+- **Why it stays:** the server is stdio only, started inside Docker by the one person who owns the install. There is no HTTP route.
+- **Pay off:** before a second account uses the same install. Add an authenticated HTTP transport and a policy check per tool.
+
 ## Static analysis stops at level 5
 
 - **Where:** `phpstan.neon` sets `level: 5`.

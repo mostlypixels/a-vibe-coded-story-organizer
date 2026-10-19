@@ -64,3 +64,7 @@ npm audit
 If the pin is gone, remove the override, run `npm install`, verify the audit, and update this page.
 
 Docker installation boundaries are described in [Docker](docker.md#services).
+
+## Runtime packages
+
+- `laravel/mcp` (v1.x): the MCP server that lets Claude read and annotate projects. It runs on stdio inside Docker only. See `routes/ai.php` and `app/Mcp/`.

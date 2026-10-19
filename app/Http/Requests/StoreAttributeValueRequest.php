@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,12 +18,24 @@ class StoreAttributeValueRequest extends FormRequest
      */
     public function rules(): array
     {
-        $project = $this->route('codexEntry')->project;
+        $rules = self::fieldRules($this->route('codexEntry')->project);
 
         return [
             // The endpoint is an upsert, so the start event does not need a unique rule.
+            'start_event_id' => ['required', ...$rules['start_event_id']],
+            'value' => $rules['value'],
+        ];
+    }
+
+    /**
+     * Rules without `required` on the start event, so the MCP tool can default it to Start.
+     *
+     * @return array<string, mixed>
+     */
+    public static function fieldRules(Project $project): array
+    {
+        return [
             'start_event_id' => [
-                'required',
                 'integer',
                 Rule::exists('events', 'id')->where('project_id', $project->id),
             ],
