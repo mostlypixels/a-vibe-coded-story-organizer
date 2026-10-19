@@ -41,6 +41,7 @@ use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PublicationSettingController;
 use App\Http\Controllers\QuickEventController;
+use App\Http\Controllers\QuickSceneController;
 use App\Http\Controllers\RevisionBrowserController;
 use App\Http\Controllers\RevisionController;
 use App\Http\Controllers\RevisionSettingController;
@@ -232,6 +233,10 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->shallow();
     Route::patch('/chapters/{chapter}/move-up', [ChapterController::class, 'moveUp'])->name('chapters.move-up');
     Route::patch('/chapters/{chapter}/move-down', [ChapterController::class, 'moveDown'])->name('chapters.move-down');
+
+    // Registered before the resource below, so "/quick" never matches a resource route.
+    Route::post('/books/{book}/scenes/quick', [QuickSceneController::class, 'store'])
+        ->name('books.scenes.quick-store');
 
     Route::resource('books.scenes', SceneController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])

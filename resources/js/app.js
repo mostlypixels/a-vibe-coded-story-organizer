@@ -21,6 +21,7 @@ import { registerLinkPicker } from './notes/linkPicker';
 import { registerImportStatus } from './import-status';
 import { registerEditorToday } from './editor/today';
 import { registerEditorSceneSearch } from './editor/search';
+import { registerEditorNewScene } from './editor/new-scene';
 import { registerEditorCards } from './editor/cards';
 import { registerEditorLayout } from './editor/layout';
 
@@ -45,6 +46,7 @@ registerLinkPicker(Alpine);
 registerImportStatus(Alpine);
 registerEditorToday(Alpine);
 registerEditorSceneSearch(Alpine);
+registerEditorNewScene(Alpine);
 registerEditorCards(Alpine);
 registerEditorLayout(Alpine);
 

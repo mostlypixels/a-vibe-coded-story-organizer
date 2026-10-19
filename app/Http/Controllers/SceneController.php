@@ -194,9 +194,9 @@ class SceneController extends Controller
         $validated = $request->validated();
         $chapter = $book->chapterQuery()->findOrFail($validated['chapter_id']);
 
-        $saver->create($chapter, $validated);
+        $scene = $saver->create($chapter, $validated);
 
-        return redirect()->route('books.scenes.index', $book);
+        return redirect()->route('scenes.write', $scene);
     }
 
     public function edit(Scene $scene, CodexAsOfResolver $codexAsOf, ReferencingScenes $referencingScenes): View

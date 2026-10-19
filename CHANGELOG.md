@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-19 — New scenes open in the Write page (#343)
+
+### Added
+
+- A New scene button in the Write page asks for a chapter and a title, then opens the new scene.
+
+### Changed
+
+- The New Scene page no longer asks for a description or contents. Creating a scene opens it in the Write page.
+
 ## 2026-10-19 — MCP server for Claude Code (#342)
 
 ### Added

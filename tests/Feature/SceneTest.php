@@ -251,13 +251,26 @@ class SceneTest extends TestCase
         $response = $this->actingAs($user)
             ->post(route('books.scenes.store', $book), $this->validPayload($chapter));
 
-        $response->assertRedirect(route('books.scenes.index', $book));
-
         $scene = Scene::first();
         $this->assertNotNull($scene);
+        $response->assertRedirect(route('scenes.write', $scene));
+
         $this->assertSame('Opening scene', $scene->name);
         $this->assertSame($chapter->id, $scene->chapter_id);
         $this->assertSame(SceneStatus::Draft, $scene->status);
+
+        $this->actingAs($user)->get(route('scenes.write', $scene))->assertOk();
+    }
+
+    public function test_the_create_form_has_no_prose_fields(): void
+    {
+        $user = User::factory()->create();
+        $chapter = $this->chapterFor($user);
+
+        $this->actingAs($user)->get(route('books.scenes.create', $chapter->act->book))
+            ->assertOk()
+            ->assertDontSee('name="contents"', false)
+            ->assertDontSee('name="description"', false);
     }
 
     public function test_the_create_form_asks_for_a_chapter_first_when_the_book_has_none(): void
@@ -532,7 +545,7 @@ class SceneTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('books.scenes.store', $book), $this->validPayload($chapter))
-            ->assertRedirect(route('books.scenes.index', $book));
+            ->assertRedirect(route('scenes.write', Scene::first()));
 
         $this->assertNull(Scene::first()->event_id);
     }
@@ -1040,7 +1053,7 @@ class SceneTest extends TestCase
         $this->actingAs($user)->post(
             route('books.scenes.store', $book),
             $this->validPayload($chapter, ['contents' => 'Mel walked into the room.']),
-        )->assertRedirect(route('books.scenes.index', $book));
+        )->assertRedirect(route('scenes.write', Scene::first()));
 
         $this->assertDatabaseHas('scene_codex_entry', [
             'scene_id' => Scene::first()->id,
@@ -1091,7 +1104,7 @@ class SceneTest extends TestCase
         $this->actingAs($user)->post(
             route('books.scenes.store', $book),
             $this->validPayload($chapter, ['contents' => 'Just an ordinary melody, nothing more.']),
-        )->assertRedirect(route('books.scenes.index', $book));
+        )->assertRedirect(route('scenes.write', Scene::first()));
 
         $this->assertDatabaseMissing('scene_codex_entry', [
             'scene_id' => Scene::first()->id,

@@ -17,6 +17,18 @@
     x-on:keydown.escape="query.trim() !== '' && $event.stopPropagation(); onEscape()"
     data-editor-scene-search
 >
+    <x-button
+        type="button"
+        variant="secondary"
+        size="sm"
+        class="w-full"
+        x-on:click="$dispatch('editor-new-scene:open')"
+        data-editor-new-scene
+    >
+        <x-tabler-plus class="h-4 w-4" aria-hidden="true" />
+        {{ __('New scene') }}
+    </x-button>
+
     <div>
         <x-input-label for="editor-scene-query" :value="__('Search scenes')" class="sr-only" />
         <x-text-input

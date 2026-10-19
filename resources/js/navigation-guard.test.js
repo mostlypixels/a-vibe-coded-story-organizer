@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { isGuardedSaveSubmit, settleAutosaves, shouldIntercept } from './navigation-guard';
+import { describe, expect, it, vi } from 'vitest';
+import { ASK_EVENT, isGuardedSaveSubmit, registerNavigationGuard, settleAutosaves, shouldIntercept } from './navigation-guard';
 
 function makeAnchor(overrides = {}) {
     return {
@@ -112,5 +112,22 @@ describe('settleAutosaves', () => {
 
     it('is not clean when a save throws (a network error)', async () => {
         await expect(settleAutosaves(makeStore({ flush: () => Promise.reject(new Error('offline')) }))).resolves.toBe(false);
+    });
+});
+
+describe('navigationGuard ask event', () => {
+    it('opens the guard modal for a script that leaves the page', () => {
+        let factory = null;
+        registerNavigationGuard({ data: (name, make) => { factory = make; }, store: () => null });
+
+        const guard = factory();
+        guard.$dispatch = vi.fn();
+        guard.init();
+
+        window.dispatchEvent(new CustomEvent(ASK_EVENT, { detail: { href: '/scenes/42/write' } }));
+        guard.destroy();
+
+        expect(guard.pendingHref).toBe('/scenes/42/write');
+        expect(guard.$dispatch).toHaveBeenCalledWith('open-modal', 'unsaved-changes-guard');
     });
 });
