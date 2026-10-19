@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-19 — MCP server for Claude Code
+## 2026-10-19 — MCP server for Claude Code (#342)
 
 ### Added
 
