@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-20 — Export keeps the genre
+## 2026-10-20 — Export keeps the genre (#345)
 
 ### Fixed
 
