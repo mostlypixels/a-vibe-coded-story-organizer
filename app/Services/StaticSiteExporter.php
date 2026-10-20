@@ -167,6 +167,7 @@ class StaticSiteExporter
             'name' => $project->name,
             'daily_word_goal' => $project->daily_word_goal,
             'total_word_goal' => $project->total_word_goal,
+            'genre' => $project->genre?->value,
         ];
         $json += $this->addFieldFile($zip, $dir, 'description_file', 'description.html', $project->description);
         $json += $this->addCoverFile($zip, $dir, $project->cover_image, $includeMedia);

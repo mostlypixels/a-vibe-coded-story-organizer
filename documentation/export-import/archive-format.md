@@ -113,7 +113,7 @@ to live here belongs to each book now, and is never written at this level.
 
 ```
 data/project/
-  project.json            { id, name, daily_word_goal, total_word_goal,
+  project.json            { id, name, daily_word_goal, total_word_goal, genre,
                             description_file?, cover_file? }
   description.html
   cover/<name>            the dashboard card image (bytes only when media is included)

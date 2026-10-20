@@ -3,6 +3,7 @@
 namespace App\Services\Import;
 
 use App\Enums\CodexMediaCollection;
+use App\Enums\Genre;
 use App\Exceptions\ImportValidationException;
 use App\Http\Requests\StoreActRequest;
 use App\Http\Requests\StoreChallengeRequest;
@@ -21,6 +22,7 @@ use App\Support\ImportRules;
 use finfo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use ZipArchive;
 
 /**
@@ -292,7 +294,8 @@ class ArchiveValidator
     private function formRules(string $path): array
     {
         return match ($path) {
-            'data/project/project.json' => UpdateProjectRequest::fieldRules(),
+            // The project form cannot change the genre, so its rule is not in the form request.
+            'data/project/project.json' => UpdateProjectRequest::fieldRules() + ['genre' => ['nullable', Rule::enum(Genre::class)]],
             'data/tags.json' => StoreTagRequest::fieldRules(),
             'data/codex/attributes.json' => StoreCodexAttributeRequest::fieldRules(),
             'data/challenges.json' => StoreChallengeRequest::fieldRules(),

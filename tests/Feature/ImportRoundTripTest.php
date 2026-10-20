@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\BookLanguage;
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
+use App\Enums\Genre;
 use App\Enums\ImportPhase;
 use App\Enums\SceneStatus;
 use App\Models\Act;
@@ -77,6 +78,7 @@ class ImportRoundTripTest extends TestCase
         $this->assertSame($importer->id, $imported->user_id, 'the imported project is owned by the importer, not the source owner');
         $this->assertSame($source->name, $imported->name);
         $this->assertSame($source->description, $imported->description);
+        $this->assertSame(Genre::Fantasy, $imported->genre);
         $this->assertSame(ImportPhase::Completed, Import::firstOrFail()->phase);
 
         // The project cover lands at a fresh path holding the source bytes.
@@ -776,6 +778,7 @@ class ImportRoundTripTest extends TestCase
         $project = Project::factory()->for($owner)->create([
             'name' => 'The Round Trip Chronicle',
             'description' => '<p>An <strong>epic</strong> tale.</p>',
+            'genre' => Genre::Fantasy,
             // The dashboard card image, a different image from a book cover.
             'cover_image' => UploadedFile::fake()->image('card.jpg', 20, 20)->store('project-covers', 'media'),
         ]);
