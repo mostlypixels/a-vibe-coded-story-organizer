@@ -13,13 +13,13 @@ final class EditorLayout
 {
     private const PANELS = ['left', 'right'];
 
-    private const SECTIONS = ['codex', 'notes'];
+    private const SECTIONS = ['codex', 'notes', 'recent'];
 
     /**
      * The full shape, as `config('editor.layout')` lays it out.
      *
      * @param  array<mixed>|null  $stored
-     * @return array{left: array{width: int, collapsed: bool}, right: array{width: int, collapsed: bool}, sections: array{codex: bool, notes: bool}}
+     * @return array{left: array{width: int, collapsed: bool}, right: array{width: int, collapsed: bool}, sections: array{codex: bool, notes: bool, recent: bool}}
      */
     public static function resolve(?array $stored): array
     {

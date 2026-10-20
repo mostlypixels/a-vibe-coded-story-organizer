@@ -17,6 +17,16 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-20 — Outline in the Write page
+
+### Added
+
+- The Write page left panel shows an outline of the current book: acts, chapters and scenes.
+
+### Changed
+
+- Recent scenes on the Write page are in a card that folds, closed by default.
+
 ## 2026-10-20 — Export keeps the genre (#345)
 
 ### Fixed

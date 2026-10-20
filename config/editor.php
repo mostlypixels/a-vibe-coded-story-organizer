@@ -24,7 +24,7 @@ return [
     'layout' => [
         'left' => ['width' => 280, 'collapsed' => false],
         'right' => ['width' => 360, 'collapsed' => false],
-        'sections' => ['codex' => false, 'notes' => false],
+        'sections' => ['codex' => false, 'notes' => false, 'recent' => true],
     ],
 
 ];

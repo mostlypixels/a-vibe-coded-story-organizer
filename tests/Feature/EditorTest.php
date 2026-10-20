@@ -105,7 +105,7 @@ class EditorTest extends TestCase
         $user->update(['editor_layout' => [
             'left' => ['width' => 300, 'collapsed' => true],
             'right' => ['width' => 420, 'collapsed' => false],
-            'sections' => ['codex' => false, 'notes' => true],
+            'sections' => ['codex' => false, 'notes' => true, 'recent' => true],
         ]]);
 
         $html = $this->actingAs($user)
@@ -124,7 +124,7 @@ class EditorTest extends TestCase
         $user->update(['editor_layout' => [
             'left' => ['width' => 300, 'collapsed' => false],
             'right' => ['width' => 420, 'collapsed' => true],
-            'sections' => ['codex' => false, 'notes' => true],
+            'sections' => ['codex' => false, 'notes' => true, 'recent' => true],
         ]]);
 
         $html = $this->actingAs($user)
@@ -345,6 +345,7 @@ class EditorTest extends TestCase
 
         $html = $this->actingAs($user)->get(route('scenes.write', $scenes[5]))->assertOk()->getContent();
         $recent = substr($html, strpos($html, 'data-editor-recent'));
+        $recent = substr($recent, 0, strpos($recent, 'data-editor-outline'));
 
         // Scene 1 is the oldest of 16 rows: it falls off the list.
         $this->assertStringNotContainsString('Recent scene 1<', $recent);
@@ -355,6 +356,31 @@ class EditorTest extends TestCase
         $this->assertStringNotContainsString(route('scenes.edit', $scenes[16]), $recent);
     }
 
+    public function test_the_recent_section_is_closed_with_a_null_layout(): void
+    {
+        [$user, , $scene] = $this->ownedScene();
+        $this->assertNull($user->editor_layout);
+
+        $html = $this->actingAs($user)->get(route('scenes.write', $scene))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<details\s+class="[^"]*"\s+x-on:toggle[^>]*data-editor-section-details="recent"/s', $html);
+        $this->assertDoesNotMatchRegularExpression('/<details\s+class="[^"]*"\s+open[^>]*data-editor-section-details="recent"/s', $html);
+    }
+
+    public function test_the_recent_section_is_open_when_the_stored_layout_says_so(): void
+    {
+        [$user, , $scene] = $this->ownedScene();
+        $user->update(['editor_layout' => [
+            'left' => ['width' => 300, 'collapsed' => false],
+            'right' => ['width' => 420, 'collapsed' => false],
+            'sections' => ['codex' => false, 'notes' => false, 'recent' => false],
+        ]]);
+
+        $html = $this->actingAs($user)->get(route('scenes.write', $scene))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<details\s+class="[^"]*"\s+open\s[^>]*data-editor-section-details="recent"/s', $html);
+    }
+
     public function test_the_current_scene_row_is_marked(): void
     {
         [$user, , $scene] = $this->ownedScene();
@@ -362,6 +388,7 @@ class EditorTest extends TestCase
 
         $html = $this->actingAs($user)->get(route('scenes.write', $scene))->getContent();
         $recent = substr($html, strpos($html, 'data-editor-recent'));
+        $recent = substr($recent, 0, strpos($recent, 'data-editor-outline'));
 
         $this->assertSame(1, substr_count($recent, 'aria-current="page"'));
         $this->assertMatchesRegularExpression(
@@ -497,6 +524,158 @@ class EditorTest extends TestCase
         };
 
         $this->assertSame($queriesFor(1), $queriesFor(10));
+    }
+
+    public function test_the_breadcrumb_context_and_the_new_scene_dialog_list_the_chapters_in_story_order(): void
+    {
+        [$user, $book, $scenes] = $this->storyAcrossBoundaries();
+        $chapters = $scenes[2]->chapter->act->book->chaptersInStoryOrder();
+
+        $response = $this->actingAs($user)->get(route('scenes.write', $scenes[2]))->assertOk();
+
+        $response->assertSee('Chapter 3', false);
+        $response->assertSeeInOrder($chapters->map(
+            fn (Chapter $chapter) => '<option value="'.$chapter->id.'">'.e($chapter->act->name).' &mdash; '.e($chapter->name).'</option>'
+        )->all(), false);
+    }
+
+    /** The outline nav of a Write page, without the rest of the panel. */
+    private function outlineOf(User $user, Scene $scene): string
+    {
+        $html = $this->actingAs($user)->get(route('scenes.write', $scene))->assertOk()->getContent();
+        $start = strpos($html, 'data-editor-outline');
+        $this->assertNotFalse($start);
+
+        return substr($html, $start, strpos($html, '</nav>', $start) - $start);
+    }
+
+    public function test_the_outline_lists_every_scene_in_story_order_across_acts(): void
+    {
+        [$user, , $scenes] = $this->storyAcrossBoundaries();
+
+        $outline = $this->outlineOf($user, $scenes[1]);
+
+        $this->assertSeeInOrderIn($outline, array_map(
+            fn (Scene $scene) => 'href="'.route('scenes.write', $scene).'"',
+            $scenes,
+        ));
+    }
+
+    public function test_the_outline_uses_the_story_numbering_labels(): void
+    {
+        [$user, , $scenes] = $this->storyAcrossBoundaries();
+
+        $outline = $this->outlineOf($user, $scenes[0]);
+
+        $this->assertSeeInOrderIn($outline, ['Act 1', 'Chapter 1', 'Chapter 2', 'Act 2', 'Chapter 3']);
+    }
+
+    public function test_the_outline_hides_the_act_heading_for_one_act(): void
+    {
+        [$user, , $scene] = $this->ownedScene();
+
+        $outline = $this->outlineOf($user, $scene);
+
+        $this->assertStringNotContainsString('Act 1', $outline);
+        $this->assertStringContainsString('Chapter 1', $outline);
+    }
+
+    public function test_only_the_current_chapter_is_open_in_the_outline(): void
+    {
+        [$user, , $scenes] = $this->storyAcrossBoundaries();
+
+        $outline = $this->outlineOf($user, $scenes[1]);
+
+        $chapters = array_slice(explode('<details', $outline), 1);
+
+        $this->assertCount(3, $chapters);
+        $this->assertSame([false, true, false], array_map(
+            fn (string $chapter) => (bool) preg_match('/^\s+class="[^"]*"\s+open\s*>/', $chapter),
+            $chapters,
+        ));
+    }
+
+    public function test_the_current_scene_is_the_only_outline_row_with_aria_current(): void
+    {
+        [$user, , $scenes] = $this->storyAcrossBoundaries();
+
+        $outline = $this->outlineOf($user, $scenes[1]);
+
+        $this->assertSame(1, substr_count($outline, 'aria-current="page"'));
+        $this->assertMatchesRegularExpression(
+            '#<a\s+href="'.preg_quote(route('scenes.write', $scenes[1]), '#').'"[^>]*aria-current="page"#',
+            $outline,
+        );
+    }
+
+    public function test_the_outline_leaves_out_scenes_of_other_books(): void
+    {
+        [$user, $project, $scene] = $this->ownedScene();
+        $otherBook = Book::factory()->for($project)->create();
+        $foreign = $this->sceneIn($otherBook, ['name' => 'Foreign scene']);
+
+        $outline = $this->outlineOf($user, $scene);
+
+        $this->assertStringNotContainsString(route('scenes.write', $foreign), $outline);
+        $this->assertStringNotContainsString('Foreign scene', $outline);
+    }
+
+    public function test_an_empty_chapter_shows_a_muted_line(): void
+    {
+        [$user, , $scene] = $this->ownedScene();
+        Chapter::factory()->for($scene->chapter->act)->create();
+
+        $outline = $this->outlineOf($user, $scene);
+
+        $this->assertSame(1, substr_count($outline, 'No scenes yet.'));
+    }
+
+    public function test_the_outline_shows_no_word_counts(): void
+    {
+        [$user, , $scene] = $this->ownedScene();
+        $scene->forceFill(['word_count' => 120])->save();
+        Scene::factory()->for($scene->chapter)->create()->forceFill(['word_count' => 30])->save();
+
+        $outline = $this->outlineOf($user, $scene);
+
+        $this->assertStringNotContainsString('150 words', $outline);
+    }
+
+    /** @param  list<string>  $needles */
+    private function assertSeeInOrderIn(string $haystack, array $needles): void
+    {
+        $offset = 0;
+
+        foreach ($needles as $needle) {
+            $position = strpos($haystack, $needle, $offset);
+            $this->assertNotFalse($position, "Expected '{$needle}' after offset {$offset} in the outline.");
+            $offset = $position + strlen($needle);
+        }
+    }
+
+    public function test_the_outline_query_count_does_not_grow_with_the_scenes(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+
+        $queriesFor = function (int $count) use ($user, $chapter): int {
+            Scene::factory()->count($count)->for($chapter)->create();
+            $scene = $chapter->scenes()->first();
+
+            // The first request of a test writes one-time rows, such as the active project.
+            $this->actingAs($user)->get(route('scenes.write', $scene))->assertOk();
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->get(route('scenes.write', $scene))->assertOk();
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        $three = $queriesFor(3);
+
+        $this->assertSame($three, $queriesFor(27));
     }
 
     public function test_a_non_owner_gets_403_on_both_routes(): void
