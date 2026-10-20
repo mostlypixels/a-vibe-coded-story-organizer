@@ -446,6 +446,7 @@ class ImportTest extends TestCase
             'project name too long' => ['data/project/project.json', [...$project, 'name' => $long], 'name'],
             'negative daily goal' => ['data/project/project.json', [...$project, 'daily_word_goal' => -1], 'daily_word_goal'],
             'negative total goal' => ['data/project/project.json', [...$project, 'total_word_goal' => -1], 'total_word_goal'],
+            'unknown genre' => ['data/project/project.json', [...$project, 'genre' => 'romance'], 'genre'],
             'plotline color not a preset' => ['data/timeline/plotlines/701-subplot/plotline.json', [...$plotline, 'color' => '#123456'], 'color'],
             'plotline name too long' => ['data/timeline/plotlines/701-subplot/plotline.json', [...$plotline, 'name' => $long], 'name'],
             'event title too long' => ['data/timeline/events/802-battle/event.json', [...$event, 'title' => $long], 'title'],

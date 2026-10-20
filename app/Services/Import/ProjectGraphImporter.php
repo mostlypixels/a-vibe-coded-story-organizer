@@ -5,6 +5,7 @@ namespace App\Services\Import;
 use App\Enums\BookLanguage;
 use App\Enums\CodexEntryType;
 use App\Enums\CodexMediaCollection;
+use App\Enums\Genre;
 use App\Enums\LinkTargetType;
 use App\Enums\SceneStatus;
 use App\Enums\StoryOverviewMode;
@@ -107,6 +108,7 @@ class ProjectGraphImporter
                     'cover_image' => $cover,
                     'daily_word_goal' => isset($descriptor['daily_word_goal']) ? (int) $descriptor['daily_word_goal'] : null,
                     'total_word_goal' => isset($descriptor['total_word_goal']) ? (int) $descriptor['total_word_goal'] : null,
+                    'genre' => isset($descriptor['genre']) ? Genre::from((string) $descriptor['genre']) : null,
                     // ProjectImporter::run() clears it when the last phase commits.
                     'import_unfinished' => true,
                 ]);

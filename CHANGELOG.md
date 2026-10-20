@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-20 — Export keeps the genre (#345)
+
+### Fixed
+
+- The project export now includes the genre, and an import restores it.
+
 ## 2026-10-19 — Dev files stop piling up (#344)
 
 ### Fixed
