@@ -2,7 +2,8 @@
  * Scene search in the left panel of the Write page.
  *
  * A result is a real link to the Write page of that scene. The navigation guard sees the click,
- * so a pending save is flushed before the page loads. An empty query shows the recent list.
+ * so a pending save is flushed before the page loads. An empty query shows the browse view:
+ * the recent list and the outline.
  */
 
 import { candidateSearch } from '../candidate-search.js';
@@ -23,9 +24,18 @@ export function registerEditorSceneSearch(Alpine) {
             failureMessage: config.failureMessage,
         }),
 
-        /** True while the recent list shows instead of results. */
-        showingRecent() {
+        /** True while the browse view (recent list and outline) shows instead of results. */
+        showingBrowse() {
             return this.query.trim() === '';
+        },
+
+        /** Show the current outline row, scrolling the panel only. Nothing happens in a closed panel. */
+        init() {
+            const row = this.$root?.querySelector('[data-editor-outline] [aria-current="page"]');
+
+            if (row && row.getClientRects().length > 0) {
+                row.scrollIntoView({ block: 'nearest' });
+            }
         },
 
         urlFor(candidate) {
@@ -33,7 +43,7 @@ export function registerEditorSceneSearch(Alpine) {
         },
 
         onInput() {
-            if (!this.showingRecent()) {
+            if (!this.showingBrowse()) {
                 this.queueSearch();
 
                 return;

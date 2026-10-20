@@ -40,19 +40,19 @@ describe('editor scene search', () => {
         expect(search.results).toHaveLength(1);
     });
 
-    it('shows the recent list for an empty query', () => {
+    it('shows the browse view for an empty query', () => {
         const search = mount();
 
-        expect(search.showingRecent()).toBe(true);
+        expect(search.showingBrowse()).toBe(true);
 
         search.query = '  ';
-        expect(search.showingRecent()).toBe(true);
+        expect(search.showingBrowse()).toBe(true);
 
         search.query = 'a';
-        expect(search.showingRecent()).toBe(false);
+        expect(search.showingBrowse()).toBe(false);
     });
 
-    it('returns to the recent list when the query is cleared', async () => {
+    it('returns to the browse view when the query is cleared', async () => {
         const search = mount();
         search.query = 'sto';
         await search.search();
@@ -60,7 +60,7 @@ describe('editor scene search', () => {
         search.query = '';
         search.onInput();
 
-        expect(search.showingRecent()).toBe(true);
+        expect(search.showingBrowse()).toBe(true);
         expect(search.results).toEqual([]);
     });
 
@@ -103,5 +103,43 @@ describe('editor scene search', () => {
         search.openHighlighted();
 
         expect(clicked).toEqual([1]);
+    });
+
+    it('hides the browse view while a query is typed and shows it again when cleared', () => {
+        const search = mount();
+
+        search.query = 'sto';
+        expect(search.showingBrowse()).toBe(false);
+
+        search.query = '';
+        expect(search.showingBrowse()).toBe(true);
+    });
+
+    it('scrolls the current outline row into view when the panel is open', () => {
+        const search = mount();
+        const root = document.createElement('div');
+        root.innerHTML = '<nav data-editor-outline><a href="#a" aria-current="page">A</a></nav>';
+        const row = root.querySelector('a');
+        row.scrollIntoView = vi.fn();
+        row.getClientRects = () => [{}];
+        search.$root = root;
+
+        search.init();
+
+        expect(row.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+    });
+
+    it('does not scroll a row inside a closed panel', () => {
+        const search = mount();
+        const root = document.createElement('div');
+        root.innerHTML = '<nav data-editor-outline><a href="#a" aria-current="page">A</a></nav>';
+        const row = root.querySelector('a');
+        row.scrollIntoView = vi.fn();
+        row.getClientRects = () => [];
+        search.$root = root;
+
+        search.init();
+
+        expect(row.scrollIntoView).not.toHaveBeenCalled();
     });
 });

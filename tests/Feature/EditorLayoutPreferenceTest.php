@@ -17,7 +17,7 @@ class EditorLayoutPreferenceTest extends TestCase
         return array_replace_recursive([
             'left' => ['width' => 300, 'collapsed' => true],
             'right' => ['width' => 400, 'collapsed' => false],
-            'sections' => ['codex' => true, 'notes' => false],
+            'sections' => ['codex' => true, 'notes' => false, 'recent' => true],
         ], $overrides);
     }
 
@@ -67,6 +67,19 @@ class EditorLayoutPreferenceTest extends TestCase
             ->assertNoContent();
 
         $this->assertSame($this->payload(), $user->fresh()->editor_layout);
+    }
+
+    public function test_a_payload_without_the_recent_section_fails_validation(): void
+    {
+        $user = User::factory()->create(['editor_layout' => null]);
+        $payload = $this->payload();
+        unset($payload['sections']['recent']);
+
+        $this->actingAs($user)
+            ->patchJson(route('preferences.editor-layout'), $payload)
+            ->assertJsonValidationErrors('sections.recent');
+
+        $this->assertNull($user->fresh()->editor_layout);
     }
 
     public function test_one_users_write_leaves_another_users_column_untouched(): void

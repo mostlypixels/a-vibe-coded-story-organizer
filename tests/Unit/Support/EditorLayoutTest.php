@@ -21,7 +21,14 @@ class EditorLayoutTest extends TestCase
 
         $this->assertSame(['width' => 300, 'collapsed' => false], $layout['left']);
         $this->assertSame(config('editor.layout.right'), $layout['right']);
-        $this->assertSame(['codex' => true, 'notes' => false], $layout['sections']);
+        $this->assertSame(['codex' => true, 'notes' => false, 'recent' => true], $layout['sections']);
+    }
+
+    public function test_a_missing_recent_key_resolves_to_the_default(): void
+    {
+        $layout = EditorLayout::resolve(['sections' => ['codex' => true, 'notes' => true]]);
+
+        $this->assertTrue($layout['sections']['recent']);
     }
 
     public function test_out_of_range_widths_are_clamped(): void

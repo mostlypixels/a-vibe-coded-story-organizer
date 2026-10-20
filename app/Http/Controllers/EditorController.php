@@ -8,8 +8,8 @@ use App\Services\EditorCards;
 use App\Services\RecentlyEdited;
 use App\Services\WordCountHistory;
 use App\Support\EditorLayout;
+use App\Support\EditorOutline;
 use App\Support\SceneNeighbours;
-use App\Support\StoryNumbering;
 use App\Support\WriterDay;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,7 +54,8 @@ class EditorController extends Controller
         $this->authorize('update', $project);
 
         $chapter = $scene->chapter;
-        $numbering = StoryNumbering::forBook($book);
+        $outline = EditorOutline::forBook($book);
+        $numbering = $outline->numbering();
 
         // An unnamed book is the project itself, so the line leaves it out.
         $context = array_filter([
@@ -76,7 +77,8 @@ class EditorController extends Controller
             'recentScenes' => $this->recent->scenes($project, config('editor.recent_limit'), 'scenes.write'),
             'project' => $project,
             'book' => $book,
-            'chapters' => $book->chaptersInStoryOrder(),
+            'outline' => $outline,
+            'chapters' => $outline->chapters(),
             'currentChapterId' => $chapter->id,
             'context' => array_values($context),
             'layout' => EditorLayout::resolve($request->user()->editor_layout),

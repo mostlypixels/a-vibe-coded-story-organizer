@@ -19,12 +19,16 @@ A full-height page for the prose of one scene, with a side panel on each side. `
 - A foreign scene, entry or note id is 404. Ids resolve through `LinkTargetType::queryFor($project)`.
 - A new scene opens here: `scenes.store` redirects to `scenes.write`. The create form has no prose field.
 - The left panel has a **New scene** dialog: chapter (default: the current one) and title. `books.scenes.quick-store` creates a Draft at the end of the chapter and returns the Write URL. The dialog flushes autosave before it leaves, like a link.
+- The left panel, top to bottom: **New scene**, scene search, a folding **Recent scenes** section, the **Outline**. A search query hides the recent section and the outline.
+- The outline (`editor/partials/outline.blade.php`) lists every act, chapter and scene of the current book in story order. A chapter row shows its label only. A scene row shows the name only. Acts are plain headings, hidden when the book has one act.
+- Only the current chapter starts open. Chapter fold state is not saved. The current row has `aria-current="page"` and scrolls into view inside the panel on load (`search.js`, `init()`).
+- `App\Support\EditorOutline::forBook()` loads the tree once: 3 queries, whatever the scene count. The breadcrumb, the New scene dialog and the outline read it. A test pins the query count.
 - The page edits prose only (`scene.contents`, through `x-autosave-field`). Title, status, chapter and event stay on `scenes.edit`.
 
 ## Layout preference
 
 - Stored per user in `users.editor_layout` (JSON), read only through `App\Support\EditorLayout::resolve()`.
-- Shape: `left` and `right` (`width`, `collapsed`), and `sections` (`codex`, `notes`; `true` means collapsed).
+- Shape: `left` and `right` (`width`, `collapsed`), and `sections` (`codex`, `notes`, `recent`; `true` means collapsed; `recent` starts collapsed).
 - `resolve()` fills defaults from `config/editor.php`, drops unknown keys and clamps widths. Never use the raw column.
 - The endpoint writes `$request->user()` only, like `PageSizeController`. It has no policy.
 - `layout.js` saves 500 ms after the last change. It always sends the full shape.
