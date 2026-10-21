@@ -5,7 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: a-vibe-coded-story-organizer_app
     restart: unless-stopped
     working_dir: /app
     environment:

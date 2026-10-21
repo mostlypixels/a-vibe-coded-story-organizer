@@ -5,7 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: a-vibe-coded-story-organizer_app_dev
     restart: unless-stopped
     working_dir: /app
     environment:
@@ -63,7 +62,6 @@ services:
   # replacement speaking SMTP on the same port.
   mailpit:
     image: axllent/mailpit:latest
-    container_name: a-vibe-coded-story-organizer_mailpit_dev
     restart: unless-stopped
     ports:
       - "${MAILPIT_PORT:-1025}:1025"
