@@ -836,3 +836,21 @@ input:is([type='checkbox'], [type='radio']):not(:checked, :indeterminate) {
         scroll-behavior: auto !important;
     }
 }
+
+/*
+ * Chrome on Windows has no overlay scrollbars. The thumb stays hidden until
+ * scrollbars.js marks a panel as active, so it fades like in Firefox.
+ * Firefox does not match this @supports test and keeps its own scrollbars.
+ */
+@supports selector(::-webkit-scrollbar) {
+    @layer base {
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+
+        .scrollbar-active {
+            scrollbar-color: var(--color-border-strong) transparent;
+        }
+    }
+}

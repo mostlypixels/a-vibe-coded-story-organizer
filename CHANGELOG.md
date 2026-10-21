@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-21 — Fading scrollbars in Chrome (#350)
+
+### Changed
+
+- In Chrome, scrollbars are thin, use the theme colour, and fade after you stop scrolling.
+
 ## 2026-10-21 — Saves work on hosts that block PATCH (#349)
 
 ### Fixed

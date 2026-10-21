@@ -24,6 +24,7 @@ import { registerEditorSceneSearch } from './editor/search';
 import { registerEditorNewScene } from './editor/new-scene';
 import { registerEditorCards } from './editor/cards';
 import { registerEditorLayout } from './editor/layout';
+import { registerScrollbarFader } from './scrollbars';
 
 window.Alpine = Alpine;
 
@@ -49,6 +50,8 @@ registerEditorSceneSearch(Alpine);
 registerEditorNewScene(Alpine);
 registerEditorCards(Alpine);
 registerEditorLayout(Alpine);
+
+registerScrollbarFader();
 
 Alpine.start();
 
