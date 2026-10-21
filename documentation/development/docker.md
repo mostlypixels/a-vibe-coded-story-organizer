@@ -153,7 +153,8 @@ The production image uses multiple build stages. It copies built frontend assets
 ## Troubleshooting
 
 - **Port conflict:** set `APP_PORT` in `.env`, then restart.
-- **Start failure:** inspect `make logs` or `docker logs a-vibe-coded-story-organizer_app`. An `APP_KEY is not set` loop means production key setup is incomplete.
+- **Second clone shares the database:** set `COMPOSE_PROJECT_NAME` in its `.env`. The clone then gets its own containers and `dbdata` volume.
+- **Start failure:** inspect `make logs` or `docker compose logs app`. An `APP_KEY is not set` loop means production key setup is incomplete.
 - **Database does not persist:** the data is in the `dbdata` volume. `make clean` or `docker compose -f docker-compose.dev.yml down -v` removes it. Check `docker volume ls` for `dbdata`.
 - **Storage permission errors:** the image uses user `laravel` with UID 1000. Correct ownership or grant group write access to `storage` and `bootstrap/cache`.
 - **Style changes appear late:** Vite polls bind mounts every 60 seconds on Windows and macOS. Wait or run `make restart`.

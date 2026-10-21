@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-21 — Own Docker stack per clone (#347)
+
+### Changed
+
+- Each clone can run its own Docker stack and database: set `COMPOSE_PROJECT_NAME` in its `.env`.
+
 ## 2026-10-20 — Outline in the Write page (#346)
 
 ### Added
