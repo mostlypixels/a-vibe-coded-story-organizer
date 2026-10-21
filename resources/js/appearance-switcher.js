@@ -8,6 +8,7 @@
  */
 import { OPEN_EVENT } from './dropdown';
 import { applyDeclarations, resolvePreview } from './font-preview';
+import { OVERRIDE_HEADER } from './method-override';
 
 /**
  * The slug next to `current` in the ordered list, clamped at both ends.
@@ -86,7 +87,7 @@ export function sendOnLeave(url, changes) {
     if (Object.keys(changes).length === 0) return;
 
     fetch(url, {
-        method: 'PATCH',
+        method: 'POST',
         keepalive: true,
         credentials: 'same-origin',
         headers: {
@@ -94,6 +95,7 @@ export function sendOnLeave(url, changes) {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
             'X-XSRF-TOKEN': xsrfToken(),
+            [OVERRIDE_HEADER]: 'PATCH',
         },
         body: JSON.stringify(changes),
     }).catch(() => {});

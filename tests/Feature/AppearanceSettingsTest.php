@@ -95,6 +95,20 @@ class AppearanceSettingsTest extends TestCase
         $this->assertSame('low-glare-dark', $user->fresh()->theme_slug);
     }
 
+    // The front-end sends PATCH this way, because some hosts drop a real PATCH request.
+    public function test_json_post_with_the_patch_override_header_reaches_the_patch_route(): void
+    {
+        $user = User::factory()->create(['theme_slug' => null]);
+
+        $this->actingAs($user)
+            ->postJson(route('admin.appearance.update'), ['theme_slug' => 'low-glare-dark'], [
+                'X-HTTP-Method-Override' => 'PATCH',
+            ])
+            ->assertNoContent();
+
+        $this->assertSame('low-glare-dark', $user->fresh()->theme_slug);
+    }
+
     public function test_json_patch_with_a_tampered_slug_answers_422_and_leaves_the_column_unchanged(): void
     {
         $user = User::factory()->create(['theme_slug' => 'daylight']);
