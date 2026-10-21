@@ -290,7 +290,8 @@ describe('appearanceSwitcher', () => {
             expect(window.fetch).toHaveBeenCalledOnce();
             const [url, options] = window.fetch.mock.calls[0];
             expect(url).toBe('/admin/appearance');
-            expect(options.method).toBe('PATCH');
+            expect(options.method).toBe('POST');
+            expect(options.headers['X-HTTP-Method-Override']).toBe('PATCH');
             expect(options.keepalive).toBe(true);
             expect(options.headers['X-XSRF-TOKEN']).toBe('abc=');
             expect(JSON.parse(options.body)).toEqual({ manuscript_scale: 'larger', ui_font: 'georgia' });

@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-21 — Saves work on hosts that block PATCH
+
+### Fixed
+
+- Autosave, appearance, editor layout and scene order now save on hosts that drop PATCH requests.
+
 ## 2026-10-21 — Own Docker stack per clone (#347)
 
 ### Changed
