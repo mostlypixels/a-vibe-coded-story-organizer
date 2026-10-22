@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CodexEntryType;
 use App\Enums\EditorCardState;
 use App\Models\Act;
 use App\Models\Chapter;
+use App\Models\CodexAttribute;
+use App\Models\CodexAttributeValue;
 use App\Models\CodexEntry;
 use App\Models\EditorCard;
+use App\Models\Event;
 use App\Models\Note;
 use App\Models\Project;
 use App\Models\Scene;
@@ -244,5 +248,136 @@ class EditorCardTest extends TestCase
         $this->assertCount(2, $cards);
         $this->assertSame($first->id, $cards[0]->codex_entry_id);
         $this->assertSame($second->id, $cards[1]->note_id);
+    }
+
+    /** @return list<int> */
+    private function cardIds(string $html): array
+    {
+        preg_match_all('/data-card-id="(\d+)"/', $html, $matches);
+
+        return array_map('intval', $matches[1]);
+    }
+
+    public function test_the_notes_section_lists_saved_and_linked_notes_and_hides_closed_ones(): void
+    {
+        [$user, $project, $scene] = $this->ownedScene();
+        $saved = Note::factory()->for($project)->create();
+        $closed = Note::factory()->for($project)->create();
+        $closed->linkTo($scene);
+        EditorCard::saveState($user, $scene, $saved, EditorCardState::Expanded);
+        EditorCard::saveState($user, $scene, $closed, EditorCardState::Closed);
+
+        $response = $this->actingAs($user)->get(route('scenes.editor-cards.index', [$scene, 'note']));
+        $this->assertSame([$saved->id], $this->cardIds($response->assertOk()->getContent()));
+
+        // A note linked after the page load shows up, collapsed.
+        $linked = Note::factory()->for($project)->create();
+        $linked->linkTo($scene);
+
+        $html = $this->get(route('scenes.editor-cards.index', [$scene, 'note']))->assertOk()->getContent();
+
+        $this->assertSame([$saved->id, $linked->id], $this->cardIds($html));
+        $this->assertStringContainsString('data-card-id="'.$linked->id.'"', $html);
+        $this->assertMatchesRegularExpression('/data-card-id="'.$linked->id.'"\s+data-state="collapsed"/', $html);
+    }
+
+    public function test_the_codex_section_shows_values_as_of_the_scene_event(): void
+    {
+        [$user, $project, $scene] = $this->ownedScene();
+        $event = Event::factory()->for($project)->create();
+        $scene->update(['event_id' => $event->id]);
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        EditorCard::saveState($user, $scene, $entry, EditorCardState::Expanded);
+
+        $url = route('scenes.editor-cards.index', [$scene->fresh(), 'codex']);
+        $before = $this->actingAs($user)->get($url)->assertOk()->getContent();
+        $this->assertSame([$entry->id], $this->cardIds($before));
+        $this->assertStringNotContainsString('Marked by a scar', $before);
+
+        CodexAttributeValue::factory()->startingAt($event)->create([
+            'codex_entry_id' => $entry->id,
+            'codex_attribute_id' => $attribute->id,
+            'value' => 'Marked by a scar',
+        ]);
+
+        $this->get($url)->assertOk()->assertSee('Marked by a scar');
+    }
+
+    public function test_a_section_holds_no_card_of_the_other_type(): void
+    {
+        [$user, $project, $scene] = $this->ownedScene();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        $note = Note::factory()->for($project)->create();
+        EditorCard::saveState($user, $scene, $entry, EditorCardState::Expanded);
+        EditorCard::saveState($user, $scene, $note, EditorCardState::Expanded);
+
+        $this->actingAs($user);
+
+        $this->assertSame([$entry->id], $this->cardIds($this->get(route('scenes.editor-cards.index', [$scene, 'codex']))->getContent()));
+        $this->assertSame([$note->id], $this->cardIds($this->get(route('scenes.editor-cards.index', [$scene, 'note']))->getContent()));
+    }
+
+    public function test_the_section_endpoint_gives_403_to_a_non_owner_for_both_types(): void
+    {
+        [, , $scene] = $this->ownedScene();
+        $this->actingAs(User::factory()->create());
+
+        $this->get(route('scenes.editor-cards.index', [$scene, 'codex']))->assertForbidden();
+        $this->get(route('scenes.editor-cards.index', [$scene, 'note']))->assertForbidden();
+    }
+
+    public function test_the_section_endpoint_redirects_a_guest_to_login(): void
+    {
+        [, , $scene] = $this->ownedScene();
+
+        $this->get(route('scenes.editor-cards.index', [$scene, 'note']))->assertRedirect(route('login'));
+    }
+
+    public function test_an_unknown_section_type_is_not_found(): void
+    {
+        [$user, , $scene] = $this->ownedScene();
+
+        $this->actingAs($user)
+            ->get('/scenes/'.$scene->id.'/editor-cards/scene')
+            ->assertNotFound();
+    }
+
+    public function test_the_section_endpoint_only_reads(): void
+    {
+        [$user, $project, $scene] = $this->ownedScene();
+        Note::factory()->for($project)->create()->linkTo($scene);
+
+        $this->actingAs($user)->get(route('scenes.editor-cards.index', [$scene, 'note']))->assertOk();
+
+        $this->assertSame(0, EditorCard::count());
+    }
+
+    public function test_the_endpoint_renders_the_same_cards_as_the_page_load(): void
+    {
+        [$user, $project, $scene] = $this->ownedScene();
+        $event = Event::factory()->for($project)->create();
+        $scene->update(['event_id' => $event->id]);
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create();
+        $entry = CodexEntry::factory()->for($project)->character()->create();
+        CodexAttributeValue::factory()->startingAt($event)->create(['codex_entry_id' => $entry->id, 'codex_attribute_id' => $attribute->id]);
+        $note = Note::factory()->for($project)->create();
+        $linked = Note::factory()->for($project)->create();
+        $linked->linkTo($scene);
+        EditorCard::saveState($user, $scene, $entry, EditorCardState::Expanded);
+        EditorCard::saveState($user, $scene, $note, EditorCardState::Collapsed);
+
+        $this->actingAs($user);
+        $page = $this->get(route('scenes.write', $scene->fresh()))->assertOk()->getContent();
+        preg_match_all('/data-editor-cards>(.*?)<template x-ref="template">/s', $page, $sections);
+        $this->assertCount(2, $sections[1]);
+
+        foreach (['codex' => 0, 'note' => 1] as $type => $index) {
+            $endpoint = $this->get(route('scenes.editor-cards.index', [$scene->fresh(), $type]))->getContent();
+            $normalize = fn (string $html) => trim(preg_replace('/\s+/', ' ', preg_replace('/<\/div>\s*$/', '', trim($html))));
+
+            $this->assertNotSame('', trim(strip_tags($endpoint)));
+            $this->assertStringContainsString($normalize($endpoint), $normalize($sections[1][$index]));
+        }
     }
 }

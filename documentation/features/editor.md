@@ -10,6 +10,7 @@ A full-height page for the prose of one scene, with a side panel on each side. `
 | --- | --- |
 | `GET projects/{project}/write` (`projects.write`) | Opens the scene with the newest write. Empty state when the project has no scene. |
 | `GET scenes/{scene}/write` (`scenes.write`) | The page. |
+| `GET scenes/{scene}/editor-cards/{type}` (`scenes.editor-cards.index`) | The cards of one section (`codex` or `note`) as an HTML partial. Another type is 404. |
 | `PUT scenes/{scene}/editor-cards` (`scenes.editor-cards.update`) | Saves one card state. |
 | `GET codex/{codexEntry}/card`, `GET notes/{note}/card` | Card body HTML. |
 | `PATCH preferences/editor-layout` (`preferences.editor-layout`) | Saves panel widths and collapse state. |
@@ -45,7 +46,16 @@ A full-height page for the prose of one scene, with a side panel on each side. `
 - The scene's linked notes (`$scene->notes`) show as collapsed cards with no row. A `closed` row hides one. A new search pick reopens it.
 - A codex card shows attributes as of the scene's "happens during" event (`CodexAsOfResolver::resolveEntries()`, one query set for all cards). An entry that does not exist at that moment still shows its card, marked "Not present at this scene's moment", with its description and no values.
 - Codex search matches names and aliases. The result label stays the entry name. No attribute search.
-- `EditorCards::forScene()` builds the page-load cards. A test pins the query count, so it must not grow with the card count.
+- `EditorCards::forScene()` builds the page-load cards from `codex()` and `notes()`. Each runs its own `editor_cards` query. A test pins the query count, so it must not grow with the card count.
+
+### Refresh
+
+- `scenes.editor-cards.index` renders one section with `editor/partials/cards.blade.php`, the partial that the page load uses. The two outputs cannot drift.
+- It authorizes `update` on the scene's project and only reads. `EditorCard::saveState()` stays the only writer.
+- The codex section loads `$scene->event`. The notes section resolves no codex entry.
+- `editorCards.refresh()` runs on window `focus`, on `visibilitychange` to visible, when the section opens, and on the section's refresh button. A closed section does not refresh. The panel collapse state does not matter.
+- One refresh runs at a time per section. It waits for the running card-state saves. A card change during the GET drops the response, with no retry.
+- An equal answer (`isEqualNode()`) leaves the cards in place. A different one replaces `$refs.cards` and puts focus back on the same card button.
 
 ## Scene switch is a full page load
 

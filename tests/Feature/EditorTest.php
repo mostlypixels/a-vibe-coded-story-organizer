@@ -526,6 +526,40 @@ class EditorTest extends TestCase
         $this->assertSame($queriesFor(1), $queriesFor(10));
     }
 
+    public function test_the_section_query_count_does_not_grow_with_the_cards(): void
+    {
+        $user = User::factory()->create();
+        [$project, $book] = $this->projectWithBook($user);
+        $event = Event::factory()->for($project)->create();
+        $attribute = CodexAttribute::factory()->for($project)->appliesTo(CodexEntryType::Character)->create();
+        $category = NoteCategory::factory()->for($project)->create();
+
+        $queriesFor = function (int $count, string $type) use ($user, $project, $book, $event, $attribute, $category): int {
+            $scene = $this->sceneIn($book, ['event_id' => $event->id]);
+
+            foreach (range(1, $count) as $i) {
+                $entry = CodexEntry::factory()->for($project)->character()->create();
+                CodexAttributeValue::factory()->startingAt($event)->create(['codex_entry_id' => $entry->id, 'codex_attribute_id' => $attribute->id]);
+                $this->card($user, $scene, $entry, EditorCardState::Expanded);
+                $this->card($user, $scene, Note::factory()->for($project)->for($category, 'category')->create(), EditorCardState::Expanded);
+                Note::factory()->for($project)->for($category, 'category')->create()->linkTo($scene);
+            }
+
+            $url = route('scenes.editor-cards.index', [$scene, $type]);
+            $this->actingAs($user)->get($url)->assertOk();
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->get($url)->assertOk();
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        foreach (['codex', 'note'] as $type) {
+            $this->assertSame($queriesFor(1, $type), $queriesFor(10, $type), $type);
+        }
+    }
+
     public function test_the_breadcrumb_context_and_the_new_scene_dialog_list_the_chapters_in_story_order(): void
     {
         [$user, $book, $scenes] = $this->storyAcrossBoundaries();
