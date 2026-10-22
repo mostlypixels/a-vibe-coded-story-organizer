@@ -28,25 +28,26 @@ class EditorCards
     /** @return array{codex: Collection<int, CodexCard>, notes: Collection<int, NoteCard>} */
     public function forScene(User $user, Scene $scene, Project $project): array
     {
-        $rows = EditorCard::query()
-            ->forUserAndScene($user, $scene)
-            ->with(['codexEntry.cover', 'note.category'])
-            ->get();
-
-        $open = $rows->reject(fn (EditorCard $row) => $row->state === EditorCardState::Closed);
-
         return [
-            'codex' => $this->codexCards($open, $scene, $project),
-            'notes' => $this->noteCards($rows, $open, $scene),
+            'codex' => $this->codex($user, $scene, $project),
+            'notes' => $this->notes($user, $scene),
         ];
     }
 
     /**
-     * @param  Collection<int, EditorCard>  $open
+     * The codex section alone, so a refresh of it loads no note.
+     *
      * @return Collection<int, CodexCard>
      */
-    private function codexCards(Collection $open, Scene $scene, Project $project): Collection
+    public function codex(User $user, Scene $scene, Project $project): Collection
     {
+        $open = EditorCard::query()
+            ->forUserAndScene($user, $scene)
+            ->whereNotNull('codex_entry_id')
+            ->where('state', '!=', EditorCardState::Closed->value)
+            ->with('codexEntry.cover')
+            ->get();
+
         $entries = $open
             ->map(fn (EditorCard $row) => $row->codexEntry)
             ->filter()
@@ -65,20 +66,27 @@ class EditorCards
     }
 
     /**
-     * @param  Collection<int, EditorCard>  $rows
-     * @param  Collection<int, EditorCard>  $open
+     * The notes section alone, so a refresh of it resolves no codex entry.
+     *
      * @return Collection<int, NoteCard>
      */
-    private function noteCards(Collection $rows, Collection $open, Scene $scene): Collection
+    public function notes(User $user, Scene $scene): Collection
     {
-        $saved = $open
+        $rows = EditorCard::query()
+            ->forUserAndScene($user, $scene)
+            ->whereNotNull('note_id')
+            ->with('note.category')
+            ->get();
+
+        $saved = $rows
+            ->reject(fn (EditorCard $row) => $row->state === EditorCardState::Closed)
             ->filter(fn (EditorCard $row) => $row->note !== null)
             ->map(fn (EditorCard $row) => $this->noteCard($row->note, $row->state));
 
         // A note with any row, also a closed one, already has its state.
         $linked = $scene->notes()
             ->with('category')
-            ->whereNotIn('notes.id', $rows->pluck('note_id')->filter())
+            ->whereNotIn('notes.id', $rows->pluck('note_id'))
             ->orderBy('title')
             ->get()
             ->map(fn (Note $note) => $this->noteCard($note, EditorCardState::Collapsed));

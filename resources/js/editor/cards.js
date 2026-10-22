@@ -4,6 +4,9 @@
  * The server renders the cards of the page load. A search pick fetches the card body and fills a copy
  * of the section's card template. Each state change is saved per user and per scene.
  * A failed save keeps the change on screen and shows a short error line.
+ *
+ * An open section reloads its cards when the window gets focus again, when the section opens, and on
+ * its refresh button. A change in the cards during the request drops the response.
  */
 
 import { candidateSearch } from '../candidate-search.js';
@@ -17,6 +20,13 @@ export function fillUrl(template, id) {
 
 function fillLabel(template, name) {
     return (template ?? '').replace(':name', name);
+}
+
+/** Element children only: the whitespace text between the cards does not count. */
+function sameCards(current, next) {
+    if (current.children.length !== next.children.length) return false;
+
+    return [...next.children].every((child, index) => child.isEqualNode(current.children[index]));
 }
 
 /** Set the label of an `x-icon-button`: its title and its screen-reader text. */
@@ -42,6 +52,79 @@ export function registerEditorCards(Alpine) {
         loading: false,
         loadError: '',
         saveError: '',
+        refreshing: false,
+        changeSeq: 0,
+        pendingSaves: new Set(),
+        wasOpen: false,
+
+        init() {
+            this.wasOpen = this.$refs.details?.open ?? false;
+            this._onWindowFocus = () => {
+                if (document.visibilityState !== 'hidden') this.refresh();
+            };
+
+            window.addEventListener('focus', this._onWindowFocus);
+            document.addEventListener('visibilitychange', this._onWindowFocus);
+        },
+
+        destroy() {
+            window.removeEventListener('focus', this._onWindowFocus);
+            document.removeEventListener('visibilitychange', this._onWindowFocus);
+        },
+
+        /** The browser also fires "toggle" for a section that loads open: that is not an opening. */
+        onDetailsToggle() {
+            const open = this.$refs.details.open;
+
+            if (open && !this.wasOpen) this.refresh();
+
+            this.wasOpen = open;
+        },
+
+        async refresh() {
+            if (!this.$refs.details?.open || this.refreshing) return;
+
+            this.refreshing = true;
+
+            try {
+                // A save that is not done can still change the server answer.
+                while (this.pendingSaves.size > 0) {
+                    await Promise.all([...this.pendingSaves]);
+                }
+
+                const seq = this.changeSeq;
+                const html = (await window.axios.get(config.refreshUrl)).data;
+
+                if (seq !== this.changeSeq) return;
+
+                if (this.loadError === config.refreshFailureMessage) this.loadError = '';
+
+                this.replaceCards(html);
+            } catch {
+                this.loadError = config.refreshFailureMessage;
+            } finally {
+                this.refreshing = false;
+            }
+        },
+
+        replaceCards(html) {
+            const template = document.createElement('template');
+            template.innerHTML = html;
+
+            const container = this.$refs.cards;
+
+            if (sameCards(container, template.content)) return;
+
+            const active = container.contains(document.activeElement) ? document.activeElement : null;
+            const cardId = active?.closest('[data-editor-card]')?.dataset.cardId;
+            const action = active?.dataset.cardAction ?? 'toggle';
+
+            container.replaceChildren(...template.content.childNodes);
+
+            if (cardId !== undefined) {
+                this.findCard(cardId)?.querySelector(`[data-card-action="${action}"]`)?.focus();
+            }
+        },
 
         clearSearch() {
             // A slow answer to the old query must not fill the cleared list.
@@ -72,6 +155,7 @@ export function registerEditorCards(Alpine) {
 
         /** Show the picked card on top. An open card is not added twice: it expands and gets focus. */
         async pick(candidate) {
+            this.changeSeq++;
             this.clearSearch();
             this.loadError = '';
 
@@ -162,6 +246,7 @@ export function registerEditorCards(Alpine) {
         close(card) {
             const id = card.dataset.cardId;
 
+            this.changeSeq++;
             card.remove();
             this.save(id, 'closed');
             // The focused button is gone, so focus goes back to the section search.
@@ -169,6 +254,7 @@ export function registerEditorCards(Alpine) {
         },
 
         setState(card, state) {
+            this.changeSeq++;
             card.dataset.state = state;
             card.querySelector('[data-card-body]').hidden = state !== 'expanded';
             card.querySelector('[data-card-action="toggle"]').setAttribute('aria-expanded', String(state === 'expanded'));
@@ -179,13 +265,20 @@ export function registerEditorCards(Alpine) {
             card.scrollIntoView?.({ block: 'nearest' });
         },
 
-        async save(id, state) {
-            try {
-                await window.axios.put(config.saveUrl, { type: config.type, id: Number(id), state });
-                this.saveError = '';
-            } catch {
-                this.saveError = config.saveFailureMessage;
-            }
+        save(id, state) {
+            const request = (async () => {
+                try {
+                    await window.axios.put(config.saveUrl, { type: config.type, id: Number(id), state });
+                    this.saveError = '';
+                } catch {
+                    this.saveError = config.saveFailureMessage;
+                }
+            })();
+
+            this.pendingSaves.add(request);
+            request.finally(() => this.pendingSaves.delete(request));
+
+            return request;
         },
     }));
 }

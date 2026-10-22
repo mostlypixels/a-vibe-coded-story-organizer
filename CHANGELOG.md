@@ -17,6 +17,13 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-22 — Write panel refresh (#351)
+
+### Added
+
+- The Codex and Notes sections of the Write page refresh when you come back to the window.
+- Each section has a refresh button to update its cards by hand.
+
 ## 2026-10-21 — Fading scrollbars in Chrome (#350)
 
 ### Changed

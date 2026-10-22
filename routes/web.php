@@ -246,6 +246,9 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
     Route::post('/scenes/{scene}/duplicate', [SceneController::class, 'duplicate'])->name('scenes.duplicate');
     Route::post('/scenes/{scene}/codex-entries', [SceneCodexEntryController::class, 'store'])->name('scenes.codex-entries.store');
     Route::get('/scenes/{scene}/write', [EditorController::class, 'show'])->name('scenes.write');
+    Route::get('/scenes/{scene}/editor-cards/{type}', [EditorCardController::class, 'index'])
+        ->whereIn('type', ['codex', 'note'])
+        ->name('scenes.editor-cards.index');
     Route::put('/scenes/{scene}/editor-cards', [EditorCardController::class, 'update'])->name('scenes.editor-cards.update');
     Route::get('/scenes/{scene}/codex-references', [SceneController::class, 'codexReferences'])
         ->name('scenes.codex-references.index');
