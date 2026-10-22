@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-22 — Write panel refresh
+## 2026-10-22 — Write panel refresh (#351)
 
 ### Added
 
