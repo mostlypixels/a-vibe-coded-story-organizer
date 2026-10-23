@@ -41,7 +41,7 @@ Other shown text, such as `x-rich-text`, uses the interface settings.
 ## Scale and line spacing
 
 - Interface scale changes the root font size.
-- Manuscript scale is relative to the interface scale.
+- Manuscript size is a fixed px value. It does not follow the interface scale.
 - Each line-spacing option is a multiplier of its surface base.
 - Interface leading writes the bare multiplier to `--ui-leading`. The `@theme` block in `app.css` multiplies each `text-*` line height, `.prose` and `html` by it.
 - Do not write `--tw-leading` on `:root`. Tailwind registers it with `inherits: false`, so no element sees it.

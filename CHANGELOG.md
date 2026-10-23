@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-23 — Manuscript size in pixels
+
+### Changed
+
+- Manuscript text size is a pixel value from 14px to 28px and no longer follows the interface size.
+
 ## 2026-10-23 — Scene text follows manuscript settings (#353)
 
 ### Changed

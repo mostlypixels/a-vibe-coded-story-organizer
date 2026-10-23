@@ -33,7 +33,7 @@ class AppearanceSwitcherController extends Controller
         // Field => [slug => value list, label format].
         $scales = [
             'ui_scale' => [config('fonts.ui_scales'), 'px'],
-            'manuscript_scale' => [config('fonts.manuscript_scales'), 'times'],
+            'manuscript_scale' => [config('fonts.manuscript_scales'), 'px'],
             'ui_leading' => [config('fonts.leading'), 'times'],
             'manuscript_leading' => [config('fonts.leading'), 'times'],
             'page_width' => [PageWidth::options(), 'width'],

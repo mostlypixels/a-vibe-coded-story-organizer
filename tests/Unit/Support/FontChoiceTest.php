@@ -51,7 +51,7 @@ class FontChoiceTest extends TestCase
 
     public function test_a_valid_slug_resolves_to_its_own_authored_value_per_field(): void
     {
-        $choice = FontChoice::resolve('atkinson', 'literata', 'large', 'larger', 'airy');
+        $choice = FontChoice::resolve('atkinson', 'literata', 'large', '24px', 'airy');
 
         $this->assertSame('atkinson', $choice->uiSlug);
         $this->assertSame(config('fonts.families.atkinson.stack'), $choice->uiStack);
@@ -62,8 +62,8 @@ class FontChoiceTest extends TestCase
         $this->assertSame('large', $choice->uiScaleSlug);
         $this->assertSame(config('fonts.ui_scales.large'), $choice->uiScale);
 
-        $this->assertSame('larger', $choice->manuscriptScaleSlug);
-        $this->assertSame(config('fonts.manuscript_scales.larger'), $choice->manuscriptScale);
+        $this->assertSame('24px', $choice->manuscriptScaleSlug);
+        $this->assertSame(config('fonts.manuscript_scales.24px'), $choice->manuscriptScale);
 
         $this->assertSame('airy', $choice->leadingSlug);
         $this->assertSame(config('fonts.leading.airy'), $choice->leading);

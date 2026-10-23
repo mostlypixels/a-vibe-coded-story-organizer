@@ -6,12 +6,16 @@ namespace App\Support;
 final class ScaleLabel
 {
     /**
-     * @param  string  $format  `px` (percentage of 16px), `times` (multiplier),
+     * @param  string  $format  `px` (percentage of 16px, or a px value as is), `times` (multiplier),
      *                          `width` (page width; 100% reads "Full width");
      *                          any other format returns the value unchanged
      */
     public static function format(string $value, string $format): string
     {
+        if ($format === 'px' && str_ends_with($value, 'px')) {
+            return $value;
+        }
+
         $isPercentage = str_ends_with($value, '%');
         $number = (float) rtrim($value, '%');
         $multiplier = $isPercentage ? $number / 100 : $number;
