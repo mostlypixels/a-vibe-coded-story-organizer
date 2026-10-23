@@ -28,10 +28,15 @@ Requests validate slugs with `Rule::in(array_keys(...))`. `App\Support\FontChoic
 
 ## Where the manuscript settings apply
 
-The `.manuscript` class sets the manuscript font, size and line spacing. Only writing areas use it: the Tiptap editor and the textareas of `x-wysiwyg` and `x-autosave-field`.
+The `.manuscript` class sets the manuscript font, size and line spacing. It is on the story text:
 
-- Shown text, such as `x-rich-text` and `x-scene-prose`, uses the interface settings.
-- `.prose` sets only colors. Do not add manuscript tokens to it: `.prose` is on many read-only views.
+- the writing areas: the Tiptap editor and the textareas of `x-wysiwyg` and `x-autosave-field`;
+- `x-scene-prose`, so shown scene text matches the editor.
+
+Other shown text, such as `x-rich-text`, uses the interface settings.
+
+> [!WARNING]
+> Do not add manuscript tokens to `.prose`. `.prose` is on many read-only views that are not story text.
 
 ## Scale and line spacing
 
