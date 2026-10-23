@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-23 — Scene text follows manuscript settings
+## 2026-10-23 — Scene text follows manuscript settings (#353)
 
 ### Changed
 
