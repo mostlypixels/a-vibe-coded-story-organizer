@@ -29,9 +29,10 @@ final class AppearancePreviewMap
             'manuscript_font' => $stacks,
             'ui_scale' => config('fonts.ui_scales'),
             'manuscript_scale' => config('fonts.manuscript_scales'),
-            // Already multiplied per surface, so the browser never does that maths.
+            // Already multiplied, so the browser never does that maths.
             'manuscript_leading' => FontChoice::lineHeightsFor('manuscript'),
-            'ui_leading' => FontChoice::lineHeightsFor('ui'),
+            // A bare multiplier: the CSS theme applies it to each text size.
+            'ui_leading' => config('fonts.leading'),
             'page_width' => PageWidth::options(),
         ];
     }

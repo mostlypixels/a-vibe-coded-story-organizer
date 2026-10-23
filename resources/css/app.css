@@ -17,6 +17,19 @@
   --font-sans:
     Atkinson Hyperlegible Next, ui-sans-serif, system-ui, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  /*
+   * Tailwind's own text line heights, times the interface spacing multiplier.
+   * FontStyleBlock sets `--ui-leading` on `:root`.
+   */
+  --text-xs--line-height: calc(1 / 0.75 * var(--ui-leading, 1));
+  --text-sm--line-height: calc(1.25 / 0.875 * var(--ui-leading, 1));
+  --text-base--line-height: calc(1.5 / 1 * var(--ui-leading, 1));
+  --text-lg--line-height: calc(1.75 / 1.125 * var(--ui-leading, 1));
+  --text-xl--line-height: calc(1.75 / 1.25 * var(--ui-leading, 1));
+  --text-2xl--line-height: calc(2 / 1.5 * var(--ui-leading, 1));
+  --text-3xl--line-height: calc(2.25 / 1.875 * var(--ui-leading, 1));
+  --text-4xl--line-height: calc(2.5 / 2.25 * var(--ui-leading, 1));
 }
 
 /*
@@ -115,6 +128,17 @@
     --tw-prose-pre-bg: var(--color-nav);
     --tw-prose-th-borders: var(--color-border-strong);
     --tw-prose-td-borders: var(--color-border);
+    /* Typography's own line heights, times the interface spacing. */
+    line-height: calc(1.75 * var(--ui-leading, 1));
+}
+
+.prose-sm {
+    line-height: calc(24 / 14 * var(--ui-leading, 1));
+}
+
+/* Text without a `text-*` utility. Preflight sets 1.5. */
+html {
+    line-height: calc(1.5 * var(--ui-leading, 1));
 }
 
 /*

@@ -39,7 +39,7 @@ class FontStyleBlockTest extends TestCase
             $css,
         );
         $this->assertStringContainsString(
-            '--tw-leading:'.FontChoice::lineHeightsFor('ui')[config('fonts.default_ui_leading')].';',
+            '--ui-leading:'.config('fonts.leading.'.config('fonts.default_ui_leading')).';',
             $css,
         );
     }
@@ -94,16 +94,18 @@ class FontStyleBlockTest extends TestCase
     }
 
     /**
-     * `--tw-leading` is the slot every Tailwind `text-*` utility reads its
-     * line-height from, so it is how the interface leading reaches the chrome.
+     * Tailwind registers `--tw-leading` with `inherits: false`, so a `:root`
+     * value reaches no element. The `@theme` block in `app.css` reads `--ui-leading`.
      */
-    public function test_the_interface_leading_renders_as_the_tailwind_leading_variable(): void
+    public function test_the_interface_leading_renders_as_a_bare_multiplier(): void
     {
         $css = (new FontStyleBlock)->render(
             FontChoice::resolve(null, null, null, null, 'airy', 'roomier')
         );
 
-        $this->assertStringContainsString('--tw-leading:'.FontChoice::lineHeightsFor('ui')['roomier'].';', $css);
+        $this->assertStringNotContainsString('--tw-leading', $css);
+
+        $this->assertStringContainsString('--ui-leading:'.config('fonts.leading.roomier').';', $css);
         $this->assertStringContainsString('--manuscript-leading:'.FontChoice::lineHeightsFor('manuscript')['airy'].';', $css);
     }
 
@@ -113,7 +115,7 @@ class FontStyleBlockTest extends TestCase
             FontChoice::resolve(null, null, null, null, null, 'gone-from-config')
         );
 
-        $this->assertStringContainsString('--tw-leading:'.FontChoice::lineHeightsFor('ui')[config('fonts.default_ui_leading')].';', $css);
+        $this->assertStringContainsString('--ui-leading:'.config('fonts.leading.'.config('fonts.default_ui_leading')).';', $css);
         $this->assertStringNotContainsString('gone-from-config', $css);
     }
 }
