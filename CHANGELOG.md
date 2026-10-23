@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-10-23 — Interface spacing works
+## 2026-10-23 — Interface spacing works (#352)
 
 ### Fixed
 
