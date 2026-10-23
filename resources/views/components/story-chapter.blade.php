@@ -63,7 +63,7 @@
                 </p>
 
                 @if ($sceneDisplay === \App\Enums\StoryOverviewSceneDisplay::Content)
-                    <x-scene-prose :scene="$scene" id="scene-{{ $scene->id }}-prose" x-show="open" x-transition class="text-[0.8125rem]" />
+                    <x-scene-prose :scene="$scene" id="scene-{{ $scene->id }}-prose" x-show="open" x-transition />
                 @elseif ($scene->hasDescription())
                     <x-rich-text :html="$scene->description" :project="$project" id="scene-{{ $scene->id }}-prose" data-scene-description x-show="open" x-transition />
                 @else

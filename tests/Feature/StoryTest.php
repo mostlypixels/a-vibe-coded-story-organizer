@@ -820,6 +820,25 @@ class StoryTest extends TestCase
             ->assertDontSee('Quorvex description');
     }
 
+    public function test_content_display_uses_the_manuscript_text_settings(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $book->update(['overview_scene_display' => StoryOverviewSceneDisplay::Content]);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        $scene = Scene::factory()->for($chapter)->create(['contents' => 'Zabrillo contents']);
+
+        $html = $this->actingAs($user)
+            ->get(route('books.story.overview', $book))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<article class="[^"]*\bmanuscript\b[^"]*"[^>]*id="scene-'.$scene->id.'-prose"/',
+            $html,
+        );
+    }
+
     public function test_owner_can_switch_the_scene_display(): void
     {
         $user = User::factory()->create();
