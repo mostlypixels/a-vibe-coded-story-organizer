@@ -20,26 +20,27 @@ use App\Support\FontChoice;
  * > Keep the rule unlayered and starting `:root{`. Wrapping it in `@layer` loses to
  * > Tailwind's compiled `@layer theme` silently — nothing errors, it just stops working.
  *
- * ## Why the interface leading is `--tw-leading`
+ * ## Why the interface leading is a bare multiplier
  *
- * Tailwind compiles every `text-*` utility as
- * `line-height: var(--tw-leading, var(--text-<size>--line-height))`. A plain
- * `line-height` on `:root` therefore reaches almost nothing — each utility overrides
- * it. Setting `--tw-leading` fills that same slot instead, so the interface leading
- * applies everywhere, and a local `leading-*` utility still wins because it sets
- * `--tw-leading` on the element.
+ * `--ui-leading` holds the multiplier, not a line height. The `@theme` block in
+ * `app.css` multiplies each `text-*` line height by it, so each size keeps its own
+ * ratio. A local `leading-*` utility still wins.
+ *
+ * > [!WARNING]
+ * > Do not write `--tw-leading` here. Tailwind registers it with `inherits: false`,
+ * > so a `:root` value reaches no element.
  */
 final class FontStyleBlock
 {
     public function render(FontChoice $choice): string
     {
         $declarations = sprintf(
-            '--font-sans:%s;--font-manuscript:%s;--manuscript-leading:%s;--manuscript-scale:%s;--tw-leading:%s;font-size:%s;',
+            '--font-sans:%s;--font-manuscript:%s;--manuscript-leading:%s;--manuscript-scale:%s;--ui-leading:%s;font-size:%s;',
             $choice->uiStack,
             $choice->manuscriptStack,
             $choice->manuscriptLineHeight(),
             $choice->manuscriptScale,
-            $choice->uiLineHeight(),
+            $choice->uiLeading,
             $choice->uiScale,
         );
 

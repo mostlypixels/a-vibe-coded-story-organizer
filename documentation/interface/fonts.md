@@ -38,7 +38,8 @@ The `.manuscript` class sets the manuscript font, size and line spacing. Only wr
 - Interface scale changes the root font size.
 - Manuscript scale is relative to the interface scale.
 - Each line-spacing option is a multiplier of its surface base.
-- Interface leading writes `--tw-leading` because Tailwind text utilities read that variable.
+- Interface leading writes the bare multiplier to `--ui-leading`. The `@theme` block in `app.css` multiplies each `text-*` line height, `.prose` and `html` by it.
+- Do not write `--tw-leading` on `:root`. Tailwind registers it with `inherits: false`, so no element sees it.
 
 ## Live preview
 

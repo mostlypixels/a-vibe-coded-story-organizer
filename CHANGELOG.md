@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-23 — Interface spacing works
+
+### Fixed
+
+- The interface spacing setting now changes line spacing across the app, shown scene text included.
+
 ## 2026-10-22 — Write panel refresh (#351)
 
 ### Added

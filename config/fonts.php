@@ -192,9 +192,12 @@ return [
     | themselves: `1` leaves the spacing alone and `2` doubles it. The picker
     | prints them as `1×` … `2×`.
     |
-    | The multiplier cannot be applied in CSS, because a rule cannot read the
-    | line height it is overriding. So the base sits in `leading_bases` below and
-    | FontStyleBlock multiplies the two before rendering.
+    | Interface: CSS applies the bare multiplier to each `text-*` line height
+    | in `app.css`.
+    |
+    | Manuscript: the `.manuscript` rule cannot read the line height it
+    | overrides. So the base sits in `leading_bases` below and FontStyleBlock
+    | multiplies the two before rendering.
     |
     | The floor is 1 — the default. Tighter than default is not offered: below a
     | multiplier of 1 the descenders of one line start to collide with the
@@ -219,9 +222,9 @@ return [
     | "unchanged":
     |
     | - `manuscript` is Tailwind Typography's own `.prose` line height.
-    | - `ui` is Tailwind's `text-base` line height, the middle of the `text-*`
-    |   scale the chrome uses. One value replaces all of them, so the smallest
-    |   and largest utilities shift slightly at a multiplier of 1.
+    |
+    | The interface needs no base here: `app.css` keeps each `text-*` size's own
+    | line height.
     |
     | Change these only against the framework's own numbers — they are a mirror
     | of Tailwind's defaults, not a taste setting.
@@ -229,7 +232,6 @@ return [
     */
 
     'leading_bases' => [
-        'ui' => 1.5,
         'manuscript' => 1.75,
     ],
 

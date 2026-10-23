@@ -53,7 +53,7 @@ class AppearancePreviewMapTest extends TestCase
 
         $this->assertSame(config('fonts.ui_scales'), $map['ui_scale']);
         $this->assertSame(config('fonts.manuscript_scales'), $map['manuscript_scale']);
-        $this->assertSame(FontChoice::lineHeightsFor('ui'), $map['ui_leading']);
+        $this->assertSame(config('fonts.leading'), $map['ui_leading']);
         $this->assertSame(FontChoice::lineHeightsFor('manuscript'), $map['manuscript_leading']);
     }
 

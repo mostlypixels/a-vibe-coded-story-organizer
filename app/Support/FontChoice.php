@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Services\FontStyleBlock;
+
 /**
  * The five stored font-appearance slugs, resolved into the CSS values
  * `config/fonts.php` authors for them.
@@ -30,18 +32,14 @@ final readonly class FontChoice
     ) {}
 
     /**
-     * `leading` holds a multiplier of the surface's default line height, which
-     * CSS cannot apply on its own — a rule cannot read the line height it
-     * overrides. These turn the multiplier into the value to render.
+     * `leading` holds a multiplier of the manuscript's default line height. A
+     * `.manuscript` rule cannot read the line height it overrides, so this turns
+     * the multiplier into the value to render. The interface leading stays a bare
+     * multiplier: see {@see FontStyleBlock}.
      */
     public function manuscriptLineHeight(): string
     {
         return self::lineHeight($this->leading, 'manuscript');
-    }
-
-    public function uiLineHeight(): string
-    {
-        return self::lineHeight($this->uiLeading, 'ui');
     }
 
     /**

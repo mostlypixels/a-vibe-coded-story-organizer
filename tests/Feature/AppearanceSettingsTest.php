@@ -351,7 +351,7 @@ class AppearanceSettingsTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('admin.appearance.edit'))
-            ->assertSee('--tw-leading:'.FontChoice::lineHeightsFor('ui')['roomier'], false);
+            ->assertSee('--ui-leading:'.config('fonts.leading.roomier'), false);
     }
 
     public function test_a_rejected_font_value_never_appears_in_a_subsequent_page_render(): void
