@@ -82,14 +82,14 @@ class FontStyleBlockTest extends TestCase
 
     public function test_it_renders_a_chosen_family_stack(): void
     {
-        $choice = FontChoice::resolve('atkinson', 'literata', 'large', 'larger', 'airy');
+        $choice = FontChoice::resolve('atkinson', 'literata', 'large', '24px', 'airy');
 
         $css = (new FontStyleBlock)->render($choice);
 
         $this->assertStringContainsString('--font-sans:'.config('fonts.families.atkinson.stack').';', $css);
         $this->assertStringContainsString('--font-manuscript:'.config('fonts.families.literata.stack').';', $css);
         $this->assertStringContainsString('font-size:'.config('fonts.ui_scales.large').';', $css);
-        $this->assertStringContainsString('--manuscript-scale:'.config('fonts.manuscript_scales.larger').';', $css);
+        $this->assertStringContainsString('--manuscript-scale:'.config('fonts.manuscript_scales.24px').';', $css);
         $this->assertStringContainsString('--manuscript-leading:'.FontChoice::lineHeightsFor('manuscript')['airy'].';', $css);
     }
 

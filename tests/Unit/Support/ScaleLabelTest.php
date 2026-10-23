@@ -13,6 +13,7 @@ class ScaleLabelTest extends TestCase
     {
         return [
             'px from a percentage' => ['100%', 'px', '16px'],
+            'px from a px value' => ['18px', 'px', '18px'],
             'times from a percentage' => ['115%', 'times', '1.15×'],
             'times from a whole ratio' => ['1', 'times', '1×'],
             'times from a decimal ratio' => ['1.25', 'times', '1.25×'],

@@ -129,7 +129,7 @@ class AppearanceSettingsTest extends TestCase
             'ui_font' => 'atkinson',
             'manuscript_font' => 'literata',
             'ui_scale' => 'large',
-            'manuscript_scale' => 'larger',
+            'manuscript_scale' => '24px',
             'manuscript_leading' => 'airy',
             'ui_leading' => 'roomier',
         ]);
@@ -243,7 +243,7 @@ class AppearanceSettingsTest extends TestCase
             'ui_font' => 'atkinson',
             'manuscript_font' => 'literata',
             'ui_scale' => 'large',
-            'manuscript_scale' => 'larger',
+            'manuscript_scale' => '24px',
             'manuscript_leading' => 'airy',
         ]);
 
@@ -253,7 +253,7 @@ class AppearanceSettingsTest extends TestCase
         $this->assertSame('atkinson', $fresh->ui_font);
         $this->assertSame('literata', $fresh->manuscript_font);
         $this->assertSame('large', $fresh->ui_scale);
-        $this->assertSame('larger', $fresh->manuscript_scale);
+        $this->assertSame('24px', $fresh->manuscript_scale);
         $this->assertSame('airy', $fresh->manuscript_leading);
     }
 
@@ -263,7 +263,7 @@ class AppearanceSettingsTest extends TestCase
             'ui_font' => 'atkinson',
             'manuscript_font' => 'literata',
             'ui_scale' => 'large',
-            'manuscript_scale' => 'larger',
+            'manuscript_scale' => '24px',
             'manuscript_leading' => 'airy',
         ]);
 
@@ -379,7 +379,7 @@ class AppearanceSettingsTest extends TestCase
             'ui_font' => 'atkinson',
             'manuscript_font' => 'literata',
             'ui_scale' => 'large',
-            'manuscript_scale' => 'larger',
+            'manuscript_scale' => '24px',
             'manuscript_leading' => 'airy',
         ]);
 
@@ -392,7 +392,7 @@ class AppearanceSettingsTest extends TestCase
         $this->assertMatchesRegularExpression('/id="ui-font-atkinson"[^>]*checked/', $html);
         $this->assertMatchesRegularExpression('/id="manuscript-font-literata"[^>]*checked/', $html);
         $this->assertMatchesRegularExpression('/id="ui-scale-large"[^>]*checked/', $html);
-        $this->assertMatchesRegularExpression('/id="manuscript-scale-larger"[^>]*checked/', $html);
+        $this->assertMatchesRegularExpression('/id="manuscript-scale-24px"[^>]*checked/', $html);
         $this->assertMatchesRegularExpression('/id="manuscript-leading-airy"[^>]*checked/', $html);
     }
 

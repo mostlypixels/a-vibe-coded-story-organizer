@@ -81,7 +81,7 @@ class AppearanceSwitcherTest extends TestCase
     {
         $user = User::factory()->create([
             'ui_scale' => 'large',
-            'manuscript_scale' => 'bigger',
+            'manuscript_scale' => '18px',
             'ui_leading' => 'roomy',
             'manuscript_leading' => 'airy',
         ]);
@@ -93,11 +93,11 @@ class AppearanceSwitcherTest extends TestCase
         $this->assertSame(array_keys(config('fonts.leading')), $config['steps']['ui_leading']);
         $this->assertSame(array_keys(config('fonts.leading')), $config['steps']['manuscript_leading']);
         $this->assertSame('18px', $config['labels']['ui_scale']['large']);
-        $this->assertSame('1.15×', $config['labels']['manuscript_scale']['bigger']);
+        $this->assertSame('18px', $config['labels']['manuscript_scale']['18px']);
         $this->assertSame('1.5×', $config['labels']['ui_leading']['roomy']);
         $this->assertSame(route('admin.appearance.update'), $config['url']);
         $this->assertSame('large', $config['active']['ui_scale']);
-        $this->assertSame('bigger', $config['active']['manuscript_scale']);
+        $this->assertSame('18px', $config['active']['manuscript_scale']);
         $this->assertSame('roomy', $config['active']['ui_leading']);
         $this->assertSame('airy', $config['active']['manuscript_leading']);
         $this->assertArrayHasKey('theme_slug', $config['previewMap']);

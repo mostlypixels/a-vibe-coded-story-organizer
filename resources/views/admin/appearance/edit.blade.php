@@ -132,9 +132,8 @@
                 <div class="grid gap-6 sm:grid-cols-2">
                     <x-setting-track
                         name="manuscript_scale"
-                        format="times"
+                        format="px"
                         :legend="__('Text size')"
-                        :hint="__('Relative to the interface size above.')"
                         :options="$manuscriptScales"
                         :selected="$selectedManuscriptScale"
                     />

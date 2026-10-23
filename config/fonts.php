@@ -19,7 +19,7 @@ return [
     'default_ui' => 'inter',
     'default_manuscript' => 'inter',
     'default_ui_scale' => 'normal',
-    'default_manuscript_scale' => 'same',
+    'default_manuscript_scale' => '16px',
     'default_ui_leading' => 'default',
     'default_leading' => 'default',
 
@@ -165,22 +165,20 @@ return [
     | Manuscript scale
     |--------------------------------------------------------------------------
     |
-    | Percentages applied on `.prose`, relative to the UI scale above — the two
-    | compose rather than one overriding the other. The picker prints these as
-    | multipliers, never px: the resulting size depends on `ui_scales`, so a px
-    | label here would go stale the moment the interface size changes.
-    |
-    | The list starts at parity and only grows. A manuscript smaller than the
-    | chrome around it has no reader.
+    | Fixed pixel sizes set on `.manuscript`. They do not follow the interface
+    | size, so the label a writer picks is the size they get.
     |
     */
 
     'manuscript_scales' => [
-        'same' => '100%',
-        'bigger' => '115%',
-        'large' => '130%',
-        'larger' => '145%',
-        'largest' => '160%',
+        '14px' => '14px',
+        '16px' => '16px',
+        '18px' => '18px',
+        '20px' => '20px',
+        '22px' => '22px',
+        '24px' => '24px',
+        '26px' => '26px',
+        '28px' => '28px',
     ],
 
     /*
