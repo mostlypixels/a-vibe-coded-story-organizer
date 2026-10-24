@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\SearchDomain;
 use App\Enums\SearchMode;
+use App\Models\Act;
 use App\Models\Chapter;
 use App\Support\SearchScopeFactory;
 use Illuminate\Contracts\Validation\Validator;
@@ -13,7 +14,7 @@ use Illuminate\Validation\Rule;
 /**
  * Blank queries show the search form without results.
  *
- * `book`, `from_chapter`, `to_chapter`, and `domains` narrow the search (see
+ * `book`, `act`, `from_chapter`, `to_chapter`, and `domains` narrow the search (see
  * {@see SearchScopeFactory}). Route-model binding does not cover
  * them — they arrive as query parameters — so a cross-project id fails
  * validation here instead of being silently ignored.
@@ -40,6 +41,7 @@ class SearchRequest extends FormRequest
                     fn ($query) => $query->where('project_id', $this->route('project')->id)
                 ),
             ],
+            'act' => ['nullable', 'integer', 'exists:acts,id'],
             'from_chapter' => ['nullable', 'integer', 'exists:chapters,id'],
             'to_chapter' => ['nullable', 'integer', 'exists:chapters,id'],
             'domains' => ['nullable', 'array'],
@@ -55,6 +57,10 @@ class SearchRequest extends FormRequest
     {
         $validator->after(function (Validator $validator) {
             $bookId = $this->filled('book') ? $this->integer('book') : null;
+
+            if ($this->filled('act')) {
+                $this->validateAct($validator, $bookId);
+            }
 
             foreach (['from_chapter', 'to_chapter'] as $field) {
                 if (! $this->filled($field)) {
@@ -77,5 +83,24 @@ class SearchRequest extends FormRequest
                 }
             }
         });
+    }
+
+    private function validateAct(Validator $validator, ?int $bookId): void
+    {
+        if ($bookId === null) {
+            $validator->errors()->add('act', __('An act needs a book.'));
+
+            return;
+        }
+
+        if (! Act::query()->whereKey($this->integer('act'))->where('book_id', $bookId)->exists()) {
+            $validator->errors()->add('act', __('The selected act does not belong to the chosen book.'));
+
+            return;
+        }
+
+        if ($this->filled('from_chapter') || $this->filled('to_chapter')) {
+            $validator->errors()->add('act', __('Choose an act or a chapter range, not both.'));
+        }
     }
 }

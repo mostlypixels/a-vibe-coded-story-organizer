@@ -82,6 +82,9 @@ class ProjectNavigation
 
     public readonly bool $searchActive;
 
+    /** The Find and replace page (a Tools submenu item). */
+    public readonly bool $replaceActive;
+
     /** The Account page and its Profile/Configuration destinations. */
     public readonly bool $accountActive;
 
@@ -94,7 +97,7 @@ class ProjectNavigation
     /** The Progress page (a Tools submenu item). */
     public readonly bool $progressActive;
 
-    /** Tools dropdown trigger — true on the section stub or any Revisions/Progress page. */
+    /** Tools dropdown trigger — true on the section stub or any Tools page. */
     public readonly bool $toolsActive;
 
     /**
@@ -160,6 +163,7 @@ class ProjectNavigation
         $this->notesActive = $request->routeIs('projects.notes.*', 'notes.*');
 
         $this->searchActive = $request->routeIs('projects.search.*');
+        $this->replaceActive = $request->routeIs('projects.replace.*');
 
         $this->accountActive = $request->routeIs('account', 'profile.*', 'admin.*');
 
@@ -167,7 +171,7 @@ class ProjectNavigation
 
         $this->revisionsActive = $request->routeIs('projects.revisions.*', 'revisions.*');
         $this->progressActive = $request->routeIs('projects.progress');
-        $this->toolsActive = $request->routeIs('projects.tools.*') || $this->revisionsActive || $this->progressActive;
+        $this->toolsActive = $request->routeIs('projects.tools.*') || $this->revisionsActive || $this->progressActive || $this->replaceActive;
 
         // Do not use `books.*`; manuscript routes share that prefix.
         $this->booksActive = $request->routeIs(

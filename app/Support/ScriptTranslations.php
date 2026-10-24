@@ -64,6 +64,17 @@ final class ScriptTranslations
         'Colour grey',
     ];
 
+    /** Counter, button and confirm text of `resources/js/find-replace.js`. */
+    private const FIND_REPLACE = [
+        ':selected of :total match selected in :scenes',
+        ':selected of :total matches selected in :scenes',
+        '1 scene',
+        ':count scenes',
+        'Replace 1 match',
+        'Replace :count matches',
+        'Replace :count matches in :scenes?',
+    ];
+
     /** @return array<string, string> */
     public static function autosaveBadge(): array
     {
@@ -74,6 +85,12 @@ final class ScriptTranslations
     public static function wysiwyg(): array
     {
         return self::translate(self::WYSIWYG);
+    }
+
+    /** @return array<string, string> */
+    public static function findReplace(): array
+    {
+        return self::translate(self::FIND_REPLACE);
     }
 
     /**

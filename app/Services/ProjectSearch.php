@@ -13,6 +13,7 @@ use App\Models\Event;
 use App\Models\Note;
 use App\Models\Plotline;
 use App\Models\Project;
+use App\Models\Scene;
 use App\Support\AccentFolder;
 use App\Support\LikeSearch;
 use App\Support\RichText;
@@ -231,23 +232,7 @@ class ProjectSearch
                 self::CHAPTER_FIELDS,
             ],
             SearchDomain::Scenes => [
-                $this->scopeBookAndRange(
-                    $this->selectContentsThatMayMatch($project->sceneQuery(), $terms)
-                        ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
-                        ->join('acts', 'acts.id', '=', 'chapters.act_id')
-                        ->join('books', 'books.id', '=', 'acts.book_id')
-                        // Only what matching and the result row read. `contents` comes
-                        // from selectContentsThatMayMatch().
-                        ->addSelect([
-                            'scenes.id', 'scenes.chapter_id', 'scenes.name', 'scenes.description',
-                            'scenes.position', 'acts.book_id as book_id',
-                        ])
-                        ->orderBy('books.position')->orderBy('books.id')
-                        ->orderBy('acts.position')->orderBy('acts.id')
-                        ->orderBy('chapters.position')->orderBy('chapters.id')
-                        ->orderBy('scenes.position')->orderBy('scenes.id'),
-                    $scope,
-                ),
+                $this->sceneQuery($project, $scope, $terms),
                 self::SCENE_FIELDS,
             ],
             // The three codex domains share one query, built by searchCodex().
@@ -255,6 +240,36 @@ class ProjectSearch
                 'Codex domains build their query in searchCodex(), not queryFor().'
             ),
         };
+    }
+
+    /**
+     * Scenes in manuscript order, narrowed to the scope. A scene's `contents` comes back
+     * only when SQL finds that it can contain a term; PHP decides every match.
+     *
+     * Find and replace shares this query, so both read the same scenes in the same order.
+     *
+     * @param  array<int, string>  $terms
+     * @return Builder<Scene>
+     */
+    public function sceneQuery(Project $project, SearchScope $scope, array $terms): Builder
+    {
+        return $this->scopeBookAndRange(
+            $this->selectContentsThatMayMatch($project->sceneQuery(), $terms)
+                ->join('chapters', 'chapters.id', '=', 'scenes.chapter_id')
+                ->join('acts', 'acts.id', '=', 'chapters.act_id')
+                ->join('books', 'books.id', '=', 'acts.book_id')
+                // Only what matching and the result row read. `contents` comes
+                // from selectContentsThatMayMatch().
+                ->addSelect([
+                    'scenes.id', 'scenes.chapter_id', 'scenes.name', 'scenes.description',
+                    'scenes.position', 'acts.book_id as book_id',
+                ])
+                ->orderBy('books.position')->orderBy('books.id')
+                ->orderBy('acts.position')->orderBy('acts.id')
+                ->orderBy('chapters.position')->orderBy('chapters.id')
+                ->orderBy('scenes.position')->orderBy('scenes.id'),
+            $scope,
+        );
     }
 
     /**
@@ -306,6 +321,10 @@ class ProjectSearch
             $query->where('acts.book_id', $scope->bookId);
         }
 
+        if ($scope->actId !== null) {
+            $query->where('acts.id', $scope->actId);
+        }
+
         if ($scope->chapterIds !== []) {
             $query->whereIn('acts.id', Chapter::query()
                 ->whereIn('id', $scope->chapterIds)
@@ -323,6 +342,12 @@ class ProjectSearch
     {
         if ($scope->bookId !== null) {
             $query->where('acts.book_id', $scope->bookId);
+        }
+
+        // An act with no chapters resolves to an empty chapter list, which would
+        // otherwise read as "the whole book".
+        if ($scope->actId !== null) {
+            $query->where('acts.id', $scope->actId);
         }
 
         if ($scope->chapterIds !== []) {

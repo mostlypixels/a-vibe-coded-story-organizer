@@ -832,6 +832,47 @@ class ProjectSearchTest extends TestCase
         $this->assertCount(2, $results->scenes);
     }
 
+    public function test_act_scope_limits_acts_chapters_and_scenes_to_that_act(): void
+    {
+        $project = $this->project();
+        $fixture = $this->twoBookFixture($project);
+        $act = $fixture['acts']['one2'];
+        $chapters = $fixture['chapters'];
+
+        $results = app(ProjectSearch::class)->search(
+            $project,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(
+                bookId: $fixture['bookOne']->id,
+                chapterIds: [$chapters['one2']->id, $chapters['one3']->id],
+                actId: $act->id,
+            ),
+        );
+
+        $this->assertSame([$act->name], $this->rowNames($results->acts));
+        $this->assertCount(2, $results->chapters);
+        $this->assertCount(2, $results->scenes);
+    }
+
+    public function test_an_act_with_no_chapters_matches_no_chapters_or_scenes(): void
+    {
+        $project = $this->project();
+        $fixture = $this->twoBookFixture($project);
+        $emptyAct = Act::factory()->for($fixture['bookOne'])->create(['name' => 'scopeword empty act', 'description' => 'x']);
+
+        $results = app(ProjectSearch::class)->search(
+            $project,
+            'scopeword',
+            SearchMode::AllTerms,
+            new SearchScope(bookId: $fixture['bookOne']->id, actId: $emptyAct->id),
+        );
+
+        $this->assertSame(['scopeword empty act'], $this->rowNames($results->acts));
+        $this->assertCount(0, $results->chapters);
+        $this->assertCount(0, $results->scenes);
+    }
+
     public function test_an_excluded_domain_runs_no_query(): void
     {
         $project = $this->project();

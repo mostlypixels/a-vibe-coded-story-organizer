@@ -313,6 +313,19 @@ class BreadcrumbsTest extends TestCase
         ], $this->summarize($breadcrumbs));
     }
 
+    public function test_find_and_replace_sits_under_tools(): void
+    {
+        $project = Project::factory()->for($this->user)->create();
+
+        $breadcrumbs = $this->breadcrumbsFor('projects.replace.index', [$project]);
+
+        $this->assertSame([
+            [__('Dashboard'), route('projects.show', $project), false],
+            [__('Tools'), route('projects.tools.home', $project), false],
+            [__('Find and replace'), null, true],
+        ], $this->summarize($breadcrumbs));
+    }
+
     public function test_a_non_project_route_yields_an_empty_trail(): void
     {
         // The list renders only for a non-empty account; an empty one redirects

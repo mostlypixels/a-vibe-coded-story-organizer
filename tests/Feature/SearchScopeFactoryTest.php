@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\SearchDomain;
 use App\Http\Requests\SearchRequest;
 use App\Models\Act;
+use App\Models\Book;
 use App\Models\Chapter;
 use App\Support\SearchScopeFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -106,6 +107,49 @@ class SearchScopeFactoryTest extends TestCase
 
         $this->assertNull($scope->bookId);
         $this->assertSame([], $scope->chapterIds);
+    }
+
+    public function test_an_act_resolves_to_its_chapters_in_story_order(): void
+    {
+        [$project, $book] = $this->projectWithBook();
+        $actOne = Act::factory()->for($book)->create();
+        $actTwo = Act::factory()->for($book)->create();
+
+        Chapter::factory()->for($actOne)->create();
+        $second = Chapter::factory()->for($actTwo)->create(['position' => 2]);
+        $first = Chapter::factory()->for($actTwo)->create(['position' => 1]);
+
+        $scope = SearchScopeFactory::fromRequest(
+            $this->requestWith(['book' => $book->id, 'act' => $actTwo->id]),
+            $project,
+        );
+
+        $this->assertSame($actTwo->id, $scope->actId);
+        $this->assertSame([$first->id, $second->id], $scope->chapterIds);
+    }
+
+    public function test_an_act_from_another_book_resolves_no_act(): void
+    {
+        [$project, $book] = $this->projectWithBook();
+        $otherAct = Act::factory()->for(Book::factory()->for($project))->create();
+
+        $scope = SearchScopeFactory::fromRequest(
+            $this->requestWith(['book' => $book->id, 'act' => $otherAct->id]),
+            $project,
+        );
+
+        $this->assertNull($scope->actId);
+        $this->assertSame([], $scope->chapterIds);
+    }
+
+    public function test_an_act_with_no_book_resolves_no_act(): void
+    {
+        [$project, $book] = $this->projectWithBook();
+        $act = Act::factory()->for($book)->create();
+
+        $scope = SearchScopeFactory::fromRequest($this->requestWith(['act' => $act->id]), $project);
+
+        $this->assertNull($scope->actId);
     }
 
     public function test_domains_are_mapped_to_search_domain_cases(): void

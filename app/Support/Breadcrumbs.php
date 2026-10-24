@@ -326,6 +326,13 @@ class Breadcrumbs implements Countable, IteratorAggregate
             ];
         }
 
+        if ($request->routeIs('projects.replace.*')) {
+            return [
+                new Crumb(__('Tools'), route('projects.tools.home', $project)),
+                new Crumb(__('Find and replace'), current: true),
+            ];
+        }
+
         // > [!WARNING]
         // > A new tool needs its own branch above. Each sibling trail names the
         // > page it labels; this one must too. An unmatched Tools route gets an

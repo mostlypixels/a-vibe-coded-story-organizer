@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Global, not web-only: the autosave endpoint and the entity forms must
         // agree on line endings or their revisions diff against each other.
         $middleware->append(NormalizeLineEndings::class);
+
+        // Find and replace works on spaces: " " and "  " are real find texts.
+        $middleware->trimStrings(except: ['find', 'replace']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

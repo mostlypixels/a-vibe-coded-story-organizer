@@ -9,8 +9,8 @@ use App\Models\Project;
 
 /**
  * Builds a {@see SearchScope} from a search request: the one place that turns
- * a book and a pair of chapter ids into a resolved, story-ordered chapter
- * range. Kept apart from SearchScope itself so that class stays a plain value
+ * a book and a pair of chapter ids, or an act, into a resolved,
+ * story-ordered chapter list. Kept apart from SearchScope itself so that class stays a plain value
  * object under test, with no query to fake.
  */
 final class SearchScopeFactory
@@ -21,14 +21,22 @@ final class SearchScopeFactory
         $fromChapterId = $request->filled('from_chapter') ? $request->integer('from_chapter') : null;
         $toChapterId = $request->filled('to_chapter') ? $request->integer('to_chapter') : null;
 
+        $actId = $request->filled('act') ? $request->integer('act') : null;
+
         $book = $bookId !== null ? $project->books()->find($bookId) : null;
+        $act = $book !== null && $actId !== null ? $book->acts()->find($actId) : null;
 
         return new SearchScope(
             bookId: $book?->id,
             fromChapterId: $fromChapterId,
             toChapterId: $toChapterId,
-            chapterIds: $book !== null ? self::resolveChapterRange($book, $fromChapterId, $toChapterId) : [],
+            chapterIds: match (true) {
+                $act !== null => $act->chapters()->orderBy('position')->orderBy('id')->pluck('id')->all(),
+                $book !== null => self::resolveChapterRange($book, $fromChapterId, $toChapterId),
+                default => [],
+            },
             domains: $request->enums('domains', SearchDomain::class),
+            actId: $act?->id,
         );
     }
 
