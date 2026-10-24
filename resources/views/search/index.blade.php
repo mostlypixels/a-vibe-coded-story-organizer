@@ -19,6 +19,9 @@
                     />
                     <x-button type="submit" variant="primary">{{ __('Search') }}</x-button>
                 </div>
+                <a href="{{ route('projects.replace.index', ['project' => $project, 'find' => $query] + $scope->toQuery()) }}" class="inline-block text-sm text-link underline hover:text-link-hover">
+                    {{ __('Find and replace') }}
+                </a>
             </div>
 
             <fieldset class="space-y-1">
@@ -39,7 +42,7 @@
                 </div>
             </fieldset>
 
-            <x-search.narrow-panel :project="$project" :books="$books" :book="$book" :chapters="$chapters" :scope="$scope" />
+            <x-search.narrow-panel :project="$project" :books="$books" :book="$book" :chapters="$chapters" :acts="$acts" :scope="$scope" />
         </form>
 
         @if ($results !== null)

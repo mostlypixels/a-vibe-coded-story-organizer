@@ -21,5 +21,15 @@
                 </a>
             </x-slot:footer>
         </x-card>
+
+        <x-card :title="__('Find and replace')" icon="tabler-replace" stretch flush-footer>
+            <p>{{ __('Change a word or phrase across your scenes. You see every match first and choose which ones to change.') }}</p>
+
+            <x-slot:footer>
+                <a href="{{ route('projects.replace.index', $project) }}" class="text-sm font-medium text-link hover:underline">
+                    {{ __('Find and replace') }}
+                </a>
+            </x-slot:footer>
+        </x-card>
     </div>
 </x-app-layout>

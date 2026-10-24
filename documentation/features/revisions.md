@@ -35,6 +35,7 @@ The `revisions` table stores one immutable row for each field and moment. `save_
 - A coalesced row keeps its original `save_id` and `created_at`.
 - Callers skip byte-identical values.
 - A manual save records only changed fields.
+- A [find and replace](find-and-replace.md#apply) records one manual revision for each changed scene. Its label is `Replace "<find>" with "<replace>"`.
 - The first change can create a baseline with the previous value and entity timestamp.
 - Every row stores `project_id` explicitly so project cascades remain valid.
 - Deleting an entity deletes its revisions. A database cascade skips model events, so Book, Act and Chapter delete the revisions of their children in `deleting`. There is no "restore deleted" feature to keep them for.

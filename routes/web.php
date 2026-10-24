@@ -25,6 +25,7 @@ use App\Http\Controllers\EpubExportController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FieldAutosaveController;
+use App\Http\Controllers\FindReplaceController;
 use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ImportSettingController;
@@ -213,6 +214,9 @@ Route::middleware(['auth', TrackActiveProject::class])->group(function () {
         ->name('books.story.overview.mode');
 
     Route::get('/projects/{project}/search', [SearchController::class, 'index'])->name('projects.search.index');
+
+    Route::get('/projects/{project}/replace', [FindReplaceController::class, 'index'])->name('projects.replace.index');
+    Route::post('/projects/{project}/replace', [FindReplaceController::class, 'store'])->name('projects.replace.store');
 
     // Reject unknown search domains before the controller runs.
     Route::whereIn('domain', SearchDomain::routeKeys())->group(function () {

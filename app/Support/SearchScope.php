@@ -5,7 +5,7 @@ namespace App\Support;
 use App\Enums\SearchDomain;
 
 /**
- * The book, chapter range, and domain filters narrowing one search request.
+ * The book, act, chapter range, and domain filters narrowing one search request.
  *
  * Runs no query itself — {@see SearchScopeFactory} resolves the chapter range
  * and hands over the finished id list. That split is what lets this class stay
@@ -17,7 +17,7 @@ use App\Enums\SearchDomain;
 final readonly class SearchScope
 {
     /**
-     * @param  array<int, int>  $chapterIds  the resolved range, in story order; empty
+     * @param  array<int, int>  $chapterIds  the resolved range or act, in story order; empty
      *                                       means "every chapter in the book" (or no book)
      * @param  array<int, SearchDomain>  $domains  empty means every domain
      */
@@ -27,6 +27,7 @@ final readonly class SearchScope
         public ?int $toChapterId = null,
         public array $chapterIds = [],
         public array $domains = [],
+        public ?int $actId = null,
     ) {}
 
     /**
@@ -51,7 +52,7 @@ final readonly class SearchScope
     /** True when any filter narrows the search below "every domain, whole project". */
     public function isNarrowed(): bool
     {
-        return $this->bookId !== null || $this->domains !== [];
+        return $this->bookId !== null || $this->actId !== null || $this->domains !== [];
     }
 
     /**
@@ -66,6 +67,10 @@ final readonly class SearchScope
 
         if ($this->bookId !== null) {
             $query['book'] = $this->bookId;
+        }
+
+        if ($this->actId !== null) {
+            $query['act'] = $this->actId;
         }
 
         if ($this->fromChapterId !== null) {

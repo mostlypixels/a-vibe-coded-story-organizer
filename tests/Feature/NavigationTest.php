@@ -445,6 +445,20 @@ class NavigationTest extends TestCase
         );
     }
 
+    public function test_the_tools_menu_marks_find_and_replace_as_current(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        $html = $this->actingAs($user)
+            ->get(route('projects.replace.index', $project))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertLinkIsCurrent($html, route('projects.replace.index', $project));
+        $this->assertLinkIsNotCurrent($html, route('projects.search.index', $project));
+    }
+
     public function test_the_search_link_points_at_the_project_search_route(): void
     {
         $user = User::factory()->create();

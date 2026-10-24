@@ -9,4 +9,5 @@
 | [Write page](editor.md) | The Write page, its side panels, editor cards, or the stored panel layout |
 | [Revisions](revisions.md) | Autosave, history, diffs, retention, revert, or undo |
 | [Rich text](rich-text.md) | Sanitization, rendering, Tiptap, or Markdown fields |
+| [Find and replace](find-and-replace.md) | The find and replace page, its matching, or its preview |
 | [Writing progress](writing-progress.md) | Word counts, snapshots, goals, or progress charts |

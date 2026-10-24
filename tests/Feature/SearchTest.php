@@ -122,6 +122,81 @@ class SearchTest extends TestCase
             ->assertSessionHasErrors('from_chapter');
     }
 
+    public function test_an_act_from_another_book_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $otherAct = Act::factory()->for(Book::factory()->for($project))->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'book' => $book->id, 'act' => $otherAct->id]))
+            ->assertSessionHasErrors('act');
+    }
+
+    public function test_an_act_from_another_project_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $otherAct = Act::factory()->for(Project::factory()->for($user)->create()->books()->first())->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'book' => $book->id, 'act' => $otherAct->id]))
+            ->assertSessionHasErrors('act');
+    }
+
+    public function test_an_act_with_no_book_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $act = Act::factory()->for($project->books()->first())->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'act' => $act->id]))
+            ->assertSessionHasErrors('act');
+    }
+
+    public function test_an_act_with_a_chapter_range_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $act = Act::factory()->for($book)->create();
+        $chapter = Chapter::factory()->for($act)->create();
+
+        $this->actingAs($user)
+            ->get(route('projects.search.index', [
+                'project' => $project,
+                'q' => 'zephyrqux',
+                'book' => $book->id,
+                'act' => $act->id,
+                'from_chapter' => $chapter->id,
+            ]))
+            ->assertSessionHasErrors(['act' => 'Choose an act or a chapter range, not both.']);
+    }
+
+    public function test_an_act_filter_limits_scenes_names_the_act_and_comes_back_selected(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+        $book = $project->books()->first();
+        $wanted = Act::factory()->for($book)->create(['name' => 'Wanted act']);
+        $other = Act::factory()->for($book)->create(['name' => 'Other act']);
+        Scene::factory()->for(Chapter::factory()->for($wanted))->create(['name' => 'Zephyrqux in wanted', 'contents' => 'x', 'description' => 'x']);
+        Scene::factory()->for(Chapter::factory()->for($other))->create(['name' => 'Zephyrqux in other', 'contents' => 'x', 'description' => 'x']);
+
+        $response = $this->actingAs($user)
+            ->get(route('projects.search.index', ['project' => $project, 'q' => 'zephyrqux', 'book' => $book->id, 'act' => $wanted->id]));
+
+        $response->assertOk();
+        $response->assertSee('Zephyrqux in wanted');
+        $response->assertDontSee('Zephyrqux in other');
+        $response->assertSee(', Wanted act.');
+        $response->assertSee('value="'.$wanted->id.'" selected', false);
+        $this->assertSame($wanted->id, $response->viewData('scope')->actId);
+    }
+
     public function test_an_unknown_domain_value_fails_validation(): void
     {
         $user = User::factory()->create();

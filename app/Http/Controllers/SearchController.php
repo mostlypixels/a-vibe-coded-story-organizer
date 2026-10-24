@@ -5,17 +5,14 @@ namespace App\Http\Controllers;
 use App\Enums\SearchDomain;
 use App\Enums\SearchMode;
 use App\Http\Requests\SearchRequest;
-use App\Models\Book;
 use App\Models\Project;
 use App\Services\ProjectSearch;
 use App\Support\PageSize;
-use App\Support\SearchScope;
+use App\Support\ScopePicker;
 use App\Support\SearchScopeFactory;
-use App\Support\SearchScopeSummary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
@@ -47,10 +44,7 @@ class SearchController extends Controller
             ? null
             : app(ProjectSearch::class)->search($project, $query, $mode, $scope);
 
-        $books = $this->booksFor($project);
-        $book = $this->resolvedBook($scope, $books);
-
-        $chapters = $book?->chaptersInStoryOrder() ?? collect();
+        $picker = ScopePicker::for($project, $scope);
 
         return view('search.index', [
             'project' => $project,
@@ -58,15 +52,14 @@ class SearchController extends Controller
             'mode' => $mode,
             'results' => $results,
             'scope' => $scope,
-            'books' => $books,
-            'book' => $book,
+            'books' => $picker->books,
+            'book' => $picker->book,
             // The whole picker exists only once a book is resolved (the chosen one,
             // or the project's only one) — a multi-book project with none chosen
             // runs no chapter query.
-            'chapters' => $chapters,
-            'scopeSummary' => $results !== null && $scope->isNarrowed()
-                ? implode(', ', SearchScopeSummary::parts($scope, $book, $chapters))
-                : null,
+            'chapters' => $picker->chapters,
+            'acts' => $picker->acts,
+            'scopeSummary' => $results !== null ? $picker->summary($scope) : null,
         ]);
     }
 
@@ -131,28 +124,5 @@ class SearchController extends Controller
             'scope' => $scope,
             'paginator' => $paginator,
         ]);
-    }
-
-    /** @return Collection<int, Book> The project's books, ready for {@see Book::displayName()}. */
-    private function booksFor(Project $project): Collection
-    {
-        return $project->books()->get()
-            ->each(fn (Book $book) => $book->setRelation('project', $project));
-    }
-
-    /**
-     * The book the chapter-range picker reads: the one the scope names, or the
-     * project's only one. Numbering restarts per book, so the picker needs
-     * exactly one to make sense of "chapter 3".
-     *
-     * @param  Collection<int, Book>  $books
-     */
-    private function resolvedBook(SearchScope $scope, Collection $books): ?Book
-    {
-        if ($scope->bookId !== null) {
-            return $books->firstWhere('id', $scope->bookId);
-        }
-
-        return $books->count() === 1 ? $books->first() : null;
     }
 }

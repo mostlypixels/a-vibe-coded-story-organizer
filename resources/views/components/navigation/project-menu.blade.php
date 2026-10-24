@@ -123,6 +123,10 @@
             <x-dropdown-link :href="route('projects.progress', $navigation->project)" :active="$navigation->progressActive">
                 {{ __('Progress') }}
             </x-dropdown-link>
+
+            <x-dropdown-link :href="route('projects.replace.index', $navigation->project)" :active="$navigation->replaceActive">
+                {{ __('Find and replace') }}
+            </x-dropdown-link>
         </x-slot>
     </x-dropdown>
 </div>

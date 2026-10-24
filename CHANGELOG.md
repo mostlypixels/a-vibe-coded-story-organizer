@@ -17,6 +17,18 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-24 — Find and replace
+
+### Added
+
+- Find and replace in scene text across a project, book, act or chapter, with a preview of every match grouped by scene.
+- Each match in the preview has a checkbox, with select all, select none and replace in one scene.
+- Each scene changed by a replace gets its own labelled revision, so one scene can be reverted alone.
+
+### Changed
+
+- Search can be limited to one act.
+
 ## 2026-10-23 — Manuscript size in pixels (#354)
 
 ### Changed

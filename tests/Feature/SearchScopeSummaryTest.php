@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\SearchDomain;
+use App\Models\Act;
 use App\Models\Project;
 use App\Models\User;
 use App\Support\SearchScope;
@@ -65,6 +66,22 @@ class SearchScopeSummaryTest extends TestCase
         );
 
         $this->assertSame([$book->displayName()], $parts);
+    }
+
+    public function test_an_act_filter_names_the_act(): void
+    {
+        $act = Act::factory()->make(['name' => 'Ash and Rust']);
+        $act->id = 7;
+
+        $parts = SearchScopeSummary::parts(new SearchScope(actId: 7), null, collect(), $act);
+
+        $this->assertSame(['Ash and Rust'], $parts);
+    }
+
+    public function test_an_act_filter_makes_the_scope_narrowed(): void
+    {
+        $this->assertTrue((new SearchScope(actId: 7))->isNarrowed());
+        $this->assertSame(['act' => 7], (new SearchScope(actId: 7))->toQuery());
     }
 
     public function test_an_unnarrowed_scope_names_nothing(): void

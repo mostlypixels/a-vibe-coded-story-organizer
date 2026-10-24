@@ -94,6 +94,10 @@
     {{ __('Progress') }}
 </x-responsive-nav-link>
 
+<x-responsive-nav-link :href="route('projects.replace.index', $navigation->project)" :active="$navigation->replaceActive">
+    {{ __('Find and replace') }}
+</x-responsive-nav-link>
+
 <x-responsive-nav-link
     :href="route('projects.search.index', $navigation->project)"
     :active="$navigation->searchActive"

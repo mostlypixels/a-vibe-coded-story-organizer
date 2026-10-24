@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Act;
 use App\Models\Book;
 use App\Models\Chapter;
 use Illuminate\Support\Collection;
@@ -23,14 +24,19 @@ final class SearchScopeSummary
 
     /**
      * @param  Collection<int, Chapter>  $chapters  the book's chapters in story order, empty when no book is resolved
+     * @param  Act|null  $act  the act the scope names, when one is resolved
      * @return array<int, string>
      */
-    public static function parts(SearchScope $scope, ?Book $book, Collection $chapters): array
+    public static function parts(SearchScope $scope, ?Book $book, Collection $chapters, ?Act $act = null): array
     {
         $parts = [];
 
         if ($scope->bookId !== null && $book !== null) {
             $parts[] = $book->displayName();
+        }
+
+        if ($scope->actId !== null && $act !== null) {
+            $parts[] = $act->name;
         }
 
         if ($chapters->isNotEmpty() && ($scope->fromChapterId !== null || $scope->toChapterId !== null)) {

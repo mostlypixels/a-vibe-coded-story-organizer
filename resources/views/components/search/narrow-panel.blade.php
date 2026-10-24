@@ -1,4 +1,4 @@
-@props(['project', 'books', 'book', 'chapters', 'scope'])
+@props(['project', 'books', 'book', 'chapters', 'acts' => collect(), 'scope', 'domains' => true])
 
 @php
     $numbering = \App\Support\StoryNumbering::fromChapters($chapters);
@@ -26,6 +26,21 @@
                 <input type="hidden" name="book" value="{{ $book->id }}" />
             @endif
         </div>
+
+        @if ($book)
+            <div class="space-y-1">
+                <x-input-label for="narrow-act" :value="__('Act')" />
+                <x-select id="narrow-act" name="act" class="block w-full sm:w-auto">
+                    <option value="">{{ __('— All acts —') }}</option>
+                    @foreach ($acts as $candidate)
+                        <option value="{{ $candidate->id }}" @selected($scope->actId === $candidate->id)>
+                            {{ $loop->iteration }}. {{ $candidate->name }}
+                        </option>
+                    @endforeach
+                </x-select>
+                <p class="text-xs text-content-muted">{{ __('Choose an act or a chapter range, not both.') }}</p>
+            </div>
+        @endif
 
         <div class="space-y-1">
             <span class="block font-medium text-sm text-content-muted">{{ __('Chapter range') }}</span>
@@ -61,6 +76,7 @@
             @endif
         </div>
 
+        @if ($domains)
         <div class="space-y-4">
             <span class="block font-medium text-sm text-content-muted">{{ __('Domains') }}</span>
 
@@ -94,5 +110,6 @@
                 </div>
             @endforeach
         </div>
+        @endif
     </div>
 </x-collapsible-card>
