@@ -802,6 +802,22 @@ class StoryTest extends TestCase
             ->assertSee('...');
     }
 
+    public function test_a_scene_excerpt_uses_the_same_text_style_as_a_description(): void
+    {
+        $user = User::factory()->create();
+        [, $book] = $this->projectWithBook($user);
+        $chapter = Chapter::factory()->for(Act::factory()->for($book))->create();
+        Scene::factory()->for($chapter)->create([
+            'description' => '<p></p>',
+            'contents' => 'Zabrillo contents',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('books.story.overview', $book))
+            ->assertOk()
+            ->assertSee('data-scene-excerpt x-show="open" x-transition class="prose prose-sm max-w-none text-content-muted"', false);
+    }
+
     public function test_content_display_shows_the_scene_contents(): void
     {
         $user = User::factory()->create();
