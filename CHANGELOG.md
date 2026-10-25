@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-10-25 — Overview excerpt matches description style (#356)
+
+### Fixed
+
+- In the story overview, a scene without a description shows its excerpt with the same line spacing as a description.
+
 ## 2026-10-24 — Find and replace (#355)
 
 ### Added

@@ -67,7 +67,7 @@
                 @elseif ($scene->hasDescription())
                     <x-rich-text :html="$scene->description" :project="$project" id="scene-{{ $scene->id }}-prose" data-scene-description x-show="open" x-transition />
                 @else
-                    <p id="scene-{{ $scene->id }}-prose" data-scene-excerpt x-show="open" x-transition class="text-sm text-content-muted">{{ $scene->contentsExcerpt(100) }}</p>
+                    <div id="scene-{{ $scene->id }}-prose" data-scene-excerpt x-show="open" x-transition class="prose prose-sm max-w-none text-content-muted"><p>{{ $scene->contentsExcerpt(100) }}</p></div>
                 @endif
             </section>
         @empty
