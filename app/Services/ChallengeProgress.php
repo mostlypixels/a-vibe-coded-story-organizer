@@ -162,10 +162,10 @@ class ChallengeProgress
 
         $elapsedDays = $window->elapsedDays($today);
 
-        // Par credits finished days only, so the morning of day 1 reads level.
+        // Par includes today, so the writer sees the words still owed for today.
         $parDays = match ($state) {
             ChallengeState::Upcoming => 0,
-            ChallengeState::Running => $elapsedDays - 1,
+            ChallengeState::Running => $elapsedDays,
             ChallengeState::Finished => $totalDays,
         };
 

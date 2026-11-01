@@ -93,10 +93,10 @@ are all arithmetic over `word_count_snapshots`, the same rows the chart above re
 - `written` is words written **inside the window** (`WordCountSeries::writtenInRange()`). A
   window opening before the project's first snapshot needs no special case — the total before
   that snapshot is already zero.
-- **Par counts finished days only.** Day 1 opens at par 0, so a challenge is never behind
-  before the writer has had a full day — the same forgiveness `currentStreak()` gives today.
-  The par *line* on the chart still plots the end-of-day figure, so it reaches full par only
-  once the challenge finishes.
+- **Par includes today.** Day 1 opens at one day's share (1,667 for 50,000 over 30 days), so
+  the card reads "Behind by" until the writer has written today's share. "Ahead" means ahead of
+  the end of today, not only ahead of yesterday. The card figure matches today's point on the
+  chart's par line.
 - Negative words (a net cut) still display: an empty bar in the danger colour. Overshoot keeps
   counting past a full bar, reporting "target reached" instead of a per-day figure.
 - Editing a target re-scores the past, the same as the two project goals: no revisions, no

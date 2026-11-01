@@ -353,9 +353,9 @@ class ProgressPageTest extends TestCase
         $response = $this->actingAs($user)->get(route('projects.progress', $project));
 
         $response->assertOk();
-        // written -3000, par round(10000 * 4/30) = 1333 (4 finished days of 30).
+        // written -3000, par round(10000 * 5/30) = 1667 (day 5 of 30).
         $response->assertSee(__('Behind by'));
-        $response->assertSee(WordCountFormat::text(4333));
+        $response->assertSee(WordCountFormat::text(4667));
         $response->assertSee('width: 0%', false);
 
         CarbonImmutable::setTestNow();

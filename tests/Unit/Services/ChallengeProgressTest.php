@@ -156,7 +156,7 @@ class ChallengeProgressTest extends TestCase
         $this->assertSame([500, 500, 500, 800], $standing->dailyTotals->all());
     }
 
-    public function test_par_is_zero_on_the_morning_of_the_first_day(): void
+    public function test_the_first_day_opens_behind_by_one_day_share(): void
     {
         $challenge = $this->fixed('2026-03-01', '2026-03-10', 5000);
 
@@ -164,20 +164,21 @@ class ChallengeProgressTest extends TestCase
 
         $this->assertSame(ChallengeState::Running, $standing->state);
         $this->assertSame(1, $standing->elapsedDays);
-        $this->assertSame(0, $standing->parDays);
-        $this->assertSame(0, $standing->par);
+        $this->assertSame(1, $standing->parDays);
+        $this->assertSame(500, $standing->par);
+        $this->assertSame(-500, $standing->delta);
         $this->assertSame(10, $standing->daysLeft);
     }
 
-    public function test_par_on_the_last_day_is_one_day_short_of_the_target(): void
+    public function test_par_on_the_last_day_is_the_target(): void
     {
         $challenge = $this->fixed('2026-03-01', '2026-03-10', 5000);
 
         $standing = $this->standing($challenge, '2026-03-10');
 
         $this->assertSame(10, $standing->elapsedDays);
-        $this->assertSame(9, $standing->parDays);
-        $this->assertSame(4500, $standing->par);
+        $this->assertSame(10, $standing->parDays);
+        $this->assertSame(5000, $standing->par);
         $this->assertSame(1, $standing->daysLeft);
     }
 
@@ -261,9 +262,9 @@ class ChallengeProgressTest extends TestCase
 
         $standing = $this->standing($challenge, '2026-03-05');
 
-        // Four finished days of a ten-day 5,000-word window: par 2,000.
-        $this->assertSame(2000, $standing->par);
-        $this->assertSame(1000, $standing->delta);
+        // Day 5 of a ten-day 5,000-word window: par 2,500.
+        $this->assertSame(2500, $standing->par);
+        $this->assertSame(500, $standing->delta);
     }
 
     public function test_the_par_line_holds_the_end_of_day_figure_for_every_day(): void

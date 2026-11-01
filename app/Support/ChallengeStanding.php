@@ -12,10 +12,9 @@ use Illuminate\Support\Collection;
  * Nothing here is stored: {@see App\Services\ChallengeProgress} rebuilds a
  * standing from the snapshot rows on each request.
  *
- * `par` counts **finished** days only, so day 1 opens at par 0 and full par
- * arrives only once the window is over — the same forgiveness the daily
- * streak gives. `parTotals` is the chart line and keeps the end-of-day
- * figure for every day, so the card reads yesterday's point.
+ * `par` includes today, so day 1 opens one day's share behind. The writer
+ * sees the words still owed for today. `parTotals` is the chart line and
+ * keeps the end-of-day figure for every day, so the card reads today's point.
  */
 final readonly class ChallengeStanding
 {
