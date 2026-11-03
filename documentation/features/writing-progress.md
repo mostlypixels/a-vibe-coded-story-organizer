@@ -97,6 +97,8 @@ are all arithmetic over `word_count_snapshots`, the same rows the chart above re
   the card reads "Behind by" until the writer has written today's share. "Ahead" means ahead of
   the end of today, not only ahead of yesterday. The card figure matches today's point on the
   chart's par line.
+- The card shows two charts: words so far against par, then the words of each day as bars.
+  One chart needs two axes, and a tall bar then looks higher than par.
 - Negative words (a net cut) still display: an empty bar in the danger colour. Overshoot keeps
   counting past a full bar, reporting "target reached" instead of a per-day figure.
 - Editing a target re-scores the past, the same as the two project goals: no revisions, no

@@ -124,12 +124,12 @@ export function registerWordCountChart(Alpine, { createChart = (canvas, config) 
 }
 
 /**
- * The challenge chart: what each day added, against the climbing total and par.
+ * The challenge chart: the climbing total against par.
  *
- * Two axes because a day's delta (hundreds) and the running total (tens of
- * thousands) share no scale — one axis flattens the bars into the floor.
- * `y1` tops out at the target, so the climbing line touching the top edge is
- * the challenge being met.
+ * The daily bars live in a separate chart below. On one chart they needed a
+ * second axis, and a tall bar then looked higher than par.
+ * The axis tops out at the target, so the line touching the top edge is the
+ * challenge being met.
  */
 export function challengeChartConfig({
     days = [],
@@ -140,26 +140,15 @@ export function challengeChartConfig({
     colors = {},
     labels = {},
 } = {}) {
-    const written = days.map((day) => day.written);
-
     // The line stops at today. Drawing it to the deadline would read as a
     // forecast the app does not make.
     const soFar = totals.map((total, index) => (index < elapsedDays ? total : null));
 
     return {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: days.map((day) => day.label),
             datasets: [
-                {
-                    type: 'bar',
-                    label: labels.written ?? 'Words written',
-                    data: written,
-                    backgroundColor: written.map((count) => (count < 0 ? colors.cut : colors.bar)),
-                    borderWidth: 0,
-                    yAxisID: 'y',
-                    order: 2,
-                },
                 {
                     type: 'line',
                     label: labels.soFar ?? 'Words so far',
@@ -169,7 +158,6 @@ export function challengeChartConfig({
                     pointRadius: 0,
                     fill: false,
                     spanGaps: false,
-                    yAxisID: 'y1',
                     order: 1,
                 },
                 {
@@ -181,7 +169,6 @@ export function challengeChartConfig({
                     borderWidth: 2,
                     pointRadius: 0,
                     fill: false,
-                    yAxisID: 'y1',
                     order: 0,
                 },
             ],
@@ -200,15 +187,9 @@ export function challengeChartConfig({
                     ticks: { color: colors.tick },
                 },
                 y: {
-                    position: 'left',
-                    grid: { color: colors.grid },
-                    ticks: { color: colors.tick, precision: 0 },
-                },
-                y1: {
-                    position: 'right',
                     beginAtZero: true,
                     max: target,
-                    grid: { display: false },
+                    grid: { color: colors.grid },
                     ticks: { color: colors.tick, precision: 0 },
                 },
             },
