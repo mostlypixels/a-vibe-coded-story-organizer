@@ -17,7 +17,7 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
-## 2026-11-03 — Challenge chart in two parts
+## 2026-11-03 — Challenge chart in two parts (#358)
 
 ### Fixed
 
