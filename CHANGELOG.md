@@ -17,6 +17,12 @@ through a PR, and `scripts/pr-land.sh` stamps the number automatically.
 
 ## [Unreleased]
 
+## 2026-11-03 — Challenge chart in two parts (#358)
+
+### Fixed
+
+- A challenge shows each day's words in a separate chart, so a good day no longer looks higher than par.
+
 ## 2026-11-01 — Challenge par includes today (#357)
 
 ### Changed

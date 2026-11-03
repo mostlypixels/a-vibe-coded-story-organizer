@@ -21,24 +21,20 @@ function datasets(config) {
 }
 
 describe('challengeChartConfig', () => {
-    it('draws the day, the running total and par on two axes', () => {
-        const [bars, soFar, par] = datasets(challengeChartConfig(runningWindow));
+    it('draws the running total and par on one axis', () => {
+        const [soFar, par] = datasets(challengeChartConfig(runningWindow));
 
-        expect(bars.type).toBe('bar');
-        expect(bars.yAxisID).toBe('y');
-        expect(bars.data).toEqual([800, 0, -120, 0, 0]);
-
+        expect(datasets(challengeChartConfig(runningWindow))).toHaveLength(2);
         expect(soFar.type).toBe('line');
-        expect(soFar.yAxisID).toBe('y1');
-
         expect(par.type).toBe('line');
-        expect(par.yAxisID).toBe('y1');
         expect(par.data).toEqual([200, 400, 600, 800, 1000]);
         expect(par.borderDash).toEqual([4, 4]);
+        expect(soFar.yAxisID).toBeUndefined();
+        expect(par.yAxisID).toBeUndefined();
     });
 
     it('stops the climbing line at today rather than predicting the rest', () => {
-        const [, soFar] = datasets(challengeChartConfig(runningWindow));
+        const [soFar] = datasets(challengeChartConfig(runningWindow));
 
         expect(soFar.data).toEqual([800, 800, 680, null, null]);
         // A gap must stay a gap, not be bridged to the deadline.
@@ -46,32 +42,25 @@ describe('challengeChartConfig', () => {
     });
 
     it('runs the climbing line to the end once the window is over', () => {
-        const [, soFar] = datasets(challengeChartConfig({ ...runningWindow, elapsedDays: 5 }));
+        const [soFar] = datasets(challengeChartConfig({ ...runningWindow, elapsedDays: 5 }));
 
         expect(soFar.data).toEqual([800, 800, 680, 680, 680]);
     });
 
-    it('tops the right axis at the target, so the line meeting it is the target met', () => {
+    it('tops the axis at the target, so the line meeting it is the target met', () => {
         const { options } = challengeChartConfig(runningWindow);
 
-        expect(options.scales.y1.position).toBe('right');
-        expect(options.scales.y1.max).toBe(1000);
-        expect(options.scales.y1.beginAtZero).toBe(true);
-    });
-
-    it('paints a cut day in the danger colour', () => {
-        const [bars] = datasets(challengeChartConfig({ ...runningWindow, colors: { bar: 'blue', cut: 'red' } }));
-
-        expect(bars.backgroundColor).toEqual(['blue', 'blue', 'red', 'blue', 'blue']);
+                expect(options.scales.y.max).toBe(1000);
+        expect(options.scales.y.beginAtZero).toBe(true);
     });
 
     it('yields a valid config for a window with no days at all', () => {
         const config = challengeChartConfig();
 
         expect(config.data.labels).toEqual([]);
-        expect(datasets(config)).toHaveLength(3);
+        expect(datasets(config)).toHaveLength(2);
         expect(datasets(config).every((dataset) => dataset.data.length === 0)).toBe(true);
-        expect(config.options.scales.y1.max).toBe(0);
+        expect(config.options.scales.y.max).toBe(0);
     });
 });
 
@@ -108,7 +97,7 @@ describe('the Alpine component', () => {
 
         expect(createChart).toHaveBeenCalledTimes(1);
         expect(instances[0].canvas).toBe(component.$refs.canvas);
-        expect(instances[0].config.data.datasets).toHaveLength(3);
+        expect(instances[0].config.data.datasets).toHaveLength(2);
     });
 
     it('destroys the chart on teardown', () => {

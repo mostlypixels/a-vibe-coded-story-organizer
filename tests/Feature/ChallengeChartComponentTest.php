@@ -66,6 +66,15 @@ class ChallengeChartComponentTest extends TestCase
         $this->assertStringContainsString('role="img"', $rendered);
     }
 
+    public function test_it_draws_the_daily_words_in_a_separate_chart(): void
+    {
+        $rendered = $this->render($this->standing());
+
+        // One axis for each chart, so a tall bar cannot look higher than par.
+        $this->assertStringContainsString('x-data="wordCountChart(', $rendered);
+        $this->assertSame(2, substr_count($rendered, '<canvas'));
+    }
+
     public function test_it_serialises_the_three_series_and_the_target(): void
     {
         $rendered = $this->render($this->standing());
